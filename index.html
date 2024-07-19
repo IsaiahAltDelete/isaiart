@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Refined Glassmorphic Bouncing Ball with Gradient Slider</title>
+    <title>Bouncing Ball with Dynamic Gradient Slider</title>
     <style>
         body, html {
             margin: 0;
@@ -16,14 +16,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(45deg, #ff9a9e, #fad0c4, #ffecd2);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-        }
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            transition: background 0.5s ease;
         }
         .canvas-container {
             background: rgba(255, 255, 255, 0.25);
@@ -85,6 +78,7 @@
         const speedSlider = document.getElementById('speed-slider');
 
         let canvasSize, centerX, centerY, radius, ballRadius;
+        let backgroundHue = 0;
 
         function setCanvasSize() {
             canvasSize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
@@ -114,6 +108,7 @@
         let strokeColor = getRandomColor();
         let ballColor = 'black';
         let trail = [];
+        let stretchEffect = { angle: 0, strength: 0, phase: 0 };
 
         function getRandomColor() {
             return `hsl(${Math.random() * 360}, 100%, 50%)`;
@@ -130,6 +125,28 @@
             ctx.strokeStyle = strokeColor;
             ctx.lineWidth = canvasSize * 0.025;
             ctx.stroke();
+
+            if (stretchEffect.strength > 0) {
+                ctx.beginPath();
+                const stretchRadius = radius + Math.sin(stretchEffect.phase) * stretchEffect.strength;
+                const angleWidth = 0.2;
+                const startAngle = stretchEffect.angle - angleWidth;
+                const endAngle = stretchEffect.angle + angleWidth;
+                
+                ctx.arc(centerX, centerY, stretchRadius, startAngle, endAngle);
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = canvasSize * 0.025;
+                ctx.stroke();
+
+                stretchEffect.phase += 0.3;
+                if (stretchEffect.phase > Math.PI) {
+                    stretchEffect.strength *= 0.8;
+                    if (stretchEffect.strength < 0.1) {
+                        stretchEffect.strength = 0;
+                    }
+                    stretchEffect.phase = 0;
+                }
+            }
 
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius - canvasSize * 0.0125, 0, Math.PI * 2);
@@ -168,22 +185,23 @@
             const distance = Math.sqrt(dx2 * dx2 + dy2 * dy2);
 
             if (distance + ballRadius > radius) {
-                // Calculate the intersection point
                 const intersectionFactor = (radius - ballRadius) / distance;
                 const intersectionX = centerX - dx2 * intersectionFactor;
                 const intersectionY = centerY - dy2 * intersectionFactor;
 
-                // Move the ball to the intersection point
                 x = intersectionX;
                 y = intersectionY;
 
-                // Generate new random direction
                 angle = Math.random() * Math.PI * 2;
                 dx = Math.cos(angle) * speed;
                 dy = Math.sin(angle) * speed;
 
                 strokeColor = getRandomColor();
                 ballColor = getComplementaryColor(strokeColor);
+
+                stretchEffect.angle = Math.atan2(y - centerY, x - centerX);
+                stretchEffect.strength = canvasSize * 0.03;
+                stretchEffect.phase = 0;
             }
 
             x += dx;
@@ -204,7 +222,27 @@
             dy = Math.sin(currentAngle) * speed;
         });
 
+        function updateBackgroundHue() {
+            backgroundHue = (backgroundHue + 1) % 360;
+            const hue1 = backgroundHue;
+            const hue2 = (backgroundHue + 60) % 360;
+            const hue3 = (backgroundHue + 120) % 360;
+            
+            document.body.style.background = `linear-gradient(45deg, 
+                hsl(${hue1}, 100%, 80%), 
+                hsl(${hue2}, 100%, 80%), 
+                hsl(${hue3}, 100%, 80%))`;
+            
+            speedSlider.style.background = `linear-gradient(90deg, 
+                hsl(${hue1}, 100%, 80%), 
+                hsl(${hue2}, 100%, 80%), 
+                hsl(${hue3}, 100%, 80%))`;
+            
+            setTimeout(updateBackgroundHue, 100);
+        }
+
         update();
+        updateBackgroundHue();
     </script>
 </body>
 </html>
