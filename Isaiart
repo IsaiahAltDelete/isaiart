@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refined Glassmorphic Bouncing Ball with Gradient Slider</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(45deg, #ff9a9e, #fad0c4, #ffecd2);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .canvas-container {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            padding: 20px;
+            width: 80vmin;
+            height: 80vmin;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        #canvas {
+            border-radius: 10px;
+            width: 100%;
+            height: 100%;
+        }
+        .slider-container {
+            width: 80vmin;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        #speed-slider {
+            width: 100%;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #ff9a9e, #fad0c4, #ffecd2);
+            outline: none;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+        #speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            border: 4px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+    </div>
+    <div class="slider-container">
+        <input type="range" id="speed-slider" min="1" max="10" value="5" step="0.1">
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const speedSlider = document.getElementById('speed-slider');
+
+        let canvasSize, centerX, centerY, radius, ballRadius;
+
+        function setCanvasSize() {
+            canvasSize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+            centerX = canvasSize / 2;
+            centerY = canvasSize / 2;
+            radius = canvasSize * 0.45;
+            ballRadius = canvasSize * 0.0375;
+        }
+
+        setCanvasSize();
+        window.addEventListener('resize', () => {
+            setCanvasSize();
+            x = centerX;
+            y = centerY;
+            trail = [];
+        });
+
+        let x = centerX;
+        let y = centerY;
+        let speed = canvasSize * 0.005;
+        let angle = Math.random() * Math.PI * 2;
+        let dx = Math.cos(angle) * speed;
+        let dy = Math.sin(angle) * speed;
+
+        let strokeColor = getRandomColor();
+        let ballColor = 'black';
+        let trail = [];
+
+        function getRandomColor() {
+            return `hsl(${Math.random() * 360}, 100%, 50%)`;
+        }
+
+        function getComplementaryColor(color) {
+            const hsl = color.match(/\d+/g);
+            return `hsl(${(parseInt(hsl[0]) + 180) % 360}, ${hsl[1]}%, ${hsl[2]}%)`;
+        }
+
+        function drawCircle() {
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = canvasSize * 0.025;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius - canvasSize * 0.0125, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = canvasSize * 0.005;
+            ctx.stroke();
+        }
+
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+            ctx.fillStyle = ballColor;
+            ctx.fill();
+        }
+
+        function drawTrail() {
+            trail.forEach((ball, index) => {
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ballRadius * (1 - index / trail.length), 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${(index / trail.length) * 360}, 100%, 50%, ${1 - index / trail.length})`;
+                ctx.fill();
+            });
+        }
+
+        function update() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawCircle();
+            drawTrail();
+
+            const dx2 = centerX - x;
+            const dy2 = centerY - y;
+            const distance = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+            if (distance + ballRadius > radius) {
+                // Calculate the intersection point
+                const intersectionFactor = (radius - ballRadius) / distance;
+                const intersectionX = centerX - dx2 * intersectionFactor;
+                const intersectionY = centerY - dy2 * intersectionFactor;
+
+                // Move the ball to the intersection point
+                x = intersectionX;
+                y = intersectionY;
+
+                // Generate new random direction
+                angle = Math.random() * Math.PI * 2;
+                dx = Math.cos(angle) * speed;
+                dy = Math.sin(angle) * speed;
+
+                strokeColor = getRandomColor();
+                ballColor = getComplementaryColor(strokeColor);
+            }
+
+            x += dx;
+            y += dy;
+
+            trail.unshift({x, y});
+            if (trail.length > 50) trail.pop();
+
+            drawBall();
+
+            requestAnimationFrame(update);
+        }
+
+        speedSlider.addEventListener('input', function() {
+            speed = (this.value / 5) * (canvasSize * 0.005);
+            const currentAngle = Math.atan2(dy, dx);
+            dx = Math.cos(currentAngle) * speed;
+            dy = Math.sin(currentAngle) * speed;
+        });
+
+        update();
+    </script>
+</body>
+</html>
