@@ -42,6 +42,11 @@
             text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
             margin-bottom: 30px;
             font-size: 3em;
+            animation: blink 1.5s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
         textarea, #result {
             width: calc(100% - 20px);
@@ -122,6 +127,21 @@
             background: linear-gradient(45deg, #00ccff, #00ffff);
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
+        #notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 255, 255, 0.2);
+            color: #00ffff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-family: "Workbench", sans-serif;
+            font-size: 18px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -139,6 +159,7 @@
             <button onclick="clearText()">Clear</button>
         </div>
     </div>
+    <div id="notification"></div>
 
     <script>
         const zalgoChars = [
@@ -169,15 +190,26 @@
         function copyToClipboard() {
             const resultText = document.getElementById('result').textContent;
             navigator.clipboard.writeText(resultText).then(() => {
-                alert('Zalgo text copied to clipboard!');
+                showNotification('Zalgo text copied to clipboard!');
             }).catch(err => {
                 console.error('Failed to copy text: ', err);
+                showNotification('Failed to copy text. Please try again.');
             });
         }
 
         function clearText() {
             document.getElementById('input').value = '';
             document.getElementById('result').textContent = '';
+            showNotification('Text cleared');
+        }
+
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.opacity = '1';
+            setTimeout(() => {
+                notification.style.opacity = '0';
+            }, 2000);
         }
 
         document.getElementById('intensity').addEventListener('input', function() {
