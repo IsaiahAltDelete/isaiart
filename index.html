@@ -3,23 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Isaiart</title>
+    <title>ISAIART</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Raleway', sans-serif;
             background: linear-gradient(145deg, #ff6b6b, #ff4757);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
+            overflow: hidden;
         }
         .container {
-            background: linear-gradient(145deg, #ff6b6b, #ff4757);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 20px;
             padding: 40px;
-            box-shadow: 20px 20px 60px #d63a3a, -20px -20px 60px #ff7878;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 600px;
+            width: 100%;
         }
         h1 {
             color: #ffffff;
@@ -33,7 +40,7 @@
             gap: 20px;
         }
         .link {
-            background: linear-gradient(145deg, #ff6b6b, #ff4757);
+            background: rgba(255, 255, 255, 0.1);
             color: #ffffff;
             text-decoration: none;
             padding: 15px 20px;
@@ -41,9 +48,16 @@
             text-align: center;
             font-weight: bold;
             transition: all 0.3s ease;
-            box-shadow: 5px 5px 10px #d63a3a, -5px -5px 10px #ff7878;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             position: relative;
             overflow: hidden;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+        .link:hover {
+            border-image: linear-gradient(145deg, #ff6b6b, #ff4757) 1;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.1);
         }
         .link::before {
             content: '';
@@ -59,23 +73,39 @@
         .link:hover::before {
             opacity: 1;
         }
-        .link:hover {
-            transform: translateY(-3px);
-            box-shadow: 8px 8px 15px #d63a3a, -8px -8px 15px #ff7878;
+        .link i {
+            margin-right: 10px;
+        }
+        @keyframes moveBackground {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(145deg, #ff6b6b, #ff4757);
+            z-index: -1;
+            animation: moveBackground 10s linear infinite;
         }
     </style>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Isaiart Links</h1>
+        <h1>ISAIART</h1>
         <div class="link-container">
-            <a href="https://isaiart.com" class="link">Isaiart</a>
-            <a href="https://code.isaiart.com" class="link">Web Coding App</a>
-            <a href="https://braille.isaiart.com" class="link">English to Braille Translator</a>
-            <a href="https://thg.isaiart.com" class="link">The Hunger Games</a>
-            <a href="https://isaiart.com/rain" class="link">Rain</a>
-            <a href="https://isaiart.com/translate" class="link">Translator</a>
-            <a href="https://music.isaiart.com" class="link">Music</a>
+            <a href="https://braille.isaiart.com" class="link"><i class="fas fa-braille"></i>Braille Translator</a>
+            <a href="https://isaiart.com" class="link"><i class="fas fa-palette"></i>Isaiart</a>
+            <a href="https://isaiart.com/rain" class="link"><i class="fas fa-clock"></i>Timer</a>
+            <a href="https://isaiart.com/translate" class="link"><i class="fas fa-language"></i>Zalgo Translator</a>
+            <a href="https://music.isaiart.com" class="link"><i class="fas fa-music"></i>Music</a>
+            <a href="https://code.isaiart.com" class="link"><i class="fas fa-code"></i>Web Coding</a>
+            <a href="https://thg.isaiart.com" class="link"><i class="fas fa-book"></i>The Hunger Games</a>
         </div>
     </div>
 </body>
