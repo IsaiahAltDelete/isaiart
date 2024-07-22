@@ -3,246 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball with Dynamic Gradient Slider</title>
+    <title>Isaiart</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden;
-        }
         body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(145deg, #ff6b6b, #ff4757);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: linear-gradient(145deg, #ff6b6b, #ff4757);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 20px 20px 60px #d63a3a, -20px -20px 60px #ff7878;
+        }
+        h1 {
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .link-container {
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            transition: background 0.5s ease;
+            gap: 20px;
         }
-        .canvas-container {
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            padding: 20px;
-            width: 80vmin;
-            height: 80vmin;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        #canvas {
+        .link {
+            background: linear-gradient(145deg, #ff6b6b, #ff4757);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 15px 20px;
             border-radius: 10px;
-            width: 100%;
-            height: 100%;
-        }
-        .slider-container {
-            width: 80vmin;
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(10px);
-            border-radius: 10px;
-            padding: 10px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        }
-        #speed-slider {
-            width: 100%;
-            -webkit-appearance: none;
-            background: linear-gradient(90deg, #ff9a9e, #fad0c4, #ffecd2);
-            outline: none;
-            border-radius: 15px;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 5px 5px 10px #d63a3a, -5px -5px 10px #ff7878;
+            position: relative;
             overflow: hidden;
-            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
         }
-        #speed-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #fff;
-            cursor: pointer;
-            border: 4px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        .link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .link:hover::before {
+            opacity: 1;
+        }
+        .link:hover {
+            transform: translateY(-3px);
+            box-shadow: 8px 8px 15px #d63a3a, -8px -8px 15px #ff7878;
         }
     </style>
 </head>
 <body>
-    <div class="canvas-container">
-        <canvas id="canvas"></canvas>
+    <div class="container">
+        <h1>Isaiart Links</h1>
+        <div class="link-container">
+            <a href="https://isaiart.com" class="link">Isaiart</a>
+            <a href="https://code.isaiart.com" class="link">Web Coding App</a>
+            <a href="https://braille.isaiart.com" class="link">English to Braille Translator</a>
+            <a href="https://thg.isaiart.com" class="link">The Hunger Games</a>
+            <a href="https://isaiart.com/rain" class="link">Rain</a>
+            <a href="https://isaiart.com/translate" class="link">Translator</a>
+            <a href="https://music.isaiart.com" class="link">Music</a>
+        </div>
     </div>
-    <div class="slider-container">
-        <input type="range" id="speed-slider" min="1" max="10" value="5" step="0.1">
-    </div>
-    <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const speedSlider = document.getElementById('speed-slider');
-
-        let canvasSize, centerX, centerY, radius, ballRadius;
-        let backgroundHue = 0;
-
-        function setCanvasSize() {
-            canvasSize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
-            canvas.width = canvasSize;
-            canvas.height = canvasSize;
-            centerX = canvasSize / 2;
-            centerY = canvasSize / 2;
-            radius = canvasSize * 0.45;
-            ballRadius = canvasSize * 0.0375;
-        }
-
-        setCanvasSize();
-        window.addEventListener('resize', () => {
-            setCanvasSize();
-            x = centerX;
-            y = centerY;
-            trail = [];
-        });
-
-        let x = centerX;
-        let y = centerY;
-        let speed = canvasSize * 0.005;
-        let angle = Math.random() * Math.PI * 2;
-        let dx = Math.cos(angle) * speed;
-        let dy = Math.sin(angle) * speed;
-
-        let strokeColor = getRandomColor();
-        let ballColor = 'black';
-        let trail = [];
-        let stretchEffect = { angle: 0, strength: 0, phase: 0 };
-
-        function getRandomColor() {
-            return `hsl(${Math.random() * 360}, 100%, 50%)`;
-        }
-
-        function getComplementaryColor(color) {
-            const hsl = color.match(/\d+/g);
-            return `hsl(${(parseInt(hsl[0]) + 180) % 360}, ${hsl[1]}%, ${hsl[2]}%)`;
-        }
-
-        function drawCircle() {
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-            ctx.strokeStyle = strokeColor;
-            ctx.lineWidth = canvasSize * 0.025;
-            ctx.stroke();
-
-            if (stretchEffect.strength > 0) {
-                ctx.beginPath();
-                const stretchRadius = radius + Math.sin(stretchEffect.phase) * stretchEffect.strength;
-                const angleWidth = 0.2;
-                const startAngle = stretchEffect.angle - angleWidth;
-                const endAngle = stretchEffect.angle + angleWidth;
-                
-                ctx.arc(centerX, centerY, stretchRadius, startAngle, endAngle);
-                ctx.strokeStyle = strokeColor;
-                ctx.lineWidth = canvasSize * 0.025;
-                ctx.stroke();
-
-                stretchEffect.phase += 0.3;
-                if (stretchEffect.phase > Math.PI) {
-                    stretchEffect.strength *= 0.8;
-                    if (stretchEffect.strength < 0.1) {
-                        stretchEffect.strength = 0;
-                    }
-                    stretchEffect.phase = 0;
-                }
-            }
-
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius - canvasSize * 0.0125, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-            ctx.lineWidth = canvasSize * 0.005;
-            ctx.stroke();
-        }
-
-        function drawBall() {
-            ctx.beginPath();
-            ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
-            ctx.fillStyle = ballColor;
-            ctx.fill();
-        }
-
-        function drawTrail() {
-            trail.forEach((ball, index) => {
-                ctx.beginPath();
-                ctx.arc(ball.x, ball.y, ballRadius * (1 - index / trail.length), 0, Math.PI * 2);
-                ctx.fillStyle = `hsla(${(index / trail.length) * 360}, 100%, 50%, ${1 - index / trail.length})`;
-                ctx.fill();
-            });
-        }
-
-        function update() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            drawCircle();
-            drawTrail();
-
-            const dx2 = centerX - x;
-            const dy2 = centerY - y;
-            const distance = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-
-            if (distance + ballRadius > radius) {
-                const intersectionFactor = (radius - ballRadius) / distance;
-                const intersectionX = centerX - dx2 * intersectionFactor;
-                const intersectionY = centerY - dy2 * intersectionFactor;
-
-                x = intersectionX;
-                y = intersectionY;
-
-                angle = Math.random() * Math.PI * 2;
-                dx = Math.cos(angle) * speed;
-                dy = Math.sin(angle) * speed;
-
-                strokeColor = getRandomColor();
-                ballColor = getComplementaryColor(strokeColor);
-
-                stretchEffect.angle = Math.atan2(y - centerY, x - centerX);
-                stretchEffect.strength = canvasSize * 0.03;
-                stretchEffect.phase = 0;
-            }
-
-            x += dx;
-            y += dy;
-
-            trail.unshift({x, y});
-            if (trail.length > 50) trail.pop();
-
-            drawBall();
-
-            requestAnimationFrame(update);
-        }
-
-        speedSlider.addEventListener('input', function() {
-            speed = (this.value / 5) * (canvasSize * 0.005);
-            const currentAngle = Math.atan2(dy, dx);
-            dx = Math.cos(currentAngle) * speed;
-            dy = Math.sin(currentAngle) * speed;
-        });
-
-        function updateBackgroundHue() {
-            backgroundHue = (backgroundHue + 1) % 360;
-            const hue1 = backgroundHue;
-            const hue2 = (backgroundHue + 60) % 360;
-            const hue3 = (backgroundHue + 120) % 360;
-            
-            document.body.style.background = `linear-gradient(45deg, 
-                hsl(${hue1}, 100%, 80%), 
-                hsl(${hue2}, 100%, 80%), 
-                hsl(${hue3}, 100%, 80%))`;
-            
-            speedSlider.style.background = `linear-gradient(90deg, 
-                hsl(${hue1}, 100%, 80%), 
-                hsl(${hue2}, 100%, 80%), 
-                hsl(${hue3}, 100%, 80%))`;
-            
-            setTimeout(updateBackgroundHue, 100);
-        }
-
-        update();
-        updateBackgroundHue();
-    </script>
 </body>
 </html>
