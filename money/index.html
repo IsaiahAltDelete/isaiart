@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Paycheck Timer</title>
     <style>
-        @keyframes hueRotate {
-            0% { filter: hue-rotate(0deg); }
-            100% { filter: hue-rotate(360deg); }
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         
         body {
@@ -17,10 +18,11 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            background: linear-gradient(45deg, #6a11cb 0%, #2575fc 100%);
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientAnimation 15s ease infinite;
             color: #ffffff;
             overflow: hidden;
-            animation: hueRotate 60s linear infinite;
         }
         .container {
             text-align: center;
@@ -64,19 +66,18 @@
         }
         #timeElapsed {
             font-weight: 600;
-            color: #ffd700;
+            color: #ffffff;
         }
         #moneyEarned {
             font-size: 2.5rem;
             font-weight: 700;
-            color: #ffd700;
+            color: #ffffff;
             display: block;
             margin-top: 1rem;
         }
         .money {
             position: absolute;
             font-size: 2rem;
-            cursor: move;
             user-select: none;
             z-index: 1000;
         }
@@ -102,6 +103,7 @@
         let hourlyRate = 15;
         let elapsedTime = 0;
         let isRunning = false;
+        let moneyEmojis = [];
 
         function startTimer() {
             if (!isRunning) {
@@ -109,6 +111,7 @@
                 hourlyRate = parseFloat(document.getElementById('hourlyRate').value);
                 timerInterval = setInterval(updateTimer, 1000);
                 isRunning = true;
+                requestAnimationFrame(updateMoneyPositions);
             }
         }
 
@@ -126,7 +129,8 @@
             moneyEarned = 0;
             isRunning = false;
             updateDisplay();
-            document.querySelectorAll('.money').forEach(e => e.remove());
+            moneyEmojis.forEach(emoji => emoji.element.remove());
+            moneyEmojis = [];
         }
 
         function updateTimer() {
@@ -158,40 +162,46 @@
             moneyEmoji.textContent = '💰';
             moneyEmoji.className = 'money';
             moneyEmoji.style.left = `${Math.random() * (window.innerWidth - 50)}px`;
-            moneyEmoji.style.top = `${Math.random() * (window.innerHeight - 50)}px`;
+            moneyEmoji.style.top = '0px';
             document.body.appendChild(moneyEmoji);
-            makeDraggable(moneyEmoji);
+            
+            moneyEmojis.push({
+                element: moneyEmoji,
+                x: parseFloat(moneyEmoji.style.left),
+                y: 0,
+                vy: 0
+            });
         }
 
-        function makeDraggable(element) {
-            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-            element.onmousedown = dragMouseDown;
+        function updateMoneyPositions() {
+            const gravity = 0.5;
+            const bounce = 0.7;
 
-            function dragMouseDown(e) {
-                e = e || window.event;
-                e.preventDefault();
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-                document.onmouseup = closeDragElement;
-                document.onmousemove = elementDrag;
-            }
+            moneyEmojis.forEach(emoji => {
+                emoji.vy += gravity;
+                emoji.y += emoji.vy;
 
-            function elementDrag(e) {
-                e = e || window.event;
-                e.preventDefault();
-                pos1 = pos3 - e.clientX;
-                pos2 = pos4 - e.clientY;
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-                element.style.top = (element.offsetTop - pos2) + "px";
-                element.style.left = (element.offsetLeft - pos1) + "px";
-            }
+                if (emoji.y + emoji.element.offsetHeight > window.innerHeight) {
+                    emoji.y = window.innerHeight - emoji.element.offsetHeight;
+                    emoji.vy *= -bounce;
+                }
 
-            function closeDragElement() {
-                document.onmouseup = null;
-                document.onmousemove = null;
-            }
+                emoji.element.style.top = `${emoji.y}px`;
+            });
+
+            requestAnimationFrame(updateMoneyPositions);
         }
+
+        window.addEventListener('resize', () => {
+            moneyEmojis.forEach(emoji => {
+                if (parseFloat(emoji.element.style.left) > window.innerWidth - 50) {
+                    emoji.element.style.left = `${window.innerWidth - 50}px`;
+                }
+                if (parseFloat(emoji.element.style.top) > window.innerHeight - 50) {
+                    emoji.element.style.top = `${window.innerHeight - 50}px`;
+                }
+            });
+        });
     </script>
 </body>
 </html>
