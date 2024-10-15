@@ -1,11 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0;url=https://thg.isaiart.com">
-    <title>Redirecting...</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loading...</title>
+  <style>
+    /* From Uiverse.io by IsaiahAltDelete */
+    .space-loader {
+      width: 200px;
+      height: 200px;
+      position: relative;
+      background-color: #000;
+      border-radius: 50%;
+      overflow: hidden;
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+      margin: 100px auto;
+    }
+
+    .planet {
+      width: 80px;
+      height: 80px;
+      background: radial-gradient(circle at 30% 30%, #fff, #888);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+    }
+
+    .ring {
+      width: 120px;
+      height: 120px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotateX(75deg) rotateY(15deg);
+      animation: rotate 12s linear infinite;
+    }
+
+    .orbit {
+      width: 160px;
+      height: 160px;
+      border: 1px dashed rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .satellite {
+      width: 10px;
+      height: 10px;
+      background-color: #fff;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation: orbit 8s linear infinite;
+    }
+
+    .stars {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      animation: twinkle 4s ease-in-out infinite;
+    }
+
+    .star {
+      position: absolute;
+      background-color: #fff;
+      border-radius: 50%;
+    }
+
+    @keyframes rotate {
+      0% {
+        transform: translate(-50%, -50%) rotateX(75deg) rotateY(15deg) rotate(0deg);
+      }
+      100% {
+        transform: translate(-50%, -50%) rotateX(75deg) rotateY(15deg) rotate(360deg);
+      }
+    }
+
+    @keyframes orbit {
+      0% {
+        transform: rotate(0deg) translateX(80px) rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg) translateX(80px) rotate(-360deg);
+      }
+    }
+
+    @keyframes twinkle {
+      0%, 100% {
+        opacity: 0.3;
+      }
+      50% {
+        opacity: 0.8;
+      }
+    }
+  </style>
 </head>
 <body>
-    <p>If you are not redirected automatically, follow this <a href="https://thg.isaiart.com">link to THG</a>.</p>
+  <div class="space-loader">
+    <div class="planet"></div>
+    <div class="ring"></div>
+    <div class="orbit">
+      <div class="satellite"></div>
+    </div>
+    <div class="stars">
+      <div class="star" style="width: 2px; height: 2px; top: 10%; left: 20%;"></div>
+      <div class="star" style="width: 3px; height: 3px; top: 50%; left: 80%;"></div>
+      <div class="star" style="width: 2px; height: 2px; top: 70%; left: 40%;"></div>
+      <!-- Add more stars for effect -->
+    </div>
+  </div>
+  
+  <script>
+    window.onload = function() {
+      // Simulate loading for 3 seconds, then redirect to main content
+      setTimeout(function() {
+        window.location.href = 'mainPage.html'; // Change to your main page URL
+      }, 3000); // Adjust time as needed
+    };
+  </script>
 </body>
 </html>
