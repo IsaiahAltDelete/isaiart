@@ -1,1 +1,157 @@
-hi
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimalistic Piano</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #FFA500;
+        }
+        .piano-container {
+            background-color: #FFA500;
+            border: 2px solid #000;
+            border-radius: 10px;
+            padding: 20px;
+            width: 600px;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .slider {
+            width: 45%;
+            -webkit-appearance: none;
+            height: 5px;
+            background: #000;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        .slider:hover {
+            opacity: 1;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #000;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .slider::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            background: #000;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .note-display {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+            height: 30px;
+            line-height: 30px;
+            border: 1px solid #000;
+            background-color: #FF8C00;
+        }
+        .keys {
+            display: flex;
+            justify-content: space-between;
+        }
+        .key {
+            flex-grow: 1;
+            height: 120px;
+            background-color: #FFA500;
+            border: 1px solid #000;
+            cursor: pointer;
+            margin: 0 1px;
+        }
+        .key:active {
+            background-color: #FF8C00;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const Piano = () => {
+            const [volume, setVolume] = useState(-10);
+            const [sustain, setSustain] = useState(0.1);
+            const [currentNote, setCurrentNote] = useState('');
+            const synth = useRef(null);
+            const notes = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5', 'G5'];
+
+            useEffect(() => {
+                synth.current = new Tone.Synth().toDestination();
+                Tone.start();
+            }, []);
+
+            useEffect(() => {
+                if (synth.current) {
+                    synth.current.volume.value = volume;
+                }
+            }, [volume]);
+
+            const playNote = (note) => {
+                if (synth.current) {
+                    synth.current.triggerAttackRelease(note, sustain);
+                    setCurrentNote(note);
+                    setTimeout(() => setCurrentNote(''), sustain * 1000);
+                }
+            };
+
+            return (
+                <div className="piano-container">
+                    <div className="controls">
+                        <input
+                            type="range"
+                            min="-60"
+                            max="0"
+                            value={volume}
+                            onChange={(e) => setVolume(Number(e.target.value))}
+                            className="slider"
+                        />
+                        <input
+                            type="range"
+                            min="0.1"
+                            max="2"
+                            step="0.1"
+                            value={sustain}
+                            onChange={(e) => setSustain(Number(e.target.value))}
+                            className="slider"
+                        />
+                    </div>
+                    <div className="note-display">{currentNote}</div>
+                    <div className="keys">
+                        {notes.map((note) => (
+                            <div
+                                key={note}
+                                className="key"
+                                onMouseDown={() => playNote(note)}
+                            ></div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<Piano />, document.getElementById('root'));
+    </script>
+</body>
+</html>
