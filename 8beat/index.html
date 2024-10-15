@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8 Beat Drum Machine</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #FFC300;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .drum-machine {
+            background-color: #FFC300;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .label {
+            width: 80px;
+            text-align: right;
+            margin-right: 15px;
+            font-weight: bold;
+            color: #333;
+        }
+        .beats {
+            display: flex;
+            flex-grow: 1;
+        }
+        .beat {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin: 0 5px;
+            cursor: pointer;
+            border: 2px solid #333;
+            transition: background-color 0.3s ease;
+        }
+        .beat.active {
+            background-color: #333;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        .control-btn {
+            background-color: #333;
+            color: #FFC300;
+            border: none;
+            padding: 10px 15px;
+            margin: 0 10px 10px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+        }
+        .control-btn:hover {
+            background-color: #555;
+        }
+        .volume-control {
+            display: flex;
+            align-items: center;
+            margin-left: 10px;
+        }
+        .volume-slider {
+            width: 80px;
+            -webkit-appearance: none;
+            background: #333;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            border-radius: 12px;
+        }
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #FFC300;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .volume-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #FFC300;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        #tempoControl {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .tempo-btn {
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin: 0 10px;
+        }
+        #tempoDisplay {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 20px;
+        }
+        #visualizer {
+            width: 100%;
+            height: 50px;
+            background-color: #333;
+            margin-top: 20px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="drum-machine">
+        <h2>8 BEAT DRUM</h2>
+        <div id="beats"></div>
+        <div class="controls">
+            <button id="playPauseBtn" class="control-btn">Play</button>
+            <button id="resetBtn" class="control-btn">Reset</button>
+            <button id="randomizeBtn" class="control-btn">Randomize</button>
+        </div>
+        <div id="tempoControl">
+            <button id="tempoDownBtn" class="tempo-btn">-</button>
+            <span id="tempoDisplay">120 BPM</span>
+            <button id="tempoUpBtn" class="tempo-btn">+</button>
+        </div>
+        <div id="visualizer"></div>
+    </div>
+
+    <script>
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const beats = ['kick', 'snare', 'hat', 'tom', 'whistle'];
+        let isPlaying = false;
+        let currentBeat = 0;
+        let tempo = 120;
+        const volumes = {};
+
+        function createDrumMachine() {
+            const beatsContainer = document.getElementById('beats');
+            beats.forEach(beat => {
+                const row = document.createElement('div');
+                row.className = 'row';
+                const label = document.createElement('div');
+                label.className = 'label';
+                label.textContent = beat.toUpperCase();
+                row.appendChild(label);
+
+                const beatsDiv = document.createElement('div');
+                beatsDiv.className = 'beats';
+                for (let i = 0; i < 8; i++) {
+                    const beatBtn = document.createElement('div');
+                    beatBtn.className = 'beat';
+                    beatBtn.dataset.beat = beat;
+                    beatBtn.dataset.step = i;
+                    beatBtn.addEventListener('click', toggleBeat);
+                    beatsDiv.appendChild(beatBtn);
+                }
+                row.appendChild(beatsDiv);
+
+                const volumeControl = document.createElement('div');
+                volumeControl.className = 'volume-control';
+                const volumeSlider = document.createElement('input');
+                volumeSlider.type = 'range';
+                volumeSlider.min = '0';
+                volumeSlider.max = '1';
+                volumeSlider.step = '0.1';
+                volumeSlider.value = '0.5';
+                volumeSlider.className = 'volume-slider';
+                volumeSlider.addEventListener('input', (e) => {
+                    volumes[beat] = parseFloat(e.target.value);
+                });
+                volumeControl.appendChild(volumeSlider);
+                row.appendChild(volumeControl);
+
+                beatsContainer.appendChild(row);
+                volumes[beat] = 0.5;
+            });
+        }
+
+        function toggleBeat(e) {
+            e.target.classList.toggle('active');
+        }
+
+        function playDrum(type) {
+            const osc = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(analyser);
+            analyser.connect(audioContext.destination);
+
+            switch(type) {
+                case 'kick':
+                    osc.frequency.setValueAtTime(150, audioContext.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                    gainNode.gain.setValueAtTime(volumes[type], audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+                    break;
+                case 'snare':
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(100, audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(volumes[type] * 0.5, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    break;
+                case 'hat':
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(3000, audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(volumes[type] * 0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+                    break;
+                case 'tom':
+                    osc.frequency.setValueAtTime(100, audioContext.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
+                    gainNode.gain.setValueAtTime(volumes[type], audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    break;
+                case 'whistle':
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(2000, audioContext.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1800, audioContext.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(volumes[type] * 0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                    break;
+            }
+
+            osc.start();
+            osc.stop(audioContext.currentTime + 0.5);
+        }
+
+        function step() {
+            const currentTime = audioContext.currentTime;
+            
+            beats.forEach(beat => {
+                const beatEl = document.querySelector(`.beat[data-beat="${beat}"][data-step="${currentBeat}"]`);
+                if (beatEl.classList.contains('active')) {
+                    playDrum(beat);
+                }
+            });
+
+            currentBeat = (currentBeat + 1) % 8;
+            if (isPlaying) {
+                setTimeout(step, (60 / tempo) * 1000);
+            }
+        }
+
+        function drawVisualizer() {
+            const canvas = document.createElement('canvas');
+            const visualizer = document.getElementById('visualizer');
+            visualizer.innerHTML = '';
+            visualizer.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = visualizer.offsetWidth;
+            canvas.height = visualizer.offsetHeight;
+
+            function draw() {
+                analyser.getByteFrequencyData(dataArray);
+
+                ctx.fillStyle = '#FFC300';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const barWidth = (canvas.width / bufferLength) * 2.5;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    const barHeight = dataArray[i] / 2;
+                    ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                    x += barWidth + 1;
+                }
+
+                requestAnimationFrame(draw);
+            }
+
+            draw();
+        }
+
+        document.getElementById('playPauseBtn').addEventListener('click', () => {
+            if (isPlaying) {
+                isPlaying = false;
+                document.getElementById('playPauseBtn').textContent = 'Play';
+            } else {
+                isPlaying = true;
+                document.getElementById('playPauseBtn').textContent = 'Pause';
+                step();
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            document.querySelectorAll('.beat').forEach(beat => beat.classList.remove('active'));
+        });
+
+        document.getElementById('randomizeBtn').addEventListener('click', () => {
+            document.querySelectorAll('.beat').forEach(beat => {
+                beat.classList.toggle('active', Math.random() > 0.5);
+            });
+        });
+
+        document.getElementById('tempoDownBtn').addEventListener('click', () => {
+            if (tempo > 60) {
+                tempo -= 5;
+                document.getElementById('tempoDisplay').textContent = `${tempo} BPM`;
+            }
+        });
+
+        document.getElementById('tempoUpBtn').addEventListener('click', () => {
+            if (tempo < 180) {
+                tempo += 5;
+                document.getElementById('tempoDisplay').textContent = `${tempo} BPM`;
+            }
+        });
+
+        createDrumMachine();
+        drawVisualizer();
+    </script>
+</body>
+</html>
