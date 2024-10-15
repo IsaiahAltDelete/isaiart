@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECTS by Isaiart</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: monospace;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            animation: fadeIn 2s ease-in;
+        }
+        header {
+            padding: 20px;
+            text-align: center;
+            font-size: 2em;
+            border-bottom: 1px solid #444;
+            animation: typewriter 3s steps(40) 1 normal both;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            animation: fadeInUp 2s ease-in-out;
+        }
+        .post {
+            margin-bottom: 40px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 20px;
+            animation: fadeInUp 1.5s ease-in-out;
+        }
+        .post h2 {
+            font-size: 1.5em;
+            transition: color 0.3s ease;
+        }
+        .post p {
+            font-size: 1.1em;
+        }
+        a {
+            color: #0f0;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        a:hover {
+            text-decoration: underline;
+            color: #0ff;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            header {
+                font-size: 1.5em;
+            }
+            .post h2 {
+                font-size: 1.2em;
+            }
+            .post p {
+                font-size: 1em;
+            }
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        @keyframes fadeInUp {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes typewriter {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <header>PROJECTS by <a href="https://isaiart.com" target="_blank">Isaiart</a></header>
+    <div class="container">
+        <div class="post">
+            <h2><a href="https://thg.isaiart.com" target="_blank">The Hunger Games Simulator</a></h2>
+            <p>Date: September 1, 2024</p>
+            <p><strong>The Hunger Games Simulator</strong> lets you watch a virtual Hunger Games play out with randomized tributes and dynamic events.</p>
+            <h3>Key Features:</h3>
+            <ul>
+                <li><strong>Tribute Generation</strong>: 24 unique tributes are created with randomized names, traits, and appearances.</li>
+                <li><strong>Dynamic Events</strong>: Fights, alliances, and unexpected deaths happen each hour. Weather and disasters add to the unpredictability.</li>
+                <li><strong>Real-Time Stats</strong>: See how many tributes remain, track the most kills, and find out who the fan favorite is.</li>
+                <li><strong>Controls & Settings</strong>: Start, pause, or restart the simulation. Adjust event frequency and toggle dark mode.</li>
+                <li><strong>Victor Log</strong>: A record of past Hunger Games victors is saved for reference.</li>
+            </ul>
+            <p>It's a fast-paced, unpredictable arena where anything can happen!</p>
+        </div>
+        <div class="post">
+            <h2><a href="https://isaiart.com/rain/" target="_blank">Rain Timer</a></h2>
+            <p>Date: October 5, 2024</p>
+            <p><strong>Rain Timer</strong> is a simple and relaxing countdown timer with calming visuals.</p>
+            <h3>Features:</h3>
+            <ul>
+                <li><strong>Countdown Timer</strong>: Set any time and watch it count down.</li>
+                <li><strong>Rain and Water Animations</strong>: Raindrops fall and water rises as time goes by.</li>
+                <li><strong>Swimming Fish</strong>: Fish swim across the screen while the timer runs.</li>
+                <li><strong>Custom Water Colors</strong>: Pick your favorite water color from the options.</li>
+                <li><strong>Fun "Time’s Up!" Message</strong>: A playful bounce animation appears when the timer ends.</li>
+            </ul>
+            <p>Perfect for tracking time with a peaceful, visual experience!</p>
+        </div>
+        <div class="post">
+            <h2><a href="https://braille.isaiart.com/" target="_blank">Braille Translator</a></h2>
+            <p>Date: October 15, 2024</p>
+            <p>An English to Braille translator project.</p>
+        </div>
+    </div>
+</body>
+</html>
