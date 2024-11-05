@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Creator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Roboto&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: url('https://www.worldanvil.com/uploads/images/add9cb86af514697c1c5c3f48b9d4058.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #f4f1e3;
+            text-align: center;
+        }
+        h1 {
+            font-family: 'Uncial Antiqua', cursive;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        .container {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+            width: 80%;
+            max-width: 700px;
+            margin: auto;
+            margin-top: 50px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+        }
+        button {
+            font-family: 'Uncial Antiqua', cursive;
+            background-color: #6b4226;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            margin: 20px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        button:hover {
+            background-color: #a86f4c;
+            transform: scale(1.05);
+        }
+        .result {
+            font-size: 1.2em;
+            text-align: left;
+            margin-top: 20px;
+        }
+        input[type=range] {
+            width: 100%;
+            margin: 15px 0;
+        }
+        label {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .output-value {
+            font-size: 1.2em;
+            color: #ffd700;
+        }
+        .character-section {
+            margin-bottom: 15px;
+        }
+        .character-section h2 {
+            font-size: 1.8em;
+            color: #ffd700;
+        }
+        .character-section p {
+            margin: 5px 0;
+        }
+        .character-section ul {
+            list-style: none;
+            padding: 0;
+        }
+        .character-section li {
+            margin: 5px 0;
+        }
+        .character-section li::before {
+            content: "\1F4A1"; /* Lightbulb emoji to make it visually appealing */
+            margin-right: 10px;
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Character Creator</h1>
+        <label for="level">🗡️ Select Character Level:</label>
+        <input type="range" id="level" name="level" min="1" max="20" value="1" oninput="this.nextElementSibling.value = this.value">
+        <output class="output-value">1</output>
+        <br>
+        <button onclick="generateCharacter()">✨ Generate Character ✨</button>
+        <div id="character" class="result"></div>
+    </div>
+
+    <script>
+        const classes = ["Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard"];
+        const races = ["Human", "Elf", "Dwarf", "Halfling", "Dragonborn", "Gnome", "Half-Elf", "Half-Orc", "Tiefling"];
+        const backgrounds = ["Acolyte", "Charlatan", "Criminal", "Entertainer", "Folk Hero", "Guild Artisan", "Hermit", "Noble", "Outlander", "Sage", "Soldier", "Urchin"];
+        const alignments = ["Lawful Good", "Neutral Good", "Chaotic Good", "Lawful Neutral", "True Neutral", "Chaotic Neutral", "Lawful Evil", "Neutral Evil", "Chaotic Evil"];
+
+        function getRandomElement(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function generateCharacter() {
+            const level = document.getElementById("level").value;
+            const characterClass = getRandomElement(classes);
+            const characterRace = getRandomElement(races);
+            const characterBackground = getRandomElement(backgrounds);
+            const characterAlignment = getRandomElement(alignments);
+            const proficiencyBonus = Math.ceil(level / 4) + 1;
+            const savingThrows = getSavingThrows(characterClass);
+            const classFeatures = getClassFeatures(characterClass, level);
+
+            const stats = {
+                "Strength": rollStat(),
+                "Dexterity": rollStat(),
+                "Constitution": rollStat(),
+                "Intelligence": rollStat(),
+                "Wisdom": rollStat(),
+                "Charisma": rollStat()
+            };
+
+            const hitPoints = calculateHitPoints(characterClass, level, stats["Constitution"]);
+
+            const characterElement = document.getElementById("character");
+            characterElement.innerHTML = `
+                <div class="character-section">
+                    <h2>🛡️ Level ${level} ${characterRace} ${characterClass}</h2>
+                    <p><strong>🎭 Background:</strong> ${characterBackground}</p>
+                    <p><strong>⚖️ Alignment:</strong> ${characterAlignment}</p>
+                    <p><strong>📈 Proficiency Bonus:</strong> +${proficiencyBonus}</p>
+                    <p><strong>🛡️ Saving Throws:</strong> ${savingThrows.join(", ")}</p>
+                    <p><strong>✨ Class Features:</strong> ${classFeatures}</p>
+                    <p><strong>❤️ Hit Points:</strong> ${hitPoints}</p>
+                </div>
+                <div class="character-section">
+                    <h2>📊 Stats:</h2>
+                    <ul>
+                        ${Object.keys(stats).map(stat => `<li><strong>${stat}:</strong> ${stats[stat]}</li>`).join("")}
+                    </ul>
+                </div>
+            `;
+        }
+
+        function rollStat() {
+            let rolls = [
+                Math.ceil(Math.random() * 6),
+                Math.ceil(Math.random() * 6),
+                Math.ceil(Math.random() * 6),
+                Math.ceil(Math.random() * 6)
+            ];
+            rolls.sort((a, b) => a - b);
+            return rolls.slice(1).reduce((a, b) => a + b, 0);
+        }
+
+        function getSavingThrows(characterClass) {
+            const savingThrowsByClass = {
+                "Barbarian": ["Strength", "Constitution"],
+                "Bard": ["Dexterity", "Charisma"],
+                "Cleric": ["Wisdom", "Charisma"],
+                "Druid": ["Intelligence", "Wisdom"],
+                "Fighter": ["Strength", "Constitution"],
+                "Monk": ["Strength", "Dexterity"],
+                "Paladin": ["Wisdom", "Charisma"],
+                "Ranger": ["Strength", "Dexterity"],
+                "Rogue": ["Dexterity", "Intelligence"],
+                "Sorcerer": ["Constitution", "Charisma"],
+                "Warlock": ["Wisdom", "Charisma"],
+                "Wizard": ["Intelligence", "Wisdom"]
+            };
+            return savingThrowsByClass[characterClass];
+        }
+
+        function getClassFeatures(characterClass, level) {
+            const featuresByClass = {
+                "Barbarian": [
+                    "Rage", "Unarmored Defense", "Reckless Attack", "Danger Sense", "Extra Attack", "Fast Movement", "Feral Instinct", "Brutal Critical"
+                ],
+                "Bard": [
+                    "Bardic Inspiration", "Jack of All Trades", "Song of Rest", "Magical Secrets", "Countercharm", "Font of Inspiration"
+                ],
+                "Cleric": [
+                    "Spellcasting", "Divine Domain", "Channel Divinity", "Turn Undead", "Divine Intervention"
+                ],
+                "Druid": [
+                    "Druidic", "Spellcasting", "Wild Shape", "Timeless Body", "Beast Spells"
+                ],
+                "Fighter": [
+                    "Fighting Style", "Second Wind", "Action Surge", "Extra Attack", "Indomitable"
+                ],
+                "Monk": [
+                    "Unarmored Defense", "Martial Arts", "Ki", "Unarmored Movement", "Deflect Missiles", "Stunning Strike"
+                ],
+                "Paladin": [
+                    "Divine Sense", "Lay on Hands", "Divine Smite", "Aura of Protection", "Cleansing Touch"
+                ],
+                "Ranger": [
+                    "Favored Enemy", "Natural Explorer", "Fighting Style", "Primeval Awareness", "Land's Stride"
+                ],
+                "Rogue": [
+                    "Sneak Attack", "Cunning Action", "Uncanny Dodge", "Evasion", "Reliable Talent"
+                ],
+                "Sorcerer": [
+                    "Spellcasting", "Sorcerous Origin", "Font of Magic", "Metamagic"
+                ],
+                "Warlock": [
+                    "Pact Magic", "Eldritch Invocations", "Pact Boon"
+                ],
+                "Wizard": [
+                    "Spellcasting", "Arcane Recovery", "Arcane Tradition"
+                ]
+            };
+            const features = featuresByClass[characterClass] || [];
+            return features.slice(0, Math.min(level, features.length)).join(", ");
+        }
+
+        function calculateHitPoints(characterClass, level, constitution) {
+            const hitDieByClass = {
+                "Barbarian": 12,
+                "Bard": 8,
+                "Cleric": 8,
+                "Druid": 8,
+                "Fighter": 10,
+                "Monk": 8,
+                "Paladin": 10,
+                "Ranger": 10,
+                "Rogue": 8,
+                "Sorcerer": 6,
+                "Warlock": 8,
+                "Wizard": 6
+            };
+            const hitDie = hitDieByClass[characterClass];
+            const constitutionModifier = Math.floor((constitution - 10) / 2);
+            return level * (hitDie + constitutionModifier);
+        }
+    </script>
+</body>
+</html>
