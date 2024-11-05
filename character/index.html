@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D&D 5E Character Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <!-- Character Header -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="flex items-center space-x-6">
+                <div class="relative w-32 h-32">
+                    <img id="profilePic" src="/api/placeholder/128/128" alt="Profile" class="rounded-full object-cover w-full h-full">
+                    <input type="file" id="profileInput" accept="image/*" class="hidden" onchange="handleProfilePic(this)">
+                    <button onclick="document.getElementById('profileInput').click()" class="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-2 text-sm">
+                        Change
+                    </button>
+                </div>
+                <div class="flex-1">
+                    <input type="text" id="charName" placeholder="Character Name" class="text-2xl font-bold mb-2 w-full border-b-2 border-gray-200 focus:outline-none focus:border-blue-500">
+                    <div class="flex space-x-4">
+                        <input type="text" id="charClass" placeholder="Class" class="border-b border-gray-200 focus:outline-none focus:border-blue-500">
+                        <input type="text" id="charLevel" placeholder="Level" class="w-20 border-b border-gray-200 focus:outline-none focus:border-blue-500">
+                        <input type="text" id="charRace" placeholder="Race" class="border-b border-gray-200 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Currency -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Currency</h2>
+                <div class="space-y-2">
+                    <div class="flex items-center">
+                        <span class="w-20">Platinum:</span>
+                        <input type="number" id="platinum" class="w-24 border rounded px-2 py-1" value="0">
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-20">Gold:</span>
+                        <input type="number" id="gold" class="w-24 border rounded px-2 py-1" value="0">
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-20">Silver:</span>
+                        <input type="number" id="silver" class="w-24 border rounded px-2 py-1" value="0">
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-20">Copper:</span>
+                        <input type="number" id="copper" class="w-24 border rounded px-2 py-1" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Abilities -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Abilities</h2>
+                <div class="space-y-2">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm">Strength</label>
+                            <input type="number" id="str" class="w-full border rounded px-2 py-1" value="10">
+                        </div>
+                        <div>
+                            <label class="block text-sm">Dexterity</label>
+                            <input type="number" id="dex" class="w-full border rounded px-2 py-1" value="10">
+                        </div>
+                        <div>
+                            <label class="block text-sm">Constitution</label>
+                            <input type="number" id="con" class="w-full border rounded px-2 py-1" value="10">
+                        </div>
+                        <div>
+                            <label class="block text-sm">Intelligence</label>
+                            <input type="number" id="int" class="w-full border rounded px-2 py-1" value="10">
+                        </div>
+                        <div>
+                            <label class="block text-sm">Wisdom</label>
+                            <input type="number" id="wis" class="w-full border rounded px-2 py-1" value="10">
+                        </div>
+                        <div>
+                            <label class="block text-sm">Charisma</label>
+                            <input type="number" id="cha" class="w-full border rounded px-2 py-1" value="10">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Inventory</h2>
+                <div id="inventory" class="space-y-2">
+                    <!-- Items will be added here -->
+                </div>
+                <button onclick="addInventoryItem()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+                    Add Item
+                </button>
+            </div>
+
+            <!-- Spellbook -->
+            <div class="bg-white rounded-lg shadow-lg p-6 col-span-1 lg:col-span-2">
+                <h2 class="text-xl font-bold mb-4">Spellbook</h2>
+                
+                <!-- Tabs for spell levels -->
+                <div class="mb-4">
+                    <nav class="flex flex-wrap space-x-2">
+                        <button onclick="changeSpellLevel(0)" class="tabButton bg-blue-500 text-white px-3 py-1 rounded">Cantrips</button>
+                        <button onclick="changeSpellLevel(1)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">1st</button>
+                        <button onclick="changeSpellLevel(2)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">2nd</button>
+                        <button onclick="changeSpellLevel(3)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">3rd</button>
+                        <button onclick="changeSpellLevel(4)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">4th</button>
+                        <button onclick="changeSpellLevel(5)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">5th</button>
+                        <button onclick="changeSpellLevel(6)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">6th</button>
+                        <button onclick="changeSpellLevel(7)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">7th</button>
+                        <button onclick="changeSpellLevel(8)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">8th</button>
+                        <button onclick="changeSpellLevel(9)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">9th</button>
+                    </nav>
+                </div>
+
+                <!-- Spell Slots -->
+                <div class="mb-4">
+                    <h3 class="text-lg font-bold mb-2">Spell Slots</h3>
+                    <div id="spellSlots" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Spell slots per level will be added here -->
+                    </div>
+                </div>
+
+                <!-- Spells of current level -->
+                <div id="spellList" class="space-y-2">
+                    <!-- Spells will be displayed here -->
+                </div>
+                <button onclick="addSpell()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+                    Add Spell
+                </button>
+            </div>
+
+            <!-- Notes -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Notes</h2>
+                <textarea id="notes" class="w-full h-40 border rounded p-2" placeholder="Character notes..."></textarea>
+            </div>
+
+            <!-- Personality -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Personality</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm mb-1">Traits</label>
+                        <textarea id="traits" class="w-full h-20 border rounded p-2"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Ideals</label>
+                        <textarea id="ideals" class="w-full h-20 border rounded p-2"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Bonds</label>
+                        <textarea id="bonds" class="w-full h-20 border rounded p-2"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Flaws</label>
+                        <textarea id="flaws" class="w-full h-20 border rounded p-2"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div class="fixed bottom-4 right-4">
+            <button onclick="saveCharacter()" class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-green-600">
+                Save Character
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Load character data on page load
+        document.addEventListener('DOMContentLoaded', loadCharacter);
+
+        // Handle profile picture
+        function handleProfilePic(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profilePic').src = e.target.result;
+                    localStorage.setItem('characterProfilePic', e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Inventory management
+        function addInventoryItem() {
+            const inventoryDiv = document.getElementById('inventory');
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'flex items-center space-x-2';
+            itemDiv.innerHTML = `
+                <input type="text" placeholder="Item name" class="flex-1 border rounded px-2 py-1">
+                <input type="number" placeholder="Qty" class="w-20 border rounded px-2 py-1" value="1">
+                <button onclick="this.parentElement.remove()" class="text-red-500">×</button>
+            `;
+            inventoryDiv.appendChild(itemDiv);
+        }
+
+        // Variables for Spellbook pagination and spell slots
+        let currentSpellLevel = 0;
+        let spellsByLevel = {};
+        let spellSlots = {};
+
+        // Function to change spell level tab
+        function changeSpellLevel(level) {
+            currentSpellLevel = level;
+            // Update the tab buttons styles
+            document.querySelectorAll('.tabButton').forEach((button, index) => {
+                if (index === level) {
+                    button.classList.remove('bg-gray-200', 'text-gray-700');
+                    button.classList.add('bg-blue-500', 'text-white');
+                } else {
+                    button.classList.remove('bg-blue-500', 'text-white');
+                    button.classList.add('bg-gray-200', 'text-gray-700');
+                }
+            });
+            // Update the displayed spells
+            displaySpells();
+        }
+
+        // Function to display spells of the current level
+        function displaySpells() {
+            const spellListDiv = document.getElementById('spellList');
+            spellListDiv.innerHTML = ''; // Clear current spells
+
+            const spellsOfCurrentLevel = spellsByLevel[currentSpellLevel] || [];
+            spellsOfCurrentLevel.forEach((spell, index) => {
+                const spellDiv = document.createElement('div');
+                spellDiv.className = 'flex items-center space-x-2';
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = 'Spell name';
+                input.className = 'flex-1 border rounded px-2 py-1';
+                input.value = spell.name;
+                input.addEventListener('input', (e) => {
+                    spell.name = e.target.value;
+                });
+                spellDiv.appendChild(input);
+
+                const removeButton = document.createElement('button');
+                removeButton.className = 'text-red-500';
+                removeButton.textContent = '×';
+                removeButton.onclick = () => removeSpell(currentSpellLevel, index);
+                spellDiv.appendChild(removeButton);
+
+                spellListDiv.appendChild(spellDiv);
+            });
+        }
+
+        // Function to add a new spell to the current level
+        function addSpell() {
+            const spellsOfCurrentLevel = spellsByLevel[currentSpellLevel] || [];
+            spellsOfCurrentLevel.push({ name: '' });
+            spellsByLevel[currentSpellLevel] = spellsOfCurrentLevel;
+            displaySpells();
+        }
+
+        // Function to remove a spell
+        function removeSpell(level, index) {
+            spellsByLevel[level].splice(index, 1);
+            if (level === currentSpellLevel) {
+                displaySpells();
+            }
+        }
+
+        // Function to display spell slots
+        function displaySpellSlots() {
+            const spellSlotsDiv = document.getElementById('spellSlots');
+            spellSlotsDiv.innerHTML = ''; // Clear current slots
+
+            for (let level = 1; level <= 9; level++) {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'flex items-center space-x-2';
+
+                slotDiv.innerHTML = `
+                    <span class="w-16">${level} Level:</span>
+                    <input type="number" id="slotsTotal${level}" placeholder="Total" class="w-16 border rounded px-2 py-1" value="${spellSlots[level]?.total || 0}">
+                    <input type="number" id="slotsUsed${level}" placeholder="Used" class="w-16 border rounded px-2 py-1" value="${spellSlots[level]?.used || 0}">
+                `;
+                spellSlotsDiv.appendChild(slotDiv);
+            }
+        }
+
+        // Save character data
+        function saveCharacter() {
+            const character = {
+                name: document.getElementById('charName').value,
+                class: document.getElementById('charClass').value,
+                level: document.getElementById('charLevel').value,
+                race: document.getElementById('charRace').value,
+                currency: {
+                    platinum: parseInt(document.getElementById('platinum').value) || 0,
+                    gold: parseInt(document.getElementById('gold').value) || 0,
+                    silver: parseInt(document.getElementById('silver').value) || 0,
+                    copper: parseInt(document.getElementById('copper').value) || 0
+                },
+                abilities: {
+                    str: parseInt(document.getElementById('str').value) || 10,
+                    dex: parseInt(document.getElementById('dex').value) || 10,
+                    con: parseInt(document.getElementById('con').value) || 10,
+                    int: parseInt(document.getElementById('int').value) || 10,
+                    wis: parseInt(document.getElementById('wis').value) || 10,
+                    cha: parseInt(document.getElementById('cha').value) || 10
+                },
+                inventory: Array.from(document.getElementById('inventory').children).map(item => ({
+                    name: item.querySelector('input[type="text"]').value,
+                    quantity: parseInt(item.querySelector('input[type="number"]').value) || 1
+                })),
+                spellsByLevel: spellsByLevel,
+                spellSlots: {}
+            };
+
+            // Save spell slots
+            for (let level = 1; level <= 9; level++) {
+                character.spellSlots[level] = {
+                    total: parseInt(document.getElementById(`slotsTotal${level}`).value) || 0,
+                    used: parseInt(document.getElementById(`slotsUsed${level}`).value) || 0
+                };
+            }
+
+            character.notes = document.getElementById('notes').value;
+            character.personality = {
+                traits: document.getElementById('traits').value,
+                ideals: document.getElementById('ideals').value,
+                bonds: document.getElementById('bonds').value,
+                flaws: document.getElementById('flaws').value
+            };
+
+            localStorage.setItem('characterData', JSON.stringify(character));
+            alert('Character saved successfully!');
+        }
+
+        // Load character data
+        function loadCharacter() {
+            const characterData = JSON.parse(localStorage.getItem('characterData') || '{}');
+            const profilePic = localStorage.getItem('characterProfilePic');
+
+            if (profilePic) {
+                document.getElementById('profilePic').src = profilePic;
+            }
+
+            if (Object.keys(characterData).length > 0) {
+                document.getElementById('charName').value = characterData.name || '';
+                document.getElementById('charClass').value = characterData.class || '';
+                document.getElementById('charLevel').value = characterData.level || '';
+                document.getElementById('charRace').value = characterData.race || '';
+
+                // Load currency
+                if (characterData.currency) {
+                    document.getElementById('platinum').value = characterData.currency.platinum || 0;
+                    document.getElementById('gold').value = characterData.currency.gold || 0;
+                    document.getElementById('silver').value = characterData.currency.silver || 0;
+                    document.getElementById('copper').value = characterData.currency.copper || 0;
+                }
+
+                // Load abilities
+                if (characterData.abilities) {
+                    document.getElementById('str').value = characterData.abilities.str || 10;
+                    document.getElementById('dex').value = characterData.abilities.dex || 10;
+                    document.getElementById('con').value = characterData.abilities.con || 10;
+                    document.getElementById('int').value = characterData.abilities.int || 10;
+                    document.getElementById('wis').value = characterData.abilities.wis || 10;
+                    document.getElementById('cha').value = characterData.abilities.cha || 10;
+                }
+
+                // Load inventory
+                if (characterData.inventory) {
+                    characterData.inventory.forEach(item => {
+                        const inventoryDiv = document.getElementById('inventory');
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'flex items-center space-x-2';
+                        itemDiv.innerHTML = `
+                            <input type="text" placeholder="Item name" class="flex-1 border rounded px-2 py-1" value="${item.name}">
+                            <input type="number" placeholder="Qty" class="w-20 border rounded px-2 py-1" value="${item.quantity}">
+                            <button onclick="this.parentElement.remove()" class="text-red-500">×</button>
+                        `;
+                        inventoryDiv.appendChild(itemDiv);
+                    });
+                }
+
+                // Load spellsByLevel
+                if (characterData.spellsByLevel) {
+                    spellsByLevel = characterData.spellsByLevel;
+                }
+
+                // Load spellSlots
+                if (characterData.spellSlots) {
+                    spellSlots = characterData.spellSlots;
+                }
+
+                displaySpellSlots();
+                changeSpellLevel(0); // Initialize to Cantrips
+            }
+        }
+    </script>
+</body>
+</html>
