@@ -113,10 +113,20 @@
             text-align: center;
         }
 
+        .dice-results {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+
         .dice-result {
             font-size: 2rem;
             font-weight: bold;
-            margin-bottom: 1rem;
+            padding: 10px 20px;
+            background-color: #f3f4f6;
+            border-radius: 8px;
             transition: transform 0.2s;
         }
 
@@ -152,6 +162,13 @@
             @apply bg-blue-400 text-white;
         }
 
+        /* Modifier Styling */
+        .modifier {
+            margin-top: 0.25rem;
+            font-size: 0.875rem;
+            text-align: right;
+            color: #374151;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -215,7 +232,7 @@
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <h2 class="text-xl font-bold mb-4">Dice Roller</h2>
                 <div class="dice-roller">
-                    <div id="diceResult" class="dice-result">0</div>
+                    <div id="diceResults" class="dice-results">0</div>
                     <div class="flex space-x-2 mb-4 justify-center">
                         <input type="number" id="numDice" min="1" value="1" class="w-16 border rounded px-2 py-1" title="Number of Dice">
                         <select id="diceType" class="border rounded px-2 py-1">
@@ -267,27 +284,33 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm">Strength</label>
-                            <input type="number" id="str" class="w-full border rounded px-2 py-1" value="10">
+                            <input type="number" id="str" class="w-full border rounded px-2 py-1 ability-score" value="10">
+                            <div id="strMod" class="modifier">Modifier: +0</div>
                         </div>
                         <div>
                             <label class="block text-sm">Dexterity</label>
-                            <input type="number" id="dex" class="w-full border rounded px-2 py-1" value="10">
+                            <input type="number" id="dex" class="w-full border rounded px-2 py-1 ability-score" value="10">
+                            <div id="dexMod" class="modifier">Modifier: +0</div>
                         </div>
                         <div>
                             <label class="block text-sm">Constitution</label>
-                            <input type="number" id="con" class="w-full border rounded px-2 py-1" value="10">
+                            <input type="number" id="con" class="w-full border rounded px-2 py-1 ability-score" value="10">
+                            <div id="conMod" class="modifier">Modifier: +0</div>
                         </div>
                         <div>
                             <label class="block text-sm">Intelligence</label>
-                            <input type="number" id="int" class="w-full border rounded px-2 py-1" value="10">
+                            <input type="number" id="int" class="w-full border rounded px-2 py-1 ability-score" value="10">
+                            <div id="intMod" class="modifier">Modifier: +0</div>
                         </div>
                         <div>
                             <label class="block text-sm">Wisdom</label>
-                            <input type="number" id="wis" class="w-full border rounded px-2 py-1" value="10">
+                            <input type="number" id="wis" class="w-full border rounded px-2 py-1 ability-score" value="10">
+                            <div id="wisMod" class="modifier">Modifier: +0</div>
                         </div>
                         <div>
                             <label class="block text-sm">Charisma</label>
-                            <input type="number" id="cha" class="w-full border rounded px-2 py-1" value="10">
+                            <input type="number" id="cha" class="w-full border rounded px-2 py-1 ability-score" value="10">
+                            <div id="chaMod" class="modifier">Modifier: +0</div>
                         </div>
                     </div>
                 </div>
@@ -435,11 +458,12 @@
             let currentSpellPage = 1;
             let spellSlots = {};
             let preparedSpells = [];
-    
+
             // Initialize everything when page loads
             document.addEventListener('DOMContentLoaded', () => {
                 initializeHP();
                 initializeSpellSlots();
+                initializeAbilityModifiers();
                 loadCharacter();
                 
                 // Add search listeners
@@ -449,7 +473,7 @@
                     displaySpells();
                 });
             });
-    
+
             // Profile Picture Handling
             function handleProfilePic(input) {
                 const file = input.files[0];
@@ -462,7 +486,7 @@
                     reader.readAsDataURL(file);
                 }
             }
-    
+
             // Enhanced HP Management
             function initializeHP() {
                 const maxHPInput = document.getElementById('maxHP');
@@ -477,17 +501,17 @@
                     }
                     updateHPDisplay();
                 });
-    
+
                 hpSlider.addEventListener('input', function() {
                     currentHP = parseInt(this.value);
                     updateHPDisplay();
                 });
-    
+
                 tempHPInput.addEventListener('input', function() {
                     updateHPDisplay();
                 });
             }
-    
+
             function updateHPDisplay(isHealing = false, isDamage = false) {
                 const hpBar = document.getElementById('hpBar');
                 const hpText = document.getElementById('hpText');
@@ -522,13 +546,13 @@
                 // Update slider
                 document.getElementById('hpSlider').value = currentHP;
             }
-    
+
             function adjustHP(amount) {
                 const tempHPInput = document.getElementById('tempHP');
                 const tempHP = parseInt(tempHPInput.value) || 0;
                 let isHealing = false;
                 let isDamage = false;
-    
+
                 if (amount < 0) {
                     // Handle damage
                     const damage = Math.abs(amount);
@@ -554,12 +578,12 @@
                 
                 updateHPDisplay(isHealing, isDamage);
             }
-    
+
             function clearTempHP() {
                 document.getElementById('tempHP').value = 0;
                 updateHPDisplay();
             }
-    
+
             // Inventory Management
             function addInventoryItem() {
                 const item = {
@@ -569,7 +593,7 @@
                 inventoryItems.push(item);
                 displayInventoryItems();
             }
-    
+
             function displayInventoryItems() {
                 const inventoryDiv = document.getElementById('inventory');
                 const searchTerm = document.getElementById('inventorySearch').value.toLowerCase();
@@ -578,12 +602,12 @@
                 const filteredItems = inventoryItems.filter(item => 
                     item.name.toLowerCase().includes(searchTerm)
                 );
-    
+
                 // Calculate pagination
                 const startIndex = (currentInventoryPage - 1) * itemsPerPage;
                 const endIndex = startIndex + itemsPerPage;
                 const displayedItems = filteredItems.slice(startIndex, endIndex);
-    
+
                 // Update display
                 inventoryDiv.innerHTML = '';
                 displayedItems.forEach((item, index) => {
@@ -599,28 +623,28 @@
                     `;
                     inventoryDiv.appendChild(itemDiv);
                 });
-    
+
                 // Update page display
                 document.getElementById('inventoryPage').textContent = 
                     `Page ${currentInventoryPage} of ${Math.ceil(filteredItems.length / itemsPerPage) || 1}`;
             }
-    
+
             function updateInventoryItem(index, property, value) {
                 inventoryItems[index][property] = property === 'quantity' ? parseInt(value) : value;
             }
-    
+
             function removeInventoryItem(index) {
                 inventoryItems.splice(index, 1);
                 displayInventoryItems();
             }
-    
+
             function previousInventoryPage() {
                 if (currentInventoryPage > 1) {
                     currentInventoryPage--;
                     displayInventoryItems();
                 }
             }
-    
+
             function nextInventoryPage() {
                 const filteredItems = inventoryItems.filter(item => 
                     item.name.toLowerCase().includes(document.getElementById('inventorySearch').value.toLowerCase())
@@ -631,7 +655,7 @@
                     displayInventoryItems();
                 }
             }
-    
+
             // Spell Slot Management
             function initializeSpellSlots() {
                 // Initialize spell slots for all levels if not present
@@ -642,18 +666,18 @@
                 }
                 displaySpellSlots();
             }
-    
+
             function displaySpellSlots() {
                 const spellSlotsDiv = document.getElementById('spellSlots');
                 spellSlotsDiv.innerHTML = '';
-    
+
                 for (let level = 1; level <= 9; level++) {
                     const slotDiv = document.createElement('div');
                     slotDiv.className = 'flex items-center justify-between';
-    
+
                     const slots = spellSlots[level] || { total: 0, used: 0 };
                     const availableSlots = slots.total - slots.used;
-    
+
                     slotDiv.innerHTML = `
                         <span class="font-medium">Level ${level}:</span>
                         <div class="flex items-center space-x-2">
@@ -671,7 +695,7 @@
                     spellSlotsDiv.appendChild(slotDiv);
                 }
             }
-    
+
             function useSpellSlot(level, change) {
                 if (!spellSlots[level]) {
                     spellSlots[level] = { total: 0, used: 0 };
@@ -682,7 +706,7 @@
                     displaySpellSlots();
                 }
             }
-    
+
             function updateTotalSlots(level, total) {
                 if (!spellSlots[level]) {
                     spellSlots[level] = { total: 0, used: 0 };
@@ -693,7 +717,7 @@
                 }
                 displaySpellSlots();
             }
-    
+
             // Spellbook Management
             function addSpell() {
                 if (!spellsByLevel[currentSpellLevel]) {
@@ -706,22 +730,22 @@
                 
                 displaySpells();
             }
-    
+
             function displaySpells() {
                 const spellListDiv = document.getElementById('spellList');
                 const searchTerm = document.getElementById('spellSearch').value.toLowerCase();
                 spellListDiv.innerHTML = '';
-    
+
                 const spellsOfLevel = spellsByLevel[currentSpellLevel] || [];
                 const filteredSpells = spellsOfLevel.filter(spell => 
                     spell.name.toLowerCase().includes(searchTerm)
                 );
-    
+
                 // Calculate pagination
                 const startIndex = (currentSpellPage - 1) * spellsPerPage;
                 const endIndex = startIndex + spellsPerPage;
                 const displayedSpells = filteredSpells.slice(startIndex, endIndex);
-    
+
                 // Display spells
                 displayedSpells.forEach((spell, index) => {
                     const spellDiv = document.createElement('div');
@@ -741,19 +765,19 @@
                     `;
                     spellListDiv.appendChild(spellDiv);
                 });
-    
+
                 // Update spell page display
                 document.getElementById('spellPage').textContent = 
                     `Page ${currentSpellPage} of ${Math.ceil(filteredSpells.length / spellsPerPage) || 1}`;
             }
-    
+
             function updateSpell(index, property, value) {
                 const spells = spellsByLevel[currentSpellLevel] || [];
                 if (spells[index]) {
                     spells[index][property] = value;
                 }
             }
-    
+
             function removeSpell(index) {
                 const spells = spellsByLevel[currentSpellLevel] || [];
                 const spellName = spells[index].name;
@@ -766,14 +790,14 @@
                 spells.splice(index, 1);
                 displaySpells();
             }
-    
+
             function previousSpellPage() {
                 if (currentSpellPage > 1) {
                     currentSpellPage--;
                     displaySpells();
                 }
             }
-    
+
             function nextSpellPage() {
                 const spells = spellsByLevel[currentSpellLevel] || [];
                 const filteredSpells = spells.filter(spell => 
@@ -785,7 +809,7 @@
                     displaySpells();
                 }
             }
-    
+
             function changeSpellLevel(level) {
                 currentSpellLevel = level;
                 currentSpellPage = 1;
@@ -801,7 +825,7 @@
                 
                 displaySpells();
             }
-    
+
             // Active Spells Management
             function togglePreparedSpell(spellName) {
                 const index = preparedSpells.indexOf(spellName);
@@ -813,7 +837,7 @@
                 displaySpells();
                 displayPreparedSpells();
             }
-    
+
             function displayPreparedSpells() {
                 const activeSpellsDiv = document.getElementById('activeSpells');
                 activeSpellsDiv.innerHTML = '';
@@ -827,13 +851,13 @@
                     activeSpellsDiv.appendChild(spellDiv);
                 });
             }
-    
+
             // Dice Roller Functionality
             function rollDice() {
                 const diceType = parseInt(document.getElementById('diceType').value);
                 const numDice = parseInt(document.getElementById('numDice').value) || 1;
                 if (!diceType || numDice < 1) return;
-    
+
                 let results = [];
                 let total = 0;
                 for (let i = 0; i < numDice; i++) {
@@ -841,29 +865,35 @@
                     results.push(result);
                     total += result;
                 }
-    
-                const diceResultDiv = document.getElementById('diceResult');
-                diceResultDiv.classList.add('animate');
-    
+
+                const diceResultsDiv = document.getElementById('diceResults');
+                diceResultsDiv.innerHTML = '';
+                results.forEach(result => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'dice-result';
+                    resultDiv.textContent = result;
+                    diceResultsDiv.appendChild(resultDiv);
+                });
+                diceResultsDiv.classList.add('animate');
+
                 // Update result after a short delay to allow animation
                 setTimeout(() => {
-                    diceResultDiv.textContent = total;
-                    diceResultDiv.classList.remove('animate');
+                    diceResultsDiv.classList.remove('animate');
                 }, 200);
-    
+
                 // Update roll history
                 const rollHistoryDiv = document.getElementById('rollHistory');
                 const rollItem = document.createElement('div');
                 rollItem.className = 'roll-item';
                 rollItem.textContent = `Rolled ${numDice}d${diceType}: [${results.join(', ')}] Total: ${total}`;
                 rollHistoryDiv.prepend(rollItem);
-    
+
                 // Keep only the latest 10 rolls
                 if (rollHistoryDiv.childElementCount > 10) {
                     rollHistoryDiv.removeChild(rollHistoryDiv.lastChild);
                 }
             }
-    
+
             // Save/Load Functions
             function saveCharacter() {
                 const character = {
@@ -902,26 +932,26 @@
                         flaws: document.getElementById('flaws').value
                     }
                 };
-    
+
                 localStorage.setItem('characterData', JSON.stringify(character));
                 alert('Character saved successfully!');
             }
-    
+
             function loadCharacter() {
                 const characterData = JSON.parse(localStorage.getItem('characterData') || '{}');
                 const profilePic = localStorage.getItem('characterProfilePic');
-    
+
                 if (profilePic) {
                     document.getElementById('profilePic').src = profilePic;
                 }
-    
+
                 if (Object.keys(characterData).length > 0) {
                     // Load basic info
                     document.getElementById('charName').value = characterData.name || '';
                     document.getElementById('charClass').value = characterData.class || '';
                     document.getElementById('charLevel').value = characterData.level || '';
                     document.getElementById('charRace').value = characterData.race || '';
-    
+
                     // Load HP
                     if (characterData.hp) {
                         currentHP = characterData.hp.current;
@@ -932,7 +962,7 @@
                         document.getElementById('tempHP').value = characterData.hp.temp;
                         updateHPDisplay();
                     }
-    
+
                     // Load all other data
                     if (characterData.currency) {
                         document.getElementById('platinum').value = characterData.currency.platinum || 0;
@@ -940,7 +970,7 @@
                         document.getElementById('silver').value = characterData.currency.silver || 0;
                         document.getElementById('copper').value = characterData.currency.copper || 0;
                     }
-    
+
                     if (characterData.abilities) {
                         document.getElementById('str').value = characterData.abilities.str || 10;
                         document.getElementById('dex').value = characterData.abilities.dex || 10;
@@ -948,34 +978,35 @@
                         document.getElementById('int').value = characterData.abilities.int || 10;
                         document.getElementById('wis').value = characterData.abilities.wis || 10;
                         document.getElementById('cha').value = characterData.abilities.cha || 10;
+                        updateAbilityModifiers();
                     }
-    
+
                     if (characterData.inventory) {
                         inventoryItems = characterData.inventory;
                     }
-    
+
                     if (characterData.spellsByLevel) {
                         spellsByLevel = characterData.spellsByLevel;
                     }
-    
+
                     if (characterData.spellSlots) {
                         spellSlots = characterData.spellSlots;
                     }
-    
+
                     if (characterData.preparedSpells) {
                         preparedSpells = characterData.preparedSpells;
                         displayPreparedSpells();
                     }
-    
+
                     if (characterData.personality) {
                         document.getElementById('traits').value = characterData.personality.traits || '';
                         document.getElementById('ideals').value = characterData.personality.ideals || '';
                         document.getElementById('bonds').value = characterData.personality.bonds || '';
                         document.getElementById('flaws').value = characterData.personality.flaws || '';
                     }
-    
+
                     document.getElementById('notes').value = characterData.notes || '';
-    
+
                     // Refresh displays
                     displayInventoryItems();
                     displaySpellSlots();
@@ -993,7 +1024,7 @@
                     }
                 }
             }
-    
+
             // Export/Import Functions
             function exportCharacter() {
                 const characterData = localStorage.getItem('characterData');
@@ -1007,7 +1038,7 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             }
-    
+
             function importCharacter(file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -1022,6 +1053,29 @@
                 };
                 reader.readAsText(file);
             }
+
+            // Ability Modifiers Management
+            function initializeAbilityModifiers() {
+                const abilityInputs = document.querySelectorAll('.ability-score');
+                abilityInputs.forEach(input => {
+                    input.addEventListener('input', updateAbilityModifiers);
+                });
+                updateAbilityModifiers();
+            }
+
+            function calculateModifier(score) {
+                return Math.floor((score - 10) / 2);
+            }
+
+            function updateAbilityModifiers() {
+                const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+                abilities.forEach(ability => {
+                    const score = parseInt(document.getElementById(ability).value) || 10;
+                    const mod = calculateModifier(score);
+                    const modDisplay = document.getElementById(`${ability}Mod`);
+                    modDisplay.textContent = `Modifier: ${mod >= 0 ? '+' : ''}${mod}`;
+                });
+            }
         </script>
     </body>
-    </html>
+</html>
