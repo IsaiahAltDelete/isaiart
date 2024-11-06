@@ -5,6 +5,154 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>D&D 5E Character Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Custom HP Bar Styling */
+        .hp-bar-container {
+            width: 100%;
+            height: 24px;
+            background-color: #f3f4f6;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid #d1d5db;
+        }
+
+        .hp-bar {
+            height: 100%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .hp-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            color: #1f2937;
+            font-weight: bold;
+            text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Active HP Display Styling */
+        .active-hp {
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-top: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        /* Animation Classes */
+        .glow-green {
+            animation: glowGreen 0.5s;
+        }
+
+        .glow-red {
+            animation: glowRed 0.5s, shake 0.5s;
+        }
+
+        @keyframes glowGreen {
+            from { color: #1f2937; }
+            to { color: #10b981; }
+        }
+
+        @keyframes glowRed {
+            from { color: #1f2937; }
+            to { color: #ef4444; }
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        /* Custom Range Input Styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e5e7eb;
+            outline: none;
+            margin: 10px 0;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Dice Roller Styling */
+        .dice-roller {
+            text-align: center;
+        }
+
+        .dice-result {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .dice-result.animate {
+            transform: scale(1.5);
+        }
+
+        .roll-history {
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 1rem;
+            background-color: #f9fafb;
+            padding: 0.5rem;
+            border-radius: 8px;
+        }
+
+        .roll-item {
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Spellbook Tabs Styling */
+        .spell-tab.active {
+            @apply bg-blue-500 text-white;
+        }
+
+        .spell-tab {
+            @apply bg-gray-200 text-gray-700 px-3 py-1 rounded cursor-pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .spell-tab:hover {
+            @apply bg-blue-400 text-white;
+        }
+
+    </style>
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto p-4">
@@ -31,30 +179,88 @@
 
         <!-- Main Content -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Currency -->
+            <!-- Enhanced HP Card -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Hit Points</h2>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <span>Max HP:</span>
+                            <input type="number" id="maxHP" class="w-20 border rounded px-2 py-1" value="0">
+                        </div>
+                        <div class="hp-bar-container">
+                            <div id="hpBar" class="hp-bar"></div>
+                            <div id="hpText" class="hp-text"></div>
+                        </div>
+                        <div class="active-hp" id="activeHP">0 HP</div>
+                        <input type="range" id="hpSlider" class="w-full" value="0" min="0" max="0">
+                        <div class="flex justify-between mt-2">
+                            <button onclick="adjustHP(-1)" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors">-1</button>
+                            <button onclick="adjustHP(-5)" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors">-5</button>
+                            <button onclick="adjustHP(5)" class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition-colors">+5</button>
+                            <button onclick="adjustHP(1)" class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition-colors">+1</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Temporary HP:</label>
+                        <div class="flex space-x-2">
+                            <input type="number" id="tempHP" class="flex-1 border rounded px-2 py-1" value="0">
+                            <button onclick="clearTempHP()" class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 transition-colors">Clear</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dice Roller Card -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Dice Roller</h2>
+                <div class="dice-roller">
+                    <div id="diceResult" class="dice-result">0</div>
+                    <div class="flex space-x-2 mb-4 justify-center">
+                        <input type="number" id="numDice" min="1" value="1" class="w-16 border rounded px-2 py-1" title="Number of Dice">
+                        <select id="diceType" class="border rounded px-2 py-1">
+                            <option value="4">d4</option>
+                            <option value="6">d6</option>
+                            <option value="8">d8</option>
+                            <option value="10">d10</option>
+                            <option value="12">d12</option>
+                            <option value="20">d20</option>
+                            <option value="100">d100</option>
+                        </select>
+                        <button onclick="rollDice()" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-colors">
+                            Roll
+                        </button>
+                    </div>
+                    <div class="roll-history" id="rollHistory">
+                        <!-- Roll history will be displayed here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Currency Card -->
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <h2 class="text-xl font-bold mb-4">Currency</h2>
                 <div class="space-y-2">
                     <div class="flex items-center">
-                        <span class="w-20">Platinum:</span>
+                        <span class="w-20">💎 Platinum:</span>
                         <input type="number" id="platinum" class="w-24 border rounded px-2 py-1" value="0">
                     </div>
                     <div class="flex items-center">
-                        <span class="w-20">Gold:</span>
+                        <span class="w-20">🪙 Gold:</span>
                         <input type="number" id="gold" class="w-24 border rounded px-2 py-1" value="0">
                     </div>
                     <div class="flex items-center">
-                        <span class="w-20">Silver:</span>
+                        <span class="w-20">🪙 Silver:</span>
                         <input type="number" id="silver" class="w-24 border rounded px-2 py-1" value="0">
                     </div>
                     <div class="flex items-center">
-                        <span class="w-20">Copper:</span>
+                        <span class="w-20">🪙 Copper:</span>
                         <input type="number" id="copper" class="w-24 border rounded px-2 py-1" value="0">
                     </div>
                 </div>
             </div>
 
-            <!-- Abilities -->
+            <!-- Abilities Card -->
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <h2 class="text-xl font-bold mb-4">Abilities</h2>
                 <div class="space-y-2">
@@ -87,319 +293,735 @@
                 </div>
             </div>
 
-            <!-- Inventory -->
+            <!-- Enhanced Inventory with Search and Pagination -->
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <h2 class="text-xl font-bold mb-4">Inventory</h2>
-                <div id="inventory" class="space-y-2">
+                <div class="mb-4">
+                    <input type="text" id="inventorySearch" placeholder="Search inventory..." class="w-full border rounded px-3 py-2">
+                </div>
+                <div id="inventory" class="space-y-2 max-h-64 overflow-y-auto">
                     <!-- Items will be added here -->
                 </div>
-                <button onclick="addInventoryItem()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
-                    Add Item
-                </button>
+                <div class="flex justify-between items-center mt-4">
+                    <button onclick="addInventoryItem()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                        Add Item
+                    </button>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="previousInventoryPage()" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition-colors">&lt;</button>
+                        <span id="inventoryPage">Page 1</span>
+                        <button onclick="nextInventoryPage()" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition-colors">&gt;</button>
+                    </div>
+                </div>
             </div>
 
-            <!-- Spellbook -->
+            <!-- Spell Slots Card -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Spell Slots</h2>
+                <div id="spellSlots" class="grid gap-4">
+                    <!-- Spell slots will be added here -->
+                </div>
+            </div>
+
+            <!-- Enhanced Spellbook -->
             <div class="bg-white rounded-lg shadow-lg p-6 col-span-1 lg:col-span-2">
                 <h2 class="text-xl font-bold mb-4">Spellbook</h2>
                 
-                <!-- Tabs for spell levels -->
-                <div class="mb-4">
+                <!-- Add Spell Button -->
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="addSpell()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                        Add Spell
+                    </button>
+                    <!-- Spell Level Tabs -->
                     <nav class="flex flex-wrap space-x-2">
-                        <button onclick="changeSpellLevel(0)" class="tabButton bg-blue-500 text-white px-3 py-1 rounded">Cantrips</button>
-                        <button onclick="changeSpellLevel(1)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">1st</button>
-                        <button onclick="changeSpellLevel(2)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">2nd</button>
-                        <button onclick="changeSpellLevel(3)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">3rd</button>
-                        <button onclick="changeSpellLevel(4)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">4th</button>
-                        <button onclick="changeSpellLevel(5)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">5th</button>
-                        <button onclick="changeSpellLevel(6)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">6th</button>
-                        <button onclick="changeSpellLevel(7)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">7th</button>
-                        <button onclick="changeSpellLevel(8)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">8th</button>
-                        <button onclick="changeSpellLevel(9)" class="tabButton bg-gray-200 text-gray-700 px-3 py-1 rounded">9th</button>
+                        <button onclick="changeSpellLevel(0)" class="spell-tab active" id="tab0">Cantrips</button>
+                        <button onclick="changeSpellLevel(1)" class="spell-tab" id="tab1">1st</button>
+                        <button onclick="changeSpellLevel(2)" class="spell-tab" id="tab2">2nd</button>
+                        <button onclick="changeSpellLevel(3)" class="spell-tab" id="tab3">3rd</button>
+                        <button onclick="changeSpellLevel(4)" class="spell-tab" id="tab4">4th</button>
+                        <button onclick="changeSpellLevel(5)" class="spell-tab" id="tab5">5th</button>
+                        <button onclick="changeSpellLevel(6)" class="spell-tab" id="tab6">6th</button>
+                        <button onclick="changeSpellLevel(7)" class="spell-tab" id="tab7">7th</button>
+                        <button onclick="changeSpellLevel(8)" class="spell-tab" id="tab8">8th</button>
+                        <button onclick="changeSpellLevel(9)" class="spell-tab" id="tab9">9th</button>
                     </nav>
                 </div>
 
-                <!-- Spell Slots -->
+                <!-- Spell Search -->
                 <div class="mb-4">
-                    <h3 class="text-lg font-bold mb-2">Spell Slots</h3>
-                    <div id="spellSlots" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Spell slots per level will be added here -->
-                    </div>
+                    <input type="text" id="spellSearch" placeholder="Search spells..." class="w-full border rounded px-3 py-2">
                 </div>
 
                 <!-- Spells of current level -->
-                <div id="spellList" class="space-y-2">
+                <div id="spellList" class="space-y-2 max-h-96 overflow-y-auto">
                     <!-- Spells will be displayed here -->
                 </div>
-                <button onclick="addSpell()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
-                    Add Spell
-                </button>
-            </div>
 
-            <!-- Notes -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Notes</h2>
-                <textarea id="notes" class="w-full h-40 border rounded p-2" placeholder="Character notes..."></textarea>
-            </div>
-
-            <!-- Personality -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Personality</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm mb-1">Traits</label>
-                        <textarea id="traits" class="w-full h-20 border rounded p-2"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm mb-1">Ideals</label>
-                        <textarea id="ideals" class="w-full h-20 border rounded p-2"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm mb-1">Bonds</label>
-                        <textarea id="bonds" class="w-full h-20 border rounded p-2"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm mb-1">Flaws</label>
-                        <textarea id="flaws" class="w-full h-20 border rounded p-2"></textarea>
+                <!-- Pagination Controls -->
+                <div class="flex justify-between items-center mt-4">
+                    <div class="flex items-center space-x-2">
+                        <button onclick="previousSpellPage()" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition-colors">&lt;</button>
+                        <span id="spellPage">Page 1</span>
+                        <button onclick="nextSpellPage()" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition-colors">&gt;</button>
                     </div>
                 </div>
             </div>
+                <!-- Active Spells Card -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-xl font-bold mb-4">Active Spells</h2>
+                    <div id="activeSpells" class="space-y-2 max-h-96 overflow-y-auto">
+                        <!-- Active spells will be displayed here -->
+                    </div>
+                </div>
+    
+                <!-- Notes -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-xl font-bold mb-4">Notes</h2>
+                    <textarea id="notes" class="w-full h-40 border rounded p-2" placeholder="Character notes..."></textarea>
+                </div>
+    
+                <!-- Personality -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-xl font-bold mb-4">Personality</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm mb-1">Traits</label>
+                            <textarea id="traits" class="w-full h-20 border rounded p-2"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1">Ideals</label>
+                            <textarea id="ideals" class="w-full h-20 border rounded p-2"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1">Bonds</label>
+                            <textarea id="bonds" class="w-full h-20 border rounded p-2"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1">Flaws</label>
+                            <textarea id="flaws" class="w-full h-20 border rounded p-2"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Save Button -->
+            <div class="fixed bottom-4 right-4">
+                <button onclick="saveCharacter()" class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-green-600 transition-colors">
+                    Save Character
+                </button>
+            </div>
+    
+            <!-- Import/Export Buttons -->
+            <div class="fixed bottom-4 left-4 flex space-x-2">
+                <button onclick="exportCharacter()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                    Export Character
+                </button>
+                <label class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors cursor-pointer">
+                    Import Character
+                    <input type="file" accept=".json" onchange="importCharacter(this.files[0])" class="hidden">
+                </label>
+            </div>
         </div>
-
-        <!-- Save Button -->
-        <div class="fixed bottom-4 right-4">
-            <button onclick="saveCharacter()" class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-green-600">
-                Save Character
-            </button>
-        </div>
-    </div>
-
-    <script>
-        // Load character data on page load
-        document.addEventListener('DOMContentLoaded', loadCharacter);
-
-        // Handle profile picture
-        function handleProfilePic(input) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('profilePic').src = e.target.result;
-                    localStorage.setItem('characterProfilePic', e.target.result);
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        // Inventory management
-        function addInventoryItem() {
-            const inventoryDiv = document.getElementById('inventory');
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'flex items-center space-x-2';
-            itemDiv.innerHTML = `
-                <input type="text" placeholder="Item name" class="flex-1 border rounded px-2 py-1">
-                <input type="number" placeholder="Qty" class="w-20 border rounded px-2 py-1" value="1">
-                <button onclick="this.parentElement.remove()" class="text-red-500">×</button>
-            `;
-            inventoryDiv.appendChild(itemDiv);
-        }
-
-        // Variables for Spellbook pagination and spell slots
-        let currentSpellLevel = 0;
-        let spellsByLevel = {};
-        let spellSlots = {};
-
-        // Function to change spell level tab
-        function changeSpellLevel(level) {
-            currentSpellLevel = level;
-            // Update the tab buttons styles
-            document.querySelectorAll('.tabButton').forEach((button, index) => {
-                if (index === level) {
-                    button.classList.remove('bg-gray-200', 'text-gray-700');
-                    button.classList.add('bg-blue-500', 'text-white');
-                } else {
-                    button.classList.remove('bg-blue-500', 'text-white');
-                    button.classList.add('bg-gray-200', 'text-gray-700');
-                }
-            });
-            // Update the displayed spells
-            displaySpells();
-        }
-
-        // Function to display spells of the current level
-        function displaySpells() {
-            const spellListDiv = document.getElementById('spellList');
-            spellListDiv.innerHTML = ''; // Clear current spells
-
-            const spellsOfCurrentLevel = spellsByLevel[currentSpellLevel] || [];
-            spellsOfCurrentLevel.forEach((spell, index) => {
-                const spellDiv = document.createElement('div');
-                spellDiv.className = 'flex items-center space-x-2';
-
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.placeholder = 'Spell name';
-                input.className = 'flex-1 border rounded px-2 py-1';
-                input.value = spell.name;
-                input.addEventListener('input', (e) => {
-                    spell.name = e.target.value;
+    
+        <script>
+            // Variables
+            let currentHP = 0;
+            let maxHP = 0;
+            let currentInventoryPage = 1;
+            const itemsPerPage = 5;
+            let inventoryItems = [];
+            let spellsByLevel = {};
+            let currentSpellLevel = 0;
+            const spellsPerPage = 8;
+            let currentSpellPage = 1;
+            let spellSlots = {};
+            let preparedSpells = [];
+    
+            // Initialize everything when page loads
+            document.addEventListener('DOMContentLoaded', () => {
+                initializeHP();
+                initializeSpellSlots();
+                loadCharacter();
+                
+                // Add search listeners
+                document.getElementById('inventorySearch').addEventListener('input', displayInventoryItems);
+                document.getElementById('spellSearch').addEventListener('input', () => {
+                    currentSpellPage = 1;
+                    displaySpells();
                 });
-                spellDiv.appendChild(input);
-
-                const removeButton = document.createElement('button');
-                removeButton.className = 'text-red-500';
-                removeButton.textContent = '×';
-                removeButton.onclick = () => removeSpell(currentSpellLevel, index);
-                spellDiv.appendChild(removeButton);
-
-                spellListDiv.appendChild(spellDiv);
             });
-        }
-
-        // Function to add a new spell to the current level
-        function addSpell() {
-            const spellsOfCurrentLevel = spellsByLevel[currentSpellLevel] || [];
-            spellsOfCurrentLevel.push({ name: '' });
-            spellsByLevel[currentSpellLevel] = spellsOfCurrentLevel;
-            displaySpells();
-        }
-
-        // Function to remove a spell
-        function removeSpell(level, index) {
-            spellsByLevel[level].splice(index, 1);
-            if (level === currentSpellLevel) {
+    
+            // Profile Picture Handling
+            function handleProfilePic(input) {
+                const file = input.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('profilePic').src = e.target.result;
+                        localStorage.setItem('characterProfilePic', e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+    
+            // Enhanced HP Management
+            function initializeHP() {
+                const maxHPInput = document.getElementById('maxHP');
+                const hpSlider = document.getElementById('hpSlider');
+                const tempHPInput = document.getElementById('tempHP');
+                
+                maxHPInput.addEventListener('input', function() {
+                    maxHP = parseInt(this.value) || 0;
+                    hpSlider.max = maxHP;
+                    if (currentHP > maxHP) {
+                        currentHP = maxHP;
+                    }
+                    updateHPDisplay();
+                });
+    
+                hpSlider.addEventListener('input', function() {
+                    currentHP = parseInt(this.value);
+                    updateHPDisplay();
+                });
+    
+                tempHPInput.addEventListener('input', function() {
+                    updateHPDisplay();
+                });
+            }
+    
+            function updateHPDisplay(isHealing = false, isDamage = false) {
+                const hpBar = document.getElementById('hpBar');
+                const hpText = document.getElementById('hpText');
+                const activeHPDiv = document.getElementById('activeHP');
+                const tempHP = parseInt(document.getElementById('tempHP').value) || 0;
+                const totalHP = currentHP + tempHP;
+                const percentage = maxHP > 0 ? (currentHP / maxHP) * 100 : 0;
+                
+                // Update the bar width
+                hpBar.style.width = `${percentage}%`;
+                
+                // Update the color based on percentage
+                let hue = (percentage * 1.2); // Multiply by 1.2 to get red at ~83% instead of 100%
+                hpBar.style.backgroundColor = `hsl(${hue}, 70%, 45%)`;
+                
+                // Update the text
+                hpText.textContent = `${totalHP} / ${maxHP} HP`;
+                
+                // Update active HP display
+                activeHPDiv.textContent = `${totalHP} HP`;
+                
+                // Remove previous animation classes
+                activeHPDiv.classList.remove('glow-green', 'glow-red');
+                
+                // Apply animation based on change
+                if (isHealing) {
+                    activeHPDiv.classList.add('glow-green');
+                } else if (isDamage) {
+                    activeHPDiv.classList.add('glow-red');
+                }
+                
+                // Update slider
+                document.getElementById('hpSlider').value = currentHP;
+            }
+    
+            function adjustHP(amount) {
+                const tempHPInput = document.getElementById('tempHP');
+                const tempHP = parseInt(tempHPInput.value) || 0;
+                let isHealing = false;
+                let isDamage = false;
+    
+                if (amount < 0) {
+                    // Handle damage
+                    const damage = Math.abs(amount);
+                    if (tempHP > 0) {
+                        // Damage is absorbed by temporary HP first
+                        const remainingDamage = damage - tempHP;
+                        const newTempHP = Math.max(0, tempHP - damage);
+                        tempHPInput.value = newTempHP;
+                        
+                        if (remainingDamage > 0) {
+                            currentHP = Math.max(0, currentHP - remainingDamage);
+                            isDamage = true;
+                        }
+                    } else {
+                        currentHP = Math.max(0, currentHP - damage);
+                        isDamage = true;
+                    }
+                } else {
+                    // Handle healing
+                    currentHP = Math.min(currentHP + amount, maxHP);
+                    isHealing = true;
+                }
+                
+                updateHPDisplay(isHealing, isDamage);
+            }
+    
+            function clearTempHP() {
+                document.getElementById('tempHP').value = 0;
+                updateHPDisplay();
+            }
+    
+            // Inventory Management
+            function addInventoryItem() {
+                const item = {
+                    name: '',
+                    quantity: 1
+                };
+                inventoryItems.push(item);
+                displayInventoryItems();
+            }
+    
+            function displayInventoryItems() {
+                const inventoryDiv = document.getElementById('inventory');
+                const searchTerm = document.getElementById('inventorySearch').value.toLowerCase();
+                
+                // Filter items
+                const filteredItems = inventoryItems.filter(item => 
+                    item.name.toLowerCase().includes(searchTerm)
+                );
+    
+                // Calculate pagination
+                const startIndex = (currentInventoryPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const displayedItems = filteredItems.slice(startIndex, endIndex);
+    
+                // Update display
+                inventoryDiv.innerHTML = '';
+                displayedItems.forEach((item, index) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'flex items-center space-x-2';
+                    itemDiv.innerHTML = `
+                        <input type="text" placeholder="Item name" class="flex-1 border rounded px-2 py-1" value="${item.name}"
+                               onchange="updateInventoryItem(${startIndex + index}, 'name', this.value)">
+                        <input type="number" placeholder="Qty" class="w-20 border rounded px-2 py-1" value="${item.quantity}"
+                               onchange="updateInventoryItem(${startIndex + index}, 'quantity', this.value)">
+                        <button onclick="removeInventoryItem(${startIndex + index})" 
+                                class="text-red-500 hover:text-red-600 transition-colors">×</button>
+                    `;
+                    inventoryDiv.appendChild(itemDiv);
+                });
+    
+                // Update page display
+                document.getElementById('inventoryPage').textContent = 
+                    `Page ${currentInventoryPage} of ${Math.ceil(filteredItems.length / itemsPerPage) || 1}`;
+            }
+    
+            function updateInventoryItem(index, property, value) {
+                inventoryItems[index][property] = property === 'quantity' ? parseInt(value) : value;
+            }
+    
+            function removeInventoryItem(index) {
+                inventoryItems.splice(index, 1);
+                displayInventoryItems();
+            }
+    
+            function previousInventoryPage() {
+                if (currentInventoryPage > 1) {
+                    currentInventoryPage--;
+                    displayInventoryItems();
+                }
+            }
+    
+            function nextInventoryPage() {
+                const filteredItems = inventoryItems.filter(item => 
+                    item.name.toLowerCase().includes(document.getElementById('inventorySearch').value.toLowerCase())
+                );
+                const maxPages = Math.ceil(filteredItems.length / itemsPerPage);
+                if (currentInventoryPage < maxPages) {
+                    currentInventoryPage++;
+                    displayInventoryItems();
+                }
+            }
+    
+            // Spell Slot Management
+            function initializeSpellSlots() {
+                // Initialize spell slots for all levels if not present
+                for (let level = 1; level <= 9; level++) {
+                    if (!spellSlots[level]) {
+                        spellSlots[level] = { total: 0, used: 0 };
+                    }
+                }
+                displaySpellSlots();
+            }
+    
+            function displaySpellSlots() {
+                const spellSlotsDiv = document.getElementById('spellSlots');
+                spellSlotsDiv.innerHTML = '';
+    
+                for (let level = 1; level <= 9; level++) {
+                    const slotDiv = document.createElement('div');
+                    slotDiv.className = 'flex items-center justify-between';
+    
+                    const slots = spellSlots[level] || { total: 0, used: 0 };
+                    const availableSlots = slots.total - slots.used;
+    
+                    slotDiv.innerHTML = `
+                        <span class="font-medium">Level ${level}:</span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="useSpellSlot(${level}, 1)" 
+                                    class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition-colors">+</button>
+                            <span>${availableSlots}/${slots.total}</span>
+                            <button onclick="useSpellSlot(${level}, -1)" 
+                                    class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition-colors">-</button>
+                            <input type="number" id="slotsTotal${level}" 
+                                   class="w-16 border rounded px-2 py-1" 
+                                   value="${slots.total}"
+                                   onchange="updateTotalSlots(${level}, this.value)">
+                        </div>
+                    `;
+                    spellSlotsDiv.appendChild(slotDiv);
+                }
+            }
+    
+            function useSpellSlot(level, change) {
+                if (!spellSlots[level]) {
+                    spellSlots[level] = { total: 0, used: 0 };
+                }
+                const newUsed = spellSlots[level].used + change;
+                if (newUsed >= 0 && newUsed <= spellSlots[level].total) {
+                    spellSlots[level].used = newUsed;
+                    displaySpellSlots();
+                }
+            }
+    
+            function updateTotalSlots(level, total) {
+                if (!spellSlots[level]) {
+                    spellSlots[level] = { total: 0, used: 0 };
+                }
+                spellSlots[level].total = parseInt(total) || 0;
+                if (spellSlots[level].used > spellSlots[level].total) {
+                    spellSlots[level].used = spellSlots[level].total;
+                }
+                displaySpellSlots();
+            }
+    
+            // Spellbook Management
+            function addSpell() {
+                if (!spellsByLevel[currentSpellLevel]) {
+                    spellsByLevel[currentSpellLevel] = [];
+                }
+                
+                spellsByLevel[currentSpellLevel].push({
+                    name: ''
+                });
+                
                 displaySpells();
             }
-        }
-
-        // Function to display spell slots
-        function displaySpellSlots() {
-            const spellSlotsDiv = document.getElementById('spellSlots');
-            spellSlotsDiv.innerHTML = ''; // Clear current slots
-
-            for (let level = 1; level <= 9; level++) {
-                const slotDiv = document.createElement('div');
-                slotDiv.className = 'flex items-center space-x-2';
-
-                slotDiv.innerHTML = `
-                    <span class="w-16">${level} Level:</span>
-                    <input type="number" id="slotsTotal${level}" placeholder="Total" class="w-16 border rounded px-2 py-1" value="${spellSlots[level]?.total || 0}">
-                    <input type="number" id="slotsUsed${level}" placeholder="Used" class="w-16 border rounded px-2 py-1" value="${spellSlots[level]?.used || 0}">
-                `;
-                spellSlotsDiv.appendChild(slotDiv);
+    
+            function displaySpells() {
+                const spellListDiv = document.getElementById('spellList');
+                const searchTerm = document.getElementById('spellSearch').value.toLowerCase();
+                spellListDiv.innerHTML = '';
+    
+                const spellsOfLevel = spellsByLevel[currentSpellLevel] || [];
+                const filteredSpells = spellsOfLevel.filter(spell => 
+                    spell.name.toLowerCase().includes(searchTerm)
+                );
+    
+                // Calculate pagination
+                const startIndex = (currentSpellPage - 1) * spellsPerPage;
+                const endIndex = startIndex + spellsPerPage;
+                const displayedSpells = filteredSpells.slice(startIndex, endIndex);
+    
+                // Display spells
+                displayedSpells.forEach((spell, index) => {
+                    const spellDiv = document.createElement('div');
+                    spellDiv.className = 'flex items-center justify-between bg-gray-50 rounded-lg p-4 mb-4';
+                    spellDiv.innerHTML = `
+                        <input type="text" 
+                               placeholder="Spell name" 
+                               value="${spell.name}"
+                               onchange="updateSpell(${startIndex + index}, 'name', this.value)"
+                               class="flex-1 border rounded px-2 py-1">
+                        <button onclick="togglePreparedSpell('${spell.name}')" 
+                                class="ml-2 text-green-500 hover:text-green-600 transition-colors">
+                            ${preparedSpells.includes(spell.name) ? '✅' : '➕'}
+                        </button>
+                        <button onclick="removeSpell(${startIndex + index})" 
+                                class="text-red-500 hover:text-red-600 transition-colors ml-2">×</button>
+                    `;
+                    spellListDiv.appendChild(spellDiv);
+                });
+    
+                // Update spell page display
+                document.getElementById('spellPage').textContent = 
+                    `Page ${currentSpellPage} of ${Math.ceil(filteredSpells.length / spellsPerPage) || 1}`;
             }
-        }
-
-        // Save character data
-        function saveCharacter() {
-            const character = {
-                name: document.getElementById('charName').value,
-                class: document.getElementById('charClass').value,
-                level: document.getElementById('charLevel').value,
-                race: document.getElementById('charRace').value,
-                currency: {
-                    platinum: parseInt(document.getElementById('platinum').value) || 0,
-                    gold: parseInt(document.getElementById('gold').value) || 0,
-                    silver: parseInt(document.getElementById('silver').value) || 0,
-                    copper: parseInt(document.getElementById('copper').value) || 0
-                },
-                abilities: {
-                    str: parseInt(document.getElementById('str').value) || 10,
-                    dex: parseInt(document.getElementById('dex').value) || 10,
-                    con: parseInt(document.getElementById('con').value) || 10,
-                    int: parseInt(document.getElementById('int').value) || 10,
-                    wis: parseInt(document.getElementById('wis').value) || 10,
-                    cha: parseInt(document.getElementById('cha').value) || 10
-                },
-                inventory: Array.from(document.getElementById('inventory').children).map(item => ({
-                    name: item.querySelector('input[type="text"]').value,
-                    quantity: parseInt(item.querySelector('input[type="number"]').value) || 1
-                })),
-                spellsByLevel: spellsByLevel,
-                spellSlots: {}
-            };
-
-            // Save spell slots
-            for (let level = 1; level <= 9; level++) {
-                character.spellSlots[level] = {
-                    total: parseInt(document.getElementById(`slotsTotal${level}`).value) || 0,
-                    used: parseInt(document.getElementById(`slotsUsed${level}`).value) || 0
+    
+            function updateSpell(index, property, value) {
+                const spells = spellsByLevel[currentSpellLevel] || [];
+                if (spells[index]) {
+                    spells[index][property] = value;
+                }
+            }
+    
+            function removeSpell(index) {
+                const spells = spellsByLevel[currentSpellLevel] || [];
+                const spellName = spells[index].name;
+                // Remove from preparedSpells if present
+                const preparedIndex = preparedSpells.indexOf(spellName);
+                if (preparedIndex !== -1) {
+                    preparedSpells.splice(preparedIndex, 1);
+                    displayPreparedSpells();
+                }
+                spells.splice(index, 1);
+                displaySpells();
+            }
+    
+            function previousSpellPage() {
+                if (currentSpellPage > 1) {
+                    currentSpellPage--;
+                    displaySpells();
+                }
+            }
+    
+            function nextSpellPage() {
+                const spells = spellsByLevel[currentSpellLevel] || [];
+                const filteredSpells = spells.filter(spell => 
+                    spell.name.toLowerCase().includes(document.getElementById('spellSearch').value.toLowerCase())
+                );
+                const maxPages = Math.ceil(filteredSpells.length / spellsPerPage);
+                if (currentSpellPage < maxPages) {
+                    currentSpellPage++;
+                    displaySpells();
+                }
+            }
+    
+            function changeSpellLevel(level) {
+                currentSpellLevel = level;
+                currentSpellPage = 1;
+                
+                // Update tab styles
+                document.querySelectorAll('.spell-tab').forEach((button, index) => {
+                    if (index === level) {
+                        button.classList.add('active');
+                    } else {
+                        button.classList.remove('active');
+                    }
+                });
+                
+                displaySpells();
+            }
+    
+            // Active Spells Management
+            function togglePreparedSpell(spellName) {
+                const index = preparedSpells.indexOf(spellName);
+                if (index === -1) {
+                    preparedSpells.push(spellName);
+                } else {
+                    preparedSpells.splice(index, 1);
+                }
+                displaySpells();
+                displayPreparedSpells();
+            }
+    
+            function displayPreparedSpells() {
+                const activeSpellsDiv = document.getElementById('activeSpells');
+                activeSpellsDiv.innerHTML = '';
+                preparedSpells.forEach((spell, index) => {
+                    const spellDiv = document.createElement('div');
+                    spellDiv.className = 'flex items-center justify-between bg-gray-50 rounded-lg p-2 mb-2';
+                    spellDiv.innerHTML = `
+                        <span>${spell}</span>
+                        <button onclick="togglePreparedSpell('${spell}')" class="text-red-500 hover:text-red-600 transition-colors">✖️</button>
+                    `;
+                    activeSpellsDiv.appendChild(spellDiv);
+                });
+            }
+    
+            // Dice Roller Functionality
+            function rollDice() {
+                const diceType = parseInt(document.getElementById('diceType').value);
+                const numDice = parseInt(document.getElementById('numDice').value) || 1;
+                if (!diceType || numDice < 1) return;
+    
+                let results = [];
+                let total = 0;
+                for (let i = 0; i < numDice; i++) {
+                    const result = Math.floor(Math.random() * diceType) + 1;
+                    results.push(result);
+                    total += result;
+                }
+    
+                const diceResultDiv = document.getElementById('diceResult');
+                diceResultDiv.classList.add('animate');
+    
+                // Update result after a short delay to allow animation
+                setTimeout(() => {
+                    diceResultDiv.textContent = total;
+                    diceResultDiv.classList.remove('animate');
+                }, 200);
+    
+                // Update roll history
+                const rollHistoryDiv = document.getElementById('rollHistory');
+                const rollItem = document.createElement('div');
+                rollItem.className = 'roll-item';
+                rollItem.textContent = `Rolled ${numDice}d${diceType}: [${results.join(', ')}] Total: ${total}`;
+                rollHistoryDiv.prepend(rollItem);
+    
+                // Keep only the latest 10 rolls
+                if (rollHistoryDiv.childElementCount > 10) {
+                    rollHistoryDiv.removeChild(rollHistoryDiv.lastChild);
+                }
+            }
+    
+            // Save/Load Functions
+            function saveCharacter() {
+                const character = {
+                    name: document.getElementById('charName').value,
+                    class: document.getElementById('charClass').value,
+                    level: document.getElementById('charLevel').value,
+                    race: document.getElementById('charRace').value,
+                    hp: {
+                        current: currentHP,
+                        max: maxHP,
+                        temp: parseInt(document.getElementById('tempHP').value) || 0
+                    },
+                    currency: {
+                        platinum: parseInt(document.getElementById('platinum').value) || 0,
+                        gold: parseInt(document.getElementById('gold').value) || 0,
+                        silver: parseInt(document.getElementById('silver').value) || 0,
+                        copper: parseInt(document.getElementById('copper').value) || 0
+                    },
+                    abilities: {
+                        str: parseInt(document.getElementById('str').value) || 10,
+                        dex: parseInt(document.getElementById('dex').value) || 10,
+                        con: parseInt(document.getElementById('con').value) || 10,
+                        int: parseInt(document.getElementById('int').value) || 10,
+                        wis: parseInt(document.getElementById('wis').value) || 10,
+                        cha: parseInt(document.getElementById('cha').value) || 10
+                    },
+                    inventory: inventoryItems,
+                    spellsByLevel: spellsByLevel,
+                    spellSlots: spellSlots,
+                    preparedSpells: preparedSpells,
+                    notes: document.getElementById('notes').value,
+                    personality: {
+                        traits: document.getElementById('traits').value,
+                        ideals: document.getElementById('ideals').value,
+                        bonds: document.getElementById('bonds').value,
+                        flaws: document.getElementById('flaws').value
+                    }
                 };
+    
+                localStorage.setItem('characterData', JSON.stringify(character));
+                alert('Character saved successfully!');
             }
-
-            character.notes = document.getElementById('notes').value;
-            character.personality = {
-                traits: document.getElementById('traits').value,
-                ideals: document.getElementById('ideals').value,
-                bonds: document.getElementById('bonds').value,
-                flaws: document.getElementById('flaws').value
-            };
-
-            localStorage.setItem('characterData', JSON.stringify(character));
-            alert('Character saved successfully!');
-        }
-
-        // Load character data
-        function loadCharacter() {
-            const characterData = JSON.parse(localStorage.getItem('characterData') || '{}');
-            const profilePic = localStorage.getItem('characterProfilePic');
-
-            if (profilePic) {
-                document.getElementById('profilePic').src = profilePic;
+    
+            function loadCharacter() {
+                const characterData = JSON.parse(localStorage.getItem('characterData') || '{}');
+                const profilePic = localStorage.getItem('characterProfilePic');
+    
+                if (profilePic) {
+                    document.getElementById('profilePic').src = profilePic;
+                }
+    
+                if (Object.keys(characterData).length > 0) {
+                    // Load basic info
+                    document.getElementById('charName').value = characterData.name || '';
+                    document.getElementById('charClass').value = characterData.class || '';
+                    document.getElementById('charLevel').value = characterData.level || '';
+                    document.getElementById('charRace').value = characterData.race || '';
+    
+                    // Load HP
+                    if (characterData.hp) {
+                        currentHP = characterData.hp.current;
+                        maxHP = characterData.hp.max;
+                        document.getElementById('maxHP').value = maxHP;
+                        document.getElementById('hpSlider').value = currentHP;
+                        document.getElementById('hpSlider').max = maxHP;
+                        document.getElementById('tempHP').value = characterData.hp.temp;
+                        updateHPDisplay();
+                    }
+    
+                    // Load all other data
+                    if (characterData.currency) {
+                        document.getElementById('platinum').value = characterData.currency.platinum || 0;
+                        document.getElementById('gold').value = characterData.currency.gold || 0;
+                        document.getElementById('silver').value = characterData.currency.silver || 0;
+                        document.getElementById('copper').value = characterData.currency.copper || 0;
+                    }
+    
+                    if (characterData.abilities) {
+                        document.getElementById('str').value = characterData.abilities.str || 10;
+                        document.getElementById('dex').value = characterData.abilities.dex || 10;
+                        document.getElementById('con').value = characterData.abilities.con || 10;
+                        document.getElementById('int').value = characterData.abilities.int || 10;
+                        document.getElementById('wis').value = characterData.abilities.wis || 10;
+                        document.getElementById('cha').value = characterData.abilities.cha || 10;
+                    }
+    
+                    if (characterData.inventory) {
+                        inventoryItems = characterData.inventory;
+                    }
+    
+                    if (characterData.spellsByLevel) {
+                        spellsByLevel = characterData.spellsByLevel;
+                    }
+    
+                    if (characterData.spellSlots) {
+                        spellSlots = characterData.spellSlots;
+                    }
+    
+                    if (characterData.preparedSpells) {
+                        preparedSpells = characterData.preparedSpells;
+                        displayPreparedSpells();
+                    }
+    
+                    if (characterData.personality) {
+                        document.getElementById('traits').value = characterData.personality.traits || '';
+                        document.getElementById('ideals').value = characterData.personality.ideals || '';
+                        document.getElementById('bonds').value = characterData.personality.bonds || '';
+                        document.getElementById('flaws').value = characterData.personality.flaws || '';
+                    }
+    
+                    document.getElementById('notes').value = characterData.notes || '';
+    
+                    // Refresh displays
+                    displayInventoryItems();
+                    displaySpellSlots();
+                    displayPreparedSpells();
+                    // Set active spell level tab
+                    if (characterData.spellsByLevel) {
+                        const levels = Object.keys(characterData.spellsByLevel).map(Number);
+                        if (levels.length > 0) {
+                            changeSpellLevel(levels[0]);
+                        } else {
+                            changeSpellLevel(0);
+                        }
+                    } else {
+                        changeSpellLevel(0);
+                    }
+                }
             }
-
-            if (Object.keys(characterData).length > 0) {
-                document.getElementById('charName').value = characterData.name || '';
-                document.getElementById('charClass').value = characterData.class || '';
-                document.getElementById('charLevel').value = characterData.level || '';
-                document.getElementById('charRace').value = characterData.race || '';
-
-                // Load currency
-                if (characterData.currency) {
-                    document.getElementById('platinum').value = characterData.currency.platinum || 0;
-                    document.getElementById('gold').value = characterData.currency.gold || 0;
-                    document.getElementById('silver').value = characterData.currency.silver || 0;
-                    document.getElementById('copper').value = characterData.currency.copper || 0;
-                }
-
-                // Load abilities
-                if (characterData.abilities) {
-                    document.getElementById('str').value = characterData.abilities.str || 10;
-                    document.getElementById('dex').value = characterData.abilities.dex || 10;
-                    document.getElementById('con').value = characterData.abilities.con || 10;
-                    document.getElementById('int').value = characterData.abilities.int || 10;
-                    document.getElementById('wis').value = characterData.abilities.wis || 10;
-                    document.getElementById('cha').value = characterData.abilities.cha || 10;
-                }
-
-                // Load inventory
-                if (characterData.inventory) {
-                    characterData.inventory.forEach(item => {
-                        const inventoryDiv = document.getElementById('inventory');
-                        const itemDiv = document.createElement('div');
-                        itemDiv.className = 'flex items-center space-x-2';
-                        itemDiv.innerHTML = `
-                            <input type="text" placeholder="Item name" class="flex-1 border rounded px-2 py-1" value="${item.name}">
-                            <input type="number" placeholder="Qty" class="w-20 border rounded px-2 py-1" value="${item.quantity}">
-                            <button onclick="this.parentElement.remove()" class="text-red-500">×</button>
-                        `;
-                        inventoryDiv.appendChild(itemDiv);
-                    });
-                }
-
-                // Load spellsByLevel
-                if (characterData.spellsByLevel) {
-                    spellsByLevel = characterData.spellsByLevel;
-                }
-
-                // Load spellSlots
-                if (characterData.spellSlots) {
-                    spellSlots = characterData.spellSlots;
-                }
-
-                displaySpellSlots();
-                changeSpellLevel(0); // Initialize to Cantrips
+    
+            // Export/Import Functions
+            function exportCharacter() {
+                const characterData = localStorage.getItem('characterData');
+                const blob = new Blob([characterData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'character.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             }
-        }
-    </script>
-</body>
-</html>
+    
+            function importCharacter(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const characterData = JSON.parse(e.target.result);
+                        localStorage.setItem('characterData', JSON.stringify(characterData));
+                        loadCharacter();
+                        alert('Character imported successfully!');
+                    } catch (error) {
+                        alert('Error importing character data. Please check the file format.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        </script>
+    </body>
+    </html>
