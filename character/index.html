@@ -6,6 +6,26 @@
     <title>D&D 5E Character Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <style>
+        /* Background Image with Blur Overlay */
+        body {
+            background-image: url('https://preview.redd.it/heres-a-quick-4k-wallpaper-i-made-from-my-fav-loading-screen-v0-w8otufcuwfkb1.jpg?auto=webp&s=6cd92749ee581d3721dae377c363d33028349a37');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            backdrop-filter: blur(8px);
+            background-color: rgba(255, 255, 255, 0.3);
+            z-index: -1;
+        }
+
         /* Custom HP Bar Styling */
         .hp-bar-container {
             width: 100%;
@@ -169,10 +189,24 @@
             text-align: right;
             color: #374151;
         }
+
+        /* Active Spell Level Indicator */
+        .spell-tabs-container {
+            position: relative;
+        }
+
+        .spell-tabs-slider {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            background-color: #3b82f6;
+            transition: transform 0.3s ease, width 0.3s ease;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
-    <div class="container mx-auto p-4">
+    <div class="container mx-auto p-4 relative z-10">
         <!-- Character Header -->
         <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
             <div class="flex items-center space-x-6">
@@ -349,13 +383,13 @@
             <div class="bg-white rounded-lg shadow-lg p-6 col-span-1 lg:col-span-2">
                 <h2 class="text-xl font-bold mb-4">Spellbook</h2>
                 
-                <!-- Add Spell Button -->
-                <div class="flex justify-between items-center mb-4">
-                    <button onclick="addSpell()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
-                        Add Spell
+                <!-- Add Spell Button and Spell Level Tabs -->
+                <div class="flex justify-between items-center mb-4 spell-tabs-container">
+                    <button onclick="addSpell()" class="bg-blue-500 text-white px-3 py-1 rounded-full hover:bg-blue-600 transition-colors text-xl">
+                        +
                     </button>
                     <!-- Spell Level Tabs -->
-                    <nav class="flex flex-wrap space-x-2">
+                    <nav class="flex flex-wrap space-x-2 relative">
                         <button onclick="changeSpellLevel(0)" class="spell-tab active" id="tab0">Cantrips</button>
                         <button onclick="changeSpellLevel(1)" class="spell-tab" id="tab1">1st</button>
                         <button onclick="changeSpellLevel(2)" class="spell-tab" id="tab2">2nd</button>
@@ -366,6 +400,7 @@
                         <button onclick="changeSpellLevel(7)" class="spell-tab" id="tab7">7th</button>
                         <button onclick="changeSpellLevel(8)" class="spell-tab" id="tab8">8th</button>
                         <button onclick="changeSpellLevel(9)" class="spell-tab" id="tab9">9th</button>
+                        <div id="spellTabsSlider" class="spell-tabs-slider w-20 transform translate-x-0"></div>
                     </nav>
                 </div>
 
@@ -425,26 +460,26 @@
                     </div>
                 </div>
             </div>
-    
+
             <!-- Save Button -->
             <div class="fixed bottom-4 right-4">
                 <button onclick="saveCharacter()" class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-green-600 transition-colors">
                     Save Character
                 </button>
             </div>
-    
+
             <!-- Import/Export Buttons -->
             <div class="fixed bottom-4 left-4 flex space-x-2">
                 <button onclick="exportCharacter()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
-                    Export Character
+                    Export
                 </button>
                 <label class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors cursor-pointer">
-                    Import Character
+                    Import
                     <input type="file" accept=".json" onchange="importCharacter(this.files[0])" class="hidden">
                 </label>
             </div>
         </div>
-    
+
         <script>
             // Variables
             let currentHP = 0;
@@ -459,18 +494,27 @@
             let spellSlots = {};
             let preparedSpells = [];
 
+            let autosaveTimeout;
+
             // Initialize everything when page loads
             document.addEventListener('DOMContentLoaded', () => {
                 initializeHP();
                 initializeSpellSlots();
                 initializeAbilityModifiers();
+                initializeSpellTabs();
                 loadCharacter();
-                
+
                 // Add search listeners
                 document.getElementById('inventorySearch').addEventListener('input', displayInventoryItems);
                 document.getElementById('spellSearch').addEventListener('input', () => {
                     currentSpellPage = 1;
                     displaySpells();
+                });
+
+                // Autosave on input changes
+                const inputs = document.querySelectorAll('input, textarea, select');
+                inputs.forEach(input => {
+                    input.addEventListener('input', debounce(autosave, 1000));
                 });
             });
 
@@ -492,7 +536,7 @@
                 const maxHPInput = document.getElementById('maxHP');
                 const hpSlider = document.getElementById('hpSlider');
                 const tempHPInput = document.getElementById('tempHP');
-                
+
                 maxHPInput.addEventListener('input', function() {
                     maxHP = parseInt(this.value) || 0;
                     hpSlider.max = maxHP;
@@ -519,30 +563,30 @@
                 const tempHP = parseInt(document.getElementById('tempHP').value) || 0;
                 const totalHP = currentHP + tempHP;
                 const percentage = maxHP > 0 ? (currentHP / maxHP) * 100 : 0;
-                
+
                 // Update the bar width
                 hpBar.style.width = `${percentage}%`;
-                
+
                 // Update the color based on percentage
                 let hue = (percentage * 1.2); // Multiply by 1.2 to get red at ~83% instead of 100%
                 hpBar.style.backgroundColor = `hsl(${hue}, 70%, 45%)`;
-                
+
                 // Update the text
                 hpText.textContent = `${totalHP} / ${maxHP} HP`;
-                
+
                 // Update active HP display
                 activeHPDiv.textContent = `${totalHP} HP`;
-                
+
                 // Remove previous animation classes
                 activeHPDiv.classList.remove('glow-green', 'glow-red');
-                
+
                 // Apply animation based on change
                 if (isHealing) {
                     activeHPDiv.classList.add('glow-green');
                 } else if (isDamage) {
                     activeHPDiv.classList.add('glow-red');
                 }
-                
+
                 // Update slider
                 document.getElementById('hpSlider').value = currentHP;
             }
@@ -561,7 +605,7 @@
                         const remainingDamage = damage - tempHP;
                         const newTempHP = Math.max(0, tempHP - damage);
                         tempHPInput.value = newTempHP;
-                        
+
                         if (remainingDamage > 0) {
                             currentHP = Math.max(0, currentHP - remainingDamage);
                             isDamage = true;
@@ -575,7 +619,7 @@
                     currentHP = Math.min(currentHP + amount, maxHP);
                     isHealing = true;
                 }
-                
+
                 updateHPDisplay(isHealing, isDamage);
             }
 
@@ -597,7 +641,7 @@
             function displayInventoryItems() {
                 const inventoryDiv = document.getElementById('inventory');
                 const searchTerm = document.getElementById('inventorySearch').value.toLowerCase();
-                
+
                 // Filter items
                 const filteredItems = inventoryItems.filter(item => 
                     item.name.toLowerCase().includes(searchTerm)
@@ -631,11 +675,13 @@
 
             function updateInventoryItem(index, property, value) {
                 inventoryItems[index][property] = property === 'quantity' ? parseInt(value) : value;
+                autosave();
             }
 
             function removeInventoryItem(index) {
                 inventoryItems.splice(index, 1);
                 displayInventoryItems();
+                autosave();
             }
 
             function previousInventoryPage() {
@@ -704,6 +750,7 @@
                 if (newUsed >= 0 && newUsed <= spellSlots[level].total) {
                     spellSlots[level].used = newUsed;
                     displaySpellSlots();
+                    autosave();
                 }
             }
 
@@ -716,6 +763,7 @@
                     spellSlots[level].used = spellSlots[level].total;
                 }
                 displaySpellSlots();
+                autosave();
             }
 
             // Spellbook Management
@@ -723,12 +771,13 @@
                 if (!spellsByLevel[currentSpellLevel]) {
                     spellsByLevel[currentSpellLevel] = [];
                 }
-                
+
                 spellsByLevel[currentSpellLevel].push({
                     name: ''
                 });
-                
+
                 displaySpells();
+                autosave();
             }
 
             function displaySpells() {
@@ -769,12 +818,15 @@
                 // Update spell page display
                 document.getElementById('spellPage').textContent = 
                     `Page ${currentSpellPage} of ${Math.ceil(filteredSpells.length / spellsPerPage) || 1}`;
+
+                updateSpellTabsSlider();
             }
 
             function updateSpell(index, property, value) {
                 const spells = spellsByLevel[currentSpellLevel] || [];
                 if (spells[index]) {
                     spells[index][property] = value;
+                    autosave();
                 }
             }
 
@@ -789,6 +841,7 @@
                 }
                 spells.splice(index, 1);
                 displaySpells();
+                autosave();
             }
 
             function previousSpellPage() {
@@ -813,7 +866,7 @@
             function changeSpellLevel(level) {
                 currentSpellLevel = level;
                 currentSpellPage = 1;
-                
+
                 // Update tab styles
                 document.querySelectorAll('.spell-tab').forEach((button, index) => {
                     if (index === level) {
@@ -822,7 +875,7 @@
                         button.classList.remove('active');
                     }
                 });
-                
+
                 displaySpells();
             }
 
@@ -836,6 +889,7 @@
                 }
                 displaySpells();
                 displayPreparedSpells();
+                autosave();
             }
 
             function displayPreparedSpells() {
@@ -892,6 +946,8 @@
                 if (rollHistoryDiv.childElementCount > 10) {
                     rollHistoryDiv.removeChild(rollHistoryDiv.lastChild);
                 }
+
+                autosave();
             }
 
             // Save/Load Functions
@@ -934,7 +990,8 @@
                 };
 
                 localStorage.setItem('characterData', JSON.stringify(character));
-                alert('Character saved successfully!');
+                localStorage.setItem('characterProfilePic', document.getElementById('profilePic').src);
+                console.log('Character saved');
             }
 
             function loadCharacter() {
@@ -1011,6 +1068,7 @@
                     displayInventoryItems();
                     displaySpellSlots();
                     displayPreparedSpells();
+                    displaySpells();
                     // Set active spell level tab
                     if (characterData.spellsByLevel) {
                         const levels = Object.keys(characterData.spellsByLevel).map(Number);
@@ -1045,6 +1103,10 @@
                     try {
                         const characterData = JSON.parse(e.target.result);
                         localStorage.setItem('characterData', JSON.stringify(characterData));
+                        if (e.target.result.includes('"profilePic"')) {
+                            const picData = JSON.parse(e.target.result).profilePic;
+                            localStorage.setItem('characterProfilePic', picData);
+                        }
                         loadCharacter();
                         alert('Character imported successfully!');
                     } catch (error) {
@@ -1075,6 +1137,57 @@
                     const modDisplay = document.getElementById(`${ability}Mod`);
                     modDisplay.textContent = `Modifier: ${mod >= 0 ? '+' : ''}${mod}`;
                 });
+            }
+
+            // Spellbook Tabs Slider
+            function initializeSpellTabs() {
+                const spellTabs = document.querySelectorAll('.spell-tab');
+                const slider = document.getElementById('spellTabsSlider');
+
+                // Initialize slider position
+                updateSpellTabsSlider();
+
+                spellTabs.forEach((tab, index) => {
+                    tab.addEventListener('click', () => {
+                        setTimeout(() => {
+                            updateSpellTabsSlider();
+                        }, 300);
+                    });
+                });
+            }
+
+            function updateSpellTabsSlider() {
+                const spellTabs = document.querySelectorAll('.spell-tab');
+                const slider = document.getElementById('spellTabsSlider');
+                let activeIndex = 0;
+
+                spellTabs.forEach((tab, index) => {
+                    if (tab.classList.contains('active')) {
+                        activeIndex = index;
+                    }
+                });
+
+                const activeTab = spellTabs[activeIndex];
+                const tabRect = activeTab.getBoundingClientRect();
+                const containerRect = activeTab.parentElement.getBoundingClientRect();
+                const offsetLeft = activeTab.offsetLeft;
+                const width = activeTab.offsetWidth;
+
+                slider.style.width = `${width}px`;
+                slider.style.transform = `translateX(${offsetLeft}px)`;
+            }
+
+            // Autosave Functionality
+            function debounce(func, delay) {
+                return function(...args) {
+                    clearTimeout(autosaveTimeout);
+                    autosaveTimeout = setTimeout(() => func.apply(this, args), delay);
+                };
+            }
+
+            function autosave() {
+                saveCharacter();
+                console.log('Autosaved');
             }
         </script>
     </body>
