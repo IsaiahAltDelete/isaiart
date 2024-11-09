@@ -3,103 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text File Generator</title>
+    <title>.txt</title>
     <style>
-        body {
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
             font-family: system-ui, -apple-system, sans-serif;
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-            background-color: #f9fafb;
+        }
+
+        body {
+            background-color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
         }
 
         .container {
             background-color: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            height: calc(100vh - 2rem);
+            max-height: 800px;
         }
 
         h1 {
-            color: #1f2937;
-            margin-top: 0;
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
+            color: #000;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .filename-input {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .filename-input input {
+            padding: 0.75rem 1rem;
+            border: 2px solid #000;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .filename-input span {
+            color: #000;
+            font-size: 1rem;
+            font-weight: 600;
         }
 
         textarea {
             width: 100%;
-            min-height: 200px;
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
-            resize: vertical;
-            font-family: inherit;
-            font-size: 0.875rem;
+            flex-grow: 1;
+            padding: 1rem;
+            border: 2px solid #000;
+            border-radius: 16px;
+            resize: none;
+            font-size: 1rem;
             line-height: 1.5;
+            font-weight: 500;
         }
 
-        textarea:focus {
+        textarea:focus, .filename-input input:focus {
             outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: #000;
+            box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
         }
 
         .button-group {
             display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            width: 100%;
         }
 
         button {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
+            padding: 0.75rem 1.5rem;
+            border: 2px solid #000;
+            border-radius: 12px;
             font-size: 0.875rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s ease;
+            min-width: 120px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .primary {
-            background-color: #3b82f6;
+            background-color: #000;
             color: white;
         }
 
         .primary:hover {
-            background-color: #2563eb;
+            background-color: white;
+            color: black;
         }
 
         .secondary {
-            background-color: #e5e7eb;
-            color: #1f2937;
+            background-color: white;
+            color: black;
         }
 
         .secondary:hover {
-            background-color: #d1d5db;
+            background-color: #000;
+            color: white;
         }
 
         .message {
-            margin-top: 1rem;
-            padding: 0.5rem;
-            border-radius: 4px;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
             font-size: 0.875rem;
+            font-weight: 600;
+            text-align: center;
             display: none;
         }
 
         .success {
-            background-color: #dcfce7;
-            color: #166534;
+            background-color: #000;
+            color: white;
+        }
+
+        .error {
+            background-color: #000;
+            color: white;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1.5rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+        }
+
+        ::placeholder {
+            color: rgba(0, 0, 0, 0.4);
+            font-weight: 500;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Text File Generator</h1>
-        <textarea id="textInput" placeholder="Enter your text here..."></textarea>
+        <h1>.txt</h1>
+        <div class="filename-input">
+            <input 
+                type="text" 
+                id="filename" 
+                placeholder="filename"
+                value="untitled"
+            >
+        </div>
+        <textarea id="textInput" placeholder="start typing..."></textarea>
         <div class="button-group">
-            <button onclick="saveTextFile()" class="primary">Save Text File</button>
-            <button onclick="copyText()" class="secondary">Copy Text</button>
+            <button onclick="saveTextFile()" class="primary">Save</button>
+            <button onclick="copyText()" class="secondary">Copy</button>
             <button onclick="clearText()" class="secondary">Clear</button>
         </div>
         <div id="message" class="message"></div>
@@ -108,6 +193,8 @@
     <script>
         function saveTextFile() {
             const text = document.getElementById('textInput').value;
+            const filename = document.getElementById('filename').value.trim() || 'untitled';
+            
             if (!text) {
                 showMessage('Please enter some text first', 'error');
                 return;
@@ -117,24 +204,25 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'text-file.txt';
+            a.download = `${filename}.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            showMessage('File saved successfully!', 'success');
+            showMessage('Saved', 'success');
         }
 
         function copyText() {
             const textarea = document.getElementById('textInput');
             textarea.select();
             document.execCommand('copy');
-            showMessage('Text copied to clipboard!', 'success');
+            showMessage('Copied', 'success');
         }
 
         function clearText() {
             document.getElementById('textInput').value = '';
-            showMessage('Text cleared!', 'success');
+            document.getElementById('filename').value = 'untitled';
+            showMessage('Cleared', 'success');
         }
 
         function showMessage(text, type) {
@@ -144,7 +232,7 @@
             message.className = `message ${type}`;
             setTimeout(() => {
                 message.style.display = 'none';
-            }, 3000);
+            }, 2000);
         }
     </script>
 </body>
