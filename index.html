@@ -6,6 +6,8 @@
     <title>ISAIART</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         /* Reset and Base Styles */
         *, *::before, *::after {
@@ -29,7 +31,7 @@
             padding: 2rem;
         }
 
-        /* Particle Canvas Styling */
+        /* Three.js Particle Canvas Styling */
         #particle-canvas {
             position: fixed;
             top: 0;
@@ -37,7 +39,7 @@
             width: 100%;
             height: 100%;
             z-index: 0;
-            background: transparent;
+            background: #000000;
         }
 
         /* Container Styling */
@@ -47,7 +49,7 @@
             text-align: center;
             padding: 2rem;
             border-radius: 20px;
-            box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 12px;
+            /* Removed background, box-shadow, and backdrop-filter for transparency */
             max-width: 100%;
             max-height: 100%;
             overflow-y: auto;
@@ -70,6 +72,10 @@
             margin-bottom: 1.5rem;
             font-weight: 700;
             font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
         h1 a {
@@ -117,15 +123,40 @@
             font-weight: 700;
             text-transform: uppercase;
             text-decoration: none;
-            box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 4px;
-            transition: background-color 0.3s ease, color 0.3s ease;
+            box-shadow: rgba(255, 255, 255, 0.1) 0px 2px 4px;
+            transition: background-color 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
             min-height: 50px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.2) 50%,
+                transparent 100%
+            );
+            transition: left 0.5s;
+        }
+
+        .link:hover::before {
+            left: 100%;
         }
 
         .link:hover {
+            transform: translateY(-5px);
             background-color: #fff;
             color: #000;
+            box-shadow: rgba(255, 255, 255, 0.3) 0px 4px 8px;
+            border-width: 3px;
         }
 
         /* Scrollbar Styling for Container */
@@ -179,7 +210,7 @@
     </style>
 </head>
 <body>
-    <!-- Particle Canvas -->
+    <!-- Three.js Particle Canvas -->
     <canvas id="particle-canvas"></canvas>
 
     <!-- Main Content Container -->
@@ -192,13 +223,13 @@
             <a href="https://braille.isaiart.com" class="link">Braille Translator</a>
             <a href="https://isaiart.com/character/" class="link">Character</a>
             <a href="https://isaiart.com/drumpad" class="link">Drum Pad</a>
-            <a href="https://music.isaiart.com" class="link">Music</a>
+            <a href="https://isaiart.com/music" class="link">Music</a>
             <a href="https://isaiart.com/piano" class="link">Piano</a>
             <a href="https://pokedex.isaiart.com" class="link">Pokedex</a>
             <a href="https://reboot.isaiart.com" class="link">Reboot</a>
-            <a href="https://isaiart.com/tav/" class="link">Tav</a>
             <a href="https://isaiart.com/rain" class="link">Timer</a>
-            <a href="https://thg.isaiart.com" class="link">THG</a>
+            <a href="https://isaiart.com/tav/" class="link">Tav</a>
+            <a href="https://thg.isaiart.com" class="link">The Hunger Games</a>
             <a href="https://isaiart.com/text/" class="link">Text</a>
             <a href="https://code.isaiart.com" class="link">Web Coding</a>
             <a href="https://isaiart.com/translate" class="link">Zalgo Translator</a>
@@ -206,116 +237,96 @@
         </div>
     </div>
 
-    <!-- Particle Effect Script -->
+    <!-- Three.js Particle Effect Script -->
     <script>
-        // Particle Configuration
-        const PARTICLE_COUNT = 300; // Increased number of particles for a denser effect
-        const PARTICLE_MIN_SIZE = 1;
-        const PARTICLE_MAX_SIZE = 4;
-        const PARTICLE_COLOR = 'rgba(255, 255, 255, 0.8)';
-        const PARTICLE_MIN_SPEED = 0.2;
-        const PARTICLE_MAX_SPEED = 1.2;
-        const MOUSE_RADIUS = 150;
-
-        const canvas = document.getElementById('particle-canvas');
-        const ctx = canvas.getContext('2d');
-
-        let particles = [];
-        let mouse = { x: null, y: null };
-
-        // Resize Canvas
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        // Track Mouse Movement
-        window.addEventListener('mousemove', function(event) {
-            mouse.x = event.clientX;
-            mouse.y = event.clientY;
+        // Three.js setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        const renderer = new THREE.WebGLRenderer({
+            canvas: document.getElementById('particle-canvas'),
+            antialias: true,
+            alpha: true
         });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
 
-        window.addEventListener('mouseout', function() {
-            mouse.x = null;
-            mouse.y = null;
-        });
+        // Create multiple particle systems with white color
+        const particleGroups = [
+            { color: 0xffffff, size: 0.005, count: 10000 },
+            { color: 0xffffff, size: 0.003, count: 5000 },
+            { color: 0xffffff, size: 0.002, count: 3000 }
+        ];
 
-        // Particle Class
-        class Particle {
-            constructor() {
-                this.reset();
+        const particleMeshes = particleGroups.map(group => {
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(group.count * 3);
+
+            for (let i = 0; i < group.count * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 50; // Spread particles out
             }
 
-            reset() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.size = Math.random() * (PARTICLE_MAX_SIZE - PARTICLE_MIN_SIZE) + PARTICLE_MIN_SIZE;
-                this.speed = Math.random() * (PARTICLE_MAX_SPEED - PARTICLE_MIN_SPEED) + PARTICLE_MIN_SPEED;
-                const angle = Math.random() * 2 * Math.PI;
-                this.vx = Math.cos(angle) * this.speed;
-                this.vy = Math.sin(angle) * this.speed;
-            }
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-            update() {
-                // Move Particle
-                this.x += this.vx;
-                this.y += this.vy;
-
-                // Wrap around the edges
-                if (this.x > canvas.width) this.x = 0;
-                if (this.x < 0) this.x = canvas.width;
-                if (this.y > canvas.height) this.y = 0;
-                if (this.y < 0) this.y = canvas.height;
-
-                // Mouse Interaction
-                if (mouse.x !== null && mouse.y !== null) {
-                    const dx = this.x - mouse.x;
-                    const dy = this.y - mouse.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < MOUSE_RADIUS) {
-                        const angle = Math.atan2(dy, dx);
-                        const force = (MOUSE_RADIUS - distance) / MOUSE_RADIUS;
-                        this.vx += Math.cos(angle) * force * 0.05;
-                        this.vy += Math.sin(angle) * force * 0.05;
-                    }
-                }
-
-                // Gradually reduce velocity for smoother motion
-                this.vx *= 0.98;
-                this.vy *= 0.98;
-            }
-
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = PARTICLE_COLOR;
-                ctx.fill();
-            }
-        }
-
-        // Initialize Particles
-        function initParticles() {
-            particles = [];
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                particles.push(new Particle());
-            }
-        }
-
-        // Animate Particles
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            particles.forEach(particle => {
-                particle.update();
-                particle.draw();
+            const material = new THREE.PointsMaterial({
+                size: group.size,
+                color: group.color,
+                transparent: true,
+                opacity: 0.8,
+                depthWrite: false
             });
+
+            return new THREE.Points(geometry, material);
+        });
+
+        particleMeshes.forEach(mesh => scene.add(mesh));
+
+        camera.position.z = 10;
+
+        // Animation Variables
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetRotationX = 0;
+        let targetRotationY = 0;
+
+        // Animation Loop
+        function animate() {
             requestAnimationFrame(animate);
+
+            // Rotate particles for a dynamic effect
+            particleMeshes.forEach((mesh, index) => {
+                mesh.rotation.x += 0.0003 * (index + 1);
+                mesh.rotation.y += 0.0005 * (index + 1);
+
+                // Add slight movement based on mouse interaction
+                mesh.rotation.x += (targetRotationX - mesh.rotation.x) * 0.05;
+                mesh.rotation.y += (targetRotationY - mesh.rotation.y) * 0.05;
+            });
+
+            renderer.render(scene, camera);
         }
 
-        initParticles();
         animate();
+
+        // Handle Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Mouse Movement Interaction
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            targetRotationX = mouseY * 0.2;
+            targetRotationY = mouseX * 0.2;
+        });
     </script>
 </body>
 </html>
