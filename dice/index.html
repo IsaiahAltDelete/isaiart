@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Dice Roller</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #fff;
+            color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px) rotate(-5deg); }
+            75% { transform: translateX(5px) rotate(5deg); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes resultPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        h1 {
+            font-weight: 800;
+            margin-bottom: 3.5rem;
+            font-size: 2.5rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #000;
+            transform: scaleX(0);
+            animation: lineExpand 0.8s ease-out forwards;
+            transform-origin: left;
+        }
+
+        @keyframes lineExpand {
+            to { transform: scaleX(1); }
+        }
+
+        .dice-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1.5rem;
+            margin: 2.5rem 0;
+        }
+
+        .dice-button {
+            background: #fff;
+            border: 2px solid #000;
+            border-radius: 12px;
+            padding: 1.5rem;
+            font-weight: 600;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dice-button:hover {
+            background: #000;
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .dice-button:active {
+            transform: translateY(1px);
+        }
+
+        .dice-button::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200%;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translate(-50%, -50%) rotate(45deg);
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        .dice-button:hover::after {
+            opacity: 1;
+        }
+
+        .result-container {
+            margin-top: 2.5rem;
+            padding: 2rem;
+            border: 2px solid #000;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .rolling .result,
+        .rolling .dice-type {
+            visibility: hidden;
+        }
+
+        .result {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        .result.show {
+            opacity: 1;
+            transform: scale(1);
+            animation: resultPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .dice-type {
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
+
+        .dice-type.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .controls-container {
+            margin: 2rem 0;
+        }
+
+        .quantity-input {
+            width: 80px;
+            padding: 0.75rem;
+            border: 2px solid #000;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: center;
+            margin: 0.5rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .quantity-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+            transform: scale(1.05);
+        }
+
+        .quantity-label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.5rem;
+            opacity: 0;
+            animation: fadeIn 0.8s ease-out forwards;
+            animation-delay: 0.2s;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #000;
+            border-radius: 50%;
+            position: absolute;
+            animation: spin 1s linear infinite;
+        }
+
+        .rolling .loading-spinner {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VIRTUAL DICE ROLLER</h1>
+        
+        <div class="controls-container">
+            <label class="quantity-label">NUMBER OF DICE</label>
+            <input type="number" class="quantity-input" value="1" min="1" max="10" id="diceCount">
+        </div>
+
+        <div class="dice-grid">
+            <button class="dice-button" data-dice="4">D4</button>
+            <button class="dice-button" data-dice="6">D6</button>
+            <button class="dice-button" data-dice="8">D8</button>
+            <button class="dice-button" data-dice="10">D10</button>
+            <button class="dice-button" data-dice="12">D12</button>
+            <button class="dice-button" data-dice="20">D20</button>
+        </div>
+
+        <div class="result-container">
+            <div class="loading-spinner"></div>
+            <div class="result">-</div>
+            <div class="dice-type">SELECT A DICE TYPE</div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.dice-button').forEach(button => {
+            button.addEventListener('click', async () => {
+                const diceType = parseInt(button.dataset.dice);
+                const count = parseInt(document.getElementById('diceCount').value);
+                
+                if (count < 1 || count > 10) {
+                    alert('Please enter a number between 1 and 10');
+                    return;
+                }
+
+                const resultContainer = document.querySelector('.result-container');
+                const resultElement = document.querySelector('.result');
+                const diceTypeElement = document.querySelector('.dice-type');
+
+                // Remove previous show classes
+                resultElement.classList.remove('show');
+                diceTypeElement.classList.remove('show');
+
+                // Add rolling animation
+                resultContainer.classList.add('rolling');
+
+                // Simulate rolling delay
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                const rolls = [];
+                for (let i = 0; i < count; i++) {
+                    rolls.push(Math.floor(Math.random() * diceType) + 1);
+                }
+
+                const total = rolls.reduce((a, b) => a + b, 0);
+                const resultText = count > 1 ? `${total} (${rolls.join(' + ')})` : total;
+                
+                // Remove rolling animation
+                resultContainer.classList.remove('rolling');
+
+                // Update and show results with animation
+                resultElement.textContent = resultText;
+                diceTypeElement.textContent = 
+                    `${count}d${diceType}${count > 1 ? ` = ${total}` : ''}`;
+
+                // Add show classes with slight delay
+                setTimeout(() => {
+                    resultElement.classList.add('show');
+                    diceTypeElement.classList.add('show');
+                }, 50);
+
+                // Add bounce animation to the button
+                button.style.animation = 'none';
+                button.offsetHeight; // Trigger reflow
+                button.style.animation = 'bounce 0.5s ease';
+            });
+        });
+    </script>
+</body>
+</html>
