@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE SPELLBOOK</title>
+    
+    <!-- Google Fonts for improved typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* =======================
+           Reset and Base Styles
+        ======================= */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* =======================
+               Header
+        ======================= */
+        header {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            color: #b0b0b0;
+        }
+
+        /* =======================
+               Main Content
+        ======================= */
+        main {
+            flex: 1;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* =======================
+            Search and Filters
+        ======================= */
+        #search-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        #search-filter input,
+        #search-filter select,
+        #favorites-toggle {
+            padding: 10px 15px;
+            font-size: 1em;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            transition: border-color 0.3s, background-color 0.3s, color 0.3s;
+        }
+
+        #search-filter input:focus,
+        #search-filter select:focus,
+        #favorites-toggle:focus {
+            border-color: #ffffff;
+            outline: none;
+        }
+
+        #favorites-toggle {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* =======================
+               Spells Container
+        ======================= */
+        #spells-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .spell-card {
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .spell-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+        }
+
+        .spell-card h3 {
+            margin-bottom: 10px;
+            font-size: 1.2em;
+            text-transform: capitalize;
+        }
+
+        .spell-card p {
+            margin-bottom: 5px;
+            font-size: 0.95em;
+            color: #c0c0c0;
+        }
+
+        .favorite-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em;
+            color: #555;
+            transition: color 0.3s;
+        }
+
+        .favorite-btn.favorited {
+            color: #ff4757;
+        }
+
+        .favorite-btn:hover {
+            color: #ff4757;
+        }
+
+        /* =======================
+               Spell Details Modal
+        ======================= */
+        #spell-details {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.95);
+            color: #e0e0e0;
+            overflow-y: auto;
+            padding: 40px;
+            z-index: 1001;
+            display: none;
+        }
+
+        #spell-details #close-details {
+            background-color: #ff5c5c;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            transition: background-color 0.3s;
+        }
+
+        #spell-details #close-details:hover {
+            background-color: #e04848;
+        }
+
+        #spell-details #details-content {
+            background-color: #2c2c2c;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        #spell-details h2 {
+            margin-bottom: 15px;
+            font-size: 2em;
+            text-transform: capitalize;
+        }
+
+        #spell-details p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        #spell-details strong {
+            color: #ffcc00;
+        }
+
+        #spell-details #favorite-detail-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5em;
+            color: #555;
+            transition: color 0.3s;
+            margin-top: 15px;
+        }
+
+        #spell-details #favorite-detail-btn.favorited {
+            color: #ff4757;
+        }
+
+        #spell-details #favorite-detail-btn:hover {
+            color: #ff4757;
+        }
+
+        /* =======================
+               Footer
+        ======================= */
+        footer {
+            background-color: #1e1e1e;
+            color: #b0b0b0;
+            text-align: center;
+            padding: 15px 0;
+            font-size: 0.9em;
+        }
+
+        /* =======================
+               Loading Indicator
+        ======================= */
+        #loading {
+            text-align: center;
+            font-size: 1.5em;
+            margin-top: 50px;
+            color: #ffffff;
+        }
+
+        /* =======================
+               Pagination
+        ======================= */
+        #pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 30px;
+            gap: 10px;
+        }
+
+        #pagination button {
+            padding: 8px 16px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            background-color: #4a4a4a;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #pagination button:disabled {
+            background-color: #777;
+            cursor: not-allowed;
+        }
+
+        #pagination button:hover:not(:disabled) {
+            background-color: #5a5a5a;
+        }
+
+        #pagination span {
+            font-size: 1em;
+            color: #c0c0c0;
+        }
+
+        /* =======================
+               Favorites Toggle
+        ======================= */
+        #favorites-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+        }
+
+        #favorites-toggle input {
+            cursor: pointer;
+        }
+
+        /* =======================
+               Responsive Design
+        ======================= */
+        @media (max-width: 600px) {
+            #search-filter {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            #search-filter input,
+            #search-filter select,
+            #favorites-toggle {
+                flex: 1 1 100%;
+                max-width: none;
+            }
+
+            .spell-card {
+                padding: 10px;
+            }
+
+            .spell-card h3 {
+                font-size: 1.1em;
+            }
+
+            .spell-card p {
+                font-size: 0.9em;
+            }
+
+            #spell-details {
+                padding: 20px;
+            }
+
+            #spell-details h2 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- =======================
+             Header
+    ======================= -->
+    <header>
+        <h1>THE SPELLBOOK</h1>
+        <p>Your comprehensive guide to Dungeons & Dragons spells.</p>
+    </header>
+
+    <!-- =======================
+            Main Content
+    ======================= -->
+    <main>
+        <!-- Search and Filters -->
+        <section id="search-filter">
+            <input type="text" id="search" placeholder="Search spells by name...">
+            <select id="class-filter">
+                <option value="">All Classes</option>
+                <!-- Dynamic options will be populated here -->
+            </select>
+            <select id="level-filter">
+                <option value="">All Levels</option>
+                <option value="0">Cantrip</option>
+                <option value="1">1st Level</option>
+                <option value="2">2nd Level</option>
+                <option value="3">3rd Level</option>
+                <option value="4">4th Level</option>
+                <option value="5">5th Level</option>
+                <option value="6">6th Level</option>
+                <option value="7">7th Level</option>
+                <option value="8">8th Level</option>
+                <option value="9">9th Level</option>
+            </select>
+            <select id="school-filter">
+                <option value="">All Schools</option>
+                <!-- Dynamic options will be populated here -->
+            </select>
+            <label id="favorites-toggle">
+                <input type="checkbox" id="show-favorites">
+                Show Favorites
+            </label>
+        </section>
+
+        <!-- Loading Indicator -->
+        <div id="loading">Loading spells...</div>
+
+        <!-- Spells Container -->
+        <section id="spells-container" style="display: none;">
+            <!-- Spells will be displayed here -->
+        </section>
+
+        <!-- Pagination Controls -->
+        <div id="pagination" style="display: none;">
+            <button id="prev-page">Previous</button>
+            <span id="page-info">Page 1 of 1</span>
+            <button id="next-page">Next</button>
+        </div>
+    </main>
+
+    <!-- =======================
+          Spell Details Modal
+    ======================= -->
+    <section id="spell-details">
+        <button id="close-details">Close</button>
+        <div id="details-content">
+            <!-- Detailed spell info -->
+        </div>
+    </section>
+
+    <!-- =======================
+               Footer
+    ======================= -->
+    <footer>
+        <p>Isaiart &copy; 2024</p>
+    </footer>
+
+    <!-- =======================
+            JavaScript Section
+    ======================= -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const API_BASE_URL = 'https://www.dnd5eapi.co';
+            let allSpells = [];
+            let filteredSpells = [];
+            let currentPage = 1;
+            const spellsPerPage = 20;
+            let totalPages = 1;
+            let showFavoritesOnly = false;
+
+            const searchInput = document.getElementById('search');
+            const classFilter = document.getElementById('class-filter');
+            const levelFilter = document.getElementById('level-filter');
+            const schoolFilter = document.getElementById('school-filter');
+            const showFavoritesCheckbox = document.getElementById('show-favorites');
+            const spellsContainer = document.getElementById('spells-container');
+            const loadingIndicator = document.getElementById('loading');
+            const spellDetailsModal = document.getElementById('spell-details');
+            const detailsContent = document.getElementById('details-content');
+            const closeDetailsBtn = document.getElementById('close-details');
+            const pagination = document.getElementById('pagination');
+            const prevPageBtn = document.getElementById('prev-page');
+            const nextPageBtn = document.getElementById('next-page');
+            const pageInfo = document.getElementById('page-info');
+
+            // Debounce function to limit the rate of function calls
+            function debounce(func, delay) {
+                let debounceTimer;
+                return function() {
+                    const context = this;
+                    const args = arguments;
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => func.apply(context, args), delay);
+                }
+            }
+
+            // Fetch data from API
+            async function fetchData(endpoint) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}${endpoint}`);
+                    if (!response.ok) {
+                        throw new Error(`Error fetching ${endpoint}: ${response.statusText}`);
+                    }
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error(error);
+                    return null;
+                }
+            }
+
+            // Load Classes and Schools for Filters
+            async function loadFilters() {
+                // Load Classes
+                const classesData = await fetchData('/api/classes');
+                if (classesData) {
+                    classesData.results.forEach(cls => {
+                        const option = document.createElement('option');
+                        option.value = cls.index;
+                        option.textContent = cls.name;
+                        classFilter.appendChild(option);
+                    });
+                }
+
+                // Load Schools
+                const schoolsData = await fetchData('/api/magic-schools');
+                if (schoolsData) {
+                    schoolsData.results.forEach(school => {
+                        const option = document.createElement('option');
+                        option.value = school.index;
+                        option.textContent = school.name;
+                        schoolFilter.appendChild(option);
+                    });
+                }
+            }
+
+            // Load All Spells
+            async function loadSpells() {
+                // Check if spells are in localStorage
+                const storedSpells = localStorage.getItem('allSpells');
+                if (storedSpells) {
+                    allSpells = JSON.parse(storedSpells);
+                    console.log('Loaded spells from localStorage.');
+                    initializeApp();
+                } else {
+                    const data = await fetchData('/api/spells');
+                    if (data) {
+                        allSpells = data.results;
+                        // Fetch detailed info for each spell
+                        // To improve performance, we'll fetch in batches
+                        const batchSize = 20;
+                        for (let i = 0; i < allSpells.length; i += batchSize) {
+                            const batch = allSpells.slice(i, i + batchSize);
+                            const spellPromises = batch.map(spell => fetchData(spell.url));
+                            const spellDetails = await Promise.all(spellPromises);
+                            allSpells.splice(i, batchSize, ...spellDetails.filter(spell => spell !== null));
+                            // Update progress (optional)
+                            console.log(`Fetched spells ${i + 1} to ${i + batch.length}`);
+                        }
+                        // Save spells to localStorage
+                        localStorage.setItem('allSpells', JSON.stringify(allSpells));
+                        console.log('Fetched and saved spells to localStorage.');
+                        initializeApp();
+                    }
+                }
+            }
+
+            // Initialize the Application
+            function initializeApp() {
+                filteredSpells = allSpells;
+                setupPagination();
+                displaySpells();
+                loadingIndicator.style.display = 'none';
+                spellsContainer.style.display = 'grid';
+                pagination.style.display = 'flex';
+            }
+
+            // Display Spells based on current page and filters
+            function displaySpells() {
+                spellsContainer.innerHTML = '';
+
+                if (filteredSpells.length === 0) {
+                    spellsContainer.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;">No spells found.</p>';
+                    pagination.style.display = 'none';
+                    return;
+                }
+
+                totalPages = Math.ceil(filteredSpells.length / spellsPerPage);
+                if (totalPages > 1) {
+                    pagination.style.display = 'flex';
+                } else {
+                    pagination.style.display = 'none';
+                }
+
+                const start = (currentPage - 1) * spellsPerPage;
+                const end = start + spellsPerPage;
+                const spellsToDisplay = filteredSpells.slice(start, end);
+
+                // Retrieve favorites from localStorage
+                const favoriteSpells = JSON.parse(localStorage.getItem('favoriteSpells')) || [];
+
+                spellsToDisplay.forEach(spell => {
+                    const card = document.createElement('div');
+                    card.classList.add('spell-card');
+
+                    // Assign color based on spell school
+                    const schoolColor = getSchoolColor(spell.school.index);
+
+                    card.innerHTML = `
+                        <h3 style="color: ${schoolColor};">${spell.name}</h3>
+                        <p><strong>Level:</strong> ${spell.level === 0 ? 'Cantrip' : spell.level}</p>
+                        <p><strong>School:</strong> ${spell.school.name}</p>
+                        <button class="favorite-btn ${favoriteSpells.includes(spell.index) ? 'favorited' : ''}" data-index="${spell.index}" title="Toggle Favorite">&#9733;</button>
+                    `;
+                    card.addEventListener('click', (e) => {
+                        // Prevent triggering when clicking the favorite button
+                        if (e.target.classList.contains('favorite-btn')) return;
+                        showSpellDetails(spell);
+                    });
+                    spellsContainer.appendChild(card);
+                });
+
+                // Attach event listeners to favorite buttons
+                const favoriteButtons = document.querySelectorAll('.favorite-btn');
+                favoriteButtons.forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleFavorite(button.dataset.index);
+                        button.classList.toggle('favorited');
+                    });
+                });
+
+                // Update Pagination Info
+                pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+
+                // Enable/Disable Pagination Buttons
+                prevPageBtn.disabled = currentPage === 1;
+                nextPageBtn.disabled = currentPage === totalPages;
+            }
+
+            // Setup Pagination Controls
+            function setupPagination() {
+                currentPage = 1;
+                displaySpells();
+            }
+
+            // Show Spell Details in Modal
+            function showSpellDetails(spell) {
+                // Retrieve favorites from localStorage
+                const favoriteSpells = JSON.parse(localStorage.getItem('favoriteSpells')) || [];
+                const isFavorited = favoriteSpells.includes(spell.index);
+
+                // Assign color based on spell school
+                const schoolColor = getSchoolColor(spell.school.index);
+
+                detailsContent.innerHTML = `
+                    <h2 style="color: ${schoolColor};">${spell.name}</h2>
+                    <p><strong>Level:</strong> ${spell.level === 0 ? 'Cantrip' : spell.level}</p>
+                    <p><strong>School:</strong> ${spell.school.name}</p>
+                    <p><strong>Classes:</strong> ${spell.classes.map(cls => cls.name).join(', ')}</p>
+                    <p><strong>Casting Time:</strong> ${spell.casting_time}</p>
+                    <p><strong>Range:</strong> ${spell.range}</p>
+                    <p><strong>Components:</strong> ${spell.components.join(', ')}${spell.material ? ` (${spell.material})` : ''}</p>
+                    <p><strong>Duration:</strong> ${spell.duration}</p>
+                    <p><strong>Description:</strong></p>
+                    <p>${spell.desc.join('<br><br>')}</p>
+                    ${spell.higher_level ? `<p><strong>At Higher Levels:</strong></p><p>${spell.higher_level.join('<br><br>')}</p>` : ''}
+                    <button id="favorite-detail-btn" class="favorite-btn ${isFavorited ? 'favorited' : ''}" data-index="${spell.index}" title="Toggle Favorite">&#9733; ${isFavorited ? 'Unfavorite' : 'Favorite'}</button>
+                `;
+                spellDetailsModal.style.display = 'block';
+
+                // Attach event listener to the favorite button in the modal
+                const favoriteDetailBtn = document.getElementById('favorite-detail-btn');
+                favoriteDetailBtn.addEventListener('click', () => {
+                    toggleFavorite(favoriteDetailBtn.dataset.index);
+                    favoriteDetailBtn.classList.toggle('favorited');
+                    favoriteDetailBtn.innerHTML = favoriteDetailBtn.classList.contains('favorited') ? '★ Unfavorite' : '☆ Favorite';
+                });
+            }
+
+            // Close Spell Details Modal
+            closeDetailsBtn.addEventListener('click', () => {
+                spellDetailsModal.style.display = 'none';
+            });
+
+            // Close Modal when clicking outside the content
+            spellDetailsModal.addEventListener('click', (e) => {
+                if (e.target === spellDetailsModal) {
+                    spellDetailsModal.style.display = 'none';
+                }
+            });
+
+            // Toggle Favorite Status
+            function toggleFavorite(spellIndex) {
+                let favoriteSpells = JSON.parse(localStorage.getItem('favoriteSpells')) || [];
+                if (favoriteSpells.includes(spellIndex)) {
+                    favoriteSpells = favoriteSpells.filter(index => index !== spellIndex);
+                } else {
+                    favoriteSpells.push(spellIndex);
+                }
+                localStorage.setItem('favoriteSpells', JSON.stringify(favoriteSpells));
+                // If showing favorites only, update the display
+                if (showFavoritesOnly) {
+                    applyFilters();
+                }
+            }
+
+            // Apply Filters based on user input
+            function applyFilters() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const selectedClass = classFilter.value;
+                const selectedLevel = levelFilter.value;
+                const selectedSchool = schoolFilter.value;
+                showFavoritesOnly = showFavoritesCheckbox.checked;
+
+                let favoriteSpells = JSON.parse(localStorage.getItem('favoriteSpells')) || [];
+
+                filteredSpells = allSpells.filter(spell => {
+                    const matchesSearch = spell.name.toLowerCase().includes(searchTerm);
+                    const matchesClass = selectedClass === '' || spell.classes.some(cls => cls.index === selectedClass);
+                    const matchesLevel = selectedLevel === '' || spell.level.toString() === selectedLevel;
+                    const matchesSchool = selectedSchool === '' || spell.school.index === selectedSchool;
+                    const matchesFavorite = !showFavoritesOnly || favoriteSpells.includes(spell.index);
+                    return matchesSearch && matchesClass && matchesLevel && matchesSchool && matchesFavorite;
+                });
+
+                setupPagination();
+                displaySpells();
+            }
+
+            // Event Listeners for Search and Filters
+            searchInput.addEventListener('input', debounce(applyFilters, 300));
+            classFilter.addEventListener('change', applyFilters);
+            levelFilter.addEventListener('change', applyFilters);
+            schoolFilter.addEventListener('change', applyFilters);
+            showFavoritesCheckbox.addEventListener('change', applyFilters);
+
+            // Pagination Button Event Listeners
+            prevPageBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    displaySpells();
+                }
+            });
+
+            nextPageBtn.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    displaySpells();
+                }
+            });
+
+            // Assign Colors to Spell Schools
+            function getSchoolColor(schoolIndex) {
+                const schoolColors = {
+                    'abjuration': '#1abc9c',     // Turquoise
+                    'conjuration': '#3498db',    // Blue
+                    'divination': '#9b59b6',     // Purple
+                    'enchantment': '#f1c40f',    // Yellow
+                    'evocation': '#e74c3c',      // Red
+                    'illusion': '#95a5a6',       // Gray
+                    'necromancy': '#2ecc71',     // Green
+                    'transmutation': '#e67e22',  // Orange
+                };
+                return schoolColors[schoolIndex] || '#ffffff'; // Default to white if not found
+            }
+
+            // Initialize the Application
+            async function init() {
+                await loadFilters();
+                await loadSpells();
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>
