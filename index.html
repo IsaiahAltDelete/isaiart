@@ -7,6 +7,13 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
     <style>
+        /* Reset and Base Styles */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: 'Roboto Mono', monospace;
             background: #000000;
@@ -15,12 +22,41 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            width: 100vw;
             margin: 0;
             overflow: hidden;
+            position: relative;
+            padding: 2rem;
         }
+
+        /* Particle Canvas Styling */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: transparent;
+        }
+
+        /* Container Styling */
         .container {
+            position: relative;
+            z-index: 1;
             text-align: center;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 12px;
+            max-width: 100%;
+            max-height: 100%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
+
+        /* Typing Animation */
         .typing-container {
             display: inline-block;
             overflow: hidden;
@@ -28,60 +64,258 @@
             border-right: 0.15em solid #ffffff;
             animation: typing 2s steps(30, end), blink-caret 0.75s step-end infinite;
         }
+
+        /* Heading Styling */
         h1 {
-            margin-bottom: 40px;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            font-size: 2.5rem;
         }
+
         h1 a {
             color: #ffffff;
             text-decoration: none;
-            display: inline-block;
-            overflow: hidden;
+            font-weight: 700;
+            transition: color 0.3s ease;
         }
+
         h1 a:hover {
             color: #ff4757;
         }
+
+        /* Keyframes for Animations */
         @keyframes typing {
             from { width: 0; }
             to { width: 100%; }
         }
+
         @keyframes blink-caret {
             from, to { border-color: transparent; }
             50% { border-color: #ffffff; }
         }
+
+        /* Link Container Styling */
         .link-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 1200px; /* Limits the maximum width for better readability */
         }
+
+        /* Interactive Links Styling */
         .link {
-            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem 2rem;
+            border: 2px solid #fff;
+            border-radius: 20px;
+            background-color: transparent;
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: uppercase;
             text-decoration: none;
-            font-size: 1.5rem;
-            transition: color 0.3s ease;
+            box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 4px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            min-height: 50px;
+            text-align: center;
         }
+
         .link:hover {
-            color: #ff4757;
+            background-color: #fff;
+            color: #000;
+        }
+
+        /* Scrollbar Styling for Container */
+        .container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 1200px) {
+            h1 {
+                font-size: 2.3rem;
+            }
+
+            .link {
+                font-size: 1.1rem;
+                padding: 0.9rem 1.8rem;
+            }
+        }
+
+        @media (max-width: 900px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+
+            .link {
+                font-size: 1rem;
+                padding: 0.8rem 1.6rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .link {
+                font-size: 0.9rem;
+                padding: 0.7rem 1.4rem;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Particle Canvas -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Main Content Container -->
     <div class="container">
         <h1 class="typing-container"><a href="https://isaiart.com">ISAIART</a></h1>
         <div class="link-container">
-            <a href="https://braille.isaiart.com" class="link">Braille Translator</a>
-            <a href="https://code.isaiart.com" class="link">Web Coding</a>
-            <a href="https://music.isaiart.com" class="link">Music</a>
-            <a href="https://pokedex.isaiart.com" class="link">Pokedex</a>
-            <a href="https://reboot.isaiart.com" class="link">Reboot</a>
-            <a href="https://isaiart.com/rain" class="link">Timer</a>
-            <a href="https://thg.isaiart.com" class="link">The Hunger Games</a>
-            <a href="https://isaiart.com/translate" class="link">Zalgo Translator</a>
-            <a href="https://isaiart.com/piano" class="link">Piano</a>
-            <a href="https://isaiart.com/drumpad" class="link">Drum Pad</a>
+            <!-- Alphabetically Ordered Links -->
             <a href="https://isaiart.com/8beat" class="link">8 Beat</a>
             <a href="https://isaiart.com/projects" class="link">All Projects</a>
+            <a href="https://braille.isaiart.com" class="link">Braille Translator</a>
+            <a href="https://isaiart.com/character/" class="link">Character</a>
+            <a href="https://isaiart.com/drumpad" class="link">Drum Pad</a>
+            <a href="https://music.isaiart.com" class="link">Music</a>
+            <a href="https://isaiart.com/piano" class="link">Piano</a>
+            <a href="https://pokedex.isaiart.com" class="link">Pokedex</a>
+            <a href="https://reboot.isaiart.com" class="link">Reboot</a>
+            <a href="https://isaiart.com/tav/" class="link">Tav</a>
+            <a href="https://isaiart.com/rain" class="link">Timer</a>
+            <a href="https://thg.isaiart.com" class="link">THG</a>
+            <a href="https://isaiart.com/text/" class="link">Text</a>
+            <a href="https://code.isaiart.com" class="link">Web Coding</a>
+            <a href="https://isaiart.com/translate" class="link">Zalgo Translator</a>
             <a href="https://svg.isaiart.com" class="link">SVG Editor</a>
         </div>
     </div>
+
+    <!-- Particle Effect Script -->
+    <script>
+        // Particle Configuration
+        const PARTICLE_COUNT = 300; // Increased number of particles for a denser effect
+        const PARTICLE_MIN_SIZE = 1;
+        const PARTICLE_MAX_SIZE = 4;
+        const PARTICLE_COLOR = 'rgba(255, 255, 255, 0.8)';
+        const PARTICLE_MIN_SPEED = 0.2;
+        const PARTICLE_MAX_SPEED = 1.2;
+        const MOUSE_RADIUS = 150;
+
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let particles = [];
+        let mouse = { x: null, y: null };
+
+        // Resize Canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Track Mouse Movement
+        window.addEventListener('mousemove', function(event) {
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        });
+
+        window.addEventListener('mouseout', function() {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
+        // Particle Class
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * (PARTICLE_MAX_SIZE - PARTICLE_MIN_SIZE) + PARTICLE_MIN_SIZE;
+                this.speed = Math.random() * (PARTICLE_MAX_SPEED - PARTICLE_MIN_SPEED) + PARTICLE_MIN_SPEED;
+                const angle = Math.random() * 2 * Math.PI;
+                this.vx = Math.cos(angle) * this.speed;
+                this.vy = Math.sin(angle) * this.speed;
+            }
+
+            update() {
+                // Move Particle
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Wrap around the edges
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.y < 0) this.y = canvas.height;
+
+                // Mouse Interaction
+                if (mouse.x !== null && mouse.y !== null) {
+                    const dx = this.x - mouse.x;
+                    const dy = this.y - mouse.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < MOUSE_RADIUS) {
+                        const angle = Math.atan2(dy, dx);
+                        const force = (MOUSE_RADIUS - distance) / MOUSE_RADIUS;
+                        this.vx += Math.cos(angle) * force * 0.05;
+                        this.vy += Math.sin(angle) * force * 0.05;
+                    }
+                }
+
+                // Gradually reduce velocity for smoother motion
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = PARTICLE_COLOR;
+                ctx.fill();
+            }
+        }
+
+        // Initialize Particles
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        // Animate Particles
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        initParticles();
+        animate();
+    </script>
 </body>
 </html>
