@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Tiling Tester</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .slider-container {
+            margin-bottom: 15px;
+        }
+        
+        .slider-container label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .slider-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .preview-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        #imagePreview {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            overflow: hidden;
+        }
+        
+        .tile-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="slider-container">
+            <label for="imageSize">Image Size</label>
+            <input type="range" id="imageSize" min="50" max="200" value="100">
+            <div class="slider-info">
+                <span>50px</span>
+                <span id="imageSizeValue">100px</span>
+                <span>200px</span>
+            </div>
+        </div>
+        
+        <div class="slider-container">
+            <label for="gapSize">Gap Size</label>
+            <input type="range" id="gapSize" min="0" max="50" value="0">
+            <div class="slider-info">
+                <span>0px</span>
+                <span id="gapSizeValue">0px</span>
+                <span>50px</span>
+            </div>
+        </div>
+        
+        <div class="slider-container">
+            <label for="rotation">Rotation</label>
+            <input type="range" id="rotation" min="0" max="360" value="0">
+            <div class="slider-info">
+                <span>0°</span>
+                <span id="rotationValue">0°</span>
+                <span>360°</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-container">
+        <div id="imagePreview">
+            <div class="tile-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const imageSizeSlider = document.getElementById('imageSize');
+        const gapSizeSlider = document.getElementById('gapSize');
+        const rotationSlider = document.getElementById('rotation');
+        const imageSizeValue = document.getElementById('imageSizeValue');
+        const gapSizeValue = document.getElementById('gapSizeValue');
+        const rotationValue = document.getElementById('rotationValue');
+        const tileContainer = document.querySelector('.tile-container');
+
+        function updateTiles() {
+            const imageSize = parseInt(imageSizeSlider.value);
+            const gapSize = parseInt(gapSizeSlider.value);
+            const rotation = parseInt(rotationSlider.value);
+            
+            // Update value displays
+            imageSizeValue.textContent = `${imageSize}px`;
+            gapSizeValue.textContent = `${gapSize}px`;
+            rotationValue.textContent = `${rotation}°`;
+            
+            // Clear existing tiles
+            tileContainer.innerHTML = '';
+            
+            // Calculate number of tiles needed
+            const containerWidth = document.getElementById('imagePreview').offsetWidth;
+            const containerHeight = document.getElementById('imagePreview').offsetHeight;
+            const tilesAcross = Math.ceil(containerWidth / (imageSize + gapSize)) + 1;
+            const tilesDown = Math.ceil(containerHeight / (imageSize + gapSize)) + 1;
+            
+            // Create tiles
+            for (let y = 0; y < tilesDown; y++) {
+                for (let x = 0; x < tilesAcross; x++) {
+                    const img = document.createElement('img');
+                    img.src = '/api/placeholder/' + imageSize + '/' + imageSize;
+                    img.style.position = 'absolute';
+                    img.style.left = `${x * (imageSize + gapSize)}px`;
+                    img.style.top = `${y * (imageSize + gapSize)}px`;
+                    img.style.width = `${imageSize}px`;
+                    img.style.height = `${imageSize}px`;
+                    img.style.transform = `rotate(${rotation}deg)`;
+                    img.style.transformOrigin = 'center center';
+                    tileContainer.appendChild(img);
+                }
+            }
+        }
+
+        // Add event listeners
+        imageSizeSlider.addEventListener('input', updateTiles);
+        gapSizeSlider.addEventListener('input', updateTiles);
+        rotationSlider.addEventListener('input', updateTiles);
+
+        // Initial render
+        updateTiles();
+
+        // Update on window resize
+        window.addEventListener('resize', updateTiles);
+    </script>
+</body>
+</html>
