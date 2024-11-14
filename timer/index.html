@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rain Timer</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #1a1a1a;
+            position: relative;
+        }
+
+        #rainCanvas, #waterCanvas, #fishCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #rainCanvas { z-index: 1; }
+        #waterCanvas { z-index: 2; }
+        #fishCanvas { z-index: 3; }
+
+        #countdown, #time-up {
+            font-size: 6rem;
+            font-weight: 600;
+            z-index: 4;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #time-up { display: none; }
+
+        .controls {
+            position: fixed;
+            bottom: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 10px;
+            border-radius: 10px 10px 0 0;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            transition: bottom 0.3s ease;
+        }
+
+        .controls-trigger {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 10%;
+            z-index: 4;
+        }
+
+        .controls-trigger:hover + .controls,
+        .controls:hover {
+            bottom: 0;
+        }
+
+        input, button {
+            width: 100%;
+            padding: 5px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        button {
+            cursor: pointer;
+            background: #4CAF50;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        .color-options {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+        }
+
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .color-option.selected {
+            border-color: white;
+        }
+
+        .bounce {
+            display: inline-block;
+            animation: bounce 0.5s ease infinite alternate;
+            animation-delay: calc(var(--delay) * 0.1s);
+        }
+
+        @keyframes bounce {
+            to { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <canvas id="rainCanvas"></canvas>
+        <canvas id="waterCanvas"></canvas>
+        <canvas id="fishCanvas"></canvas>
+        <div id="countdown">00:00:00</div>
+        <div id="time-up"></div>
+    </div>
+    <div class="controls-trigger"></div>
+    <div class="controls">
+        <input type="datetime-local" id="endDate">
+        <button onclick="startCountdown()">Start Countdown</button>
+        <div class="color-options">
+            <div class="color-option selected" style="background-color: #4CAF50;"></div>
+            <div class="color-option" style="background-color: #2196F3;"></div>
+            <div class="color-option" style="background-color: #FFC107;"></div>
+            <div class="color-option" style="background-color: #E91E63;"></div>
+            <div class="color-option" style="background-color: #9C27B0;"></div>
+        </div>
+    </div>
+
+    <script>
+        const rainCanvas = document.getElementById('rainCanvas');
+        const rainCtx = rainCanvas.getContext('2d');
+        const waterCanvas = document.getElementById('waterCanvas');
+        const waterCtx = waterCanvas.getContext('2d');
+        const fishCanvas = document.getElementById('fishCanvas');
+        const fishCtx = fishCanvas.getContext('2d');
+        const countdownDisplay = document.getElementById('countdown');
+        const timeUpDisplay = document.getElementById('time-up');
+        const endDateInput = document.getElementById('endDate');
+        const colorOptions = document.querySelectorAll('.color-option');
+
+        let countdown;
+        let startTime;
+        let totalTime;
+        let progress = 0;
+
+        const raindrops = [];
+        const splashes = [];
+        const fishes = [];
+        const numRaindrops = 200;
+        const numFishes = 10;
+        const gravity = 0.1;
+        const splashDecay = 0.02;
+
+        let waterColor = '#4CAF50';
+        let waterHeight = 0;
+        let targetWaterHeight = 0;
+
+        const fishEmojis = ['🐠', '🐟', '🐡', '🦈', '🐳', '🐋', '🦑', '🐙'];
+
+        function setCanvasSize() {
+            [rainCanvas, waterCanvas, fishCanvas].forEach(canvas => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            });
+        }
+
+        function createRaindrop() {
+            return {
+                x: Math.random() * rainCanvas.width,
+                y: Math.random() * rainCanvas.height,
+                speed: Math.random() * 5 + 2,
+                length: Math.random() * 20 + 10
+            };
+        }
+
+        function createFish() {
+            return {
+                x: Math.random() * fishCanvas.width,
+                y: fishCanvas.height - Math.random() * waterHeight,
+                speed: Math.random() * 0.5 + 0.5,
+                size: Math.random() * 20 + 50,
+                direction: Math.random() < 0.5 ? -1 : 1,
+                emoji: fishEmojis[Math.floor(Math.random() * fishEmojis.length)],
+                yOffset: 0,
+                ySpeed: (Math.random() - 0.5) * 0.2
+            };
+        }
+
+        function createRaindrops() {
+            for (let i = 0; i < numRaindrops; i++) {
+                raindrops.push(createRaindrop());
+            }
+        }
+
+        function createFishes() {
+            for (let i = 0; i < numFishes; i++) {
+                fishes.push(createFish());
+            }
+        }
+
+        function createSplash(x, y) {
+            return {
+                x: x,
+                y: y,
+                radius: Math.random() * 3 + 1,
+                opacity: 1
+            };
+        }
+
+        function moveRaindrops() {
+            raindrops.forEach(raindrop => {
+                raindrop.y += raindrop.speed;
+                if (raindrop.y > rainCanvas.height - waterHeight) {
+                    raindrop.y = 0;
+                    raindrop.x = Math.random() * rainCanvas.width;
+                    splashes.push(createSplash(raindrop.x, rainCanvas.height - waterHeight));
+                }
+            });
+        }
+
+        function moveFishes() {
+            fishes.forEach(fish => {
+                fish.x += fish.speed * fish.direction;
+
+                if (fish.x > fishCanvas.width + fish.size) {
+                    fish.x = -fish.size;
+                } else if (fish.x < -fish.size) {
+                    fish.x = fishCanvas.width + fish.size;
+                }
+
+                fish.yOffset += fish.ySpeed;
+                fish.yOffset = Math.max(-10, Math.min(10, fish.yOffset));
+
+                const waterLevel = fishCanvas.height - waterHeight;
+                const targetY = waterLevel + fish.yOffset;
+                fish.y += (targetY - fish.y) * 0.05;
+                fish.y = Math.max(waterLevel, Math.min(fishCanvas.height, fish.y));
+
+                if (Math.random() < 0.005) {
+                    fish.direction *= -1;
+                }
+            });
+        }
+
+        function moveSplashes() {
+            for (let i = splashes.length - 1; i >= 0; i--) {
+                splashes[i].opacity -= splashDecay;
+                if (splashes[i].opacity <= 0) {
+                    splashes.splice(i, 1);
+                }
+            }
+        }
+
+        function drawRaindrops() {
+            rainCtx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
+            rainCtx.strokeStyle = waterColor;
+            rainCtx.lineWidth = 1;
+            rainCtx.lineCap = 'round';
+
+            raindrops.forEach(raindrop => {
+                rainCtx.beginPath();
+                rainCtx.moveTo(raindrop.x, raindrop.y);
+                rainCtx.lineTo(raindrop.x, raindrop.y - raindrop.length);
+                rainCtx.stroke();
+            });
+        }
+
+        function drawSplashes() {
+            splashes.forEach(splash => {
+                rainCtx.beginPath();
+                rainCtx.arc(splash.x, splash.y, splash.radius, 0, Math.PI * 2);
+                rainCtx.fillStyle = `rgba(255, 255, 255, ${splash.opacity})`;
+                rainCtx.fill();
+            });
+        }
+
+        function drawWater() {
+            waterHeight += (targetWaterHeight - waterHeight) * 0.1;
+
+            waterCtx.clearRect(0, 0, waterCanvas.width, waterCanvas.height);
+            waterCtx.fillStyle = waterColor;
+            waterCtx.beginPath();
+            waterCtx.moveTo(0, waterCanvas.height);
+            
+            for (let i = 0; i <= waterCanvas.width; i++) {
+                waterCtx.lineTo(i, waterCanvas.height - waterHeight + Math.sin(i * 0.05 + Date.now() * 0.005) * 5);
+            }
+            
+            waterCtx.lineTo(waterCanvas.width, waterCanvas.height);
+            waterCtx.closePath();
+            waterCtx.fill();
+        }
+
+        function drawFishes() {
+            fishCtx.clearRect(0, 0, fishCanvas.width, fishCanvas.height);
+            fishCtx.textAlign = 'center';
+            fishCtx.textBaseline = 'middle';
+
+            fishes.forEach(fish => {
+                fishCtx.save();
+                fishCtx.translate(fish.x, fish.y);
+                fishCtx.scale(fish.direction * fish.size / 30, fish.size / 30);
+                fishCtx.fillText(fish.emoji, 0, 0);
+                fishCtx.restore();
+            });
+        }
+
+        function animate() {
+            moveRaindrops();
+            moveSplashes();
+            moveFishes();
+            drawRaindrops();
+            drawSplashes();
+            drawWater();
+            drawFishes();
+            requestAnimationFrame(animate);
+        }
+
+        function startCountdown() {
+            clearInterval(countdown);
+            hideTimeUp();
+            const endDate = new Date(endDateInput.value).getTime();
+            startTime = Date.now();
+            totalTime = endDate - startTime;
+            progress = 0;
+            waterHeight = 0;
+            targetWaterHeight = 0;
+            
+            updateCountdownDisplay(totalTime);
+
+            countdown = setInterval(() => {
+                const remainingTime = endDate - Date.now();
+                updateCountdownDisplay(remainingTime);
+                progress = (totalTime - remainingTime) / totalTime;
+                targetWaterHeight = rainCanvas.height * progress;
+
+                if (remainingTime <= 0) {
+                    clearInterval(countdown);
+                    displayTimeUp();
+                }
+            }, 1000);
+        }
+
+        function updateCountdownDisplay(time) {
+            const days = Math.floor(time / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((time % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((time % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((time % (1000 * 60)) / 1000);
+
+            let displayString = '';
+            if (days > 0) displayString += `${days}d `;
+            if (hours > 0 || days > 0) displayString += `${hours}h `;
+            if (minutes > 0 || hours > 0 || days > 0) displayString += `${minutes}m `;
+            displayString += `${seconds}s`;
+
+            countdownDisplay.textContent = displayString;
+        }
+
+        function displayTimeUp() {
+            countdownDisplay.style.display = 'none';
+            timeUpDisplay.innerHTML = "Time's Up!".split('').map((char, index) => 
+                `<span class="bounce" style="--delay: ${index}">${char}</span>`
+            ).join('');
+            timeUpDisplay.style.display = 'block';
+        }
+
+        function hideTimeUp() {
+            timeUpDisplay.style.display = 'none';
+            countdownDisplay.style.display = 'block';
+        }
+
+        function setDefaultEndTime() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset() + 5);
+            const localISOTime = now.toISOString().slice(0, 16);
+            endDateInput.value = localISOTime;
+        }
+
+        colorOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                colorOptions.forEach(opt => opt.classList.remove('selected'));
+                this.classList.add('selected');
+                waterColor = this.style.backgroundColor;
+            });
+        });
+
+        window.addEventListener('resize', setCanvasSize);
+
+        setCanvasSize();
+        createRaindrops();
+        createFishes();
+        animate();
+        setDefaultEndTime();
+    </script>
+</body>
+</html>
