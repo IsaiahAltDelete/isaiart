@@ -41,6 +41,24 @@
             width: 100%;
             margin: 10px 0;
         }
+
+        .file-upload {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .file-upload label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .preview-image {
+            max-width: 200px;
+            margin-top: 10px;
+            display: none;
+        }
         
         .preview-container {
             background: white;
@@ -63,10 +81,23 @@
             height: 100%;
             position: relative;
         }
+
+        .error-message {
+            color: #d32f2f;
+            margin-top: 5px;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="controls">
+        <div class="file-upload">
+            <label for="imageUpload">Upload Image</label>
+            <input type="file" id="imageUpload" accept="image/*">
+            <img id="uploadPreview" class="preview-image" alt="Upload preview">
+            <div id="errorMessage" class="error-message"></div>
+        </div>
+
         <div class="slider-container">
             <label for="imageSize">Image Size</label>
             <input type="range" id="imageSize" min="50" max="200" value="100">
@@ -112,6 +143,32 @@
         const gapSizeValue = document.getElementById('gapSizeValue');
         const rotationValue = document.getElementById('rotationValue');
         const tileContainer = document.querySelector('.tile-container');
+        const imageUpload = document.getElementById('imageUpload');
+        const uploadPreview = document.getElementById('uploadPreview');
+        const errorMessage = document.getElementById('errorMessage');
+
+        let uploadedImageUrl = null;
+
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        uploadedImageUrl = e.target.result;
+                        uploadPreview.src = uploadedImageUrl;
+                        uploadPreview.style.display = 'block';
+                        errorMessage.style.display = 'none';
+                        updateTiles();
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    errorMessage.textContent = 'Please upload an image file';
+                    errorMessage.style.display = 'block';
+                    uploadPreview.style.display = 'none';
+                }
+            }
+        });
 
         function updateTiles() {
             const imageSize = parseInt(imageSizeSlider.value);
@@ -136,7 +193,7 @@
             for (let y = 0; y < tilesDown; y++) {
                 for (let x = 0; x < tilesAcross; x++) {
                     const img = document.createElement('img');
-                    img.src = '/api/placeholder/' + imageSize + '/' + imageSize;
+                    img.src = uploadedImageUrl || '/api/placeholder/' + imageSize + '/' + imageSize;
                     img.style.position = 'absolute';
                     img.style.left = `${x * (imageSize + gapSize)}px`;
                     img.style.top = `${y * (imageSize + gapSize)}px`;
@@ -144,6 +201,7 @@
                     img.style.height = `${imageSize}px`;
                     img.style.transform = `rotate(${rotation}deg)`;
                     img.style.transformOrigin = 'center center';
+                    img.style.objectFit = 'cover';
                     tileContainer.appendChild(img);
                 }
             }
