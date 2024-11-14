@@ -4,129 +4,141 @@
     <title>LINKED</title>
     <link href="https://fonts.cdnjs.cloudflare.com/ajax/libs/karla/2.3.1/karla.min.css" rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: 'Karla', sans-serif;
-            margin: 0;
+            background: #fff;
+            color: #000;
             min-height: 100vh;
-            background: linear-gradient(135deg, #161921, #101218, #0c0e12);
-            color: rgba(255, 255, 255, 0.9);
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 2rem;
         }
 
         .container {
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 10px;
-            padding: 1.25rem;
             width: 100%;
             max-width: 600px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            padding: 2.5rem;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            text-align: center;
         }
 
         h1 {
-            color: rgba(255, 255, 255, 1);
-            margin-bottom: 1.5rem;
-            font-weight: 600;
-            text-align: center;
-            font-size: 2.5rem;
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 2.5rem;
             letter-spacing: 0.2em;
         }
 
         .input-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 2.5rem;
         }
 
         .input-group p {
-            color: rgba(255, 255, 255, 0.6);
-            margin-bottom: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
         }
 
         input {
             width: 100%;
-            padding: 0.75rem;
-            margin: 0.5rem 0;
-            background: rgba(0, 0, 0, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            color: rgba(255, 255, 255, 0.9);
+            padding: 1rem 1.5rem;
+            margin: 0.75rem 0;
+            border: 2px solid #000;
+            border-radius: 12px;
             font-family: 'Karla', sans-serif;
-            transition: all 200ms ease;
-            box-sizing: border-box;
+            font-size: 1rem;
+            text-align: center;
+            transition: all 250ms ease;
         }
 
         input:focus {
             outline: none;
-            border-color: rgb(37, 172, 232);
-            background: rgba(0, 0, 0, 0.4);
+            background: #000;
+            color: #fff;
+        }
+
+        input::placeholder {
+            color: rgba(0, 0, 0, 0.5);
+        }
+
+        input:focus::placeholder {
+            color: rgba(255, 255, 255, 0.5);
         }
 
         button {
-            background: rgb(29, 101, 134);
-            color: rgba(255, 255, 255, 0.9);
-            padding: 0.75rem 1.25rem;
-            border: none;
-            border-radius: 8px;
+            background: #000;
+            color: #fff;
+            padding: 1rem 2rem;
+            border: 2px solid #000;
+            border-radius: 12px;
             cursor: pointer;
             font-family: 'Karla', sans-serif;
-            transition: all 200ms ease;
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: all 250ms ease;
+            margin-top: 1rem;
         }
 
         button:hover {
-            background: rgb(37, 172, 232);
-            transform: translateY(-1px);
+            background: #fff;
+            color: #000;
         }
 
         #output {
-            margin-top: 1.5rem;
-            padding: 1rem;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            margin-top: 2.5rem;
+            padding: 2rem;
+            border: 2px solid #000;
+            border-radius: 12px;
         }
 
         #output h3 {
-            color: rgba(255, 255, 255, 0.9);
-            margin-top: 0;
-            margin-bottom: 1rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
         }
 
         #result {
-            color: #8a8e94;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 0.75rem;
-            border-radius: 8px;
-            word-wrap: break-word;
+            padding: 1.5rem;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.03);
             font-family: monospace;
-            min-height: 2.5em;
+            min-height: 3em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-all;
         }
 
         .copy-button {
-            margin-top: 1rem;
             width: 100%;
+            margin-top: 1.5rem;
         }
 
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 14px;
-        }
+        @media (max-width: 480px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .container {
+                padding: 1.5rem;
+            }
 
-        ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-        }
+            h1 {
+                font-size: 2.5rem;
+            }
 
-        ::-webkit-scrollbar-thumb {
-            background: rgb(29, 101, 134);
-            border-radius: 8px;
-            border: 3px solid transparent;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgb(37, 172, 232);
+            button {
+                padding: 0.875rem 1.5rem;
+            }
         }
     </style>
 </head>
