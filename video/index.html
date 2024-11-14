@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultra-Minimalist Video Compression Tool</title>
+    <style>
+        /* Ultra-minimalist monochrome style */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            background-color: #fff;
+            color: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        h1 {
+            font-weight: 800;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        input[type="file"], button, select, a {
+            width: 100%;
+            max-width: 300px;
+            padding: 1rem;
+            font-size: 1rem;
+            text-align: center;
+            border-radius: 16px;
+            border: 2px solid #000;
+            background: #fff;
+            color: #000;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin: 1.5rem 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        input[type="file"] {
+            cursor: pointer;
+        }
+        button:hover, select:hover, a:hover {
+            background: #000;
+            color: #fff;
+        }
+        select {
+            appearance: none;
+        }
+        video {
+            max-width: 100%;
+            border-radius: 12px;
+            margin-top: 1.5rem;
+        }
+        #fileSize {
+            font-weight: 600;
+            margin-top: 1rem;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Video Compression Tool</h1>
+    <input type="file" id="videoInput" accept="video/*" />
+    <label for="qualitySelect">Choose Quality:</label>
+    <select id="qualitySelect">
+        <option value="250000">Low (250 kbps)</option>
+        <option value="500000" selected>Medium (500 kbps)</option>
+        <option value="1000000">High (1000 kbps)</option>
+    </select>
+    <button onclick="compressVideo()">Compress Video</button>
+    <div id="fileSize">Estimated File Size: N/A</div>
+    <br><br>
+    <video id="videoPlayer" controls></video>
+    <br>
+    <a id="downloadLink" style="display: none;">Download Compressed Video</a>
+
+    <script>
+        let estimatedSize = 0;
+
+        async function compressVideo() {
+            const fileInput = document.getElementById("videoInput");
+            const qualitySelect = document.getElementById("qualitySelect");
+            const videoPlayer = document.getElementById("videoPlayer");
+            const downloadLink = document.getElementById("downloadLink");
+            const fileSizeDisplay = document.getElementById("fileSize");
+
+            if (fileInput.files.length === 0) {
+                alert("Please select a video file to compress.");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const videoURL = URL.createObjectURL(file);
+            videoPlayer.src = videoURL;
+
+            await new Promise(resolve => { videoPlayer.onloadedmetadata = resolve; });
+
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+            const width = videoPlayer.videoWidth / 2;
+            const height = videoPlayer.videoHeight / 2;
+            canvas.width = width;
+            canvas.height = height;
+
+            const compressedChunks = [];
+            const bitrate = parseInt(qualitySelect.value);
+            const mediaRecorder = new MediaRecorder(canvas.captureStream(), { mimeType: "video/webm", videoBitsPerSecond: bitrate });
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) compressedChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const compressedBlob = new Blob(compressedChunks, { type: "video/webm" });
+                const compressedURL = URL.createObjectURL(compressedBlob);
+                estimatedSize = (compressedBlob.size / 1024).toFixed(2); // KB
+                fileSizeDisplay.innerHTML = `Estimated File Size: ${estimatedSize} KB`;
+
+                downloadLink.href = compressedURL;
+                downloadLink.download = "compressed_video.webm";
+                downloadLink.style.display = "block";
+                downloadLink.textContent = "Download Compressed Video";
+            };
+
+            mediaRecorder.start();
+            videoPlayer.play();
+            const frameCaptureInterval = 1000 / 30;
+
+            const captureFrame = () => {
+                if (!videoPlayer.paused && !videoPlayer.ended) {
+                    context.drawImage(videoPlayer, 0, 0, width, height);
+                    setTimeout(captureFrame, frameCaptureInterval);
+                } else {
+                    mediaRecorder.stop();
+                }
+            };
+
+            captureFrame();
+        }
+
+        document.getElementById("qualitySelect").addEventListener("change", function() {
+            const bitrate = parseInt(this.value);
+            const durationInSeconds = document.getElementById("videoPlayer").duration || 0;
+            estimatedSize = ((bitrate * durationInSeconds) / 8 / 1024).toFixed(2); // KB
+            document.getElementById("fileSize").innerHTML = `Estimated File Size: ${estimatedSize} KB`;
+        });
+    </script>
+</body>
+</html>
