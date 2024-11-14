@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Pixel Art Generator</title>
+    <style>
+        /* Reset and Basic Styling */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        h1 {
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 2em;
+        }
+        p {
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1em;
+            color: #b0b0b0;
+        }
+
+        /* Grid Layout */
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* Card Styling */
+        .card {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .card h2 {
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            text-align: center;
+        }
+        .card p {
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #b0b0b0;
+        }
+
+        /* Upload Section */
+        #upload-container {
+            text-align: center;
+            width: 100%;
+        }
+        #upload-container input[type="file"] {
+            display: none;
+        }
+        #upload-label {
+            background-color: #1f8ef1;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: inline-block;
+        }
+        #upload-label:hover {
+            background-color: #0d6efd;
+        }
+
+        /* Canvas Section */
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 20px;
+        }
+        canvas {
+            width: 100%;
+            height: auto;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background-color: #ffffff;
+        }
+
+        /* Controls Section */
+        #controls {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .slider-container, .select-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            width: 100%;
+        }
+        .slider-container label, .select-container label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1em;
+        }
+        .slider-container input[type="range"], .select-container select {
+            width: 100%;
+            padding: 5px;
+            border-radius: 5px;
+            border: none;
+            background-color: #2c2c2c;
+            color: #e0e0e0;
+        }
+        .resolution-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            width: 100%;
+        }
+        .resolution-slider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .resolution-slider input[type="range"] {
+            flex: 1;
+        }
+
+        /* Buttons Section */
+        #buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+            width: 100%;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            flex: 1 1 150px;
+        }
+        #download-btn {
+            background-color: #28a745;
+            color: #fff;
+        }
+        #download-btn:hover {
+            background-color: #218838;
+        }
+        #reset-btn {
+            background-color: #dc3545;
+            color: #fff;
+        }
+        #reset-btn:hover {
+            background-color: #c82333;
+        }
+        #randomize-btn {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        #randomize-btn:hover {
+            background-color: #e0a800;
+        }
+        #save-btn {
+            background-color: #17a2b8;
+            color: #fff;
+        }
+        #save-btn:hover {
+            background-color: #138496;
+        }
+        #load-btn {
+            background-color: #6c757d;
+            color: #fff;
+        }
+        #load-btn:hover {
+            background-color: #5a6268;
+        }
+
+        /* Save States Section */
+        #save-states {
+            width: 100%;
+            margin-top: 10px;
+        }
+        #save-states select {
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            font-size: 1em;
+            width: 100%;
+            background-color: #2c2c2c;
+            color: #e0e0e0;
+        }
+
+        /* Collapsible Sections */
+        details {
+            width: 100%;
+            margin-top: 15px;
+            background-color: #2a2a2a;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        summary {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        summary::-webkit-details-marker {
+            display: none;
+        }
+        .details-content {
+            margin-top: 10px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            .card h2 {
+                font-size: 1.3em;
+            }
+            .resolution-slider {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .resolution-slider label {
+                font-size: 0.9em;
+            }
+        }
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.5em;
+            }
+            .card h2 {
+                font-size: 1.2em;
+            }
+            button {
+                flex: 1 1 100%;
+            }
+            .resolution-slider {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .resolution-slider label {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎨 Advanced Pixel Art Generator</h1>
+    <p>Transform your images into pixel art with customizable options!</p>
+
+    <div class="container">
+        <!-- Upload, Settings, and Actions Card -->
+        <div class="card">
+            <h2>Upload Image</h2>
+            <p>Select an image to convert it into pixel art.</p>
+            <div id="upload-container">
+                <label for="image-upload" id="upload-label">📂 Upload Image</label>
+                <input type="file" id="image-upload" accept="image/*">
+            </div>
+
+            <!-- Collapsible Settings and Actions -->
+            <details>
+                <summary>⚙️ Settings & Actions</summary>
+                <div class="details-content">
+                    <!-- Settings Section -->
+                    <div id="controls" style="display:none;">
+                        <!-- Resolution Slider -->
+                        <div class="resolution-container">
+                            <label for="resolution">Resolution: <span id="resolution-value">100%</span></label>
+                            <div class="resolution-slider">
+                                <input type="range" id="resolution" min="50" max="200" step="1" value="100">
+                            </div>
+                        </div>
+                        <!-- Pixel Size Slider -->
+                        <div class="slider-container">
+                            <label for="pixel-size">Pixel Size: <span id="pixel-size-value">10</span> px</label>
+                            <input type="range" id="pixel-size" min="2" max="50" step="1" value="10">
+                        </div>
+                        <!-- Pixel Aspect Ratio Sliders -->
+                        <div class="slider-container">
+                            <label>Pixel Aspect Ratio:</label>
+                            <div class="resolution-slider">
+                                <label for="aspect-ratio-width">Width: <span id="aspect-ratio-width-value">100%</span></label>
+                                <input type="range" id="aspect-ratio-width" min="50" max="200" step="1" value="100">
+                            </div>
+                            <div class="resolution-slider">
+                                <label for="aspect-ratio-height">Height: <span id="aspect-ratio-height-value">100%</span></label>
+                                <input type="range" id="aspect-ratio-height" min="50" max="200" step="1" value="100">
+                            </div>
+                        </div>
+                        <!-- Color Reduction Slider -->
+                        <div class="slider-container">
+                            <label for="color-reduction">Color Reduction: <span id="color-reduction-value">16</span> colors</label>
+                            <input type="range" id="color-reduction" min="2" max="256" step="1" value="16">
+                        </div>
+                        <!-- Saturation Slider -->
+                        <div class="slider-container">
+                            <label for="saturation">Saturation: <span id="saturation-value">100</span>%</label>
+                            <input type="range" id="saturation" min="0" max="200" step="1" value="100">
+                        </div>
+                        <!-- Contrast Slider -->
+                        <div class="slider-container">
+                            <label for="contrast">Contrast: <span id="contrast-value">100</span>%</label>
+                            <input type="range" id="contrast" min="0" max="200" step="1" value="100">
+                        </div>
+                        <!-- Noise Slider -->
+                        <div class="slider-container">
+                            <label for="noise">Noise: <span id="noise-value">0</span>%</label>
+                            <input type="range" id="noise" min="0" max="100" step="1" value="0">
+                        </div>
+                        <!-- Dithering Slider -->
+                        <div class="slider-container">
+                            <label for="dithering">Dithering: <span id="dithering-value">0</span>%</label>
+                            <input type="range" id="dithering" min="0" max="100" step="1" value="0">
+                        </div>
+                        <!-- Color Palette Selector -->
+                        <div class="select-container">
+                            <label for="color-palette">Color Palette:</label>
+                            <select id="color-palette">
+                                <option value="random">Random</option>
+                                <option value="grayscale">Grayscale</option>
+                                <option value="vibrant">Vibrant</option>
+                                <option value="pastel">Pastel</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Actions Section -->
+                    <div id="buttons" style="display:none;">
+                        <button id="download-btn">💾 Download Pixel Art</button>
+                        <button id="reset-btn">🔄 Reset</button>
+                        <button id="randomize-btn">🎲 Randomize Pixelation</button>
+                        <button id="save-btn">💾 Save Settings</button>
+                        <button id="load-btn">📂 Load Settings</button>
+                    </div>
+                    <div id="save-states" style="display:none;">
+                        <select id="saved-settings">
+                            <option value="" disabled selected>Select Saved Settings</option>
+                        </select>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- Canvas Card -->
+        <div class="card" style="grid-column: span 2;">
+            <h2>Preview</h2>
+            <div id="canvas-container">
+                <canvas id="canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const imageUpload = document.getElementById('image-upload');
+        const uploadLabel = document.getElementById('upload-label');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const controls = document.getElementById('controls');
+        const buttons = document.getElementById('buttons');
+        const saveStates = document.getElementById('save-states');
+        const savedSettingsSelect = document.getElementById('saved-settings');
+        const colorPaletteSelect = document.getElementById('color-palette');
+
+        // Slider and Input Elements
+        const pixelSizeSlider = document.getElementById('pixel-size');
+        const colorReductionSlider = document.getElementById('color-reduction');
+        const ditheringSlider = document.getElementById('dithering');
+        const resolutionSlider = document.getElementById('resolution');
+        const aspectRatioWidthSlider = document.getElementById('aspect-ratio-width');
+        const aspectRatioHeightSlider = document.getElementById('aspect-ratio-height');
+        const saturationSlider = document.getElementById('saturation');
+        const contrastSlider = document.getElementById('contrast');
+        const noiseSlider = document.getElementById('noise');
+
+        // Slider Value Display Elements
+        const pixelSizeValue = document.getElementById('pixel-size-value');
+        const colorReductionValue = document.getElementById('color-reduction-value');
+        const ditheringValue = document.getElementById('dithering-value');
+        const resolutionValue = document.getElementById('resolution-value');
+        const aspectRatioWidthValue = document.getElementById('aspect-ratio-width-value');
+        const aspectRatioHeightValue = document.getElementById('aspect-ratio-height-value');
+        const saturationValue = document.getElementById('saturation-value');
+        const contrastValue = document.getElementById('contrast-value');
+        const noiseValue = document.getElementById('noise-value');
+
+        // Buttons
+        const downloadBtn = document.getElementById('download-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const randomizeBtn = document.getElementById('randomize-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const loadBtn = document.getElementById('load-btn');
+
+        // Variables
+        let originalImageData = null; // To store the true original image data
+        let originalWidth = 0;
+        let originalHeight = 0;
+        let savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves')) || [];
+        let paletteCache = {};
+
+        // Debounce Function
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // Load Saved Settings from Local Storage
+        function loadSavedSettings() {
+            savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves')) || [];
+            savedSettingsSelect.innerHTML = '<option value="" disabled selected>Select Saved Settings</option>';
+            savedSettings.forEach((save, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `Save ${index + 1}`;
+                savedSettingsSelect.appendChild(option);
+            });
+        }
+
+        loadSavedSettings();
+
+        // Predefined Palettes
+        const predefinedPalettes = {
+            grayscale: generateGrayscalePalette(16),
+            vibrant: [
+                {r: 255, g: 99, b: 132},
+                {r: 54, g: 162, b: 235},
+                {r: 255, g: 206, b: 86},
+                {r: 75, g: 192, b: 192},
+                {r: 153, g: 102, b: 255},
+                {r: 255, g: 159, b: 64}
+            ],
+            pastel: [
+                {r: 255, g: 179, b: 186},
+                {r: 255, g: 223, b: 186},
+                {r: 255, g: 255, b: 186},
+                {r: 186, g: 255, b: 201},
+                {r: 186, g: 225, b: 255},
+                {r: 255, g: 186, b: 255}
+            ],
+            custom: [] // Placeholder for custom palette
+        };
+
+        // Generate Grayscale Palette
+        function generateGrayscalePalette(numColors) {
+            const palette = [];
+            for (let i = 0; i < numColors; i++) {
+                const gray = Math.floor((i / (numColors - 1)) * 255);
+                palette.push({r: gray, g: gray, b: gray});
+            }
+            return palette;
+        }
+
+        // Image Upload Handler
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    originalWidth = img.width;
+                    originalHeight = img.height;
+
+                    // Get resolution from slider
+                    const scale = parseInt(resolutionSlider.value) / 100;
+                    const targetWidth = originalWidth * scale;
+                    const targetHeight = originalHeight * scale;
+
+                    // Apply aspect ratio
+                    const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
+                    const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
+                    const adjustedWidth = targetWidth * aspectWidth;
+                    const adjustedHeight = targetHeight * aspectHeight;
+
+                    canvas.width = adjustedWidth;
+                    canvas.height = adjustedHeight;
+                    ctx.drawImage(img, 0, 0, adjustedWidth, adjustedHeight);
+                    originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    // Show controls and buttons
+                    controls.style.display = 'flex';
+                    buttons.style.display = 'flex';
+                    saveStates.style.display = 'flex';
+                    // Apply initial pixelation
+                    applyPixelation();
+                }
+                img.onerror = function() {
+                    alert('Failed to load the image. Please try a different file.');
+                }
+                img.src = event.target.result;
+            }
+            reader.onerror = function() {
+                alert('Failed to read the file. Please try again.');
+            }
+            reader.readAsDataURL(file);
+        });
+
+        // Slider Input Handlers with Debounce
+        const debouncedApplyPixelation = debounce(applyPixelation, 100);
+        [
+            resolutionSlider, pixelSizeSlider, colorReductionSlider, ditheringSlider,
+            aspectRatioWidthSlider, aspectRatioHeightSlider,
+            saturationSlider, contrastSlider, noiseSlider,
+            colorPaletteSelect
+        ].forEach(control => {
+            control.addEventListener('input', debouncedApplyPixelation);
+        });
+
+        // Update Slider and Input Values Display
+        function updateSliderValues() {
+            pixelSizeValue.textContent = pixelSizeSlider.value;
+            colorReductionValue.textContent = colorReductionSlider.value;
+            ditheringValue.textContent = ditheringSlider.value;
+            resolutionValue.textContent = resolutionSlider.value + '%';
+            aspectRatioWidthValue.textContent = aspectRatioWidthSlider.value + '%';
+            aspectRatioHeightValue.textContent = aspectRatioHeightSlider.value + '%';
+            saturationValue.textContent = saturationSlider.value;
+            contrastValue.textContent = contrastSlider.value;
+            noiseValue.textContent = noiseSlider.value;
+        }
+
+        // Apply Pixelation and Effects
+        function applyPixelation() {
+            if (!originalImageData) return;
+            updateSliderValues();
+
+            // Reset to original image
+            ctx.putImageData(originalImageData, 0, 0);
+
+            // Get current settings
+            const scale = parseInt(resolutionSlider.value) / 100;
+            const pixelSize = parseInt(pixelSizeSlider.value);
+            const colorReduction = parseInt(colorReductionSlider.value);
+            const dithering = parseInt(ditheringSlider.value);
+            const paletteChoice = colorPaletteSelect.value;
+            const saturation = parseInt(saturationSlider.value);
+            const contrast = parseInt(contrastSlider.value);
+            const noise = parseInt(noiseSlider.value);
+            const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
+            const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
+
+            // Calculate new dimensions based on scale and aspect ratio
+            const targetWidth = originalWidth * scale * aspectWidth;
+            const targetHeight = originalHeight * scale * aspectHeight;
+
+            // Redraw the original image with new scaling and aspect ratio
+            redrawOriginalImage(targetWidth, targetHeight);
+
+            // Get palette
+            let palette;
+            if (paletteChoice === 'random') {
+                palette = generatePalette(colorReduction);
+            } else if (predefinedPalettes[paletteChoice].length > 0) {
+                palette = predefinedPalettes[paletteChoice];
+            } else {
+                palette = generatePalette(colorReduction);
+            }
+
+            // Apply saturation and contrast
+            adjustSaturationContrast(saturation, contrast);
+
+            // Apply pixelation
+            pixelate(pixelSize);
+
+            // Apply color reduction
+            reduceColors(colorReduction, palette);
+
+            // Apply noise
+            if (noise > 0) {
+                applyNoise(noise);
+            }
+
+            // Apply dithering
+            if (dithering > 0) {
+                applyDithering(dithering, palette);
+            }
+        }
+
+        // Redraw Original Image with New Dimensions
+        function redrawOriginalImage(targetWidth, targetHeight) {
+            if (!originalImageData) return;
+            // Create a temporary canvas to handle scaling
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            tempCtx.putImageData(originalImageData, 0, 0);
+
+            // Resize main canvas
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+
+            // Draw scaled image onto main canvas
+            ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, targetWidth, targetHeight);
+
+            // Update originalImageData to the new scaled image
+            originalImageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+        }
+
+        // Adjust Saturation and Contrast
+        function adjustSaturationContrast(saturation, contrast) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            // Convert to HSL, adjust saturation, convert back
+            for (let i = 0; i < data.length; i += 4) {
+                let {h, s, l} = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+                s = s * (saturation / 100);
+                // Clamp saturation
+                s = Math.max(0, Math.min(1, s));
+                let {r, g, b} = hslToRgb(h, s, l);
+
+                // Adjust contrast
+                r = ((r - 128) * (contrast / 100)) + 128;
+                g = ((g - 128) * (contrast / 100)) + 128;
+                b = ((b - 128) * (contrast / 100)) + 128;
+
+                data[i] = clamp(r, 0, 255);
+                data[i + 1] = clamp(g, 0, 255);
+                data[i + 2] = clamp(b, 0, 255);
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // RGB to HSL Conversion
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+
+            if (max === min) {
+                h = s = 0; // achromatic
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+
+            return { h, s, l };
+        }
+
+        // HSL to RGB Conversion
+        function hslToRgb(h, s, l) {
+            let r, g, b;
+
+            if (s === 0) {
+                r = g = b = l; // achromatic
+            } else {
+                const hue2rgb = function(p, q, t) {
+                    if(t < 0) t += 1;
+                    if(t > 1) t -= 1;
+                    if(t < 1/6) return p + (q - p) * 6 * t;
+                    if(t < 1/2) return q;
+                    if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                }
+
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+
+            return { r: r * 255, g: g * 255, b: b * 255 };
+        }
+
+        // Clamp Function
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        // Pixelate Function
+        function pixelate(pixelSize) {
+            const width = canvas.width;
+            const height = canvas.height;
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+
+            tempCanvas.width = Math.ceil(width / pixelSize);
+            tempCanvas.height = Math.ceil(height / pixelSize);
+
+            // Draw the original image scaled down
+            tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+
+            // Draw the scaled down image back to canvas scaled up
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, width, height);
+        }
+
+        // Reduce Colors Function
+        function reduceColors(numColors, palette) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const color = { r: data[i], g: data[i + 1], b: data[i + 2] };
+                const nearest = findNearestColor(color, palette);
+                data[i] = nearest.r;
+                data[i + 1] = nearest.g;
+                data[i + 2] = nearest.b;
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // Generate Palette (Simple Quantization)
+        function generatePalette(numColors) {
+            if (paletteCache[numColors]) {
+                return paletteCache[numColors];
+            }
+            const palette = [];
+            for (let i = 0; i < numColors; i++) {
+                palette.push({
+                    r: Math.floor(Math.random() * 256),
+                    g: Math.floor(Math.random() * 256),
+                    b: Math.floor(Math.random() * 256)
+                });
+            }
+            paletteCache[numColors] = palette;
+            return palette;
+        }
+
+        // Find Nearest Color in Palette
+        function findNearestColor(color, palette) {
+            let minDistance = Infinity;
+            let nearestColor = palette[0];
+            for (let i = 0; i < palette.length; i++) {
+                const paletteColor = palette[i];
+                const distance = (color.r - paletteColor.r) ** 2 +
+                                 (color.g - paletteColor.g) ** 2 +
+                                 (color.b - paletteColor.b) ** 2;
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestColor = paletteColor;
+                }
+            }
+            return nearestColor;
+        }
+
+        // Apply Dithering (Floyd-Steinberg)
+        function applyDithering(percentage, palette) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            const ditherAmount = percentage / 100;
+
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const idx = (y * canvas.width + x) * 4;
+                    const oldR = data[idx];
+                    const oldG = data[idx + 1];
+                    const oldB = data[idx + 2];
+
+                    const newColor = findNearestColor({ r: oldR, g: oldG, b: oldB }, palette);
+                    data[idx] = newColor.r;
+                    data[idx + 1] = newColor.g;
+                    data[idx + 2] = newColor.b;
+
+                    const errorR = oldR - newColor.r;
+                    const errorG = oldG - newColor.g;
+                    const errorB = oldB - newColor.b;
+
+                    // Distribute the error
+                    distributeError(data, x + 1, y, errorR, errorG, errorB, ditherAmount);
+                    distributeError(data, x - 1, y + 1, errorR, errorG, errorB, ditherAmount);
+                    distributeError(data, x, y + 1, errorR, errorG, errorB, ditherAmount);
+                    distributeError(data, x + 1, y + 1, errorR, errorG, errorB, ditherAmount);
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // Distribute Error for Dithering
+        function distributeError(data, x, y, errorR, errorG, errorB, amount) {
+            if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return;
+            const idx = (y * canvas.width + x) * 4;
+            data[idx] = clamp(data[idx] + errorR * amount, 0, 255);
+            data[idx + 1] = clamp(data[idx + 1] + errorG * amount, 0, 255);
+            data[idx + 2] = clamp(data[idx + 2] + errorB * amount, 0, 255);
+        }
+
+        // Truncate Color Values
+        // (Combined with clamp in distributeError)
+
+        // Apply Noise
+        function applyNoise(amount) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            const noiseLevel = amount / 100;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const rand = (Math.random() - 0.5) * 255 * noiseLevel;
+                data[i] = clamp(data[i] + rand, 0, 255);     // Red
+                data[i + 1] = clamp(data[i + 1] + rand, 0, 255); // Green
+                data[i + 2] = clamp(data[i + 2] + rand, 0, 255); // Blue
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // Download Button Handler
+        downloadBtn.addEventListener('click', function() {
+            if (!canvas.width || !canvas.height) {
+                alert('Please upload an image first.');
+                return;
+            }
+            const link = document.createElement('a');
+            link.download = 'pixel-art.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        // Reset Button Handler
+        resetBtn.addEventListener('click', function() {
+            if (!originalImageData) return;
+            // Reset sliders and inputs to default values
+            resolutionSlider.value = 100;
+            pixelSizeSlider.value = 10;
+            colorReductionSlider.value = 16;
+            ditheringSlider.value = 0;
+            saturationSlider.value = 100;
+            contrastSlider.value = 100;
+            noiseSlider.value = 0;
+            colorPaletteSelect.value = 'random';
+            aspectRatioWidthSlider.value = 100;
+            aspectRatioHeightSlider.value = 100;
+
+            // Update displayed values
+            updateSliderValues();
+
+            // Re-draw the original image with default scaling and aspect ratio
+            const targetWidth = originalWidth;
+            const targetHeight = originalHeight;
+            redrawOriginalImage(targetWidth, targetHeight);
+
+            // Apply pixelation
+            applyPixelation();
+        });
+
+        // Randomize Button Handler
+        randomizeBtn.addEventListener('click', function() {
+            if (!originalImageData) return;
+            // Randomize slider and input values within their ranges
+            resolutionSlider.value = getRandomInt(50, 200);
+            pixelSizeSlider.value = getRandomInt(2, 50);
+            colorReductionSlider.value = getRandomInt(2, 256);
+            ditheringSlider.value = getRandomInt(0, 100);
+            saturationSlider.value = getRandomInt(50, 200);
+            contrastSlider.value = getRandomInt(50, 200);
+            noiseSlider.value = getRandomInt(0, 100);
+            colorPaletteSelect.value = getRandomPaletteChoice();
+            aspectRatioWidthSlider.value = getRandomInt(50, 200);
+            aspectRatioHeightSlider.value = getRandomInt(50, 200);
+
+            // Update displayed values
+            updateSliderValues();
+
+            // Re-draw the original image with new scaling and aspect ratio
+            const scale = parseInt(resolutionSlider.value) / 100;
+            const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
+            const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
+            const targetWidth = originalWidth * scale * aspectWidth;
+            const targetHeight = originalHeight * scale * aspectHeight;
+            redrawOriginalImage(targetWidth, targetHeight);
+
+            // Apply pixelation
+            applyPixelation();
+        });
+
+        // Save Button Handler
+        saveBtn.addEventListener('click', function() {
+            if (!originalImageData) {
+                alert('Please upload an image first.');
+                return;
+            }
+            const currentSettings = {
+                resolution: resolutionSlider.value,
+                pixelSize: pixelSizeSlider.value,
+                colorReduction: colorReductionSlider.value,
+                dithering: ditheringSlider.value,
+                saturation: saturationSlider.value,
+                contrast: contrastSlider.value,
+                noise: noiseSlider.value,
+                colorPalette: colorPaletteSelect.value,
+                aspectRatioWidth: aspectRatioWidthSlider.value,
+                aspectRatioHeight: aspectRatioHeightSlider.value
+            };
+            savedSettings.push(currentSettings);
+            localStorage.setItem('pixelArtSaves', JSON.stringify(savedSettings));
+            loadSavedSettings();
+            alert('Settings saved successfully!');
+        });
+
+        // Load Button Handler
+        loadBtn.addEventListener('click', function() {
+            if (savedSettingsSelect.value === "") {
+                alert('Please select a saved setting to load.');
+                return;
+            }
+            const selectedIndex = savedSettingsSelect.value;
+            const selectedSave = savedSettings[selectedIndex];
+            if (selectedSave) {
+                resolutionSlider.value = selectedSave.resolution;
+                pixelSizeSlider.value = selectedSave.pixelSize;
+                colorReductionSlider.value = selectedSave.colorReduction;
+                ditheringSlider.value = selectedSave.dithering;
+                saturationSlider.value = selectedSave.saturation;
+                contrastSlider.value = selectedSave.contrast;
+                noiseSlider.value = selectedSave.noise;
+                colorPaletteSelect.value = selectedSave.colorPalette;
+                aspectRatioWidthSlider.value = selectedSave.aspectRatioWidth;
+                aspectRatioHeightSlider.value = selectedSave.aspectRatioHeight;
+
+                updateSliderValues();
+
+                // Re-draw the original image with loaded scaling and aspect ratio
+                const scale = parseInt(resolutionSlider.value) / 100;
+                const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
+                const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
+                const targetWidth = originalWidth * scale * aspectWidth;
+                const targetHeight = originalHeight * scale * aspectHeight;
+                redrawOriginalImage(targetWidth, targetHeight);
+
+                // Apply pixelation
+                applyPixelation();
+            }
+        });
+
+        // Color Palette Selection Handler
+        colorPaletteSelect.addEventListener('change', function() {
+            if (colorPaletteSelect.value === 'custom') {
+                alert('Custom palette feature is not implemented yet.');
+                colorPaletteSelect.value = 'random';
+            }
+            applyPixelation();
+        });
+
+        // Utility Function to Get Random Integer
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        // Utility Function to Get Random Palette Choice
+        function getRandomPaletteChoice() {
+            const choices = Object.keys(predefinedPalettes);
+            return choices[getRandomInt(0, choices.length - 1)];
+        }
+    </script>
+
+</body>
+</html>
