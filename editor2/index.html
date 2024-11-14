@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Editor</title>
+    <title>Enhanced Code Editor</title>
+    <!-- CodeMirror CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css" rel="stylesheet" id="dark-theme-link">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/eclipse.min.css" rel="stylesheet" id="light-theme-link" disabled>
+    <!-- CodeMirror Addons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/dialog/dialog.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/matchesonscrollbar.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
@@ -15,7 +18,30 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/search.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/searchcursor.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/dialog/dialog.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchbrackets.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.js"></script>
     <style>
+        /* CSS Variables for Theming */
+        :root {
+            --background-dark: #1a1a1a;
+            --background-light: #f0f0f0;
+            --container-bg-dark: rgba(255, 255, 255, 0.05);
+            --container-bg-light: rgba(255, 255, 255, 0.95);
+            --toolbar-bg-dark: rgba(255, 255, 255, 0.05);
+            --toolbar-bg-light: rgba(0, 0, 0, 0.05);
+            --tab-bg-dark: rgba(255, 255, 255, 0.1);
+            --tab-bg-light: rgba(0, 0, 0, 0.1);
+            --tab-active-bg-dark: rgba(255, 255, 255, 0.2);
+            --tab-active-bg-light: rgba(255, 255, 255, 0.3);
+            --modal-bg-dark: rgba(40, 40, 40, 0.95);
+            --modal-bg-light: rgba(240, 240, 240, 0.95);
+            --toast-bg-dark: rgba(0, 0, 0, 0.8);
+            --toast-bg-light: rgba(240, 240, 240, 0.9);
+            --text-color-dark: #ffffff;
+            --text-color-light: #000000;
+        }
+
+        /* Reset and Base Styles */
         * {
             margin: 0;
             padding: 0;
@@ -24,13 +50,20 @@
         }
 
         body {
-            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            background: var(--background-dark);
             min-height: 100vh;
             padding: 20px;
+            transition: background 0.3s ease;
+            color: var(--text-color-dark);
+        }
+
+        body.light-mode {
+            background: var(--background-light);
+            color: var(--text-color-light);
         }
 
         .container {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--container-bg-dark);
             backdrop-filter: blur(10px);
             border-radius: 15px;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -38,15 +71,84 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            transition: background 0.3s ease, border 0.3s ease;
+        }
+
+        body.light-mode .container {
+            background: var(--container-bg-light);
+            border: 1px solid rgba(0, 0, 0, 0.1);
         }
 
         .toolbar {
             padding: 15px;
             display: flex;
             gap: 10px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--toolbar-bg-dark);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             flex-wrap: wrap;
+            transition: background 0.3s ease, border 0.3s ease;
+        }
+
+        body.light-mode .toolbar {
+            background: var(--toolbar-bg-light);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .toolbar button {
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+
+        /* Colored Buttons */
+        .btn-new-tab {
+            background: #28a745; /* Green */
+        }
+
+        .btn-toggle-preview {
+            background: #17a2b8; /* Teal */
+        }
+
+        .btn-clear {
+            background: #dc3545; /* Red */
+        }
+
+        .btn-export {
+            background: #ffc107; /* Yellow */
+            color: #000;
+        }
+
+        .btn-open-new {
+            background: #007bff; /* Blue */
+        }
+
+        .btn-search-replace {
+            background: #6c757d; /* Gray */
+        }
+
+        .btn-toggle-theme {
+            background: #343a40; /* Dark Gray */
+            color: #ffffff;
+        }
+
+        .btn-refresh {
+            background: #fd7e14; /* Orange */
+        }
+
+        body.light-mode .btn-toggle-theme {
+            background: #f8f9fa; /* Light */
+            color: #000000;
+        }
+
+        .toolbar button:hover {
+            opacity: 0.8;
         }
 
         .tabs {
@@ -55,24 +157,39 @@
             padding: 10px;
             background: rgba(0, 0, 0, 0.2);
             overflow-x: auto;
+            transition: background 0.3s ease;
+        }
+
+        body.light-mode .tabs {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .tab {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--tab-bg-dark);
             border: none;
             padding: 8px 15px;
             border-radius: 5px;
-            color: #fff;
+            color: var(--text-color-dark);
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
             min-width: 100px;
             max-width: 200px;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        body.light-mode .tab {
+            background: var(--tab-bg-light);
+            color: var(--text-color-light);
         }
 
         .tab.active {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--tab-active-bg-dark);
+        }
+
+        body.light-mode .tab.active {
+            background: var(--tab-active-bg-light);
         }
 
         .tab-title {
@@ -92,10 +209,12 @@
         .tab-close {
             background: none;
             border: none;
-            color: #fff;
+            color: inherit;
             opacity: 0.5;
             cursor: pointer;
             padding: 0 4px;
+            font-size: 16px;
+            transition: opacity 0.3s ease;
         }
 
         .tab-close:hover {
@@ -117,25 +236,21 @@
         .preview {
             flex: 1;
             background: white;
-            display: none;
+            display: block; /* Open by default */
+            border-left: 1px solid rgba(0, 0, 0, 0.1);
+            transition: display 0.3s ease;
         }
 
         .preview.visible {
             display: block;
         }
 
-        button {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        .preview.hidden {
+            display: none;
         }
 
-        button:hover {
-            background: rgba(255, 255, 255, 0.2);
+        button:focus {
+            outline: none;
         }
 
         .CodeMirror {
@@ -158,19 +273,26 @@
         }
 
         .modal {
-            background: rgba(40, 40, 40, 0.95);
+            background: var(--modal-bg-dark);
             backdrop-filter: blur(10px);
             padding: 20px;
             border-radius: 10px;
             width: 90%;
             max-width: 500px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
+            color: var(--text-color-dark);
+            transition: background 0.3s ease, border 0.3s ease, color 0.3s ease;
+        }
+
+        body.light-mode .modal {
+            background: var(--modal-bg-light);
+            color: var(--text-color-light);
+            border: 1px solid rgba(0, 0, 0, 0.1);
         }
 
         .modal h2 {
             margin-bottom: 15px;
-            color: #fff;
+            color: inherit;
         }
 
         .modal-content {
@@ -185,7 +307,7 @@
 
         /* Search/Replace Panel Styles */
         .search-replace {
-            background: rgba(40, 40, 40, 0.95);
+            background: var(--modal-bg-dark);
             backdrop-filter: blur(10px);
             padding: 15px;
             position: absolute;
@@ -196,20 +318,38 @@
             z-index: 5;
             border: 1px solid rgba(255, 255, 255, 0.1);
             width: 300px;
+            transition: background 0.3s ease, border 0.3s ease, color 0.3s ease;
         }
 
-        .search-replace input {
+        body.light-mode .search-replace {
+            background: var(--modal-bg-light);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            color: var(--text-color-light);
+        }
+
+        .search-replace input, .search-replace select {
             width: 100%;
             padding: 8px;
             margin: 5px 0;
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
+            color: #fff;
             border-radius: 4px;
+            transition: background 0.3s ease, border 0.3s ease, color 0.3s ease;
+        }
+
+        body.light-mode .search-replace input, 
+        body.light-mode .search-replace select {
+            background: rgba(0, 0, 0, 0.1);
+            color: #000;
         }
 
         .search-replace input::placeholder {
             color: rgba(255, 255, 255, 0.5);
+        }
+
+        body.light-mode .search-replace input::placeholder {
+            color: rgba(0, 0, 0, 0.5);
         }
 
         .search-buttons {
@@ -220,6 +360,41 @@
 
         .search-replace button {
             flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #fff;
+            transition: opacity 0.3s ease;
+        }
+
+        .search-replace button:hover {
+            opacity: 0.8;
+        }
+
+        /* Toast Notification Styles */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--toast-bg-dark);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease, visibility 0.5s;
+            z-index: 1001;
+        }
+
+        body.light-mode .toast {
+            background: var(--toast-bg-light);
+            color: var(--text-color-light);
+        }
+
+        .toast.show {
+            opacity: 1;
+            visibility: visible;
         }
 
         /* Scrollbar Styles */
@@ -236,31 +411,67 @@
             background: rgba(255, 255, 255, 0.2);
             border-radius: 4px;
         }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .search-replace {
+                width: 90%;
+                right: 5%;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="toolbar">
-            <button onclick="addTab()">New Tab</button>
-            <button onclick="togglePreview()">Toggle Preview</button>
-            <button onclick="showConfirmClear()">Clear</button>
-            <button onclick="exportHTML()">Export HTML</button>
-            <button onclick="openInNewTab()">Open in New Tab</button>
-            <button onclick="toggleSearchReplace()">Search/Replace</button>
+            <button class="btn-new-tab" onclick="addTab()">
+                <span>➕</span> New Tab
+            </button>
+            <button class="btn-toggle-preview" onclick="togglePreview()">
+                <span>🔍</span> Toggle Preview
+            </button>
+            <button class="btn-clear" onclick="showConfirmClear()">
+                <span>🧹</span> Clear
+            </button>
+            <button class="btn-export" onclick="exportHTML()">
+                <span>💾</span> Export HTML
+            </button>
+            <button class="btn-open-new" onclick="openInNewTab()">
+                <span>🌐</span> Open in New Tab
+            </button>
+            <button class="btn-search-replace" onclick="toggleSearchReplace()">
+                <span>🔎</span> Search/Replace
+            </button>
+            <button class="btn-toggle-theme" onclick="toggleTheme()">
+                <span>🌓</span> Toggle Theme
+            </button>
+            <button class="btn-refresh" onclick="showConfirmRefresh()">
+                <span>🔄</span> Refresh
+            </button>
         </div>
         <div class="tabs" id="tabs"></div>
         <div class="editor-container">
             <div class="editor-wrapper">
                 <textarea id="editor"></textarea>
             </div>
-            <iframe class="preview" id="preview"></iframe>
+            <iframe class="preview visible" id="preview"></iframe>
             <div class="search-replace" id="searchReplace">
                 <input type="text" id="searchInput" placeholder="Search for...">
                 <input type="text" id="replaceInput" placeholder="Replace with...">
+                <div>
+                    <label>
+                        <input type="checkbox" id="caseSensitive"> Case Sensitive
+                    </label>
+                </div>
+                <div>
+                    <label>
+                        <input type="checkbox" id="useRegex"> Regex
+                    </label>
+                </div>
                 <div class="search-buttons">
-                    <button onclick="findNext()">Find Next</button>
-                    <button onclick="replace()">Replace</button>
-                    <button onclick="replaceAll()">Replace All</button>
+                    <button onclick="findNext()" style="background: #007bff;">Find Next</button>
+                    <button onclick="replace()" style="background: #28a745;">Replace</button>
+                    <button onclick="replaceAll()" style="background: #dc3545;">Replace All</button>
                 </div>
             </div>
         </div>
@@ -271,21 +482,25 @@
         <div class="modal">
             <h2 id="modalTitle">Confirm Action</h2>
             <div class="modal-content" id="modalContent">
-                Are you sure you want to clear all code in this tab?
+                Are you sure you want to perform this action?
             </div>
             <div class="modal-buttons">
-                <button onclick="hideModal()">Cancel</button>
-                <button onclick="confirmAction()" style="background: rgba(255,70,70,0.3);">Confirm</button>
+                <button onclick="hideModal()" style="background: #6c757d;">Cancel</button>
+                <button onclick="confirmAction()" style="background: #dc3545;">Confirm</button>
             </div>
         </div>
     </div>
 
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">Notification</div>
+
     <script>
         let editors = [];
         let currentTab = null;
-        const STORAGE_KEY = 'codeEditorState';
+        const STORAGE_KEY = 'customCodeEditorState'; // Custom localStorage key
         let modalCallback = null;
-        
+        let autosaveTimer;
+
         // Initialize CodeMirror
         const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
             mode: 'xml',
@@ -324,10 +539,16 @@
             });
         }
 
+        function showConfirmRefresh() {
+            showModal('Refresh Editor', 'Are you sure you want to refresh the editor? This will reload the content from the last autosave.', () => {
+                refreshEditor();
+            });
+        }
+
         // Search/Replace Functions
         function toggleSearchReplace() {
             const panel = document.getElementById('searchReplace');
-            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            panel.style.display = panel.style.display === 'none' || panel.style.display === '' ? 'block' : 'none';
             if (panel.style.display === 'block') {
                 document.getElementById('searchInput').focus();
             }
@@ -335,30 +556,107 @@
 
         function findNext() {
             const searchValue = document.getElementById('searchInput').value;
-            const cursor = editor.getSearchCursor(searchValue);
+            const caseSensitive = document.getElementById('caseSensitive').checked;
+            const useRegex = document.getElementById('useRegex').checked;
+
+            if (!searchValue) return;
+
+            let query = useRegex ? searchValue : searchValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const flags = caseSensitive ? 'g' : 'gi';
+            const regex = new RegExp(query, flags);
+            const cursor = editor.getSearchCursor(regex, editor.getCursor());
+
             if (cursor.findNext()) {
                 editor.setSelection(cursor.from(), cursor.to());
-                editor.scrollIntoView({from: cursor.from(), to: cursor.to()}, 20);
+                editor.scrollIntoView({ from: cursor.from(), to: cursor.to() }, 20);
+            } else {
+                alert('No more matches found.');
             }
         }
 
         function replace() {
             const searchValue = document.getElementById('searchInput').value;
             const replaceValue = document.getElementById('replaceInput').value;
-            const cursor = editor.getSearchCursor(searchValue);
-            
+            const caseSensitive = document.getElementById('caseSensitive').checked;
+            const useRegex = document.getElementById('useRegex').checked;
+
+            if (!searchValue) return;
+
+            let query = useRegex ? searchValue : searchValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const flags = caseSensitive ? 'g' : 'gi';
+            const regex = new RegExp(query, flags);
+            const cursor = editor.getSearchCursor(regex, editor.getCursor());
+
             if (cursor.findNext()) {
                 cursor.replace(replaceValue);
+            } else {
+                alert('No more matches found.');
             }
         }
 
         function replaceAll() {
             const searchValue = document.getElementById('searchInput').value;
             const replaceValue = document.getElementById('replaceInput').value;
-            const cursor = editor.getSearchCursor(searchValue);
-            
-            while (cursor.findNext()) {
-                cursor.replace(replaceValue);
+            const caseSensitive = document.getElementById('caseSensitive').checked;
+            const useRegex = document.getElementById('useRegex').checked;
+
+            if (!searchValue) return;
+
+            let query = useRegex ? searchValue : searchValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const flags = caseSensitive ? 'g' : 'gi';
+            const regex = new RegExp(query, flags);
+            let totalReplacements = 0;
+
+            editor.eachLine(line => {
+                const lineText = line.text;
+                const matches = lineText.match(regex);
+                if (matches) {
+                    const replacedText = lineText.replace(regex, replaceValue);
+                    editor.replaceRange(replacedText, { line: line.lineNo(), ch: 0 }, { line: line.lineNo(), ch: line.text.length });
+                    totalReplacements += matches.length;
+                }
+            });
+
+            alert(`Replaced ${totalReplacements} occurrence(s).`);
+        }
+
+        // Toast Notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // Autosave Functionality
+        function autosave() {
+            if (currentTab) {
+                const tabData = editors.find(e => e.id === currentTab);
+                if (tabData) {
+                    tabData.content = editor.getValue();
+                    saveState();
+                    showToast('Autosaved!');
+                }
+            }
+        }
+
+        // Debounce Autosave to prevent excessive saving
+        function debounceAutosave() {
+            clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(autosave, 1000);
+        }
+
+        // Refresh Editor Functionality
+        function refreshEditor() {
+            if (currentTab) {
+                const tabData = editors.find(e => e.id === currentTab);
+                if (tabData) {
+                    editor.setValue(tabData.content);
+                    updatePreview();
+                    showToast('Editor refreshed!');
+                }
             }
         }
 
@@ -386,19 +684,13 @@
         // Setup live preview
         editor.on('change', () => {
             updatePreview();
-            if (currentTab) {
-                const tabData = editors.find(e => e.id === currentTab);
-                if (tabData) {
-                    tabData.content = editor.getValue();
-                    saveState();
-                }
-            }
+            debounceAutosave();
         });
 
         function updatePreview() {
             const preview = document.getElementById('preview');
             const code = editor.getValue();
-            const previewDoc = preview.contentDocument;
+            const previewDoc = preview.contentDocument || preview.contentWindow.document;
             previewDoc.open();
             previewDoc.write(code);
             previewDoc.close();
@@ -411,7 +703,7 @@
             tab.dataset.id = tabId;
             tab.innerHTML = `
                 <span class="tab-title" ondblclick="makeEditable(this)">${tabName}</span>
-                <button class="tab-close" onclick="closeTab('${tabId}')">&times;</button>
+                <button class="tab-close" onclick="closeTab(event, '${tabId}')">&times;</button>
             `;
             
             tab.addEventListener('click', () => switchTab(tabId));
@@ -436,7 +728,7 @@
             }
 
             element.addEventListener('blur', saveTitle, { once: true });
-element.addEventListener('keydown', (e) => {
+            element.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     element.blur();
@@ -470,11 +762,12 @@ element.addEventListener('keydown', (e) => {
                 if (tabData) {
                     editor.setValue(tabData.content);
                     currentTab = tabId;
+                    updatePreview();
                 }
             }
         }
 
-        function closeTab(tabId) {
+        function closeTab(event, tabId) {
             event.stopPropagation();
             const tab = document.querySelector(`[data-id="${tabId}"]`);
             if (tab) {
@@ -495,6 +788,11 @@ element.addEventListener('keydown', (e) => {
         function togglePreview() {
             const preview = document.getElementById('preview');
             preview.classList.toggle('visible');
+            if (preview.classList.contains('visible')) {
+                preview.classList.remove('hidden');
+            } else {
+                preview.classList.add('hidden');
+            }
             updatePreview();
         }
 
@@ -531,6 +829,24 @@ element.addEventListener('keydown', (e) => {
             newWindow.document.close();
         }
 
+        // Theme Toggle Functionality
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            const darkThemeLink = document.getElementById('dark-theme-link');
+            const lightThemeLink = document.getElementById('light-theme-link');
+
+            if (isLight) {
+                darkThemeLink.disabled = true;
+                lightThemeLink.disabled = false;
+                editor.setOption('theme', 'eclipse');
+            } else {
+                darkThemeLink.disabled = false;
+                lightThemeLink.disabled = true;
+                editor.setOption('theme', 'monokai');
+            }
+        }
+
         // Initialize keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey || e.metaKey) {
@@ -548,14 +864,19 @@ element.addEventListener('keydown', (e) => {
         // Close search panel when clicking outside
         document.addEventListener('click', function(e) {
             const searchPanel = document.getElementById('searchReplace');
+            const toggleButton = document.querySelector('.btn-search-replace');
             if (!searchPanel.contains(e.target) && 
-                !e.target.matches('[onclick="toggleSearchReplace()"]')) {
+                !toggleButton.contains(e.target)) {
                 searchPanel.style.display = 'none';
             }
         });
 
         // Initialize the editor
         loadSavedState();
+
+        // Remove autosave interval to autosave only on changes
+        // Previously, there was a setInterval here which is removed
+
     </script>
 </body>
 </html>
