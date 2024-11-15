@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COLLAGE WALLPAPER CREATOR</title>
+    <style>
+        /* Reset and Base Styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #fff;
+            color: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 2.5rem;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        /* Upload Section */
+        #upload-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .custom-upload-btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background-color: #fff;
+            color: #000;
+            border: 2px solid #000;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+
+        .custom-upload-btn:hover {
+            background-color: #000;
+            color: #fff;
+        }
+
+        #image-input {
+            display: none;
+        }
+
+        /* Preview Section */
+        #preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        #preview img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border: 2px solid #000;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        #preview img:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.16);
+        }
+
+        /* Filter Options */
+        #filters-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-group label {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .filter-group select, 
+        .filter-group input[type="range"] {
+            padding: 0.5rem;
+            border: 2px solid #000;
+            border-radius: 12px;
+            background-color: #fff;
+            color: #000;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .filter-group select:hover, 
+        .filter-group input[type="range"]:hover {
+            background-color: #000;
+            color: #fff;
+        }
+
+        /* Generate Button */
+        #generate-btn {
+            padding: 1rem 3rem;
+            background-color: #fff;
+            color: #000;
+            border: 2px solid #000;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        #generate-btn:hover {
+            background-color: #000;
+            color: #fff;
+        }
+
+        /* Canvas and Download Section */
+        #canvas-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        #result-canvas {
+            max-width: 100%;
+            border: 2px solid #000;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        #download-btn {
+            padding: 1rem 3rem;
+            background-color: #fff;
+            color: #000;
+            border: 2px solid #000;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+            display: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        #download-btn:hover {
+            background-color: #000;
+            color: #fff;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            #preview img {
+                width: 100px;
+                height: 100px;
+            }
+
+            .custom-upload-btn, #generate-btn, #download-btn {
+                padding: 0.8rem 2rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Collage Wallpaper Creator</h1>
+
+    <div id="upload-section">
+        <label class="custom-upload-btn" for="image-input">Upload Images</label>
+        <input type="file" id="image-input" accept="image/*" multiple>
+        <p>(You can upload up to 5 images)</p>
+    </div>
+
+    <div id="preview"></div>
+
+    <div id="filters-section">
+        <div class="filter-group">
+            <label for="filter-select">Select Filter</label>
+            <select id="filter-select">
+                <option value="none">None</option>
+                <option value="grayscale">Grayscale</option>
+                <option value="sepia">Sepia</option>
+                <option value="invert">Invert</option>
+                <option value="brightness">Brightness</option>
+            </select>
+        </div>
+        <div class="filter-group" id="brightness-group" style="display: none;">
+            <label for="brightness-range">Brightness</label>
+            <input type="range" id="brightness-range" min="50" max="150" value="100">
+        </div>
+    </div>
+
+    <button id="generate-btn">Generate Collage</button>
+
+    <div id="canvas-container">
+        <canvas id="result-canvas"></canvas>
+        <button id="download-btn">Download Collage</button>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('image-input');
+        const preview = document.getElementById('preview');
+        const generateBtn = document.getElementById('generate-btn');
+        const resultCanvas = document.getElementById('result-canvas');
+        const downloadBtn = document.getElementById('download-btn');
+        const filterSelect = document.getElementById('filter-select');
+        const brightnessGroup = document.getElementById('brightness-group');
+        const brightnessRange = document.getElementById('brightness-range');
+
+        let images = [];
+        let filters = [];
+
+        // Handle Image Upload
+        imageInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files).slice(0,5); // Limit to 5 images
+            preview.innerHTML = '';
+            images = [];
+            filters = [];
+
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = function() {
+                        images.push(img);
+                        filters.push('none'); // Default filter
+                        const imgElement = document.createElement('img');
+                        imgElement.src = img.src;
+                        imgElement.dataset.index = index;
+                        imgElement.title = "Click to remove";
+                        preview.appendChild(imgElement);
+                    }
+                }
+                reader.readAsDataURL(file);
+            });
+        });
+
+        // Handle Removing Images
+        preview.addEventListener('click', (e) => {
+            if (e.target.tagName === 'IMG') {
+                const index = e.target.dataset.index;
+                images.splice(index, 1);
+                filters.splice(index, 1);
+                e.target.remove();
+                // Update data-index for remaining images
+                const remainingImages = preview.querySelectorAll('img');
+                remainingImages.forEach((img, idx) => {
+                    img.dataset.index = idx;
+                });
+            }
+        });
+
+        // Handle Filter Selection
+        filterSelect.addEventListener('change', (e) => {
+            const selectedFilter = e.target.value;
+            // Show or hide brightness slider based on filter
+            if (selectedFilter === 'brightness') {
+                brightnessGroup.style.display = 'flex';
+            } else {
+                brightnessGroup.style.display = 'none';
+            }
+            // Apply selected filter to all images
+            filters = images.map(() => selectedFilter);
+        });
+
+        brightnessRange.addEventListener('input', (e) => {
+            const brightnessValue = e.target.value;
+            // Apply brightness filter with selected value
+            filters = images.map(() => `brightness(${brightnessValue}%)`);
+        });
+
+        // Handle Generate Collage
+        generateBtn.addEventListener('click', () => {
+            if (images.length === 0) {
+                alert('Please upload at least one image.');
+                return;
+            }
+
+            // Get screen width
+            const screenWidth = window.innerWidth;
+            const aspectRatio = 16 / 9; // You can change this as needed
+            const canvasWidth = screenWidth;
+            const canvasHeight = canvasWidth / aspectRatio;
+
+            // Calculate width per image
+            const imgCount = images.length;
+            const imgWidth = Math.floor(canvasWidth / imgCount);
+            const imgHeight = canvasHeight;
+
+            // Set canvas size
+            resultCanvas.width = canvasWidth;
+            resultCanvas.height = canvasHeight;
+            const ctx = resultCanvas.getContext('2d');
+
+            // Fill background with white
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            // Draw each image with filters
+            images.forEach((img, index) => {
+                const filter = filters[index] || 'none';
+                ctx.filter = filter;
+                
+                // Calculate aspect ratios
+                const imgAspect = img.width / img.height;
+                const targetAspect = imgWidth / imgHeight;
+
+                let sourceX, sourceY, sourceWidth, sourceHeight;
+
+                if (imgAspect > targetAspect) {
+                    // Image is wider than target aspect ratio
+                    sourceHeight = img.height;
+                    sourceWidth = img.height * targetAspect;
+                    sourceX = (img.width - sourceWidth) / 2;
+                    sourceY = 0;
+                } else {
+                    // Image is taller than target aspect ratio
+                    sourceWidth = img.width;
+                    sourceHeight = img.width / targetAspect;
+                    sourceX = 0;
+                    sourceY = (img.height - sourceHeight) / 2;
+                }
+
+                ctx.drawImage(
+                    img,
+                    sourceX, sourceY, sourceWidth, sourceHeight, // Source
+                    index * imgWidth, 0, imgWidth, imgHeight // Destination
+                );
+
+                ctx.filter = 'none'; // Reset filter
+            });
+
+            downloadBtn.style.display = 'inline-block';
+        });
+
+        // Handle Download
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'collage.png';
+            link.href = resultCanvas.toDataURL();
+            link.click();
+        });
+    </script>
+
+</body>
+</html>
