@@ -1,121 +1,123 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Analog Clock in Static HTML</title>
-    <!-- Include React and ReactDOM from CDN -->
-    <script
-      crossorigin
-      src="https://unpkg.com/react@17/umd/react.development.js"
-    ></script>
-    <script
-      crossorigin
-      src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"
-    ></script>
-    <!-- Babel compiler to convert JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Include Tailwind CSS from CDN -->
-    <link
-      href="https://unpkg.com/tailwindcss@2.2.19/dist/tailwind.min.css"
-      rel="stylesheet"
-    />
-  </head>
-  <body class="bg-gray-800 flex items-center justify-center min-h-screen">
-    <div id="root"></div>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Analog Clock in Static HTML</title>
+  <!-- Include React and ReactDOM from CDN (React 18) -->
+  <script
+    crossorigin
+    src="https://unpkg.com/react@18/umd/react.development.js"
+  ></script>
+  <script
+    crossorigin
+    src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+  ></script>
+  <!-- Babel compiler to convert JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Include Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Optional: Custom styles if needed */
+  </style>
+</head>
+<body class="bg-gray-800 flex items-center justify-center min-h-screen">
+  <div id="root"></div>
 
-    <!-- Your React code -->
-    <script type="text/babel">
-      const { useState, useEffect } = React;
+  <!-- Your React code -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
 
-      // Simple Card component (since we don't have the original)
-      const Card = ({ children, className }) => (
-        <div className={\`p-4 shadow-md \${className}\`}>{children}</div>
-      );
+    // Enhanced Card component with Tailwind classes
+    const Card = ({ children, className }) => (
+      <div className={`p-4 rounded-lg shadow-md ${className}`}>
+        {children}
+      </div>
+    );
 
-      const AnalogClock = () => {
-        const [time, setTime] = useState(new Date());
+    const AnalogClock = () => {
+      const [time, setTime] = useState(new Date());
 
-        useEffect(() => {
-          const timer = setInterval(() => {
-            setTime(new Date());
-          }, 1000);
+      useEffect(() => {
+        const timer = setInterval(() => {
+          setTime(new Date());
+        }, 1000);
 
-          return () => clearInterval(timer);
-        }, []);
+        return () => clearInterval(timer);
+      }, []);
 
-        const seconds = time.getSeconds();
-        const minutes = time.getMinutes();
-        const hours = time.getHours() % 12;
+      const seconds = time.getSeconds();
+      const minutes = time.getMinutes();
+      const hours = time.getHours() % 12;
 
-        const secondDegrees = (seconds / 60) * 360 - 90;
-        const minuteDegrees = ((minutes + seconds / 60) / 60) * 360 - 90;
-        const hourDegrees = ((hours + minutes / 60) / 12) * 360 - 90;
+      const secondDegrees = (seconds / 60) * 360 - 90;
+      const minuteDegrees = ((minutes + seconds / 60) / 60) * 360 - 90;
+      const hourDegrees = ((hours + minutes / 60) / 12) * 360 - 90;
 
-        return (
-          <Card className="p-8 bg-gradient-to-br from-gray-900 to-gray-800 shadow-xl">
-            <div className="relative w-64 h-64 rounded-full border-4 border-gray-600 bg-gray-700">
-              {/* Clock Numbers */}
-              {[...Array(12)].map((_, i) => {
-                const rotation = i * 30;
-                return (
-                  <div
-                    key={i}
-                    className="absolute w-full h-full text-gray-300 font-bold"
-                    style={{ transform: \`rotate(\${rotation}deg)\` }}
-                  >
-                    <span
-                      className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2"
-                      style={{
-                        top: '10%',
-                        transform: \`rotate(-\${rotation}deg)\`,
-                      }}
-                    >
-                      {i === 0 ? '12' : i}
-                    </span>
-                  </div>
-                );
-              })}
-
-              {/* Hour Markers */}
-              {[...Array(12)].map((_, i) => (
+      return (
+        <Card className="bg-gradient-to-br from-gray-900 to-gray-800 shadow-xl">
+          <div className="relative w-64 h-64 rounded-full border-4 border-gray-600 bg-gray-700">
+            {/* Clock Numbers */}
+            {[...Array(12)].map((_, i) => {
+              const rotation = i * 30;
+              const number = i === 0 ? 12 : i;
+              return (
                 <div
                   key={i}
-                  className="absolute w-1 h-3 bg-gray-400"
-                  style={{
-                    top: '4%',
-                    left: '49.5%',
-                    transformOrigin: '50% 1000%',
-                    transform: \`rotate(\${i * 30}deg)\`,
-                  }}
-                />
-              ))}
+                  className="absolute w-full h-full text-gray-300 font-bold flex items-center justify-center"
+                  style={{ transform: `rotate(${rotation}deg)` }}
+                >
+                  <span
+                    className="absolute -top-8 transform -translate-x-1/2 -translate-y-1/2"
+                    style={{ transform: `rotate(-${rotation}deg)` }}
+                  >
+                    {number}
+                  </span>
+                </div>
+              );
+            })}
 
-              {/* Clock Center */}
-              <div className="absolute top-1/2 left-1/2 w-4 h-4 -mt-2 -ml-2 rounded-full bg-red-500 z-50" />
-
-              {/* Hour Hand */}
+            {/* Hour Markers */}
+            {[...Array(12)].map((_, i) => (
               <div
-                className="absolute top-1/2 left-1/2 w-1.5 h-16 -mt-16 origin-bottom bg-white rounded-full"
-                style={{ transform: \`rotate(\${hourDegrees}deg)\` }}
+                key={i}
+                className="absolute w-1 h-3 bg-gray-400"
+                style={{
+                  top: '4%',
+                  left: '49.5%',
+                  transformOrigin: '50% 100%',
+                  transform: `rotate(${i * 30}deg)`,
+                }}
               />
+            ))}
 
-              {/* Minute Hand */}
-              <div
-                className="absolute top-1/2 left-1/2 w-1 h-24 -mt-24 origin-bottom bg-white rounded-full"
-                style={{ transform: \`rotate(\${minuteDegrees}deg)\` }}
-              />
+            {/* Clock Center */}
+            <div className="absolute top-1/2 left-1/2 w-4 h-4 -mt-2 -ml-2 rounded-full bg-red-500 z-50" />
 
-              {/* Second Hand */}
-              <div
-                className="absolute top-1/2 left-1/2 w-0.5 h-28 -mt-28 origin-bottom bg-red-500 rounded-full"
-                style={{ transform: \`rotate(\${secondDegrees}deg)\` }}
-              />
-            </div>
-          </Card>
-        );
-      };
+            {/* Hour Hand */}
+            <div
+              className="absolute top-1/2 left-1/2 w-1.5 h-16 -mt-16 origin-bottom bg-white rounded-full"
+              style={{ transform: `rotate(${hourDegrees}deg)` }}
+            />
 
-      ReactDOM.render(<AnalogClock />, document.getElementById('root'));
-    </script>
-  </body>
+            {/* Minute Hand */}
+            <div
+              className="absolute top-1/2 left-1/2 w-1 h-24 -mt-24 origin-bottom bg-white rounded-full"
+              style={{ transform: `rotate(${minuteDegrees}deg)` }}
+            />
+
+            {/* Second Hand */}
+            <div
+              className="absolute top-1/2 left-1/2 w-0.5 h-28 -mt-28 origin-bottom bg-red-500 rounded-full"
+              style={{ transform: `rotate(${secondDegrees}deg)` }}
+            />
+          </div>
+        </Card>
+      );
+    };
+
+    // Render the AnalogClock component
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<AnalogClock />);
+  </script>
+</body>
 </html>
