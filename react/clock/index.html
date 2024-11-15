@@ -1,97 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Analog Clock with React</title>
-  <!-- Include React and ReactDOM from CDN (React 18) -->
-  <script
-    crossorigin
-    src="https://unpkg.com/react@18/umd/react.development.js"
-  ></script>
-  <script
-    crossorigin
-    src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
-  ></script>
-  <!-- Babel compiler to convert JSX -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <meta charset="UTF-8">
+  <title>React Analog Clock</title>
   <!-- Include Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Custom styles for the clock */
-    .clock-face {
-      position: relative;
-      width: 300px;
-      height: 300px;
-      border: 8px solid #4B5563; /* Gray-700 */
-      border-radius: 50%;
-      background: linear-gradient(to bottom right, #1F2937, #374151); /* Gray-800 to Gray-700 */
-    }
-
-    .clock-number {
-      position: absolute;
-      width: 30px;
-      height: 30px;
-      text-align: center;
-      top: 10%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 1rem;
-      color: #D1D5DB; /* Gray-300 */
-      font-weight: bold;
-    }
-
-    .tick-mark {
-      position: absolute;
-      width: 4px;
-      height: 15px;
-      background-color: #9CA3AF; /* Gray-400 */
-      top: 5%;
-      left: 50%;
-      transform-origin: bottom center;
-    }
-
-    .hand {
-      position: absolute;
-      width: 2px;
-      background-color: white;
-      top: 50%;
-      left: 50%;
-      transform-origin: bottom center;
-      transform: rotate(-90deg);
-    }
-
-    .hour-hand {
-      height: 60px;
-    }
-
-    .minute-hand {
-      height: 90px;
-    }
-
-    .second-hand {
-      height: 120px;
-      background-color: #EF4444; /* Red-500 */
-    }
-
-    .center-dot {
-      position: absolute;
-      width: 12px;
-      height: 12px;
-      background-color: #EF4444; /* Red-500 */
-      border-radius: 50%;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10;
+    /* Additional custom styles if needed */
+    body {
+      background-color: #1a202c; /* Tailwind's gray-900 */
     }
   </style>
 </head>
-<body class="bg-gray-800 flex items-center justify-center min-h-screen">
+<body class="flex items-center justify-center min-h-screen">
+  <!-- Root Element -->
   <div id="root"></div>
 
-  <!-- React Code -->
+  <!-- Load React and ReactDOM from CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- Load Babel to compile JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Your React code goes here -->
   <script type="text/babel">
     const { useState, useEffect } = React;
+
+    // Define the Card component (since we don't have the external one)
+    const Card = ({ children, className }) => {
+      return (
+        <div className={`p-8 bg-gradient-to-br from-gray-900 to-gray-800 shadow-xl ${className}`}>
+          {children}
+        </div>
+      );
+    };
 
     const AnalogClock = () => {
       const [time, setTime] = useState(new Date());
@@ -108,96 +51,75 @@
       const minutes = time.getMinutes();
       const hours = time.getHours() % 12;
 
-      const secondDegrees = (seconds / 60) * 360;
-      const minuteDegrees = (minutes / 60) * 360 + (seconds / 60) * 6;
-      const hourDegrees = (hours / 12) * 360 + (minutes / 60) * 30;
-
-      // Generate numbers 1 to 12
-      const numbers = Array.from({ length: 12 }, (_, i) => i + 1);
+      const secondDegrees = (seconds / 60) * 360 - 90;
+      const minuteDegrees = ((minutes + seconds / 60) / 60) * 360 - 90;
+      const hourDegrees = ((hours + minutes / 60) / 12) * 360 - 90;
 
       return (
-        <div className="clock-face">
-          {/* Clock Numbers */}
-          {numbers.map((number, index) => {
-            const angle = (index / 12) * 360;
-            const radius = 120; // Adjust as needed
+        <Card>
+          <div className="relative w-64 h-64 rounded-full border-4 border-gray-600 bg-gray-700">
+            {/* Clock Numbers */}
+            {[...Array(12)].map((_, i) => {
+              const rotation = i * 30;
+              return (
+                <div
+                  key={i}
+                  className="absolute w-full h-full text-gray-300 font-bold"
+                  style={{ transform: `rotate(${rotation}deg)` }}
+                >
+                  <span
+                    className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+                    style={{
+                      top: '10%',
+                      transform: `rotate(-${rotation}deg)`,
+                    }}
+                  >
+                    {i === 0 ? '12' : i}
+                  </span>
+                </div>
+              );
+            })}
 
-            const x = radius * Math.cos((angle - 90) * (Math.PI / 180));
-            const y = radius * Math.sin((angle - 90) * (Math.PI / 180));
-
-            return (
-              <div
-                key={index}
-                className="clock-number"
-                style={{
-                  transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`,
-                }}
-              >
-                {number}
-              </div>
-            );
-          })}
-
-          {/* Tick Marks */}
-          {Array.from({ length: 60 }, (_, i) => {
-            // Longer tick marks for hours
-            const isHour = i % 5 === 0;
-            const angle = (i / 60) * 360;
-
-            const height = isHour ? '15px' : '7px';
-            const width = isHour ? '4px' : '2px';
-            const backgroundColor = isHour ? '#9CA3AF' : '#4B5563'; // Gray-400 or Gray-700
-
-            return (
+            {/* Hour Markers */}
+            {[...Array(12)].map((_, i) => (
               <div
                 key={i}
-                className="tick-mark"
+                className="absolute w-1 h-3 bg-gray-400"
                 style={{
-                  height: height,
-                  width: width,
-                  backgroundColor: backgroundColor,
-                  transform: `rotate(${angle}deg)`,
+                  top: '4%',
+                  left: '49.5%',
+                  transformOrigin: '50% 1000%',
+                  transform: `rotate(${i * 30}deg)`,
                 }}
-              ></div>
-            );
-          })}
+              />
+            ))}
 
-          {/* Hour Hand */}
-          <div
-            className="hand hour-hand"
-            style={{
-              height: '60px',
-              backgroundColor: 'white',
-              transform: `rotate(${hourDegrees}deg)`,
-            }}
-          ></div>
+            {/* Clock Center */}
+            <div className="absolute top-1/2 left-1/2 w-4 h-4 -mt-2 -ml-2 rounded-full bg-red-500 z-50" />
 
-          {/* Minute Hand */}
-          <div
-            className="hand minute-hand"
-            style={{
-              height: '90px',
-              backgroundColor: 'white',
-              transform: `rotate(${minuteDegrees}deg)`,
-            }}
-          ></div>
+            {/* Hour Hand */}
+            <div
+              className="absolute top-1/2 left-1/2 w-1.5 h-16 -mt-16 origin-bottom bg-white rounded-full"
+              style={{ transform: `rotate(${hourDegrees}deg)` }}
+            />
 
-          {/* Second Hand */}
-          <div
-            className="hand second-hand"
-            style={{
-              height: '120px',
-              backgroundColor: '#EF4444', // Red-500
-              transform: `rotate(${secondDegrees}deg)`,
-            }}
-          ></div>
+            {/* Minute Hand */}
+            <div
+              className="absolute top-1/2 left-1/2 w-1 h-24 -mt-24 origin-bottom bg-white rounded-full"
+              style={{ transform: `rotate(${minuteDegrees}deg)` }}
+            />
 
-          {/* Center Dot */}
-          <div className="center-dot"></div>
-        </div>
+            {/* Second Hand */}
+            <div
+              className="absolute top-1/2 left-1/2 w-0.5 h-28 -mt-28 origin-bottom bg-red-500 rounded-full"
+              style={{ transform: `rotate(${secondDegrees}deg)` }}
+            />
+          </div>
+        </Card>
       );
     };
 
+    // Render the AnalogClock component into the #root div
     ReactDOM.createRoot(document.getElementById('root')).render(<AnalogClock />);
   </script>
 </body>
