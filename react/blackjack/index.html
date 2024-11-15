@@ -58,9 +58,8 @@
         width={size}
         height={size}
       >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-              d="M4 4v5h.582m15.356 2A8 8 0 
-                 1116 3.545M16 12h.01"/>
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <path d="M20.49 15a9 9 0 10-9-9"></path>
       </svg>
     );
 
@@ -77,8 +76,8 @@
       </div>
     );
 
-    const CardContent = ({ children }) => (
-      <div className="px-6 py-4">
+    const CardContent = ({ children, className }) => (
+      <div className={`px-6 py-4 ${className}`}>
         {children}
       </div>
     );
@@ -282,7 +281,7 @@
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-8">
               {/* Dealer's Hand */}
               <div className="space-y-2 mb-6">
                 <div className="text-lg font-semibold text-purple-700">Dealer's Hand</div>
