@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>React Slot Machine</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Optional: Custom Styles -->
+  <style>
+    body {
+      background-color: #1a202c; /* Tailwind's gray-900 */
+      color: #cbd5e0; /* Tailwind's gray-300 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Load React and ReactDOM from CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- Load Babel to compile JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Your React Code -->
+  <script type="text/babel">
+    // Inline SVG Icons as React Components
+    const CoinsIcon = ({ className, size = 24 }) => (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className={className}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        width={size}
+        height={size}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6.343 6.343a8 8 0 0111.314 0M6.343 17.657a8 8 0 0111.314 0M12 4v0m0 16v0" />
+      </svg>
+    );
+
+    const TrophyIcon = ({ className, size = 24 }) => (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className={className}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        width={size}
+        height={size}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2H5z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13v6m6-6v6m2-6h-10" />
+      </svg>
+    );
+
+    // UI Components
+    const Card = ({ children, className }) => (
+      <div className={`p-6 bg-gradient-to-br from-gray-800 to-gray-700 shadow-lg rounded-lg ${className}`}>
+        {children}
+      </div>
+    );
+
+    const CardHeader = ({ children }) => (
+      <div className="mb-4">
+        {children}
+      </div>
+    );
+
+    const CardTitle = ({ children, className }) => (
+      <h2 className={`text-2xl font-bold text-center ${className}`}>
+        {children}
+      </h2>
+    );
+
+    const CardContent = ({ children }) => (
+      <div>
+        {children}
+      </div>
+    );
+
+    const Button = ({ children, onClick, disabled, variant = "default", className = "" }) => {
+      const baseClasses = "px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-offset-2";
+      const variants = {
+        default: "bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500",
+        outline: "border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white focus:ring-blue-500",
+        disabled: "bg-gray-400 text-gray-700 cursor-not-allowed"
+      };
+      const appliedClasses = disabled ? variants.disabled : (variant === "outline" ? variants.outline : variants.default);
+      
+      return (
+        <button
+          onClick={onClick}
+          disabled={disabled}
+          className={`${baseClasses} ${appliedClasses} ${className}`}
+        >
+          {children}
+        </button>
+      );
+    };
+
+    // SlotMachine Component
+    const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '🎰', '💎', '⭐', '🌟'];
+    // Weights determine probability (higher = more common)
+    const WEIGHTS = [20, 15, 12, 10, 8, 5, 3, 2];
+    const PAYOUTS = {
+      '🍒': 2,
+      '🍋': 3,
+      '🍊': 4,
+      '🍇': 5,
+      '🎰': 8,
+      '💎': 10,
+      '⭐': 15,
+      '🌟': 25
+    };
+
+    const SlotMachine = () => {
+      const [coins, setCoins] = React.useState(100);
+      const [bet, setBet] = React.useState(1);
+      const [reels, setReels] = React.useState(['🎰', '🎰', '🎰']);
+      const [spinning, setSpinning] = React.useState(false);
+      const [winning, setWinning] = React.useState(false);
+      const [lastWin, setLastWin] = React.useState(0);
+
+      const weightedRandom = () => {
+        const totalWeight = WEIGHTS.reduce((a, b) => a + b, 0);
+        let random = Math.random() * totalWeight;
+        
+        for (let i = 0; i < WEIGHTS.length; i++) {
+          random -= WEIGHTS[i];
+          if (random <= 0) return SYMBOLS[i];
+        }
+        return SYMBOLS[0];
+      };
+
+      const spin = () => {
+        if (coins < bet || spinning) return;
+        
+        setSpinning(true);
+        setWinning(false);
+        setCoins(prev => prev - bet);
+        setLastWin(0);
+        
+        let spinsLeft = 15;
+        const spinInterval = setInterval(() => {
+          setReels(prev => prev.map(() => weightedRandom()));
+          spinsLeft--;
+          
+          if (spinsLeft <= 0) {
+            clearInterval(spinInterval);
+            const finalReels = [weightedRandom(), weightedRandom(), weightedRandom()];
+            setReels(finalReels);
+            checkWin(finalReels);
+            setSpinning(false);
+          }
+        }, 100);
+      };
+
+      const checkWin = (currentReels) => {
+        if (currentReels[0] === currentReels[1] && currentReels[1] === currentReels[2]) {
+          const winAmount = bet * PAYOUTS[currentReels[0]];
+          setCoins(prev => prev + winAmount);
+          setLastWin(winAmount);
+          setWinning(true);
+        } else {
+          setLastWin(0);
+        }
+      };
+
+      return (
+        <Card className="w-full max-w-md mx-auto">
+          <CardHeader>
+            <CardTitle>🎰 Emoji Slots 🎰</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Coins and Last Win Display */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <CoinsIcon className="text-yellow-500" size={24} />
+                  <span className="text-xl font-bold">{coins}</span>
+                </div>
+                {lastWin > 0 && (
+                  <div className="flex items-center gap-2">
+                    <TrophyIcon className="text-yellow-500" size={24} />
+                    <span className="text-xl font-bold text-green-500">+{lastWin}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Reels */}
+              <div className={`flex justify-center gap-4 p-4 bg-gray-100 rounded-lg ${spinning ? 'animate-pulse' : ''}`}>
+                {reels.map((symbol, i) => (
+                  <div
+                    key={i}
+                    className={`text-6xl transform transition-all duration-100 ${
+                      spinning ? 'scale-110' : ''
+                    } ${winning ? 'animate-bounce' : ''}`}
+                  >
+                    {symbol}
+                  </div>
+                ))}
+              </div>
+
+              {/* Bet Controls */}
+              <div className="flex justify-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setBet(Math.max(1, bet - 1))}
+                  disabled={spinning || bet <= 1}
+                >
+                  -
+                </Button>
+                <div className="flex items-center gap-2">
+                  <CoinsIcon className="text-yellow-500" size={16} />
+                  <span className="text-xl font-bold">{bet}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setBet(Math.min(100, bet + 1))}
+                  disabled={spinning || bet >= 100}
+                >
+                  +
+                </Button>
+              </div>
+
+              {/* Spin Button */}
+              <Button
+                className="w-full text-lg"
+                onClick={spin}
+                disabled={spinning || coins < bet}
+              >
+                {spinning ? 'Spinning...' : 'Spin!'}
+              </Button>
+
+              {/* Payouts Information */}
+              <div className="text-sm text-gray-500 mt-4">
+                <div className="grid grid-cols-2 gap-2">
+                  {SYMBOLS.map((symbol, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span>{symbol}</span>
+                      <span>x{PAYOUTS[symbol]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    };
+
+    // Render the SlotMachine component into the #root div
+    const rootElement = document.getElementById('root');
+    ReactDOM.createRoot(rootElement).render(<SlotMachine />);
+  </script>
+</body>
+</html>
