@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive UI Elements Guide</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            background-color: #f4f4f4;
+        }
+        header {
+            background-color: #333;
+            color: #fff;
+            padding: 1rem 2rem;
+            text-align: center;
+        }
+        nav {
+            background-color: #444;
+            padding: 0.5rem 2rem;
+        }
+        nav a {
+            color: #fff;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            padding: 2rem;
+        }
+        section {
+            margin-bottom: 3rem;
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 0.5rem;
+        }
+        .element-example {
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        .element-example code {
+            background-color: #eef;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+        }
+        /* Navigation Bar */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            background-color: #007BFF;
+            padding: 0.5rem 1rem;
+            color: #fff;
+        }
+        .navbar a {
+            color: #fff;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        /* Sidebar */
+        .sidebar {
+            width: 200px;
+            background-color: #f8f9fa;
+            padding: 1rem;
+            float: left;
+            margin-right: 2rem;
+            border-radius: 5px;
+        }
+        .sidebar a {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            text-decoration: none;
+        }
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            text-decoration: none;
+            margin-right: 0.5rem;
+        }
+        .btn:hover {
+            background-color: #218838;
+        }
+        /* Modal */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.5); 
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto; 
+            padding: 2rem;
+            border: 1px solid #888;
+            width: 50%; 
+            border-radius: 5px;
+            position: relative;
+        }
+        .close {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            color: #007BFF;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 160px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 0.5rem;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%; 
+            left: 50%;
+            margin-left: -80px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        /* Toast */
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 2px;
+            padding: 1rem;
+            position: fixed;
+            z-index: 1001;
+            right: 20px;
+            bottom: 30px;
+        }
+        .toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+        @keyframes fadein {
+            from { bottom: 0; opacity: 0; } 
+            to { bottom: 30px; opacity: 1; }
+        }
+        @keyframes fadeout {
+            from { bottom: 30px; opacity: 1; }
+            to { bottom: 0; opacity: 0; }
+        }
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                float: none;
+                margin-right: 0;
+                margin-bottom: 1rem;
+            }
+            .modal-content {
+                width: 80%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Comprehensive UI Elements Guide</h1>
+    </header>
+
+    <nav>
+        <a href="#navigation-elements">Navigation</a>
+        <a href="#input-controls">Input Controls</a>
+        <a href="#containers-layout">Containers & Layout</a>
+        <a href="#informational-elements">Informational</a>
+        <a href="#media-elements">Media</a>
+        <a href="#data-display">Data Display</a>
+        <a href="#interactive-elements">Interactive</a>
+        <a href="#forms-validation">Forms & Validation</a>
+        <a href="#feedback-confirmation">Feedback & Confirmation</a>
+        <a href="#miscellaneous">Miscellaneous</a>
+    </nav>
+
+    <div class="container">
+
+        <!-- Navigation Elements -->
+        <section id="navigation-elements">
+            <h2>1. Navigation Elements</h2>
+            
+            <div class="element-example">
+                <h3>Navigation Bar (Navbar)</h3>
+                <div class="navbar">
+                    <div class="logo">Logo</div>
+                    <div>
+                        <a href="#">Home</a>
+                        <a href="#">About</a>
+                        <a href="#">Services</a>
+                        <a href="#">Contact</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Sidebar</h3>
+                <div class="sidebar">
+                    <a href="#">Dashboard</a>
+                    <a href="#">Profile</a>
+                    <a href="#">Settings</a>
+                    <a href="#">Logout</a>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Tabs</h3>
+                <div>
+                    <button class="btn">Tab 1</button>
+                    <button class="btn">Tab 2</button>
+                    <button class="btn">Tab 3</button>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Breadcrumbs</h3>
+                <nav>
+                    Home &gt; Library &gt; Data
+                </nav>
+            </div>
+
+            <div class="element-example">
+                <h3>Menu (Dropdown)</h3>
+                <div class="tooltip">
+                    Menu
+                    <div class="tooltiptext">
+                        <a href="#">Option 1</a><br>
+                        <a href="#">Option 2</a><br>
+                        <a href="#">Option 3</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Pagination Controls</h3>
+                <div>
+                    <button class="btn">&laquo; Previous</button>
+                    <button class="btn">1</button>
+                    <button class="btn">2</button>
+                    <button class="btn">3</button>
+                    <button class="btn">Next &raquo;</button>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Steppers</h3>
+                <div>
+                    Step 1 &gt; Step 2 &gt; Step 3
+                </div>
+            </div>
+        </section>
+
+        <!-- Input Controls -->
+        <section id="input-controls">
+            <h2>2. Input Controls</h2>
+            
+            <div class="element-example">
+                <h3>Button</h3>
+                <button class="btn">Click Me</button>
+            </div>
+
+            <div class="element-example">
+                <h3>Text Field / Input Box</h3>
+                <input type="text" placeholder="Enter text here">
+            </div>
+
+            <div class="element-example">
+                <h3>Password Field</h3>
+                <input type="password" placeholder="Enter password">
+            </div>
+
+            <div class="element-example">
+                <h3>Checkbox</h3>
+                <label><input type="checkbox"> Option 1</label><br>
+                <label><input type="checkbox"> Option 2</label>
+            </div>
+
+            <div class="element-example">
+                <h3>Radio Button</h3>
+                <label><input type="radio" name="radio"> Choice A</label><br>
+                <label><input type="radio" name="radio"> Choice B</label>
+            </div>
+
+            <div class="element-example">
+                <h3>Toggle Switch</h3>
+                <label>
+                    <input type="checkbox" checked>
+                    Toggle
+                </label>
+            </div>
+
+            <div class="element-example">
+                <h3>Dropdown List (Select Box)</h3>
+                <select>
+                    <option>Select an option</option>
+                    <option>Option 1</option>
+                    <option>Option 2</option>
+                </select>
+            </div>
+
+            <div class="element-example">
+                <h3>Slider</h3>
+                <input type="range" min="1" max="100" value="50">
+            </div>
+
+            <div class="element-example">
+                <h3>Date Picker</h3>
+                <input type="date">
+            </div>
+
+            <div class="element-example">
+                <h3>Time Picker</h3>
+                <input type="time">
+            </div>
+
+            <div class="element-example">
+                <h3>File Uploader</h3>
+                <input type="file">
+            </div>
+
+            <div class="element-example">
+                <h3>Autocomplete / Typeahead</h3>
+                <input type="text" placeholder="Start typing..." list="suggestions">
+                <datalist id="suggestions">
+                    <option value="Apple">
+                    <option value="Banana">
+                    <option value="Cherry">
+                </datalist>
+            </div>
+
+            <div class="element-example">
+                <h3>Rich Text Editor</h3>
+                <textarea rows="5" placeholder="Enter rich text here..."></textarea>
+            </div>
+        </section>
+
+        <!-- Containers & Layout Elements -->
+        <section id="containers-layout">
+            <h2>3. Containers &amp; Layout Elements</h2>
+            
+            <div class="element-example">
+                <h3>Card</h3>
+                <div style="border:1px solid #ddd; padding:1rem; border-radius:5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">
+                    <h4>Card Title</h4>
+                    <p>This is an example of a card container. It groups related information.</p>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Modal / Dialog</h3>
+                <button class="btn" id="openModal">Open Modal</button>
+
+                <div id="myModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h4>Modal Title</h4>
+                        <p>This is a modal dialog. It requires user interaction.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Accordion</h3>
+                <button class="btn" onclick="toggleAccordion()">Toggle Accordion</button>
+                <div id="accordion" style="display:none; margin-top:1rem;">
+                    <p>This is the content of the accordion. It can be expanded or collapsed.</p>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Tooltip</h3>
+                <div class="tooltip">Hover over me
+                    <span class="tooltiptext">Tooltip information</span>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Popover</h3>
+                <button class="btn" onclick="togglePopover()">Show Popover</button>
+                <div id="popover" style="display:none; position: absolute; background: #fff; border: 1px solid #ddd; padding: 1rem; border-radius:5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">
+                    <p>This is a popover with more complex content.</p>
+                    <a href="#">Link</a>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Carousel / Slider</h3>
+                <div style="position: relative; width: 100%; max-width: 400px; margin: auto;">
+                    <img src="https://via.placeholder.com/400x200?text=Slide+1" id="slideImage" style="width:100%; border-radius:5px;">
+                    <button class="btn" style="position: absolute; top: 50%; left: 0;" onclick="prevSlide()">&#10094;</button>
+                    <button class="btn" style="position: absolute; top: 50%; right: 0;" onclick="nextSlide()">&#10095;</button>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Grid System</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div style="background-color: #007BFF; color: #fff; padding:1rem; border-radius:5px;">Column 1</div>
+                    <div style="background-color: #28a745; color: #fff; padding:1rem; border-radius:5px;">Column 2</div>
+                    <div style="background-color: #ffc107; color: #fff; padding:1rem; border-radius:5px;">Column 3</div>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Tabs Panel</h3>
+                <div>
+                    <button class="btn" onclick="openTab('tab1')">Tab 1</button>
+                    <button class="btn" onclick="openTab('tab2')">Tab 2</button>
+                    <button class="btn" onclick="openTab('tab3')">Tab 3</button>
+                </div>
+                <div id="tab1" style="display:block; margin-top:1rem;">
+                    <p>Content for Tab 1.</p>
+                </div>
+                <div id="tab2" style="display:none; margin-top:1rem;">
+                    <p>Content for Tab 2.</p>
+                </div>
+                <div id="tab3" style="display:none; margin-top:1rem;">
+                    <p>Content for Tab 3.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Informational Elements -->
+        <section id="informational-elements">
+            <h2>4. Informational Elements</h2>
+            
+            <div class="element-example">
+                <h3>Alert</h3>
+                <div style="padding:1rem; background-color:#f8d7da; color:#721c24; border:1px solid #f5c6cb; border-radius:5px;">
+                    This is an alert message informing you about something important.
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Badge</h3>
+                <button class="btn">Messages <span style="background-color: red; border-radius: 50%; padding: 0.2rem 0.5rem; color: #fff;">3</span></button>
+            </div>
+
+            <div class="element-example">
+                <h3>Chip</h3>
+                <span style="display:inline-block; padding:0.5rem; background-color:#17a2b8; color:#fff; border-radius:50px; margin-right:0.5rem;">
+                    Tag 1 &times;
+                </span>
+                <span style="display:inline-block; padding:0.5rem; background-color:#17a2b8; color:#fff; border-radius:50px;">
+                    Tag 2 &times;
+                </span>
+            </div>
+
+            <div class="element-example">
+                <h3>Progress Bar</h3>
+                <div style="background-color: #ddd; border-radius:5px; overflow:hidden; height:20px;">
+                    <div style="width:70%; background-color:#28a745; height:100%;"></div>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Spinner / Loader</h3>
+                <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite;"></div>
+                <style>
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                </style>
+            </div>
+
+            <div class="element-example">
+                <h3>Toast Notification</h3>
+                <button class="btn" onclick="showToast()">Show Toast</button>
+                <div id="toast" class="toast">This is a toast notification!</div>
+            </div>
+
+            <div class="element-example">
+                <h3>Snackbar</h3>
+                <button class="btn" onclick="showSnackbar()">Show Snackbar</button>
+                <div id="snackbar" class="toast">This is a snackbar notification!</div>
+            </div>
+        </section>
+
+        <!-- Media Elements -->
+        <section id="media-elements">
+            <h2>5. Media Elements</h2>
+            
+            <div class="element-example">
+                <h3>Image</h3>
+                <img src="https://via.placeholder.com/150" alt="Placeholder Image" style="border-radius:5px;">
+            </div>
+
+            <div class="element-example">
+                <h3>Icon</h3>
+                <span style="font-size:24px;">&#9733;</span> <!-- Star Icon -->
+            </div>
+
+            <div class="element-example">
+                <h3>Video Player</h3>
+                <video width="320" height="240" controls>
+                    <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="element-example">
+                <h3>Audio Player</h3>
+                <audio controls>
+                    <source src="https://www.w3schools.com/html/horse.mp3" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+
+            <div class="element-example">
+                <h3>Avatar</h3>
+                <img src="https://via.placeholder.com/50" alt="Avatar" style="border-radius:50%;">
+            </div>
+
+            <div class="element-example">
+                <h3>Gallery</h3>
+                <div style="display: flex; gap: 1rem;">
+                    <img src="https://via.placeholder.com/100" alt="Gallery Image" style="border-radius:5px;">
+                    <img src="https://via.placeholder.com/100" alt="Gallery Image" style="border-radius:5px;">
+                    <img src="https://via.placeholder.com/100" alt="Gallery Image" style="border-radius:5px;">
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Display Elements -->
+        <section id="data-display">
+            <h2>6. Data Display Elements</h2>
+            
+            <div class="element-example">
+                <h3>Table</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Occupation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>John Doe</td>
+                            <td>30</td>
+                            <td>Engineer</td>
+                        </tr>
+                        <tr>
+                            <td>Jane Smith</td>
+                            <td>25</td>
+                            <td>Designer</td>
+                        </tr>
+                        <tr>
+                            <td>Sam Johnson</td>
+                            <td>40</td>
+                            <td>Manager</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="element-example">
+                <h3>List</h3>
+                <ul>
+                    <li>First item</li>
+                    <li>Second item</li>
+                    <li>Third item</li>
+                </ul>
+            </div>
+
+            <div class="element-example">
+                <h3>Tree View</h3>
+                <ul>
+                    <li>Parent
+                        <ul>
+                            <li>Child 1</li>
+                            <li>Child 2</li>
+                        </ul>
+                    </li>
+                    <li>Another Parent
+                        <ul>
+                            <li>Child A</li>
+                            <li>Child B</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="element-example">
+                <h3>Charts &amp; Graphs</h3>
+                <!-- Simple Bar Chart using HTML and CSS -->
+                <div style="width: 100%; max-width: 400px; margin: auto;">
+                    <div style="display: flex; align-items: flex-end; height: 200px; gap: 1rem;">
+                        <div style="flex:1; background-color:#4CAF50; height: 150px; text-align:center; color:#fff;">150</div>
+                        <div style="flex:1; background-color:#2196F3; height: 100px; text-align:center; color:#fff;">100</div>
+                        <div style="flex:1; background-color:#f44336; height: 200px; text-align:center; color:#fff;">200</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                        <span>January</span>
+                        <span>February</span>
+                        <span>March</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Badge</h3>
+                <span style="background-color:#17a2b8; color:#fff; padding:0.3rem 0.6rem; border-radius:12px;">New</span>
+            </div>
+
+            <div class="element-example">
+                <h3>Tag / Label</h3>
+                <span style="background-color:#6c757d; color:#fff; padding:0.3rem 0.6rem; border-radius:12px;">Label 1</span>
+                <span style="background-color:#6c757d; color:#fff; padding:0.3rem 0.6rem; border-radius:12px;">Label 2</span>
+            </div>
+        </section>
+
+        <!-- Interactive Elements -->
+        <section id="interactive-elements">
+            <h2>7. Interactive Elements</h2>
+            
+            <div class="element-example">
+                <h3>Drag and Drop Interface</h3>
+                <div id="dragContainer" style="display: flex; gap: 1rem;">
+                    <div draggable="true" style="padding:1rem; background-color:#007BFF; color:#fff; border-radius:5px; cursor: move;">Drag Me</div>
+                    <div style="padding:1rem; background-color:#f8f9fa; border:2px dashed #ccc; border-radius:5px; width:200px;">Drop Here</div>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Resizable Panels</h3>
+                <div style="display: flex; height:100px;">
+                    <div style="flex:1; background-color:#e9ecef; padding:1rem; resize: horizontal; overflow: auto;">
+                        Resizable Panel
+                    </div>
+                    <div style="flex:1; background-color:#dee2e6; padding:1rem;">
+                        Fixed Panel
+                    </div>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Editable Fields</h3>
+                <span contenteditable="true" style="padding:0.5rem; border:1px solid #ccc; border-radius:3px;">Click to edit this text</span>
+            </div>
+
+            <div class="element-example">
+                <h3>Context Menu</h3>
+                <div id="contextMenuArea" style="padding:2rem; background-color:#f1f1f1; border-radius:5px; text-align:center;">
+                    Right-click on me
+                </div>
+                <ul id="contextMenu" style="display:none; position:absolute; list-style:none; padding:0; margin:0; background:#fff; border:1px solid #ccc; border-radius:5px;">
+                    <li style="padding:0.5rem 1rem; cursor:pointer;">Action 1</li>
+                    <li style="padding:0.5rem 1rem; cursor:pointer;">Action 2</li>
+                    <li style="padding:0.5rem 1rem; cursor:pointer;">Action 3</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Forms & Validation -->
+        <section id="forms-validation">
+            <h2>8. Forms &amp; Validation</h2>
+            
+            <div class="element-example">
+                <h3>Form</h3>
+                <form>
+                    <label>Name:</label><br>
+                    <input type="text" placeholder="Enter your name" required><br><br>
+                    <label>Email:</label><br>
+                    <input type="email" placeholder="Enter your email" required><br><br>
+                    <button type="submit" class="btn">Submit</button>
+                </form>
+            </div>
+
+            <div class="element-example">
+                <h3>Fieldset &amp; Legend</h3>
+                <form>
+                    <fieldset style="border:1px solid #ccc; padding:1rem; border-radius:5px;">
+                        <legend>Personal Information</legend>
+                        <label>Name:</label><br>
+                        <input type="text" placeholder="Enter your name" required><br><br>
+                        <label>Age:</label><br>
+                        <input type="number" placeholder="Enter your age"><br><br>
+                    </fieldset>
+                </form>
+            </div>
+
+            <div class="element-example">
+                <h3>Error Message</h3>
+                <form>
+                    <label>Username:</label><br>
+                    <input type="text" placeholder="Enter username" required>
+                    <span style="color:red; display:block;">This field is required.</span><br><br>
+                </form>
+            </div>
+
+            <div class="element-example">
+                <h3>Helper Text</h3>
+                <form>
+                    <label>Password:</label><br>
+                    <input type="password" placeholder="Enter password" required>
+                    <span style="color:gray; display:block;">Must be at least 8 characters.</span><br><br>
+                </form>
+            </div>
+        </section>
+
+        <!-- Feedback & Confirmation -->
+        <section id="feedback-confirmation">
+            <h2>9. Feedback &amp; Confirmation</h2>
+            
+            <div class="element-example">
+                <h3>Confirmation Dialog</h3>
+                <button class="btn" onclick="confirmAction()">Delete Item</button>
+            </div>
+
+            <div class="element-example">
+                <h3>Notification Banner</h3>
+                <div style="padding:1rem; background-color:#17a2b8; color:#fff; border-radius:5px;">
+                    This is an important notification banner.
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Success/Error Indicators</h3>
+                <span style="color: green; font-size:24px;">&#10004; Success</span><br>
+                <span style="color: red; font-size:24px;">&#10006; Error</span>
+            </div>
+        </section>
+
+        <!-- Miscellaneous Elements -->
+        <section id="miscellaneous">
+            <h2>10. Miscellaneous Elements</h2>
+            
+            <div class="element-example">
+                <h3>Search Bar</h3>
+                <input type="text" placeholder="Search..." style="padding:0.5rem; width: 100%; max-width:300px; border:1px solid #ccc; border-radius:5px;">
+            </div>
+
+            <div class="element-example">
+                <h3>Pagination</h3>
+                <div>
+                    <button class="btn">&laquo;</button>
+                    <button class="btn">1</button>
+                    <button class="btn">2</button>
+                    <button class="btn">3</button>
+                    <button class="btn">&raquo;</button>
+                </div>
+            </div>
+
+            <div class="element-example">
+                <h3>Language Selector</h3>
+                <select>
+                    <option>English</option>
+                    <option>Spanish</option>
+                    <option>French</option>
+                </select>
+            </div>
+
+            <div class="element-example">
+                <h3>Theme Toggle</h3>
+                <label>
+                    <input type="checkbox" id="themeToggle"> Dark Mode
+                </label>
+                <script>
+                    const themeToggle = document.getElementById('themeToggle');
+                    themeToggle.addEventListener('change', function() {
+                        if(this.checked) {
+                            document.body.style.backgroundColor = '#121212';
+                            document.body.style.color = '#fff';
+                        } else {
+                            document.body.style.backgroundColor = '#f4f4f4';
+                            document.body.style.color = '#000';
+                        }
+                    });
+                </script>
+            </div>
+
+            <div class="element-example">
+                <h3>Back to Top Button</h3>
+                <button onclick="topFunction()" id="backToTop" style="display:none; position: fixed; bottom: 20px; right: 30px; z-index:99; font-size:18px; border:none; outline:none; background-color:#007BFF; color:white; cursor:pointer; padding:15px; border-radius:50%;">&#8679;</button>
+                <script>
+                    const backToTop = document.getElementById('backToTop');
+                    window.onscroll = function() {scrollFunction()};
+                    function scrollFunction() {
+                        if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+                            backToTop.style.display = "block";
+                        } else {
+                            backToTop.style.display = "none";
+                        }
+                    }
+                    function topFunction() {
+                        window.scrollTo({top: 0, behavior: 'smooth'});
+                    }
+                </script>
+            </div>
+
+            <div class="element-example">
+                <h3>Footer</h3>
+                <footer style="background-color:#333; color:#fff; padding:1rem; text-align:center;">
+                    &copy; 2024 Your Company. All rights reserved.
+                </footer>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // Modal Functionality
+        const modal = document.getElementById("myModal");
+        const btn = document.getElementById("openModal");
+        const span = document.getElementsByClassName("close")[0];
+        btn.onclick = function() {
+            modal.style.display = "block";
+        }
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // Accordion Functionality
+        function toggleAccordion() {
+            const accordion = document.getElementById("accordion");
+            if (accordion.style.display === "none") {
+                accordion.style.display = "block";
+            } else {
+                accordion.style.display = "none";
+            }
+        }
+
+        // Popover Functionality
+        function togglePopover() {
+            const popover = document.getElementById("popover");
+            if (popover.style.display === "none") {
+                popover.style.display = "block";
+            } else {
+                popover.style.display = "none";
+            }
+        }
+
+        // Carousel Functionality
+        let currentSlide = 1;
+        function showSlide(n) {
+            const slideImage = document.getElementById("slideImage");
+            const slides = [
+                "https://via.placeholder.com/400x200?text=Slide+1",
+                "https://via.placeholder.com/400x200?text=Slide+2",
+                "https://via.placeholder.com/400x200?text=Slide+3"
+            ];
+            if(n > slides.length) {currentSlide = 1}
+            if(n < 1) {currentSlide = slides.length}
+            slideImage.src = slides[currentSlide-1];
+        }
+        function nextSlide() {
+            currentSlide++;
+            showSlide(currentSlide);
+        }
+        function prevSlide() {
+            currentSlide--;
+            showSlide(currentSlide);
+        }
+
+        // Tabs Functionality
+        function openTab(tabId) {
+            const tabs = ['tab1', 'tab2', 'tab3'];
+            tabs.forEach(id => {
+                document.getElementById(id).style.display = 'none';
+            });
+            document.getElementById(tabId).style.display = 'block';
+        }
+
+        // Toast Functionality
+        function showToast() {
+            const toast = document.getElementById("toast");
+            toast.className = "toast show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        // Snackbar Functionality
+        function showSnackbar() {
+            const snackbar = document.getElementById("snackbar");
+            snackbar.className = "toast show";
+            setTimeout(() => { snackbar.className = snackbar.className.replace("show", ""); }, 3000);
+        }
+
+        // Confirmation Dialog
+        function confirmAction() {
+            if(confirm("Are you sure you want to delete this item?")) {
+                alert("Item deleted.");
+            } else {
+                alert("Action canceled.");
+            }
+        }
+
+        // Context Menu Functionality
+        const contextMenuArea = document.getElementById("contextMenuArea");
+        const contextMenu = document.getElementById("contextMenu");
+        contextMenuArea.addEventListener("contextmenu", function(e) {
+            e.preventDefault();
+            contextMenu.style.top = `${e.pageY}px`;
+            contextMenu.style.left = `${e.pageX}px`;
+            contextMenu.style.display = "block";
+        });
+        window.addEventListener("click", function(e) {
+            contextMenu.style.display = "none";
+        });
+    </script>
+
+</body>
+</html>
