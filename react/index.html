@@ -1,32 +1,147 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>React in Static HTML</title>
-    <!-- Include React and ReactDOM from CDN -->
-    <script
-      crossorigin
-      src="https://unpkg.com/react@17/umd/react.development.js"
-    ></script>
-    <script
-      crossorigin
-      src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"
-    ></script>
-    <!-- Babel compiler to convert JSX -->
-    <script
-      src="https://unpkg.com/@babel/standalone/babel.min.js"
-    ></script>
-  </head>
-  <body>
-    <div id="root"></div>
-
-    <!-- Your React code -->
-    <script type="text/babel">
-      function App() {
-        return <h1>Hello, React in Static HTML!</h1>;
-      }
-
-      ReactDOM.render(<App />, document.getElementById('root'));
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REACT PROJECTS</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #0a0a2a;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        
+        #particles-js {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            z-index: 1;
+        }
+        
+        .content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding-top: 20vh;
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 1em;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        
+        .projects {
+            display: flex;
+            justify-content: center;
+            gap: 2em;
+            flex-wrap: wrap;
+            padding: 0 20px;
+        }
+        
+        .project-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            padding: 2em;
+            border-radius: 15px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+            width: 200px;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .project-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    
+    <div class="content">
+        <h1>REACT PROJECTS</h1>
+        <div class="projects">
+            <a href="https://isaiart.com/react/slots" class="project-card">
+                <div class="project-title">SLOTS</div>
+            </a>
+            
+            <a href="https://isaiart.com/react/clock" class="project-card">
+                <div class="project-title">CLOCK</div>
+            </a>
+            
+            <a href="https://isaiart.com/react/blackjack" class="project-card">
+                <div class="project-title">BLACKJACK</div>
+            </a>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS("particles-js", {
+            particles: {
+                number: {
+                    value: 100,
+                    density: {
+                        enable: true,
+                        value_area: 800
+                    }
+                },
+                color: {
+                    value: "#ffffff"
+                },
+                shape: {
+                    type: "circle"
+                },
+                opacity: {
+                    value: 0.5,
+                    random: true
+                },
+                size: {
+                    value: 2,
+                    random: true
+                },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: "#ffffff",
+                    opacity: 0.2,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 0.5,
+                    direction: "none",
+                    random: true,
+                    straight: false,
+                    out_mode: "out"
+                }
+            },
+            interactivity: {
+                detect_on: "canvas",
+                events: {
+                    onhover: {
+                        enable: true,
+                        mode: "grab"
+                    },
+                    onclick: {
+                        enable: true,
+                        mode: "push"
+                    },
+                    resize: true
+                }
+            }
+        });
     </script>
-  </body>
+</body>
 </html>
