@@ -76,10 +76,16 @@
         .project-item:before {
             content: "> ";
         }
+
+        .intro-text {
+            white-space: pre-line;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="terminal">
+        <div id="introText" class="intro-text"></div>
         <div class="prompt">C:\REACT\PROJECTS></div>
         <div style="display: flex; align-items: center;">
             <span>search: </span>
@@ -111,18 +117,17 @@
             });
         });
 
-        // Simulate initial terminal text
-        const terminalText = "REACT PROJECTS DIRECTORY - TYPE TO SEARCH\n" +
-                           "----------------------------------------\n";
+        // Fixed typing animation
+        const introText = document.getElementById('introText');
+        const terminalText = "REACT PROJECTS DIRECTORY - TYPE TO SEARCH\n----------------------------------------";
         let index = 0;
+        let currentLine = '';
 
         function typeText() {
             if (index < terminalText.length) {
                 const char = terminalText.charAt(index);
-                const pre = document.createElement('div');
-                pre.style.marginBottom = '10px';
-                pre.textContent = char;
-                document.querySelector('.terminal').insertBefore(pre, document.querySelector('.prompt'));
+                currentLine += char;
+                introText.textContent = currentLine;
                 index++;
                 setTimeout(typeText, 50);
             }
