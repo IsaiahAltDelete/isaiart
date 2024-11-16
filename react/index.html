@@ -5,143 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>REACT PROJECTS</title>
     <style>
-        body {
+        body, html {
             margin: 0;
+            padding: 0;
+            height: 100%;
+            background: #000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
             overflow: hidden;
-            background: #0a0a2a;
-            font-family: 'Arial', sans-serif;
-            color: white;
         }
-        
-        #particles-js {
-            width: 100vw;
+
+        .terminal {
+            padding: 20px;
             height: 100vh;
-            position: fixed;
-            z-index: 1;
+            box-sizing: border-box;
         }
-        
-        .content {
-            position: relative;
-            z-index: 2;
-            text-align: center;
-            padding-top: 20vh;
+
+        .prompt {
+            color: #00ff00;
+            margin-bottom: 20px;
         }
-        
-        h1 {
-            font-size: 3em;
-            margin-bottom: 1em;
-            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+
+        .cursor {
+            animation: blink 1s infinite;
+            display: inline-block;
+            width: 8px;
+            height: 15px;
+            background: #00ff00;
+            margin-left: 5px;
+            vertical-align: middle;
         }
-        
-        .projects {
-            display: flex;
-            justify-content: center;
-            gap: 2em;
-            flex-wrap: wrap;
-            padding: 0 20px;
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
         }
-        
-        .project-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(5px);
-            padding: 2em;
-            border-radius: 15px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            cursor: pointer;
-            text-decoration: none;
-            color: white;
+
+        input {
+            background: transparent;
+            border: none;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            outline: none;
             width: 200px;
         }
-        
-        .project-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-            background: rgba(255, 255, 255, 0.15);
+
+        input::placeholder {
+            color: #00aa00;
         }
-        
-        .project-title {
-            font-size: 1.5em;
-            font-weight: bold;
-            letter-spacing: 2px;
+
+        .projects {
+            margin-top: 20px;
+            list-style: none;
+            padding: 0;
+        }
+
+        .project-item {
+            margin: 10px 0;
+            cursor: pointer;
+            display: block;
+            text-decoration: none;
+            color: #00ff00;
+        }
+
+        .project-item:hover {
+            background: #003300;
+        }
+
+        .project-item:before {
+            content: "> ";
         }
     </style>
 </head>
 <body>
-    <div id="particles-js"></div>
-    
-    <div class="content">
-        <h1>REACT PROJECTS</h1>
-        <div class="projects">
-            <a href="https://isaiart.com/react/slots" class="project-card">
-                <div class="project-title">SLOTS</div>
-            </a>
-            
-            <a href="https://isaiart.com/react/clock" class="project-card">
-                <div class="project-title">CLOCK</div>
-            </a>
-            
-            <a href="https://isaiart.com/react/blackjack" class="project-card">
-                <div class="project-title">BLACKJACK</div>
-            </a>
+    <div class="terminal">
+        <div class="prompt">C:\REACT\PROJECTS></div>
+        <div style="display: flex; align-items: center;">
+            <span>search: </span>
+            <input type="text" id="searchInput" placeholder="Type to filter..." autocomplete="off">
+            <div class="cursor"></div>
+        </div>
+        <div class="projects" id="projectsList">
+            <a href="https://isaiart.com/react/slots" class="project-item">SLOTS.exe</a>
+            <a href="https://isaiart.com/react/clock" class="project-item">CLOCK.exe</a>
+            <a href="https://isaiart.com/react/blackjack" class="project-item">BLACKJACK.exe</a>
         </div>
     </div>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+
     <script>
-        particlesJS("particles-js", {
-            particles: {
-                number: {
-                    value: 100,
-                    density: {
-                        enable: true,
-                        value_area: 800
-                    }
-                },
-                color: {
-                    value: "#ffffff"
-                },
-                shape: {
-                    type: "circle"
-                },
-                opacity: {
-                    value: 0.5,
-                    random: true
-                },
-                size: {
-                    value: 2,
-                    random: true
-                },
-                line_linked: {
-                    enable: true,
-                    distance: 150,
-                    color: "#ffffff",
-                    opacity: 0.2,
-                    width: 1
-                },
-                move: {
-                    enable: true,
-                    speed: 0.5,
-                    direction: "none",
-                    random: true,
-                    straight: false,
-                    out_mode: "out"
+        const searchInput = document.getElementById('searchInput');
+        const projectItems = document.getElementsByClassName('project-item');
+
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            Array.from(projectItems).forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
                 }
-            },
-            interactivity: {
-                detect_on: "canvas",
-                events: {
-                    onhover: {
-                        enable: true,
-                        mode: "grab"
-                    },
-                    onclick: {
-                        enable: true,
-                        mode: "push"
-                    },
-                    resize: true
-                }
-            }
+            });
         });
+
+        // Simulate initial terminal text
+        const terminalText = "REACT PROJECTS DIRECTORY - TYPE TO SEARCH\n" +
+                           "----------------------------------------\n";
+        let index = 0;
+
+        function typeText() {
+            if (index < terminalText.length) {
+                const char = terminalText.charAt(index);
+                const pre = document.createElement('div');
+                pre.style.marginBottom = '10px';
+                pre.textContent = char;
+                document.querySelector('.terminal').insertBefore(pre, document.querySelector('.prompt'));
+                index++;
+                setTimeout(typeText, 50);
+            }
+        }
+
+        window.onload = typeText;
     </script>
 </body>
 </html>
