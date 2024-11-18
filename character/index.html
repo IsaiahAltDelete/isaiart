@@ -230,7 +230,7 @@
 
         <!-- Main Content -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Enhanced HP Card -->
+            <!-- Hit Points Card -->
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <h2 class="text-xl font-bold mb-4">Hit Points</h2>
                 <div class="space-y-4">
@@ -350,7 +350,136 @@
                 </div>
             </div>
 
-            <!-- Enhanced Inventory with Search and Pagination -->
+            <!-- Combat Stats Card (New Section) -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Combat Stats</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm mb-1">Armor Class:</label>
+                        <input type="number" id="armorClass" class="w-full border rounded px-2 py-1" value="">
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Initiative:</label>
+                        <input type="number" id="initiative" class="w-full border rounded px-2 py-1" value="">
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Speed:</label>
+                        <input type="number" id="speed" class="w-full border rounded px-2 py-1" value="">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Saving Throws Card (New Section) -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Saving Throws</h2>
+                <div class="space-y-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-20">Strength:</span>
+                        <input type="number" id="saveStr" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-20">Dexterity:</span>
+                        <input type="number" id="saveDex" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-20">Constitution:</span>
+                        <input type="number" id="saveCon" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-20">Intelligence:</span>
+                        <input type="number" id="saveInt" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-20">Wisdom:</span>
+                        <input type="number" id="saveWis" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-20">Charisma:</span>
+                        <input type="number" id="saveCha" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skills Card (New Section) -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Skills</h2>
+                <div class="space-y-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Acrobatics:</span>
+                        <input type="number" id="skillAcrobatics" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Animal Handling:</span>
+                        <input type="number" id="skillAnimalHandling" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Arcana:</span>
+                        <input type="number" id="skillArcana" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Athletics:</span>
+                        <input type="number" id="skillAthletics" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Deception:</span>
+                        <input type="number" id="skillDeception" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">History:</span>
+                        <input type="number" id="skillHistory" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Insight:</span>
+                        <input type="number" id="skillInsight" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Intimidation:</span>
+                        <input type="number" id="skillIntimidation" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Investigation:</span>
+                        <input type="number" id="skillInvestigation" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Medicine:</span>
+                        <input type="number" id="skillMedicine" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Nature:</span>
+                        <input type="number" id="skillNature" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Perception:</span>
+                        <input type="number" id="skillPerception" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Performance:</span>
+                        <input type="number" id="skillPerformance" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Persuasion:</span>
+                        <input type="number" id="skillPersuasion" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Religion:</span>
+                        <input type="number" id="skillReligion" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Sleight of Hand:</span>
+                        <input type="number" id="skillSleightOfHand" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Stealth:</span>
+                        <input type="number" id="skillStealth" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-24">Survival:</span>
+                        <input type="number" id="skillSurvival" class="w-24 border rounded px-2 py-1" value="">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory Card -->
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <h2 class="text-xl font-bold mb-4">Inventory</h2>
                 <div class="mb-4">
@@ -379,7 +508,7 @@
                 </div>
             </div>
 
-            <!-- Enhanced Spellbook -->
+            <!-- Spellbook Card -->
             <div class="bg-white rounded-lg shadow-lg p-6 col-span-1 lg:col-span-2">
                 <h2 class="text-xl font-bold mb-4">Spellbook</h2>
                 
@@ -423,772 +552,845 @@
                     </div>
                 </div>
             </div>
-                <!-- Active Spells Card -->
-                <div class="bg-white rounded-lg shadow-lg p-6">
-                    <h2 class="text-xl font-bold mb-4">Active Spells</h2>
-                    <div id="activeSpells" class="space-y-2 max-h-96 overflow-y-auto">
-                        <!-- Active spells will be displayed here -->
-                    </div>
-                </div>
-    
-                <!-- Notes -->
-                <div class="bg-white rounded-lg shadow-lg p-6">
-                    <h2 class="text-xl font-bold mb-4">Notes</h2>
-                    <textarea id="notes" class="w-full h-40 border rounded p-2" placeholder="Character notes..."></textarea>
-                </div>
-    
-                <!-- Personality -->
-                <div class="bg-white rounded-lg shadow-lg p-6">
-                    <h2 class="text-xl font-bold mb-4">Personality</h2>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm mb-1">Traits</label>
-                            <textarea id="traits" class="w-full h-20 border rounded p-2"></textarea>
-                        </div>
-                        <div>
-                            <label class="block text-sm mb-1">Ideals</label>
-                            <textarea id="ideals" class="w-full h-20 border rounded p-2"></textarea>
-                        </div>
-                        <div>
-                            <label class="block text-sm mb-1">Bonds</label>
-                            <textarea id="bonds" class="w-full h-20 border rounded p-2"></textarea>
-                        </div>
-                        <div>
-                            <label class="block text-sm mb-1">Flaws</label>
-                            <textarea id="flaws" class="w-full h-20 border rounded p-2"></textarea>
-                        </div>
-                    </div>
+
+            <!-- Active Spells Card -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Active Spells</h2>
+                <div id="activeSpells" class="space-y-2 max-h-96 overflow-y-auto">
+                    <!-- Active spells will be displayed here -->
                 </div>
             </div>
 
-            <!-- Save Button -->
-            <div class="fixed bottom-4 right-4">
-                <button onclick="saveCharacter()" class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-green-600 transition-colors">
-                    Save Character
-                </button>
+            <!-- Notes Card -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Notes</h2>
+                <textarea id="notes" class="w-full h-40 border rounded p-2" placeholder="Character notes..."></textarea>
             </div>
 
-            <!-- Import/Export Buttons -->
-            <div class="fixed bottom-4 left-4 flex space-x-2">
-                <button onclick="exportCharacter()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
-                    Export
-                </button>
-                <label class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors cursor-pointer">
-                    Import
-                    <input type="file" accept=".json" onchange="importCharacter(this.files[0])" class="hidden">
-                </label>
+            <!-- Personality Card -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Personality</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm mb-1">Traits</label>
+                        <textarea id="traits" class="w-full h-20 border rounded p-2"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Ideals</label>
+                        <textarea id="ideals" class="w-full h-20 border rounded p-2"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Bonds</label>
+                        <textarea id="bonds" class="w-full h-20 border rounded p-2"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Flaws</label>
+                        <textarea id="flaws" class="w-full h-20 border rounded p-2"></textarea>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <script>
-            // Variables
-            let currentHP = 0;
-            let maxHP = 0;
-            let currentInventoryPage = 1;
-            const itemsPerPage = 5;
-            let inventoryItems = [];
-            let spellsByLevel = {};
-            let currentSpellLevel = 0;
-            const spellsPerPage = 8;
-            let currentSpellPage = 1;
-            let spellSlots = {};
-            let preparedSpells = [];
+        <!-- Save Button -->
+        <div class="fixed bottom-4 right-4">
+            <button onclick="saveCharacter()" class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-green-600 transition-colors">
+                Save Character
+            </button>
+        </div>
 
-            let autosaveTimeout;
+        <!-- Import/Export Buttons -->
+        <div class="fixed bottom-4 left-4 flex space-x-2">
+            <button onclick="exportCharacter()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                Export
+            </button>
+            <label class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors cursor-pointer">
+                Import
+                <input type="file" accept=".json" onchange="importCharacter(this.files[0])" class="hidden">
+            </label>
+        </div>
+    </div>
 
-            // Initialize everything when page loads
-            document.addEventListener('DOMContentLoaded', () => {
-                initializeHP();
-                initializeSpellSlots();
-                initializeAbilityModifiers();
-                initializeSpellTabs();
-                loadCharacter();
+    <script>
+        // Variables
+        let currentHP = 0;
+        let maxHP = 0;
+        let currentInventoryPage = 1;
+        const itemsPerPage = 5;
+        let inventoryItems = [];
+        let spellsByLevel = {};
+        let currentSpellLevel = 0;
+        const spellsPerPage = 8;
+        let currentSpellPage = 1;
+        let spellSlots = {};
+        let preparedSpells = [];
 
-                // Add search listeners
-                document.getElementById('inventorySearch').addEventListener('input', displayInventoryItems);
-                document.getElementById('spellSearch').addEventListener('input', () => {
-                    currentSpellPage = 1;
-                    displaySpells();
-                });
+        let autosaveTimeout;
 
-                // Autosave on input changes
-                const inputs = document.querySelectorAll('input, textarea, select');
-                inputs.forEach(input => {
-                    input.addEventListener('input', debounce(autosave, 1000));
-                });
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeHP();
+            initializeSpellSlots();
+            initializeAbilityModifiers();
+            initializeSpellTabs();
+            loadCharacter();
+
+            // Add search listeners
+            document.getElementById('inventorySearch').addEventListener('input', displayInventoryItems);
+            document.getElementById('spellSearch').addEventListener('input', () => {
+                currentSpellPage = 1;
+                displaySpells();
             });
 
-            // Profile Picture Handling
-            function handleProfilePic(input) {
-                const file = input.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        document.getElementById('profilePic').src = e.target.result;
-                        localStorage.setItem('characterProfilePic', e.target.result);
-                    };
-                    reader.readAsDataURL(file);
+            // Autosave on input changes
+            const inputs = document.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                input.addEventListener('input', debounce(autosave, 1000));
+            });
+        });
+
+        // Profile Picture Handling
+        function handleProfilePic(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profilePic').src = e.target.result;
+                    localStorage.setItem('characterProfilePic', e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Enhanced HP Management
+        function initializeHP() {
+            const maxHPInput = document.getElementById('maxHP');
+            const hpSlider = document.getElementById('hpSlider');
+            const tempHPInput = document.getElementById('tempHP');
+
+            maxHPInput.addEventListener('input', function() {
+                maxHP = parseInt(this.value) || 0;
+                hpSlider.max = maxHP;
+                if (currentHP > maxHP) {
+                    currentHP = maxHP;
                 }
+                updateHPDisplay();
+            });
+
+            hpSlider.addEventListener('input', function() {
+                currentHP = parseInt(this.value);
+                updateHPDisplay();
+            });
+
+            tempHPInput.addEventListener('input', function() {
+                updateHPDisplay();
+            });
+        }
+
+        function updateHPDisplay(isHealing = false, isDamage = false) {
+            const hpBar = document.getElementById('hpBar');
+            const hpText = document.getElementById('hpText');
+            const activeHPDiv = document.getElementById('activeHP');
+            const tempHP = parseInt(document.getElementById('tempHP').value) || 0;
+            const totalHP = currentHP + tempHP;
+            const percentage = maxHP > 0 ? (currentHP / maxHP) * 100 : 0;
+
+            // Update the bar width
+            hpBar.style.width = `${percentage}%`;
+
+            // Update the color based on percentage
+            let hue = (percentage * 1.2); // Multiply by 1.2 to get red at ~83% instead of 100%
+            hpBar.style.backgroundColor = `hsl(${hue}, 70%, 45%)`;
+
+            // Update the text
+            hpText.textContent = `${totalHP} / ${maxHP} HP`;
+
+            // Update active HP display
+            activeHPDiv.textContent = `${totalHP} HP`;
+
+            // Remove previous animation classes
+            activeHPDiv.classList.remove('glow-green', 'glow-red');
+
+            // Apply animation based on change
+            if (isHealing) {
+                activeHPDiv.classList.add('glow-green');
+            } else if (isDamage) {
+                activeHPDiv.classList.add('glow-red');
             }
 
-            // Enhanced HP Management
-            function initializeHP() {
-                const maxHPInput = document.getElementById('maxHP');
-                const hpSlider = document.getElementById('hpSlider');
-                const tempHPInput = document.getElementById('tempHP');
+            // Update slider
+            document.getElementById('hpSlider').value = currentHP;
+        }
 
-                maxHPInput.addEventListener('input', function() {
-                    maxHP = parseInt(this.value) || 0;
-                    hpSlider.max = maxHP;
-                    if (currentHP > maxHP) {
-                        currentHP = maxHP;
-                    }
-                    updateHPDisplay();
-                });
+        function adjustHP(amount) {
+            const tempHPInput = document.getElementById('tempHP');
+            const tempHP = parseInt(tempHPInput.value) || 0;
+            let isHealing = false;
+            let isDamage = false;
 
-                hpSlider.addEventListener('input', function() {
-                    currentHP = parseInt(this.value);
-                    updateHPDisplay();
-                });
+            if (amount < 0) {
+                // Handle damage
+                const damage = Math.abs(amount);
+                if (tempHP > 0) {
+                    // Damage is absorbed by temporary HP first
+                    const remainingDamage = damage - tempHP;
+                    const newTempHP = Math.max(0, tempHP - damage);
+                    tempHPInput.value = newTempHP;
 
-                tempHPInput.addEventListener('input', function() {
-                    updateHPDisplay();
-                });
-            }
-
-            function updateHPDisplay(isHealing = false, isDamage = false) {
-                const hpBar = document.getElementById('hpBar');
-                const hpText = document.getElementById('hpText');
-                const activeHPDiv = document.getElementById('activeHP');
-                const tempHP = parseInt(document.getElementById('tempHP').value) || 0;
-                const totalHP = currentHP + tempHP;
-                const percentage = maxHP > 0 ? (currentHP / maxHP) * 100 : 0;
-
-                // Update the bar width
-                hpBar.style.width = `${percentage}%`;
-
-                // Update the color based on percentage
-                let hue = (percentage * 1.2); // Multiply by 1.2 to get red at ~83% instead of 100%
-                hpBar.style.backgroundColor = `hsl(${hue}, 70%, 45%)`;
-
-                // Update the text
-                hpText.textContent = `${totalHP} / ${maxHP} HP`;
-
-                // Update active HP display
-                activeHPDiv.textContent = `${totalHP} HP`;
-
-                // Remove previous animation classes
-                activeHPDiv.classList.remove('glow-green', 'glow-red');
-
-                // Apply animation based on change
-                if (isHealing) {
-                    activeHPDiv.classList.add('glow-green');
-                } else if (isDamage) {
-                    activeHPDiv.classList.add('glow-red');
-                }
-
-                // Update slider
-                document.getElementById('hpSlider').value = currentHP;
-            }
-
-            function adjustHP(amount) {
-                const tempHPInput = document.getElementById('tempHP');
-                const tempHP = parseInt(tempHPInput.value) || 0;
-                let isHealing = false;
-                let isDamage = false;
-
-                if (amount < 0) {
-                    // Handle damage
-                    const damage = Math.abs(amount);
-                    if (tempHP > 0) {
-                        // Damage is absorbed by temporary HP first
-                        const remainingDamage = damage - tempHP;
-                        const newTempHP = Math.max(0, tempHP - damage);
-                        tempHPInput.value = newTempHP;
-
-                        if (remainingDamage > 0) {
-                            currentHP = Math.max(0, currentHP - remainingDamage);
-                            isDamage = true;
-                        }
-                    } else {
-                        currentHP = Math.max(0, currentHP - damage);
+                    if (remainingDamage > 0) {
+                        currentHP = Math.max(0, currentHP - remainingDamage);
                         isDamage = true;
                     }
                 } else {
-                    // Handle healing
-                    currentHP = Math.min(currentHP + amount, maxHP);
-                    isHealing = true;
+                    currentHP = Math.max(0, currentHP - damage);
+                    isDamage = true;
                 }
-
-                updateHPDisplay(isHealing, isDamage);
+            } else {
+                // Handle healing
+                currentHP = Math.min(currentHP + amount, maxHP);
+                isHealing = true;
             }
 
-            function clearTempHP() {
-                document.getElementById('tempHP').value = 0;
-                updateHPDisplay();
-            }
+            updateHPDisplay(isHealing, isDamage);
+        }
 
-            // Inventory Management
-            function addInventoryItem() {
-                const item = {
-                    name: '',
-                    quantity: 1
-                };
-                inventoryItems.push(item);
+        function clearTempHP() {
+            document.getElementById('tempHP').value = 0;
+            updateHPDisplay();
+        }
+
+        // Inventory Management
+        function addInventoryItem() {
+            const item = {
+                name: '',
+                quantity: 1
+            };
+            inventoryItems.push(item);
+            displayInventoryItems();
+        }
+
+        function displayInventoryItems() {
+            const inventoryDiv = document.getElementById('inventory');
+            const searchTerm = document.getElementById('inventorySearch').value.toLowerCase();
+
+            // Filter items
+            const filteredItems = inventoryItems.filter(item => 
+                item.name.toLowerCase().includes(searchTerm)
+            );
+
+            // Calculate pagination
+            const startIndex = (currentInventoryPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const displayedItems = filteredItems.slice(startIndex, endIndex);
+
+            // Update display
+            inventoryDiv.innerHTML = '';
+            displayedItems.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'flex items-center space-x-2';
+                itemDiv.innerHTML = `
+                    <input type="text" placeholder="Item name" class="flex-1 border rounded px-2 py-1" value="${item.name}"
+                           onchange="updateInventoryItem(${startIndex + index}, 'name', this.value)">
+                    <input type="number" placeholder="Qty" class="w-20 border rounded px-2 py-1" value="${item.quantity}"
+                           onchange="updateInventoryItem(${startIndex + index}, 'quantity', this.value)">
+                    <button onclick="removeInventoryItem(${startIndex + index})" 
+                            class="text-red-500 hover:text-red-600 transition-colors">×</button>
+                `;
+                inventoryDiv.appendChild(itemDiv);
+            });
+
+            // Update page display
+            document.getElementById('inventoryPage').textContent = 
+                `Page ${currentInventoryPage} of ${Math.ceil(filteredItems.length / itemsPerPage) || 1}`;
+        }
+
+        function updateInventoryItem(index, property, value) {
+            inventoryItems[index][property] = property === 'quantity' ? parseInt(value) : value;
+            autosave();
+        }
+
+        function removeInventoryItem(index) {
+            inventoryItems.splice(index, 1);
+            displayInventoryItems();
+            autosave();
+        }
+
+        function previousInventoryPage() {
+            if (currentInventoryPage > 1) {
+                currentInventoryPage--;
                 displayInventoryItems();
             }
+        }
 
-            function displayInventoryItems() {
-                const inventoryDiv = document.getElementById('inventory');
-                const searchTerm = document.getElementById('inventorySearch').value.toLowerCase();
-
-                // Filter items
-                const filteredItems = inventoryItems.filter(item => 
-                    item.name.toLowerCase().includes(searchTerm)
-                );
-
-                // Calculate pagination
-                const startIndex = (currentInventoryPage - 1) * itemsPerPage;
-                const endIndex = startIndex + itemsPerPage;
-                const displayedItems = filteredItems.slice(startIndex, endIndex);
-
-                // Update display
-                inventoryDiv.innerHTML = '';
-                displayedItems.forEach((item, index) => {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'flex items-center space-x-2';
-                    itemDiv.innerHTML = `
-                        <input type="text" placeholder="Item name" class="flex-1 border rounded px-2 py-1" value="${item.name}"
-                               onchange="updateInventoryItem(${startIndex + index}, 'name', this.value)">
-                        <input type="number" placeholder="Qty" class="w-20 border rounded px-2 py-1" value="${item.quantity}"
-                               onchange="updateInventoryItem(${startIndex + index}, 'quantity', this.value)">
-                        <button onclick="removeInventoryItem(${startIndex + index})" 
-                                class="text-red-500 hover:text-red-600 transition-colors">×</button>
-                    `;
-                    inventoryDiv.appendChild(itemDiv);
-                });
-
-                // Update page display
-                document.getElementById('inventoryPage').textContent = 
-                    `Page ${currentInventoryPage} of ${Math.ceil(filteredItems.length / itemsPerPage) || 1}`;
-            }
-
-            function updateInventoryItem(index, property, value) {
-                inventoryItems[index][property] = property === 'quantity' ? parseInt(value) : value;
-                autosave();
-            }
-
-            function removeInventoryItem(index) {
-                inventoryItems.splice(index, 1);
+        function nextInventoryPage() {
+            const filteredItems = inventoryItems.filter(item => 
+                item.name.toLowerCase().includes(document.getElementById('inventorySearch').value.toLowerCase())
+            );
+            const maxPages = Math.ceil(filteredItems.length / itemsPerPage);
+            if (currentInventoryPage < maxPages) {
+                currentInventoryPage++;
                 displayInventoryItems();
-                autosave();
             }
+        }
 
-            function previousInventoryPage() {
-                if (currentInventoryPage > 1) {
-                    currentInventoryPage--;
-                    displayInventoryItems();
-                }
-            }
-
-            function nextInventoryPage() {
-                const filteredItems = inventoryItems.filter(item => 
-                    item.name.toLowerCase().includes(document.getElementById('inventorySearch').value.toLowerCase())
-                );
-                const maxPages = Math.ceil(filteredItems.length / itemsPerPage);
-                if (currentInventoryPage < maxPages) {
-                    currentInventoryPage++;
-                    displayInventoryItems();
-                }
-            }
-
-            // Spell Slot Management
-            function initializeSpellSlots() {
-                // Initialize spell slots for all levels if not present
-                for (let level = 1; level <= 9; level++) {
-                    if (!spellSlots[level]) {
-                        spellSlots[level] = { total: 0, used: 0 };
-                    }
-                }
-                displaySpellSlots();
-            }
-
-            function displaySpellSlots() {
-                const spellSlotsDiv = document.getElementById('spellSlots');
-                spellSlotsDiv.innerHTML = '';
-
-                for (let level = 1; level <= 9; level++) {
-                    const slotDiv = document.createElement('div');
-                    slotDiv.className = 'flex items-center justify-between';
-
-                    const slots = spellSlots[level] || { total: 0, used: 0 };
-                    const availableSlots = slots.total - slots.used;
-
-                    slotDiv.innerHTML = `
-                        <span class="font-medium">Level ${level}:</span>
-                        <div class="flex items-center space-x-2">
-                            <button onclick="useSpellSlot(${level}, 1)" 
-                                    class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition-colors">+</button>
-                            <span>${availableSlots}/${slots.total}</span>
-                            <button onclick="useSpellSlot(${level}, -1)" 
-                                    class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition-colors">-</button>
-                            <input type="number" id="slotsTotal${level}" 
-                                   class="w-16 border rounded px-2 py-1" 
-                                   value="${slots.total}"
-                                   onchange="updateTotalSlots(${level}, this.value)">
-                        </div>
-                    `;
-                    spellSlotsDiv.appendChild(slotDiv);
-                }
-            }
-
-            function useSpellSlot(level, change) {
+        // Spell Slot Management
+        function initializeSpellSlots() {
+            // Initialize spell slots for all levels if not present
+            for (let level = 1; level <= 9; level++) {
                 if (!spellSlots[level]) {
                     spellSlots[level] = { total: 0, used: 0 };
                 }
-                const newUsed = spellSlots[level].used + change;
-                if (newUsed >= 0 && newUsed <= spellSlots[level].total) {
-                    spellSlots[level].used = newUsed;
-                    displaySpellSlots();
-                    autosave();
-                }
             }
+            displaySpellSlots();
+        }
 
-            function updateTotalSlots(level, total) {
-                if (!spellSlots[level]) {
-                    spellSlots[level] = { total: 0, used: 0 };
-                }
-                spellSlots[level].total = parseInt(total) || 0;
-                if (spellSlots[level].used > spellSlots[level].total) {
-                    spellSlots[level].used = spellSlots[level].total;
-                }
+        function displaySpellSlots() {
+            const spellSlotsDiv = document.getElementById('spellSlots');
+            spellSlotsDiv.innerHTML = '';
+
+            for (let level = 1; level <= 9; level++) {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'flex items-center justify-between';
+
+                const slots = spellSlots[level] || { total: 0, used: 0 };
+                const availableSlots = slots.total - slots.used;
+
+                slotDiv.innerHTML = `
+                    <span class="font-medium">Level ${level}:</span>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="useSpellSlot(${level}, 1)" 
+                                class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition-colors">+</button>
+                        <span>${availableSlots}/${slots.total}</span>
+                        <button onclick="useSpellSlot(${level}, -1)" 
+                                class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition-colors">-</button>
+                        <input type="number" id="slotsTotal${level}" 
+                               class="w-16 border rounded px-2 py-1" 
+                               value="${slots.total}"
+                               onchange="updateTotalSlots(${level}, this.value)">
+                    </div>
+                `;
+                spellSlotsDiv.appendChild(slotDiv);
+            }
+        }
+
+        function useSpellSlot(level, change) {
+            if (!spellSlots[level]) {
+                spellSlots[level] = { total: 0, used: 0 };
+            }
+            const newUsed = spellSlots[level].used + change;
+            if (newUsed >= 0 && newUsed <= spellSlots[level].total) {
+                spellSlots[level].used = newUsed;
                 displaySpellSlots();
                 autosave();
             }
+        }
 
-            // Spellbook Management
-            function addSpell() {
-                if (!spellsByLevel[currentSpellLevel]) {
-                    spellsByLevel[currentSpellLevel] = [];
-                }
+        function updateTotalSlots(level, total) {
+            if (!spellSlots[level]) {
+                spellSlots[level] = { total: 0, used: 0 };
+            }
+            spellSlots[level].total = parseInt(total) || 0;
+            if (spellSlots[level].used > spellSlots[level].total) {
+                spellSlots[level].used = spellSlots[level].total;
+            }
+            displaySpellSlots();
+            autosave();
+        }
 
-                spellsByLevel[currentSpellLevel].push({
-                    name: ''
-                });
+        // Spellbook Management
+        function addSpell() {
+            if (!spellsByLevel[currentSpellLevel]) {
+                spellsByLevel[currentSpellLevel] = [];
+            }
 
-                displaySpells();
+            spellsByLevel[currentSpellLevel].push({
+                name: ''
+            });
+
+            displaySpells();
+            autosave();
+        }
+
+        function displaySpells() {
+            const spellListDiv = document.getElementById('spellList');
+            const searchTerm = document.getElementById('spellSearch').value.toLowerCase();
+            spellListDiv.innerHTML = '';
+
+            const spellsOfLevel = spellsByLevel[currentSpellLevel] || [];
+            const filteredSpells = spellsOfLevel.filter(spell => 
+                spell.name.toLowerCase().includes(searchTerm)
+            );
+
+            // Calculate pagination
+            const startIndex = (currentSpellPage - 1) * spellsPerPage;
+            const endIndex = startIndex + spellsPerPage;
+            const displayedSpells = filteredSpells.slice(startIndex, endIndex);
+
+            // Display spells
+            displayedSpells.forEach((spell, index) => {
+                const spellDiv = document.createElement('div');
+                spellDiv.className = 'flex items-center justify-between bg-gray-50 rounded-lg p-4 mb-4';
+                spellDiv.innerHTML = `
+                    <input type="text" 
+                           placeholder="Spell name" 
+                           value="${spell.name}"
+                           onchange="updateSpell(${startIndex + index}, 'name', this.value)"
+                           class="flex-1 border rounded px-2 py-1">
+                    <button onclick="togglePreparedSpell('${spell.name}')" 
+                            class="ml-2 text-green-500 hover:text-green-600 transition-colors">
+                        ${preparedSpells.includes(spell.name) ? '✅' : '➕'}
+                    </button>
+                    <button onclick="removeSpell(${startIndex + index})" 
+                            class="text-red-500 hover:text-red-600 transition-colors ml-2">×</button>
+                `;
+                spellListDiv.appendChild(spellDiv);
+            });
+
+            // Update spell page display
+            document.getElementById('spellPage').textContent = 
+                `Page ${currentSpellPage} of ${Math.ceil(filteredSpells.length / spellsPerPage) || 1}`;
+
+            updateSpellTabsSlider();
+        }
+
+        function updateSpell(index, property, value) {
+            const spells = spellsByLevel[currentSpellLevel] || [];
+            if (spells[index]) {
+                spells[index][property] = value;
                 autosave();
             }
+        }
 
-            function displaySpells() {
-                const spellListDiv = document.getElementById('spellList');
-                const searchTerm = document.getElementById('spellSearch').value.toLowerCase();
-                spellListDiv.innerHTML = '';
-
-                const spellsOfLevel = spellsByLevel[currentSpellLevel] || [];
-                const filteredSpells = spellsOfLevel.filter(spell => 
-                    spell.name.toLowerCase().includes(searchTerm)
-                );
-
-                // Calculate pagination
-                const startIndex = (currentSpellPage - 1) * spellsPerPage;
-                const endIndex = startIndex + spellsPerPage;
-                const displayedSpells = filteredSpells.slice(startIndex, endIndex);
-
-                // Display spells
-                displayedSpells.forEach((spell, index) => {
-                    const spellDiv = document.createElement('div');
-                    spellDiv.className = 'flex items-center justify-between bg-gray-50 rounded-lg p-4 mb-4';
-                    spellDiv.innerHTML = `
-                        <input type="text" 
-                               placeholder="Spell name" 
-                               value="${spell.name}"
-                               onchange="updateSpell(${startIndex + index}, 'name', this.value)"
-                               class="flex-1 border rounded px-2 py-1">
-                        <button onclick="togglePreparedSpell('${spell.name}')" 
-                                class="ml-2 text-green-500 hover:text-green-600 transition-colors">
-                            ${preparedSpells.includes(spell.name) ? '✅' : '➕'}
-                        </button>
-                        <button onclick="removeSpell(${startIndex + index})" 
-                                class="text-red-500 hover:text-red-600 transition-colors ml-2">×</button>
-                    `;
-                    spellListDiv.appendChild(spellDiv);
-                });
-
-                // Update spell page display
-                document.getElementById('spellPage').textContent = 
-                    `Page ${currentSpellPage} of ${Math.ceil(filteredSpells.length / spellsPerPage) || 1}`;
-
-                updateSpellTabsSlider();
-            }
-
-            function updateSpell(index, property, value) {
-                const spells = spellsByLevel[currentSpellLevel] || [];
-                if (spells[index]) {
-                    spells[index][property] = value;
-                    autosave();
-                }
-            }
-
-            function removeSpell(index) {
-                const spells = spellsByLevel[currentSpellLevel] || [];
-                const spellName = spells[index].name;
-                // Remove from preparedSpells if present
-                const preparedIndex = preparedSpells.indexOf(spellName);
-                if (preparedIndex !== -1) {
-                    preparedSpells.splice(preparedIndex, 1);
-                    displayPreparedSpells();
-                }
-                spells.splice(index, 1);
-                displaySpells();
-                autosave();
-            }
-
-            function previousSpellPage() {
-                if (currentSpellPage > 1) {
-                    currentSpellPage--;
-                    displaySpells();
-                }
-            }
-
-            function nextSpellPage() {
-                const spells = spellsByLevel[currentSpellLevel] || [];
-                const filteredSpells = spells.filter(spell => 
-                    spell.name.toLowerCase().includes(document.getElementById('spellSearch').value.toLowerCase())
-                );
-                const maxPages = Math.ceil(filteredSpells.length / spellsPerPage);
-                if (currentSpellPage < maxPages) {
-                    currentSpellPage++;
-                    displaySpells();
-                }
-            }
-
-            function changeSpellLevel(level) {
-                currentSpellLevel = level;
-                currentSpellPage = 1;
-
-                // Update tab styles
-                document.querySelectorAll('.spell-tab').forEach((button, index) => {
-                    if (index === level) {
-                        button.classList.add('active');
-                    } else {
-                        button.classList.remove('active');
-                    }
-                });
-
-                displaySpells();
-            }
-
-            // Active Spells Management
-            function togglePreparedSpell(spellName) {
-                const index = preparedSpells.indexOf(spellName);
-                if (index === -1) {
-                    preparedSpells.push(spellName);
-                } else {
-                    preparedSpells.splice(index, 1);
-                }
-                displaySpells();
+        function removeSpell(index) {
+            const spells = spellsByLevel[currentSpellLevel] || [];
+            const spellName = spells[index].name;
+            // Remove from preparedSpells if present
+            const preparedIndex = preparedSpells.indexOf(spellName);
+            if (preparedIndex !== -1) {
+                preparedSpells.splice(preparedIndex, 1);
                 displayPreparedSpells();
-                autosave();
+            }
+            spells.splice(index, 1);
+            displaySpells();
+            autosave();
+        }
+
+        function previousSpellPage() {
+            if (currentSpellPage > 1) {
+                currentSpellPage--;
+                displaySpells();
+            }
+        }
+
+        function nextSpellPage() {
+            const spells = spellsByLevel[currentSpellLevel] || [];
+            const filteredSpells = spells.filter(spell => 
+                spell.name.toLowerCase().includes(document.getElementById('spellSearch').value.toLowerCase())
+            );
+            const maxPages = Math.ceil(filteredSpells.length / spellsPerPage);
+            if (currentSpellPage < maxPages) {
+                currentSpellPage++;
+                displaySpells();
+            }
+        }
+
+        function changeSpellLevel(level) {
+            currentSpellLevel = level;
+            currentSpellPage = 1;
+
+            // Update tab styles
+            document.querySelectorAll('.spell-tab').forEach((button, index) => {
+                if (index === level) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+
+            displaySpells();
+        }
+
+        // Active Spells Management
+        function togglePreparedSpell(spellName) {
+            const index = preparedSpells.indexOf(spellName);
+            if (index === -1) {
+                preparedSpells.push(spellName);
+            } else {
+                preparedSpells.splice(index, 1);
+            }
+            displaySpells();
+            displayPreparedSpells();
+            autosave();
+        }
+
+        function displayPreparedSpells() {
+            const activeSpellsDiv = document.getElementById('activeSpells');
+            activeSpellsDiv.innerHTML = '';
+            preparedSpells.forEach((spell, index) => {
+                const spellDiv = document.createElement('div');
+                spellDiv.className = 'flex items-center justify-between bg-gray-50 rounded-lg p-2 mb-2';
+                spellDiv.innerHTML = `
+                    <span>${spell}</span>
+                    <button onclick="togglePreparedSpell('${spell}')" class="text-red-500 hover:text-red-600 transition-colors">✖️</button>
+                `;
+                activeSpellsDiv.appendChild(spellDiv);
+            });
+        }
+
+        // Dice Roller Functionality
+        function rollDice() {
+            const diceType = parseInt(document.getElementById('diceType').value);
+            const numDice = parseInt(document.getElementById('numDice').value) || 1;
+            if (!diceType || numDice < 1) return;
+
+            let results = [];
+            let total = 0;
+            for (let i = 0; i < numDice; i++) {
+                const result = Math.floor(Math.random() * diceType) + 1;
+                results.push(result);
+                total += result;
             }
 
-            function displayPreparedSpells() {
-                const activeSpellsDiv = document.getElementById('activeSpells');
-                activeSpellsDiv.innerHTML = '';
-                preparedSpells.forEach((spell, index) => {
-                    const spellDiv = document.createElement('div');
-                    spellDiv.className = 'flex items-center justify-between bg-gray-50 rounded-lg p-2 mb-2';
-                    spellDiv.innerHTML = `
-                        <span>${spell}</span>
-                        <button onclick="togglePreparedSpell('${spell}')" class="text-red-500 hover:text-red-600 transition-colors">✖️</button>
-                    `;
-                    activeSpellsDiv.appendChild(spellDiv);
-                });
+            const diceResultsDiv = document.getElementById('diceResults');
+            diceResultsDiv.innerHTML = '';
+            results.forEach(result => {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'dice-result';
+                resultDiv.textContent = result;
+                diceResultsDiv.appendChild(resultDiv);
+            });
+            diceResultsDiv.classList.add('animate');
+
+            // Update result after a short delay to allow animation
+            setTimeout(() => {
+                diceResultsDiv.classList.remove('animate');
+            }, 200);
+
+            // Update roll history
+            const rollHistoryDiv = document.getElementById('rollHistory');
+            const rollItem = document.createElement('div');
+            rollItem.className = 'roll-item';
+            rollItem.textContent = `Rolled ${numDice}d${diceType}: [${results.join(', ')}] Total: ${total}`;
+            rollHistoryDiv.prepend(rollItem);
+
+            // Keep only the latest 10 rolls
+            if (rollHistoryDiv.childElementCount > 10) {
+                rollHistoryDiv.removeChild(rollHistoryDiv.lastChild);
             }
 
-            // Dice Roller Functionality
-            function rollDice() {
-                const diceType = parseInt(document.getElementById('diceType').value);
-                const numDice = parseInt(document.getElementById('numDice').value) || 1;
-                if (!diceType || numDice < 1) return;
+            autosave();
+        }
 
-                let results = [];
-                let total = 0;
-                for (let i = 0; i < numDice; i++) {
-                    const result = Math.floor(Math.random() * diceType) + 1;
-                    results.push(result);
-                    total += result;
+        // Save/Load Functions
+        function saveCharacter() {
+            const character = {
+                name: document.getElementById('charName').value,
+                class: document.getElementById('charClass').value,
+                level: document.getElementById('charLevel').value,
+                race: document.getElementById('charRace').value,
+                hp: {
+                    current: currentHP,
+                    max: maxHP,
+                    temp: parseInt(document.getElementById('tempHP').value) || 0
+                },
+                currency: {
+                    platinum: parseInt(document.getElementById('platinum').value) || 0,
+                    gold: parseInt(document.getElementById('gold').value) || 0,
+                    silver: parseInt(document.getElementById('silver').value) || 0,
+                    copper: parseInt(document.getElementById('copper').value) || 0
+                },
+                abilities: {
+                    str: parseInt(document.getElementById('str').value) || 10,
+                    dex: parseInt(document.getElementById('dex').value) || 10,
+                    con: parseInt(document.getElementById('con').value) || 10,
+                    int: parseInt(document.getElementById('int').value) || 10,
+                    wis: parseInt(document.getElementById('wis').value) || 10,
+                    cha: parseInt(document.getElementById('cha').value) || 10
+                },
+                combatStats: {
+                    armorClass: parseInt(document.getElementById('armorClass').value) || 0,
+                    initiative: parseInt(document.getElementById('initiative').value) || 0,
+                    speed: parseInt(document.getElementById('speed').value) || 0
+                },
+                savingThrows: {
+                    str: parseInt(document.getElementById('saveStr').value) || 0,
+                    dex: parseInt(document.getElementById('saveDex').value) || 0,
+                    con: parseInt(document.getElementById('saveCon').value) || 0,
+                    int: parseInt(document.getElementById('saveInt').value) || 0,
+                    wis: parseInt(document.getElementById('saveWis').value) || 0,
+                    cha: parseInt(document.getElementById('saveCha').value) || 0
+                },
+                skills: {
+                    acrobatics: parseInt(document.getElementById('skillAcrobatics').value) || 0,
+                    animalHandling: parseInt(document.getElementById('skillAnimalHandling').value) || 0,
+                    arcana: parseInt(document.getElementById('skillArcana').value) || 0,
+                    athletics: parseInt(document.getElementById('skillAthletics').value) || 0,
+                    deception: parseInt(document.getElementById('skillDeception').value) || 0,
+                    history: parseInt(document.getElementById('skillHistory').value) || 0,
+                    insight: parseInt(document.getElementById('skillInsight').value) || 0,
+                    intimidation: parseInt(document.getElementById('skillIntimidation').value) || 0,
+                    investigation: parseInt(document.getElementById('skillInvestigation').value) || 0,
+                    medicine: parseInt(document.getElementById('skillMedicine').value) || 0,
+                    nature: parseInt(document.getElementById('skillNature').value) || 0,
+                    perception: parseInt(document.getElementById('skillPerception').value) || 0,
+                    performance: parseInt(document.getElementById('skillPerformance').value) || 0,
+                    persuasion: parseInt(document.getElementById('skillPersuasion').value) || 0,
+                    religion: parseInt(document.getElementById('skillReligion').value) || 0,
+                    sleightOfHand: parseInt(document.getElementById('skillSleightOfHand').value) || 0,
+                    stealth: parseInt(document.getElementById('skillStealth').value) || 0,
+                    survival: parseInt(document.getElementById('skillSurvival').value) || 0
+                },
+                inventory: inventoryItems,
+                spellsByLevel: spellsByLevel,
+                spellSlots: spellSlots,
+                preparedSpells: preparedSpells,
+                notes: document.getElementById('notes').value,
+                personality: {
+                    traits: document.getElementById('traits').value,
+                    ideals: document.getElementById('ideals').value,
+                    bonds: document.getElementById('bonds').value,
+                    flaws: document.getElementById('flaws').value
+                }
+            };
+
+            localStorage.setItem('characterData', JSON.stringify(character));
+            localStorage.setItem('characterProfilePic', document.getElementById('profilePic').src);
+            console.log('Character saved');
+        }
+
+        function loadCharacter() {
+            const characterData = JSON.parse(localStorage.getItem('characterData') || '{}');
+            const profilePic = localStorage.getItem('characterProfilePic');
+
+            if (profilePic) {
+                document.getElementById('profilePic').src = profilePic;
+            }
+
+            if (Object.keys(characterData).length > 0) {
+                // Load basic info
+                document.getElementById('charName').value = characterData.name || '';
+                document.getElementById('charClass').value = characterData.class || '';
+                document.getElementById('charLevel').value = characterData.level || '';
+                document.getElementById('charRace').value = characterData.race || '';
+
+                // Load HP
+                if (characterData.hp) {
+                    currentHP = characterData.hp.current;
+                    maxHP = characterData.hp.max;
+                    document.getElementById('maxHP').value = maxHP;
+                    document.getElementById('hpSlider').value = currentHP;
+                    document.getElementById('hpSlider').max = maxHP;
+                    document.getElementById('tempHP').value = characterData.hp.temp;
+                    updateHPDisplay();
                 }
 
-                const diceResultsDiv = document.getElementById('diceResults');
-                diceResultsDiv.innerHTML = '';
-                results.forEach(result => {
-                    const resultDiv = document.createElement('div');
-                    resultDiv.className = 'dice-result';
-                    resultDiv.textContent = result;
-                    diceResultsDiv.appendChild(resultDiv);
-                });
-                diceResultsDiv.classList.add('animate');
-
-                // Update result after a short delay to allow animation
-                setTimeout(() => {
-                    diceResultsDiv.classList.remove('animate');
-                }, 200);
-
-                // Update roll history
-                const rollHistoryDiv = document.getElementById('rollHistory');
-                const rollItem = document.createElement('div');
-                rollItem.className = 'roll-item';
-                rollItem.textContent = `Rolled ${numDice}d${diceType}: [${results.join(', ')}] Total: ${total}`;
-                rollHistoryDiv.prepend(rollItem);
-
-                // Keep only the latest 10 rolls
-                if (rollHistoryDiv.childElementCount > 10) {
-                    rollHistoryDiv.removeChild(rollHistoryDiv.lastChild);
+                // Load Combat Stats
+                if (characterData.combatStats) {
+                    document.getElementById('armorClass').value = characterData.combatStats.armorClass || '';
+                    document.getElementById('initiative').value = characterData.combatStats.initiative || '';
+                    document.getElementById('speed').value = characterData.combatStats.speed || '';
                 }
 
-                autosave();
-            }
-
-            // Save/Load Functions
-            function saveCharacter() {
-                const character = {
-                    name: document.getElementById('charName').value,
-                    class: document.getElementById('charClass').value,
-                    level: document.getElementById('charLevel').value,
-                    race: document.getElementById('charRace').value,
-                    hp: {
-                        current: currentHP,
-                        max: maxHP,
-                        temp: parseInt(document.getElementById('tempHP').value) || 0
-                    },
-                    currency: {
-                        platinum: parseInt(document.getElementById('platinum').value) || 0,
-                        gold: parseInt(document.getElementById('gold').value) || 0,
-                        silver: parseInt(document.getElementById('silver').value) || 0,
-                        copper: parseInt(document.getElementById('copper').value) || 0
-                    },
-                    abilities: {
-                        str: parseInt(document.getElementById('str').value) || 10,
-                        dex: parseInt(document.getElementById('dex').value) || 10,
-                        con: parseInt(document.getElementById('con').value) || 10,
-                        int: parseInt(document.getElementById('int').value) || 10,
-                        wis: parseInt(document.getElementById('wis').value) || 10,
-                        cha: parseInt(document.getElementById('cha').value) || 10
-                    },
-                    inventory: inventoryItems,
-                    spellsByLevel: spellsByLevel,
-                    spellSlots: spellSlots,
-                    preparedSpells: preparedSpells,
-                    notes: document.getElementById('notes').value,
-                    personality: {
-                        traits: document.getElementById('traits').value,
-                        ideals: document.getElementById('ideals').value,
-                        bonds: document.getElementById('bonds').value,
-                        flaws: document.getElementById('flaws').value
-                    }
-                };
-
-                localStorage.setItem('characterData', JSON.stringify(character));
-                localStorage.setItem('characterProfilePic', document.getElementById('profilePic').src);
-                console.log('Character saved');
-            }
-
-            function loadCharacter() {
-                const characterData = JSON.parse(localStorage.getItem('characterData') || '{}');
-                const profilePic = localStorage.getItem('characterProfilePic');
-
-                if (profilePic) {
-                    document.getElementById('profilePic').src = profilePic;
+                // Load Saving Throws
+                if (characterData.savingThrows) {
+                    document.getElementById('saveStr').value = characterData.savingThrows.str || '';
+                    document.getElementById('saveDex').value = characterData.savingThrows.dex || '';
+                    document.getElementById('saveCon').value = characterData.savingThrows.con || '';
+                    document.getElementById('saveInt').value = characterData.savingThrows.int || '';
+                    document.getElementById('saveWis').value = characterData.savingThrows.wis || '';
+                    document.getElementById('saveCha').value = characterData.savingThrows.cha || '';
                 }
 
-                if (Object.keys(characterData).length > 0) {
-                    // Load basic info
-                    document.getElementById('charName').value = characterData.name || '';
-                    document.getElementById('charClass').value = characterData.class || '';
-                    document.getElementById('charLevel').value = characterData.level || '';
-                    document.getElementById('charRace').value = characterData.race || '';
+                // Load Skills
+                if (characterData.skills) {
+                    document.getElementById('skillAcrobatics').value = characterData.skills.acrobatics || '';
+                    document.getElementById('skillAnimalHandling').value = characterData.skills.animalHandling || '';
+                    document.getElementById('skillArcana').value = characterData.skills.arcana || '';
+                    document.getElementById('skillAthletics').value = characterData.skills.athletics || '';
+                    document.getElementById('skillDeception').value = characterData.skills.deception || '';
+                    document.getElementById('skillHistory').value = characterData.skills.history || '';
+                    document.getElementById('skillInsight').value = characterData.skills.insight || '';
+                    document.getElementById('skillIntimidation').value = characterData.skills.intimidation || '';
+                    document.getElementById('skillInvestigation').value = characterData.skills.investigation || '';
+                    document.getElementById('skillMedicine').value = characterData.skills.medicine || '';
+                    document.getElementById('skillNature').value = characterData.skills.nature || '';
+                    document.getElementById('skillPerception').value = characterData.skills.perception || '';
+                    document.getElementById('skillPerformance').value = characterData.skills.performance || '';
+                    document.getElementById('skillPersuasion').value = characterData.skills.persuasion || '';
+                    document.getElementById('skillReligion').value = characterData.skills.religion || '';
+                    document.getElementById('skillSleightOfHand').value = characterData.skills.sleightOfHand || '';
+                    document.getElementById('skillStealth').value = characterData.skills.stealth || '';
+                    document.getElementById('skillSurvival').value = characterData.skills.survival || '';
+                }
 
-                    // Load HP
-                    if (characterData.hp) {
-                        currentHP = characterData.hp.current;
-                        maxHP = characterData.hp.max;
-                        document.getElementById('maxHP').value = maxHP;
-                        document.getElementById('hpSlider').value = currentHP;
-                        document.getElementById('hpSlider').max = maxHP;
-                        document.getElementById('tempHP').value = characterData.hp.temp;
-                        updateHPDisplay();
-                    }
+                // Load all other data
+                if (characterData.currency) {
+                    document.getElementById('platinum').value = characterData.currency.platinum || 0;
+                    document.getElementById('gold').value = characterData.currency.gold || 0;
+                    document.getElementById('silver').value = characterData.currency.silver || 0;
+                    document.getElementById('copper').value = characterData.currency.copper || 0;
+                }
 
-                    // Load all other data
-                    if (characterData.currency) {
-                        document.getElementById('platinum').value = characterData.currency.platinum || 0;
-                        document.getElementById('gold').value = characterData.currency.gold || 0;
-                        document.getElementById('silver').value = characterData.currency.silver || 0;
-                        document.getElementById('copper').value = characterData.currency.copper || 0;
-                    }
+                if (characterData.abilities) {
+                    document.getElementById('str').value = characterData.abilities.str || 10;
+                    document.getElementById('dex').value = characterData.abilities.dex || 10;
+                    document.getElementById('con').value = characterData.abilities.con || 10;
+                    document.getElementById('int').value = characterData.abilities.int || 10;
+                    document.getElementById('wis').value = characterData.abilities.wis || 10;
+                    document.getElementById('cha').value = characterData.abilities.cha || 10;
+                    updateAbilityModifiers();
+                }
 
-                    if (characterData.abilities) {
-                        document.getElementById('str').value = characterData.abilities.str || 10;
-                        document.getElementById('dex').value = characterData.abilities.dex || 10;
-                        document.getElementById('con').value = characterData.abilities.con || 10;
-                        document.getElementById('int').value = characterData.abilities.int || 10;
-                        document.getElementById('wis').value = characterData.abilities.wis || 10;
-                        document.getElementById('cha').value = characterData.abilities.cha || 10;
-                        updateAbilityModifiers();
-                    }
+                if (characterData.inventory) {
+                    inventoryItems = characterData.inventory;
+                }
 
-                    if (characterData.inventory) {
-                        inventoryItems = characterData.inventory;
-                    }
+                if (characterData.spellsByLevel) {
+                    spellsByLevel = characterData.spellsByLevel;
+                }
 
-                    if (characterData.spellsByLevel) {
-                        spellsByLevel = characterData.spellsByLevel;
-                    }
+                if (characterData.spellSlots) {
+                    spellSlots = characterData.spellSlots;
+                }
 
-                    if (characterData.spellSlots) {
-                        spellSlots = characterData.spellSlots;
-                    }
-
-                    if (characterData.preparedSpells) {
-                        preparedSpells = characterData.preparedSpells;
-                        displayPreparedSpells();
-                    }
-
-                    if (characterData.personality) {
-                        document.getElementById('traits').value = characterData.personality.traits || '';
-                        document.getElementById('ideals').value = characterData.personality.ideals || '';
-                        document.getElementById('bonds').value = characterData.personality.bonds || '';
-                        document.getElementById('flaws').value = characterData.personality.flaws || '';
-                    }
-
-                    document.getElementById('notes').value = characterData.notes || '';
-
-                    // Refresh displays
-                    displayInventoryItems();
-                    displaySpellSlots();
+                if (characterData.preparedSpells) {
+                    preparedSpells = characterData.preparedSpells;
                     displayPreparedSpells();
-                    displaySpells();
-                    // Set active spell level tab
-                    if (characterData.spellsByLevel) {
-                        const levels = Object.keys(characterData.spellsByLevel).map(Number);
-                        if (levels.length > 0) {
-                            changeSpellLevel(levels[0]);
-                        } else {
-                            changeSpellLevel(0);
-                        }
+                }
+
+                if (characterData.personality) {
+                    document.getElementById('traits').value = characterData.personality.traits || '';
+                    document.getElementById('ideals').value = characterData.personality.ideals || '';
+                    document.getElementById('bonds').value = characterData.personality.bonds || '';
+                    document.getElementById('flaws').value = characterData.personality.flaws || '';
+                }
+
+                document.getElementById('notes').value = characterData.notes || '';
+
+                // Refresh displays
+                displayInventoryItems();
+                displaySpellSlots();
+                displayPreparedSpells();
+                displaySpells();
+                // Set active spell level tab
+                if (characterData.spellsByLevel) {
+                    const levels = Object.keys(characterData.spellsByLevel).map(Number);
+                    if (levels.length > 0) {
+                        changeSpellLevel(levels[0]);
                     } else {
                         changeSpellLevel(0);
                     }
+                } else {
+                    changeSpellLevel(0);
                 }
             }
+        }
 
-            // Export/Import Functions
-            function exportCharacter() {
-                const characterData = localStorage.getItem('characterData');
-                const blob = new Blob([characterData], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'character.json';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }
+        // Export/Import Functions
+        function exportCharacter() {
+            const characterData = localStorage.getItem('characterData');
+            const blob = new Blob([characterData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'character.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
 
-            function importCharacter(file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const characterData = JSON.parse(e.target.result);
-                        localStorage.setItem('characterData', JSON.stringify(characterData));
-                        if (e.target.result.includes('"profilePic"')) {
-                            const picData = JSON.parse(e.target.result).profilePic;
-                            localStorage.setItem('characterProfilePic', picData);
-                        }
-                        loadCharacter();
-                        alert('Character imported successfully!');
-                    } catch (error) {
-                        alert('Error importing character data. Please check the file format.');
+        function importCharacter(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const characterData = JSON.parse(e.target.result);
+                    localStorage.setItem('characterData', JSON.stringify(characterData));
+                    if (e.target.result.includes('"profilePic"')) {
+                        const picData = JSON.parse(e.target.result).profilePic;
+                        localStorage.setItem('characterProfilePic', picData);
                     }
-                };
-                reader.readAsText(file);
-            }
+                    loadCharacter();
+                    alert('Character imported successfully!');
+                } catch (error) {
+                    alert('Error importing character data. Please check the file format.');
+                }
+            };
+            reader.readAsText(file);
+        }
 
-            // Ability Modifiers Management
-            function initializeAbilityModifiers() {
-                const abilityInputs = document.querySelectorAll('.ability-score');
-                abilityInputs.forEach(input => {
-                    input.addEventListener('input', updateAbilityModifiers);
+        // Ability Modifiers Management
+        function initializeAbilityModifiers() {
+            const abilityInputs = document.querySelectorAll('.ability-score');
+            abilityInputs.forEach(input => {
+                input.addEventListener('input', updateAbilityModifiers);
+            });
+            updateAbilityModifiers();
+        }
+
+        function calculateModifier(score) {
+            return Math.floor((score - 10) / 2);
+        }
+
+        function updateAbilityModifiers() {
+            const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+            abilities.forEach(ability => {
+                const score = parseInt(document.getElementById(ability).value) || 10;
+                const mod = calculateModifier(score);
+                const modDisplay = document.getElementById(`${ability}Mod`);
+                modDisplay.textContent = `Modifier: ${mod >= 0 ? '+' : ''}${mod}`;
+            });
+        }
+
+        // Spellbook Tabs Slider
+        function initializeSpellTabs() {
+            const spellTabs = document.querySelectorAll('.spell-tab');
+            const slider = document.getElementById('spellTabsSlider');
+
+            // Initialize slider position
+            updateSpellTabsSlider();
+
+            spellTabs.forEach((tab, index) => {
+                tab.addEventListener('click', () => {
+                    setTimeout(() => {
+                        updateSpellTabsSlider();
+                    }, 300);
                 });
-                updateAbilityModifiers();
-            }
+            });
+        }
 
-            function calculateModifier(score) {
-                return Math.floor((score - 10) / 2);
-            }
+        function updateSpellTabsSlider() {
+            const spellTabs = document.querySelectorAll('.spell-tab');
+            const slider = document.getElementById('spellTabsSlider');
+            let activeIndex = 0;
 
-            function updateAbilityModifiers() {
-                const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
-                abilities.forEach(ability => {
-                    const score = parseInt(document.getElementById(ability).value) || 10;
-                    const mod = calculateModifier(score);
-                    const modDisplay = document.getElementById(`${ability}Mod`);
-                    modDisplay.textContent = `Modifier: ${mod >= 0 ? '+' : ''}${mod}`;
-                });
-            }
+            spellTabs.forEach((tab, index) => {
+                if (tab.classList.contains('active')) {
+                    activeIndex = index;
+                }
+            });
 
-            // Spellbook Tabs Slider
-            function initializeSpellTabs() {
-                const spellTabs = document.querySelectorAll('.spell-tab');
-                const slider = document.getElementById('spellTabsSlider');
+            const activeTab = spellTabs[activeIndex];
+            const tabRect = activeTab.getBoundingClientRect();
+            const containerRect = activeTab.parentElement.getBoundingClientRect();
+            const offsetLeft = activeTab.offsetLeft;
+            const width = activeTab.offsetWidth;
 
-                // Initialize slider position
-                updateSpellTabsSlider();
+            slider.style.width = `${width}px`;
+            slider.style.transform = `translateX(${offsetLeft}px)`;
+        }
 
-                spellTabs.forEach((tab, index) => {
-                    tab.addEventListener('click', () => {
-                        setTimeout(() => {
-                            updateSpellTabsSlider();
-                        }, 300);
-                    });
-                });
-            }
+        // Autosave Functionality
+        function debounce(func, delay) {
+            return function(...args) {
+                clearTimeout(autosaveTimeout);
+                autosaveTimeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
 
-            function updateSpellTabsSlider() {
-                const spellTabs = document.querySelectorAll('.spell-tab');
-                const slider = document.getElementById('spellTabsSlider');
-                let activeIndex = 0;
-
-                spellTabs.forEach((tab, index) => {
-                    if (tab.classList.contains('active')) {
-                        activeIndex = index;
-                    }
-                });
-
-                const activeTab = spellTabs[activeIndex];
-                const tabRect = activeTab.getBoundingClientRect();
-                const containerRect = activeTab.parentElement.getBoundingClientRect();
-                const offsetLeft = activeTab.offsetLeft;
-                const width = activeTab.offsetWidth;
-
-                slider.style.width = `${width}px`;
-                slider.style.transform = `translateX(${offsetLeft}px)`;
-            }
-
-            // Autosave Functionality
-            function debounce(func, delay) {
-                return function(...args) {
-                    clearTimeout(autosaveTimeout);
-                    autosaveTimeout = setTimeout(() => func.apply(this, args), delay);
-                };
-            }
-
-            function autosave() {
-                saveCharacter();
-                console.log('Autosaved');
-            }
-        </script>
-    </body>
+        function autosave() {
+            saveCharacter();
+            console.log('Autosaved');
+        }
+    </script>
+</body>
 </html>
