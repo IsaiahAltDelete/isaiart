@@ -1,1396 +1,1005 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>D&D 5E Character Dashboard</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-    <style>
-        /* Background Image with Blur Overlay */
-        body {
-            background-image: url('https://preview.redd.it/heres-a-quick-4k-wallpaper-i-made-from-my-fav-loading-screen-v0-w8otufcuwfkb1.jpg?auto=webp&s=6cd92749ee581d3721dae377c363d33028349a37');
-            background-size: cover;
-            background-position: center;
-            position: relative;
-        }
-
-        body::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            backdrop-filter: blur(8px);
-            background-color: rgba(255, 255, 255, 0.3);
-            z-index: -1;
-        }
-
-        /* Custom HP Bar Styling */
-        .hp-bar-container {
-            width: 100%;
-            height: 24px;
-            background-color: #f3f4f6;
-            border-radius: 12px;
-            overflow: hidden;
-            position: relative;
-            border: 2px solid #d1d5db;
-        }
-
-        .hp-bar {
-            height: 100%;
-            transition: width 0.3s ease, background-color 0.3s ease;
-            border-radius: 8px;
-            position: relative;
-        }
-
-        .hp-text {
-            position: absolute;
-            width: 100%;
-            text-align: center;
-            color: #1f2937;
-            font-weight: bold;
-            text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
-        }
-
-        /* Active HP Display Styling */
-        .active-hp {
-            text-align: center;
-            font-size: 1.25rem;
-            font-weight: bold;
-            margin-top: 0.5rem;
-            transition: all 0.3s ease;
-        }
-
-        /* Animation Classes */
-        .glow-green {
-            animation: glowGreen 0.5s;
-        }
-
-        .glow-red {
-            animation: glowRed 0.5s, shake 0.5s;
-        }
-
-        @keyframes glowGreen {
-            from { color: #1f2937; }
-            to { color: #10b981; }
-        }
-
-        @keyframes glowRed {
-            from { color: #1f2937; }
-            to { color: #ef4444; }
-        }
-
-        @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            70% { transform: translate(3px, 1px) rotate(-1deg); }
-            80% { transform: translate(-1px, -1px) rotate(1deg); }
-            90% { transform: translate(1px, 2px) rotate(0deg); }
-            100% { transform: translate(1px, -2px) rotate(-1deg); }
-        }
-
-        /* Custom Range Input Styling */
-        input[type="range"] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 8px;
-            border-radius: 4px;
-            background: #e5e7eb;
-            outline: none;
-            margin: 10px 0;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #3b82f6;
-            cursor: pointer;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        input[type="range"]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #3b82f6;
-            cursor: pointer;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Dice Roller Styling */
-        .dice-roller {
-            text-align: center;
-        }
-
-        .dice-results {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 1rem;
-        }
-
-        .dice-result {
-            font-size: 2rem;
-            font-weight: bold;
-            padding: 10px 20px;
-            background-color: #f3f4f6;
-            border-radius: 8px;
-            transition: transform 0.2s;
-        }
-
-        .dice-result.animate {
-            transform: scale(1.5);
-        }
-
-        .roll-history {
-            max-height: 150px;
-            overflow-y: auto;
-            margin-top: 1rem;
-            background-color: #f9fafb;
-            padding: 0.5rem;
-            border-radius: 8px;
-        }
-
-        .roll-item {
-            font-size: 0.875rem;
-            margin-bottom: 0.25rem;
-        }
-
-        /* Spellbook Tabs Styling */
-        .spell-tab.active {
-            @apply bg-blue-500 text-white;
-        }
-
-        .spell-tab {
-            @apply bg-gray-200 text-gray-700 px-3 py-1 rounded cursor-pointer;
-            transition: background-color 0.2s, color 0.2s;
-        }
-
-        .spell-tab:hover {
-            @apply bg-blue-400 text-white;
-        }
-
-        /* Modifier Styling */
-        .modifier {
-            margin-top: 0.25rem;
-            font-size: 0.875rem;
-            text-align: right;
-            color: #374151;
-        }
-
-        /* Active Spell Level Indicator */
-        .spell-tabs-container {
-            position: relative;
-        }
-
-        .spell-tabs-slider {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 2px;
-            background-color: #3b82f6;
-            transition: transform 0.3s ease, width 0.3s ease;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>D&D Interactive Character Sheet</title>
+  <!-- Import Materialize CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+  <!-- Import Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    body {
+      background-image: url('background.jpg'); /* Ensure your background image is named background.jpg or background.jpeg */
+      background-repeat: repeat; /* Tiles the background image */
+      background-size: auto; /* Maintains original size */
+      font-family: 'Roboto', sans-serif;
+    }
+    .container {
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    .profile-pic {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 2px solid #ccc;
+      margin-bottom: 10px;
+    }
+    .btn-small {
+      margin: 0 2px;
+      padding: 0 8px;
+      height: 30px;
+      line-height: 30px;
+      font-size: 14px;
+      border-radius: 15px; /* Rounded corners */
+    }
+    .btn {
+      border-radius: 20px; /* Rounded corners */
+    }
+    .card {
+      border-radius: 15px; /* Rounded corners */
+    }
+    .modifier {
+      margin-left: 5px;
+      font-weight: bold;
+    }
+    .currency-input {
+      width: 60px;
+    }
+    textarea {
+      height: 100px; /* Increased height */
+      border-radius: 10px; /* Rounded corners */
+      resize: vertical; /* Allow vertical resizing */
+    }
+    .collection-item .secondary-content {
+      right: 40px;
+    }
+    .star-btn {
+      cursor: pointer;
+      color: gold;
+    }
+    .scrollable {
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .spell-slot {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .spell-slot span {
+      margin: 0 5px;
+    }
+    .fixed-label input:not(:focus) + label,
+    .fixed-label input:not(:placeholder-shown) + label,
+    .fixed-label textarea:not(:focus):not(:placeholder-shown) + label {
+      top: -14px;
+      font-size: 12px;
+      color: #26a69a;
+    }
+    /* Compact the sections */
+    .card-content {
+      padding: 10px;
+    }
+    .input-field {
+      margin-bottom: 10px;
+    }
+    .collection-item {
+      padding-left: 10px;
+    }
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      .abilities .col,
+      .saving-throws .col,
+      .skills .col {
+        width: 100%;
+      }
+    }
+    /* Navigation Tabs Styling */
+    .tabs .tab a {
+      color: #26a69a;
+      font-weight: bold;
+    }
+    .tabs .tab a:hover {
+      background-color: #e0f2f1;
+      border-radius: 10px;
+    }
+    .tabs .tab a.active {
+      background-color: #26a69a;
+      color: white !important;
+      border-radius: 10px;
+    }
+    /* Edit Icon Styling */
+    .edit-btn {
+      cursor: pointer;
+      color: #26a69a;
+      margin-left: 10px;
+    }
+    /* Expandable Notes Styling */
+    .notes-textarea {
+      min-height: 100px;
+      transition: height 0.2s;
+    }
+  </style>
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto p-4 relative z-10">
-        <!-- Character Header -->
-        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <div class="flex items-center space-x-6">
-                <div class="relative w-32 h-32">
-                    <img id="profilePic" src="/api/placeholder/128/128" alt="Profile" class="rounded-full object-cover w-full h-full">
-                    <input type="file" id="profileInput" accept="image/*" class="hidden" onchange="handleProfilePic(this)">
-                    <button onclick="document.getElementById('profileInput').click()" class="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-2 text-sm">
-                        Change
-                    </button>
+<body>
+  <!-- Navigation Bar with Tabs -->
+  <nav>
+    <div class="nav-wrapper teal">
+      <a href="#!" class="brand-logo center">D&D Character Sheet</a>
+      <ul id="nav-mobile" class="left hide-on-med-and-down">
+        <!-- Placeholder for left-aligned nav items if needed -->
+      </ul>
+      <ul class="right hide-on-med-and-down">
+        <!-- Placeholder for right-aligned nav items if needed -->
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Tabs Navigation -->
+  <div class="container">
+    <ul class="tabs tabs-fixed-width">
+      <li class="tab col s3"><a href="#profile">Profile</a></li>
+      <li class="tab col s3"><a href="#abilities">Abilities</a></li>
+      <li class="tab col s3"><a href="#inventory">Inventory</a></li>
+      <li class="tab col s3"><a href="#spells">Spells</a></li>
+      <li class="tab col s3"><a href="#notes">Notes</a></li>
+    </ul>
+  </div>
+
+  <!-- Tab Contents -->
+  <div class="container">
+    <!-- Profile Tab -->
+    <div id="profile" class="col s12">
+      <!-- Profile Section -->
+      <div class="section card">
+        <div class="card-content">
+          <span class="card-title">Profile</span>
+          <div class="row">
+            <div class="col s12 m3 center">
+              <img src="" alt="Profile Picture" id="profilePic" class="profile-pic responsive-img">
+              <div class="file-field input-field">
+                <div class="btn">
+                  <span>Upload</span>
+                  <input type="file" id="uploadPic" accept="image/*">
                 </div>
-                <div class="flex-1">
-                    <input type="text" id="charName" placeholder="Character Name" class="text-2xl font-bold mb-2 w-full border-b-2 border-gray-200 focus:outline-none focus:border-blue-500">
-                    <div class="flex space-x-4">
-                        <input type="text" id="charClass" placeholder="Class" class="border-b border-gray-200 focus:outline-none focus:border-blue-500">
-                        <input type="text" id="charLevel" placeholder="Level" class="w-20 border-b border-gray-200 focus:outline-none focus:border-blue-500">
-                        <input type="text" id="charRace" placeholder="Race" class="border-b border-gray-200 focus:outline-none focus:border-blue-500">
-                    </div>
+                <div class="file-path-wrapper">
+                  <input class="file-path validate" type="text" placeholder="Upload Profile Picture">
                 </div>
+              </div>
             </div>
+            <div class="col s12 m9">
+              <div class="fixed-label input-field">
+                <input id="characterName" type="text" class="validate" required>
+                <label for="characterName" class="active">Character Name</label>
+              </div>
+              <div class="fixed-label input-field">
+                <input id="class" type="text" class="validate" required>
+                <label for="class" class="active">Class</label>
+              </div>
+              <div class="fixed-label input-field" style="display: inline-block; width: 45%;">
+                <input id="level" type="number" class="validate" min="1" value="1" required>
+                <label for="level" class="active">Level</label>
+              </div>
+              <div class="fixed-label input-field" style="display: inline-block; width: 45%; margin-left: 10%;">
+                <input id="race" type="text" class="validate" required>
+                <label for="race" class="active">Race</label>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <!-- Main Content -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Hit Points Card -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Hit Points</h2>
-                <div class="space-y-4">
-                    <div>
-                        <div class="flex justify-between mb-2">
-                            <span>Max HP:</span>
-                            <input type="number" id="maxHP" class="w-20 border rounded px-2 py-1" value="0">
-                        </div>
-                        <div class="hp-bar-container">
-                            <div id="hpBar" class="hp-bar"></div>
-                            <div id="hpText" class="hp-text"></div>
-                        </div>
-                        <div class="active-hp" id="activeHP">0 HP</div>
-                        <input type="range" id="hpSlider" class="w-full" value="0" min="0" max="0">
-                        <div class="flex justify-between mt-2">
-                            <button onclick="adjustHP(-1)" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors">-1</button>
-                            <button onclick="adjustHP(-5)" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors">-5</button>
-                            <button onclick="adjustHP(5)" class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition-colors">+5</button>
-                            <button onclick="adjustHP(1)" class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition-colors">+1</button>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm mb-1">Temporary HP:</label>
-                        <div class="flex space-x-2">
-                            <input type="number" id="tempHP" class="flex-1 border rounded px-2 py-1" value="0">
-                            <button onclick="clearTempHP()" class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 transition-colors">Clear</button>
-                        </div>
-                    </div>
-                </div>
+      <!-- Hit Points and Temporary HP -->
+      <div class="section card">
+        <div class="card-content">
+          <span class="card-title">Hit Points</span>
+          <div class="row">
+            <div class="fixed-label input-field col s6">
+              <input id="currentHP" type="number" value="0" min="0">
+              <label for="currentHP" class="active">Current HP</label>
             </div>
-
-            <!-- Dice Roller Card -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Dice Roller</h2>
-                <div class="dice-roller">
-                    <div id="diceResults" class="dice-results">0</div>
-                    <div class="flex space-x-2 mb-4 justify-center">
-                        <input type="number" id="numDice" min="1" value="1" class="w-16 border rounded px-2 py-1" title="Number of Dice">
-                        <select id="diceType" class="border rounded px-2 py-1">
-                            <option value="4">d4</option>
-                            <option value="6">d6</option>
-                            <option value="8">d8</option>
-                            <option value="10">d10</option>
-                            <option value="12">d12</option>
-                            <option value="20">d20</option>
-                            <option value="100">d100</option>
-                        </select>
-                        <button onclick="rollDice()" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-colors">
-                            Roll
-                        </button>
-                    </div>
-                    <div class="roll-history" id="rollHistory">
-                        <!-- Roll history will be displayed here -->
-                    </div>
-                </div>
+            <div class="fixed-label input-field col s6">
+              <input id="maxHP" type="number" value="0" min="0">
+              <label for="maxHP" class="active">Max HP</label>
             </div>
-
-            <!-- Currency Card -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Currency</h2>
-                <div class="space-y-2">
-                    <div class="flex items-center">
-                        <span class="w-20">💎 Platinum:</span>
-                        <input type="number" id="platinum" class="w-24 border rounded px-2 py-1" value="0">
-                    </div>
-                    <div class="flex items-center">
-                        <span class="w-20">🪙 Gold:</span>
-                        <input type="number" id="gold" class="w-24 border rounded px-2 py-1" value="0">
-                    </div>
-                    <div class="flex items-center">
-                        <span class="w-20">🪙 Silver:</span>
-                        <input type="number" id="silver" class="w-24 border rounded px-2 py-1" value="0">
-                    </div>
-                    <div class="flex items-center">
-                        <span class="w-20">🪙 Copper:</span>
-                        <input type="number" id="copper" class="w-24 border rounded px-2 py-1" value="0">
-                    </div>
-                </div>
+          </div>
+          <div class="row">
+            <button class="btn-small red" onclick="changeHP(-5)">-5</button>
+            <button class="btn-small red" onclick="changeHP(-1)">-1</button>
+            <button class="btn-small green" onclick="changeHP(1)">+1</button>
+            <button class="btn-small green" onclick="changeHP(5)">+5</button>
+          </div>
+          <div class="divider" style="margin:10px 0;"></div>
+          <span class="card-title">Temporary HP</span>
+          <div class="row">
+            <div class="fixed-label input-field col s8">
+              <input id="tempHP" type="number" value="0" min="0">
+              <label for="tempHP" class="active">Temporary HP</label>
             </div>
-
-            <!-- Abilities Card -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Abilities</h2>
-                <div class="space-y-2">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm">Strength</label>
-                            <input type="number" id="str" class="w-full border rounded px-2 py-1 ability-score" value="10">
-                            <div id="strMod" class="modifier">Modifier: +0</div>
-                        </div>
-                        <div>
-                            <label class="block text-sm">Dexterity</label>
-                            <input type="number" id="dex" class="w-full border rounded px-2 py-1 ability-score" value="10">
-                            <div id="dexMod" class="modifier">Modifier: +0</div>
-                        </div>
-                        <div>
-                            <label class="block text-sm">Constitution</label>
-                            <input type="number" id="con" class="w-full border rounded px-2 py-1 ability-score" value="10">
-                            <div id="conMod" class="modifier">Modifier: +0</div>
-                        </div>
-                        <div>
-                            <label class="block text-sm">Intelligence</label>
-                            <input type="number" id="int" class="w-full border rounded px-2 py-1 ability-score" value="10">
-                            <div id="intMod" class="modifier">Modifier: +0</div>
-                        </div>
-                        <div>
-                            <label class="block text-sm">Wisdom</label>
-                            <input type="number" id="wis" class="w-full border rounded px-2 py-1 ability-score" value="10">
-                            <div id="wisMod" class="modifier">Modifier: +0</div>
-                        </div>
-                        <div>
-                            <label class="block text-sm">Charisma</label>
-                            <input type="number" id="cha" class="w-full border rounded px-2 py-1 ability-score" value="10">
-                            <div id="chaMod" class="modifier">Modifier: +0</div>
-                        </div>
-                    </div>
-                </div>
+            <div class="col s4">
+              <button class="btn red" onclick="clearTempHP()">Clear</button>
             </div>
-
-            <!-- Combat Stats Card (New Section) -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Combat Stats</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm mb-1">Armor Class:</label>
-                        <input type="number" id="armorClass" class="w-full border rounded px-2 py-1" value="">
-                    </div>
-                    <div>
-                        <label class="block text-sm mb-1">Initiative:</label>
-                        <input type="number" id="initiative" class="w-full border rounded px-2 py-1" value="">
-                    </div>
-                    <div>
-                        <label class="block text-sm mb-1">Speed:</label>
-                        <input type="number" id="speed" class="w-full border rounded px-2 py-1" value="">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Saving Throws Card (New Section) -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Saving Throws</h2>
-                <div class="space-y-2">
-                    <div class="flex items-center space-x-2">
-                        <span class="w-20">Strength:</span>
-                        <input type="number" id="saveStr" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-20">Dexterity:</span>
-                        <input type="number" id="saveDex" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-20">Constitution:</span>
-                        <input type="number" id="saveCon" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-20">Intelligence:</span>
-                        <input type="number" id="saveInt" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-20">Wisdom:</span>
-                        <input type="number" id="saveWis" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-20">Charisma:</span>
-                        <input type="number" id="saveCha" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Skills Card (New Section) -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Skills</h2>
-                <div class="space-y-2">
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Acrobatics:</span>
-                        <input type="number" id="skillAcrobatics" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Animal Handling:</span>
-                        <input type="number" id="skillAnimalHandling" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Arcana:</span>
-                        <input type="number" id="skillArcana" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Athletics:</span>
-                        <input type="number" id="skillAthletics" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Deception:</span>
-                        <input type="number" id="skillDeception" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">History:</span>
-                        <input type="number" id="skillHistory" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Insight:</span>
-                        <input type="number" id="skillInsight" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Intimidation:</span>
-                        <input type="number" id="skillIntimidation" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Investigation:</span>
-                        <input type="number" id="skillInvestigation" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Medicine:</span>
-                        <input type="number" id="skillMedicine" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Nature:</span>
-                        <input type="number" id="skillNature" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Perception:</span>
-                        <input type="number" id="skillPerception" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Performance:</span>
-                        <input type="number" id="skillPerformance" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Persuasion:</span>
-                        <input type="number" id="skillPersuasion" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Religion:</span>
-                        <input type="number" id="skillReligion" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Sleight of Hand:</span>
-                        <input type="number" id="skillSleightOfHand" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Stealth:</span>
-                        <input type="number" id="skillStealth" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-24">Survival:</span>
-                        <input type="number" id="skillSurvival" class="w-24 border rounded px-2 py-1" value="">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Inventory Card -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Inventory</h2>
-                <div class="mb-4">
-                    <input type="text" id="inventorySearch" placeholder="Search inventory..." class="w-full border rounded px-3 py-2">
-                </div>
-                <div id="inventory" class="space-y-2 max-h-64 overflow-y-auto">
-                    <!-- Items will be added here -->
-                </div>
-                <div class="flex justify-between items-center mt-4">
-                    <button onclick="addInventoryItem()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
-                        Add Item
-                    </button>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="previousInventoryPage()" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition-colors">&lt;</button>
-                        <span id="inventoryPage">Page 1</span>
-                        <button onclick="nextInventoryPage()" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition-colors">&gt;</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Spell Slots Card -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Spell Slots</h2>
-                <div id="spellSlots" class="grid gap-4">
-                    <!-- Spell slots will be added here -->
-                </div>
-            </div>
-
-            <!-- Spellbook Card -->
-            <div class="bg-white rounded-lg shadow-lg p-6 col-span-1 lg:col-span-2">
-                <h2 class="text-xl font-bold mb-4">Spellbook</h2>
-                
-                <!-- Add Spell Button and Spell Level Tabs -->
-                <div class="flex justify-between items-center mb-4 spell-tabs-container">
-                    <button onclick="addSpell()" class="bg-blue-500 text-white px-3 py-1 rounded-full hover:bg-blue-600 transition-colors text-xl">
-                        +
-                    </button>
-                    <!-- Spell Level Tabs -->
-                    <nav class="flex flex-wrap space-x-2 relative">
-                        <button onclick="changeSpellLevel(0)" class="spell-tab active" id="tab0">Cantrips</button>
-                        <button onclick="changeSpellLevel(1)" class="spell-tab" id="tab1">1st</button>
-                        <button onclick="changeSpellLevel(2)" class="spell-tab" id="tab2">2nd</button>
-                        <button onclick="changeSpellLevel(3)" class="spell-tab" id="tab3">3rd</button>
-                        <button onclick="changeSpellLevel(4)" class="spell-tab" id="tab4">4th</button>
-                        <button onclick="changeSpellLevel(5)" class="spell-tab" id="tab5">5th</button>
-                        <button onclick="changeSpellLevel(6)" class="spell-tab" id="tab6">6th</button>
-                        <button onclick="changeSpellLevel(7)" class="spell-tab" id="tab7">7th</button>
-                        <button onclick="changeSpellLevel(8)" class="spell-tab" id="tab8">8th</button>
-                        <button onclick="changeSpellLevel(9)" class="spell-tab" id="tab9">9th</button>
-                        <div id="spellTabsSlider" class="spell-tabs-slider w-20 transform translate-x-0"></div>
-                    </nav>
-                </div>
-
-                <!-- Spell Search -->
-                <div class="mb-4">
-                    <input type="text" id="spellSearch" placeholder="Search spells..." class="w-full border rounded px-3 py-2">
-                </div>
-
-                <!-- Spells of current level -->
-                <div id="spellList" class="space-y-2 max-h-96 overflow-y-auto">
-                    <!-- Spells will be displayed here -->
-                </div>
-
-                <!-- Pagination Controls -->
-                <div class="flex justify-between items-center mt-4">
-                    <div class="flex items-center space-x-2">
-                        <button onclick="previousSpellPage()" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition-colors">&lt;</button>
-                        <span id="spellPage">Page 1</span>
-                        <button onclick="nextSpellPage()" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition-colors">&gt;</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Active Spells Card -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Active Spells</h2>
-                <div id="activeSpells" class="space-y-2 max-h-96 overflow-y-auto">
-                    <!-- Active spells will be displayed here -->
-                </div>
-            </div>
-
-            <!-- Notes Card -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Notes</h2>
-                <textarea id="notes" class="w-full h-40 border rounded p-2" placeholder="Character notes..."></textarea>
-            </div>
-
-            <!-- Personality Card -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-bold mb-4">Personality</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm mb-1">Traits</label>
-                        <textarea id="traits" class="w-full h-20 border rounded p-2"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm mb-1">Ideals</label>
-                        <textarea id="ideals" class="w-full h-20 border rounded p-2"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm mb-1">Bonds</label>
-                        <textarea id="bonds" class="w-full h-20 border rounded p-2"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm mb-1">Flaws</label>
-                        <textarea id="flaws" class="w-full h-20 border rounded p-2"></textarea>
-                    </div>
-                </div>
-            </div>
+          </div>
         </div>
-
-        <!-- Save Button -->
-        <div class="fixed bottom-4 right-4">
-            <button onclick="saveCharacter()" class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-green-600 transition-colors">
-                Save Character
-            </button>
-        </div>
-
-        <!-- Import/Export Buttons -->
-        <div class="fixed bottom-4 left-4 flex space-x-2">
-            <button onclick="exportCharacter()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
-                Export
-            </button>
-            <label class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors cursor-pointer">
-                Import
-                <input type="file" accept=".json" onchange="importCharacter(this.files[0])" class="hidden">
-            </label>
-        </div>
+      </div>
     </div>
 
-    <script>
-        // Variables
-        let currentHP = 0;
-        let maxHP = 0;
-        let currentInventoryPage = 1;
-        const itemsPerPage = 5;
-        let inventoryItems = [];
-        let spellsByLevel = {};
-        let currentSpellLevel = 0;
-        const spellsPerPage = 8;
-        let currentSpellPage = 1;
-        let spellSlots = {};
-        let preparedSpells = [];
+    <!-- Abilities Tab -->
+    <div id="abilities" class="col s12">
+      <!-- Dice Roller and Currency -->
+      <div class="section card">
+        <div class="card-content">
+          <div class="row">
+            <!-- Dice Roller -->
+            <div class="col s12 m6">
+              <span class="card-title">Dice Roller</span>
+              <div class="row">
+                <div class="input-field col s8">
+                  <select id="diceType">
+                    <option value="d4">d4</option>
+                    <option value="d6">d6</option>
+                    <option value="d8">d8</option>
+                    <option value="d10">d10</option>
+                    <option value="d12">d12</option>
+                    <option value="d20">d20</option>
+                    <option value="d100">d100</option>
+                  </select>
+                  <label>Choose a die</label>
+                </div>
+                <div class="input-field col s4">
+                  <button class="btn" onclick="rollDice()">Roll</button>
+                </div>
+              </div>
+              <div class="dice-result" id="diceResult" style="font-weight:bold;"></div>
+            </div>
+            <!-- Currency -->
+            <div class="col s12 m6">
+              <span class="card-title">Currency</span>
+              <div class="row">
+                <div class="fixed-label input-field col s3">
+                  <input id="platinum" type="number" class="currency-input" value="0" min="0">
+                  <label for="platinum" class="active">💎 Platinum</label>
+                </div>
+                <div class="fixed-label input-field col s3">
+                  <input id="gold" type="number" class="currency-input" value="0" min="0">
+                  <label for="gold" class="active">🪙 Gold</label>
+                </div>
+                <div class="fixed-label input-field col s3">
+                  <input id="silver" type="number" class="currency-input" value="0" min="0">
+                  <label for="silver" class="active">🪙 Silver</label>
+                </div>
+                <div class="fixed-label input-field col s3">
+                  <input id="copper" type="number" class="currency-input" value="0" min="0">
+                  <label for="copper" class="active">🪙 Copper</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        let autosaveTimeout;
+      <!-- Abilities -->
+      <div class="section card abilities">
+        <div class="card-content">
+          <span class="card-title">Abilities</span>
+          <div class="row">
+            <div class="fixed-label input-field col s6 m4">
+              <input type="number" id="strength" value="10" min="1" max="30" onchange="updateModifier('strength')">
+              <label for="strength" class="active">Strength</label>
+              <span class="modifier" id="strengthMod">+0</span>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input type="number" id="dexterity" value="10" min="1" max="30" onchange="updateModifier('dexterity')">
+              <label for="dexterity" class="active">Dexterity</label>
+              <span class="modifier" id="dexterityMod">+0</span>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input type="number" id="constitution" value="10" min="1" max="30" onchange="updateModifier('constitution')">
+              <label for="constitution" class="active">Constitution</label>
+              <span class="modifier" id="constitutionMod">+0</span>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input type="number" id="intelligence" value="10" min="1" max="30" onchange="updateModifier('intelligence')">
+              <label for="intelligence" class="active">Intelligence</label>
+              <span class="modifier" id="intelligenceMod">+0</span>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input type="number" id="wisdom" value="10" min="1" max="30" onchange="updateModifier('wisdom')">
+              <label for="wisdom" class="active">Wisdom</label>
+              <span class="modifier" id="wisdomMod">+0</span>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input type="number" id="charisma" value="10" min="1" max="30" onchange="updateModifier('charisma')">
+              <label for="charisma" class="active">Charisma</label>
+              <span class="modifier" id="charismaMod">+0</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        // Initialize everything when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeHP();
-            initializeSpellSlots();
-            initializeAbilityModifiers();
-            initializeSpellTabs();
-            loadCharacter();
+      <!-- Combat Stats and Saving Throws -->
+      <div class="section card">
+        <div class="card-content">
+          <div class="row">
+            <!-- Combat Stats -->
+            <div class="col s12 m6">
+              <span class="card-title">Combat Stats</span>
+              <div class="row">
+                <div class="fixed-label input-field col s4">
+                  <input id="armorClass" type="number" value="10" min="0">
+                  <label for="armorClass" class="active">Armor Class</label>
+                </div>
+                <div class="fixed-label input-field col s4">
+                  <input id="initiative" type="number" value="0" min="0">
+                  <label for="initiative" class="active">Initiative</label>
+                </div>
+                <div class="fixed-label input-field col s4">
+                  <input id="speed" type="number" value="30" min="0">
+                  <label for="speed" class="active">Speed</label>
+                </div>
+              </div>
+            </div>
+            <!-- Saving Throws -->
+            <div class="col s12 m6">
+              <span class="card-title">Saving Throws</span>
+              <div class="row">
+                <div class="fixed-label input-field col s6 m4">
+                  <input id="saveStrength" type="number" value="0" min="0">
+                  <label for="saveStrength" class="active">Strength</label>
+                </div>
+                <div class="fixed-label input-field col s6 m4">
+                  <input id="saveDexterity" type="number" value="0" min="0">
+                  <label for="saveDexterity" class="active">Dexterity</label>
+                </div>
+                <div class="fixed-label input-field col s6 m4">
+                  <input id="saveConstitution" type="number" value="0" min="0">
+                  <label for="saveConstitution" class="active">Constitution</label>
+                </div>
+                <div class="fixed-label input-field col s6 m4">
+                  <input id="saveIntelligence" type="number" value="0" min="0">
+                  <label for="saveIntelligence" class="active">Intelligence</label>
+                </div>
+                <div class="fixed-label input-field col s6 m4">
+                  <input id="saveWisdom" type="number" value="0" min="0">
+                  <label for="saveWisdom" class="active">Wisdom</label>
+                </div>
+                <div class="fixed-label input-field col s6 m4">
+                  <input id="saveCharisma" type="number" value="0" min="0">
+                  <label for="saveCharisma" class="active">Charisma</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            // Add search listeners
-            document.getElementById('inventorySearch').addEventListener('input', displayInventoryItems);
-            document.getElementById('spellSearch').addEventListener('input', () => {
-                currentSpellPage = 1;
-                displaySpells();
-            });
+      <!-- Skills -->
+      <div class="section card skills">
+        <div class="card-content">
+          <span class="card-title">Skills</span>
+          <div class="row scrollable">
+            <div class="fixed-label input-field col s6 m4">
+              <input id="acrobatics" type="number" value="0" min="0">
+              <label for="acrobatics" class="active">Acrobatics</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="animalHandling" type="number" value="0" min="0">
+              <label for="animalHandling" class="active">Animal Handling</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="arcana" type="number" value="0" min="0">
+              <label for="arcana" class="active">Arcana</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="athletics" type="number" value="0" min="0">
+              <label for="athletics" class="active">Athletics</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="deception" type="number" value="0" min="0">
+              <label for="deception" class="active">Deception</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="history" type="number" value="0" min="0">
+              <label for="history" class="active">History</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="insight" type="number" value="0" min="0">
+              <label for="insight" class="active">Insight</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="intimidation" type="number" value="0" min="0">
+              <label for="intimidation" class="active">Intimidation</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="investigation" type="number" value="0" min="0">
+              <label for="investigation" class="active">Investigation</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="medicine" type="number" value="0" min="0">
+              <label for="medicine" class="active">Medicine</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="nature" type="number" value="0" min="0">
+              <label for="nature" class="active">Nature</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="perception" type="number" value="0" min="0">
+              <label for="perception" class="active">Perception</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="performance" type="number" value="0" min="0">
+              <label for="performance" class="active">Performance</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="persuasion" type="number" value="0" min="0">
+              <label for="persuasion" class="active">Persuasion</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="religion" type="number" value="0" min="0">
+              <label for="religion" class="active">Religion</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="sleightOfHand" type="number" value="0" min="0">
+              <label for="sleightOfHand" class="active">Sleight of Hand</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="stealth" type="number" value="0" min="0">
+              <label for="stealth" class="active">Stealth</label>
+            </div>
+            <div class="fixed-label input-field col s6 m4">
+              <input id="survival" type="number" value="0" min="0">
+              <label for="survival" class="active">Survival</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-            // Autosave on input changes
-            const inputs = document.querySelectorAll('input, textarea, select');
-            inputs.forEach(input => {
-                input.addEventListener('input', debounce(autosave, 1000));
-            });
-        });
+    <!-- Inventory Tab -->
+    <div id="inventory" class="col s12">
+      <!-- Inventory Section -->
+      <div class="section card">
+        <div class="card-content">
+          <span class="card-title">Inventory</span>
+          <div class="row">
+            <div class="input-field col s12">
+              <input id="searchInventory" type="text" placeholder="Search inventory...">
+            </div>
+            <div class="col s12">
+              <ul class="collection scrollable" id="inventoryList">
+                <!-- Inventory items will be added here -->
+              </ul>
+            </div>
+            <div class="col s12">
+              <button class="btn" onclick="addItem()">Add Item</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-        // Profile Picture Handling
-        function handleProfilePic(input) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('profilePic').src = e.target.result;
-                    localStorage.setItem('characterProfilePic', e.target.result);
-                };
-                reader.readAsDataURL(file);
-            }
+    <!-- Spells Tab -->
+    <div id="spells" class="col s12">
+      <!-- Spell Slots -->
+      <div class="section card">
+        <div class="card-content">
+          <span class="card-title">Spell Slots</span>
+          <div class="row">
+            <div class="col s12">
+              <div id="spellSlotsContainer">
+                <!-- Spell slots will be generated here -->
+                <div class="spell-slot" data-level="1">
+                  <span>Level 1:</span>
+                  <button class="btn-small green" onclick="changeSpellSlot(0, 1)">+</button>
+                  <span id="spellSlot0">0/0</span>
+                  <button class="btn-small red" onclick="changeSpellSlot(0, -1)">-</button>
+                </div>
+                <div class="spell-slot" data-level="2">
+                  <span>Level 2:</span>
+                  <button class="btn-small green" onclick="changeSpellSlot(1, 1)">+</button>
+                  <span id="spellSlot1">0/0</span>
+                  <button class="btn-small red" onclick="changeSpellSlot(1, -1)">-</button>
+                </div>
+                <div class="spell-slot" data-level="3">
+                  <span>Level 3:</span>
+                  <button class="btn-small green" onclick="changeSpellSlot(2, 1)">+</button>
+                  <span id="spellSlot2">0/0</span>
+                  <button class="btn-small red" onclick="changeSpellSlot(2, -1)">-</button>
+                </div>
+                <div class="spell-slot" data-level="4">
+                  <span>Level 4:</span>
+                  <button class="btn-small green" onclick="changeSpellSlot(3, 1)">+</button>
+                  <span id="spellSlot3">0/0</span>
+                  <button class="btn-small red" onclick="changeSpellSlot(3, -1)">-</button>
+                </div>
+                <div class="spell-slot" data-level="5">
+                  <span>Level 5:</span>
+                  <button class="btn-small green" onclick="changeSpellSlot(4, 1)">+</button>
+                  <span id="spellSlot4">0/0</span>
+                  <button class="btn-small red" onclick="changeSpellSlot(4, -1)">-</button>
+                </div>
+                <div class="spell-slot" data-level="6">
+                  <span>Level 6:</span>
+                  <button class="btn-small green" onclick="changeSpellSlot(5, 1)">+</button>
+                  <span id="spellSlot5">0/0</span>
+                  <button class="btn-small red" onclick="changeSpellSlot(5, -1)">-</button>
+                </div>
+                <div class="spell-slot" data-level="7">
+                  <span>Level 7:</span>
+                  <button class="btn-small green" onclick="changeSpellSlot(6, 1)">+</button>
+                  <span id="spellSlot6">0/0</span>
+                  <button class="btn-small red" onclick="changeSpellSlot(6, -1)">-</button>
+                </div>
+                <div class="spell-slot" data-level="8">
+                  <span>Level 8:</span>
+                  <button class="btn-small green" onclick="changeSpellSlot(7, 1)">+</button>
+                  <span id="spellSlot7">0/0</span>
+                  <button class="btn-small red" onclick="changeSpellSlot(7, -1)">-</button>
+                </div>
+                <div class="spell-slot" data-level="9">
+                  <span>Level 9:</span>
+                  <button class="btn-small green" onclick="changeSpellSlot(8, 1)">+</button>
+                  <span id="spellSlot8">0/0</span>
+                  <button class="btn-small red" onclick="changeSpellSlot(8, -1)">-</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spellbook and Active Spells -->
+      <div class="section card">
+        <div class="card-content">
+          <div class="row">
+            <!-- Spellbook -->
+            <div class="col s12 m6">
+              <span class="card-title">Spellbook</span>
+              <div class="row">
+                <div class="input-field col s12">
+                  <input id="searchSpells" type="text" placeholder="Search spells...">
+                </div>
+                <div class="col s12">
+                  <button class="btn" onclick="addSpell()">Add Spell</button>
+                  <select id="spellLevel">
+                    <option value="Cantrip">Cantrip</option>
+                    <option value="Level 1">Level 1</option>
+                    <option value="Level 2">Level 2</option>
+                    <option value="Level 3">Level 3</option>
+                    <option value="Level 4">Level 4</option>
+                    <option value="Level 5">Level 5</option>
+                    <option value="Level 6">Level 6</option>
+                    <option value="Level 7">Level 7</option>
+                    <option value="Level 8">Level 8</option>
+                    <option value="Level 9">Level 9</option>
+                  </select>
+                  <label>Spell Level</label>
+                </div>
+                <div class="col s12">
+                  <ul class="collection scrollable" id="spellbookList">
+                    <!-- Spells will be added here -->
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <!-- Active Spells -->
+            <div class="col s12 m6">
+              <span class="card-title">Active Spells</span>
+              <div class="row">
+                <div class="col s12">
+                  <ul class="collection scrollable" id="activeSpellsList">
+                    <!-- Active spells will be added here -->
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes Tab -->
+    <div id="notes" class="col s12">
+      <!-- Notes Section -->
+      <div class="section card">
+        <div class="card-content">
+          <span class="card-title">Notes</span>
+          <div class="row">
+            <div class="fixed-label input-field col s12">
+              <textarea id="characterNotes" class="materialize-textarea notes-textarea">Character notes...</textarea>
+              <label for="characterNotes" class="active">Character Notes</label>
+            </div>
+            <div class="fixed-label input-field col s12 m6">
+              <textarea id="personality" class="materialize-textarea notes-textarea">Personality traits...</textarea>
+              <label for="personality" class="active">Personality Traits</label>
+            </div>
+            <div class="fixed-label input-field col s12 m6">
+              <textarea id="ideals" class="materialize-textarea notes-textarea">Ideals...</textarea>
+              <label for="ideals" class="active">Ideals</label>
+            </div>
+            <div class="fixed-label input-field col s12 m6">
+              <textarea id="bonds" class="materialize-textarea notes-textarea">Bonds...</textarea>
+              <label for="bonds" class="active">Bonds</label>
+            </div>
+            <div class="fixed-label input-field col s12 m6">
+              <textarea id="flaws" class="materialize-textarea notes-textarea">Flaws...</textarea>
+              <label for="flaws" class="active">Flaws</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Materialize JS and dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize Materialize components
+      M.AutoInit();
+      loadProfilePic();
+      loadModifiers();
+      loadInventory();
+      loadSpells();
+      loadActiveSpells();
+      loadSpellSlots();
+      loadNotes();
+
+      // Initialize Tabs
+      var elems = document.querySelectorAll('.tabs');
+      var instances = M.Tabs.init(elems, {
+        swipeable: true
+      });
+    });
+
+    // Profile Picture Handling
+    const uploadPic = document.getElementById('uploadPic');
+    const profilePic = document.getElementById('profilePic');
+
+    uploadPic.addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          profilePic.src = e.target.result;
+          localStorage.setItem('profilePic', e.target.result);
         }
+        reader.readAsDataURL(file);
+      }
+    });
 
-        // Enhanced HP Management
-        function initializeHP() {
-            const maxHPInput = document.getElementById('maxHP');
-            const hpSlider = document.getElementById('hpSlider');
-            const tempHPInput = document.getElementById('tempHP');
+    function loadProfilePic() {
+      const pic = localStorage.getItem('profilePic');
+      if (pic) {
+        profilePic.src = pic;
+      } else {
+        profilePic.src = 'https://via.placeholder.com/100';
+      }
+    }
 
-            maxHPInput.addEventListener('input', function() {
-                maxHP = parseInt(this.value) || 0;
-                hpSlider.max = maxHP;
-                if (currentHP > maxHP) {
-                    currentHP = maxHP;
-                }
-                updateHPDisplay();
-            });
+    // HP Handling
+    function changeHP(amount) {
+      const currentHP = document.getElementById('currentHP');
+      const maxHP = document.getElementById('maxHP');
+      let newHP = parseInt(currentHP.value) + amount;
+      newHP = Math.max(0, Math.min(newHP, parseInt(maxHP.value)));
+      currentHP.value = newHP;
+      saveData('currentHP', newHP);
+    }
 
-            hpSlider.addEventListener('input', function() {
-                currentHP = parseInt(this.value);
-                updateHPDisplay();
-            });
+    // Temporary HP Handling
+    function clearTempHP() {
+      document.getElementById('tempHP').value = 0;
+      saveData('tempHP', 0);
+    }
 
-            tempHPInput.addEventListener('input', function() {
-                updateHPDisplay();
-            });
+    // Dice Roller
+    function rollDice() {
+      const diceType = document.getElementById('diceType').value;
+      const sides = parseInt(diceType.substring(1));
+      const result = Math.floor(Math.random() * sides) + 1;
+      document.getElementById('diceResult').textContent = `You rolled a ${result}`;
+      saveData('diceResult', `You rolled a ${result}`);
+    }
+
+    // Spell Slot Handling
+    function changeSpellSlot(index, amount) {
+      const spellSlot = document.getElementById(`spellSlot${index}`);
+      let [used, total] = spellSlot.textContent.split('/').map(Number);
+      used += amount;
+      used = Math.max(0, Math.min(used, total));
+      spellSlot.textContent = `${used}/${total}`;
+      saveSpellSlot(index, used, total);
+    }
+
+    // Abilities Modifiers
+    function updateModifier(ability) {
+      const score = parseInt(document.getElementById(ability).value);
+      const mod = Math.floor((score - 10) / 2);
+      document.getElementById(`${ability}Mod`).textContent = (mod >= 0 ? '+' : '') + mod;
+      saveData(ability, score);
+      saveData(`${ability}Mod`, mod);
+    }
+
+    function loadModifiers() {
+      const abilities = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+      abilities.forEach(ability => {
+        const score = localStorage.getItem(ability) || 10;
+        document.getElementById(ability).value = score;
+        const mod = Math.floor((score - 10) / 2);
+        document.getElementById(`${ability}Mod`).textContent = (mod >= 0 ? '+' : '') + mod;
+      });
+    }
+
+    // Inventory Handling
+    function addItem() {
+      const itemName = prompt('Enter item name:');
+      if (itemName) {
+        const li = document.createElement('li');
+        li.className = 'collection-item';
+        li.textContent = itemName;
+        const removeBtn = document.createElement('a');
+        removeBtn.href = '#';
+        removeBtn.className = 'secondary-content';
+        removeBtn.innerHTML = '<i class="material-icons">delete</i>';
+        removeBtn.onclick = function() {
+          li.remove();
+          saveInventory();
+        };
+        li.appendChild(removeBtn);
+        document.getElementById('inventoryList').appendChild(li);
+        saveInventory();
+      }
+    }
+
+    function saveInventory() {
+      const items = [];
+      document.querySelectorAll('#inventoryList .collection-item').forEach(item => {
+        items.push(item.firstChild.textContent);
+      });
+      localStorage.setItem('inventory', JSON.stringify(items));
+    }
+
+    function loadInventory() {
+      const items = JSON.parse(localStorage.getItem('inventory')) || [];
+      items.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'collection-item';
+        li.textContent = item;
+        const removeBtn = document.createElement('a');
+        removeBtn.href = '#';
+        removeBtn.className = 'secondary-content';
+        removeBtn.innerHTML = '<i class="material-icons">delete</i>';
+        removeBtn.onclick = function() {
+          li.remove();
+          saveInventory();
+        };
+        li.appendChild(removeBtn);
+        document.getElementById('inventoryList').appendChild(li);
+      });
+    }
+
+    // Spellbook Handling with Editable Spell Levels
+    function addSpell() {
+      const spellName = prompt('Enter spell name:');
+      const spellLevel = document.getElementById('spellLevel').value;
+      if (spellName && spellLevel) {
+        const li = document.createElement('li');
+        li.className = 'collection-item';
+        li.innerHTML = `
+          <span class="spell-name">${spellName}</span> 
+          (<span class="spell-level">${spellLevel}</span>)
+          <a href="#" class="secondary-content" onclick="addToActiveSpells('${spellName}')">
+            <i class="material-icons star-btn">star_border</i>
+          </a>
+          <a href="#" class="secondary-content" style="right: 40px;" onclick="removeSpell(this)">
+            <i class="material-icons">delete</i>
+          </a>
+          <a href="#" class="secondary-content edit-btn" onclick="editSpell(this)">
+            <i class="material-icons">edit</i>
+          </a>
+        `;
+        document.getElementById('spellbookList').appendChild(li);
+        saveSpells();
+      }
+    }
+
+    function removeSpell(element) {
+      element.parentElement.remove();
+      saveSpells();
+    }
+
+    function editSpell(element) {
+      const li = element.parentElement;
+      const spellNameSpan = li.querySelector('.spell-name');
+      const spellLevelSpan = li.querySelector('.spell-level');
+
+      const currentName = spellNameSpan.textContent;
+      const currentLevel = spellLevelSpan.textContent;
+
+      const newName = prompt('Edit spell name:', currentName);
+      if (newName === null) return; // Cancelled
+
+      const newLevel = prompt('Edit spell level (Cantrip or Level 1-9):', currentLevel);
+      if (newLevel === null) return; // Cancelled
+
+      if (newName.trim() === '' || newLevel.trim() === '') {
+        alert('Spell name and level cannot be empty.');
+        return;
+      }
+
+      spellNameSpan.textContent = newName;
+      spellLevelSpan.textContent = newLevel;
+      saveSpells();
+    }
+
+    function addToActiveSpells(spellName) {
+      const activeList = document.getElementById('activeSpellsList');
+      // Check if spell already exists
+      const exists = Array.from(activeList.children).some(li => li.textContent.trim() === spellName);
+      if (!exists) {
+        const li = document.createElement('li');
+        li.className = 'collection-item';
+        li.textContent = spellName;
+        const removeBtn = document.createElement('a');
+        removeBtn.href = '#';
+        removeBtn.className = 'secondary-content';
+        removeBtn.innerHTML = '<i class="material-icons">delete</i>';
+        removeBtn.onclick = function() {
+          li.remove();
+          saveActiveSpells();
+        };
+        li.appendChild(removeBtn);
+        activeList.appendChild(li);
+        saveActiveSpells();
+      }
+    }
+
+    function saveSpells() {
+      const spells = [];
+      document.querySelectorAll('#spellbookList .collection-item').forEach(item => {
+        const spellName = item.querySelector('.spell-name').textContent;
+        const spellLevel = item.querySelector('.spell-level').textContent;
+        spells.push({ name: spellName, level: spellLevel });
+      });
+      localStorage.setItem('spells', JSON.stringify(spells));
+    }
+
+    function loadSpells() {
+      const spells = JSON.parse(localStorage.getItem('spells')) || [];
+      spells.forEach(spell => {
+        const li = document.createElement('li');
+        li.className = 'collection-item';
+        li.innerHTML = `
+          <span class="spell-name">${spell.name}</span> 
+          (<span class="spell-level">${spell.level}</span>)
+          <a href="#" class="secondary-content" onclick="addToActiveSpells('${spell.name}')">
+            <i class="material-icons star-btn">star_border</i>
+          </a>
+          <a href="#" class="secondary-content" style="right: 40px;" onclick="removeSpell(this)">
+            <i class="material-icons">delete</i>
+          </a>
+          <a href="#" class="secondary-content edit-btn" onclick="editSpell(this)">
+            <i class="material-icons">edit</i>
+          </a>
+        `;
+        document.getElementById('spellbookList').appendChild(li);
+      });
+    }
+
+    // Active Spells Handling
+    function saveActiveSpells() {
+      const spells = [];
+      document.querySelectorAll('#activeSpellsList .collection-item').forEach(item => {
+        spells.push(item.firstChild.textContent);
+      });
+      localStorage.setItem('activeSpells', JSON.stringify(spells));
+    }
+
+    function loadActiveSpells() {
+      const spells = JSON.parse(localStorage.getItem('activeSpells')) || [];
+      spells.forEach(spell => {
+        const li = document.createElement('li');
+        li.className = 'collection-item';
+        li.textContent = spell;
+        const removeBtn = document.createElement('a');
+        removeBtn.href = '#';
+        removeBtn.className = 'secondary-content';
+        removeBtn.innerHTML = '<i class="material-icons">delete</i>';
+        removeBtn.onclick = function() {
+          li.remove();
+          saveActiveSpells();
+        };
+        li.appendChild(removeBtn);
+        document.getElementById('activeSpellsList').appendChild(li);
+      });
+    }
+
+    // Spell Slots Handling
+    function saveSpellSlot(index, used, total) {
+      let spellSlots = JSON.parse(localStorage.getItem('spellSlots')) || {};
+      spellSlots[index] = { used, total };
+      localStorage.setItem('spellSlots', JSON.stringify(spellSlots));
+    }
+
+    function loadSpellSlots() {
+      const spellSlots = JSON.parse(localStorage.getItem('spellSlots')) || {};
+      for (let i = 0; i < 9; i++) {
+        if (spellSlots[i]) {
+          document.getElementById(`spellSlot${i}`).textContent = `${spellSlots[i].used}/${spellSlots[i].total}`;
         }
+      }
+    }
 
-        function updateHPDisplay(isHealing = false, isDamage = false) {
-            const hpBar = document.getElementById('hpBar');
-            const hpText = document.getElementById('hpText');
-            const activeHPDiv = document.getElementById('activeHP');
-            const tempHP = parseInt(document.getElementById('tempHP').value) || 0;
-            const totalHP = currentHP + tempHP;
-            const percentage = maxHP > 0 ? (currentHP / maxHP) * 100 : 0;
+    // Notes Handling
+    function saveNotes() {
+      const notes = {
+        characterNotes: document.getElementById('characterNotes').value,
+        personality: document.getElementById('personality').value,
+        ideals: document.getElementById('ideals').value,
+        bonds: document.getElementById('bonds').value,
+        flaws: document.getElementById('flaws').value
+      };
+      localStorage.setItem('notes', JSON.stringify(notes));
+    }
 
-            // Update the bar width
-            hpBar.style.width = `${percentage}%`;
+    function loadNotes() {
+      const notes = JSON.parse(localStorage.getItem('notes')) || {};
+      document.getElementById('characterNotes').value = notes.characterNotes || 'Character notes...';
+      document.getElementById('personality').value = notes.personality || 'Personality traits...';
+      document.getElementById('ideals').value = notes.ideals || 'Ideals...';
+      document.getElementById('bonds').value = notes.bonds || 'Bonds...';
+      document.getElementById('flaws').value = notes.flaws || 'Flaws...';
+      M.updateTextFields();
+    }
 
-            // Update the color based on percentage
-            let hue = (percentage * 1.2); // Multiply by 1.2 to get red at ~83% instead of 100%
-            hpBar.style.backgroundColor = `hsl(${hue}, 70%, 45%)`;
+    // General Data Saving
+    function saveData(key, value) {
+      localStorage.setItem(key, value);
+    }
 
-            // Update the text
-            hpText.textContent = `${totalHP} / ${maxHP} HP`;
-
-            // Update active HP display
-            activeHPDiv.textContent = `${totalHP} HP`;
-
-            // Remove previous animation classes
-            activeHPDiv.classList.remove('glow-green', 'glow-red');
-
-            // Apply animation based on change
-            if (isHealing) {
-                activeHPDiv.classList.add('glow-green');
-            } else if (isDamage) {
-                activeHPDiv.classList.add('glow-red');
-            }
-
-            // Update slider
-            document.getElementById('hpSlider').value = currentHP;
+    // Auto-save functionality for inputs and textareas
+    document.querySelectorAll('input, textarea, select').forEach(element => {
+      element.addEventListener('change', () => {
+        if (element.type === 'checkbox' || element.type === 'radio') {
+          saveData(element.id, element.checked);
+        } else {
+          saveData(element.id, element.value);
         }
-
-        function adjustHP(amount) {
-            const tempHPInput = document.getElementById('tempHP');
-            const tempHP = parseInt(tempHPInput.value) || 0;
-            let isHealing = false;
-            let isDamage = false;
-
-            if (amount < 0) {
-                // Handle damage
-                const damage = Math.abs(amount);
-                if (tempHP > 0) {
-                    // Damage is absorbed by temporary HP first
-                    const remainingDamage = damage - tempHP;
-                    const newTempHP = Math.max(0, tempHP - damage);
-                    tempHPInput.value = newTempHP;
-
-                    if (remainingDamage > 0) {
-                        currentHP = Math.max(0, currentHP - remainingDamage);
-                        isDamage = true;
-                    }
-                } else {
-                    currentHP = Math.max(0, currentHP - damage);
-                    isDamage = true;
-                }
-            } else {
-                // Handle healing
-                currentHP = Math.min(currentHP + amount, maxHP);
-                isHealing = true;
-            }
-
-            updateHPDisplay(isHealing, isDamage);
-        }
-
-        function clearTempHP() {
-            document.getElementById('tempHP').value = 0;
-            updateHPDisplay();
-        }
-
-        // Inventory Management
-        function addInventoryItem() {
-            const item = {
-                name: '',
-                quantity: 1
-            };
-            inventoryItems.push(item);
-            displayInventoryItems();
-        }
-
-        function displayInventoryItems() {
-            const inventoryDiv = document.getElementById('inventory');
-            const searchTerm = document.getElementById('inventorySearch').value.toLowerCase();
-
-            // Filter items
-            const filteredItems = inventoryItems.filter(item => 
-                item.name.toLowerCase().includes(searchTerm)
-            );
-
-            // Calculate pagination
-            const startIndex = (currentInventoryPage - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const displayedItems = filteredItems.slice(startIndex, endIndex);
-
-            // Update display
-            inventoryDiv.innerHTML = '';
-            displayedItems.forEach((item, index) => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'flex items-center space-x-2';
-                itemDiv.innerHTML = `
-                    <input type="text" placeholder="Item name" class="flex-1 border rounded px-2 py-1" value="${item.name}"
-                           onchange="updateInventoryItem(${startIndex + index}, 'name', this.value)">
-                    <input type="number" placeholder="Qty" class="w-20 border rounded px-2 py-1" value="${item.quantity}"
-                           onchange="updateInventoryItem(${startIndex + index}, 'quantity', this.value)">
-                    <button onclick="removeInventoryItem(${startIndex + index})" 
-                            class="text-red-500 hover:text-red-600 transition-colors">×</button>
-                `;
-                inventoryDiv.appendChild(itemDiv);
-            });
-
-            // Update page display
-            document.getElementById('inventoryPage').textContent = 
-                `Page ${currentInventoryPage} of ${Math.ceil(filteredItems.length / itemsPerPage) || 1}`;
-        }
-
-        function updateInventoryItem(index, property, value) {
-            inventoryItems[index][property] = property === 'quantity' ? parseInt(value) : value;
-            autosave();
-        }
-
-        function removeInventoryItem(index) {
-            inventoryItems.splice(index, 1);
-            displayInventoryItems();
-            autosave();
-        }
-
-        function previousInventoryPage() {
-            if (currentInventoryPage > 1) {
-                currentInventoryPage--;
-                displayInventoryItems();
-            }
-        }
-
-        function nextInventoryPage() {
-            const filteredItems = inventoryItems.filter(item => 
-                item.name.toLowerCase().includes(document.getElementById('inventorySearch').value.toLowerCase())
-            );
-            const maxPages = Math.ceil(filteredItems.length / itemsPerPage);
-            if (currentInventoryPage < maxPages) {
-                currentInventoryPage++;
-                displayInventoryItems();
-            }
-        }
-
-        // Spell Slot Management
-        function initializeSpellSlots() {
-            // Initialize spell slots for all levels if not present
-            for (let level = 1; level <= 9; level++) {
-                if (!spellSlots[level]) {
-                    spellSlots[level] = { total: 0, used: 0 };
-                }
-            }
-            displaySpellSlots();
-        }
-
-        function displaySpellSlots() {
-            const spellSlotsDiv = document.getElementById('spellSlots');
-            spellSlotsDiv.innerHTML = '';
-
-            for (let level = 1; level <= 9; level++) {
-                const slotDiv = document.createElement('div');
-                slotDiv.className = 'flex items-center justify-between';
-
-                const slots = spellSlots[level] || { total: 0, used: 0 };
-                const availableSlots = slots.total - slots.used;
-
-                slotDiv.innerHTML = `
-                    <span class="font-medium">Level ${level}:</span>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="useSpellSlot(${level}, 1)" 
-                                class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition-colors">+</button>
-                        <span>${availableSlots}/${slots.total}</span>
-                        <button onclick="useSpellSlot(${level}, -1)" 
-                                class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition-colors">-</button>
-                        <input type="number" id="slotsTotal${level}" 
-                               class="w-16 border rounded px-2 py-1" 
-                               value="${slots.total}"
-                               onchange="updateTotalSlots(${level}, this.value)">
-                    </div>
-                `;
-                spellSlotsDiv.appendChild(slotDiv);
-            }
-        }
-
-        function useSpellSlot(level, change) {
-            if (!spellSlots[level]) {
-                spellSlots[level] = { total: 0, used: 0 };
-            }
-            const newUsed = spellSlots[level].used + change;
-            if (newUsed >= 0 && newUsed <= spellSlots[level].total) {
-                spellSlots[level].used = newUsed;
-                displaySpellSlots();
-                autosave();
-            }
-        }
-
-        function updateTotalSlots(level, total) {
-            if (!spellSlots[level]) {
-                spellSlots[level] = { total: 0, used: 0 };
-            }
-            spellSlots[level].total = parseInt(total) || 0;
-            if (spellSlots[level].used > spellSlots[level].total) {
-                spellSlots[level].used = spellSlots[level].total;
-            }
-            displaySpellSlots();
-            autosave();
-        }
-
-        // Spellbook Management
-        function addSpell() {
-            if (!spellsByLevel[currentSpellLevel]) {
-                spellsByLevel[currentSpellLevel] = [];
-            }
-
-            spellsByLevel[currentSpellLevel].push({
-                name: ''
-            });
-
-            displaySpells();
-            autosave();
-        }
-
-        function displaySpells() {
-            const spellListDiv = document.getElementById('spellList');
-            const searchTerm = document.getElementById('spellSearch').value.toLowerCase();
-            spellListDiv.innerHTML = '';
-
-            const spellsOfLevel = spellsByLevel[currentSpellLevel] || [];
-            const filteredSpells = spellsOfLevel.filter(spell => 
-                spell.name.toLowerCase().includes(searchTerm)
-            );
-
-            // Calculate pagination
-            const startIndex = (currentSpellPage - 1) * spellsPerPage;
-            const endIndex = startIndex + spellsPerPage;
-            const displayedSpells = filteredSpells.slice(startIndex, endIndex);
-
-            // Display spells
-            displayedSpells.forEach((spell, index) => {
-                const spellDiv = document.createElement('div');
-                spellDiv.className = 'flex items-center justify-between bg-gray-50 rounded-lg p-4 mb-4';
-                spellDiv.innerHTML = `
-                    <input type="text" 
-                           placeholder="Spell name" 
-                           value="${spell.name}"
-                           onchange="updateSpell(${startIndex + index}, 'name', this.value)"
-                           class="flex-1 border rounded px-2 py-1">
-                    <button onclick="togglePreparedSpell('${spell.name}')" 
-                            class="ml-2 text-green-500 hover:text-green-600 transition-colors">
-                        ${preparedSpells.includes(spell.name) ? '✅' : '➕'}
-                    </button>
-                    <button onclick="removeSpell(${startIndex + index})" 
-                            class="text-red-500 hover:text-red-600 transition-colors ml-2">×</button>
-                `;
-                spellListDiv.appendChild(spellDiv);
-            });
-
-            // Update spell page display
-            document.getElementById('spellPage').textContent = 
-                `Page ${currentSpellPage} of ${Math.ceil(filteredSpells.length / spellsPerPage) || 1}`;
-
-            updateSpellTabsSlider();
-        }
-
-        function updateSpell(index, property, value) {
-            const spells = spellsByLevel[currentSpellLevel] || [];
-            if (spells[index]) {
-                spells[index][property] = value;
-                autosave();
-            }
-        }
-
-        function removeSpell(index) {
-            const spells = spellsByLevel[currentSpellLevel] || [];
-            const spellName = spells[index].name;
-            // Remove from preparedSpells if present
-            const preparedIndex = preparedSpells.indexOf(spellName);
-            if (preparedIndex !== -1) {
-                preparedSpells.splice(preparedIndex, 1);
-                displayPreparedSpells();
-            }
-            spells.splice(index, 1);
-            displaySpells();
-            autosave();
-        }
-
-        function previousSpellPage() {
-            if (currentSpellPage > 1) {
-                currentSpellPage--;
-                displaySpells();
-            }
-        }
-
-        function nextSpellPage() {
-            const spells = spellsByLevel[currentSpellLevel] || [];
-            const filteredSpells = spells.filter(spell => 
-                spell.name.toLowerCase().includes(document.getElementById('spellSearch').value.toLowerCase())
-            );
-            const maxPages = Math.ceil(filteredSpells.length / spellsPerPage);
-            if (currentSpellPage < maxPages) {
-                currentSpellPage++;
-                displaySpells();
-            }
-        }
-
-        function changeSpellLevel(level) {
-            currentSpellLevel = level;
-            currentSpellPage = 1;
-
-            // Update tab styles
-            document.querySelectorAll('.spell-tab').forEach((button, index) => {
-                if (index === level) {
-                    button.classList.add('active');
-                } else {
-                    button.classList.remove('active');
-                }
-            });
-
-            displaySpells();
-        }
-
-        // Active Spells Management
-        function togglePreparedSpell(spellName) {
-            const index = preparedSpells.indexOf(spellName);
-            if (index === -1) {
-                preparedSpells.push(spellName);
-            } else {
-                preparedSpells.splice(index, 1);
-            }
-            displaySpells();
-            displayPreparedSpells();
-            autosave();
-        }
-
-        function displayPreparedSpells() {
-            const activeSpellsDiv = document.getElementById('activeSpells');
-            activeSpellsDiv.innerHTML = '';
-            preparedSpells.forEach((spell, index) => {
-                const spellDiv = document.createElement('div');
-                spellDiv.className = 'flex items-center justify-between bg-gray-50 rounded-lg p-2 mb-2';
-                spellDiv.innerHTML = `
-                    <span>${spell}</span>
-                    <button onclick="togglePreparedSpell('${spell}')" class="text-red-500 hover:text-red-600 transition-colors">✖️</button>
-                `;
-                activeSpellsDiv.appendChild(spellDiv);
-            });
-        }
-
-        // Dice Roller Functionality
-        function rollDice() {
-            const diceType = parseInt(document.getElementById('diceType').value);
-            const numDice = parseInt(document.getElementById('numDice').value) || 1;
-            if (!diceType || numDice < 1) return;
-
-            let results = [];
-            let total = 0;
-            for (let i = 0; i < numDice; i++) {
-                const result = Math.floor(Math.random() * diceType) + 1;
-                results.push(result);
-                total += result;
-            }
-
-            const diceResultsDiv = document.getElementById('diceResults');
-            diceResultsDiv.innerHTML = '';
-            results.forEach(result => {
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'dice-result';
-                resultDiv.textContent = result;
-                diceResultsDiv.appendChild(resultDiv);
-            });
-            diceResultsDiv.classList.add('animate');
-
-            // Update result after a short delay to allow animation
-            setTimeout(() => {
-                diceResultsDiv.classList.remove('animate');
-            }, 200);
-
-            // Update roll history
-            const rollHistoryDiv = document.getElementById('rollHistory');
-            const rollItem = document.createElement('div');
-            rollItem.className = 'roll-item';
-            rollItem.textContent = `Rolled ${numDice}d${diceType}: [${results.join(', ')}] Total: ${total}`;
-            rollHistoryDiv.prepend(rollItem);
-
-            // Keep only the latest 10 rolls
-            if (rollHistoryDiv.childElementCount > 10) {
-                rollHistoryDiv.removeChild(rollHistoryDiv.lastChild);
-            }
-
-            autosave();
-        }
-
-        // Save/Load Functions
-        function saveCharacter() {
-            const character = {
-                name: document.getElementById('charName').value,
-                class: document.getElementById('charClass').value,
-                level: document.getElementById('charLevel').value,
-                race: document.getElementById('charRace').value,
-                hp: {
-                    current: currentHP,
-                    max: maxHP,
-                    temp: parseInt(document.getElementById('tempHP').value) || 0
-                },
-                currency: {
-                    platinum: parseInt(document.getElementById('platinum').value) || 0,
-                    gold: parseInt(document.getElementById('gold').value) || 0,
-                    silver: parseInt(document.getElementById('silver').value) || 0,
-                    copper: parseInt(document.getElementById('copper').value) || 0
-                },
-                abilities: {
-                    str: parseInt(document.getElementById('str').value) || 10,
-                    dex: parseInt(document.getElementById('dex').value) || 10,
-                    con: parseInt(document.getElementById('con').value) || 10,
-                    int: parseInt(document.getElementById('int').value) || 10,
-                    wis: parseInt(document.getElementById('wis').value) || 10,
-                    cha: parseInt(document.getElementById('cha').value) || 10
-                },
-                combatStats: {
-                    armorClass: parseInt(document.getElementById('armorClass').value) || 0,
-                    initiative: parseInt(document.getElementById('initiative').value) || 0,
-                    speed: parseInt(document.getElementById('speed').value) || 0
-                },
-                savingThrows: {
-                    str: parseInt(document.getElementById('saveStr').value) || 0,
-                    dex: parseInt(document.getElementById('saveDex').value) || 0,
-                    con: parseInt(document.getElementById('saveCon').value) || 0,
-                    int: parseInt(document.getElementById('saveInt').value) || 0,
-                    wis: parseInt(document.getElementById('saveWis').value) || 0,
-                    cha: parseInt(document.getElementById('saveCha').value) || 0
-                },
-                skills: {
-                    acrobatics: parseInt(document.getElementById('skillAcrobatics').value) || 0,
-                    animalHandling: parseInt(document.getElementById('skillAnimalHandling').value) || 0,
-                    arcana: parseInt(document.getElementById('skillArcana').value) || 0,
-                    athletics: parseInt(document.getElementById('skillAthletics').value) || 0,
-                    deception: parseInt(document.getElementById('skillDeception').value) || 0,
-                    history: parseInt(document.getElementById('skillHistory').value) || 0,
-                    insight: parseInt(document.getElementById('skillInsight').value) || 0,
-                    intimidation: parseInt(document.getElementById('skillIntimidation').value) || 0,
-                    investigation: parseInt(document.getElementById('skillInvestigation').value) || 0,
-                    medicine: parseInt(document.getElementById('skillMedicine').value) || 0,
-                    nature: parseInt(document.getElementById('skillNature').value) || 0,
-                    perception: parseInt(document.getElementById('skillPerception').value) || 0,
-                    performance: parseInt(document.getElementById('skillPerformance').value) || 0,
-                    persuasion: parseInt(document.getElementById('skillPersuasion').value) || 0,
-                    religion: parseInt(document.getElementById('skillReligion').value) || 0,
-                    sleightOfHand: parseInt(document.getElementById('skillSleightOfHand').value) || 0,
-                    stealth: parseInt(document.getElementById('skillStealth').value) || 0,
-                    survival: parseInt(document.getElementById('skillSurvival').value) || 0
-                },
-                inventory: inventoryItems,
-                spellsByLevel: spellsByLevel,
-                spellSlots: spellSlots,
-                preparedSpells: preparedSpells,
-                notes: document.getElementById('notes').value,
-                personality: {
-                    traits: document.getElementById('traits').value,
-                    ideals: document.getElementById('ideals').value,
-                    bonds: document.getElementById('bonds').value,
-                    flaws: document.getElementById('flaws').value
-                }
-            };
-
-            localStorage.setItem('characterData', JSON.stringify(character));
-            localStorage.setItem('characterProfilePic', document.getElementById('profilePic').src);
-            console.log('Character saved');
-        }
-
-        function loadCharacter() {
-            const characterData = JSON.parse(localStorage.getItem('characterData') || '{}');
-            const profilePic = localStorage.getItem('characterProfilePic');
-
-            if (profilePic) {
-                document.getElementById('profilePic').src = profilePic;
-            }
-
-            if (Object.keys(characterData).length > 0) {
-                // Load basic info
-                document.getElementById('charName').value = characterData.name || '';
-                document.getElementById('charClass').value = characterData.class || '';
-                document.getElementById('charLevel').value = characterData.level || '';
-                document.getElementById('charRace').value = characterData.race || '';
-
-                // Load HP
-                if (characterData.hp) {
-                    currentHP = characterData.hp.current;
-                    maxHP = characterData.hp.max;
-                    document.getElementById('maxHP').value = maxHP;
-                    document.getElementById('hpSlider').value = currentHP;
-                    document.getElementById('hpSlider').max = maxHP;
-                    document.getElementById('tempHP').value = characterData.hp.temp;
-                    updateHPDisplay();
-                }
-
-                // Load Combat Stats
-                if (characterData.combatStats) {
-                    document.getElementById('armorClass').value = characterData.combatStats.armorClass || '';
-                    document.getElementById('initiative').value = characterData.combatStats.initiative || '';
-                    document.getElementById('speed').value = characterData.combatStats.speed || '';
-                }
-
-                // Load Saving Throws
-                if (characterData.savingThrows) {
-                    document.getElementById('saveStr').value = characterData.savingThrows.str || '';
-                    document.getElementById('saveDex').value = characterData.savingThrows.dex || '';
-                    document.getElementById('saveCon').value = characterData.savingThrows.con || '';
-                    document.getElementById('saveInt').value = characterData.savingThrows.int || '';
-                    document.getElementById('saveWis').value = characterData.savingThrows.wis || '';
-                    document.getElementById('saveCha').value = characterData.savingThrows.cha || '';
-                }
-
-                // Load Skills
-                if (characterData.skills) {
-                    document.getElementById('skillAcrobatics').value = characterData.skills.acrobatics || '';
-                    document.getElementById('skillAnimalHandling').value = characterData.skills.animalHandling || '';
-                    document.getElementById('skillArcana').value = characterData.skills.arcana || '';
-                    document.getElementById('skillAthletics').value = characterData.skills.athletics || '';
-                    document.getElementById('skillDeception').value = characterData.skills.deception || '';
-                    document.getElementById('skillHistory').value = characterData.skills.history || '';
-                    document.getElementById('skillInsight').value = characterData.skills.insight || '';
-                    document.getElementById('skillIntimidation').value = characterData.skills.intimidation || '';
-                    document.getElementById('skillInvestigation').value = characterData.skills.investigation || '';
-                    document.getElementById('skillMedicine').value = characterData.skills.medicine || '';
-                    document.getElementById('skillNature').value = characterData.skills.nature || '';
-                    document.getElementById('skillPerception').value = characterData.skills.perception || '';
-                    document.getElementById('skillPerformance').value = characterData.skills.performance || '';
-                    document.getElementById('skillPersuasion').value = characterData.skills.persuasion || '';
-                    document.getElementById('skillReligion').value = characterData.skills.religion || '';
-                    document.getElementById('skillSleightOfHand').value = characterData.skills.sleightOfHand || '';
-                    document.getElementById('skillStealth').value = characterData.skills.stealth || '';
-                    document.getElementById('skillSurvival').value = characterData.skills.survival || '';
-                }
-
-                // Load all other data
-                if (characterData.currency) {
-                    document.getElementById('platinum').value = characterData.currency.platinum || 0;
-                    document.getElementById('gold').value = characterData.currency.gold || 0;
-                    document.getElementById('silver').value = characterData.currency.silver || 0;
-                    document.getElementById('copper').value = characterData.currency.copper || 0;
-                }
-
-                if (characterData.abilities) {
-                    document.getElementById('str').value = characterData.abilities.str || 10;
-                    document.getElementById('dex').value = characterData.abilities.dex || 10;
-                    document.getElementById('con').value = characterData.abilities.con || 10;
-                    document.getElementById('int').value = characterData.abilities.int || 10;
-                    document.getElementById('wis').value = characterData.abilities.wis || 10;
-                    document.getElementById('cha').value = characterData.abilities.cha || 10;
-                    updateAbilityModifiers();
-                }
-
-                if (characterData.inventory) {
-                    inventoryItems = characterData.inventory;
-                }
-
-                if (characterData.spellsByLevel) {
-                    spellsByLevel = characterData.spellsByLevel;
-                }
-
-                if (characterData.spellSlots) {
-                    spellSlots = characterData.spellSlots;
-                }
-
-                if (characterData.preparedSpells) {
-                    preparedSpells = characterData.preparedSpells;
-                    displayPreparedSpells();
-                }
-
-                if (characterData.personality) {
-                    document.getElementById('traits').value = characterData.personality.traits || '';
-                    document.getElementById('ideals').value = characterData.personality.ideals || '';
-                    document.getElementById('bonds').value = characterData.personality.bonds || '';
-                    document.getElementById('flaws').value = characterData.personality.flaws || '';
-                }
-
-                document.getElementById('notes').value = characterData.notes || '';
-
-                // Refresh displays
-                displayInventoryItems();
-                displaySpellSlots();
-                displayPreparedSpells();
-                displaySpells();
-                // Set active spell level tab
-                if (characterData.spellsByLevel) {
-                    const levels = Object.keys(characterData.spellsByLevel).map(Number);
-                    if (levels.length > 0) {
-                        changeSpellLevel(levels[0]);
-                    } else {
-                        changeSpellLevel(0);
-                    }
-                } else {
-                    changeSpellLevel(0);
-                }
-            }
-        }
-
-        // Export/Import Functions
-        function exportCharacter() {
-            const characterData = localStorage.getItem('characterData');
-            const blob = new Blob([characterData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'character.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function importCharacter(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const characterData = JSON.parse(e.target.result);
-                    localStorage.setItem('characterData', JSON.stringify(characterData));
-                    if (e.target.result.includes('"profilePic"')) {
-                        const picData = JSON.parse(e.target.result).profilePic;
-                        localStorage.setItem('characterProfilePic', picData);
-                    }
-                    loadCharacter();
-                    alert('Character imported successfully!');
-                } catch (error) {
-                    alert('Error importing character data. Please check the file format.');
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        // Ability Modifiers Management
-        function initializeAbilityModifiers() {
-            const abilityInputs = document.querySelectorAll('.ability-score');
-            abilityInputs.forEach(input => {
-                input.addEventListener('input', updateAbilityModifiers);
-            });
-            updateAbilityModifiers();
-        }
-
-        function calculateModifier(score) {
-            return Math.floor((score - 10) / 2);
-        }
-
-        function updateAbilityModifiers() {
-            const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
-            abilities.forEach(ability => {
-                const score = parseInt(document.getElementById(ability).value) || 10;
-                const mod = calculateModifier(score);
-                const modDisplay = document.getElementById(`${ability}Mod`);
-                modDisplay.textContent = `Modifier: ${mod >= 0 ? '+' : ''}${mod}`;
-            });
-        }
-
-        // Spellbook Tabs Slider
-        function initializeSpellTabs() {
-            const spellTabs = document.querySelectorAll('.spell-tab');
-            const slider = document.getElementById('spellTabsSlider');
-
-            // Initialize slider position
-            updateSpellTabsSlider();
-
-            spellTabs.forEach((tab, index) => {
-                tab.addEventListener('click', () => {
-                    setTimeout(() => {
-                        updateSpellTabsSlider();
-                    }, 300);
-                });
-            });
-        }
-
-        function updateSpellTabsSlider() {
-            const spellTabs = document.querySelectorAll('.spell-tab');
-            const slider = document.getElementById('spellTabsSlider');
-            let activeIndex = 0;
-
-            spellTabs.forEach((tab, index) => {
-                if (tab.classList.contains('active')) {
-                    activeIndex = index;
-                }
-            });
-
-            const activeTab = spellTabs[activeIndex];
-            const tabRect = activeTab.getBoundingClientRect();
-            const containerRect = activeTab.parentElement.getBoundingClientRect();
-            const offsetLeft = activeTab.offsetLeft;
-            const width = activeTab.offsetWidth;
-
-            slider.style.width = `${width}px`;
-            slider.style.transform = `translateX(${offsetLeft}px)`;
-        }
-
-        // Autosave Functionality
-        function debounce(func, delay) {
-            return function(...args) {
-                clearTimeout(autosaveTimeout);
-                autosaveTimeout = setTimeout(() => func.apply(this, args), delay);
-            };
-        }
-
-        function autosave() {
-            saveCharacter();
-            console.log('Autosaved');
-        }
-    </script>
+      });
+    });
+
+    // Search Functionality for Inventory and Spells
+    document.getElementById('searchInventory').addEventListener('input', function() {
+      const filter = this.value.toLowerCase();
+      document.querySelectorAll('#inventoryList .collection-item').forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(filter) ? '' : 'none';
+      });
+    });
+
+    document.getElementById('searchSpells').addEventListener('input', function() {
+      const filter = this.value.toLowerCase();
+      document.querySelectorAll('#spellbookList .collection-item').forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(filter) ? '' : 'none';
+      });
+    });
+
+    // Expandable Notes Functionality
+    const textareas = document.querySelectorAll('.notes-textarea');
+    textareas.forEach(textarea => {
+      textarea.addEventListener('input', autoResize);
+    });
+
+    function autoResize() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+      saveNotes(); // Save notes whenever resized
+    }
+  </script>
 </body>
 </html>
