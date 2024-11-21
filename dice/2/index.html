@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celestial Dice Roller</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        #particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 800px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 
+                0 8px 32px 0 rgba(31, 38, 135, 0.2),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #f1c40f, #e74c3c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-weight: 800;
+        }
+
+        .dice-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1.2rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .dice-button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.2rem;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .dice-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 
+                0 5px 15px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+        }
+
+        .dice-icon {
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(45deg, #f1c40f, #e74c3c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .results {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            height: 300px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding: 0.8rem 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: slideIn 0.3s ease forwards;
+        }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .dice-result {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #f1c40f;
+            text-shadow: 0 0 10px rgba(241, 196, 15, 0.3);
+        }
+
+        .dice-type {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+        }
+
+        .clear-button {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.2);
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1.5rem;
+            backdrop-filter: blur(10px);
+            width: 100%;
+            font-weight: 500;
+        }
+
+        .clear-button:hover {
+            background: rgba(231, 76, 60, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.1);
+        }
+
+        .dice-animation {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg) scale(1); opacity: 1; }
+            50% { transform: rotate(720deg) scale(1.5); opacity: 0.8; }
+            100% { transform: rotate(1440deg) scale(1); opacity: 0; }
+        }
+
+        .timestamp {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    <div class="container">
+        <h1>Celestial Dice Roller</h1>
+        <div class="dice-container">
+            <button class="dice-button" data-dice="4">
+                <span class="dice-icon">⚀</span>
+                D4
+            </button>
+            <button class="dice-button" data-dice="6">
+                <span class="dice-icon">⚁</span>
+                D6
+            </button>
+            <button class="dice-button" data-dice="8">
+                <span class="dice-icon">⚂</span>
+                D8
+            </button>
+            <button class="dice-button" data-dice="10">
+                <span class="dice-icon">⚃</span>
+                D10
+            </button>
+            <button class="dice-button" data-dice="12">
+                <span class="dice-icon">⚄</span>
+                D12
+            </button>
+            <button class="dice-button" data-dice="20">
+                <span class="dice-icon">⚅</span>
+                D20
+            </button>
+        </div>
+        <div class="results" id="results">
+            <div class="result-item">Roll the dice to begin your quest!</div>
+        </div>
+        <button class="clear-button" onclick="clearResults()">Clear History</button>
+    </div>
+
+    <script>
+        // Initialize particles.js with more ethereal settings
+        particlesJS('particles-js', {
+            particles: {
+                number: { value: 100, density: { enable: true, value_area: 1000 } },
+                color: { value: '#ffffff' },
+                shape: { type: 'circle' },
+                opacity: {
+                    value: 0.3,
+                    random: true,
+                    animation: { enable: true, speed: 0.5, minimumValue: 0.1, sync: false }
+                },
+                size: {
+                    value: 2,
+                    random: true,
+                    animation: { enable: true, speed: 2, minimumValue: 0.3, sync: false }
+                },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: '#ffffff',
+                    opacity: 0.2,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 0.5,
+                    direction: 'none',
+                    random: true,
+                    straight: false,
+                    out_mode: 'out',
+                    bounce: false,
+                }
+            },
+            interactivity: {
+                detect_on: 'canvas',
+                events: {
+                    onhover: { enable: true, mode: 'grab' },
+                    onclick: { enable: true, mode: 'push' },
+                    resize: true
+                },
+                modes: {
+                    grab: { distance: 140, line_linked: { opacity: 0.4 } },
+                    push: { particles_nb: 4 }
+                }
+            },
+            retina_detect: true
+        });
+
+        // Dice rolling functionality
+        const resultsContainer = document.getElementById('results');
+        const diceButtons = document.querySelectorAll('.dice-button');
+
+        function rollDice(sides) {
+            return Math.floor(Math.random() * sides) + 1;
+        }
+
+        function getTimeString() {
+            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function createFloatingDice(x, y, result) {
+            const dice = document.createElement('div');
+            dice.className = 'dice-animation';
+            dice.style.left = `${x}px`;
+            dice.style.top = `${y}px`;
+            dice.style.position = 'fixed';
+            dice.style.fontSize = '2rem';
+            dice.textContent = '🎲';
+            dice.style.animation = 'spin 1s ease-out forwards';
+            document.body.appendChild(dice);
+
+            setTimeout(() => {
+                document.body.removeChild(dice);
+            }, 1000);
+        }
+
+        diceButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const sides = parseInt(button.dataset.dice);
+                const result = rollDice(sides);
+                
+                // Create floating dice animation
+                createFloatingDice(e.clientX, e.clientY, result);
+
+                // Create result item
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                resultItem.innerHTML = `
+                    <span class="dice-type">D${sides}</span>
+                    <span class="dice-result">${result}</span>
+                    <span class="timestamp">${getTimeString()}</span>
+                `;
+
+                // Add to results container
+                resultsContainer.insertBefore(resultItem, resultsContainer.firstChild);
+            });
+        });
+
+        function clearResults() {
+            resultsContainer.innerHTML = '<div class="result-item">Roll the dice to begin your quest!</div>';
+        }
+    </script>
+</body>
+</html>
