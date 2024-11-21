@@ -3,392 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D D&D Dice Roller</title>
+    <title>D&D Dice Collections</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/inter/3.19.3/inter.css" rel="stylesheet">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', sans-serif;
         }
 
         body {
             min-height: 100vh;
-            background: #fff;
-            color: #000;
+            background: linear-gradient(135deg, #0f1729, #1a1f35);
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 2rem;
-            perspective: 1000px;
-        }
-
-        .container {
-            max-width: 600px;
-            width: 100%;
-            text-align: center;
-        }
-
-        .title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 2.5rem;
-            letter-spacing: -0.03em;
-        }
-
-        .dice-controls {
-            display: grid;
-            gap: 1.5rem;
-            margin-bottom: 2.5rem;
-        }
-
-        .input-group {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-        }
-
-        select, input, button {
-            background: #fff;
-            border: 2px solid #000;
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            transition: all 0.3s ease;
-        }
-
-        button {
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #000;
-            color: #fff;
-        }
-
-        input {
-            width: 80px;
-            text-align: center;
-        }
-
-        .dice-stage {
-            height: 300px;
-            border: 2px solid #000;
-            border-radius: 20px;
-            margin-bottom: 2.5rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            background: #fff;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            perspective: 1000px;
+            gap: 3rem;
             overflow: hidden;
+            position: relative;
         }
 
-        .scene {
-            width: 100px;
-            height: 100px;
-            perspective: 400px;
-            perspective-origin: 50% 50%;
+        .button {
+            padding: 1.8rem 4rem;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
         }
 
-        .cube {
+        .button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
             width: 100%;
             height: 100%;
-            position: relative;
-            transform-style: preserve-3d;
-            transition: transform 0.1s;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.1),
+                transparent
+            );
+            transition: 0.5s;
         }
 
-        .cube.rolling {
-            animation: tumble 2s cubic-bezier(0.24, 1.28, 0.51, 0.93);
+        .button:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2),
+                       0 0 30px rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.1);
+            letter-spacing: 5px;
         }
 
-        .cube__face {
-            position: absolute;
-            width: 100px;
-            height: 100px;
-            border: 2px solid #000;
-            background: rgba(255, 255, 255, 0.95);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backface-visibility: visible;
+        .button:hover::before {
+            left: 100%;
         }
 
-        /* Dot pattern container */
-        .dot-pattern {
-            position: relative;
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
+            z-index: 0;
         }
 
-        /* Individual dots */
-        .dot {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: #000;
-            border-radius: 50%;
-        }
-
-        /* Pattern for right face */
-        .pattern-1 .dot:nth-child(1) { top: 20px; left: 20px; }
-        .pattern-1 .dot:nth-child(2) { top: 20px; right: 20px; }
-        .pattern-1 .dot:nth-child(3) { bottom: 20px; left: 20px; }
-        .pattern-1 .dot:nth-child(4) { bottom: 20px; right: 20px; }
-
-        /* Pattern for left face */
-        .pattern-2 .dot:nth-child(1) { top: 25px; left: 45px; }
-        .pattern-2 .dot:nth-child(2) { top: 45px; left: 25px; }
-        .pattern-2 .dot:nth-child(3) { top: 45px; right: 25px; }
-        .pattern-2 .dot:nth-child(4) { bottom: 25px; left: 45px; }
-
-        /* Pattern for top face */
-        .pattern-3 .dot {
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .pattern-3 .dot:nth-child(2) { transform: translate(-50%, -50%) translate(-20px, 0); }
-        .pattern-3 .dot:nth-child(3) { transform: translate(-50%, -50%) translate(20px, 0); }
-
-        /* Pattern for bottom face */
-        .pattern-4 .dot:nth-child(1) { top: 20px; left: 20px; }
-        .pattern-4 .dot:nth-child(2) { top: 20px; right: 20px; }
-        .pattern-4 .dot:nth-child(3) { bottom: 20px; left: 20px; }
-        .pattern-4 .dot:nth-child(4) { bottom: 20px; right: 20px; }
-        .pattern-4 .dot:nth-child(5) { top: 50%; left: 50%; transform: translate(-50%, -50%); }
-
-        /* Pattern for back face */
-        .pattern-5 .dot:nth-child(1) { top: 25%; left: 50%; transform: translate(-50%, 0); }
-        .pattern-5 .dot:nth-child(2) { top: 75%; left: 50%; transform: translate(-50%, 0); }
-
-        .result-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            font-size: 6rem;
-            font-weight: 800;
-            opacity: 0;
-            transition: all 0.5s cubic-bezier(0.17, 0.67, 0.83, 0.67);
-            z-index: 10;
-            color: #000;
-            text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff;
-        }
-
-        .result-overlay.show {
-            transform: translate(-50%, -50%) scale(1);
-            opacity: 1;
-        }
-
-        /* Positioning each face */
-        .cube__face--front  { transform: rotateY(0deg) translateZ(50px); }
-        .cube__face--right  { transform: rotateY(90deg) translateZ(50px); }
-        .cube__face--back   { transform: rotateY(180deg) translateZ(50px); }
-        .cube__face--left   { transform: rotateY(-90deg) translateZ(50px); }
-        .cube__face--top    { transform: rotateX(90deg) translateZ(50px); }
-        .cube__face--bottom { transform: rotateX(-90deg) translateZ(50px); }
-
-        @keyframes tumble {
-            0% { 
-                transform: translateZ(-50px) rotateX(0deg) rotateY(0deg) rotateZ(0deg); 
-            }
-            30% { 
-                transform: translateZ(-100px) rotateX(720deg) rotateY(360deg) rotateZ(180deg); 
-            }
-            60% { 
-                transform: translateZ(-150px) rotateX(1440deg) rotateY(720deg) rotateZ(360deg); 
-            }
-            85% { 
-                transform: translateZ(-50px) rotateX(1800deg) rotateY(1080deg) rotateZ(540deg); 
-            }
-            100% { 
-                transform: translateZ(-50px) rotateX(1800deg) rotateY(1080deg) rotateZ(540deg); 
-            }
-        }
-
-        .result {
-            font-size: 1.5rem;
-            font-weight: 600;
-            min-height: 2em;
-        }
-
-        .history {
-            margin-top: 2.5rem;
-            padding: 1.5rem;
-            border: 2px solid #000;
-            border-radius: 12px;
-            text-align: left;
-        }
-
-        .history h3 {
-            margin-bottom: 1rem;
-            font-weight: 700;
-        }
-
-        .history-list {
-            list-style: none;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        @media (max-width: 480px) {
-            .input-group {
+        @media (max-width: 768px) {
+            body {
                 flex-direction: column;
-                align-items: center;
+                gap: 2rem;
             }
             
-            .title {
-                font-size: 2rem;
+            .button {
+                padding: 1.5rem 3rem;
+                font-size: 1rem;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1 class="title">D&D Dice Roller</h1>
-        <div class="dice-controls">
-            <div class="input-group">
-                <select id="diceType">
-                    <option value="4">D4</option>
-                    <option value="6">D6</option>
-                    <option value="8">D8</option>
-                    <option value="10">D10</option>
-                    <option value="12">D12</option>
-                    <option value="20" selected>D20</option>
-                    <option value="100">D100</option>
-                </select>
-                <input type="number" id="diceCount" value="1" min="1" max="10">
-                <button onclick="rollDice()">Roll</button>
-            </div>
-        </div>
-        <div class="dice-stage">
-            <div class="result-overlay">20</div>
-            <div class="scene">
-                <div class="cube">
-                    <div class="cube__face cube__face--front"></div>
-                    <div class="cube__face cube__face--back">
-                        <div class="dot-pattern pattern-5">
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                        </div>
-                    </div>
-                    <div class="cube__face cube__face--right">
-                        <div class="dot-pattern pattern-1">
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                        </div>
-                    </div>
-                    <div class="cube__face cube__face--left">
-                        <div class="dot-pattern pattern-2">
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                        </div>
-                    </div>
-                    <div class="cube__face cube__face--top">
-                        <div class="dot-pattern pattern-3">
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                        </div>
-                    </div>
-                    <div class="cube__face cube__face--bottom">
-                        <div class="dot-pattern pattern-4">
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="result"></div>
-        <div class="history">
-            <h3>Roll History</h3>
-            <ul class="history-list"></ul>
-        </div>
-    </div>
+    <canvas id="canvas"></canvas>
+    <a href="https://isaiart.com/dice/1" class="button">Minimalist Dice</a>
+    <a href="https://isaiart.com/dice/2" class="button">Celestial Dice</a>
 
     <script>
-        const cube = document.querySelector('.cube');
-        const resultElement = document.querySelector('.result');
-        const historyList = document.querySelector('.history-list');
-        const diceTypeSelect = document.getElementById('diceType');
-        const diceCountInput = document.getElementById('diceCount');
-        const resultOverlay = document.querySelector('.result-overlay');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
 
-        let isRolling = false;
+        // Set canvas size
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
 
-        function rollDice() {
-            if (isRolling) return;
-            
-            const diceType = parseInt(diceTypeSelect.value);
-            const diceCount = parseInt(diceCountInput.value);
-            
-            if (diceCount < 1 || diceCount > 10) {
-                alert('Please enter a number between 1 and 10');
-                return;
+        // Particle class
+        class Particle {
+            constructor() {
+                this.reset();
             }
 
-            isRolling = true;
-            resultOverlay.classList.remove('show');
-            cube.classList.add('rolling');
-            resultElement.textContent = 'Rolling...';
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
+                this.brightness = Math.random() * 0.5 + 0.5;
+                this.connections = [];
+            }
 
-            setTimeout(() => {
-                const rolls = [];
-                let total = 0;
-                
-                for (let i = 0; i < diceCount; i++) {
-                    const roll = Math.floor(Math.random() * diceType) + 1;
-                    rolls.push(roll);
-                    total += roll;
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x < 0 || this.x > canvas.width || 
+                    this.y < 0 || this.y > canvas.height) {
+                    this.reset();
                 }
+            }
 
-                cube.classList.remove('rolling');
-                
-                const rollsText = rolls.join(' + ');
-                const resultText = diceCount > 1 ? 
-                    `${rollsText} = ${total}` : 
-                    `${total}`;
-                
-                resultElement.textContent = resultText;
-                
-                // Show the result overlay
-                resultOverlay.textContent = rolls[0];
-                setTimeout(() => {
-                    resultOverlay.classList.add('show');
-                }, 100);
-                
-                // Add to history
-                const historyItem = document.createElement('li');
-                historyItem.textContent = `${diceCount}d${diceType}: ${resultText}`;
-                historyList.insertBefore(historyItem, historyList.firstChild);
-                
-                // Keep only last 10 rolls
-                if (historyList.children.length > 10) {
-                    historyList.removeChild(historyList.lastChild);
-                }
-
-                isRolling = false;
-            }, 2000);
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.brightness})`;
+                ctx.fill();
+            }
         }
 
-        // Handle Enter key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') rollDice();
+        // Create particles
+        const particles = [];
+        const particleCount = 100;
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+
+        // Animation
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw particles
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+                particle.connections = [];
+            });
+
+            // Draw connections
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 150) {
+                        const opacity = (1 - distance / 150) * 0.2;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                        
+                        particles[i].connections.push(j);
+                        particles[j].connections.push(i);
+                    }
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // Mouse interaction
+        let mouse = {
+            x: null,
+            y: null,
+            radius: 150
+        };
+
+        canvas.addEventListener('mousemove', function(event) {
+            mouse.x = event.x;
+            mouse.y = event.y;
+
+            // Create ripple effect
+            particles.forEach(particle => {
+                const dx = mouse.x - particle.x;
+                const dy = mouse.y - particle.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < mouse.radius) {
+                    const force = (mouse.radius - distance) / mouse.radius;
+                    particle.x -= dx * force * 0.03;
+                    particle.y -= dy * force * 0.03;
+                }
+            });
         });
     </script>
 </body>
