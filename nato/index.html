@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NATO Phonetic Alphabet Converter</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 2.5rem auto;
+            padding: 0 1.5rem;
+            line-height: 1.6;
+            background: #fff;
+            color: #000;
+            text-align: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+        }
+
+        p {
+            font-weight: 600;
+            margin-bottom: 2rem;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border: 2px solid #000;
+            border-radius: 12px;
+            min-height: 120px;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 600;
+            resize: vertical;
+            transition: all 0.2s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(0,0,0,0.1);
+        }
+
+        #output {
+            background-color: #fff;
+            padding: 1.5rem;
+            border: 2px solid #000;
+            border-radius: 12px;
+            min-height: 120px;
+            margin-top: 1.5rem;
+            text-align: left;
+            font-weight: 600;
+            line-height: 2;
+        }
+
+        button {
+            background-color: #000;
+            color: #fff;
+            padding: 1rem 2rem;
+            border: 2px solid #000;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #fff;
+            color: #000;
+        }
+
+        .letter {
+            font-weight: 800;
+            border-bottom: 2px solid #000;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                margin: 1.5rem auto;
+            }
+            
+            .container {
+                padding: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>NATO PHONETIC ALPHABET</h1>
+        <p>Enter text to convert to NATO format</p>
+        <textarea id="input" placeholder="Type or paste text here..."></textarea>
+        <button onclick="convertToNATO()">Convert</button>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const natoAlphabet = {
+            'a': 'Alpha',
+            'b': 'Bravo',
+            'c': 'Charlie',
+            'd': 'Delta',
+            'e': 'Echo',
+            'f': 'Foxtrot',
+            'g': 'Golf',
+            'h': 'Hotel',
+            'i': 'India',
+            'j': 'Juliet',
+            'k': 'Kilo',
+            'l': 'Lima',
+            'm': 'Mike',
+            'n': 'November',
+            'o': 'Oscar',
+            'p': 'Papa',
+            'q': 'Quebec',
+            'r': 'Romeo',
+            's': 'Sierra',
+            't': 'Tango',
+            'u': 'Uniform',
+            'v': 'Victor',
+            'w': 'Whiskey',
+            'x': 'X-ray',
+            'y': 'Yankee',
+            'z': 'Zulu',
+            '0': 'Zero',
+            '1': 'One',
+            '2': 'Two',
+            '3': 'Three',
+            '4': 'Four',
+            '5': 'Five',
+            '6': 'Six',
+            '7': 'Seven',
+            '8': 'Eight',
+            '9': 'Nine'
+        };
+
+        function convertToNATO() {
+            const input = document.getElementById('input').value;
+            const output = document.getElementById('output');
+            const words = input.split('');
+            
+            const converted = words.map(char => {
+                const lowerChar = char.toLowerCase();
+                if (natoAlphabet[lowerChar]) {
+                    return `<span class="letter">${char}</span> as in ${natoAlphabet[lowerChar]}`;
+                }
+                return char === ' ' ? '<br><br>' : char;
+            });
+            
+            output.innerHTML = converted.join(' ');
+        }
+
+        // Auto-convert as user types
+        document.getElementById('input').addEventListener('input', convertToNATO);
+    </script>
+</body>
+</html>
