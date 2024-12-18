@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Search Tool</title>
+    <style>
+        /* General Reset */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; background-color: #fff; color: #000; font-family: Arial, sans-serif; }
+
+        /* Container */
+        .container {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        /* Title */
+        .title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Form Input */
+        .input-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            font-size: 1rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 2px solid #000;
+            border-radius: 12px;
+            background-color: #fff;
+            color: #000;
+        }
+
+        .date-picker-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .date-picker-container div {
+            flex: 1;
+        }
+
+        /* Buttons */
+        button {
+            width: 100%;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            background-color: #000;
+            color: #fff;
+            border: 2px solid #000;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #fff;
+            color: #000;
+        }
+
+        /* Output */
+        textarea.output {
+            width: 100%;
+            height: 3rem;
+            margin-top: 1.5rem;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 2px solid #000;
+            border-radius: 12px;
+            background-color: #fff;
+            color: #000;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Twitter Search Tool</div>
+
+        <div class="input-group">
+            <label for="query">Search Query</label>
+            <input type="text" id="query" placeholder="Enter search term (e.g., discord.gg/...)">
+        </div>
+
+        <div class="input-group">
+            <label for="excludeWords">Exclude Words</label>
+            <input type="text" id="excludeWords" placeholder="e.g., trade, target">
+        </div>
+
+        <div class="input-group">
+            <label for="hashtags">Exclude Hashtags</label>
+            <input type="text" id="hashtags" placeholder="e.g., crypto, NFT">
+        </div>
+
+        <div class="input-group">
+            <label for="emoji">Exclude Emojis</label>
+            <input type="text" id="emoji" placeholder="e.g., 🚀, 🔥">
+        </div>
+
+        <div class="input-group">
+            <label for="minLikes">Minimum Likes</label>
+            <input type="number" id="minLikes" placeholder="e.g., 5">
+        </div>
+
+        <div class="input-group">
+            <label for="minRetweets">Minimum Retweets</label>
+            <input type="number" id="minRetweets" placeholder="e.g., 10">
+        </div>
+
+        <!-- Date Picker -->
+        <div class="input-group">
+            <label>Date Range</label>
+            <div class="date-picker-container">
+                <div>
+                    <label for="since">Since</label>
+                    <input type="date" id="since">
+                </div>
+                <div>
+                    <label for="until">Until</label>
+                    <input type="date" id="until">
+                </div>
+            </div>
+        </div>
+
+        <button onclick="generateSearch()">Generate Search</button>
+        <textarea class="output" id="output" readonly></textarea>
+    </div>
+
+    <script>
+        function generateSearch() {
+            const query = document.getElementById("query").value.trim();
+            const excludeWords = document.getElementById("excludeWords").value.split(',').map(w => `-${w.trim()}`).join(' ');
+            const hashtags = document.getElementById("hashtags").value.split(',').map(h => `-#${h.trim()}`).join(' ');
+            const emoji = document.getElementById("emoji").value.split(',').map(e => `-${e.trim()}`).join(' ');
+            const minLikes = document.getElementById("minLikes").value ? `min_faves:${document.getElementById("minLikes").value}` : '';
+            const minRetweets = document.getElementById("minRetweets").value ? `min_retweets:${document.getElementById("minRetweets").value}` : '';
+            const since = document.getElementById("since").value ? `since:${document.getElementById("since").value}` : '';
+            const until = document.getElementById("until").value ? `until:${document.getElementById("until").value}` : '';
+
+            let queryParts = [`"${query}"`, excludeWords, hashtags, emoji, minLikes, minRetweets, since, until];
+            const finalQuery = queryParts.filter(Boolean).join(' ');
+
+            document.getElementById("output").value = finalQuery;
+
+            // Open Twitter search with the query
+            const searchURL = `https://twitter.com/search?q=${encodeURIComponent(finalQuery)}`;
+            window.open(searchURL, "_blank");
+        }
+    </script>
+</body>
+</html>
