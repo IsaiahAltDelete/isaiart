@@ -1,171 +1,449 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Twitter Search Tool</title>
-    <style>
-        /* General Reset */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { height: 100%; background-color: #fff; color: #000; font-family: Arial, sans-serif; }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Twitter Search Query Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Import Poppins font -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 
-        /* Container */
-        .container {
-            max-width: 600px;
-            margin: 2rem auto;
-            padding: 1.5rem;
-            text-align: center;
-        }
+<style>
+    body {
+        font-family: 'Poppins', sans-serif;
+        margin: 0;
+        background: #fafafa;
+        color: #333;
+        padding: 20px;
+        box-sizing: border-box;
+    }
 
-        /* Title */
-        .title {
-            font-size: 1.5rem;
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-        }
+    h1 {
+        text-align: center;
+        font-weight: 600;
+        font-size: 1.8rem;
+        margin-bottom: 30px;
+        color: #222;
+    }
 
-        /* Form Input */
-        .input-group {
-            margin-bottom: 1.5rem;
-            text-align: left;
-        }
+    .form-group {
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+    }
 
-        .input-group label {
-            font-weight: 600;
-            font-size: 1rem;
-            display: block;
-            margin-bottom: 0.5rem;
-        }
+    .form-group label {
+        margin-bottom: 8px;
+        font-weight: 500;
+        font-size: 1rem;
+    }
 
-        .input-group input, .input-group select {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            font-size: 1rem;
-            border: 2px solid #000;
-            border-radius: 12px;
-            background-color: #fff;
-            color: #000;
-        }
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    textarea,
+    select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        background: #fff;
+        color: #333;
+    }
 
-        .date-picker-container {
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-        }
+    input:focus,
+    textarea:focus,
+    select:focus {
+        outline: none;
+        border-color: #1da1f2;
+        box-shadow: 0 0 0 2px rgba(29,161,242,0.2);
+    }
 
-        .date-picker-container div {
+    .form-inline-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .form-inline-group .form-group {
+        flex: 1 1 100%;
+    }
+
+    @media (min-width: 500px) {
+        .form-inline-group .form-group {
             flex: 1;
         }
+    }
 
-        /* Buttons */
-        button {
-            width: 100%;
-            margin-top: 1rem;
-            padding: 0.75rem;
-            font-size: 1rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            background-color: #000;
+    .toggle-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .toggle-group input[type="checkbox"] {
+        transform: scale(1.2);
+        cursor: pointer;
+    }
+
+    #generateQuery {
+        background: #1da1f2;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 14px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.3s, transform 0.2s, box-shadow 0.2s;
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    #generateQuery:hover {
+        background: #0d8bd6;
+    }
+
+    #generateQuery:active {
+        transform: scale(0.98);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    #generateQuery:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(29,161,242,0.2);
+    }
+
+    .output-group {
+        margin-top: 30px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .output-group label {
+        margin-bottom: 8px;
+        font-weight: 500;
+        font-size: 1rem;
+    }
+
+    .output-group textarea {
+        height: 100px;
+        resize: none;
+        font-size: 0.95rem;
+    }
+
+    /* Advanced Section */
+    .advanced-toggle {
+        text-align: center;
+        margin: 20px 0;
+    }
+
+    #advancedFilters {
+        display: none;
+        margin-top: 20px;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from {opacity: 0;}
+      to {opacity: 1;}
+    }
+
+    .advanced-btn {
+        background: none;
+        border: 2px solid #1da1f2;
+        color: #1da1f2;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background 0.3s, color 0.3s;
+    }
+
+    .advanced-btn:hover {
+        background: #1da1f2;
+        color: #fff;
+    }
+
+    /* Dark mode adjustments */
+    @media (prefers-color-scheme: dark) {
+        body {
+            background: #121212;
+            color: #eee;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        textarea,
+        select {
+            background: #1f1f1f;
+            border: 1px solid #333;
+            color: #ddd;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            border-color: #1da1f2;
+            box-shadow: 0 0 0 2px rgba(29,161,242,0.2);
+        }
+
+        #generateQuery {
+            background: #1da1f2;
+        }
+
+        #generateQuery:hover {
+            background: #0d8bd6;
+        }
+
+        .advanced-btn {
+            border-color: #1da1f2;
+            color: #1da1f2;
+        }
+
+        .advanced-btn:hover {
+            background: #1da1f2;
             color: #fff;
-            border: 2px solid #000;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
         }
-
-        button:hover {
-            background-color: #fff;
-            color: #000;
-        }
-
-        /* Output */
-        textarea.output {
-            width: 100%;
-            height: 3rem;
-            margin-top: 1.5rem;
-            padding: 0.75rem;
-            font-size: 1rem;
-            border: 2px solid #000;
-            border-radius: 12px;
-            background-color: #fff;
-            color: #000;
-            text-align: center;
-        }
-    </style>
+    }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="title">Twitter Search Tool</div>
+    <h1>Twitter Search Query Generator</h1>
 
-        <div class="input-group">
-            <label for="query">Search Query</label>
-            <input type="text" id="query" placeholder="Enter search term (e.g., discord.gg/...)">
+    <!-- Basic Fields -->
+    <div class="form-group">
+        <label for="mainSearchTerm">Search Query Input:</label>
+        <input type="text" id="mainSearchTerm" placeholder="e.g., discord.gg/">
+    </div>
+
+    <div class="form-group">
+        <label for="includeHashtags">Specific Hashtags (comma-separated):</label>
+        <input type="text" id="includeHashtags" placeholder="e.g., #MyHashtag, #AnotherOne">
+    </div>
+
+    <div class="form-group">
+        <label for="excludeWords">Exclude Words (comma-separated):</label>
+        <input type="text" id="excludeWords" placeholder="e.g., trade, target">
+    </div>
+
+    <div class="form-group">
+        <label for="excludeEmojis">Exclude Emojis (comma-separated):</label>
+        <input type="text" id="excludeEmojis" placeholder="e.g., 🚀, 🔥">
+    </div>
+
+    <div class="form-inline-group">
+        <div class="form-group">
+            <label for="minLikes">Minimum Likes:</label>
+            <input type="number" id="minLikes" placeholder="e.g., 10">
         </div>
-
-        <div class="input-group">
-            <label for="excludeWords">Exclude Words</label>
-            <input type="text" id="excludeWords" placeholder="e.g., trade, target">
+        <div class="form-group">
+            <label for="minRetweets">Minimum Retweets:</label>
+            <input type="number" id="minRetweets" placeholder="e.g., 5">
         </div>
+    </div>
 
-        <div class="input-group">
-            <label for="hashtags">Exclude Hashtags</label>
-            <input type="text" id="hashtags" placeholder="e.g., crypto, NFT">
+    <div class="form-inline-group">
+        <div class="form-group">
+            <label for="sinceDate">Since Date:</label>
+            <input type="date" id="sinceDate">
         </div>
-
-        <div class="input-group">
-            <label for="emoji">Exclude Emojis</label>
-            <input type="text" id="emoji" placeholder="e.g., 🚀, 🔥">
+        <div class="form-group">
+            <label for="untilDate">Until Date:</label>
+            <input type="date" id="untilDate">
         </div>
+    </div>
 
-        <div class="input-group">
-            <label for="minLikes">Minimum Likes</label>
-            <input type="number" id="minLikes" placeholder="e.g., 5">
-        </div>
+    <div class="form-group toggle-group">
+        <input type="checkbox" id="excludeHashtags">
+        <label for="excludeHashtags">Exclude All Hashtags</label>
+    </div>
 
-        <div class="input-group">
-            <label for="minRetweets">Minimum Retweets</label>
-            <input type="number" id="minRetweets" placeholder="e.g., 10">
-        </div>
+    <div class="advanced-toggle">
+        <button type="button" class="advanced-btn" id="toggleAdvanced">Show Advanced Filters</button>
+    </div>
 
-        <!-- Date Picker -->
-        <div class="input-group">
-            <label>Date Range</label>
-            <div class="date-picker-container">
-                <div>
-                    <label for="since">Since</label>
-                    <input type="date" id="since">
-                </div>
-                <div>
-                    <label for="until">Until</label>
-                    <input type="date" id="until">
-                </div>
+    <!-- Advanced Filters Section -->
+    <div id="advancedFilters">
+        <h2 style="font-size:1.3rem;margin-bottom:20px;text-align:center;font-weight:500;">Advanced Filters</h2>
+        
+        <div class="form-inline-group">
+            <div class="form-group">
+                <label for="fromUser">From User:</label>
+                <input type="text" id="fromUser" placeholder="e.g., jack (no @ needed)">
+            </div>
+            <div class="form-group">
+                <label for="toUser">To User:</label>
+                <input type="text" id="toUser" placeholder="e.g., jack (no @ needed)">
             </div>
         </div>
 
-        <button onclick="generateSearch()">Generate Search</button>
-        <textarea class="output" id="output" readonly></textarea>
+        <div class="form-group">
+            <label for="mentionUser">Mention User:</label>
+            <input type="text" id="mentionUser" placeholder="e.g., jack (no @ needed)">
+        </div>
+
+        <div class="form-group">
+            <label for="languageSelect">Language:</label>
+            <select id="languageSelect">
+                <option value="">-- Any Language --</option>
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="ja">Japanese</option>
+                <option value="pt">Portuguese</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Content Filters:</label>
+            <div class="toggle-group">
+                <input type="checkbox" id="filterImages">
+                <label for="filterImages">Include Images</label>
+            </div>
+            <div class="toggle-group">
+                <input type="checkbox" id="filterVideos">
+                <label for="filterVideos">Include Videos</label>
+            </div>
+            <div class="toggle-group">
+                <input type="checkbox" id="filterLinks">
+                <label for="filterLinks">Include Links</label>
+            </div>
+            <div class="toggle-group">
+                <input type="checkbox" id="excludeRetweets">
+                <label for="excludeRetweets">Exclude Retweets</label>
+            </div>
+            <div class="toggle-group">
+                <input type="checkbox" id="excludeReplies">
+                <label for="excludeReplies">Exclude Replies</label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Location (Geocode):</label>
+            <div class="form-inline-group">
+                <div class="form-group">
+                    <input type="text" id="latitude" placeholder="Latitude (e.g., 37.7749)">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="longitude" placeholder="Longitude (e.g., -122.4194)">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="radius" placeholder="Radius (e.g., 10mi or 10km)">
+                </div>
+            </div>
+            <small style="font-size:0.8rem;opacity:0.8;">If all three fields are filled, tweets near this location will be shown.</small>
+        </div>
+    </div>
+
+    <button id="generateQuery">Generate Search</button>
+
+    <div class="output-group">
+        <label for="outputQuery">Final Query:</label>
+        <textarea id="outputQuery" readonly></textarea>
     </div>
 
     <script>
-        function generateSearch() {
-            const query = document.getElementById("query").value.trim();
-            const excludeWords = document.getElementById("excludeWords").value.split(',').map(w => `-${w.trim()}`).join(' ');
-            const hashtags = document.getElementById("hashtags").value.split(',').map(h => `-#${h.trim()}`).join(' ');
-            const emoji = document.getElementById("emoji").value.split(',').map(e => `-${e.trim()}`).join(' ');
-            const minLikes = document.getElementById("minLikes").value ? `min_faves:${document.getElementById("minLikes").value}` : '';
-            const minRetweets = document.getElementById("minRetweets").value ? `min_retweets:${document.getElementById("minRetweets").value}` : '';
-            const since = document.getElementById("since").value ? `since:${document.getElementById("since").value}` : '';
-            const until = document.getElementById("until").value ? `until:${document.getElementById("until").value}` : '';
+        const toggleBtn = document.getElementById('toggleAdvanced');
+        const advancedFilters = document.getElementById('advancedFilters');
+        let advancedVisible = false;
 
-            let queryParts = [`"${query}"`, excludeWords, hashtags, emoji, minLikes, minRetweets, since, until];
-            const finalQuery = queryParts.filter(Boolean).join(' ');
+        toggleBtn.addEventListener('click', () => {
+            advancedVisible = !advancedVisible;
+            advancedFilters.style.display = advancedVisible ? 'block' : 'none';
+            toggleBtn.textContent = advancedVisible ? 'Hide Advanced Filters' : 'Show Advanced Filters';
+        });
 
-            document.getElementById("output").value = finalQuery;
+        document.getElementById('generateQuery').addEventListener('click', function() {
+            const mainTerm = document.getElementById('mainSearchTerm').value.trim();
+            const includeHashtags = document.getElementById('includeHashtags').value.trim();
+            const excludeWords = document.getElementById('excludeWords').value.trim();
+            const excludeEmojis = document.getElementById('excludeEmojis').value.trim();
+            const minLikes = document.getElementById('minLikes').value.trim();
+            const minRetweets = document.getElementById('minRetweets').value.trim();
+            const sinceDate = document.getElementById('sinceDate').value.trim();
+            const untilDate = document.getElementById('untilDate').value.trim();
+            const excludeAllHashtags = document.getElementById('excludeHashtags').checked;
 
-            // Open Twitter search with the query
-            const searchURL = `https://twitter.com/search?q=${encodeURIComponent(finalQuery)}`;
-            window.open(searchURL, "_blank");
-        }
+            // Advanced Filters
+            const fromUser = document.getElementById('fromUser').value.trim();
+            const toUser = document.getElementById('toUser').value.trim();
+            const mentionUser = document.getElementById('mentionUser').value.trim();
+            const language = document.getElementById('languageSelect').value;
+            const filterImages = document.getElementById('filterImages').checked;
+            const filterVideos = document.getElementById('filterVideos').checked;
+            const filterLinks = document.getElementById('filterLinks').checked;
+            const excludeRetweets = document.getElementById('excludeRetweets').checked;
+            const excludeReplies = document.getElementById('excludeReplies').checked;
+            const latitude = document.getElementById('latitude').value.trim();
+            const longitude = document.getElementById('longitude').value.trim();
+            const radius = document.getElementById('radius').value.trim();
+
+            let queryParts = [];
+
+            // Basic
+            if (mainTerm) queryParts.push(mainTerm);
+            if (includeHashtags) {
+                let hashtags = includeHashtags.split(',').map(h => h.trim()).filter(Boolean);
+                hashtags.forEach(tag => {
+                    if (!tag.startsWith('#')) {
+                        tag = '#' + tag;
+                    }
+                    queryParts.push(tag);
+                });
+            }
+            if (excludeWords) {
+                excludeWords.split(',').map(w => w.trim()).filter(Boolean).forEach(word => {
+                    queryParts.push('-' + word);
+                });
+            }
+            if (excludeEmojis) {
+                excludeEmojis.split(',').map(e => e.trim()).filter(Boolean).forEach(emoji => {
+                    queryParts.push('-' + emoji);
+                });
+            }
+            if (minLikes) queryParts.push('min_faves:' + minLikes);
+            if (minRetweets) queryParts.push('min_retweets:' + minRetweets);
+            if (sinceDate) queryParts.push('since:' + sinceDate);
+            if (untilDate) queryParts.push('until:' + untilDate);
+            if (excludeAllHashtags) queryParts.push('-#*');
+
+            // Advanced
+            if (fromUser) queryParts.push('from:' + fromUser);
+            if (toUser) queryParts.push('to:' + toUser);
+            if (mentionUser) {
+                // Mentioning a user can be simply by using @username
+                queryParts.push('@' + mentionUser);
+            }
+            if (language) queryParts.push('lang:' + language);
+            if (filterImages) queryParts.push('filter:images');
+            if (filterVideos) queryParts.push('filter:videos');
+            if (filterLinks) queryParts.push('filter:links');
+            if (excludeRetweets) queryParts.push('-filter:retweets');
+            if (excludeReplies) queryParts.push('-filter:replies');
+
+            // Geocode
+            if (latitude && longitude && radius) {
+                queryParts.push(`geocode:${latitude},${longitude},${radius}`);
+            }
+
+            // Combine into a single query
+            let finalQuery = queryParts.join(' ');
+
+            // Set the query in the output textarea
+            document.getElementById('outputQuery').value = finalQuery;
+
+            // Open the query in Twitter if not empty
+            if (finalQuery) {
+                const twitterURL = 'https://twitter.com/search?q=' + encodeURIComponent(finalQuery);
+                window.open(twitterURL, '_blank');
+            }
+        });
     </script>
 </body>
 </html>
