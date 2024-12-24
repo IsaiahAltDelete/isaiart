@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D20</title>
+  <style>
+    :root {
+      --background: #E0E5EC;
+      --shadow-dark: #bec8d2;
+      --shadow-light: #ffffff;
+      --text-primary: #333;
+      --accent-gold: #D4AF37;
+      --accent-red: #cf2b2b;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--background);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text-primary);
+      overflow-x: hidden;
+    }
+
+    .container {
+      position: relative;
+      min-height: 100vh;
+      padding: 2rem;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .card {
+      background: var(--background);
+      padding: clamp(1.5rem, 5vw, 3rem);
+      border-radius: clamp(1rem, 3vw, 2rem);
+      text-align: center;
+      box-shadow:
+        9px 9px 16px var(--shadow-dark),
+        -9px -9px 16px var(--shadow-light);
+      z-index: 10;
+      width: min(90%, 400px);
+      margin-top: clamp(1rem, 5vh, 4rem);
+    }
+
+    .card h1 {
+      margin: 0 0 1rem 0;
+      font-size: clamp(1.5rem, 5vw, 2rem);
+      font-weight: 700;
+    }
+
+    #rollResult {
+      font-size: clamp(3rem, 10vw, 4.5rem);
+      font-weight: bold;
+      margin: 1rem 0;
+      min-height: 1.2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.4s ease-in-out, text-shadow 0.4s ease-in-out;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .neumorphic-btn {
+      background: var(--background);
+      border: none;
+      border-radius: 2rem;
+      padding: clamp(0.8rem, 3vw, 1.2rem) clamp(1.5rem, 5vw, 2.5rem);
+      font-size: clamp(1rem, 4vw, 1.2rem);
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-primary);
+      box-shadow: 
+        6px 6px 12px var(--shadow-dark),
+        -6px -6px 12px var(--shadow-light);
+      transition: all 0.2s ease;
+      outline: none;
+      margin: 1rem 0;
+    }
+
+    .
+
+
+
+
+
+
+
+
+
+-btn:active {
+      box-shadow: 
+        inset 6px 6px 12px var(--shadow-dark),
+        inset -6px -6px 12px var(--shadow-light);
+      transform: scale(0.98);
+    }
+
+    .neumorphic-btn.active {
+      background: #D4E5F9;
+      box-shadow: 
+        inset 6px 6px 12px var(--shadow-dark),
+        inset -6px -6px 12px var(--shadow-light);
+    }
+
+    .history-container {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      margin: 1rem 0;
+      flex-wrap: wrap;
+    }
+
+    .history-box {
+      width: 3rem;
+      height: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: bold;
+      background: var(--background);
+      border-radius: 0.5rem;
+      box-shadow:
+        inset 3px 3px 6px var(--shadow-dark),
+        inset -3px -3px 6px var(--shadow-light);
+      transition: all 0.3s ease;
+    }
+
+    .history-box.critical-success {
+      color: var(--accent-gold);
+      text-shadow: 0 0 5px #ffb347;
+    }
+
+    .history-box.critical-fail {
+      color: var(--accent-red);
+      text-shadow: 0 0 5px #ff4d4d;
+    }
+
+    .explanation {
+      margin: 0 auto;
+      padding: clamp(1rem, 3vw, 1.5rem);
+      border-radius: 1rem;
+      background: var(--background);
+      box-shadow:
+        5px 5px 10px var(--shadow-dark),
+        -5px -5px 10px var(--shadow-light);
+      width: min(90%, 600px);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .explanation h2 {
+      margin-top: 0;
+      font-size: clamp(1.2rem, 4vw, 1.5rem);
+      text-align: center;
+    }
+
+    .explanation p {
+      font-size: clamp(0.9rem, 3vw, 1rem);
+      margin: 1rem 0;
+    }
+
+    .floaters {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .floater {
+      position: absolute;
+      top: -10%;
+      opacity: 0.15;
+      color: var(--text-primary);
+      animation: fall 6s linear infinite;
+      user-select: none;
+    }
+
+    @keyframes fall {
+      0% {
+        transform: translateY(-200px) rotate(0deg) translateX(0);
+      }
+      50% {
+        transform: translateY(50vh) rotate(180deg) translateX(50px);
+      }
+      100% {
+        transform: translateY(110vh) rotate(360deg) translateX(-50px);
+        opacity: 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 1rem;
+        gap: 1.5rem;
+      }
+      
+      .card {
+        padding: 1.5rem;
+      }
+      
+      .explanation {
+        font-size: 0.9rem;
+      }
+
+      .history-box {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .floater {
+        animation: none;
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="floaters" id="floaterContainer"></div>
+  
+  <div class="card">
+    <h1>1D20 DICE ROLLER</h1>
+    <div id="rollResult">—</div>
+    
+    <div class="history-container" id="historyContainer">
+      <div class="history-box">-</div>
+      <div class="history-box">-</div>
+      <div class="history-box">-</div>
+      <div class="history-box">-</div>
+      <div class="history-box">-</div>
+    </div>
+
+    <div class="button-group">
+      <button class="neumorphic-btn" id="rollBtn">Roll d20</button>
+      <button class="neumorphic-btn" id="autoRollBtn">Auto Roll</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>How It Works</h2>
+    <p>
+      <strong>Chaotic Entropy:</strong> We gather user interaction data (mouse movements,
+      keyboard presses, window resizes) and combine it with cryptographically secure randomness
+      for true randomization.
+    </p>
+    <p>
+      <strong>d20 Calculation:</strong> We take the scrambled seed and calculate a result
+      in the [1..20] range—just like rolling a physical d20.
+    </p>
+    <p>
+      <strong>Visual Feedback:</strong> Critical hits (20) glow gold, while critical fails (1)
+      glow red. The last 5 rolls are shown below the main result.
+    </p>
+  </div>
+</div>
+
+<script>
+  let entropyPool = [];
+  let rollHistory = [];
+  let autoRollInterval = null;
+
+  window.addEventListener('mousemove', (e) => {
+    entropyPool.push(`mouse_${e.clientX}_${e.clientY}_${performance.now()}`);
+    if (entropyPool.length > 100) entropyPool.shift();
+  });
+
+  window.addEventListener('keydown', (e) => {
+    entropyPool.push(`key_${e.key}_${performance.now()}`);
+    if (entropyPool.length > 100) entropyPool.shift();
+  });
+
+  window.addEventListener('resize', () => {
+    entropyPool.push(`resize_${window.innerWidth}_${window.innerHeight}_${Date.now()}`);
+  });
+
+  function getCryptoRandom() {
+    const randArr = new Uint32Array(1);
+    window.crypto.getRandomValues(randArr);
+    return randArr[0] / (0xFFFFFFFF + 1);
+  }
+
+  function chaoticMix() {
+    const cryptoVal = getCryptoRandom();
+    const timeVal = Date.now();
+    const randVal = Math.random();
+
+    const combinedString = [
+      cryptoVal,
+      timeVal,
+      randVal,
+      entropyPool.join('-')
+    ].join('|');
+
+    let total = 0;
+    for (let i = 0; i < combinedString.length; i++) {
+      total += combinedString.charCodeAt(i) * (i + 1);
+    }
+    return total;
+  }
+
+  function rollD20() {
+    const rawVal = chaoticMix();
+    return (rawVal % 20) + 1;
+  }
+
+  function updateHistory(result) {
+    rollHistory.unshift(result);
+    if (rollHistory.length > 5) {
+      rollHistory.pop();
+    }
+
+    const historyBoxes = document.querySelectorAll('.history-box');
+    historyBoxes.forEach((box, index) => {
+      const value = rollHistory[index] || '-';
+      box.textContent = value;
+      
+      // Reset classes
+      box.classList.remove('critical-success', 'critical-fail');
+      
+      // Add appropriate class
+      if (value === 20) {
+        box.classList.add('critical-success');
+      } else if (value === 1) {
+        box.classList.add('critical-fail');
+      }
+    });
+  }
+
+  const rollBtn = document.getElementById('rollBtn');
+  const autoRollBtn = document.getElementById('autoRollBtn');
+  const rollResult = document.getElementById('rollResult');
+
+  function updateRoll() {
+    rollBtn.disabled = true;
+    
+    const result = rollD20();
+    rollResult.style.opacity = '0';
+    
+    setTimeout(() => {
+      rollResult.textContent = result;
+      rollResult.style.opacity = '1';
+      
+      if (result === 20) {
+        rollResult.style.color = '#D4AF37';
+        rollResult.style.textShadow = '0 0 10px #ffb347';
+      } else if (result === 1) {
+        rollResult.style.color = '#cf2b2b';
+        rollResult.style.textShadow = '0 0 10px #ff4d4d';
+      } else {
+        rollResult.style.color = '#333';
+        rollResult.style.textShadow = 'none';
+      }
+      
+      updateHistory(result);
+      rollBtn.disabled = false;
+    }, 100);
+  }
+
+  function toggleAutoRoll() {
+    if (autoRollInterval) {
+      clearInterval(autoRollInterval);
+      autoRollInterval = null;
+      autoRollBtn.classList.remove('active');
+    } else {
+      autoRollBtn.classList.add('active');
+      autoRollInterval = setInterval(() => {
+        updateRoll();
+      }, 3000); // Roll every 3 seconds
+    }
+  }
+
+  rollBtn.addEventListener('click', updateRoll);
+  autoRollBtn.addEventListener('click', toggleAutoRoll);
+
+  const floaterContainer = document.getElementById('floaterContainer');
+  const possibleSymbols = ['⚀','⚁','⚂','⚃','⚄','⚅','★','✦','⚜'];
+
+  function createFloater() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+
+    const floater = document.createElement('div');
+    floater.className = 'floater';
+
+    const symbol = possibleSymbols[Math.floor(Math.random() * possibleSymbols.length)];
+    floater.textContent = symbol;
+
+    floater.style.left = Math.random() * 100 + 'vw';
+    const randomFontSize = clamp(1.5 + Math.random() * 1.5, 1, 2.5);
+    floater.style.fontSize = `${randomFontSize}rem`;
+
+    const duration = 4 + Math.random() * 4;
+    floater.style.animationDuration = duration + 's';
+
+    floaterContainer.appendChild(floater);
+
+    setTimeout(() => {
+      if (floaterContainer.contains(floater)) {
+        floaterContainer.removeChild(floater);
+      }
+    }, duration * 1000);
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  setInterval(createFloater, 800);
+</script>
+</body>
+</html>
