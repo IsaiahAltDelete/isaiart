@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>D&D Dice Collections</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/inter/3.19.3/inter.css" rel="stylesheet">
+    <title>DICE</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/inter/3.19.3/inter.min.css" rel="stylesheet">
     <style>
+        /* Reset and Base Styles */
         * {
             margin: 0;
             padding: 0;
@@ -15,202 +16,182 @@
 
         body {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0f1729, #1a1f35);
+            background-color: #e0e0e0; /* Light gray for neumorphic background */
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 3rem;
             overflow: hidden;
             position: relative;
+            color: #333333; /* Dark gray text */
         }
 
-        .button {
-            padding: 1.8rem 4rem;
-            font-size: 1.2rem;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: rgba(255, 255, 255, 0.9);
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            text-decoration: none;
-            position: relative;
-            overflow: hidden;
+        /* Title */
+        .title {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 3rem;
+            letter-spacing: 5px;
+            text-align: center;
+            color: #333333;
             z-index: 1;
         }
 
-        .button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                90deg,
-                transparent,
-                rgba(255, 255, 255, 0.1),
-                transparent
-            );
-            transition: 0.5s;
+        /* Button Container */
+        .button-container {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        /* Neumorphic Button Styles */
+        .button {
+            padding: 1rem 3rem;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #333333;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow:
+                8px 8px 16px #bebebe,
+                -8px -8px 16px #ffffff;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .button:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2),
-                       0 0 30px rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.1);
-            letter-spacing: 5px;
+            box-shadow:
+                inset 4px 4px 8px #bebebe,
+                inset -4px -4px 8px #ffffff;
+            transform: translateY(-2px);
         }
 
-        .button:hover::before {
-            left: 100%;
-        }
-
-        #canvas {
+        /* Canvas Styles */
+        #diceCanvas {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: 0;
+            pointer-events: none;
         }
 
+        /* Responsive Design */
         @media (max-width: 768px) {
-            body {
-                flex-direction: column;
-                gap: 2rem;
+            .title {
+                font-size: 3rem;
+                margin-bottom: 2rem;
             }
-            
+
             .button {
-                padding: 1.5rem 3rem;
+                padding: 0.8rem 2rem;
                 font-size: 1rem;
+                border-radius: 15px;
             }
         }
     </style>
 </head>
 <body>
-    <canvas id="canvas"></canvas>
-    <a href="https://isaiart.com/dice/1" class="button">Minimalist Dice</a>
-    <a href="https://isaiart.com/dice/2" class="button">Celestial Dice</a>
+    <h1 class="title">DICE</h1>
+    <div class="button-container">
+        <a href="https://isaiart.com/dice/1" class="button">Minimalist</a>
+        <a href="https://isaiart.com/dice/3" class="button">Spinner</a>
+        <a href="https://isaiart.com/dice/2" class="button">Celestial</a>
+        <a href="https://isaiart.com/dice/5" class="button">Neumorphic</a>
+    </div>
+    <canvas id="diceCanvas"></canvas>
 
     <script>
-        const canvas = document.getElementById('canvas');
+        // Canvas Setup
+        const canvas = document.getElementById('diceCanvas');
         const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-        // Set canvas size
-        function resize() {
+        window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-        }
-        resize();
-        window.addEventListener('resize', resize);
+        });
 
-        // Particle class
-        class Particle {
+        // Dice Characters as Unicode
+        const diceTypes = ['\u2680', '\u2681', '\u2682', '\u2683', '\u2684', '\u2685']; // Unicode dice faces 1-6
+
+        // Dice Class
+        class Dice {
             constructor() {
                 this.reset();
             }
 
             reset() {
                 this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 2 + 1;
-                this.speedX = (Math.random() - 0.5) * 0.5;
-                this.speedY = (Math.random() - 0.5) * 0.5;
-                this.brightness = Math.random() * 0.5 + 0.5;
-                this.connections = [];
+                this.y = Math.random() * -canvas.height;
+                this.size = Math.random() * 20 + 15; // Size between 15px and 35px
+                this.speed = Math.random() * 1.5 + 1; // Speed between 1 and 2.5
+                this.opacity = Math.random() * 0.3 + 0.2; // Opacity between 0.2 and 0.5
+                this.diceFace = diceTypes[Math.floor(Math.random() * diceTypes.length)];
+                this.rotation = Math.random() * 360;
+                this.rotationSpeed = (Math.random() * 0.5 - 0.25) * 2; // Rotation speed between -0.5 and 0.5
             }
 
             update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
+                this.y += this.speed;
+                this.rotation += this.rotationSpeed;
 
-                if (this.x < 0 || this.x > canvas.width || 
-                    this.y < 0 || this.y > canvas.height) {
+                if (this.y > canvas.height + this.size) {
                     this.reset();
                 }
             }
 
             draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 255, 255, ${this.brightness})`;
-                ctx.fill();
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation * Math.PI / 180);
+                ctx.font = `${this.size}px Inter`;
+                ctx.fillStyle = `rgba(51, 51, 51, ${this.opacity})`; // Dark gray with opacity
+                ctx.fillText(this.diceFace, -this.size / 2, this.size / 2);
+                ctx.restore();
             }
         }
 
-        // Create particles
-        const particles = [];
-        const particleCount = 100;
-        for (let i = 0; i < particleCount; i++) {
-            particles.push(new Particle());
+        // Create Dice Particles
+        const diceArray = [];
+        const numberOfDice = 30; // Number of dice for minimalistic effect
+        for (let i = 0; i < numberOfDice; i++) {
+            diceArray.push(new Dice());
         }
 
-        // Animation
+        // Animation Loop
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Update and draw particles
-            particles.forEach(particle => {
-                particle.update();
-                particle.draw();
-                particle.connections = [];
+            diceArray.forEach(dice => {
+                dice.update();
+                dice.draw();
             });
-
-            // Draw connections
-            for (let i = 0; i < particles.length; i++) {
-                for (let j = i + 1; j < particles.length; j++) {
-                    const dx = particles[i].x - particles[j].x;
-                    const dy = particles[i].y - particles[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance < 150) {
-                        const opacity = (1 - distance / 150) * 0.2;
-                        ctx.beginPath();
-                        ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
-                        ctx.lineWidth = 0.5;
-                        ctx.stroke();
-                        
-                        particles[i].connections.push(j);
-                        particles[j].connections.push(i);
-                    }
-                }
-            }
-
             requestAnimationFrame(animate);
         }
 
         animate();
 
-        // Mouse interaction
-        let mouse = {
-            x: null,
-            y: null,
-            radius: 150
-        };
-
-        canvas.addEventListener('mousemove', function(event) {
-            mouse.x = event.x;
-            mouse.y = event.y;
-
-            // Create ripple effect
-            particles.forEach(particle => {
-                const dx = mouse.x - particle.x;
-                const dy = mouse.y - particle.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance < mouse.radius) {
-                    const force = (mouse.radius - distance) / mouse.radius;
-                    particle.x -= dx * force * 0.03;
-                    particle.y -= dy * force * 0.03;
+        // Adjust Number of Dice Based on Screen Size
+        window.addEventListener('resize', () => {
+            const newNumberOfDice = Math.floor((canvas.width * canvas.height) / 30000); // Adjusted for minimalism
+            if (newNumberOfDice > diceArray.length) {
+                for (let i = diceArray.length; i < newNumberOfDice; i++) {
+                    diceArray.push(new Dice());
                 }
-            });
+            } else if (newNumberOfDice < diceArray.length) {
+                diceArray.splice(newNumberOfDice);
+            }
         });
     </script>
 </body>
