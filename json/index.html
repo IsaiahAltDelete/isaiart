@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JSON Editor</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/mode-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/theme-monokai.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .btn {
+            transition: all 0.3s ease;
+            border: 2px solid #000;
+        }
+        .btn:hover {
+            background-color: #fff;
+            color: #000;
+        }
+        #editor, #jsonOutput {
+            border-radius: 16px;
+            border: 2px solid #000;
+        }
+    </style>
+</head>
+<body class="bg-white p-10">
+    <div class="max-w-6xl mx-auto">
+        <div class="rounded-2xl p-10 shadow-lg">
+            <h1 class="text-4xl font-extrabold text-center mb-10">JSON EDITOR</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="space-y-4">
+                    <label class="block font-bold text-xl text-center">INPUT</label>
+                    <div id="editor" class="w-full h-96 shadow-lg"></div>
+                </div>
+                
+                <div class="space-y-4">
+                    <label class="block font-bold text-xl text-center">OUTPUT</label>
+                    <div id="jsonOutput" class="w-full h-96 bg-white p-6 overflow-auto font-mono shadow-lg"></div>
+                </div>
+            </div>
+
+            <div class="mt-10 flex flex-wrap justify-center gap-4">
+                <button onclick="convertToJSON()" class="btn bg-black text-white px-8 py-4 rounded-xl font-bold uppercase tracking-wide">
+                    Convert
+                </button>
+                <button onclick="downloadJSON()" class="btn bg-black text-white px-8 py-4 rounded-xl font-bold uppercase tracking-wide">
+                    Download
+                </button>
+                <button onclick="formatJSON()" class="btn bg-black text-white px-8 py-4 rounded-xl font-bold uppercase tracking-wide">
+                    Format
+                </button>
+                <button onclick="minifyJSON()" class="btn bg-black text-white px-8 py-4 rounded-xl font-bold uppercase tracking-wide">
+                    Minify
+                </button>
+            </div>
+
+            <div id="errorMsg" class="mt-6 text-center font-bold text-red-600"></div>
+        </div>
+    </div>
+
+    <script>
+        let editor = ace.edit("editor");
+        editor.setTheme("ace/theme/monokai");
+        editor.session.setMode("ace/mode/json");
+        editor.setOptions({
+            fontSize: "14px",
+            showPrintMargin: false,
+            wrap: true
+        });
+
+        function convertToJSON() {
+            try {
+                const input = editor.getValue();
+                const evaluated = eval('(' + input + ')');
+                const jsonString = JSON.stringify(evaluated, null, 2);
+                document.getElementById('jsonOutput').textContent = jsonString;
+                document.getElementById('errorMsg').textContent = '';
+            } catch (error) {
+                document.getElementById('errorMsg').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        function downloadJSON() {
+            try {
+                const jsonContent = document.getElementById('jsonOutput').textContent;
+                if (!jsonContent) throw new Error('No JSON content to download');
+                const blob = new Blob([jsonContent], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'data.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                document.getElementById('errorMsg').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        function formatJSON() {
+            try {
+                const jsonOutput = document.getElementById('jsonOutput');
+                const parsed = JSON.parse(jsonOutput.textContent);
+                jsonOutput.textContent = JSON.stringify(parsed, null, 2);
+            } catch (error) {
+                document.getElementById('errorMsg').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        function minifyJSON() {
+            try {
+                const jsonOutput = document.getElementById('jsonOutput');
+                const parsed = JSON.parse(jsonOutput.textContent);
+                jsonOutput.textContent = JSON.stringify(parsed);
+            } catch (error) {
+                document.getElementById('errorMsg').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
