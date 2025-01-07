@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video to GIF Converter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Base Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="file"],
+        input[type="number"],
+        input[type="range"],
+        select,
+        button {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #preview {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #preview img {
+            max-width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #progressContainer {
+            display: none;
+            margin-top: 20px;
+        }
+        #progressBar {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            height: 25px;
+        }
+        #progressBar div {
+            height: 100%;
+            width: 0;
+            background-color: #28a745;
+            text-align: center;
+            line-height: 25px;
+            color: white;
+            transition: width 0.3s;
+        }
+        #downloadLink {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
+        #downloadButton {
+            background-color: #28a745;
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s;
+        }
+        #downloadButton:hover {
+            background-color: #218838;
+        }
+        #estimatedSize {
+            margin-top: 10px;
+            font-style: italic;
+            color: #555;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.5em;
+            }
+            .container {
+                padding: 15px;
+            }
+            label {
+                margin-bottom: 5px;
+            }
+            input[type="file"],
+            input[type="number"],
+            input[type="range"],
+            select,
+            button {
+                padding: 8px;
+            }
+            #downloadButton {
+                width: 100%;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Video to GIF Converter</h1>
+        <div class="control-group">
+            <label for="videoFile">Upload Video:</label>
+            <input type="file" id="videoFile" accept="video/*">
+        </div>
+        <div class="control-group">
+            <label for="startTime">Start Time (seconds):</label>
+            <input type="number" id="startTime" min="0" value="0">
+        </div>
+        <div class="control-group">
+            <label for="endTime">End Time (seconds):</label>
+            <input type="number" id="endTime" min="1" value="5">
+        </div>
+        <div class="control-group">
+            <label for="frameRate">Frame Rate (fps): <span id="frameRateValue">10</span></label>
+            <input type="range" id="frameRate" min="1" max="30" value="10">
+        </div>
+        <div class="control-group">
+            <label for="width">Width (px): <span id="widthValue">320</span></label>
+            <input type="range" id="width" min="100" max="1280" value="320">
+        </div>
+        <div class="control-group">
+            <label for="colorReduction">Color Reduction:</label>
+            <select id="colorReduction">
+                <option value="256">256 Colors (Default)</option>
+                <option value="128">128 Colors</option>
+                <option value="64">64 Colors</option>
+                <option value="32">32 Colors</option>
+                <option value="16">16 Colors</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="qualityPreset">Quality Preset:</label>
+            <select id="qualityPreset">
+                <option value="high" selected>High Quality</option>
+                <option value="medium">Medium Quality</option>
+                <option value="low">Low Quality</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="estimatedSize">Estimated GIF File Size:</label>
+            <div id="estimatedSize">--</div>
+        </div>
+        <button id="convertButton">Convert to GIF</button>
+
+        <!-- Progress Bar -->
+        <div id="progressContainer">
+            <label>Conversion Progress:</label>
+            <div id="progressBar">
+                <div id="progressFill">0%</div>
+            </div>
+        </div>
+
+        <div id="preview">
+            <!-- GIF Preview will appear here -->
+        </div>
+        <div id="downloadLink">
+            <button id="downloadButton">Download GIF</button>
+        </div>
+    </div>
+
+    <!-- Include GIF.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+    <!-- Include gif.worker.js via Blob -->
+    <script>
+        // Create a blob URL for gif.worker.js
+        const gifWorkerBlob = new Blob([`importScripts('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');`], { type: 'application/javascript' });
+        const gifWorkerURL = URL.createObjectURL(gifWorkerBlob);
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const videoFileInput = document.getElementById('videoFile');
+            const startTimeInput = document.getElementById('startTime');
+            const endTimeInput = document.getElementById('endTime');
+            const frameRateInput = document.getElementById('frameRate');
+            const frameRateValue = document.getElementById('frameRateValue');
+            const widthInput = document.getElementById('width');
+            const widthValue = document.getElementById('widthValue');
+            const colorReductionSelect = document.getElementById('colorReduction');
+            const qualityPresetSelect = document.getElementById('qualityPreset');
+            const convertButton = document.getElementById('convertButton');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const previewDiv = document.getElementById('preview');
+            const downloadLinkDiv = document.getElementById('downloadLink');
+            const downloadButton = document.getElementById('downloadButton');
+            const estimatedSizeDiv = document.getElementById('estimatedSize');
+
+            // Update frame rate display
+            frameRateInput.addEventListener('input', () => {
+                frameRateValue.textContent = frameRateInput.value;
+                calculateEstimatedSize();
+            });
+
+            // Update width display
+            widthInput.addEventListener('input', () => {
+                widthValue.textContent = widthInput.value;
+                calculateEstimatedSize();
+            });
+
+            // Update estimated size when other parameters change
+            startTimeInput.addEventListener('input', calculateEstimatedSize);
+            endTimeInput.addEventListener('input', calculateEstimatedSize);
+            colorReductionSelect.addEventListener('change', calculateEstimatedSize);
+            qualityPresetSelect.addEventListener('change', calculateEstimatedSize);
+
+            // Function to calculate estimated file size
+            function calculateEstimatedSize() {
+                const startTime = parseFloat(startTimeInput.value);
+                const endTime = parseFloat(endTimeInput.value);
+                const frameRate = parseInt(frameRateInput.value);
+                const width = parseInt(widthInput.value);
+                const colorReduction = parseInt(colorReductionSelect.value);
+                const qualityPreset = qualityPresetSelect.value;
+
+                // Validate inputs
+                if (isNaN(startTime) || isNaN(endTime) || endTime <= startTime || isNaN(frameRate) || isNaN(width) || width <= 0) {
+                    estimatedSizeDiv.textContent = 'Please enter valid parameters.';
+                    return;
+                }
+
+                const duration = endTime - startTime;
+                const frameCount = Math.ceil(duration * frameRate);
+                const height = (width / 16) * 9; // Assume 16:9 aspect ratio for estimation
+
+                // Estimate per frame size: width * height * bytes per pixel
+                // GIF uses 1 byte per pixel for 256 colors
+                const perFrameSize = width * height * (colorReduction <= 256 ? 1 : 2); // Simplistic estimation
+
+                // Total size in bytes
+                let totalSize = perFrameSize * frameCount;
+
+                // Adjust for quality: lower quality may reduce size
+                let qualityFactor;
+                switch (qualityPreset) {
+                    case 'high':
+                        qualityFactor = 1;
+                        break;
+                    case 'medium':
+                        qualityFactor = 0.75;
+                        break;
+                    case 'low':
+                        qualityFactor = 0.5;
+                        break;
+                    default:
+                        qualityFactor = 1;
+                }
+                totalSize *= qualityFactor;
+
+                // Convert bytes to KB or MB
+                let estimatedSize = '';
+                if (totalSize < 1024) {
+                    estimatedSize = `${totalSize.toFixed(2)} Bytes`;
+                } else if (totalSize < 1024 * 1024) {
+                    estimatedSize = `${(totalSize / 1024).toFixed(2)} KB`;
+                } else {
+                    estimatedSize = `${(totalSize / (1024 * 1024)).toFixed(2)} MB`;
+                }
+
+                estimatedSizeDiv.textContent = estimatedSize;
+            }
+
+            convertButton.addEventListener('click', () => {
+                const file = videoFileInput.files[0];
+                if (!file) {
+                    alert('Please upload a video file.');
+                    return;
+                }
+
+                const startTime = parseFloat(startTimeInput.value);
+                const endTime = parseFloat(endTimeInput.value);
+                const frameRate = parseInt(frameRateInput.value);
+                const width = parseInt(widthInput.value);
+                const colorReduction = parseInt(colorReductionSelect.value);
+                const qualityPreset = qualityPresetSelect.value;
+
+                // Validate input values
+                if (startTime < 0 || isNaN(startTime)) {
+                    alert('Start time must be a non-negative number.');
+                    return;
+                }
+
+                if (endTime <= startTime || isNaN(endTime)) {
+                    alert('End time must be greater than start time.');
+                    return;
+                }
+
+                // Adjust settings based on quality preset
+                let quality;
+                switch (qualityPreset) {
+                    case 'high':
+                        quality = 10;
+                        break;
+                    case 'medium':
+                        quality = 20;
+                        break;
+                    case 'low':
+                        quality = 30;
+                        break;
+                    default:
+                        quality = 10;
+                }
+
+                const videoURL = URL.createObjectURL(file);
+                const video = document.createElement('video');
+                video.src = videoURL;
+                video.crossOrigin = 'anonymous';
+                video.preload = 'auto';
+                video.muted = true; // Prevents autoplay issues
+                video.playsInline = true;
+
+                video.addEventListener('loadedmetadata', () => {
+                    if (endTime > video.duration) {
+                        alert(`End time exceeds video duration (${video.duration.toFixed(2)} seconds).`);
+                        return;
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const scale = width / video.videoWidth;
+                    const height = video.videoHeight * scale;
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const gif = new GIF({
+                        workers: 2,
+                        quality: quality,
+                        workerScript: gifWorkerURL,
+                        width: canvas.width,
+                        height: canvas.height,
+                        transparent: false,
+                        repeat: 0, // Infinite loop
+                        background: '#FFFFFF'
+                    });
+
+                    // Set color reduction by limiting the palette
+                    // Note: GIF.js doesn't support palette size directly,
+                    // but color reduction can be approximated by quality settings
+                    // For a more accurate color reduction, additional processing is needed.
+
+                    // Reset previous previews and download links
+                    previewDiv.innerHTML = '';
+                    downloadLinkDiv.style.display = 'none';
+                    downloadButton.disabled = true;
+                    downloadButton.textContent = 'Download GIF';
+
+                    // Show and reset progress bar
+                    progressContainer.style.display = 'block';
+                    progressFill.style.width = '0%';
+                    progressFill.textContent = '0%';
+
+                    gif.on('progress', (p) => {
+                        const percentage = Math.min(100, (p * 100).toFixed(2));
+                        progressFill.style.width = `${percentage}%`;
+                        progressFill.textContent = `${percentage}%`;
+                    });
+
+                    gif.on('finished', (blob) => {
+                        const gifURL = URL.createObjectURL(blob);
+                        previewDiv.innerHTML = `<img src="${gifURL}" alt="GIF Preview">`;
+                        downloadButton.href = gifURL;
+                        downloadButton.download = 'output.gif';
+                        downloadButton.disabled = false;
+                        downloadButton.textContent = 'Download GIF';
+                        progressContainer.style.display = 'none';
+                        downloadLinkDiv.style.display = 'block';
+                    });
+
+                    // Seek and capture frames
+                    video.currentTime = startTime;
+
+                    video.addEventListener('seeked', function captureFrame() {
+                        if (video.currentTime > endTime) {
+                            gif.render();
+                            video.removeEventListener('seeked', captureFrame);
+                            return;
+                        }
+
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        gif.addFrame(ctx, { copy: true, delay: 1000 / frameRate });
+                        video.currentTime += 1 / frameRate;
+                    });
+
+                    video.play();
+                });
+
+                video.addEventListener('error', (e) => {
+                    alert('Error loading video. Please try a different file.');
+                    console.error('Video Error:', e);
+                });
+
+                video.load();
+            });
+        });
+    </script>
+</body>
+</html>
