@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ISAIART</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -22,11 +22,11 @@
             color: #ffffff;
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 100vh;
+            align-items: flex-start;
+            min-height: 100vh;
             width: 100vw;
             margin: 0;
-            overflow: hidden;
+            overflow-x: hidden;
             position: relative;
             padding: 2rem;
         }
@@ -38,50 +38,34 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 0;
+            z-index: -1;
             background: #000000;
         }
 
         /* Container Styling */
         .container {
-            position: relative;
-            z-index: 1;
-            text-align: center;
-            padding: 2rem;
-            border-radius: 20px;
-            /* Removed background, box-shadow, and backdrop-filter for full transparency */
-            max-width: 100%;
-            max-height: 100%;
-            overflow-y: auto;
+            width: 100%;
+            max-width: 1200px;
             display: flex;
             flex-direction: column;
-            align-items: center;
+            gap: 3rem;
         }
 
-        /* Typing Animation */
-        .typing-container {
-            display: inline-block;
-            overflow: hidden;
-            white-space: nowrap;
-            border-right: 0.15em solid #ffffff;
-            animation: typing 2s steps(30, end), blink-caret 0.75s step-end infinite;
-        }
-
-        /* Heading Styling */
+        /* Title Styling */
         h1 {
-            margin-bottom: 1.5rem;
             font-weight: 700;
-            font-size: 2.5rem;
+            font-size: 3rem;
             text-transform: uppercase;
-            letter-spacing: 0.1rem;
+            letter-spacing: 0.2rem;
             color: #ffffff;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            text-align: center;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
         }
 
         h1 a {
             color: #ffffff;
             text-decoration: none;
-            font-weight: 700;
             transition: color 0.3s ease;
         }
 
@@ -89,24 +73,28 @@
             color: #ff4757;
         }
 
-        /* Keyframes for Animations */
-        @keyframes typing {
-            from { width: 0; }
-            to { width: 100%; }
-        }
-
-        @keyframes blink-caret {
-            from, to { border-color: transparent; }
-            50% { border-color: #ffffff; }
-        }
-
-        /* Link Container Styling */
-        .link-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        /* Section Styling */
+        .section {
+            display: flex;
+            flex-direction: column;
             gap: 1.5rem;
-            width: 100%;
-            max-width: 1200px; /* Limits the maximum width for better readability */
+        }
+
+        .section-header {
+            font-size: 2rem;
+            text-transform: uppercase;
+            border-bottom: 2px solid #ffffff;
+            padding-bottom: 0.5rem;
+            color: #ffffff;
+            text-align: left;
+            margin-left: 0.5rem;
+        }
+
+        /* Grid Layout for Links */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
         }
 
         /* Interactive Links Styling */
@@ -114,19 +102,16 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 1rem 2rem;
+            padding: 1rem;
             border: 2px solid #fff;
-            border-radius: 20px;
-            background-color: transparent;
+            border-radius: 15px;
+            background-color: rgba(255, 255, 255, 0.1);
             color: #fff;
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: 700;
             text-transform: uppercase;
             text-decoration: none;
-            box-shadow: rgba(255, 255, 255, 0.1) 0px 2px 4px;
             transition: background-color 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
-            min-height: 50px;
-            text-align: center;
             position: relative;
             overflow: hidden;
         }
@@ -145,6 +130,7 @@
                 transparent 100%
             );
             transition: left 0.5s;
+            pointer-events: none;
         }
 
         .link:hover::before {
@@ -153,9 +139,9 @@
 
         .link:hover {
             transform: translateY(-5px);
-            background-color: #fff;
-            color: #000;
-            box-shadow: rgba(255, 255, 255, 0.3) 0px 4px 8px;
+            background-color: #ffffff;
+            color: #000000;
+            box-shadow: rgba(255, 255, 255, 0.4) 0px 4px 12px;
             border-width: 3px;
         }
 
@@ -177,23 +163,31 @@
         /* Responsive Adjustments */
         @media (max-width: 1200px) {
             h1 {
-                font-size: 2.3rem;
+                font-size: 2.5rem;
+            }
+
+            .section-header {
+                font-size: 1.8rem;
             }
 
             .link {
-                font-size: 1.1rem;
-                padding: 0.9rem 1.8rem;
+                font-size: 0.9rem;
+                padding: 0.8rem;
             }
         }
 
         @media (max-width: 900px) {
             h1 {
-                font-size: 2.2rem;
+                font-size: 2.3rem;
+            }
+
+            .section-header {
+                font-size: 1.6rem;
             }
 
             .link {
-                font-size: 1rem;
-                padding: 0.8rem 1.6rem;
+                font-size: 0.8rem;
+                padding: 0.7rem;
             }
         }
 
@@ -202,9 +196,13 @@
                 font-size: 2rem;
             }
 
+            .section-header {
+                font-size: 1.4rem;
+            }
+
             .link {
-                font-size: 0.9rem;
-                padding: 0.7rem 1.4rem;
+                font-size: 0.7rem;
+                padding: 0.6rem;
             }
         }
     </style>
@@ -215,38 +213,83 @@
 
     <!-- Main Content Container -->
     <div class="container">
-        <h1 class="typing-container"><a href="https://isaiart.com" target="_blank">ISAIART</a></h1>
-        <div class="link-container">
-            <!-- Alphabetically Ordered Links -->
-            <a href="https://isaiart.com/8beat" class="link" target="_blank">8 Beat</a>
-            <a href="https://isaiart.com/projects" class="link" target="_blank">All Projects</a>
-            <a href="https://braille.isaiart.com" class="link" target="_blank">Braille Translator</a>
-            <a href="https://isaiart.com/character/" class="link" target="_blank">Character</a>
-            <a href="https://isaiart.com/collage/" class="link">Collage</a>
-            <a href="https://dnd.isaiart.com/" class="link" target="_blank">DND Handbook</a>
-            <a href="https://isaiart.com/dice/" class="link" target="_blank">Dice</a>
-            <a href="https://isaiart.com/drumpad" class="link" target="_blank">Drum Pad</a>
-            <a href="https://isaiart.com/pixelate/" class="link" target="_blank">IMG 2 PXL</a>
-            <a href="https://music.isaiart.com/" class="link" target="_blank">Music</a>
-            <a href="https://isaiart.com/piano" class="link" target="_blank">Piano</a>
-            <a href="https://pokedex.isaiart.com" class="link" target="_blank">Pokedex</a>
-            <a href="https://isaiart.com/react/" class="link">React Projects</a>
-            <a href="https://reboot.isaiart.com" class="link" target="_blank">Reboot</a>
-            <a href="https://isaiart.com/resized/" class="link">RESIZED</a>
-            <a href="https://isaiart.com/spacetimer/" class="link">Space Timer</a>
-            <a href="https://isaiart.com/spellbook" class="link" target="_blank">Spellbook</a>
-            <a href="https://thg.isaiart.com" class="link" target="_blank">THG</a>
-            <a href="https://isaiart.com/rain" class="link" target="_blank">Timer</a>
-            <a href="https://isaiart.com/tile/" class="link">Tile Tester</a>
-            <a href="https://isaiart.com/tav/" class="link" target="_blank">Tav</a>
-            <a href="https://isaiart.com/text/" class="link" target="_blank">Text</a>
-            <a href="https://code.isaiart.com" class="link" target="_blank">Web Coding</a>
-            <a href="https://isaiart.com/webp/" class="link" target="_blank">WebP to PNG</a>
-            <a href="https://isaiart.com/webp" class="link" target="_blank">Webp to Png</a>
-            <a href="https://svg.isaiart.com" class="link" target="_blank">SVG Editor</a>
-            <a href="https://isaiart.com/video/" class="link" target="_blank">Video Compressor</a>
-            <a href="https://isaiart.com/translate" class="link" target="_blank">Zalgo Translator</a>
+        <h1><a href="https://isaiart.com" target="_blank">ISAIART</a></h1>
 
+        <!-- Main Section -->
+        <div class="section">
+            <div class="section-header">Main</div>
+            <div class="grid">
+                <a href="https://isaiart.com/react/" class="link" target="_blank">React Projects</a>
+                <a href="https://svg.isaiart.com" class="link" target="_blank">SVG Editor</a>
+            </div>
+        </div>
+
+        <!-- Fun Section -->
+        <div class="section">
+            <div class="section-header">Fun</div>
+            <div class="grid">
+                <a href="https://pokedex.isaiart.com" class="link" target="_blank">Pokedex</a>
+                <a href="https://isaiart.com/dice/" class="link" target="_blank">Dice</a>
+                <a href="https://dnd.isaiart.com/" class="link" target="_blank">DND</a>
+                <a href="https://isaiart.com/character/" class="link" target="_blank">Character</a>
+                <a href="https://thg.isaiart.com" class="link" target="_blank">THG</a>
+                <a href="https://isaiart.com/spellbook" class="link" target="_blank">Wizard</a>
+            </div>
+        </div>
+
+        <!-- Creative Section -->
+        <div class="section">
+            <div class="section-header">Creative</div>
+            <div class="grid">
+                <a href="https://isaiart.com/scrambler" class="link" target="_blank">Scrambler</a>
+                <a href="https://isaiart.com/pixel" class="link" target="_blank">Pixel</a>
+                <a href="https://isaiart.com/pixelate/" class="link" target="_blank">Pixelate</a>
+                <a href="https://isaiart.com/ui" class="link" target="_blank">UI</a>
+                <a href="https://isaiart.com/8beat" class="link" target="_blank">8 Beat</a>
+                <a href="https://isaiart.com/piano" class="link" target="_blank">Piano</a>
+                <a href="https://isaiart.com/tile/" class="link" target="_blank">Tile Tester</a>
+                <a href="https://isaiart.com/collage/" class="link" target="_blank">Collage</a>
+                <a href="https://isaiart.com/drumpad" class="link" target="_blank">Drum Pad</a>
+            </div>
+        </div>
+
+        <!-- Utilities Section -->
+        <div class="section">
+            <div class="section-header">Utilities</div>
+            <div class="grid">
+                <a href="https://isaiart.com/json" class="link" target="_blank">JSON</a>
+                <a href="https://isaiart.com/search/x" class="link" target="_blank">Search/x</a>
+                <a href="https://isaiart.com/style" class="link" target="_blank">Style</a>
+                <a href="https://isaiart.com/webp" class="link" target="_blank">Webp</a>
+                <a href="https://code.isaiart.com" class="link" target="_blank">Web Coding</a>
+                <a href="https://isaiart.com/video/" class="link" target="_blank">Video Compressor</a>
+                <a href="https://isaiart.com/translate" class="link" target="_blank">Zalgo Translator</a>
+                <a href="https://isaiart.com/rain" class="link" target="_blank">Rain</a>
+                <a href="https://isaiart.com/spacetimer/" class="link" target="_blank">Space Timer</a>
+                <a href="https://isaiart.com/timer" class="link" target="_blank">Timer</a>
+                <a href="https://reboot.isaiart.com" class="link" target="_blank">Reboot</a>
+                <a href="https://isaiart.com/text/" class="link" target="_blank">Text</a>
+                <a href="https://isaiart.com/resized/" class="link" target="_blank">Resized</a>
+                <a href="https://isaiart.com/webP-to-Png" class="link" target="_blank">WebP to PNG</a>
+            </div>
+        </div>
+
+        <!-- Information Section -->
+        <div class="section">
+            <div class="section-header">Information</div>
+            <div class="grid">
+                <a href="https://isaiart.com/linked" class="link" target="_blank">Linked</a>
+                <a href="https://isaiart.com/money" class="link" target="_blank">Money</a>
+                <a href="https://isaiart.com/nato" class="link" target="_blank">NATO</a>
+            </div>
+        </div>
+
+        <!-- Media Section -->
+        <div class="section">
+            <div class="section-header">Media</div>
+            <div class="grid">
+                <a href="https://music.isaiart.com/" class="link" target="_blank">Music</a>
+            </div>
         </div>
     </div>
 
