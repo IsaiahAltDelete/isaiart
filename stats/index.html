@@ -384,8 +384,45 @@
 
         document.getElementById('resetAll').addEventListener('click', () => {
             if (confirm('Are you sure you want to reset all stats and timer?')) {
+                // Clear localStorage
                 localStorage.clear();
-                location.reload();
+                
+                // Reset all stats
+                stats = {
+                    truck: { count: 0, history: [] },
+                    transfer: { count: 0, history: [] },
+                    support: { count: 0, history: [] }
+                };
+                total = 0;
+                
+                // Reset all counters in UI
+                document.getElementById('truckCount').textContent = '0';
+                document.getElementById('transferCount').textContent = '0';
+                document.getElementById('supportCount').textContent = '0';
+                
+                // Reset all progress bars
+                document.getElementById('truckProgress').style.width = '0%';
+                document.getElementById('transferProgress').style.width = '0%';
+                document.getElementById('supportProgress').style.width = '0%';
+                
+                // Reset timer
+                clearInterval(timerInterval);
+                isRunning = false;
+                earnings = 0;
+                timeOffset = 0;
+                rate = 0;
+                document.getElementById('earnings').textContent = '0.00';
+                document.getElementById('hourlyRate').value = '';
+                document.getElementById('hourlyRate').classList.remove('hidden');
+                document.getElementById('dollarIcon').classList.remove('hidden');
+                
+                // Clear history panel
+                document.getElementById('historyContent').innerHTML = '';
+                document.querySelector('.history-panel').classList.remove('active');
+                
+                // Save reset state
+                saveToLocalStorage();
+                saveTimerState();
             }
         });
     </script>
