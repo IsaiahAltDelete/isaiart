@@ -244,7 +244,7 @@
             </div>
             <div class="tooltip">
                 <div class="rate-line">
-                    <span class="rate-label">Truck Roll Rate:</span>
+                    <span class="rate-label">Truck Roll Prevention:</span>
                     <span class="rate-value" id="truckRollRate">0%</span>
                 </div>
                 <div class="rate-line">
@@ -504,4 +504,97 @@
             if (!isRunning) {
                 rate = parseFloat(document.getElementById('hourlyRate').value) || rate;
                 document.getElementById('hourlyRate').classList.add('hidden');
-                document.getElementById('dollarIcon').classList.add('hi
+                document.getElementById('dollarIcon').classList.add('hidden');
+                startTime = Date.now() - timeOffset - (earnings * 3600000 / rate);
+                timerInterval = setInterval(() => {
+                    const elapsedTime = Date.now() - startTime;
+                    earnings = (rate * elapsedTime) / 3600000;
+                    document.getElementById('earnings').textContent = earnings.toFixed(2);
+                    saveTimerState();
+                }, 100);
+                isRunning = true;
+            }
+        });
+
+        document.getElementById('pauseTimer').addEventListener('click', () => {
+            if (isRunning) {
+                clearInterval(timerInterval);
+                timeOffset = Date.now() - startTime;
+                isRunning = false;
+                saveTimerState();
+            }
+        });
+
+        document.getElementById('resetTimer').addEventListener('click', () => {
+            clearInterval(timerInterval);
+            isRunning = false;
+            earnings = 0;
+            timeOffset = 0;
+            document.getElementById('earnings').textContent = '0.00';
+            document.getElementById('hourlyRate').classList.remove('hidden');
+            document.getElementById('dollarIcon').classList.remove('hidden');
+            saveTimerState();
+        });
+
+        document.getElementById('addTime').addEventListener('click', () => {
+            const minutes = parseFloat(document.getElementById('timeAdjust').value) || 0;
+            timeOffset += minutes * 60000;
+            if (isRunning) {
+                startTime = Date.now() - timeOffset - (earnings * 3600000 / rate);
+            }
+            document.getElementById('timeAdjust').value = '';
+            saveTimerState();
+        });
+
+        document.getElementById('resetAll').addEventListener('click', () => {
+            if (confirm('Are you sure you want to reset all stats and timer?')) {
+                localStorage.clear();
+                stats = {
+                    calls: { count: 0, history: [] },
+                    truck: { count: 0, history: [] },
+                    transfer: { count: 0, history: [] },
+                    support: { count: 0, history: [] }
+                };
+                total = 0;
+                document.getElementById('truckCount').textContent = '0';
+                document.getElementById('transferCount').textContent = '0';
+                document.getElementById('supportCount').textContent = '0';
+                document.getElementById('callsCount').textContent = '0';
+                document.getElementById('truckProgress').style.width = '0%';
+                document.getElementById('transferProgress').style.width = '0%';
+                document.getElementById('supportProgress').style.width = '0%';
+                document.getElementById('callsProgress').style.width = '0%';
+                clearInterval(timerInterval);
+                isRunning = false;
+                earnings = 0;
+                timeOffset = 0;
+                rate = 0;
+                document.getElementById('earnings').textContent = '0.00';
+                document.getElementById('hourlyRate').value = '';
+                document.getElementById('hourlyRate').classList.remove('hidden');
+                document.getElementById('dollarIcon').classList.remove('hidden');
+                document.getElementById('historyContent').innerHTML = '';
+                document.querySelector('.history-panel').classList.remove('active');
+                updateRates();
+                saveToLocalStorage();
+                saveTimerState();
+            }
+        });
+
+        function updateRates() {
+            const totalCalls = stats.calls.count;
+            const totalTrucks = stats.truck.count;
+            const totalTransfers = stats.transfer.count;
+            const totalSupport = stats.support.count;
+
+            const truckPreventionRate = totalCalls > 0 ? (((totalCalls - totalTrucks) / totalCalls) * 100).toFixed(0) : 0; // Flipped logic
+            const transferRate = totalCalls > 0 ? ((totalTransfers / totalCalls) * 100).toFixed(0) : 0;
+            const assistanceRate = totalCalls > 0 ? ((totalSupport / totalCalls) * 100).toFixed(0) : 0;
+
+            document.getElementById('truckRollRate').textContent = `${truckPreventionRate}%`; // Renamed ID to keep consistency
+            document.getElementById('transferRate').textContent = `${transferRate}%`;
+            document.getElementById('assistanceRate').textContent = `${assistanceRate}%`;
+        }
+    </script>
+</body>
+</html>
