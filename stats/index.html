@@ -11,7 +11,7 @@
             background-color: black;
             color: white;
             font-family: 'Roboto', sans-serif;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             display: flex;
             justify-content: center;
@@ -21,6 +21,7 @@
             text-align: center;
             width: 80%;
             max-width: 600px;
+            margin: 40px 0;
         }
         .stat-box {
             margin: 20px 0;
@@ -28,6 +29,7 @@
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             position: relative;
+            cursor: pointer;
         }
         .icon {
             font-size: 24px;
@@ -83,6 +85,8 @@
             right: 10px;
             top: 50%;
             transform: translateY(-50%);
+            display: flex;
+            gap: 5px;
         }
         .stat-controls button {
             padding: 4px 8px;
@@ -98,6 +102,45 @@
         .time-adjust input {
             width: 60px;
         }
+        .history-panel {
+            position: fixed;
+            right: -300px;
+            top: 0;
+            width: 300px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            transition: right 0.3s ease;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        .history-panel.active {
+            right: 0;
+        }
+        .history-entry {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 14px;
+            text-align: left;
+        }
+        .history-entry .timestamp {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+        }
+        #resetAll {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 0, 0, 0.2);
+        }
+        #toggleHistory {
+            position: absolute;
+            left: -40px;
+            top: 20px;
+            padding: 10px;
+        }
     </style>
 </head>
 <body>
@@ -110,6 +153,7 @@
             </div>
             <div class="stat-controls">
                 <button class="decrease"><i class="fas fa-minus"></i></button>
+                <button class="history-btn" data-type="truck"><i class="fas fa-history"></i></button>
             </div>
         </div>
         
@@ -121,6 +165,7 @@
             </div>
             <div class="stat-controls">
                 <button class="decrease"><i class="fas fa-minus"></i></button>
+                <button class="history-btn" data-type="transfer"><i class="fas fa-history"></i></button>
             </div>
         </div>
         
@@ -132,6 +177,7 @@
             </div>
             <div class="stat-controls">
                 <button class="decrease"><i class="fas fa-minus"></i></button>
+                <button class="history-btn" data-type="support"><i class="fas fa-history"></i></button>
             </div>
         </div>
 
@@ -151,51 +197,116 @@
         </div>
     </div>
 
+    <div class="history-panel">
+        <button id="toggleHistory"><i class="fas fa-history"></i></button>
+        <h3>History</h3>
+        <div id="historyContent"></div>
+    </div>
+
+    <button id="resetAll"><i class="fas fa-trash"></i> Reset All</button>
+
     <script>
         let total = 0;
+        let stats = {
+            truck: { count: 0, history: [] },
+            transfer: { count: 0, history: [] },
+            support: { count: 0, history: [] }
+        };
+
+        // Load from localStorage
+        const savedStats = localStorage.getItem('workStatsTracker_v1_stats');
+        if (savedStats) {
+            stats = JSON.parse(savedStats);
+            Object.keys(stats).forEach(key => {
+                const element = document.getElementById(`${key}Count`);
+                if (element) element.textContent = stats[key].count;
+            });
+            total = Object.values(stats).reduce((acc, stat) => acc + stat.count, 0);
+            updateAllProgress();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('workStatsTracker_v1_stats', JSON.stringify(stats));
+        }
+
+        function addToHistory(type, action, value) {
+            const labels = {
+                truck: "Trucks Rolled",
+                transfer: "Transfers",
+                support: "Assistance Calls"
+            };
+            const entry = {
+                timestamp: new Date().toISOString(),
+                action,
+                value,
+                label: labels[type]
+            };
+            stats[type].history.unshift(entry);
+            if (stats[type].history.length > 50) stats[type].history.pop();
+            saveToLocalStorage();
+            updateHistoryPanel(type);
+        }
+
+        function updateHistoryPanel(type) {
+            const historyContent = document.getElementById('historyContent');
+            const entries = stats[type].history.map(entry => `
+                <div class="history-entry">
+                    <div class="timestamp">${new Date(entry.timestamp).toLocaleString()}</div>
+                    ${entry.label} ${entry.action}: ${entry.value}
+                </div>
+            `).join('');
+            historyContent.innerHTML = entries;
+        }
+
+        document.addEventListener('click', (e) => {
+            const historyPanel = document.querySelector('.history-panel');
+            const isHistoryButton = e.target.closest('.history-btn') || e.target.closest('#toggleHistory');
+            const isInsidePanel = e.target.closest('.history-panel');
+            
+            if (!isHistoryButton && !isInsidePanel && historyPanel.classList.contains('active')) {
+                historyPanel.classList.remove('active');
+            } else if (isHistoryButton) {
+                const type = e.target.closest('.history-btn')?.dataset.type;
+                if (type) {
+                    updateHistoryPanel(type);
+                }
+                historyPanel.classList.toggle('active');
+            }
+        });
+
         const updateProgress = (id, count) => {
             const progress = (count / total) * 100;
             document.getElementById(id).style.width = `${progress}%`;
         };
 
         const updateAllProgress = () => {
-            updateProgress('truckProgress', truckCount);
-            updateProgress('transferProgress', transferCount);
-            updateProgress('supportProgress', supportCount);
+            updateProgress('truckProgress', stats.truck.count);
+            updateProgress('transferProgress', stats.transfer.count);
+            updateProgress('supportProgress', stats.support.count);
         };
-
-        let truckCount = 0;
-        let transferCount = 0;
-        let supportCount = 0;
 
         document.addEventListener('click', (e) => {
             if (e.target.closest('.stat-box')) {
                 const box = e.target.closest('.stat-box');
+                let type = '';
+                if (box.querySelector('.fa-truck')) type = 'truck';
+                else if (box.querySelector('.fa-exchange-alt')) type = 'transfer';
+                else if (box.querySelector('.fa-headset')) type = 'support';
+
                 if (e.target.closest('.decrease')) {
-                    if (box.querySelector('.fa-truck') && truckCount > 0) {
-                        truckCount--;
-                        document.getElementById('truckCount').textContent = truckCount;
-                    } else if (box.querySelector('.fa-exchange-alt') && transferCount > 0) {
-                        transferCount--;
-                        document.getElementById('transferCount').textContent = transferCount;
-                    } else if (box.querySelector('.fa-headset') && supportCount > 0) {
-                        supportCount--;
-                        document.getElementById('supportCount').textContent = supportCount;
+                    if (stats[type].count > 0) {
+                        stats[type].count--;
+                        addToHistory(type, 'Decreased', stats[type].count);
                     }
-                } else {
-                    if (box.querySelector('.fa-truck')) {
-                        truckCount++;
-                        document.getElementById('truckCount').textContent = truckCount;
-                    } else if (box.querySelector('.fa-exchange-alt')) {
-                        transferCount++;
-                        document.getElementById('transferCount').textContent = transferCount;
-                    } else if (box.querySelector('.fa-headset')) {
-                        supportCount++;
-                        document.getElementById('supportCount').textContent = supportCount;
-                    }
+                } else if (!e.target.closest('.history-btn') && !e.target.closest('.stat-controls')) {
+                    stats[type].count++;
+                    addToHistory(type, 'Increased', stats[type].count);
                 }
-                total = truckCount + transferCount + supportCount;
+
+                document.getElementById(`${type}Count`).textContent = stats[type].count;
+                total = Object.values(stats).reduce((acc, stat) => acc + stat.count, 0);
                 updateAllProgress();
+                saveToLocalStorage();
             }
         });
 
@@ -206,17 +317,36 @@
         let rate = 0;
         let timeOffset = 0;
 
+        // Load timer state from localStorage
+        const savedTimer = localStorage.getItem('workStatsTracker_v1_timer');
+        if (savedTimer) {
+            const timerState = JSON.parse(savedTimer);
+            timeOffset = timerState.timeOffset || 0;
+            earnings = timerState.earnings || 0;
+            rate = timerState.rate || 0;
+            if (rate) document.getElementById('hourlyRate').value = rate;
+            document.getElementById('earnings').textContent = earnings.toFixed(2);
+        }
+
+        function saveTimerState() {
+            localStorage.setItem('workStatsTracker_v1_timer', JSON.stringify({
+                timeOffset,
+                earnings,
+                rate
+            }));
+        }
+
         document.getElementById('startTimer').addEventListener('click', () => {
             if (!isRunning) {
-                rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
+                rate = parseFloat(document.getElementById('hourlyRate').value) || rate;
                 document.getElementById('hourlyRate').classList.add('hidden');
                 document.getElementById('dollarIcon').classList.add('hidden');
                 startTime = Date.now() - timeOffset - (earnings * 3600000 / rate);
                 timerInterval = setInterval(() => {
                     const elapsedTime = Date.now() - startTime;
                     earnings = (rate * elapsedTime) / 3600000;
-                    document.getElementById('earnings').textContent = 
-                        earnings.toFixed(2);
+                    document.getElementById('earnings').textContent = earnings.toFixed(2);
+                    saveTimerState();
                 }, 100);
                 isRunning = true;
             }
@@ -227,6 +357,7 @@
                 clearInterval(timerInterval);
                 timeOffset = Date.now() - startTime;
                 isRunning = false;
+                saveTimerState();
             }
         });
 
@@ -238,6 +369,7 @@
             document.getElementById('earnings').textContent = '0.00';
             document.getElementById('hourlyRate').classList.remove('hidden');
             document.getElementById('dollarIcon').classList.remove('hidden');
+            saveTimerState();
         });
 
         document.getElementById('addTime').addEventListener('click', () => {
@@ -247,6 +379,14 @@
                 startTime = Date.now() - timeOffset - (earnings * 3600000 / rate);
             }
             document.getElementById('timeAdjust').value = '';
+            saveTimerState();
+        });
+
+        document.getElementById('resetAll').addEventListener('click', () => {
+            if (confirm('Are you sure you want to reset all stats and timer?')) {
+                localStorage.clear();
+                location.reload();
+            }
         });
     </script>
 </body>
