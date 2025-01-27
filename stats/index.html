@@ -260,25 +260,37 @@
     <button id="resetAll"><i class="fas fa-trash"></i> Reset All</button>
 
     <script>
-        let total = 0;
+        // Initialize default stats structure
         let stats = {
+            calls: { count: 0, history: [] },
             truck: { count: 0, history: [] },
             transfer: { count: 0, history: [] },
-            support: { count: 0, history: [] },
-            calls: { count: 0, history: [] }
+            support: { count: 0, history: [] }
         };
 
         // Load from localStorage
         const savedStats = localStorage.getItem('workStatsTracker_v1_stats');
         if (savedStats) {
-            stats = JSON.parse(savedStats);
-            Object.keys(stats).forEach(key => {
-                const element = document.getElementById(`${key}Count`);
-                if (element) element.textContent = stats[key].count;
-            });
-            total = Object.values(stats).reduce((acc, stat) => acc + stat.count, 0);
-            updateAllProgress();
+            const loadedStats = JSON.parse(savedStats);
+            // Ensure all required properties exist
+            stats = {
+                calls: { count: 0, history: [], ...loadedStats.calls },
+                truck: { count: 0, history: [], ...loadedStats.truck },
+                transfer: { count: 0, history: [], ...loadedStats.transfer },
+                support: { count: 0, history: [], ...loadedStats.support }
+            };
         }
+
+        // Initialize UI with loaded stats
+        Object.keys(stats).forEach(key => {
+            const element = document.getElementById(`${key}Count`);
+            if (element) element.textContent = stats[key].count;
+        });
+
+        // Calculate initial total and update progress bars
+        let total = Object.values(stats).reduce((acc, stat) => acc + stat.count, 0);
+        updateAllProgress();
+        updateRates();
 
         function saveToLocalStorage() {
             localStorage.setItem('workStatsTracker_v1_stats', JSON.stringify(stats));
@@ -335,12 +347,22 @@
             document.getElementById(id).style.width = `${progress}%`;
         };
 
-        const updateAllProgress = () => {
-            updateProgress('truckProgress', stats.truck.count);
-            updateProgress('transferProgress', stats.transfer.count);
-            updateProgress('supportProgress', stats.support.count);
-            updateProgress('callsProgress', stats.calls.count);
-        };
+        function updateAllProgress() {
+            total = Object.values(stats).reduce((acc, stat) => acc + stat.count, 0);
+            if (total === 0) {
+                // If no stats, set all progress bars to 0
+                document.getElementById('callsProgress').style.width = '0%';
+                document.getElementById('truckProgress').style.width = '0%';
+                document.getElementById('transferProgress').style.width = '0%';
+                document.getElementById('supportProgress').style.width = '0%';
+            } else {
+                // Update progress bars based on total
+                updateProgress('callsProgress', stats.calls.count);
+                updateProgress('truckProgress', stats.truck.count);
+                updateProgress('transferProgress', stats.transfer.count);
+                updateProgress('supportProgress', stats.support.count);
+            }
+        }
 
         document.addEventListener('click', (e) => {
             if (e.target.closest('.stat-box')) {
@@ -378,11 +400,14 @@
         // Load timer state from localStorage
         const savedTimer = localStorage.getItem('workStatsTracker_v1_timer');
         if (savedTimer) {
-            const timerState = JSON.parse(savedTimer);
-            timeOffset = timerState.timeOffset || 0;
-            earnings = timerState.earnings || 0;
-            rate = timerState.rate || 0;
-            if (rate) document.getElementById('hourlyRate').value = rate;
+            const loadedTimer = JSON.parse(savedTimer);
+            timeOffset = loadedTimer.timeOffset || 0;
+            earnings = loadedTimer.earnings || 0;
+            rate = loadedTimer.rate || 0;
+            isRunning = false; // Always start paused on page load
+            if (rate) {
+                document.getElementById('hourlyRate').value = rate;
+            }
             document.getElementById('earnings').textContent = earnings.toFixed(2);
         }
 
