@@ -1,4 +1,217 @@
-<div class="tooltip">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Stats Tracker</title>
+    <meta name="description" content="Track your work stats with this simple and responsive tracker.">
+    <meta property="og:title" content="Work Stats Tracker">
+    <meta property="og:description" content="Track your work stats with this simple and responsive tracker.">
+    <meta property="og:type" content="website">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: black;
+            --text-color: white;
+            --accent-color: #E91E63;
+            --secondary-color: #4CAF50;
+            --tertiary-color: #2196F3;
+            --quaternary-color: #FF9800;
+            --light-bg: rgba(255, 255, 255, 0.1);
+            --border-color: rgba(255, 255, 255, 0.2);
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Roboto', sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        .container {
+            text-align: center;
+            width: 80%;
+            max-width: 600px;
+            margin: 20px 0;
+        }
+        .stat-box {
+            margin: 10px 0;
+            padding: 10px;
+            background: var(--light-bg);
+            border-radius: 10px;
+            position: relative;
+            cursor: pointer;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: var(--text-color);
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 100;
+            width: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            text-align: left;
+            line-height: 1.5;
+            border: 1px solid var(--border-color);
+        }
+        .stat-box:hover .tooltip {
+            opacity: 1;
+        }
+        .rate-line {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+        }
+        .rate-label {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .icon {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        .count {
+            font-size: 24px;
+            font-weight: 500;
+        }
+        .progress-container {
+            background: var(--light-bg);
+            height: 8px;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        .progress-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .timer-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--light-bg);
+            border-radius: 10px;
+        }
+        button {
+            background: none;
+            border: 1px solid var(--text-color);
+            color: var(--text-color);
+            padding: 6px 10px;
+            margin: 3px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: var(--light-bg);
+        }
+        input {
+            background: none;
+            border: 1px solid var(--text-color);
+            color: var(--text-color);
+            padding: 3px;
+            width: 80px;
+            margin: 5px;
+            text-align: center;
+        }
+        .hidden {
+            display: none;
+        }
+        .stat-controls {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 3px;
+        }
+        .stat-controls button {
+            padding: 3px 6px;
+            font-size: 10px;
+        }
+        .time-adjust {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 3px;
+            margin-top: 5px;
+        }
+        .time-adjust input {
+            width: 50px;
+        }
+        .history-panel {
+            position: fixed;
+            right: -250px;
+            top: 0;
+            width: 250px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            transition: right 0.3s ease;
+            padding: 15px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        .history-panel.active {
+            right: 0;
+        }
+        .history-entry {
+            padding: 8px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 12px;
+            text-align: left;
+        }
+        .history-entry .timestamp {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 10px;
+        }
+        #resetAll {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(255, 0, 0, 0.2);
+        }
+        #toggleHistory {
+            position: absolute;
+            left: -30px;
+            top: 10px;
+            padding: 8px;
+        }
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+            }
+            .history-panel {
+                width: 90%;
+                max-width: 250px;
+            }
+            #toggleHistory {
+                left: -25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="stat-box">
+            <i class="fas fa-phone icon"></i>
+            <div class="count" id="callsCount">0</div>
+            <div class="progress-container">
+                <div class="progress-bar" id="callsProgress" style="width: 0%; background-color: var(--accent-color);"></div>
+            </div>
+            <div class="stat-controls">
+                <button class="decrease" aria-label="Decrease Calls"><i class="fas fa-minus"></i></button>
+                <button class="history-btn" data-type="calls" aria-label="View Calls History"><i class="fas fa-history"></i></button>
+            </div>
+            <div class="tooltip">
                 <div class="rate-line">
                     <span class="rate-label">Truck Roll Rate:</span>
                     <span class="rate-value" id="truckRollRate">0%</span>
@@ -11,286 +224,141 @@
                     <span class="rate-label">Assistance Rate:</span>
                     <span class="rate-value" id="assistanceRate">0%</span>
                 </div>
-            </div><!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Work Stats Tracker</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-    <style>
-        body {
-            background-color: black;
-            color: white;
-            font-family: 'Roboto', sans-serif;
-            min-height: 100vh;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .container {
-            text-align: center;
-            width: 80%;
-            max-width: 600px;
-            margin: 40px 0;
-        }
-        .stat-box {
-            margin: 20px 0;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            position: relative;
-            cursor: pointer;
-        }
-        .tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 14px;
-            z-index: 100;
-            width: 200px;
-            left: 50%;
-            transform: translateX(-50%);
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            text-align: left;
-            line-height: 1.5;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        .stat-box:hover .tooltip {
-            opacity: 1;
-        }
-        .rate-line {
-            display: flex;
-            justify-content: space-between;
-            margin: 5px 0;
-        }
-        .rate-label {
-            color: rgba(255, 255, 255, 0.7);
-        }
-        .icon {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        .count {
-            font-size: 32px;
-            font-weight: 500;
-        }
-        .progress-container {
-            background: rgba(255, 255, 255, 0.1);
-            height: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        .progress-bar {
-            height: 100%;
-            border-radius: 5px;
-            transition: width 0.3s ease;
-        }
-        .timer-section {
-            margin-top: 40px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-        }
-        button {
-            background: none;
-            border: 1px solid white;
-            color: white;
-            padding: 8px 15px;
-            margin: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        input {
-            background: none;
-            border: 1px solid white;
-            color: white;
-            padding: 5px;
-            width: 100px;
-            margin: 10px;
-            text-align: center;
-        }
-        .hidden {
-            display: none;
-        }
-        .stat-controls {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            gap: 5px;
-        }
-        .stat-controls button {
-            padding: 4px 8px;
-            font-size: 12px;
-        }
-        .time-adjust {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 5px;
-            margin-top: 10px;
-        }
-        .time-adjust input {
-            width: 60px;
-        }
-        .history-panel {
-            position: fixed;
-            right: -300px;
-            top: 0;
-            width: 300px;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.95);
-            transition: right 0.3s ease;
-            padding: 20px;
-            box-sizing: border-box;
-            overflow-y: auto;
-            z-index: 1000;
-        }
-        .history-panel.active {
-            right: 0;
-        }
-        .history-entry {
-            padding: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 14px;
-            text-align: left;
-        }
-        .history-entry .timestamp {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 12px;
-        }
-        #resetAll {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            background: rgba(255, 0, 0, 0.2);
-        }
-        #toggleHistory {
-            position: absolute;
-            left: -40px;
-            top: 20px;
-            padding: 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="stat-box">
-            <i class="fas fa-phone icon"></i>
-            <div class="count" id="callsCount">0</div>
-            <div class="progress-container">
-                <div class="progress-bar" id="callsProgress" style="width: 0%; background-color: #E91E63;"></div>
-            </div>
-            <div class="stat-controls">
-                <button class="decrease"><i class="fas fa-minus"></i></button>
-                <button class="history-btn" data-type="calls"><i class="fas fa-history"></i></button>
             </div>
         </div>
-
         <div class="stat-box">
             <i class="fas fa-truck icon"></i>
             <div class="count" id="truckCount">0</div>
             <div class="progress-container">
-                <div class="progress-bar" id="truckProgress" style="width: 0%; background-color: #4CAF50;"></div>
+                <div class="progress-bar" id="truckProgress" style="width: 0%; background-color: var(--secondary-color);"></div>
             </div>
             <div class="stat-controls">
-                <button class="decrease"><i class="fas fa-minus"></i></button>
-                <button class="history-btn" data-type="truck"><i class="fas fa-history"></i></button>
+                <button class="decrease" aria-label="Decrease Trucks"><i class="fas fa-minus"></i></button>
+                <button class="history-btn" data-type="truck" aria-label="View Trucks History"><i class="fas fa-history"></i></button>
             </div>
         </div>
-        
         <div class="stat-box">
             <i class="fas fa-exchange-alt icon"></i>
             <div class="count" id="transferCount">0</div>
             <div class="progress-container">
-                <div class="progress-bar" id="transferProgress" style="width: 0%; background-color: #2196F3;"></div>
+                <div class="progress-bar" id="transferProgress" style="width: 0%; background-color: var(--tertiary-color);"></div>
             </div>
             <div class="stat-controls">
-                <button class="decrease"><i class="fas fa-minus"></i></button>
-                <button class="history-btn" data-type="transfer"><i class="fas fa-history"></i></button>
+                <button class="decrease" aria-label="Decrease Transfers"><i class="fas fa-minus"></i></button>
+                <button class="history-btn" data-type="transfer" aria-label="View Transfers History"><i class="fas fa-history"></i></button>
             </div>
         </div>
-        
         <div class="stat-box">
             <i class="fas fa-headset icon"></i>
             <div class="count" id="supportCount">0</div>
             <div class="progress-container">
-                <div class="progress-bar" id="supportProgress" style="width: 0%; background-color: #FF9800;"></div>
+                <div class="progress-bar" id="supportProgress" style="width: 0%; background-color: var(--quaternary-color);"></div>
             </div>
             <div class="stat-controls">
-                <button class="decrease"><i class="fas fa-minus"></i></button>
-                <button class="history-btn" data-type="support"><i class="fas fa-history"></i></button>
+                <button class="decrease" aria-label="Decrease Support"><i class="fas fa-minus"></i></button>
+                <button class="history-btn" data-type="support" aria-label="View Support History"><i class="fas fa-history"></i></button>
             </div>
         </div>
-
         <div class="timer-section">
             <i class="fas fa-dollar-sign icon" id="dollarIcon"></i>
             <div class="count" id="earnings">0.00</div>
-            <input type="number" id="hourlyRate" placeholder="Hourly Rate" step="0.01">
+            <input type="number" id="hourlyRate" placeholder="Hourly Rate" step="0.01" aria-label="Hourly Rate Input">
             <div class="timer-controls">
-                <button id="startTimer"><i class="fas fa-play"></i></button>
-                <button id="pauseTimer"><i class="fas fa-pause"></i></button>
-                <button id="resetTimer"><i class="fas fa-redo"></i></button>
+                <button id="startTimer" aria-label="Start Timer"><i class="fas fa-play"></i></button>
+                <button id="pauseTimer" aria-label="Pause Timer"><i class="fas fa-pause"></i></button>
+                <button id="resetTimer" aria-label="Reset Timer"><i class="fas fa-redo"></i></button>
             </div>
             <div class="time-adjust">
-                <input type="number" id="timeAdjust" placeholder="Minutes" step="1">
-                <button id="addTime"><i class="fas fa-plus"></i></button>
+                <input type="number" id="timeAdjust" placeholder="Minutes" step="1" aria-label="Adjust Time Input">
+                <button id="addTime" aria-label="Add Time"><i class="fas fa-plus"></i></button>
             </div>
         </div>
     </div>
-
     <div class="history-panel">
-        <button id="toggleHistory"><i class="fas fa-history"></i></button>
+        <button id="toggleHistory" aria-label="Toggle History Panel"><i class="fas fa-history"></i></button>
         <h3>History</h3>
         <div id="historyContent"></div>
     </div>
-
-    <button id="resetAll"><i class="fas fa-trash"></i> Reset All</button>
-
+    <button id="resetAll" aria-label="Reset All Stats"><i class="fas fa-trash"></i> Reset All</button>
     <script>
-        // Initialize default stats structure
         let stats = {
             calls: { count: 0, history: [] },
             truck: { count: 0, history: [] },
             transfer: { count: 0, history: [] },
             support: { count: 0, history: [] }
         };
+        let earnings = 0;
+        let timeOffset = 0;
+        let rate = 0;
+        let isRunning = false;
 
-        // Load from localStorage
+        // --- Load Stats from Local Storage ---
         const savedStats = localStorage.getItem('workStatsTracker_v1_stats');
         if (savedStats) {
-            const loadedStats = JSON.parse(savedStats);
-            // Ensure all required properties exist
-            stats = {
-                calls: { count: 0, history: [], ...loadedStats.calls },
-                truck: { count: 0, history: [], ...loadedStats.truck },
-                transfer: { count: 0, history: [], ...loadedStats.transfer },
-                support: { count: 0, history: [], ...loadedStats.support }
-            };
+            try {
+                const loadedStats = JSON.parse(savedStats);
+                stats = {
+                    calls: { count: 0, history: [], ...loadedStats.calls },
+                    truck: { count: 0, history: [], ...loadedStats.truck },
+                    transfer: { count: 0, history: [], ...loadedStats.transfer },
+                    support: { count: 0, history: [], ...loadedStats.support }
+                };
+                console.log("Stats loaded from localStorage:", stats); // Debugging log
+            } catch (e) {
+                console.error("Failed to parse saved stats:", e);
+            }
         }
 
-        // Initialize UI with loaded stats
+        // --- Load Timer State from Local Storage ---
+        const savedTimer = localStorage.getItem('workStatsTracker_v1_timer');
+        if (savedTimer) {
+            try {
+                const loadedTimer = JSON.parse(savedTimer);
+                timeOffset = loadedTimer.timeOffset || 0;
+                earnings = loadedTimer.earnings || 0;
+                rate = loadedTimer.rate || 0;
+                isRunning = false; // Ensure timer starts paused on reload
+                console.log("Timer loaded from localStorage:", loadedTimer); // Debugging log
+            } catch (e) {
+                console.error("Failed to parse saved timer:", e);
+            }
+        }
+
+        // --- Initialize UI with loaded stats and timer ---
         Object.keys(stats).forEach(key => {
             const element = document.getElementById(`${key}Count`);
             if (element) element.textContent = stats[key].count;
         });
+        document.getElementById('earnings').textContent = earnings.toFixed(2);
+        if (rate) {
+            document.getElementById('hourlyRate').value = rate;
+        }
 
-        // Calculate initial total and update progress bars
         let total = Object.values(stats).reduce((acc, stat) => acc + stat.count, 0);
-        updateAllProgress();
-        updateRates();
+
+        // --- Function Declarations (Ensure correct order) ---
+        const updateProgress = (id, count) => { // Moved UP here
+            const progress = (count / total) * 100;
+            document.getElementById(id).style.width = `${progress}%`;
+        };
+
+        function updateAllProgress() { // Moved UP here, after updateProgress
+            total = Object.values(stats).reduce((acc, stat) => acc + stat.count, 0);
+            if (total === 0) {
+                document.getElementById('callsProgress').style.width = '0%';
+                document.getElementById('truckProgress').style.width = '0%';
+                document.getElementById('transferProgress').style.width = '0%';
+                document.getElementById('supportProgress').style.width = '0%';
+            } else {
+                updateProgress('callsProgress', stats.calls.count);
+                updateProgress('truckProgress', stats.truck.count);
+                updateProgress('transferProgress', stats.transfer.count);
+                updateProgress('supportProgress', stats.support.count);
+            }
+        }
+        updateAllProgress(); // Initial call AFTER function declarations
+        updateRates();      // Initial call AFTER function declarations
+
 
         function saveToLocalStorage() {
             localStorage.setItem('workStatsTracker_v1_stats', JSON.stringify(stats));
@@ -330,7 +398,6 @@
             const historyPanel = document.querySelector('.history-panel');
             const isHistoryButton = e.target.closest('.history-btn') || e.target.closest('#toggleHistory');
             const isInsidePanel = e.target.closest('.history-panel');
-            
             if (!isHistoryButton && !isInsidePanel && historyPanel.classList.contains('active')) {
                 historyPanel.classList.remove('active');
             } else if (isHistoryButton) {
@@ -342,27 +409,6 @@
             }
         });
 
-        const updateProgress = (id, count) => {
-            const progress = (count / total) * 100;
-            document.getElementById(id).style.width = `${progress}%`;
-        };
-
-        function updateAllProgress() {
-            total = Object.values(stats).reduce((acc, stat) => acc + stat.count, 0);
-            if (total === 0) {
-                // If no stats, set all progress bars to 0
-                document.getElementById('callsProgress').style.width = '0%';
-                document.getElementById('truckProgress').style.width = '0%';
-                document.getElementById('transferProgress').style.width = '0%';
-                document.getElementById('supportProgress').style.width = '0%';
-            } else {
-                // Update progress bars based on total
-                updateProgress('callsProgress', stats.calls.count);
-                updateProgress('truckProgress', stats.truck.count);
-                updateProgress('transferProgress', stats.transfer.count);
-                updateProgress('supportProgress', stats.support.count);
-            }
-        }
 
         document.addEventListener('click', (e) => {
             if (e.target.closest('.stat-box')) {
@@ -371,6 +417,7 @@
                 if (box.querySelector('.fa-truck')) type = 'truck';
                 else if (box.querySelector('.fa-exchange-alt')) type = 'transfer';
                 else if (box.querySelector('.fa-headset')) type = 'support';
+                else if (box.querySelector('.fa-phone')) type = 'calls';
 
                 if (e.target.closest('.decrease')) {
                     if (stats[type].count > 0) {
@@ -392,30 +439,13 @@
 
         let timerInterval;
         let startTime;
-        let earnings = 0;
-        let isRunning = false;
-        let rate = 0;
-        let timeOffset = 0;
 
-        // Load timer state from localStorage
-        const savedTimer = localStorage.getItem('workStatsTracker_v1_timer');
-        if (savedTimer) {
-            const loadedTimer = JSON.parse(savedTimer);
-            timeOffset = loadedTimer.timeOffset || 0;
-            earnings = loadedTimer.earnings || 0;
-            rate = loadedTimer.rate || 0;
-            isRunning = false; // Always start paused on page load
-            if (rate) {
-                document.getElementById('hourlyRate').value = rate;
-            }
-            document.getElementById('earnings').textContent = earnings.toFixed(2);
-        }
 
         function saveTimerState() {
             localStorage.setItem('workStatsTracker_v1_timer', JSON.stringify({
                 timeOffset,
                 earnings,
-                rate
+                rate,
             }));
         }
 
@@ -467,30 +497,22 @@
 
         document.getElementById('resetAll').addEventListener('click', () => {
             if (confirm('Are you sure you want to reset all stats and timer?')) {
-                // Clear localStorage
                 localStorage.clear();
-                
-                // Reset all stats
                 stats = {
+                    calls: { count: 0, history: [] },
                     truck: { count: 0, history: [] },
                     transfer: { count: 0, history: [] },
                     support: { count: 0, history: [] }
                 };
                 total = 0;
-                
-                // Reset all counters in UI
                 document.getElementById('truckCount').textContent = '0';
                 document.getElementById('transferCount').textContent = '0';
                 document.getElementById('supportCount').textContent = '0';
                 document.getElementById('callsCount').textContent = '0';
-                
-                // Reset all progress bars
                 document.getElementById('truckProgress').style.width = '0%';
                 document.getElementById('transferProgress').style.width = '0%';
                 document.getElementById('supportProgress').style.width = '0%';
                 document.getElementById('callsProgress').style.width = '0%';
-                
-                // Reset timer
                 clearInterval(timerInterval);
                 isRunning = false;
                 earnings = 0;
@@ -500,17 +522,28 @@
                 document.getElementById('hourlyRate').value = '';
                 document.getElementById('hourlyRate').classList.remove('hidden');
                 document.getElementById('dollarIcon').classList.remove('hidden');
-                
-                // Clear history panel
                 document.getElementById('historyContent').innerHTML = '';
                 document.querySelector('.history-panel').classList.remove('active');
-                
-                // Save reset state
                 updateRates();
                 saveToLocalStorage();
                 saveTimerState();
             }
         });
+
+        function updateRates() {
+            const totalCalls = stats.calls.count;
+            const totalTrucks = stats.truck.count;
+            const totalTransfers = stats.transfer.count;
+            const totalSupport = stats.support.count;
+
+            const truckRate = totalCalls > 0 ? ((totalTrucks / totalCalls) * 100).toFixed(0) : 0;
+            const transferRate = totalCalls > 0 ? ((totalTransfers / totalCalls) * 100).toFixed(0) : 0;
+            const assistanceRate = totalCalls > 0 ? ((totalSupport / totalCalls) * 100).toFixed(0) : 0;
+
+            document.getElementById('truckRollRate').textContent = `${truckRate}%`;
+            document.getElementById('transferRate').textContent = `${transferRate}%`;
+            document.getElementById('assistanceRate').textContent = `${assistanceRate}%`;
+        }
     </script>
 </body>
 </html>
