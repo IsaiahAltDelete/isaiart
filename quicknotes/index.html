@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickNotes</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
+
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #28a745;
+            --background-color: #f0f0f0;
+            --card-background: #ffffff;
+             --text-color: #333333;
+           font-family: 'Poppins', sans-serif; /* Set Poppins as default font */
+
+        }
+
+        .dark-mode {
+            --primary-color: #4da6ff;
+            --secondary-color: #5cb85c;
+            --background-color: #1a1a1a;
+            --card-background: #2c2c2c;
+             --text-color: #ffffff;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif; /* Ensure body has the correct font */
+            margin: 0;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            overflow: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            font-family: 'Poppins', sans-serif; /* Ensure title has the correct font */
+            font-size: 3em;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+            transition: color 0.3s;
+        }
+
+            .dark-mode h1 {
+                color: var(--primary-color);
+            }
+
+        .sections-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+       .section {
+          background-color: rgba(255, 255, 255, 0.2); /* Glass effect */
+          backdrop-filter: blur(10px); /* For blur effect */
+          border-radius: 16px;
+          padding: 20px;
+          width: calc(33.333% - 20px);
+          min-width: 250px;
+          max-width: 350px;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          transition: background-color 0.3s, border 0.3s; /* Transition */
+        }
+      .dark-mode .section {
+            background-color: rgba(0, 0, 0, 0.3); /* Dark mode glass */
+           border: 1px solid rgba(0, 0, 0, 0.2);
+         }
+
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .section h2 {
+             margin: 0;
+               color: #333; /* Default color black */
+                transition: color 0.3s;
+           }
+
+         .dark-mode .section h2 {
+            color: white; /* Default color white in dark mode*/
+        }
+
+        .button-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+         .edit-btn, .add-btn, .section-header button {
+          background-color: #333;
+        }
+
+        .edit-btn:hover, .add-btn:hover, .section-header button:hover {
+          background-color: #555;
+        }
+
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: var(--card-background);
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 16px;
+            width: 80%;
+            max-width: 500px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: var(--card-background);
+            color: var(--text-color);
+        }
+
+        .form-group input[type="color"] {
+            height: 40px;
+            padding: 2px;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        #saveBtn {
+            background-color: var(--secondary-color);
+        }
+
+        #saveBtn:hover {
+            background-color: #218838;
+        }
+
+        #deleteBtn {
+            background-color: #dc3545;
+        }
+
+        #deleteBtn:hover {
+            background-color: #c82333;
+        }
+
+        .note-button {
+            position: relative;
+            padding-right: 30px;
+            color: black;
+        }
+
+        .edit-icon {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        #copyNotification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+         #themeOptionsContainer {
+            position: fixed;
+             top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+          #themeOptionsContainer:not(:hover) #darkModeToggle, #themeOptionsContainer:not(:hover) #themeOptions  {
+             opacity: 0;
+         }
+
+         #themeOptionsContainer #darkModeToggle, #themeOptionsContainer #themeOptions {
+          transition: opacity 0.3s ease-out;
+        }
+
+       #darkModeToggle {
+           background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+        }
+
+          #themeOptions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .theme-button {
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+
+        .theme-button:hover {
+            background-color: rgba(128, 128, 128, 0.2);
+        }
+
+        .theme-button.active {
+            background-color: rgba(128, 128, 128, 0.4);
+        }
+
+        #rainCanvas, #starfieldCanvas, #waveContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .wave {
+            position: absolute;
+            bottom: 0;
+            width: 200%;
+            height: 20%;
+            background: rgba(0, 119, 190, 0.5);
+            opacity: 0.8;
+            border-radius: 50%;
+        }
+
+        #wave1 { animation: animateWave 5s linear infinite; }
+        #wave2 { animation: animateWave 6s linear infinite; opacity: 0.6; bottom: 10%; background: rgba(0, 89, 160, 0.5); }
+        #wave3 { animation: animateWave 7s linear infinite; opacity: 0.4; bottom: 20%; background: rgba(0, 59, 130, 0.5); }
+
+        @keyframes animateWave {
+            0% { transform: translateX(0) translateY(0); }
+            50% { transform: translateX(-50%) translateY(10px); }
+            100% { transform: translateX(-100%) translateY(0); }
+        }
+          /* Gooey Background Styles */
+        .blobs-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            filter: url(#goo);
+            overflow: hidden;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.8;
+        }
+
+        .black-blobs .blob {
+            background-color: #000;
+        }
+
+        .colorful-blobs .blob {
+            /* Colorful blobs set by JS */
+        }
+
+        .rainbow-gradient {
+          background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+           background-size: 200% 100%;
+           animation: rainbow-animation 10s linear infinite;
+            }
+
+            @keyframes rainbow-animation {
+               from {
+                 background-position: 0% 50%;
+               }
+               to {
+                    background-position: 200% 50%;
+                }
+            }
+            #addSectionButton {
+                position: fixed;
+                bottom: 20px;
+                 right: 20px;
+                 z-index: 1; /* Ensure button is above gooey blobs */
+             }
+    </style>
+</head>
+<body>
+    <svg style="display: none;">
+        <defs>
+            <filter id="goo">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo" />
+                <feBlend in="SourceGraphic" in2="goo" />
+            </filter>
+        </defs>
+    </svg>
+
+    <div class="blobs-container" id="blobsContainer"></div>
+    <div class="container">
+        <h1 id="appTitle">QuickNotes</h1>
+        <div class="sections-container" id="sectionsContainer"></div>
+    </div>
+
+       <button id="addSectionButton" onclick="openNewSectionModal()"><i class="fas fa-plus"></i> Add Section</button>
+    <!-- Existing Modals -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2 id="modalTitle">Edit Note</h2>
+            <div class="form-group">
+                <label for="editButtonText">Button Text:</label>
+                <input type="text" id="editButtonText" placeholder="Button Text">
+            </div>
+            <div class="form-group">
+                <label for="editCopyText">Content to Copy:</label>
+                <textarea id="editCopyText" placeholder="Text to Copy" rows="4"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="editButtonColor">Button Color:</label>
+                <input type="color" id="editButtonColor">
+            </div>
+              <div class="form-group">
+                <label for="editTitleColor">Title Color:</label>
+                <input type="color" id="editTitleColor">
+            </div>
+            <div class="button-group">
+                <button id="deleteBtn">Delete</button>
+                <button id="saveBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="newSectionModal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2>Add New Section</h2>
+            <div class="form-group">
+                <label for="newSectionTitle">Section Title:</label>
+                <input type="text" id="newSectionTitle" placeholder="Section Title">
+            </div>
+            <div class="button-group">
+                <button onclick="closeModal()">Cancel</button>
+                <button onclick="saveNewSection()">Add Section</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="renameSectionModal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2>Rename Section</h2>
+            <div class="form-group">
+                <label for="renameSectionTitle">New Section Title:</label>
+                <input type="text" id="renameSectionTitle" placeholder="New Section Title">
+            </div>
+            <div class="button-group">
+                <button onclick="closeModal()">Cancel</button>
+                <button onclick="saveRenamedSection()">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Copy Notification and Theme Buttons -->
+    <div id="copyNotification">Copied!</div>
+    <div id="themeOptionsContainer">
+       <button id="darkModeToggle" aria-label="Toggle Dark Mode"><i class="fas fa-adjust"></i></button>
+    <div id="themeOptions">
+            <button class="theme-button" data-theme="default" aria-label="Default Theme"><i class="fas fa-home"></i></button>
+            <button class="theme-button" data-theme="rain" aria-label="Rain Theme"><i class="fas fa-cloud-rain"></i></button>
+            <button class="theme-button" data-theme="stars" aria-label="Stars Theme"><i class="fas fa-star"></i></button>
+            <button class="theme-button" data-theme="waves" aria-label="Waves Theme"><i class="fas fa-water"></i></button>
+             <button class="theme-button" data-theme="black-blobs" aria-label="Black Blobs Theme"><i class="fas fa-circle"></i></button>
+            <button class="theme-button" data-theme="colorful-blobs" aria-label="Colorful Blobs Theme"><i class="fas fa-palette"></i></button>
+           <button class="theme-button" data-theme="rainbow-gradient" aria-label="Rainbow Gradient Theme"><i class="fas fa-rainbow"></i></button>
+        </div>
+    </div>
+    <!-- Background Elements -->
+    <canvas id="rainCanvas"></canvas>
+    <canvas id="starfieldCanvas"></canvas>
+    <div id="waveContainer">
+        <div class="wave" id="wave1"></div>
+        <div class="wave" id="wave2"></div>
+        <div class="wave" id="wave3"></div>
+    </div>
+
+    <script>
+        let sections =  [
+            { id: 'no-truck', title: 'No Truck', titleColor: '#333' }, // Set default section title color to black
+            { id: 'truck-rolled', title: 'Truck Rolled', titleColor: '#333' },
+            { id: 'other', title: 'Other', titleColor: '#333' }
+        ];
+
+        let notesData = {};
+        let currentRenamingSection = null;
+         let hueRotation = 0;
+        const appTitle = document.getElementById('appTitle');
+        const dataFile = 'quicknotes_data.json';
+
+
+        function loadData() {
+            fetch(dataFile)
+                .then(response => {
+                    if (!response.ok) {
+                        // If the file doesn't exist or there's an error, initialize with default data
+                        console.log('Data file not found or error loading. Using default data.');
+                        return { sections: sections, notesData: {} };
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    sections = data.sections || sections;
+                    notesData = data.notesData || {};
+                    initializeApp();
+                })
+                .catch(error => {
+                    console.error('Error loading data:', error);
+                    initializeApp();
+                });
+        }
+
+        function saveData() {
+            const dataToSave = {
+                sections: sections,
+                notesData: notesData
+            };
+
+            fetch(dataFile, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dataToSave)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    console.error('Failed to save data to file.');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving data:', error);
+            });
+        }
+
+
+          function initializeApp() {
+            const container = document.getElementById('sectionsContainer');
+            container.innerHTML = '';
+            sections.forEach(section => {
+                const sectionElement = createSection(section);
+                container.appendChild(sectionElement);
+                if (!notesData[section.id]) {
+                    notesData[section.id] = [];
+                }
+                renderNotes(section.id);
+            });
+        }
+
+       function createSection(section) {
+            const sectionElement = document.createElement('div');
+            sectionElement.className = 'section';
+            sectionElement.id = section.id;
+            sectionElement.innerHTML = `
+                <div class="section-header">
+                    <h2 style="color: ${section.titleColor}">${section.title}</h2>
+                    <div>
+                        <button class="edit-btn" onclick="openRenameSectionModal('${section.id}')"><i class="fas fa-edit"></i></button>
+                        <button class="edit-btn" onclick="deleteSection('${section.id}')"><i class="fas fa-trash-alt"></i></button>
+                        <button class="add-btn" onclick="openNewNoteModal('${section.id}')"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+                <div class="button-container"></div>
+            `;
+            return sectionElement;
+        }
+
+
+       function renderNotes(sectionId) {
+            const container = document.querySelector(`#${sectionId} .button-container`);
+            container.innerHTML = '';
+            notesData[sectionId].forEach((note, index) => {
+                const button = document.createElement('button');
+                button.className = 'note-button';
+                button.textContent = note.buttonText;
+                button.style.backgroundColor = note.color;
+                button.style.color = getContrastColor(note.color);
+
+                const editIcon = document.createElement('span');
+                editIcon.className = 'edit-icon';
+                editIcon.innerHTML = '<i class="fas fa-edit"></i>';
+                editIcon.onclick = (e) => {
+                    e.stopPropagation();
+                    openEditModal(sectionId, index);
+                };
+
+                button.appendChild(editIcon);
+                button.onclick = () => copyToClipboard(note.copyText);
+                container.appendChild(button);
+            });
+        }
+
+
+        function getContrastColor(hexColor) {
+            const r = parseInt(hexColor.substr(1, 2), 16);
+            const g = parseInt(hexColor.substr(3, 2), 16);
+            const b = parseInt(hexColor.substr(5, 2), 16);
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance > 0.5 ? 'black' : 'white';
+        }
+
+        function openNewNoteModal(sectionId) {
+            openModal('New Note', () => saveNewNote(sectionId));
+        }
+
+        function openEditModal(sectionId, noteIndex) {
+            const note = notesData[sectionId][noteIndex];
+            openModal('Edit Note', () => saveEdit(sectionId, noteIndex), sectionId, noteIndex);
+        }
+
+        function openNewSectionModal() {
+            const modal = document.getElementById('newSectionModal');
+            modal.style.display = 'block';
+        }
+
+        function openRenameSectionModal(sectionId) {
+            currentRenamingSection = sectionId;
+            const modal = document.getElementById('renameSectionModal');
+            modal.style.display = 'block';
+        }
+
+        function openModal(title, saveFunction, sectionId, noteIndex) {
+            const modal = document.getElementById('editModal');
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('editButtonText').value = noteIndex !== undefined ? notesData[sectionId][noteIndex].buttonText : '';
+            document.getElementById('editCopyText').value = noteIndex !== undefined ? notesData[sectionId][noteIndex].copyText : '';
+            document.getElementById('editButtonColor').value = noteIndex !== undefined ? notesData[sectionId][noteIndex].color : '#007bff';
+             document.getElementById('editTitleColor').value = noteIndex !== undefined ? sections.find(sec => sec.id === sectionId).titleColor : '#007bff';
+            document.getElementById('saveBtn').onclick = saveFunction;
+            document.getElementById('deleteBtn').style.display = noteIndex !== undefined ? 'inline-block' : 'none';
+            document.getElementById('deleteBtn').onclick = () => {
+                if (confirm('Are you sure you want to delete this note?')) {
+                    deleteNote(sectionId, noteIndex);
+                }
+            };
+            modal.style.display = 'block';
+        }
+
+        function saveNewNote(sectionId) {
+            const newNote = {
+                buttonText: document.getElementById('editButtonText').value,
+                copyText: document.getElementById('editCopyText').value,
+                color: document.getElementById('editButtonColor').value
+            };
+            notesData[sectionId].push(newNote);
+            renderNotes(sectionId);
+            closeModal();
+            saveData();
+        }
+
+       function saveEdit(sectionId, noteIndex) {
+             notesData[sectionId][noteIndex] = {
+                buttonText: document.getElementById('editButtonText').value,
+                copyText: document.getElementById('editCopyText').value,
+                color: document.getElementById('editButtonColor').value
+           };
+             const section = sections.find(sec => sec.id === sectionId)
+             if (section){
+                section.titleColor = document.getElementById('editTitleColor').value;
+             }
+            saveData()
+             initializeApp();
+            renderNotes(sectionId);
+            closeModal();
+            saveData();
+        }
+
+        function deleteNote(sectionId, noteIndex) {
+            notesData[sectionId].splice(noteIndex, 1);
+            renderNotes(sectionId);
+            closeModal();
+            saveData();
+        }
+
+        function saveNewSection() {
+            const title = document.getElementById('newSectionTitle').value;
+            if (title.trim()) {
+                const newSection = {
+                    id: title.toLowerCase().replace(/\s+/g, '-'),
+                    title: title,
+                    titleColor: '#333'
+                };
+                sections.push(newSection);
+                notesData[newSection.id] = [];
+                saveData();
+                initializeApp();
+            }
+            closeModal();
+        }
+
+        function saveRenamedSection() {
+            const title = document.getElementById('renameSectionTitle').value;
+             const section = sections.find(sec => sec.id === currentRenamingSection);
+            if (title.trim() && currentRenamingSection && section) {
+              section.title = title;
+              saveData();
+             initializeApp();
+            }
+            closeModal();
+        }
+
+        function deleteSection(sectionId) {
+            if (confirm('Are you sure you want to delete this section? All notes in this section will also be deleted.')) {
+                const sectionIndex = sections.findIndex(sec => sec.id === sectionId);
+                if (sectionIndex !== -1) {
+                    sections.splice(sectionIndex, 1);
+                    delete notesData[sectionId];
+                    saveData();
+                    initializeApp();
+                }
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopyNotification();
+            });
+        }
+
+        function showCopyNotification() {
+            const notification = document.getElementById('copyNotification');
+            notification.style.opacity = '1';
+            setTimeout(() => {
+                notification.style.opacity = '0';
+            }, 2000);
+        }
+
+        function closeModal() {
+            document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
+        }
+
+
+        document.querySelectorAll('.close').forEach(closeBtn => {
+            closeBtn.onclick = closeModal;
+        });
+
+        window.onclick = (event) => {
+            if (event.target.classList.contains('modal')) {
+                closeModal();
+            }
+        };
+
+           // Theme handling
+        const themeButtons = document.querySelectorAll('.theme-button');
+         const darkModeToggle = document.getElementById('darkModeToggle')
+        const rainCanvas = document.getElementById('rainCanvas');
+        const starfieldCanvas = document.getElementById('starfieldCanvas');
+        const waveContainer = document.getElementById('waveContainer');
+        const blobsContainer = document.getElementById('blobsContainer');
+
+        let currentTheme = 'default';
+        let rainAnimation, starfieldAnimation;
+
+            darkModeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+                updateDarkModeToggle();
+            });
+
+        themeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const theme = button.dataset.theme;
+                setTheme(theme);
+            });
+        });
+
+       function setTheme(theme) {
+            if (theme === currentTheme) return;
+
+            themeButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-theme="${theme}"]`).classList.add('active');
+
+            // Reset styles
+            document.body.classList.remove('rainbow-gradient');
+            blobsContainer.style.display = 'none';
+            blobsContainer.className = 'blobs-container';
+            clearBlobs();
+
+            rainCanvas.style.display = 'none';
+            starfieldCanvas.style.display = 'none';
+            waveContainer.style.display = 'none';
+
+            if (rainAnimation) cancelAnimationFrame(rainAnimation);
+            if (starfieldAnimation) cancelAnimationFrame(starfieldAnimation);
+
+            switch (theme) {
+                case 'rain':
+                    rainCanvas.style.display = 'block';
+                    setupRain();
+                    break;
+                case 'stars':
+                    starfieldCanvas.style.display = 'block';
+                    setupStarfield();
+                    break;
+                case 'waves':
+                    waveContainer.style.display = 'block';
+                    break;
+                case 'black-blobs':
+                    blobsContainer.style.display = 'block';
+                    blobsContainer.classList.add('black-blobs');
+                    setupBlobs();
+                    break;
+                case 'colorful-blobs':
+                    blobsContainer.style.display = 'block';
+                    blobsContainer.classList.add('colorful-blobs');
+                    setupBlobs();
+                    break;
+                   case 'rainbow-gradient':
+                        document.body.classList.add('rainbow-gradient')
+                        break;
+                 default:
+                    document.body.style.backgroundColor = '';
+            }
+
+            currentTheme = theme;
+        }
+
+        function setupRain() {
+            const ctx = rainCanvas.getContext('2d');
+            const raindrops = [];
+            const splashes = [];
+            const numRaindrops = 500;
+            const gravity = 0.1;
+            const splashDecay = 0.01;
+
+            rainCanvas.width = window.innerWidth;
+            rainCanvas.height = window.innerHeight;
+
+            function createRaindrop() {
+                return {
+                    x: Math.random() * rainCanvas.width,
+                    y: Math.random() * rainCanvas.height,
+                    speed: Math.random() * 5 + 2,
+                    length: Math.random() * 20 + 10
+                };
+            }
+
+            function createRaindrops() {
+                for (let i = 0; i < numRaindrops; i++) {
+                    raindrops.push(createRaindrop());
+                }
+            }
+
+            function createSplash(x, y) {
+                return {
+                    x: x,
+                    y: y,
+                    radius: Math.random() * 3 + 1,
+                    opacity: 1
+                };
+            }
+
+            function moveRaindrops() {
+                for (let i = 0; i < raindrops.length; i++) {
+                    const raindrop = raindrops[i];
+                    raindrop.y += raindrop.speed;
+
+                    if (raindrop.y > rainCanvas.height) {
+                        raindrop.y = 0;
+                        raindrop.x = Math.random() * rainCanvas.width;
+                        splashes.push(createSplash(raindrop.x, rainCanvas.height));
+                    }
+                }
+            }
+
+            function moveSplashes() {
+                for (let i = 0; i < splashes.length; i++) {
+                    const splash = splashes[i];
+                    splash.opacity -= splashDecay;
+                    if (splash.opacity <= 0) {
+                        splashes.splice(i, 1);
+                        i--;
+                    }
+                }
+            }
+
+            function drawRaindrops() {
+                ctx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
+                ctx.strokeStyle = 'rgba(174,194,224,0.5)';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+
+                for (let i = 0; i < raindrops.length; i++) {
+                    const raindrop = raindrops[i];
+                    ctx.beginPath();
+                    ctx.moveTo(raindrop.x, raindrop.y);
+                    ctx.lineTo(raindrop.x, raindrop.y - raindrop.length);
+                    ctx.stroke();
+                }
+            }
+
+            function drawSplashes() {
+                for (let i = 0; i < splashes.length; i++) {
+                    const splash = splashes[i];
+                    ctx.beginPath();
+                    ctx.arc(splash.x, splash.y, splash.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${splash.opacity})`;
+                    ctx.fill();
+                }
+            }
+
+            function animate() {
+                moveRaindrops();
+                moveSplashes();
+                drawRaindrops();
+                drawSplashes();
+                rainAnimation = requestAnimationFrame(animate);
+            }
+
+            createRaindrops();
+            animate();
+        }
+
+        function setupStarfield() {
+            const context = starfieldCanvas.getContext('2d');
+            const stars = [];
+            const numStars = 500;
+            const speed = 2;
+
+            starfieldCanvas.width = window.innerWidth;
+            starfieldCanvas.height = window.innerHeight;
+
+            function createStar() {
+                return {
+                    x: Math.random() * starfieldCanvas.width,
+                    y: Math.random() * starfieldCanvas.height,
+                    z: Math.random() * starfieldCanvas.width
+                };
+            }
+
+            function createStars() {
+                for (let i = 0; i < numStars; i++) {
+                    stars.push(createStar());
+                }
+            }
+
+            function moveStars() {
+                for (let i = 0; i < stars.length; i++) {
+                    stars[i].z -= speed;
+                    if (stars[i].z <= 0) {
+                        stars[i].z = starfieldCanvas.width;
+                    }
+                }
+            }
+
+            function drawStars() {
+                context.fillStyle = 'black';
+                context.fillRect(0, 0, starfieldCanvas.width, starfieldCanvas.height);
+
+                context.fillStyle = 'white';
+                for (let i = 0; i < stars.length; i++) {
+                    const star = stars[i];
+                    const x = (star.x - starfieldCanvas.width / 2) * (starfieldCanvas.width / star.z) + starfieldCanvas.width / 2;
+                    const y = (star.y - starfieldCanvas.height / 2) * (starfieldCanvas.width / star.z) + starfieldCanvas.height / 2;
+                    const size = (1 - star.z / starfieldCanvas.width) * 2;
+
+                    context.beginPath();
+                    context.arc(x, y, size, 0, Math.PI * 2);
+                    context.fill();
+                }
+            }
+
+            function animate() {
+                moveStars();
+                drawStars();
+                starfieldAnimation = requestAnimationFrame(animate);
+            }
+
+            createStars();
+            animate();
+        }
+
+        window.addEventListener('resize', () => {
+            if (rainCanvas.width !== window.innerWidth || rainCanvas.height !== window.innerHeight) {
+                rainCanvas.width = window.innerWidth;
+                rainCanvas.height = window.innerHeight;
+            }
+            if (starfieldCanvas.width !== window.innerWidth || starfieldCanvas.height !== window.innerHeight) {
+                starfieldCanvas.width = window.innerWidth;
+                starfieldCanvas.height = window.innerHeight;
+            }
+        });
+
+        // Check for saved dark mode preference
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+        }
+        updateDarkModeToggle();
+
+         function animateTitle() {
+            function updateHue() {
+              hueRotation = (hueRotation + 0.5) % 360;
+              appTitle.style.color = `hsl(${hueRotation}, 100%, 50%)`;
+               requestAnimationFrame(updateHue);
+            }
+             updateHue();
+           }
+
+        loadData();
+         animateTitle();
+
+
+        // Gooey Background Functions
+        function setupBlobs() {
+            const colors = currentTheme === 'colorful-blobs' ? ['#FF5733', '#FFC300', '#33FF57', '#3357FF', '#900C3F'] : null;
+            const numBlobs = 7;
+            for (let i = 0; i < numBlobs; i++) {
+                createBlob(colors);
+            }
+        }
+
+        function createBlob(colors) {
+            const blob = document.createElement('div');
+            blob.classList.add('blob');
+            const size = Math.random() * 300 + 200;
+            blob.style.width = `${size}px`;
+            blob.style.height = `${size}px`;
+            if (colors) {
+                blob.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            }
+            blobsContainer.appendChild(blob);
+            animateBlob(blob);
+        }
+
+        function animateBlob(blob) {
+            const x = Math.random() * window.innerWidth;
+            const y = Math.random() * window.innerHeight;
+            const duration = Math.random() * 8 + 4;
+
+            blob.style.transition = `transform ${duration}s linear`;
+            blob.style.transform = `translate(${x}px, ${y}px)`;
+
+            setTimeout(() => {
+                animateBlob(blob);
+            }, duration * 1000);
+        }
+
+         function clearBlobs() {
+            blobsContainer.innerHTML = '';
+        }
+
+         function updateDarkModeToggle() {
+          const darkModeToggle = document.getElementById('darkModeToggle');
+           if (document.body.classList.contains('dark-mode')) {
+             darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+           } else {
+             darkModeToggle.innerHTML = '<i class="fas fa-adjust"></i>';
+           }
+         }
+    </script>
+</body>
+</html>
