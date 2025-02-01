@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bouncing Yellow Balls in a Rotating Sphere</title>
+    <!-- p5.js library from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  </head>
+  <body>
+    <script>
+      // Global variables for the container and balls
+      let balls = [];
+      const numBalls = 100;
+      const containerRadius = 300;  // radius of the spherical container
+      const ballRadius = 10;
+      let sphereRotation = 0; // for slow rotation of the container
+
+      function setup() {
+        // Use WEBGL so we can draw a 3D sphere and rotate the scene.
+        createCanvas(windowWidth, windowHeight, WEBGL);
+        // Create balls with random positions and velocities.
+        let attempts = 0;
+        while (balls.length < numBalls && attempts < numBalls * 100) {
+          // Random position inside container (with room for ball radius)
+          let pos = p5.Vector.random3D().mult(random(0, containerRadius - ballRadius));
+          // Ensure the new ball does not overlap any existing ball
+          let overlapping = false;
+          for (let other of balls) {
+            if (p5.Vector.dist(pos, other.pos) < ballRadius * 2) {
+              overlapping = true;
+              break;
+            }
+          }
+          if (!overlapping) {
+            // Give a random velocity
+            let vel = p5.Vector.random3D().mult(random(2, 5));
+            balls.push(new Ball(pos, vel));
+          }
+          attempts++;
+        }
+      }
+
+      function draw() {
+        background(30);
+        // Set up lights for a nicer 3D effect.
+        ambientLight(80);
+        directionalLight(255, 255, 255, 0.5, 1, -1);
+
+        // Slowly rotate the whole scene (container)
+        sphereRotation += 0.003;
+        rotateY(sphereRotation * 0.7);
+        rotateX(sphereRotation * 0.4);
+
+        // Draw the transparent sphere container
+        noFill();
+        stroke(200);
+        strokeWeight(1);
+        push();
+        sphere(containerRadius);
+        pop();
+
+        // Update and display each ball
+        // First update positions and check for wall collisions.
+        for (let ball of balls) {
+          ball.update();
+          ball.checkBoundaryCollision();
+        }
+        // Check for collisions between balls.
+        for (let i = 0; i < balls.length; i++) {
+          for (let j = i + 1; j < balls.length; j++) {
+            balls[i].checkBallCollision(balls[j]);
+          }
+        }
+        // Draw the balls.
+        for (let ball of balls) {
+          ball.display();
+        }
+      }
+
+      // Define the Ball class
+      class Ball {
+        constructor(pos, vel) {
+          // Position and velocity as p5.Vector
+          this.pos = pos.copy();
+          this.vel = vel.copy();
+          this.radius = ballRadius;
+          this.mass = 1; // assume equal mass for all balls
+          this.color = color(255, 255, 0); // yellow color
+        }
+
+        update() {
+          this.pos.add(this.vel);
+        }
+
+        // Check collision with the spherical container wall.
+        checkBoundaryCollision() {
+          // Distance from center of container.
+          let distFromCenter = this.pos.mag();
+          // The ball should stay inside containerRadius - ballRadius.
+          if (distFromCenter > containerRadius - this.radius) {
+            // Compute normal vector at the collision point (pointing inward)
+            let normal = this.pos.copy().normalize();
+            // Place the ball exactly on the boundary
+            this.pos = normal.copy().mult(containerRadius - this.radius);
+            // Reflect the velocity (simple elastic collision with an immovable wall)
+            // v' = v - 2*(v dot normal)*normal
+            let dotProd = this.vel.dot(normal);
+            this.vel.sub(normal.mult(2 * dotProd));
+          }
+        }
+
+        // Check and handle collision with another ball.
+        checkBallCollision(other) {
+          let delta = p5.Vector.sub(this.pos, other.pos);
+          let dist = delta.mag();
+          let minDist = this.radius + other.radius;
+          if (dist < minDist && dist !== 0) {
+            // Move balls apart so they are not overlapping
+            let overlap = 0.5 * (minDist - dist);
+            let correction = delta.copy().normalize().mult(overlap);
+            this.pos.add(correction);
+            other.pos.sub(correction);
+
+            // Compute the normalized collision vector
+            let n = delta.copy().normalize();
+            // Relative velocity
+            let relVel = p5.Vector.sub(this.vel, other.vel);
+            // Speed along the normal direction
+            let speed = relVel.dot(n);
+            if (speed < 0) {
+              // Skip if balls are moving apart.
+              return;
+            }
+            // Impulse scalar for perfectly elastic collision
+            let impulse = (2 * speed) / (this.mass + other.mass);
+            // Update velocities according to impulse
+            this.vel.sub(p5.Vector.mult(n, impulse * other.mass));
+            other.vel.add(p5.Vector.mult(n, impulse * this.mass));
+          }
+        }
+
+        display() {
+          push();
+          translate(this.pos.x, this.pos.y, this.pos.z);
+          noStroke();
+          ambientMaterial(this.color);
+          sphere(this.radius);
+          pop();
+        }
+      }
+
+      // Make sure the canvas resizes with the window.
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
+    </script>
+  </body>
+</html>
