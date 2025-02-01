@@ -13,9 +13,7 @@
             --secondary-color: #28a745;
             --background-color: #f0f0f0;
             --card-background: #ffffff;
-             --text-color: #333333;
-           font-family: 'Poppins', sans-serif; /* Set Poppins as default font */
-
+            --text-color: #333333;
         }
 
         .dark-mode {
@@ -23,11 +21,11 @@
             --secondary-color: #5cb85c;
             --background-color: #1a1a1a;
             --card-background: #2c2c2c;
-             --text-color: #ffffff;
+            --text-color: #ffffff;
         }
 
         body {
-            font-family: 'Poppins', sans-serif; /* Ensure body has the correct font */
+            font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 20px;
             background-color: var(--background-color);
@@ -44,17 +42,13 @@
         h1 {
             text-align: center;
             color: var(--primary-color);
-            font-family: 'Poppins', sans-serif; /* Ensure title has the correct font */
+            font-family: 'Poppins', sans-serif;
             font-size: 3em;
             letter-spacing: 2px;
             text-transform: uppercase;
             margin-bottom: 30px;
-            transition: color 0.3s;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
         }
-
-            .dark-mode h1 {
-                color: var(--primary-color);
-            }
 
         .sections-container {
             display: flex;
@@ -63,23 +57,15 @@
             gap: 20px;
         }
 
-       .section {
-          background-color: rgba(255, 255, 255, 0.2); /* Glass effect */
-          backdrop-filter: blur(10px); /* For blur effect */
-          border-radius: 16px;
-          padding: 20px;
-          width: calc(33.333% - 20px);
-          min-width: 250px;
-          max-width: 350px;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          transition: background-color 0.3s, border 0.3s; /* Transition */
+        .section {
+            background-color: var(--card-background);
+            border-radius: 16px;
+            padding: 20px;
+            width: calc(33.333% - 20px);
+            min-width: 250px;
+            max-width: 350px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-      .dark-mode .section {
-            background-color: rgba(0, 0, 0, 0.3); /* Dark mode glass */
-           border: 1px solid rgba(0, 0, 0, 0.2);
-         }
-
 
         .section-header {
             display: flex;
@@ -89,13 +75,8 @@
         }
 
         .section h2 {
-             margin: 0;
-               color: #333; /* Default color black */
-                transition: color 0.3s;
-           }
-
-         .dark-mode .section h2 {
-            color: white; /* Default color white in dark mode*/
+            margin: 0;
+            color: var(--primary-color);
         }
 
         .button-container {
@@ -121,11 +102,11 @@
         }
 
          .edit-btn, .add-btn, .section-header button {
-          background-color: #333;
+          background-color: #333; /* Dark background for edit and add icons */
         }
 
         .edit-btn:hover, .add-btn:hover, .section-header button:hover {
-          background-color: #555;
+          background-color: #555; /* Slightly lighter on hover */
         }
 
 
@@ -320,7 +301,27 @@
             50% { transform: translateX(-50%) translateY(10px); }
             100% { transform: translateX(-100%) translateY(0); }
         }
-          /* Gooey Background Styles */
+
+        .title-letter {
+            display: inline-block;
+            animation: colorChange 5s infinite, bounce 2s infinite;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        @keyframes colorChange {
+            0% { color: #ff0000; }
+            25% { color: #00ff00; }
+            50% { color: #0000ff; }
+            75% { color: #ffff00; }
+            100% { color: #ff0000; }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        /* Gooey Background Styles */
         .blobs-container {
             position: fixed;
             top: 0;
@@ -403,10 +404,6 @@
                 <label for="editButtonColor">Button Color:</label>
                 <input type="color" id="editButtonColor">
             </div>
-              <div class="form-group">
-                <label for="editTitleColor">Title Color:</label>
-                <input type="color" id="editTitleColor">
-            </div>
             <div class="button-group">
                 <button id="deleteBtn">Delete</button>
                 <button id="saveBtn">Save</button>
@@ -468,65 +465,16 @@
     </div>
 
     <script>
-        let sections =  [
-            { id: 'no-truck', title: 'No Truck', titleColor: '#333' }, // Set default section title color to black
-            { id: 'truck-rolled', title: 'Truck Rolled', titleColor: '#333' },
-            { id: 'other', title: 'Other', titleColor: '#333' }
+         const sections = JSON.parse(localStorage.getItem('quickNotesSections')) || [
+            { id: 'no-truck', title: 'No Truck' },
+            { id: 'truck-rolled', title: 'Truck Rolled' },
+            { id: 'other', title: 'Other' }
         ];
 
-        let notesData = {};
+        let notesData = JSON.parse(localStorage.getItem('quickNotesData')) || {};
         let currentRenamingSection = null;
-         let hueRotation = 0;
-        const appTitle = document.getElementById('appTitle');
-        const dataFile = 'quicknotes_data.json';
 
-
-        function loadData() {
-            fetch(dataFile)
-                .then(response => {
-                    if (!response.ok) {
-                        // If the file doesn't exist or there's an error, initialize with default data
-                        console.log('Data file not found or error loading. Using default data.');
-                        return { sections: sections, notesData: {} };
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    sections = data.sections || sections;
-                    notesData = data.notesData || {};
-                    initializeApp();
-                })
-                .catch(error => {
-                    console.error('Error loading data:', error);
-                    initializeApp();
-                });
-        }
-
-        function saveData() {
-            const dataToSave = {
-                sections: sections,
-                notesData: notesData
-            };
-
-            fetch(dataFile, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(dataToSave)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    console.error('Failed to save data to file.');
-                }
-            })
-            .catch(error => {
-                console.error('Error saving data:', error);
-            });
-        }
-
-
-          function initializeApp() {
+        function initializeApp() {
             const container = document.getElementById('sectionsContainer');
             container.innerHTML = '';
             sections.forEach(section => {
@@ -545,7 +493,7 @@
             sectionElement.id = section.id;
             sectionElement.innerHTML = `
                 <div class="section-header">
-                    <h2 style="color: ${section.titleColor}">${section.title}</h2>
+                    <h2>${section.title}</h2>
                     <div>
                         <button class="edit-btn" onclick="openRenameSectionModal('${section.id}')"><i class="fas fa-edit"></i></button>
                         <button class="edit-btn" onclick="deleteSection('${section.id}')"><i class="fas fa-trash-alt"></i></button>
@@ -617,7 +565,6 @@
             document.getElementById('editButtonText').value = noteIndex !== undefined ? notesData[sectionId][noteIndex].buttonText : '';
             document.getElementById('editCopyText').value = noteIndex !== undefined ? notesData[sectionId][noteIndex].copyText : '';
             document.getElementById('editButtonColor').value = noteIndex !== undefined ? notesData[sectionId][noteIndex].color : '#007bff';
-             document.getElementById('editTitleColor').value = noteIndex !== undefined ? sections.find(sec => sec.id === sectionId).titleColor : '#007bff';
             document.getElementById('saveBtn').onclick = saveFunction;
             document.getElementById('deleteBtn').style.display = noteIndex !== undefined ? 'inline-block' : 'none';
             document.getElementById('deleteBtn').onclick = () => {
@@ -637,31 +584,25 @@
             notesData[sectionId].push(newNote);
             renderNotes(sectionId);
             closeModal();
-            saveData();
+            saveToLocalStorage();
         }
 
-       function saveEdit(sectionId, noteIndex) {
-             notesData[sectionId][noteIndex] = {
+        function saveEdit(sectionId, noteIndex) {
+            notesData[sectionId][noteIndex] = {
                 buttonText: document.getElementById('editButtonText').value,
                 copyText: document.getElementById('editCopyText').value,
                 color: document.getElementById('editButtonColor').value
-           };
-             const section = sections.find(sec => sec.id === sectionId)
-             if (section){
-                section.titleColor = document.getElementById('editTitleColor').value;
-             }
-            saveData()
-             initializeApp();
+            };
             renderNotes(sectionId);
             closeModal();
-            saveData();
+            saveToLocalStorage();
         }
 
         function deleteNote(sectionId, noteIndex) {
             notesData[sectionId].splice(noteIndex, 1);
             renderNotes(sectionId);
             closeModal();
-            saveData();
+            saveToLocalStorage();
         }
 
         function saveNewSection() {
@@ -669,12 +610,12 @@
             if (title.trim()) {
                 const newSection = {
                     id: title.toLowerCase().replace(/\s+/g, '-'),
-                    title: title,
-                    titleColor: '#333'
+                    title: title
                 };
                 sections.push(newSection);
                 notesData[newSection.id] = [];
-                saveData();
+                saveSectionsToLocalStorage();
+                saveToLocalStorage();
                 initializeApp();
             }
             closeModal();
@@ -682,11 +623,13 @@
 
         function saveRenamedSection() {
             const title = document.getElementById('renameSectionTitle').value;
-             const section = sections.find(sec => sec.id === currentRenamingSection);
-            if (title.trim() && currentRenamingSection && section) {
-              section.title = title;
-              saveData();
-             initializeApp();
+            if (title.trim() && currentRenamingSection) {
+                const section = sections.find(sec => sec.id === currentRenamingSection);
+                if (section) {
+                    section.title = title;
+                    saveSectionsToLocalStorage();
+                    initializeApp();
+                }
             }
             closeModal();
         }
@@ -697,7 +640,8 @@
                 if (sectionIndex !== -1) {
                     sections.splice(sectionIndex, 1);
                     delete notesData[sectionId];
-                    saveData();
+                    saveSectionsToLocalStorage();
+                    saveToLocalStorage();
                     initializeApp();
                 }
             }
@@ -721,6 +665,13 @@
             document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
         }
 
+        function saveToLocalStorage() {
+            localStorage.setItem('quickNotesData', JSON.stringify(notesData));
+        }
+
+        function saveSectionsToLocalStorage() {
+            localStorage.setItem('quickNotesSections', JSON.stringify(sections));
+        }
 
         document.querySelectorAll('.close').forEach(closeBtn => {
             closeBtn.onclick = closeModal;
@@ -762,8 +713,8 @@
             themeButtons.forEach(btn => btn.classList.remove('active'));
             document.querySelector(`[data-theme="${theme}"]`).classList.add('active');
 
-            // Reset styles
-            document.body.classList.remove('rainbow-gradient');
+           // Reset styles
+           document.body.classList.remove('rainbow-gradient');
             blobsContainer.style.display = 'none';
             blobsContainer.className = 'blobs-container';
             clearBlobs();
@@ -800,7 +751,7 @@
                    case 'rainbow-gradient':
                         document.body.classList.add('rainbow-gradient')
                         break;
-                 default:
+                default:
                     document.body.style.backgroundColor = '';
             }
 
@@ -979,17 +930,21 @@
         }
         updateDarkModeToggle();
 
-         function animateTitle() {
-            function updateHue() {
-              hueRotation = (hueRotation + 0.5) % 360;
-              appTitle.style.color = `hsl(${hueRotation}, 100%, 50%)`;
-               requestAnimationFrame(updateHue);
+        function animateTitle() {
+            const title = document.getElementById('appTitle');
+            const text = title.textContent;
+            title.innerHTML = '';
+            for (let i = 0; i < text.length; i++) {
+                const span = document.createElement('span');
+                span.textContent = text[i];
+                span.className = 'title-letter';
+                span.style.animationDelay = `${i * 0.1}s`;
+                title.appendChild(span);
             }
-             updateHue();
-           }
+        }
 
-        loadData();
-         animateTitle();
+        initializeApp();
+        animateTitle();
 
 
         // Gooey Background Functions
