@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Space Brick Breaker - Retro Edition</title>
+  <!-- Google Material Icons & Retro Font -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    /* Basic reset and centering the content using flex */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #000;
+      font-family: 'Press Start 2P', cursive;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Main container that holds only the game */
+    #mainContainer {
+      position: relative;
+      display: inline-block;
+    }
+    /* Game container with retro border and shadow */
+    #gameContainer {
+      position: relative;
+      border: 5px solid #fff;
+      box-shadow: 0 0 20px #0ff;
+      background: #111;
+    }
+    /* Scoreboard on top of the game */
+    #scoreboard {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #0ff;
+      font-size: 14px;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    /* Canvas styling */
+    canvas {
+      display: block;
+    }
+    /* Retro scanline overlay (covers entire screen) */
+    #scanlines {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+          to bottom,
+          rgba(0,0,0,0) 0px,
+          rgba(0,0,0,0) 2px,
+          rgba(0,0,0,0.15) 3px,
+          rgba(0,0,0,0.15) 4px
+      );
+      z-index: 2;
+      top: 0;
+      left: 0;
+    }
+    /* Particle background (full screen) */
+    #particles-js {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      z-index: -2;
+      top: 0;
+      left: 0;
+    }
+    /* Overlay for game over and leaderboard */
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 4;
+      text-align: center;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .overlay.visible {
+      visibility: visible;
+      opacity: 1;
+    }
+    .overlay button {
+      margin: 10px;
+      padding: 10px 20px;
+      background: #0ff;
+      border: none;
+      cursor: pointer;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 12px;
+    }
+    /* Leaderboard list styling */
+    #leaderboardContent {
+      max-height: 300px;
+      overflow-y: auto;
+      text-align: left;
+      font-size: 10px;
+      margin-bottom: 20px;
+    }
+    #leaderboardContent li {
+      margin-bottom: 5px;
+      border-bottom: 1px solid #444;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Particle Background -->
+  <div id="particles-js"></div>
+  <!-- Retro Scanlines -->
+  <div id="scanlines"></div>
+  
+  <!-- Main Game Container (centered on page) -->
+  <div id="mainContainer">
+    <div id="gameContainer">
+      <!-- Scoreboard with a Google icon -->
+      <div id="scoreboard">
+        <i class="material-icons">sports_esports</i>
+        Score: <span id="score">0</span>
+      </div>
+      <!-- Game Canvas -->
+      <canvas id="gameCanvas" width="800" height="600"></canvas>
+      <!-- Game Over Overlay -->
+      <div id="gameOverOverlay" class="overlay">
+        <div id="gameOverText">GAME OVER<br>Your Score: 0</div>
+        <div style="margin-top:20px;">
+          <button onclick="newGame()">NEW GAME</button>
+          <button onclick="showLeaderboard()">LEADERBOARD</button>
+        </div>
+      </div>
+      <!-- Leaderboard Overlay -->
+      <div id="leaderboardOverlay" class="overlay">
+        <h2>Leaderboard</h2>
+        <ul id="leaderboardContent"></ul>
+        <button onclick="hideLeaderboard()">BACK</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Particles.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/particles.js"></script>
+  <script>
+    // --- Global Variables and Setup ---
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreDisplay = document.getElementById("score");
+    const gameOverOverlay = document.getElementById("gameOverOverlay");
+    const gameOverText = document.getElementById("gameOverText");
+    const leaderboardOverlay = document.getElementById("leaderboardOverlay");
+    const leaderboardContent = document.getElementById("leaderboardContent");
+    const GAME_WIDTH = canvas.width; // 800
+    const GAME_HEIGHT = canvas.height; // 600
+
+    let score = 0;
+    let animationId;
+    
+    // Retrieve leaderboard from localStorage (an array of attempts)
+    let leaderboard = JSON.parse(localStorage.getItem("brickBreakerLeaderboard")) || [];
+
+    // --- Ball Properties ---
+    const ballRadius = 10;
+    let x = GAME_WIDTH / 2;
+    let y = GAME_HEIGHT - 50;
+    let dx = 4;
+    let dy = -4;
+
+    // --- Paddle Properties ---
+    const paddleHeight = 10;
+    const paddleWidth = 100;
+    let paddleX = (GAME_WIDTH - paddleWidth) / 2;
+    let rightPressed = false;
+    let leftPressed = false;
+    
+    // Listen for paddle movement
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+    
+    function keyDownHandler(e) {
+      if (e.key === "Right" || e.key === "ArrowRight") {
+        rightPressed = true;
+      } else if (e.key === "Left" || e.key === "ArrowLeft") {
+        leftPressed = true;
+      }
+    }
+    function keyUpHandler(e) {
+      if (e.key === "Right" || e.key === "ArrowRight") {
+        rightPressed = false;
+      } else if (e.key === "Left" || e.key === "ArrowLeft") {
+        leftPressed = false;
+      }
+    }
+
+    // --- Brick Properties ---
+    const brickRowCount = 5;
+    const brickColumnCount = 9;
+    const brickWidth = 70;
+    const brickHeight = 30;
+    const brickPadding = 10;
+    const brickOffsetTop = 60;
+    const brickOffsetLeft = 35;
+    
+    // Colors and icons for bricks (varying choices)
+    const brickColors = ['#3333FF', '#FF5733', '#33FF57', '#FF33A8', '#FFD700'];
+    const brickIcons = ['star', 'favorite', 'face', 'android', 'eco'];
+
+    let bricks = [];
+    function createBricks() {
+      bricks = [];
+      for (let c = 0; c < brickColumnCount; c++) {
+        bricks[c] = [];
+        for (let r = 0; r < brickRowCount; r++) {
+          // Assign a random color and icon to each brick
+          const color = brickColors[Math.floor(Math.random() * brickColors.length)];
+          const icon = brickIcons[Math.floor(Math.random() * brickIcons.length)];
+          bricks[c][r] = { x: 0, y: 0, status: 1, color, icon };
+        }
+      }
+    }
+    createBricks();
+
+    // --- Collision Detection ---
+    function collisionDetection() {
+      for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+          const b = bricks[c][r];
+          if (b.status === 1) {
+            if (x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
+              dy = -dy;
+              b.status = 0;
+              score++;
+              scoreDisplay.textContent = score;
+              // Reset bricks when all are broken so game never ends
+              if (bricks.every(col => col.every(brick => brick.status === 0))) {
+                createBricks();
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // --- Drawing Functions ---
+    function drawBall() {
+      ctx.beginPath();
+      ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.closePath();
+    }
+    
+    function drawPaddle() {
+      ctx.beginPath();
+      ctx.rect(paddleX, GAME_HEIGHT - paddleHeight - 10, paddleWidth, paddleHeight);
+      ctx.fillStyle = "#0ff";
+      ctx.fill();
+      ctx.closePath();
+    }
+    
+    function drawBricks() {
+      // Use the Material Icons font for the icons in the bricks.
+      ctx.font = "20px 'Material Icons'";
+      for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+          const b = bricks[c][r];
+          if (b.status === 1) {
+            const brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
+            const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
+            b.x = brickX;
+            b.y = brickY;
+            // Draw brick background using its assigned color
+            ctx.fillStyle = b.color;
+            ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
+            // Draw the assigned Material Icon centered in the brick
+            ctx.fillStyle = "#fff";
+            const textMetrics = ctx.measureText(b.icon);
+            const textX = brickX + (brickWidth - textMetrics.width) / 2;
+            const textY = brickY + brickHeight / 2 + 7;
+            ctx.fillText(b.icon, textX, textY);
+          }
+        }
+      }
+    }
+
+    // --- Game Loop ---
+    function draw() {
+      ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      drawBricks();
+      drawBall();
+      drawPaddle();
+      collisionDetection();
+      
+      // Bounce off left/right walls
+      if (x + dx > GAME_WIDTH - ballRadius || x + dx < ballRadius) {
+        dx = -dx;
+      }
+      // Bounce off the top wall
+      if (y + dy < ballRadius) {
+        dy = -dy;
+      }
+      
+      // Paddle collision with some forgiveness
+      if (y + dy > GAME_HEIGHT - paddleHeight - 10 - ballRadius) {
+        if (x > paddleX - ballRadius && x < paddleX + paddleWidth + ballRadius) {
+          dy = -dy;
+          // Optional: Add retro spin based on where the ball hit the paddle
+          const hitPos = x - (paddleX + paddleWidth / 2);
+          dx = hitPos * 0.15;
+        } else {
+          gameOver();
+          return; // Stop the game loop
+        }
+      }
+      
+      x += dx;
+      y += dy;
+      
+      // Move the paddle
+      if (rightPressed && paddleX < GAME_WIDTH - paddleWidth) {
+        paddleX += 7;
+      } else if (leftPressed && paddleX > 0) {
+        paddleX -= 7;
+      }
+      
+      animationId = requestAnimationFrame(draw);
+    }
+
+    // --- Game Over and Leaderboard ---
+    function gameOver() {
+      cancelAnimationFrame(animationId);
+      // Record this attempt in the leaderboard
+      const attempt = { score, date: new Date().toLocaleString() };
+      leaderboard.push(attempt);
+      // Sort descending by score
+      leaderboard.sort((a, b) => b.score - a.score);
+      // Keep only the top 10
+      leaderboard = leaderboard.slice(0, 10);
+      localStorage.setItem("brickBreakerLeaderboard", JSON.stringify(leaderboard));
+      
+      gameOverText.innerHTML = `GAME OVER<br>Your Score: ${score}`;
+      // Show the game over overlay (with its two buttons)
+      gameOverOverlay.classList.add("visible");
+    }
+    
+    // Populate the leaderboard overlay content
+    function updateLeaderboardDisplay() {
+      leaderboardContent.innerHTML = "";
+      leaderboard.forEach((entry, index) => {
+        const li = document.createElement("li");
+        li.innerHTML = `<strong>${index + 1}.</strong> Score: ${entry.score}<br><small>${entry.date}</small>`;
+        leaderboardContent.appendChild(li);
+      });
+    }
+    
+    function newGame() {
+      // Reset game variables
+      score = 0;
+      scoreDisplay.textContent = score;
+      x = GAME_WIDTH / 2;
+      y = GAME_HEIGHT - 50;
+      dx = 4;
+      dy = -4;
+      paddleX = (GAME_WIDTH - paddleWidth) / 2;
+      createBricks();
+      // Hide both overlays and restart
+      gameOverOverlay.classList.remove("visible");
+      leaderboardOverlay.classList.remove("visible");
+      draw();
+    }
+    
+    // Show the leaderboard overlay from the game-over overlay
+    function showLeaderboard() {
+      updateLeaderboardDisplay();
+      gameOverOverlay.classList.remove("visible");
+      leaderboardOverlay.classList.add("visible");
+    }
+    
+    // Hide leaderboard overlay and return to game-over overlay
+    function hideLeaderboard() {
+      leaderboardOverlay.classList.remove("visible");
+      gameOverOverlay.classList.add("visible");
+    }
+    
+    // Start the game loop initially
+    draw();
+
+    // --- Initialize Particles.js for a starry background ---
+    particlesJS("particles-js", {
+      "particles": {
+        "number": {
+          "value": 120,
+          "density": { "enable": true, "value_area": 800 }
+        },
+        "color": { "value": "#ffffff" },
+        "shape": {
+          "type": "circle",
+          "stroke": { "width": 0, "color": "#000000" }
+        },
+        "opacity": {
+          "value": 0.8,
+          "random": false
+        },
+        "size": {
+          "value": 2,
+          "random": true
+        },
+        "line_linked": {
+          "enable": false  // Disable connecting lines for individual stars
+        },
+        "move": {
+          "enable": true,
+          "speed": 0.5,
+          "direction": "none",
+          "random": true,
+          "straight": false,
+          "out_mode": "out",
+          "bounce": false
+        }
+      },
+      "interactivity": {
+        "detect_on": "canvas",
+        "events": {
+          "onhover": { "enable": false },
+          "onclick": { "enable": false },
+          "resize": true
+        }
+      },
+      "retina_detect": true
+    });
+  </script>
+</body>
+</html>
