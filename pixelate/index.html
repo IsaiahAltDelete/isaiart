@@ -1,989 +1,1123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Pixel Art Generator</title>
-    <style>
-        /* Reset and Basic Styling */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            min-height: 100vh;
-        }
-        h1 {
-            margin-bottom: 10px;
-            text-align: center;
-            font-size: 2em;
-        }
-        p {
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 1em;
-            color: #b0b0b0;
-        }
-
-        /* Grid Layout */
-        .container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            width: 100%;
-            max-width: 1200px;
-        }
-
-        /* Card Styling */
-        .card {
-            background-color: #1e1e1e;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .card h2 {
-            margin-bottom: 15px;
-            font-size: 1.5em;
-            text-align: center;
-        }
-        .card p {
-            margin-bottom: 15px;
-            text-align: center;
-            font-size: 0.9em;
-            color: #b0b0b0;
-        }
-
-        /* Upload Section */
-        #upload-container {
-            text-align: center;
-            width: 100%;
-        }
-        #upload-container input[type="file"] {
-            display: none;
-        }
-        #upload-label {
-            background-color: #1f8ef1;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            display: inline-block;
-        }
-        #upload-label:hover {
-            background-color: #0d6efd;
-        }
-
-        /* Canvas Section */
-        #canvas-container {
-            position: relative;
-            width: 100%;
-            max-width: 800px;
-            margin-bottom: 20px;
-        }
-        canvas {
-            width: 100%;
-            height: auto;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            background-color: #ffffff;
-        }
-
-        /* Controls Section */
-        #controls {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        .slider-container, .select-container {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            width: 100%;
-        }
-        .slider-container label, .select-container label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 1em;
-        }
-        .slider-container input[type="range"], .select-container select {
-            width: 100%;
-            padding: 5px;
-            border-radius: 5px;
-            border: none;
-            background-color: #2c2c2c;
-            color: #e0e0e0;
-        }
-        .resolution-container {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            width: 100%;
-        }
-        .resolution-slider {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .resolution-slider input[type="range"] {
-            flex: 1;
-        }
-
-        /* Buttons Section */
-        #buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 10px;
-            width: 100%;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 1em;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            flex: 1 1 150px;
-        }
-        #download-btn {
-            background-color: #28a745;
-            color: #fff;
-        }
-        #download-btn:hover {
-            background-color: #218838;
-        }
-        #reset-btn {
-            background-color: #dc3545;
-            color: #fff;
-        }
-        #reset-btn:hover {
-            background-color: #c82333;
-        }
-        #randomize-btn {
-            background-color: #ffc107;
-            color: #212529;
-        }
-        #randomize-btn:hover {
-            background-color: #e0a800;
-        }
-        #save-btn {
-            background-color: #17a2b8;
-            color: #fff;
-        }
-        #save-btn:hover {
-            background-color: #138496;
-        }
-        #load-btn {
-            background-color: #6c757d;
-            color: #fff;
-        }
-        #load-btn:hover {
-            background-color: #5a6268;
-        }
-
-        /* Save States Section */
-        #save-states {
-            width: 100%;
-            margin-top: 10px;
-        }
-        #save-states select {
-            padding: 10px;
-            border-radius: 5px;
-            border: none;
-            font-size: 1em;
-            width: 100%;
-            background-color: #2c2c2c;
-            color: #e0e0e0;
-        }
-
-        /* Collapsible Sections */
-        details {
-            width: 100%;
-            margin-top: 15px;
-            background-color: #2a2a2a;
-            border-radius: 5px;
-            padding: 10px;
-        }
-        summary {
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 1.1em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        summary::-webkit-details-marker {
-            display: none;
-        }
-        .details-content {
-            margin-top: 10px;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 1.8em;
-            }
-            .card h2 {
-                font-size: 1.3em;
-            }
-            .resolution-slider {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .resolution-slider label {
-                font-size: 0.9em;
-            }
-        }
-        @media (max-width: 600px) {
-            h1 {
-                font-size: 1.5em;
-            }
-            .card h2 {
-                font-size: 1.2em;
-            }
-            button {
-                flex: 1 1 100%;
-            }
-            .resolution-slider {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .resolution-slider label {
-                font-size: 0.9em;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixel Artist</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --main-bg: #f8f8f8;
+      --panel-bg: #fff;
+      --accent: #000;
+      --border-radius: 15px;
+      --transition-speed: 0.3s;
+    }
+    /* Global Styles and Resets */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--main-bg);
+      color: var(--accent);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    /* Editor Container Layout */
+    #editor-container {
+      display: grid;
+      grid-template-columns: minmax(250px, 300px) 1fr minmax(250px, 300px);
+      gap: 2rem;
+      width: 100%;
+      max-width: 1600px;
+      height: 90vh;
+    }
+    /* Left Panel & Canvas Card remain unchanged */
+    .controls-panel {
+      background-color: var(--panel-bg);
+      border-radius: 20px;
+      border: 2px solid var(--accent);
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+      padding: 1.5rem;
+    }
+    /* Hide scrollbars */
+    .controls-panel {
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .controls-panel::-webkit-scrollbar {
+      display: none;
+    }
+    .control-group {
+      margin-bottom: 1.5rem;
+    }
+    .control-group:last-child {
+      margin-bottom: 0;
+    }
+    .control-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    /* Upload Box Styling */
+    #upload-container {
+      position: relative;
+    }
+    #upload-container label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      border: 2px dashed var(--accent);
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: background-color var(--transition-speed), transform var(--transition-speed);
+    }
+    #upload-container label.dragover {
+      background-color: #eaeaea;
+      transform: scale(1.02);
+    }
+    /* Slider and Select Groups */
+    .slider-container,
+    .select-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 100%;
+    }
+    .slider-label,
+    .select-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .slider-label i.material-icons,
+    .select-label i.material-icons {
+      font-size: 1.2rem;
+      margin-right: 0.3rem;
+      vertical-align: middle;
+    }
+    /* Custom Range Sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 1rem;
+      background: #f0f0f0;
+      border-radius: var(--border-radius);
+      outline: none;
+      border: 2px solid var(--accent);
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 1.5rem;
+      height: 1.5rem;
+      background: var(--accent);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform var(--transition-speed);
+    }
+    input[type="range"]::-moz-range-thumb {
+      -moz-appearance: none;
+      appearance: none;
+      width: 1.5rem;
+      height: 1.5rem;
+      background: var(--accent);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform var(--transition-speed);
+    }
+    input[type="range"]::-webkit-slider-thumb:hover,
+    input[type="range"]::-moz-range-thumb:hover {
+      transform: scale(1.1);
+    }
+    input[type="range"]::-webkit-slider-thumb:active,
+    input[type="range"]::-moz-range-thumb:active {
+      transform: scale(0.95);
+    }
+    /* Center dropdown text */
+    select {
+      padding: 0.75rem;
+      border-radius: var(--border-radius);
+      border: 2px solid var(--accent);
+      background-color: var(--panel-bg);
+      color: var(--accent);
+      font-size: 1rem;
+      text-align: center;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: url('data:image/svg+xml;utf8,<svg fill="black" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+      background-repeat: no-repeat;
+      background-position-x: right 0.75rem;
+      background-position-y: center;
+    }
+    select::-ms-expand {
+      display: none;
+    }
+    /* Aspect Ratio Button Group */
+    .aspect-ratio-buttons {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+    .aspect-ratio-buttons button {
+      background-color: var(--panel-bg);
+      color: var(--accent);
+      padding: 0.5rem;
+      border: 2px solid var(--accent);
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .aspect-ratio-buttons button:hover {
+      background-color: var(--accent);
+      color: var(--panel-bg);
+    }
+    /* Canvas Card */
+    #canvas-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: var(--panel-bg);
+      border-radius: 20px;
+      border: 2px solid var(--accent);
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+      padding: 1.5rem;
+      overflow: hidden;
+    }
+    #canvas-card h2 {
+      margin-bottom: 1rem;
+    }
+    #canvas-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      background: #fff;
+      padding: 1rem;
+      border-radius: var(--border-radius);
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+    }
+    canvas {
+      max-width: 100%;
+      max-height: 70vh;
+      border-radius: var(--border-radius);
+    }
+    /* Right Panel: Split into two cards */
+    #right-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      height: 100%;
+    }
+    #adjustments-card {
+      flex: 1;
+      overflow-y: auto;
+    }
+    #save-load-card {
+      /* Fixed height to always show */
+      flex-shrink: 0;
+    }
+    /* Action Buttons: Smaller buttons, all in one row */
+    #action-buttons {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      flex-wrap: nowrap;
+      margin-top: 1rem;
+    }
+    #action-buttons button {
+      background-color: var(--panel-bg);
+      color: var(--accent);
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 2px solid var(--accent);
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
+      min-height: 32px;
+    }
+    #action-buttons button:hover {
+      background-color: var(--accent);
+      color: var(--panel-bg);
+    }
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+      #editor-container {
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto 1fr;
+        grid-template-areas:
+          "controls-left canvas"
+          "controls-right canvas";
+        height: auto;
+        flex-direction: column;
+      }
+      .controls-panel {
+        max-height: none;
+        overflow-y: visible;
+        width: 100%;
+      }
+      #canvas-card {
+        grid-column: 1 / -1;
+      }
+    }
+    @media (max-width: 768px) {
+      #editor-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+        grid-template-areas:
+          "controls-left"
+          "controls-right"
+          "canvas";
+        gap: 1rem;
+      }
+      .controls-panel {
+        padding: 1rem;
+        border-radius: 15px;
+      }
+      #canvas-card {
+        padding: 1rem;
+        border-radius: 15px;
+      }
+    }
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 2rem;
+      }
+      .control-title {
+        font-size: 1.1rem;
+      }
+      button, select, input[type="range"] {
+        font-size: 0.9rem;
+        padding: 0.6rem;
+      }
+    }
+  </style>
 </head>
 <body>
-
-    <h1>🎨 Advanced Pixel Art Generator</h1>
-    <p>Transform your images into pixel art with customizable options!</p>
-
-    <div class="container">
-        <!-- Upload, Settings, and Actions Card -->
-        <div class="card">
-            <h2>Upload Image</h2>
-            <p>Select an image to convert it into pixel art.</p>
-            <div id="upload-container">
-                <label for="image-upload" id="upload-label">📂 Upload Image</label>
-                <input type="file" id="image-upload" accept="image/*">
-            </div>
-
-            <!-- Collapsible Settings and Actions -->
-            <details>
-                <summary>⚙️ Settings & Actions</summary>
-                <div class="details-content">
-                    <!-- Settings Section -->
-                    <div id="controls" style="display:none;">
-                        <!-- Resolution Slider -->
-                        <div class="resolution-container">
-                            <label for="resolution">Resolution: <span id="resolution-value">100%</span></label>
-                            <div class="resolution-slider">
-                                <input type="range" id="resolution" min="50" max="200" step="1" value="100">
-                            </div>
-                        </div>
-                        <!-- Pixel Size Slider -->
-                        <div class="slider-container">
-                            <label for="pixel-size">Pixel Size: <span id="pixel-size-value">10</span> px</label>
-                            <input type="range" id="pixel-size" min="2" max="50" step="1" value="10">
-                        </div>
-                        <!-- Pixel Aspect Ratio Sliders -->
-                        <div class="slider-container">
-                            <label>Pixel Aspect Ratio:</label>
-                            <div class="resolution-slider">
-                                <label for="aspect-ratio-width">Width: <span id="aspect-ratio-width-value">100%</span></label>
-                                <input type="range" id="aspect-ratio-width" min="50" max="200" step="1" value="100">
-                            </div>
-                            <div class="resolution-slider">
-                                <label for="aspect-ratio-height">Height: <span id="aspect-ratio-height-value">100%</span></label>
-                                <input type="range" id="aspect-ratio-height" min="50" max="200" step="1" value="100">
-                            </div>
-                        </div>
-                        <!-- Color Reduction Slider -->
-                        <div class="slider-container">
-                            <label for="color-reduction">Color Reduction: <span id="color-reduction-value">16</span> colors</label>
-                            <input type="range" id="color-reduction" min="2" max="256" step="1" value="16">
-                        </div>
-                        <!-- Saturation Slider -->
-                        <div class="slider-container">
-                            <label for="saturation">Saturation: <span id="saturation-value">100</span>%</label>
-                            <input type="range" id="saturation" min="0" max="200" step="1" value="100">
-                        </div>
-                        <!-- Contrast Slider -->
-                        <div class="slider-container">
-                            <label for="contrast">Contrast: <span id="contrast-value">100</span>%</label>
-                            <input type="range" id="contrast" min="0" max="200" step="1" value="100">
-                        </div>
-                        <!-- Noise Slider -->
-                        <div class="slider-container">
-                            <label for="noise">Noise: <span id="noise-value">0</span>%</label>
-                            <input type="range" id="noise" min="0" max="100" step="1" value="0">
-                        </div>
-                        <!-- Dithering Slider -->
-                        <div class="slider-container">
-                            <label for="dithering">Dithering: <span id="dithering-value">0</span>%</label>
-                            <input type="range" id="dithering" min="0" max="100" step="1" value="0">
-                        </div>
-                        <!-- Color Palette Selector -->
-                        <div class="select-container">
-                            <label for="color-palette">Color Palette:</label>
-                            <select id="color-palette">
-                                <option value="random">Random</option>
-                                <option value="grayscale">Grayscale</option>
-                                <option value="vibrant">Vibrant</option>
-                                <option value="pastel">Pastel</option>
-                                <option value="custom">Custom</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Actions Section -->
-                    <div id="buttons" style="display:none;">
-                        <button id="download-btn">💾 Download Pixel Art</button>
-                        <button id="reset-btn">🔄 Reset</button>
-                        <button id="randomize-btn">🎲 Randomize Pixelation</button>
-                        <button id="save-btn">💾 Save Settings</button>
-                        <button id="load-btn">📂 Load Settings</button>
-                    </div>
-                    <div id="save-states" style="display:none;">
-                        <select id="saved-settings">
-                            <option value="" disabled selected>Select Saved Settings</option>
-                        </select>
-                    </div>
-                </div>
-            </details>
+  <div id="editor-container">
+    <!-- Left Controls Panel -->
+    <div id="left-controls" class="controls-panel">
+      <!-- Upload & Preview with Drag-and-Drop -->
+      <div class="control-group">
+        <h3 class="control-title">Upload & Preview</h3>
+        <div id="upload-container">
+          <label for="image-upload"> 
+            <i class="material-icons">image</i> Upload Image
+          </label>
+          <input type="file" id="image-upload" accept="image/*" style="display: none;" />
         </div>
-
-        <!-- Canvas Card -->
-        <div class="card" style="grid-column: span 2;">
-            <h2>Preview</h2>
-            <div id="canvas-container">
-                <canvas id="canvas"></canvas>
-            </div>
+      </div>
+      <!-- Resolution Preset -->
+      <div class="control-group">
+        <h3 class="control-title">Resolution Preset</h3>
+        <div class="select-container">
+          <label for="resolution-preset" class="select-label">
+            <i class="material-icons">settings_overscan</i> Preset:
+          </label>
+          <select id="resolution-preset">
+            <option value="custom" selected>Custom</option>
+            <option value="50">Low (50%)</option>
+            <option value="100">Medium (100%)</option>
+            <option value="150">High (150%)</option>
+            <option value="200">Ultra (200%)</option>
+          </select>
         </div>
+      </div>
+      <!-- Resolution Slider -->
+      <div class="control-group">
+        <h3 class="control-title">Resolution</h3>
+        <div class="slider-container">
+          <div class="slider-label">
+            <label for="resolution">
+              <i class="material-icons">photo_size_select_small</i> Resolution:
+            </label>
+            <span id="resolution-value">100%</span>
+          </div>
+          <input type="range" id="resolution" min="50" max="200" step="1" value="100" />
+        </div>
+      </div>
+      <!-- Pixel Size -->
+      <div class="control-group">
+        <h3 class="control-title">Pixel Size</h3>
+        <div class="slider-container">
+          <div class="slider-label">
+            <label for="pixel-size">
+              <i class="material-icons">texture</i> Size:
+            </label>
+            <span id="pixel-size-value">10 px</span>
+          </div>
+          <input type="range" id="pixel-size" min="2" max="50" step="1" value="10" />
+        </div>
+      </div>
+      <!-- Pixelation Style -->
+      <div class="control-group">
+        <h3 class="control-title">Pixelation Style</h3>
+        <div class="select-container">
+          <label for="pixelation-style" class="select-label">
+            <i class="material-icons">style</i> Style:
+          </label>
+          <select id="pixelation-style">
+            <option value="standard" selected>Standard</option>
+            <option value="mosaic">Mosaic</option>
+          </select>
+        </div>
+      </div>
+      <!-- Aspect Ratio -->
+      <div class="control-group">
+        <h3 class="control-title">Aspect Ratio</h3>
+        <div class="slider-container">
+          <div class="slider-label">
+            <label for="aspect-ratio-width">
+              <i class="material-icons">swap_horiz</i> Width:
+            </label>
+            <span id="aspect-ratio-width-value">100%</span>
+          </div>
+          <input type="range" id="aspect-ratio-width" min="50" max="200" step="1" value="100" />
+        </div>
+        <div class="slider-container">
+          <div class="slider-label">
+            <label for="aspect-ratio-height">
+              <i class="material-icons">swap_vert</i> Height:
+            </label>
+            <span id="aspect-ratio-height-value">100%</span>
+          </div>
+          <input type="range" id="aspect-ratio-height" min="50" max="200" step="1" value="100" />
+        </div>
+        <!-- Aspect Ratio Icon Buttons -->
+        <div class="aspect-ratio-buttons">
+          <button id="default-aspect-btn" title="Reset to Default (100%)">
+            <i class="material-icons">settings_backup_restore</i>
+          </button>
+          <button id="even-aspect-btn" title="Even Out Aspect Ratio">
+            <i class="material-icons">equalizer</i>
+          </button>
+          <button id="switch-aspect-btn" title="Switch Width and Height">
+            <i class="material-icons">swap_horiz</i>
+          </button>
+          <button id="lock-aspect-btn" title="Lock/Unlock Aspect Ratio">
+            <i class="material-icons">lock_open</i>
+          </button>
+        </div>
+      </div>
     </div>
 
-    <script>
-        // DOM Elements
-        const imageUpload = document.getElementById('image-upload');
-        const uploadLabel = document.getElementById('upload-label');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const controls = document.getElementById('controls');
-        const buttons = document.getElementById('buttons');
-        const saveStates = document.getElementById('save-states');
-        const savedSettingsSelect = document.getElementById('saved-settings');
-        const colorPaletteSelect = document.getElementById('color-palette');
+    <!-- Canvas Card (Center) -->
+    <div id="canvas-card">
+      <h2>Preview</h2>
+      <div id="canvas-container">
+        <canvas id="canvas"></canvas>
+      </div>
+    </div>
 
-        // Slider and Input Elements
-        const pixelSizeSlider = document.getElementById('pixel-size');
-        const colorReductionSlider = document.getElementById('color-reduction');
-        const ditheringSlider = document.getElementById('dithering');
-        const resolutionSlider = document.getElementById('resolution');
-        const aspectRatioWidthSlider = document.getElementById('aspect-ratio-width');
-        const aspectRatioHeightSlider = document.getElementById('aspect-ratio-height');
-        const saturationSlider = document.getElementById('saturation');
-        const contrastSlider = document.getElementById('contrast');
-        const noiseSlider = document.getElementById('noise');
+    <!-- Right Controls Panel: Two Cards -->
+    <div id="right-controls">
+      <!-- Adjustments Card (Scrolls) -->
+      <div id="adjustments-card" class="controls-panel">
+        <!-- Color Adjustments -->
+        <div class="control-group">
+          <h3 class="control-title">Color Adjustments</h3>
+          <div class="slider-container">
+            <div class="slider-label">
+              <label for="color-reduction">
+                <i class="material-icons">palette</i> Colors:
+              </label>
+              <span id="color-reduction-value">16</span>
+            </div>
+            <input type="range" id="color-reduction" min="2" max="256" step="1" value="16" />
+          </div>
+          <div class="slider-container">
+            <div class="slider-label">
+              <label for="saturation">
+                <i class="material-icons">colorize</i> Saturation:
+              </label>
+              <span id="saturation-value">100%</span>
+            </div>
+            <input type="range" id="saturation" min="0" max="200" step="1" value="100" />
+          </div>
+          <div class="slider-container">
+            <div class="slider-label">
+              <label for="contrast">
+                <i class="material-icons">contrast</i> Contrast:
+              </label>
+              <span id="contrast-value">100%</span>
+            </div>
+            <input type="range" id="contrast" min="0" max="200" step="1" value="100" />
+          </div>
+        </div>
+        <!-- Effects -->
+        <div class="control-group">
+          <h3 class="control-title">Effects</h3>
+          <div class="slider-container">
+            <div class="slider-label">
+              <label for="noise">
+                <i class="material-icons">grain</i> Noise:
+              </label>
+              <span id="noise-value">0%</span>
+            </div>
+            <input type="range" id="noise" min="0" max="100" step="1" value="0" />
+          </div>
+          <div class="slider-container">
+            <div class="slider-label">
+              <label for="dithering">
+                <i class="material-icons">filter_dither</i> Dithering:
+              </label>
+              <span id="dithering-value">0%</span>
+            </div>
+            <input type="range" id="dithering" min="0" max="100" step="1" value="0" />
+          </div>
+        </div>
+        <!-- Palette: Now with an extra "Default" option -->
+        <div class="control-group">
+          <h3 class="control-title">Palette</h3>
+          <div class="select-container">
+            <label for="color-palette" class="select-label">
+              <i class="material-icons">color_lens</i>
+            </label>
+            <select id="color-palette">
+              <option value="default">Default (from Image)</option>
+              <option value="random">Random</option>
+              <option value="grayscale">Grayscale</option>
+              <option value="vibrant">Vibrant</option>
+              <option value="pastel">Pastel</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <!-- Save & Load Card (Always Visible) -->
+      <div id="save-load-card" class="controls-panel">
+        <!-- Save & Load -->
+        <div class="control-group">
+          <h3 class="control-title">Save & Load</h3>
+          <div class="select-container">
+            <label for="saved-settings" class="select-label">
+              <i class="material-icons">bookmark</i>
+            </label>
+            <select id="saved-settings">
+              <option value="" disabled selected>Select Saved Settings</option>
+            </select>
+          </div>
+        </div>
+        <!-- Action Buttons -->
+        <div id="action-buttons">
+          <button id="download-btn" title="Download">
+            <i class="material-icons">file_download</i>
+          </button>
+          <button id="reset-btn" title="Reset">
+            <i class="material-icons">restart_alt</i>
+          </button>
+          <button id="randomize-btn" title="Randomize">
+            <i class="material-icons">casino</i>
+          </button>
+          <button id="save-btn" title="Save Settings">
+            <i class="material-icons">save</i>
+          </button>
+          <button id="load-btn" title="Load Settings">
+            <i class="material-icons">folder_open</i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        // Slider Value Display Elements
-        const pixelSizeValue = document.getElementById('pixel-size-value');
-        const colorReductionValue = document.getElementById('color-reduction-value');
-        const ditheringValue = document.getElementById('dithering-value');
-        const resolutionValue = document.getElementById('resolution-value');
-        const aspectRatioWidthValue = document.getElementById('aspect-ratio-width-value');
-        const aspectRatioHeightValue = document.getElementById('aspect-ratio-height-value');
-        const saturationValue = document.getElementById('saturation-value');
-        const contrastValue = document.getElementById('contrast-value');
-        const noiseValue = document.getElementById('noise-value');
+  <script>
+    // DOM Elements
+    const imageUpload = document.getElementById('image-upload');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const savedSettingsSelect = document.getElementById('saved-settings');
+    const colorPaletteSelect = document.getElementById('color-palette');
+    const resolutionSlider = document.getElementById('resolution');
+    const resolutionValue = document.getElementById('resolution-value');
+    const resolutionPresetSelect = document.getElementById('resolution-preset');
+    const pixelSizeSlider = document.getElementById('pixel-size');
+    const pixelSizeValue = document.getElementById('pixel-size-value');
+    const aspectRatioWidthSlider = document.getElementById('aspect-ratio-width');
+    const aspectRatioHeightSlider = document.getElementById('aspect-ratio-height');
+    const aspectRatioWidthValue = document.getElementById('aspect-ratio-width-value');
+    const aspectRatioHeightValue = document.getElementById('aspect-ratio-height-value');
+    const colorReductionSlider = document.getElementById('color-reduction');
+    const colorReductionValue = document.getElementById('color-reduction-value');
+    const saturationSlider = document.getElementById('saturation');
+    const saturationValue = document.getElementById('saturation-value');
+    const contrastSlider = document.getElementById('contrast');
+    const contrastValue = document.getElementById('contrast-value');
+    const noiseSlider = document.getElementById('noise');
+    const noiseValue = document.getElementById('noise-value');
+    const ditheringSlider = document.getElementById('dithering');
+    const ditheringValue = document.getElementById('dithering-value');
+    const pixelationStyleSelect = document.getElementById('pixelation-style');
+    // Aspect Ratio Buttons
+    const defaultAspectBtn = document.getElementById('default-aspect-btn');
+    const evenAspectBtn = document.getElementById('even-aspect-btn');
+    const switchAspectBtn = document.getElementById('switch-aspect-btn');
+    const lockAspectBtn = document.getElementById('lock-aspect-btn');
+    // Action Buttons
+    const downloadBtn = document.getElementById('download-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const randomizeBtn = document.getElementById('randomize-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const loadBtn = document.getElementById('load-btn');
 
-        // Buttons
-        const downloadBtn = document.getElementById('download-btn');
-        const resetBtn = document.getElementById('reset-btn');
-        const randomizeBtn = document.getElementById('randomize-btn');
-        const saveBtn = document.getElementById('save-btn');
-        const loadBtn = document.getElementById('load-btn');
+    // Variables
+    let originalImageData = null;
+    let originalWidth = 0;
+    let originalHeight = 0;
+    let savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves')) || [];
+    let paletteCache = {};
+    let aspectLock = false; // Determines whether width and height are locked
 
-        // Variables
-        let originalImageData = null; // To store the true original image data
-        let originalWidth = 0;
-        let originalHeight = 0;
-        let savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves')) || [];
-        let paletteCache = {};
+    // Debounce Function
+    function debounce(func, wait) {
+      let timeout;
+      return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+      };
+    }
+    const debouncedApplyPixelation = debounce(applyPixelation, 100);
 
-        // Debounce Function
-        function debounce(func, wait) {
-            let timeout;
-            return function(...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), wait);
-            };
+    // Load Saved Settings
+    function loadSavedSettings() {
+      savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves')) || [];
+      savedSettingsSelect.innerHTML = '<option value="" disabled selected>Select Saved Settings</option>';
+      savedSettings.forEach((save, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `Save ${index + 1}`;
+        savedSettingsSelect.appendChild(option);
+      });
+    }
+    loadSavedSettings();
+
+    // Predefined Palettes
+    const predefinedPalettes = {
+      grayscale: generateGrayscalePalette(16),
+      vibrant: [
+        { r: 255, g: 99, b: 132 },
+        { r: 54, g: 162, b: 235 },
+        { r: 255, g: 206, b: 86 },
+        { r: 75, g: 192, b: 192 },
+        { r: 153, g: 102, b: 255 },
+        { r: 255, g: 159, b: 64 }
+      ],
+      pastel: [
+        { r: 255, g: 179, b: 186 },
+        { r: 255, g: 223, b: 186 },
+        { r: 255, g: 255, b: 186 },
+        { r: 186, g: 255, b: 201 },
+        { r: 186, g: 225, b: 255 },
+        { r: 255, g: 186, b: 255 }
+      ],
+      custom: [] // Placeholder for custom palette
+    };
+    function generateGrayscalePalette(numColors) {
+      const palette = [];
+      for (let i = 0; i < numColors; i++) {
+        const gray = Math.floor((i / (numColors - 1)) * 255);
+        palette.push({ r: gray, g: gray, b: gray });
+      }
+      return palette;
+    }
+
+    // Drag-and-Drop for Upload
+    const uploadContainer = document.getElementById('upload-container');
+    uploadContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadContainer.querySelector('label').classList.add('dragover');
+    });
+    uploadContainer.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      uploadContainer.querySelector('label').classList.remove('dragover');
+    });
+    uploadContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadContainer.querySelector('label').classList.remove('dragover');
+      if(e.dataTransfer.files.length) {
+        imageUpload.files = e.dataTransfer.files;
+        const event = new Event('change');
+        imageUpload.dispatchEvent(event);
+      }
+    });
+
+    // Image Upload Handler
+    imageUpload.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          originalWidth = img.width;
+          originalHeight = img.height;
+          const scale = parseInt(resolutionSlider.value) / 100;
+          const targetWidth = originalWidth * scale;
+          const targetHeight = originalHeight * scale;
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+          originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          applyPixelation();
         }
-
-        // Load Saved Settings from Local Storage
-        function loadSavedSettings() {
-            savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves')) || [];
-            savedSettingsSelect.innerHTML = '<option value="" disabled selected>Select Saved Settings</option>';
-            savedSettings.forEach((save, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = `Save ${index + 1}`;
-                savedSettingsSelect.appendChild(option);
-            });
+        img.onerror = function() {
+          alert('Failed to load the image. Please try a different file.');
         }
+        img.src = event.target.result;
+      }
+      reader.onerror = function() {
+        alert('Failed to read the file. Please try again.');
+      }
+      reader.readAsDataURL(file);
+    });
 
-        loadSavedSettings();
+    // Update Slider Value Displays
+    function updateSliderValues() {
+      pixelSizeValue.textContent = pixelSizeSlider.value + ' px';
+      colorReductionValue.textContent = colorReductionSlider.value;
+      ditheringValue.textContent = ditheringSlider.value + '%';
+      resolutionValue.textContent = resolutionSlider.value + '%';
+      aspectRatioWidthValue.textContent = aspectRatioWidthSlider.value + '%';
+      aspectRatioHeightValue.textContent = aspectRatioHeightSlider.value + '%';
+      saturationValue.textContent = saturationSlider.value + '%';
+      contrastValue.textContent = contrastSlider.value + '%';
+      noiseValue.textContent = noiseSlider.value + '%';
+    }
 
-        // Predefined Palettes
-        const predefinedPalettes = {
-            grayscale: generateGrayscalePalette(16),
-            vibrant: [
-                {r: 255, g: 99, b: 132},
-                {r: 54, g: 162, b: 235},
-                {r: 255, g: 206, b: 86},
-                {r: 75, g: 192, b: 192},
-                {r: 153, g: 102, b: 255},
-                {r: 255, g: 159, b: 64}
-            ],
-            pastel: [
-                {r: 255, g: 179, b: 186},
-                {r: 255, g: 223, b: 186},
-                {r: 255, g: 255, b: 186},
-                {r: 186, g: 255, b: 201},
-                {r: 186, g: 225, b: 255},
-                {r: 255, g: 186, b: 255}
-            ],
-            custom: [] // Placeholder for custom palette
-        };
+    // Resolution Preset Handler
+    resolutionPresetSelect.addEventListener('change', function() {
+      if (resolutionPresetSelect.value !== 'custom') {
+        resolutionSlider.value = resolutionPresetSelect.value;
+        resolutionSlider.disabled = true;
+      } else {
+        resolutionSlider.disabled = false;
+      }
+      debouncedApplyPixelation();
+    });
+    resolutionSlider.addEventListener('input', function() {
+      if (resolutionPresetSelect.value !== 'custom') {
+        resolutionPresetSelect.value = 'custom';
+        resolutionSlider.disabled = false;
+      }
+      debouncedApplyPixelation();
+    });
 
-        // Generate Grayscale Palette
-        function generateGrayscalePalette(numColors) {
-            const palette = [];
-            for (let i = 0; i < numColors; i++) {
-                const gray = Math.floor((i / (numColors - 1)) * 255);
-                palette.push({r: gray, g: gray, b: gray});
-            }
-            return palette;
+    // Aspect Ratio Lock: update the other slider if locked
+    aspectRatioWidthSlider.addEventListener('input', function() {
+      aspectRatioWidthValue.textContent = aspectRatioWidthSlider.value + '%';
+      if (aspectLock) {
+        aspectRatioHeightSlider.value = aspectRatioWidthSlider.value;
+        aspectRatioHeightValue.textContent = aspectRatioWidthSlider.value + '%';
+      }
+      debouncedApplyPixelation();
+    });
+    aspectRatioHeightSlider.addEventListener('input', function() {
+      aspectRatioHeightValue.textContent = aspectRatioHeightSlider.value + '%';
+      if (aspectLock) {
+        aspectRatioWidthSlider.value = aspectRatioHeightSlider.value;
+        aspectRatioWidthValue.textContent = aspectRatioHeightSlider.value + '%';
+      }
+      debouncedApplyPixelation();
+    });
+
+    // Aspect Ratio Buttons
+    defaultAspectBtn.addEventListener('click', function() {
+      aspectRatioWidthSlider.value = 100;
+      aspectRatioHeightSlider.value = 100;
+      aspectRatioWidthValue.textContent = '100%';
+      aspectRatioHeightValue.textContent = '100%';
+      debouncedApplyPixelation();
+    });
+    evenAspectBtn.addEventListener('click', function() {
+      const avg = Math.round((parseInt(aspectRatioWidthSlider.value) + parseInt(aspectRatioHeightSlider.value)) / 2);
+      aspectRatioWidthSlider.value = avg;
+      aspectRatioHeightSlider.value = avg;
+      aspectRatioWidthValue.textContent = avg + '%';
+      aspectRatioHeightValue.textContent = avg + '%';
+      debouncedApplyPixelation();
+    });
+    switchAspectBtn.addEventListener('click', function() {
+      const temp = aspectRatioWidthSlider.value;
+      aspectRatioWidthSlider.value = aspectRatioHeightSlider.value;
+      aspectRatioHeightSlider.value = temp;
+      aspectRatioWidthValue.textContent = aspectRatioWidthSlider.value + '%';
+      aspectRatioHeightValue.textContent = aspectRatioHeightSlider.value + '%';
+      debouncedApplyPixelation();
+    });
+    lockAspectBtn.addEventListener('click', function() {
+      aspectLock = !aspectLock;
+      lockAspectBtn.querySelector('i.material-icons').textContent = aspectLock ? 'lock' : 'lock_open';
+      lockAspectBtn.title = aspectLock ? 'Click to unlock aspect ratio' : 'Click to lock aspect ratio';
+      if (aspectLock) {
+        aspectRatioHeightSlider.value = aspectRatioWidthSlider.value;
+        aspectRatioHeightValue.textContent = aspectRatioWidthSlider.value + '%';
+        debouncedApplyPixelation();
+      }
+    });
+
+    // Listen to other controls
+    [ pixelSizeSlider, colorReductionSlider, ditheringSlider,
+      saturationSlider, contrastSlider, noiseSlider,
+      colorPaletteSelect, pixelationStyleSelect
+    ].forEach(control => {
+      control.addEventListener('input', debouncedApplyPixelation);
+    });
+
+    // Pixelation Function
+    function applyPixelation() {
+      if (!originalImageData) return;
+      updateSliderValues();
+      const scale = parseInt(resolutionSlider.value) / 100;
+      const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
+      const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
+      const targetWidth = originalWidth * scale * aspectWidth;
+      const targetHeight = originalHeight * scale * aspectHeight;
+      redrawOriginalImage(targetWidth, targetHeight);
+      const paletteChoice = colorPaletteSelect.value;
+      if (paletteChoice !== 'default') {
+        let palette;
+        if (paletteChoice === 'random') {
+          palette = generatePalette(parseInt(colorReductionSlider.value));
+        } else if (predefinedPalettes[paletteChoice].length > 0) {
+          palette = predefinedPalettes[paletteChoice];
+        } else {
+          palette = generatePalette(parseInt(colorReductionSlider.value));
         }
+        reduceColors(parseInt(colorReductionSlider.value), palette);
+        if (parseInt(ditheringSlider.value) > 0) {
+          applyDithering(parseInt(ditheringSlider.value), palette);
+        }
+      }
+      adjustSaturationContrast(parseInt(saturationSlider.value), parseInt(contrastSlider.value));
+      pixelate(parseInt(pixelSizeSlider.value));
+      if (parseInt(noiseSlider.value) > 0) {
+        applyNoise(parseInt(noiseSlider.value));
+      }
+    }
 
-        // Image Upload Handler
-        imageUpload.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+    // Redraw Original Image with New Dimensions
+    function redrawOriginalImage(targetWidth, targetHeight) {
+      if (!originalImageData) return;
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      tempCtx.putImageData(originalImageData, 0, 0);
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, targetWidth, targetHeight);
+      originalImageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+    }
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    originalWidth = img.width;
-                    originalHeight = img.height;
-
-                    // Get resolution from slider
-                    const scale = parseInt(resolutionSlider.value) / 100;
-                    const targetWidth = originalWidth * scale;
-                    const targetHeight = originalHeight * scale;
-
-                    // Apply aspect ratio
-                    const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
-                    const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
-                    const adjustedWidth = targetWidth * aspectWidth;
-                    const adjustedHeight = targetHeight * aspectHeight;
-
-                    canvas.width = adjustedWidth;
-                    canvas.height = adjustedHeight;
-                    ctx.drawImage(img, 0, 0, adjustedWidth, adjustedHeight);
-                    originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    // Show controls and buttons
-                    controls.style.display = 'flex';
-                    buttons.style.display = 'flex';
-                    saveStates.style.display = 'flex';
-                    // Apply initial pixelation
-                    applyPixelation();
-                }
-                img.onerror = function() {
-                    alert('Failed to load the image. Please try a different file.');
-                }
-                img.src = event.target.result;
-            }
-            reader.onerror = function() {
-                alert('Failed to read the file. Please try again.');
-            }
-            reader.readAsDataURL(file);
+    // Adjust Saturation and Contrast
+    function adjustSaturationContrast(saturation, contrast) {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        let { h, s, l } = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+        s = s * (saturation / 100);
+        s = Math.max(0, Math.min(1, s));
+        let { r, g, b } = hslToRgb(h, s, l);
+        r = ((r - 128) * (contrast / 100)) + 128;
+        g = ((g - 128) * (contrast / 100)) + 128;
+        b = ((b - 128) * (contrast / 100)) + 128;
+        data[i] = clamp(r, 0, 255);
+        data[i + 1] = clamp(g, 0, 255);
+        data[i + 2] = clamp(b, 0, 255);
+      }
+      ctx.putImageData(imageData, 0, 0);
+    }
+    function rgbToHsl(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+      if (max === min) {
+        h = s = 0;
+      } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      return { h, s, l };
+    }
+    function hslToRgb(h, s, l) {
+      let r, g, b;
+      if (s === 0) {
+        r = g = b = l;
+      } else {
+        const hue2rgb = function(p, q, t) {
+          if(t < 0) t += 1;
+          if(t > 1) t -= 1;
+          if(t < 1/6) return p + (q - p) * 6 * t;
+          if(t < 1/2) return q;
+          if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+          return p;
+        }
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+      }
+      return { r: r * 255, g: g * 255, b: b * 255 };
+    }
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+    // Pixelate
+    function pixelate(pixelSize) {
+      const width = canvas.width;
+      const height = canvas.height;
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = Math.ceil(width / pixelSize);
+      tempCanvas.height = Math.ceil(height / pixelSize);
+      tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, width, height);
+    }
+    // Reduce Colors
+    function reduceColors(numColors, palette) {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const color = { r: data[i], g: data[i + 1], b: data[i + 2] };
+        const nearest = findNearestColor(color, palette);
+        data[i] = nearest.r;
+        data[i + 1] = nearest.g;
+        data[i + 2] = nearest.b;
+      }
+      ctx.putImageData(imageData, 0, 0);
+    }
+    function generatePalette(numColors) {
+      if (paletteCache[numColors]) return paletteCache[numColors];
+      const palette = [];
+      for (let i = 0; i < numColors; i++) {
+        palette.push({
+          r: Math.floor(Math.random() * 256),
+          g: Math.floor(Math.random() * 256),
+          b: Math.floor(Math.random() * 256)
         });
-
-        // Slider Input Handlers with Debounce
-        const debouncedApplyPixelation = debounce(applyPixelation, 100);
-        [
-            resolutionSlider, pixelSizeSlider, colorReductionSlider, ditheringSlider,
-            aspectRatioWidthSlider, aspectRatioHeightSlider,
-            saturationSlider, contrastSlider, noiseSlider,
-            colorPaletteSelect
-        ].forEach(control => {
-            control.addEventListener('input', debouncedApplyPixelation);
-        });
-
-        // Update Slider and Input Values Display
-        function updateSliderValues() {
-            pixelSizeValue.textContent = pixelSizeSlider.value;
-            colorReductionValue.textContent = colorReductionSlider.value;
-            ditheringValue.textContent = ditheringSlider.value;
-            resolutionValue.textContent = resolutionSlider.value + '%';
-            aspectRatioWidthValue.textContent = aspectRatioWidthSlider.value + '%';
-            aspectRatioHeightValue.textContent = aspectRatioHeightSlider.value + '%';
-            saturationValue.textContent = saturationSlider.value;
-            contrastValue.textContent = contrastSlider.value;
-            noiseValue.textContent = noiseSlider.value;
+      }
+      paletteCache[numColors] = palette;
+      return palette;
+    }
+    function findNearestColor(color, palette) {
+      let minDistance = Infinity;
+      let nearestColor = palette[0];
+      for (let i = 0; i < palette.length; i++) {
+        const pColor = palette[i];
+        const distance = (color.r - pColor.r) ** 2 +
+                         (color.g - pColor.g) ** 2 +
+                         (color.b - pColor.b) ** 2;
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestColor = pColor;
         }
-
-        // Apply Pixelation and Effects
-        function applyPixelation() {
-            if (!originalImageData) return;
-            updateSliderValues();
-
-            // Reset to original image
-            ctx.putImageData(originalImageData, 0, 0);
-
-            // Get current settings
-            const scale = parseInt(resolutionSlider.value) / 100;
-            const pixelSize = parseInt(pixelSizeSlider.value);
-            const colorReduction = parseInt(colorReductionSlider.value);
-            const dithering = parseInt(ditheringSlider.value);
-            const paletteChoice = colorPaletteSelect.value;
-            const saturation = parseInt(saturationSlider.value);
-            const contrast = parseInt(contrastSlider.value);
-            const noise = parseInt(noiseSlider.value);
-            const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
-            const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
-
-            // Calculate new dimensions based on scale and aspect ratio
-            const targetWidth = originalWidth * scale * aspectWidth;
-            const targetHeight = originalHeight * scale * aspectHeight;
-
-            // Redraw the original image with new scaling and aspect ratio
-            redrawOriginalImage(targetWidth, targetHeight);
-
-            // Get palette
-            let palette;
-            if (paletteChoice === 'random') {
-                palette = generatePalette(colorReduction);
-            } else if (predefinedPalettes[paletteChoice].length > 0) {
-                palette = predefinedPalettes[paletteChoice];
-            } else {
-                palette = generatePalette(colorReduction);
-            }
-
-            // Apply saturation and contrast
-            adjustSaturationContrast(saturation, contrast);
-
-            // Apply pixelation
-            pixelate(pixelSize);
-
-            // Apply color reduction
-            reduceColors(colorReduction, palette);
-
-            // Apply noise
-            if (noise > 0) {
-                applyNoise(noise);
-            }
-
-            // Apply dithering
-            if (dithering > 0) {
-                applyDithering(dithering, palette);
-            }
+      }
+      return nearestColor;
+    }
+    // Dithering (Floyd-Steinberg)
+    function applyDithering(percentage, palette) {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const ditherAmount = percentage / 100;
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          const idx = (y * canvas.width + x) * 4;
+          const oldR = data[idx], oldG = data[idx + 1], oldB = data[idx + 2];
+          const newColor = findNearestColor({ r: oldR, g: oldG, b: oldB }, palette);
+          data[idx] = newColor.r;
+          data[idx + 1] = newColor.g;
+          data[idx + 2] = newColor.b;
+          const errorR = oldR - newColor.r;
+          const errorG = oldG - newColor.g;
+          const errorB = oldB - newColor.b;
+          distributeError(data, x + 1, y, errorR, errorG, errorB, ditherAmount);
+          distributeError(data, x - 1, y + 1, errorR, errorG, errorB, ditherAmount);
+          distributeError(data, x, y + 1, errorR, errorG, errorB, ditherAmount);
+          distributeError(data, x + 1, y + 1, errorR, errorG, errorB, ditherAmount);
         }
-
-        // Redraw Original Image with New Dimensions
-        function redrawOriginalImage(targetWidth, targetHeight) {
-            if (!originalImageData) return;
-            // Create a temporary canvas to handle scaling
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            tempCtx.putImageData(originalImageData, 0, 0);
-
-            // Resize main canvas
-            canvas.width = targetWidth;
-            canvas.height = targetHeight;
-
-            // Draw scaled image onto main canvas
-            ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, targetWidth, targetHeight);
-
-            // Update originalImageData to the new scaled image
-            originalImageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
-        }
-
-        // Adjust Saturation and Contrast
-        function adjustSaturationContrast(saturation, contrast) {
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-
-            // Convert to HSL, adjust saturation, convert back
-            for (let i = 0; i < data.length; i += 4) {
-                let {h, s, l} = rgbToHsl(data[i], data[i + 1], data[i + 2]);
-                s = s * (saturation / 100);
-                // Clamp saturation
-                s = Math.max(0, Math.min(1, s));
-                let {r, g, b} = hslToRgb(h, s, l);
-
-                // Adjust contrast
-                r = ((r - 128) * (contrast / 100)) + 128;
-                g = ((g - 128) * (contrast / 100)) + 128;
-                b = ((b - 128) * (contrast / 100)) + 128;
-
-                data[i] = clamp(r, 0, 255);
-                data[i + 1] = clamp(g, 0, 255);
-                data[i + 2] = clamp(b, 0, 255);
-            }
-
-            ctx.putImageData(imageData, 0, 0);
-        }
-
-        // RGB to HSL Conversion
-        function rgbToHsl(r, g, b) {
-            r /= 255; g /= 255; b /= 255;
-            const max = Math.max(r, g, b);
-            const min = Math.min(r, g, b);
-            let h, s, l = (max + min) / 2;
-
-            if (max === min) {
-                h = s = 0; // achromatic
-            } else {
-                const d = max - min;
-                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-                switch (max) {
-                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                    case g: h = (b - r) / d + 2; break;
-                    case b: h = (r - g) / d + 4; break;
-                }
-                h /= 6;
-            }
-
-            return { h, s, l };
-        }
-
-        // HSL to RGB Conversion
-        function hslToRgb(h, s, l) {
-            let r, g, b;
-
-            if (s === 0) {
-                r = g = b = l; // achromatic
-            } else {
-                const hue2rgb = function(p, q, t) {
-                    if(t < 0) t += 1;
-                    if(t > 1) t -= 1;
-                    if(t < 1/6) return p + (q - p) * 6 * t;
-                    if(t < 1/2) return q;
-                    if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-                    return p;
-                }
-
-                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-                const p = 2 * l - q;
-                r = hue2rgb(p, q, h + 1/3);
-                g = hue2rgb(p, q, h);
-                b = hue2rgb(p, q, h - 1/3);
-            }
-
-            return { r: r * 255, g: g * 255, b: b * 255 };
-        }
-
-        // Clamp Function
-        function clamp(value, min, max) {
-            return Math.max(min, Math.min(max, value));
-        }
-
-        // Pixelate Function
-        function pixelate(pixelSize) {
-            const width = canvas.width;
-            const height = canvas.height;
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-
-            tempCanvas.width = Math.ceil(width / pixelSize);
-            tempCanvas.height = Math.ceil(height / pixelSize);
-
-            // Draw the original image scaled down
-            tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-
-            // Draw the scaled down image back to canvas scaled up
-            ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, width, height);
-        }
-
-        // Reduce Colors Function
-        function reduceColors(numColors, palette) {
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-
-            for (let i = 0; i < data.length; i += 4) {
-                const color = { r: data[i], g: data[i + 1], b: data[i + 2] };
-                const nearest = findNearestColor(color, palette);
-                data[i] = nearest.r;
-                data[i + 1] = nearest.g;
-                data[i + 2] = nearest.b;
-            }
-
-            ctx.putImageData(imageData, 0, 0);
-        }
-
-        // Generate Palette (Simple Quantization)
-        function generatePalette(numColors) {
-            if (paletteCache[numColors]) {
-                return paletteCache[numColors];
-            }
-            const palette = [];
-            for (let i = 0; i < numColors; i++) {
-                palette.push({
-                    r: Math.floor(Math.random() * 256),
-                    g: Math.floor(Math.random() * 256),
-                    b: Math.floor(Math.random() * 256)
-                });
-            }
-            paletteCache[numColors] = palette;
-            return palette;
-        }
-
-        // Find Nearest Color in Palette
-        function findNearestColor(color, palette) {
-            let minDistance = Infinity;
-            let nearestColor = palette[0];
-            for (let i = 0; i < palette.length; i++) {
-                const paletteColor = palette[i];
-                const distance = (color.r - paletteColor.r) ** 2 +
-                                 (color.g - paletteColor.g) ** 2 +
-                                 (color.b - paletteColor.b) ** 2;
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestColor = paletteColor;
-                }
-            }
-            return nearestColor;
-        }
-
-        // Apply Dithering (Floyd-Steinberg)
-        function applyDithering(percentage, palette) {
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            const ditherAmount = percentage / 100;
-
-            for (let y = 0; y < canvas.height; y++) {
-                for (let x = 0; x < canvas.width; x++) {
-                    const idx = (y * canvas.width + x) * 4;
-                    const oldR = data[idx];
-                    const oldG = data[idx + 1];
-                    const oldB = data[idx + 2];
-
-                    const newColor = findNearestColor({ r: oldR, g: oldG, b: oldB }, palette);
-                    data[idx] = newColor.r;
-                    data[idx + 1] = newColor.g;
-                    data[idx + 2] = newColor.b;
-
-                    const errorR = oldR - newColor.r;
-                    const errorG = oldG - newColor.g;
-                    const errorB = oldB - newColor.b;
-
-                    // Distribute the error
-                    distributeError(data, x + 1, y, errorR, errorG, errorB, ditherAmount);
-                    distributeError(data, x - 1, y + 1, errorR, errorG, errorB, ditherAmount);
-                    distributeError(data, x, y + 1, errorR, errorG, errorB, ditherAmount);
-                    distributeError(data, x + 1, y + 1, errorR, errorG, errorB, ditherAmount);
-                }
-            }
-
-            ctx.putImageData(imageData, 0, 0);
-        }
-
-        // Distribute Error for Dithering
-        function distributeError(data, x, y, errorR, errorG, errorB, amount) {
-            if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return;
-            const idx = (y * canvas.width + x) * 4;
-            data[idx] = clamp(data[idx] + errorR * amount, 0, 255);
-            data[idx + 1] = clamp(data[idx + 1] + errorG * amount, 0, 255);
-            data[idx + 2] = clamp(data[idx + 2] + errorB * amount, 0, 255);
-        }
-
-        // Truncate Color Values
-        // (Combined with clamp in distributeError)
-
-        // Apply Noise
-        function applyNoise(amount) {
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            const noiseLevel = amount / 100;
-
-            for (let i = 0; i < data.length; i += 4) {
-                const rand = (Math.random() - 0.5) * 255 * noiseLevel;
-                data[i] = clamp(data[i] + rand, 0, 255);     // Red
-                data[i + 1] = clamp(data[i + 1] + rand, 0, 255); // Green
-                data[i + 2] = clamp(data[i + 2] + rand, 0, 255); // Blue
-            }
-
-            ctx.putImageData(imageData, 0, 0);
-        }
-
-        // Download Button Handler
-        downloadBtn.addEventListener('click', function() {
-            if (!canvas.width || !canvas.height) {
-                alert('Please upload an image first.');
-                return;
-            }
-            const link = document.createElement('a');
-            link.download = 'pixel-art.png';
-            link.href = canvas.toDataURL();
-            link.click();
-        });
-
-        // Reset Button Handler
-        resetBtn.addEventListener('click', function() {
-            if (!originalImageData) return;
-            // Reset sliders and inputs to default values
-            resolutionSlider.value = 100;
-            pixelSizeSlider.value = 10;
-            colorReductionSlider.value = 16;
-            ditheringSlider.value = 0;
-            saturationSlider.value = 100;
-            contrastSlider.value = 100;
-            noiseSlider.value = 0;
-            colorPaletteSelect.value = 'random';
-            aspectRatioWidthSlider.value = 100;
-            aspectRatioHeightSlider.value = 100;
-
-            // Update displayed values
-            updateSliderValues();
-
-            // Re-draw the original image with default scaling and aspect ratio
-            const targetWidth = originalWidth;
-            const targetHeight = originalHeight;
-            redrawOriginalImage(targetWidth, targetHeight);
-
-            // Apply pixelation
-            applyPixelation();
-        });
-
-        // Randomize Button Handler
-        randomizeBtn.addEventListener('click', function() {
-            if (!originalImageData) return;
-            // Randomize slider and input values within their ranges
-            resolutionSlider.value = getRandomInt(50, 200);
-            pixelSizeSlider.value = getRandomInt(2, 50);
-            colorReductionSlider.value = getRandomInt(2, 256);
-            ditheringSlider.value = getRandomInt(0, 100);
-            saturationSlider.value = getRandomInt(50, 200);
-            contrastSlider.value = getRandomInt(50, 200);
-            noiseSlider.value = getRandomInt(0, 100);
-            colorPaletteSelect.value = getRandomPaletteChoice();
-            aspectRatioWidthSlider.value = getRandomInt(50, 200);
-            aspectRatioHeightSlider.value = getRandomInt(50, 200);
-
-            // Update displayed values
-            updateSliderValues();
-
-            // Re-draw the original image with new scaling and aspect ratio
-            const scale = parseInt(resolutionSlider.value) / 100;
-            const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
-            const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
-            const targetWidth = originalWidth * scale * aspectWidth;
-            const targetHeight = originalHeight * scale * aspectHeight;
-            redrawOriginalImage(targetWidth, targetHeight);
-
-            // Apply pixelation
-            applyPixelation();
-        });
-
-        // Save Button Handler
-        saveBtn.addEventListener('click', function() {
-            if (!originalImageData) {
-                alert('Please upload an image first.');
-                return;
-            }
-            const currentSettings = {
-                resolution: resolutionSlider.value,
-                pixelSize: pixelSizeSlider.value,
-                colorReduction: colorReductionSlider.value,
-                dithering: ditheringSlider.value,
-                saturation: saturationSlider.value,
-                contrast: contrastSlider.value,
-                noise: noiseSlider.value,
-                colorPalette: colorPaletteSelect.value,
-                aspectRatioWidth: aspectRatioWidthSlider.value,
-                aspectRatioHeight: aspectRatioHeightSlider.value
-            };
-            savedSettings.push(currentSettings);
-            localStorage.setItem('pixelArtSaves', JSON.stringify(savedSettings));
-            loadSavedSettings();
-            alert('Settings saved successfully!');
-        });
-
-        // Load Button Handler
-        loadBtn.addEventListener('click', function() {
-            if (savedSettingsSelect.value === "") {
-                alert('Please select a saved setting to load.');
-                return;
-            }
-            const selectedIndex = savedSettingsSelect.value;
-            const selectedSave = savedSettings[selectedIndex];
-            if (selectedSave) {
-                resolutionSlider.value = selectedSave.resolution;
-                pixelSizeSlider.value = selectedSave.pixelSize;
-                colorReductionSlider.value = selectedSave.colorReduction;
-                ditheringSlider.value = selectedSave.dithering;
-                saturationSlider.value = selectedSave.saturation;
-                contrastSlider.value = selectedSave.contrast;
-                noiseSlider.value = selectedSave.noise;
-                colorPaletteSelect.value = selectedSave.colorPalette;
-                aspectRatioWidthSlider.value = selectedSave.aspectRatioWidth;
-                aspectRatioHeightSlider.value = selectedSave.aspectRatioHeight;
-
-                updateSliderValues();
-
-                // Re-draw the original image with loaded scaling and aspect ratio
-                const scale = parseInt(resolutionSlider.value) / 100;
-                const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
-                const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
-                const targetWidth = originalWidth * scale * aspectWidth;
-                const targetHeight = originalHeight * scale * aspectHeight;
-                redrawOriginalImage(targetWidth, targetHeight);
-
-                // Apply pixelation
-                applyPixelation();
-            }
-        });
-
-        // Color Palette Selection Handler
-        colorPaletteSelect.addEventListener('change', function() {
-            if (colorPaletteSelect.value === 'custom') {
-                alert('Custom palette feature is not implemented yet.');
-                colorPaletteSelect.value = 'random';
-            }
-            applyPixelation();
-        });
-
-        // Utility Function to Get Random Integer
-        function getRandomInt(min, max) {
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        }
-
-        // Utility Function to Get Random Palette Choice
-        function getRandomPaletteChoice() {
-            const choices = Object.keys(predefinedPalettes);
-            return choices[getRandomInt(0, choices.length - 1)];
-        }
-    </script>
-
+      }
+      ctx.putImageData(imageData, 0, 0);
+    }
+    function distributeError(data, x, y, errorR, errorG, errorB, amount) {
+      if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return;
+      const idx = (y * canvas.width + x) * 4;
+      data[idx] = clamp(data[idx] + errorR * amount, 0, 255);
+      data[idx + 1] = clamp(data[idx + 1] + errorG * amount, 0, 255);
+      data[idx + 2] = clamp(data[idx + 2] + errorB * amount, 0, 255);
+    }
+    // Noise
+    function applyNoise(amount) {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const noiseLevel = amount / 100;
+      for (let i = 0; i < data.length; i += 4) {
+        const rand = (Math.random() - 0.5) * 255 * noiseLevel;
+        data[i] = clamp(data[i] + rand, 0, 255);
+        data[i + 1] = clamp(data[i + 1] + rand, 0, 255);
+        data[i + 2] = clamp(data[i + 2] + rand, 0, 255);
+      }
+      ctx.putImageData(imageData, 0, 0);
+    }
+    // Function to generate random file names (8 alphanumeric characters)
+    function generateRandomFileName() {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < 8; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result + '.png';
+    }
+    // Button Handlers
+    downloadBtn.addEventListener('click', function() {
+      if (!canvas.width || !canvas.height) {
+        alert('Please upload an image first.');
+        return;
+      }
+      const link = document.createElement('a');
+      link.download = generateRandomFileName();
+      link.href = canvas.toDataURL();
+      link.click();
+    });
+    resetBtn.addEventListener('click', function() {
+      if (!originalImageData) return;
+      resolutionSlider.value = 100;
+      pixelSizeSlider.value = 10;
+      colorReductionSlider.value = 16;
+      ditheringSlider.value = 0;
+      saturationSlider.value = 100;
+      contrastSlider.value = 100;
+      noiseSlider.value = 0;
+      colorPaletteSelect.value = 'default';
+      aspectRatioWidthSlider.value = 100;
+      aspectRatioHeightSlider.value = 100;
+      resolutionPresetSelect.value = 'custom';
+      resolutionSlider.disabled = false;
+      updateSliderValues();
+      const targetWidth = originalWidth;
+      const targetHeight = originalHeight;
+      redrawOriginalImage(targetWidth, targetHeight);
+      applyPixelation();
+    });
+    randomizeBtn.addEventListener('click', function() {
+      if (!originalImageData) return;
+      resolutionSlider.value = getRandomInt(50, 200);
+      pixelSizeSlider.value = getRandomInt(2, 50);
+      colorReductionSlider.value = getRandomInt(2, 256);
+      ditheringSlider.value = getRandomInt(0, 100);
+      saturationSlider.value = getRandomInt(50, 200);
+      contrastSlider.value = getRandomInt(50, 200);
+      noiseSlider.value = getRandomInt(0, 100);
+      colorPaletteSelect.value = getRandomPaletteChoice();
+      aspectRatioWidthSlider.value = getRandomInt(50, 200);
+      aspectRatioHeightSlider.value = getRandomInt(50, 200);
+      resolutionPresetSelect.value = 'custom';
+      resolutionSlider.disabled = false;
+      updateSliderValues();
+      const scale = parseInt(resolutionSlider.value) / 100;
+      const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
+      const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
+      const targetWidth = originalWidth * scale * aspectWidth;
+      const targetHeight = originalHeight * scale * aspectHeight;
+      redrawOriginalImage(targetWidth, targetHeight);
+      applyPixelation();
+    });
+    saveBtn.addEventListener('click', function() {
+      if (!originalImageData) {
+        alert('Please upload an image first.');
+        return;
+      }
+      const currentSettings = {
+        resolution: resolutionSlider.value,
+        pixelSize: pixelSizeSlider.value,
+        colorReduction: colorReductionSlider.value,
+        dithering: ditheringSlider.value,
+        saturation: saturationSlider.value,
+        contrast: contrastSlider.value,
+        noise: noiseSlider.value,
+        colorPalette: colorPaletteSelect.value,
+        aspectRatioWidth: aspectRatioWidthSlider.value,
+        aspectRatioHeight: aspectRatioHeightSlider.value,
+        pixelationStyle: pixelationStyleSelect.value
+      };
+      savedSettings.push(currentSettings);
+      localStorage.setItem('pixelArtSaves', JSON.stringify(savedSettings));
+      loadSavedSettings();
+      alert('Settings saved successfully!');
+    });
+    loadBtn.addEventListener('click', function() {
+      if (savedSettingsSelect.value === "") {
+        alert('Please select a saved setting to load.');
+        return;
+      }
+      const selectedIndex = savedSettingsSelect.value;
+      const selectedSave = savedSettings[selectedIndex];
+      if (selectedSave) {
+        resolutionSlider.value = selectedSave.resolution;
+        pixelSizeSlider.value = selectedSave.pixelSize;
+        colorReductionSlider.value = selectedSave.colorReduction;
+        ditheringSlider.value = selectedSave.dithering;
+        saturationSlider.value = selectedSave.saturation;
+        contrastSlider.value = selectedSave.contrast;
+        noiseSlider.value = selectedSave.noise;
+        colorPaletteSelect.value = selectedSave.colorPalette;
+        aspectRatioWidthSlider.value = selectedSave.aspectRatioWidth;
+        aspectRatioHeightSlider.value = selectedSave.aspectRatioHeight;
+        pixelationStyleSelect.value = selectedSave.pixelationStyle || 'standard';
+        updateSliderValues();
+        const scale = parseInt(resolutionSlider.value) / 100;
+        const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
+        const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
+        const targetWidth = originalWidth * scale * aspectWidth;
+        const targetHeight = originalHeight * scale * aspectHeight;
+        redrawOriginalImage(targetWidth, targetHeight);
+        applyPixelation();
+      }
+    });
+    colorPaletteSelect.addEventListener('change', function() {
+      if (colorPaletteSelect.value === 'custom') {
+        alert('Custom palette feature is not implemented yet.');
+        colorPaletteSelect.value = 'default';
+      }
+      applyPixelation();
+    });
+    function getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+    function getRandomPaletteChoice() {
+      const choices = Object.keys(predefinedPalettes);
+      return choices[getRandomInt(0, choices.length - 1)];
+    }
+  </script>
 </body>
 </html>
