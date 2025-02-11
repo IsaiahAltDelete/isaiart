@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>METADATA VIEWER</title>
+  <!-- Import Poppins font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* Global reset and box-sizing */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Body styling */
+    body {
+      background-color: #fff;
+      color: #000;
+      font-family: 'Poppins', sans-serif;
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    /* Container centering and responsive width */
+    .container {
+      max-width: 800px;
+      width: 100%;
+      text-align: center;
+      gap: 1.5rem;
+    }
+
+    /* Headings */
+    h3 {
+      font-weight: 800;
+      margin-bottom: 2rem;
+    }
+
+    /* Hide the actual file input */
+    #fileInput {
+      display: none;
+    }
+
+    /* Drop zone styling (also used as the clickable file selector) */
+    #dropZone {
+      display: inline-block;
+      padding: 2rem;
+      border: 2px solid #000;
+      border-radius: 16px;
+      cursor: pointer;
+      font-weight: 700;
+      text-transform: uppercase;
+      background-color: #fff;
+      transition: background-color 0.3s, color 0.3s;
+      width: 100%;
+    }
+    #dropZone.dragover {
+      background-color: #000;
+      color: #fff;
+    }
+
+    /* Metadata card styling */
+    .metadata-card {
+      border: 2px solid #000;
+      border-radius: 16px;
+      padding: 2rem;
+      margin-top: 1.5rem;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+      text-align: left;
+    }
+    .metadata-card h6 {
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .metadata-card pre {
+      background-color: #fff;
+      border: 2px solid #000;
+      border-radius: 12px;
+      padding: 1rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin-bottom: 1rem;
+    }
+
+    /* Toast styling */
+    .custom-toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #000;
+      color: #fff;
+      border: 2px solid #000;
+      border-radius: 16px;
+      padding: 1rem 2rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+      z-index: 1000;
+    }
+    .custom-toast.fade-out {
+      opacity: 0;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      #dropZone {
+        padding: 1.5rem;
+      }
+      .metadata-card {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h3>METADATA VIEWER</h3>
+    <!-- Drop zone for drag & drop, click to select, and paste -->
+    <div id="dropZone">Drag & Drop Image Here or Click to Select</div>
+    <!-- Hidden file input -->
+    <input type="file" id="fileInput" accept="image/png" />
+    <div id="metadataOutput"></div>
+  </div>
+
+  <script>
+    // Custom toast function for displaying error messages.
+    function showToast(message, duration = 3000) {
+      const toast = document.createElement('div');
+      toast.className = 'custom-toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('fade-out');
+        toast.addEventListener('transitionend', () => {
+          toast.remove();
+        });
+      }, duration);
+    }
+
+    // Process the file (from file input, drag & drop, or paste)
+    function processFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const arrayBuffer = evt.target.result;
+        const data = new DataView(arrayBuffer);
+
+        // Verify PNG signature (first 8 bytes)
+        const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+        for (let i = 0; i < 8; i++) {
+          if (data.getUint8(i) !== pngSignature[i]) {
+            showToast('Not a valid PNG file.');
+            return;
+          }
+        }
+
+        // Parse PNG chunks for tEXt metadata
+        let offset = 8;
+        const metadata = {};
+        while (offset < data.byteLength) {
+          if (offset + 8 > data.byteLength) break;
+          const length = data.getUint32(offset);
+          offset += 4;
+          let type = '';
+          for (let i = 0; i < 4; i++) {
+            type += String.fromCharCode(data.getUint8(offset + i));
+          }
+          offset += 4;
+          if (offset + length > data.byteLength) break;
+
+          // Handle tEXt chunks
+          if (type === 'tEXt') {
+            const textBytes = new Uint8Array(arrayBuffer, offset, length);
+            const nullIndex = textBytes.indexOf(0);
+            if (nullIndex !== -1) {
+              const keyword = new TextDecoder().decode(textBytes.slice(0, nullIndex));
+              const textValue = new TextDecoder().decode(textBytes.slice(nullIndex + 1));
+              metadata[keyword] = textValue;
+            }
+          }
+          // Skip the data and the 4-byte CRC
+          offset += length + 4;
+        }
+        displayMetadata(metadata);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // File input change event listener
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      processFile(e.target.files[0]);
+    });
+
+    // Drop zone event listeners
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', function(e) {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+    });
+    dropZone.addEventListener('drop', function(e) {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processFile(e.dataTransfer.files[0]);
+        e.dataTransfer.clearData();
+      }
+    });
+    // Clicking the drop zone opens the file selector
+    dropZone.addEventListener('click', function() {
+      document.getElementById('fileInput').click();
+    });
+
+    // Listen for Ctrl+V paste events for images.
+    document.addEventListener('paste', function(e) {
+      if (e.clipboardData) {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            const file = items[i].getAsFile();
+            processFile(file);
+            break;
+          }
+        }
+      }
+    });
+
+    // Display metadata in styled cards.
+    function displayMetadata(metadata) {
+      const outputDiv = document.getElementById('metadataOutput');
+      outputDiv.innerHTML = '';
+
+      if (Object.keys(metadata).length === 0) {
+        outputDiv.innerHTML = '<p>No metadata found.</p>';
+        return;
+      }
+
+      // Handle "parameters" key for Stable Diffusion metadata.
+      if (metadata["parameters"]) {
+        let paramText = metadata["parameters"];
+        let posPrompt = paramText;
+        let negPrompt = "";
+        let extraParams = "";
+        const negIndex = paramText.indexOf("Negative prompt:");
+        if (negIndex !== -1) {
+          posPrompt = paramText.substring(0, negIndex).trim();
+          const rest = paramText.substring(negIndex).trim();
+          const newlineIndex = rest.indexOf("\n");
+          if (newlineIndex !== -1) {
+            negPrompt = rest.substring(0, newlineIndex).replace("Negative prompt:", "").trim();
+            extraParams = rest.substring(newlineIndex).trim();
+          } else {
+            negPrompt = rest.replace("Negative prompt:", "").trim();
+          }
+        }
+
+        // Create a card for generation parameters.
+        const card = document.createElement('div');
+        card.className = 'metadata-card';
+        const title = document.createElement('h6');
+        title.textContent = "Generation Parameters";
+        card.appendChild(title);
+
+        // Positive prompt.
+        const posLabel = document.createElement('h6');
+        posLabel.textContent = "Positive Prompt";
+        card.appendChild(posLabel);
+        const posPre = document.createElement('pre');
+        posPre.textContent = posPrompt;
+        card.appendChild(posPre);
+
+        // Negative prompt (if available).
+        if (negPrompt) {
+          const negLabel = document.createElement('h6');
+          negLabel.textContent = "Negative Prompt";
+          card.appendChild(negLabel);
+          const negPre = document.createElement('pre');
+          negPre.textContent = negPrompt;
+          card.appendChild(negPre);
+        }
+
+        // Extra parameters (if available).
+        if (extraParams) {
+          const extraLabel = document.createElement('h6');
+          extraLabel.textContent = "Other Parameters";
+          card.appendChild(extraLabel);
+          const extraPre = document.createElement('pre');
+          extraPre.textContent = extraParams;
+          card.appendChild(extraPre);
+        }
+        outputDiv.appendChild(card);
+      }
+
+      // Display any additional metadata fields (other than "parameters").
+      Object.keys(metadata).forEach(function (key) {
+        if (key === "parameters") return;
+        const card = document.createElement('div');
+        card.className = 'metadata-card';
+        const title = document.createElement('h6');
+        title.textContent = key;
+        card.appendChild(title);
+        const pre = document.createElement('pre');
+        pre.textContent = metadata[key];
+        card.appendChild(pre);
+        outputDiv.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>
