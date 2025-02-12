@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Code Editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .editor-container {
+            width: 80%;
+            margin: auto;
+            height: 500px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .CodeMirror {
+            height: 100%;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Python Code Editor</h1>
+    <div class="editor-container">
+        <textarea id="editor"># Write your Python code here</textarea>
+    </div>
+    <button onclick="downloadPythonFile()">Download Python File</button>
+
+    <script>
+        function generateRandomFilename() {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let filename = '';
+            for (let i = 0; i < 8; i++) {
+                filename += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            return filename + '.py';
+        }
+
+        function downloadPythonFile() {
+            const code = editor.getValue();
+            const filename = generateRandomFilename();
+            const blob = new Blob([code], { type: 'text/x-python' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        const editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
+            mode: "python",
+            lineNumbers: true,
+            theme: "dracula",
+            indentUnit: 4,
+            tabSize: 4,
+            smartIndent: true,
+            matchBrackets: true,
+            autoCloseBrackets: true
+        });
+    </script>
+</body>
+</html>

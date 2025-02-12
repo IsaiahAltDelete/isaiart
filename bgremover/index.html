@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Sprite Background Remover (Color Distance + Threshold)</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      padding: 20px;
+      background: #f2f2f2;
+      margin-bottom: 20px;
+    }
+    #drop-area {
+      border: 2px dashed #ccc;
+      border-radius: 20px;
+      width: 80%;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      cursor: pointer;
+    }
+    #drop-area.hover {
+      border-color: #333;
+    }
+    #controls {
+      margin: 20px 0;
+    }
+    #controls label {
+      margin: 0 5px;
+    }
+    .preview-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .preview-box {
+      margin: 10px;
+    }
+    .preview-box canvas {
+      max-width: 300px;
+      border: 1px solid #ccc;
+      display: block;
+      margin: 0 auto;
+    }
+    #status {
+      margin: 10px 0;
+      font-style: italic;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Sprite Background Remover</h1>
+    <p>(Color Distance + Threshold Slider)</p>
+  </header>
+
+  <div id="drop-area">
+    <p>Drag and drop an image file here or click to select one.</p>
+    <input type="file" id="fileElem" accept="image/*" style="display:none">
+    <button id="fileSelect">Select an Image</button>
+  </div>
+
+  <p id="status"></p>
+
+  <div class="preview-container" id="preview-container"></div>
+
+  <div id="controls">
+    <label for="colorPicker">Background Color:</label>
+    <input type="color" id="colorPicker" value="#000000">
+    
+    <label for="thresholdSlider">Threshold:</label>
+    <input type="range" id="thresholdSlider" min="0" max="255" value="50">
+    <span id="thresholdValue">50</span>
+
+    <button id="applyBtn" style="display:none;">Apply</button>
+    <button id="downloadBtn" style="display:none;">Download Processed Image</button>
+    <button id="clearBtn" style="display:none;">Clear</button>
+  </div>
+
+  <script>
+    // DOM references
+    const dropArea = document.getElementById('drop-area');
+    const fileSelect = document.getElementById('fileSelect');
+    const fileElem = document.getElementById('fileElem');
+    const previewContainer = document.getElementById('preview-container');
+    const statusElem = document.getElementById('status');
+    const colorPicker = document.getElementById('colorPicker');
+    const thresholdSlider = document.getElementById('thresholdSlider');
+    const thresholdValueSpan = document.getElementById('thresholdValue');
+    const applyBtn = document.getElementById('applyBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    // We will store the loaded image in memory so we can re-process it with different thresholds
+    let originalImage = null;
+    let originalCanvas = null;
+    let processedCanvas = null;
+
+    // Prevent default behaviors for drag & drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropArea.addEventListener(eventName, preventDefaults, false);
+      document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Visual hover effect
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropArea.addEventListener(eventName, () => dropArea.classList.add('hover'), false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropArea.addEventListener(eventName, () => dropArea.classList.remove('hover'), false);
+    });
+
+    // Handle dropped files
+    dropArea.addEventListener('drop', handleDrop, false);
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files && files[0]) {
+        handleFile(files[0]);
+      }
+    }
+
+    // Handle file selection
+    fileSelect.addEventListener('click', () => fileElem.click(), false);
+    fileElem.addEventListener('change', function() {
+      if (this.files && this.files[0]) {
+        handleFile(this.files[0]);
+      }
+    });
+
+    // Range slider display
+    thresholdSlider.addEventListener('input', () => {
+      thresholdValueSpan.textContent = thresholdSlider.value;
+    });
+
+    // Once user picks a new color or threshold, we can re-run
+    applyBtn.addEventListener('click', () => {
+      if (originalImage) {
+        removeBackground();
+      }
+    });
+
+    // Download processed image
+    downloadBtn.addEventListener('click', () => {
+      if (processedCanvas) {
+        const link = document.createElement('a');
+        link.download = 'processed_image.png';
+        link.href = processedCanvas.toDataURL();
+        link.click();
+      }
+    });
+
+    // Clear everything
+    clearBtn.addEventListener('click', () => {
+      previewContainer.innerHTML = '';
+      downloadBtn.style.display = 'none';
+      clearBtn.style.display = 'none';
+      applyBtn.style.display = 'none';
+      statusElem.textContent = '';
+      fileElem.value = '';
+      originalImage = null;
+      originalCanvas = null;
+      processedCanvas = null;
+    });
+
+    // Main function to handle an image file
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Please select a valid image file.');
+        return;
+      }
+      // Reset UI
+      previewContainer.innerHTML = '';
+      downloadBtn.style.display = 'none';
+      clearBtn.style.display = 'none';
+      applyBtn.style.display = 'none';
+      statusElem.textContent = 'Loading image...';
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          statusElem.textContent = 'Image loaded.';
+          originalImage = img; // Store in memory
+          createOriginalPreview(img);
+          createProcessedPreview(img);
+          applyBtn.style.display = 'inline-block';
+          clearBtn.style.display = 'inline-block';
+          downloadBtn.style.display = 'inline-block'; // we’ll enable download right away
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Show original image in a canvas
+    function createOriginalPreview(img) {
+      const originalDiv = document.createElement('div');
+      originalDiv.className = 'preview-box';
+      const originalTitle = document.createElement('p');
+      originalTitle.textContent = 'Original Photo';
+      originalCanvas = document.createElement('canvas');
+      originalCanvas.width = img.width;
+      originalCanvas.height = img.height;
+      const ctx = originalCanvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      originalDiv.appendChild(originalTitle);
+      originalDiv.appendChild(originalCanvas);
+      previewContainer.appendChild(originalDiv);
+    }
+
+    // Show processed image in a canvas (initially runs once)
+    function createProcessedPreview(img) {
+      processedCanvas = document.createElement('canvas');
+      processedCanvas.width = img.width;
+      processedCanvas.height = img.height;
+
+      const processedDiv = document.createElement('div');
+      processedDiv.className = 'preview-box';
+      const processedTitle = document.createElement('p');
+      processedTitle.textContent = 'Processed Photo';
+      processedDiv.appendChild(processedTitle);
+      processedDiv.appendChild(processedCanvas);
+      previewContainer.appendChild(processedDiv);
+
+      removeBackground(); // run removal the first time
+    }
+
+    // Removes background using color distance & threshold
+    function removeBackground() {
+      if (!originalImage || !processedCanvas) return;
+
+      statusElem.textContent = 'Removing background...';
+
+      // Draw the original image onto the processed canvas
+      const ctx = processedCanvas.getContext('2d');
+      ctx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
+      ctx.drawImage(originalImage, 0, 0);
+
+      // Grab color + threshold
+      const colorValue = colorPicker.value; // e.g. "#000000"
+      const threshold = parseInt(thresholdSlider.value, 10);
+
+      // Convert colorValue from hex to RGB
+      const rC = parseInt(colorValue.substr(1, 2), 16);
+      const gC = parseInt(colorValue.substr(3, 2), 16);
+      const bC = parseInt(colorValue.substr(5, 2), 16);
+
+      // Get pixel data
+      const imageData = ctx.getImageData(0, 0, processedCanvas.width, processedCanvas.height);
+      const data = imageData.data;
+
+      // For each pixel, measure distance from chosen color
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        const dr = r - rC;
+        const dg = g - gC;
+        const db = b - bC;
+        // Euclidean distance in RGB space
+        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+
+        if (dist < threshold) {
+          // Set alpha to 0 to remove pixel
+          data[i + 3] = 0;
+        }
+      }
+
+      // Put modified data back
+      ctx.putImageData(imageData, 0, 0);
+
+      statusElem.textContent = 'Done!';
+    }
+  </script>
+</body>
+</html>
