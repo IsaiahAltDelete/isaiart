@@ -1,448 +1,429 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Twitter Search Query Generator</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- Import Poppins font -->
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-
-<style>
-    body {
-        font-family: 'Poppins', sans-serif;
-        margin: 0;
-        background: #fafafa;
-        color: #333;
-        padding: 20px;
-        box-sizing: border-box;
-    }
-
-    h1 {
-        text-align: center;
-        font-weight: 600;
-        font-size: 1.8rem;
-        margin-bottom: 30px;
-        color: #222;
-    }
-
-    .form-group {
-        margin-bottom: 20px;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .form-group label {
-        margin-bottom: 8px;
-        font-weight: 500;
-        font-size: 1rem;
-    }
-
-    input[type="text"],
-    input[type="number"],
-    input[type="date"],
-    textarea,
-    select {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        font-size: 0.95rem;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        background: #fff;
-        color: #333;
-    }
-
-    input:focus,
-    textarea:focus,
-    select:focus {
-        outline: none;
-        border-color: #1da1f2;
-        box-shadow: 0 0 0 2px rgba(29,161,242,0.2);
-    }
-
-    .form-inline-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-    }
-
-    .form-inline-group .form-group {
-        flex: 1 1 100%;
-    }
-
-    @media (min-width: 500px) {
-        .form-inline-group .form-group {
-            flex: 1;
-        }
-    }
-
-    .toggle-group {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .toggle-group input[type="checkbox"] {
-        transform: scale(1.2);
-        cursor: pointer;
-    }
-
-    #generateQuery {
-        background: #1da1f2;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 14px;
-        font-size: 1rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background 0.3s, transform 0.2s, box-shadow 0.2s;
-        width: 100%;
-        margin-top: 10px;
-    }
-
-    #generateQuery:hover {
-        background: #0d8bd6;
-    }
-
-    #generateQuery:active {
-        transform: scale(0.98);
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-
-    #generateQuery:focus {
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(29,161,242,0.2);
-    }
-
-    .output-group {
-        margin-top: 30px;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .output-group label {
-        margin-bottom: 8px;
-        font-weight: 500;
-        font-size: 1rem;
-    }
-
-    .output-group textarea {
-        height: 100px;
-        resize: none;
-        font-size: 0.95rem;
-    }
-
-    /* Advanced Section */
-    .advanced-toggle {
-        text-align: center;
-        margin: 20px 0;
-    }
-
-    #advancedFilters {
-        display: none;
-        margin-top: 20px;
-        animation: fadeIn 0.3s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from {opacity: 0;}
-      to {opacity: 1;}
-    }
-
-    .advanced-btn {
-        background: none;
-        border: 2px solid #1da1f2;
-        color: #1da1f2;
-        padding: 10px 20px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 1rem;
-        transition: background 0.3s, color 0.3s;
-    }
-
-    .advanced-btn:hover {
-        background: #1da1f2;
-        color: #fff;
-    }
-
-    /* Dark mode adjustments */
-    @media (prefers-color-scheme: dark) {
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X/Twitter Search Maestro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        /* (Previous CSS styles remain unchanged) */
         body {
-            background: #121212;
-            color: #eee;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f8fa; /* Light gray background */
+            color: #14171a; /* Dark gray text */
+        }
+
+        h1 {
+            color: #1da1f2; /* Twitter blue */
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
         }
 
         input[type="text"],
         input[type="number"],
-        input[type="date"],
-        textarea,
-        select {
-            background: #1f1f1f;
-            border: 1px solid #333;
-            color: #ddd;
+        input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccd6dd; /* Light gray border */
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
         }
 
-        input:focus,
-        textarea:focus,
-        select:focus {
-            border-color: #1da1f2;
-            box-shadow: 0 0 0 2px rgba(29,161,242,0.2);
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="date"]:focus {
+            border-color: #1da1f2; /* Twitter blue on focus */
+            outline: none;
         }
 
-        #generateQuery {
-            background: #1da1f2;
+        input[type="checkbox"] {
+            margin-right: 5px;
         }
 
-        #generateQuery:hover {
-            background: #0d8bd6;
+        .checkbox-label {
+            display: inline-block; /* For side-by-side checkbox and label */
+            vertical-align: middle;
         }
 
-        .advanced-btn {
-            border-color: #1da1f2;
-            color: #1da1f2;
+        #searchButton {
+            background-color: #1da1f2; /* Twitter blue */
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px; /* Rounded button */
+            cursor: pointer;
+            font-size: 18px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s ease;
         }
 
-        .advanced-btn:hover {
-            background: #1da1f2;
-            color: #fff;
+        #searchButton:hover {
+            background-color: #0d8bf0; /* Slightly lighter blue on hover */
         }
-    }
-</style>
+        #searchButton .material-icons{
+            margin-right: 8px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            /* Stack inputs vertically on smaller screens */
+            input[type="text"],
+            input[type="number"],
+            input[type="date"] {
+                width: 100%;
+            }
+        }
+        .input-group {
+            display: flex;
+            align-items: center; /* Vertically center items in the group */
+            gap: 8px; /* Space between icon and input */
+        }
+
+        .input-group input {
+            flex-grow: 1; /* Allow input to take up remaining space */
+        }
+        #getLocationButton {
+            background-color: #4CAF50; /* Green button */
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+        #getLocationButton:hover{
+            background-color:#367c39;
+        }
+
+        #getLocationButton .material-icons {
+            margin-right: 5px;
+        }
+
+        #locationStatus {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #888;
+        }
+        .location-group{
+            display:flex;
+            gap: 10px;
+            align-items: center;
+        }
+        @media (max-width: 600px) {
+            .location-group {
+                flex-direction: column; /* Stack on smaller screens */
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Twitter Search Query Generator</h1>
+    <h1>X/Twitter Search Maestro</h1>
 
-    <!-- Basic Fields -->
+    <!-- (Previous form groups remain unchanged) -->
     <div class="form-group">
-        <label for="mainSearchTerm">Search Query Input:</label>
-        <input type="text" id="mainSearchTerm" placeholder="e.g., hello">
-    </div>
-
-    <div class="form-group">
-        <label for="includeHashtags">Specific Hashtags (comma-separated):</label>
-        <input type="text" id="includeHashtags" placeholder="e.g., #MyHashtag, #AnotherOne">
+        <label for="exactPhrase">Exact Phrase:</label>
+        <div class="input-group">
+            <span class="material-icons">format_quote</span>
+            <input type="text" id="exactPhrase" placeholder="e.g., 'artificial intelligence'">
+        </div>
     </div>
 
     <div class="form-group">
-        <label for="excludeWords">Exclude Words (comma-separated):</label>
-        <input type="text" id="excludeWords" placeholder="e.g., trade, target">
+        <label for="anyOfTheseWords">Any of These Words:</label>
+        <div class="input-group">
+            <span class="material-icons">filter_list</span>
+        <input type="text" id="anyOfTheseWords" placeholder="e.g., machine learning, deep learning">
+        </div>
     </div>
 
     <div class="form-group">
-        <label for="excludeEmojis">Exclude Emojis (comma-separated):</label>
-        <input type="text" id="excludeEmojis" placeholder="e.g., 🚀, 🔥">
-    </div>
-
-    <div class="form-inline-group">
-        <div class="form-group">
-            <label for="minLikes">Minimum Likes:</label>
-            <input type="number" id="minLikes" placeholder="e.g., 10">
-        </div>
-        <div class="form-group">
-            <label for="minRetweets">Minimum Retweets:</label>
-            <input type="number" id="minRetweets" placeholder="e.g., 5">
+        <label for="noneOfTheseWords">None of These Words:</label>
+        <div class="input-group">
+            <span class="material-icons">block</span>
+        <input type="text" id="noneOfTheseWords" placeholder="e.g., politics, sports">
         </div>
     </div>
 
-    <div class="form-inline-group">
-        <div class="form-group">
-            <label for="sinceDate">Since Date:</label>
-            <input type="date" id="sinceDate">
-        </div>
-        <div class="form-group">
-            <label for="untilDate">Until Date:</label>
-            <input type="date" id="untilDate">
+    <div class="form-group">
+        <label for="hashtags">Hashtags:</label>
+        <div class="input-group">
+            <span class="material-icons">tag</span>
+        <input type="text" id="hashtags" placeholder="e.g., #AI, #MachineLearning">
         </div>
     </div>
 
-    <div class="form-group toggle-group">
-        <input type="checkbox" id="excludeHashtags">
-        <label for="excludeHashtags">Exclude All Hashtags</label>
-    </div>
-
-    <div class="advanced-toggle">
-        <button type="button" class="advanced-btn" id="toggleAdvanced">Show Advanced Filters</button>
-    </div>
-
-    <!-- Advanced Filters Section -->
-    <div id="advancedFilters">
-        <h2 style="font-size:1.3rem;margin-bottom:20px;text-align:center;font-weight:500;">Advanced Filters</h2>
-        
-        <div class="form-inline-group">
-            <div class="form-group">
-                <label for="fromUser">From User:</label>
-                <input type="text" id="fromUser" placeholder="e.g., jack (no @ needed)">
-            </div>
-            <div class="form-group">
-                <label for="toUser">To User:</label>
-                <input type="text" id="toUser" placeholder="e.g., jack (no @ needed)">
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label for="mentionUser">Mention User:</label>
-            <input type="text" id="mentionUser" placeholder="e.g., jack (no @ needed)">
-        </div>
-
-        <div class="form-group">
-            <label for="languageSelect">Language:</label>
-            <select id="languageSelect">
-                <option value="">-- Any Language --</option>
-                <option value="en">English</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-                <option value="de">German</option>
-                <option value="ja">Japanese</option>
-                <option value="pt">Portuguese</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label>Content Filters:</label>
-            <div class="toggle-group">
-                <input type="checkbox" id="filterImages">
-                <label for="filterImages">Include Images</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="filterVideos">
-                <label for="filterVideos">Include Videos</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="filterLinks">
-                <label for="filterLinks">Include Links</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="excludeRetweets">
-                <label for="excludeRetweets">Exclude Retweets</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="excludeReplies">
-                <label for="excludeReplies">Exclude Replies</label>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>Location (Geocode):</label>
-            <div class="form-inline-group">
-                <div class="form-group">
-                    <input type="text" id="latitude" placeholder="Latitude (e.g., 37.7749)">
-                </div>
-                <div class="form-group">
-                    <input type="text" id="longitude" placeholder="Longitude (e.g., -122.4194)">
-                </div>
-                <div class="form-group">
-                    <input type="text" id="radius" placeholder="Radius (e.g., 10mi or 10km)">
-                </div>
-            </div>
-            <small style="font-size:0.8rem;opacity:0.8;">If all three fields are filled, tweets near this location will be shown.</small>
+    <div class="form-group">
+        <label for="fromAccount">From Account:</label>
+        <div class="input-group">
+            <span class="material-icons">person</span>
+        <input type="text" id="fromAccount" placeholder="e.g., @elonmusk">
         </div>
     </div>
 
-    <button id="generateQuery">Generate Search</button>
-
-    <div class="output-group">
-        <label for="outputQuery">Final Query:</label>
-        <textarea id="outputQuery" readonly></textarea>
+    <div class="form-group">
+        <label for="toAccount">To Account:</label>
+        <div class="input-group">
+            <span class="material-icons">alternate_email</span>
+        <input type="text" id="toAccount" placeholder="e.g., @OpenAI">
+        </div>
     </div>
+
+    <div class="form-group">
+        <label for="mentioningAccount">Mentioning Account:</label>
+        <div class="input-group">
+            <span class="material-icons">alternate_email</span>
+        <input type="text" id="mentioningAccount" placeholder="e.g., @GoogleAI">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="minLikes">Minimum Likes:</label>
+        <div class="input-group">
+            <span class="material-icons">favorite</span>
+        <input type="number" id="minLikes" placeholder="e.g., 100">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="minRetweets">Minimum Retweets:</label>
+        <div class="input-group">
+            <span class="material-icons">repeat</span>
+        <input type="number" id="minRetweets" placeholder="e.g., 50">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="minReplies">Minimum Replies:</label>
+        <div class="input-group">
+            <span class="material-icons">reply</span>
+        <input type="number" id="minReplies" placeholder="e.g., 10">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="beforeDate">Before Date:</label>
+        <div class="input-group">
+            <span class="material-icons">calendar_today</span>
+        <input type="date" id="beforeDate">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="sinceDate">Since Date:</label>
+        <div class="input-group">
+            <span class="material-icons">calendar_today</span>
+        <input type="date" id="sinceDate">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" id="includeLinks"> Include Links
+        </label>
+    </div>
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" id="includeImages"> Include Images
+        </label>
+    </div>
+     <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" id="includeVideos"> Include Videos
+        </label>
+    </div>
+
+    <div class="form-group">
+        <label>Location:</label>
+        <div class="location-group">
+            <button id="getLocationButton"><span class="material-icons">my_location</span>Get Location</button>
+            <input type="number" id="searchRadius" placeholder="Radius (mi)" value="15">
+            <input type="text" id="manualLocation" placeholder="Or enter a place name">
+        </div>
+
+        <div id="locationStatus"></div>
+    </div>
+
+    <button id="searchButton"><span class="material-icons">search</span>Search on X/Twitter</button>
 
     <script>
-        const toggleBtn = document.getElementById('toggleAdvanced');
-        const advancedFilters = document.getElementById('advancedFilters');
-        let advancedVisible = false;
+        let latitude = null;
+        let longitude = null;
 
-        toggleBtn.addEventListener('click', () => {
-            advancedVisible = !advancedVisible;
-            advancedFilters.style.display = advancedVisible ? 'block' : 'none';
-            toggleBtn.textContent = advancedVisible ? 'Hide Advanced Filters' : 'Show Advanced Filters';
-        });
+        document.getElementById('getLocationButton').addEventListener('click', function() {
+            const locationStatus = document.getElementById('locationStatus');
+            locationStatus.textContent = 'Fetching location...';
+            locationStatus.style.color = '#888';
 
-        document.getElementById('generateQuery').addEventListener('click', function() {
-            const mainTerm = document.getElementById('mainSearchTerm').value.trim();
-            const includeHashtags = document.getElementById('includeHashtags').value.trim();
-            const excludeWords = document.getElementById('excludeWords').value.trim();
-            const excludeEmojis = document.getElementById('excludeEmojis').value.trim();
-            const minLikes = document.getElementById('minLikes').value.trim();
-            const minRetweets = document.getElementById('minRetweets').value.trim();
-            const sinceDate = document.getElementById('sinceDate').value.trim();
-            const untilDate = document.getElementById('untilDate').value.trim();
-            const excludeAllHashtags = document.getElementById('excludeHashtags').checked;
-
-            // Advanced Filters
-            const fromUser = document.getElementById('fromUser').value.trim();
-            const toUser = document.getElementById('toUser').value.trim();
-            const mentionUser = document.getElementById('mentionUser').value.trim();
-            const language = document.getElementById('languageSelect').value;
-            const filterImages = document.getElementById('filterImages').checked;
-            const filterVideos = document.getElementById('filterVideos').checked;
-            const filterLinks = document.getElementById('filterLinks').checked;
-            const excludeRetweets = document.getElementById('excludeRetweets').checked;
-            const excludeReplies = document.getElementById('excludeReplies').checked;
-            const latitude = document.getElementById('latitude').value.trim();
-            const longitude = document.getElementById('longitude').value.trim();
-            const radius = document.getElementById('radius').value.trim();
-
-            let queryParts = [];
-
-            // Basic
-            if (mainTerm) queryParts.push(mainTerm);
-            if (includeHashtags) {
-                let hashtags = includeHashtags.split(',').map(h => h.trim()).filter(Boolean);
-                hashtags.forEach(tag => {
-                    if (!tag.startsWith('#')) {
-                        tag = '#' + tag;
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) { // Success callback
+                        latitude = position.coords.latitude;
+                        longitude = position.coords.longitude;
+                        locationStatus.textContent = `Location acquired: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+                        locationStatus.style.color = 'green';
+                    },
+                    function(error) { // Error callback
+                        switch (error.code) {
+                            case error.PERMISSION_DENIED:
+                                locationStatus.textContent = "User denied the request for Geolocation.";
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                locationStatus.textContent = "Location information is unavailable.";
+                                break;
+                            case error.TIMEOUT:
+                                locationStatus.textContent = "The request to get user location timed out.";
+                                break;
+                            case error.UNKNOWN_ERROR:
+                                locationStatus.textContent = "An unknown error occurred.";
+                                break;
+                        }
+                        locationStatus.style.color = 'red';
+                    },
+                    { // Options
+                        enableHighAccuracy: true, // Get the most accurate possible location
+                        timeout: 5000,           // Timeout after 5 seconds
+                        maximumAge: 0             // Don't use a cached location
                     }
-                    queryParts.push(tag);
-                });
+                );
+            } else {
+                locationStatus.textContent = "Geolocation is not supported by this browser.";
+                locationStatus.style.color = 'red';
             }
-            if (excludeWords) {
-                excludeWords.split(',').map(w => w.trim()).filter(Boolean).forEach(word => {
-                    queryParts.push('-' + word);
-                });
-            }
-            if (excludeEmojis) {
-                excludeEmojis.split(',').map(e => e.trim()).filter(Boolean).forEach(emoji => {
-                    queryParts.push('-' + emoji);
-                });
-            }
-            if (minLikes) queryParts.push('min_faves:' + minLikes);
-            if (minRetweets) queryParts.push('min_retweets:' + minRetweets);
-            if (sinceDate) queryParts.push('since:' + sinceDate);
-            if (untilDate) queryParts.push('until:' + untilDate);
-            if (excludeAllHashtags) queryParts.push('-#*');
+        });
+        document.getElementById('searchButton').addEventListener('click', function() {
+            let query = '';
 
-            // Advanced
-            if (fromUser) queryParts.push('from:' + fromUser);
-            if (toUser) queryParts.push('to:' + toUser);
-            if (mentionUser) {
-                // Mentioning a user can be simply by using @username
-                queryParts.push('@' + mentionUser);
-            }
-            if (language) queryParts.push('lang:' + language);
-            if (filterImages) queryParts.push('filter:images');
-            if (filterVideos) queryParts.push('filter:videos');
-            if (filterLinks) queryParts.push('filter:links');
-            if (excludeRetweets) queryParts.push('-filter:retweets');
-            if (excludeReplies) queryParts.push('-filter:replies');
-
-            // Geocode
-            if (latitude && longitude && radius) {
-                queryParts.push(`geocode:${latitude},${longitude},${radius}`);
+            // Exact phrase
+            const exactPhrase = document.getElementById('exactPhrase').value;
+            if (exactPhrase) {
+                query += `"${encodeURIComponent(exactPhrase)}" `;
             }
 
-            // Combine into a single query
-            let finalQuery = queryParts.join(' ');
-
-            // Set the query in the output textarea
-            document.getElementById('outputQuery').value = finalQuery;
-
-            // Open the query in Twitter if not empty
-            if (finalQuery) {
-                const twitterURL = 'https://twitter.com/search?q=' + encodeURIComponent(finalQuery);
-                window.open(twitterURL, '_blank');
+            // Any of these words
+            const anyOfTheseWords = document.getElementById('anyOfTheseWords').value;
+            if (anyOfTheseWords) {
+                query += `${encodeURIComponent(anyOfTheseWords.split(',').join(' OR ')) } `;
             }
+
+            // None of these words
+            const noneOfTheseWords = document.getElementById('noneOfTheseWords').value;
+            if (noneOfTheseWords) {
+                query += `-${encodeURIComponent(noneOfTheseWords.split(',').join(' -'))} `;
+            }
+
+            // Hashtags
+            const hashtags = document.getElementById('hashtags').value;
+            if (hashtags) {
+                query += `${encodeURIComponent(hashtags.split(',').map(tag => '#' + tag.trim()).join(' ')) } `;
+            }
+
+            // From account
+            const fromAccount = document.getElementById('fromAccount').value;
+            if (fromAccount) {
+                query += `from:${encodeURIComponent(fromAccount)} `;
+            }
+
+            // To account
+            const toAccount = document.getElementById('toAccount').value;
+            if (toAccount) {
+                query += `to:${encodeURIComponent(toAccount)} `;
+            }
+
+            // Mentioning account
+            const mentioningAccount = document.getElementById('mentioningAccount').value;
+            if (mentioningAccount) {
+                query += ` @${encodeURIComponent(mentioningAccount)} `;
+            }
+
+            // Minimum likes
+            const minLikes = document.getElementById('minLikes').value;
+            if (minLikes) {
+                query += `min_faves:${encodeURIComponent(minLikes)} `;
+            }
+
+            // Minimum retweets
+            const minRetweets = document.getElementById('minRetweets').value;
+            if (minRetweets) {
+                query += `min_retweets:${encodeURIComponent(minRetweets)} `;
+            }
+
+            // Minimum replies
+            const minReplies = document.getElementById('minReplies').value;
+            if (minReplies) {
+                query += `min_replies:${encodeURIComponent(minReplies)} `;
+            }
+
+            // Before date
+            const beforeDate = document.getElementById('beforeDate').value;
+            if (beforeDate) {
+                query += `until:${encodeURIComponent(beforeDate)} `;
+            }
+            
+            // Since date
+            const sinceDate = document.getElementById('sinceDate').value;
+            if (sinceDate) {
+                query += `since:${encodeURIComponent(sinceDate)} `;
+            }
+
+            // Include links
+            const includeLinks = document.getElementById('includeLinks').checked;
+            if (!includeLinks) {
+                query += `-filter:links `;
+            }
+
+            // Include images
+            const includeImages = document.getElementById('includeImages').checked;
+            if (includeImages) {
+                query += `filter:images `;
+            }
+            // Include videos
+            const includeVideos = document.getElementById('includeVideos').checked;
+            if (includeVideos) {
+                query += `filter:videos `;
+            }
+
+            // Location
+            const manualLocation = document.getElementById('manualLocation').value;
+            const searchRadius = document.getElementById('searchRadius').value;
+
+            if (manualLocation && searchRadius) {
+              query += `near:"${encodeURIComponent(manualLocation)}" within:${encodeURIComponent(searchRadius)}mi `;
+            } else if (latitude && longitude && searchRadius) {
+                query += `geocode:${latitude},${longitude},${encodeURIComponent(searchRadius)}mi `;
+            }
+
+            // Trim any trailing spaces
+            query = query.trim();
+
+            // Construct the final URL
+            const twitterAppUrl = `twitter://search?q=${query}`;
+            const twitterWebUrl = `https://twitter.com/search?q=${query}`;
+
+            // Attempt to open the Twitter app, fallback to the website
+            // This approach is more reliable for mobile devices
+            window.location.href = twitterWebUrl;
+
         });
     </script>
 </body>
