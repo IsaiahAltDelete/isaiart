@@ -7,17 +7,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
-        /* (Previous CSS styles remain unchanged) */
+        /* (Previous CSS styles remain mostly unchanged) */
         body {
             font-family: 'Poppins', sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: #f5f8fa; /* Light gray background */
-            color: #14171a; /* Dark gray text */
+            background-color: #f5f8fa;
+            color: #14171a;
         }
 
         h1 {
-            color: #1da1f2; /* Twitter blue */
+            color: #1da1f2;
             text-align: center;
             margin-bottom: 30px;
         }
@@ -34,20 +34,25 @@
 
         input[type="text"],
         input[type="number"],
-        input[type="date"] {
-            width: 100%;
+        input[type="date"],
+        input[type="radio"] {
             padding: 10px;
-            border: 1px solid #ccd6dd; /* Light gray border */
+            border: 1px solid #ccd6dd;
             border-radius: 8px;
             box-sizing: border-box;
             font-size: 16px;
             transition: border-color 0.3s ease;
         }
+        input[type="text"],
+        input[type="number"],
+        input[type="date"]{
+            width: 100%;
+        }
 
         input[type="text"]:focus,
         input[type="number"]:focus,
         input[type="date"]:focus {
-            border-color: #1da1f2; /* Twitter blue on focus */
+            border-color: #1da1f2;
             outline: none;
         }
 
@@ -55,17 +60,17 @@
             margin-right: 5px;
         }
 
-        .checkbox-label {
-            display: inline-block; /* For side-by-side checkbox and label */
+        .checkbox-label, .radio-label {
+            display: inline-block;
             vertical-align: middle;
         }
 
         #searchButton {
-            background-color: #1da1f2; /* Twitter blue */
+            background-color: #1da1f2;
             color: white;
             padding: 12px 20px;
             border: none;
-            border-radius: 25px; /* Rounded button */
+            border-radius: 25px;
             cursor: pointer;
             font-size: 18px;
             width: 100%;
@@ -76,32 +81,34 @@
         }
 
         #searchButton:hover {
-            background-color: #0d8bf0; /* Slightly lighter blue on hover */
+            background-color: #0d8bf0;
         }
-        #searchButton .material-icons{
+
+        #searchButton .material-icons {
             margin-right: 8px;
         }
 
         /* Responsive adjustments */
         @media (max-width: 600px) {
-            /* Stack inputs vertically on smaller screens */
             input[type="text"],
             input[type="number"],
             input[type="date"] {
                 width: 100%;
             }
         }
+
         .input-group {
             display: flex;
-            align-items: center; /* Vertically center items in the group */
-            gap: 8px; /* Space between icon and input */
+            align-items: center;
+            gap: 8px;
         }
 
         .input-group input {
-            flex-grow: 1; /* Allow input to take up remaining space */
+            flex-grow: 1;
         }
+
         #getLocationButton {
-            background-color: #4CAF50; /* Green button */
+            background-color: #4CAF50;
             color: white;
             padding: 10px 15px;
             border: none;
@@ -125,15 +132,23 @@
             font-size: 14px;
             color: #888;
         }
-        .location-group{
-            display:flex;
+
+        .location-group {
+            display: flex;
             gap: 10px;
             align-items: center;
         }
+
         @media (max-width: 600px) {
             .location-group {
-                flex-direction: column; /* Stack on smaller screens */
+                flex-direction: column;
             }
+        }
+        .hidden {
+            display: none;
+        }
+        .radio-group label{
+            margin-right:15px;
         }
     </style>
 </head>
@@ -236,12 +251,6 @@
         <input type="date" id="sinceDate">
         </div>
     </div>
-
-    <div class="form-group">
-        <label class="checkbox-label">
-            <input type="checkbox" id="includeLinks"> Include Links
-        </label>
-    </div>
     <div class="form-group">
         <label class="checkbox-label">
             <input type="checkbox" id="includeImages"> Include Images
@@ -254,14 +263,32 @@
     </div>
 
     <div class="form-group">
-        <label>Location:</label>
-        <div class="location-group">
-            <button id="getLocationButton"><span class="material-icons">my_location</span>Get Location</button>
-            <input type="number" id="searchRadius" placeholder="Radius (mi)" value="15">
-            <input type="text" id="manualLocation" placeholder="Or enter a place name">
+        <label class="checkbox-label">
+            <input type="checkbox" id="enableLocation"> Enable Location Search
+        </label>
+        <div id="locationInputs" class="hidden">
+            <div class="location-group">
+                <button id="getLocationButton"><span class="material-icons">my_location</span>Get Location</button>
+                <input type="number" id="searchRadius" placeholder="Radius (mi)" value="15">
+                <input type="text" id="manualLocation" placeholder="Or enter a place name">
+            </div>
+            <div id="locationStatus"></div>
         </div>
+    </div>
 
-        <div id="locationStatus"></div>
+    <div class="form-group">
+        <label>Link Options:</label>
+        <div class="radio-group">
+            <label class="radio-label">
+                <input type="radio" name="linkOption" value="ignore" checked> Don't Care
+            </label>
+            <label class="radio-label">
+                <input type="radio" name="linkOption" value="exclude"> Exclude Links
+            </label>
+            <label class="radio-label">
+                <input type="radio" name="linkOption" value="only"> Only Links
+            </label>
+        </div>
     </div>
 
     <button id="searchButton"><span class="material-icons">search</span>Search on X/Twitter</button>
@@ -270,6 +297,21 @@
         let latitude = null;
         let longitude = null;
 
+        document.getElementById('enableLocation').addEventListener('change', function() {
+            const locationInputs = document.getElementById('locationInputs');
+            if (this.checked) {
+                locationInputs.classList.remove('hidden');
+            } else {
+                locationInputs.classList.add('hidden');
+                // Clear location data when disabling
+                latitude = null;
+                longitude = null;
+                document.getElementById('locationStatus').textContent = '';
+                document.getElementById('searchRadius').value = '15';
+                document.getElementById('manualLocation').value = '';
+            }
+        });
+
         document.getElementById('getLocationButton').addEventListener('click', function() {
             const locationStatus = document.getElementById('locationStatus');
             locationStatus.textContent = 'Fetching location...';
@@ -277,13 +319,14 @@
 
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    function(position) { // Success callback
+                    function(position) {
                         latitude = position.coords.latitude;
                         longitude = position.coords.longitude;
                         locationStatus.textContent = `Location acquired: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
                         locationStatus.style.color = 'green';
                     },
-                    function(error) { // Error callback
+                    function(error) {
+                        // (Error handling from previous version)
                         switch (error.code) {
                             case error.PERMISSION_DENIED:
                                 locationStatus.textContent = "User denied the request for Geolocation.";
@@ -300,10 +343,10 @@
                         }
                         locationStatus.style.color = 'red';
                     },
-                    { // Options
-                        enableHighAccuracy: true, // Get the most accurate possible location
-                        timeout: 5000,           // Timeout after 5 seconds
-                        maximumAge: 0             // Don't use a cached location
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
                     }
                 );
             } else {
@@ -386,12 +429,6 @@
                 query += `since:${encodeURIComponent(sinceDate)} `;
             }
 
-            // Include links
-            const includeLinks = document.getElementById('includeLinks').checked;
-            if (!includeLinks) {
-                query += `-filter:links `;
-            }
-
             // Include images
             const includeImages = document.getElementById('includeImages').checked;
             if (includeImages) {
@@ -404,13 +441,23 @@
             }
 
             // Location
-            const manualLocation = document.getElementById('manualLocation').value;
-            const searchRadius = document.getElementById('searchRadius').value;
+            if (document.getElementById('enableLocation').checked) {
+                const manualLocation = document.getElementById('manualLocation').value;
+                const searchRadius = document.getElementById('searchRadius').value;
 
-            if (manualLocation && searchRadius) {
-              query += `near:"${encodeURIComponent(manualLocation)}" within:${encodeURIComponent(searchRadius)}mi `;
-            } else if (latitude && longitude && searchRadius) {
-                query += `geocode:${latitude},${longitude},${encodeURIComponent(searchRadius)}mi `;
+                if (manualLocation && searchRadius) {
+                    query += `near:"${encodeURIComponent(manualLocation)}" within:${encodeURIComponent(searchRadius)}mi `;
+                } else if (latitude && longitude && searchRadius) {
+                    query += `geocode:${latitude},${longitude},${encodeURIComponent(searchRadius)}mi `;
+                }
+            }
+
+            // Link Options
+            const linkOption = document.querySelector('input[name="linkOption"]:checked').value;
+            if (linkOption === 'exclude') {
+                query += '-filter:links ';
+            } else if (linkOption === 'only') {
+                query += 'filter:links ';
             }
 
             // Trim any trailing spaces
