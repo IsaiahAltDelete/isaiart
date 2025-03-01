@@ -4,372 +4,1150 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QuickNotes</title>
-  <!-- Pencil Emoji Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2216%22>✏️</text></svg>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
-
-    :root {
-        --primary-color: #007bff;
-        --secondary-color: #28a745;
-        --background-color: #f0f0f0;
-        --card-background: #ffffff;
-        --text-color: #333333;
-        font-family: 'Poppins', sans-serif;
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    
+    @keyframes auroraWave {
+      0% { transform: scaleX(1.1) scaleY(0.9) translateX(-5%); opacity: 0.5; }
+      50% { transform: scaleX(0.9) scaleY(1.1) translateX(5%); opacity: 0.7; }
+      100% { transform: scaleX(1.1) scaleY(0.9) translateX(-5%); opacity: 0.5; }
     }
 
+    /* CSS Variables for theme management */
+    :root {
+      --primary: #4361ee;
+      --primary-light: #4895ef;
+      --secondary: #2ec4b6;
+      --success: #06d6a0;
+      --danger: #e63946;
+      --warning: #ffd166;
+      --info: #7209b7;
+      
+      --surface-light: #ffffff;
+      --surface-dark: #252525;
+      
+      --text-light: #252525;
+      --text-dark: #f8f9fa;
+      
+      --bg-light: #f8f9fa;
+      --bg-dark: #121212;
+      
+      --transition-speed: 0.25s;
+      --border-radius: 12px;
+      --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      
+      /* Default light theme */
+      --bg: var(--bg-light);
+      --surface: var(--surface-light);
+      --text: var(--text-light);
+      --surface-alpha: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Dark theme overrides */
     .dark-mode {
-        --primary-color: #4da6ff;
-        --secondary-color: #5cb85c;
-        --background-color: #1a1a1a;
-        --card-background: #2c2c2c;
-        --text-color: #ffffff;
+      --bg: var(--bg-dark);
+      --surface: var(--surface-dark);
+      --text: var(--text-dark);
+      --surface-alpha: rgba(37, 37, 37, 0.8);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
 
     body {
-        font-family: 'Poppins', sans-serif;
-        margin: 0;
-        padding: 20px;
-        background-color: var(--background-color);
-        color: var(--text-color);
-        transition: background-color 0.3s, color 0.3s;
-        overflow: hidden;
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+      min-height: 100vh;
+      max-width: 100vw;
+      overflow-x: hidden;
     }
 
     .container {
-        max-width: 1200px;
-        margin: 0 auto;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
     }
 
-    h1 {
-        text-align: center;
-        color: var(--primary-color);
-        font-family: 'Poppins', sans-serif;
-        font-size: 3em;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin-bottom: 30px;
-        transition: color 0.3s;
+    /* Header styles */
+    .app-header {
+      text-align: center;
+      padding: 1rem 0 2rem;
+      position: relative;
     }
 
-    .dark-mode h1 {
-        color: var(--primary-color);
+    .app-title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, var(--text), rgba(128, 128, 128, 0.8));
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      transition: background 0.3s;
     }
 
+    /* Sections Container */
     .sections-container {
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
-        gap: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 4rem;
     }
 
+    /* Section Card */
     .section {
-        background-color: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        padding: 20px;
-        width: calc(33.333% - 20px);
-        min-width: 250px;
-        max-width: 350px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        transition: background-color 0.3s, border 0.3s;
+      background-color: var(--surface);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      box-shadow: var(--box-shadow);
+      transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.05);
     }
+
     .dark-mode .section {
-        background-color: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(0, 0, 0, 0.2);
+      border-color: rgba(255, 255, 255, 0.05);
     }
 
+    .section:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Section Header */
     .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     }
 
-    .section h2 {
-        margin: 0;
-        color: #333;
-        transition: color 0.3s;
+    .dark-mode .section-header {
+      border-color: rgba(255, 255, 255, 0.05);
     }
 
-    .dark-mode .section h2 {
-        color: white;
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0;
     }
 
+    .section-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* Buttons Container */
     .button-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        gap: 10px;
-        margin-bottom: 15px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
     }
 
-    button {
-        padding: 10px 15px;
-        border: none;
-        border-radius: 12px;
-        background-color: var(--primary-color);
-        color: white;
-        cursor: pointer;
-        transition: background-color 0.3s, transform 0.1s;
-    }
-
-    button:hover {
-        background-color: #0056b3;
-        transform: translateY(-2px);
-    }
-
-    .edit-btn, .add-btn, .section-header button {
-        background-color: #333;
-    }
-
-    .edit-btn:hover, .add-btn:hover, .section-header button:hover {
-        background-color: #555;
-    }
-
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 10;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.4);
-    }
-
-    .modal-content {
-        background-color: var(--card-background);
-        margin: 15% auto;
-        padding: 20px;
-        border-radius: 16px;
-        width: 80%;
-        max-width: 500px;
-    }
-
-    .close {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    .close:hover {
-        color: #000;
-    }
-
-    .form-group {
-        margin-bottom: 15px;
-    }
-
-    .form-group label {
-        display: block;
-        margin-bottom: 5px;
-    }
-
-    .form-group input, .form-group textarea {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: var(--card-background);
-        color: var(--text-color);
-    }
-
-    .form-group input[type="color"] {
-        height: 40px;
-        padding: 2px;
-    }
-
-    .button-group {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin-top: 20px;
-    }
-
-    #saveBtn {
-        background-color: var(--secondary-color);
-    }
-
-    #saveBtn:hover {
-        background-color: #218838;
-    }
-
-    #deleteBtn {
-        background-color: #dc3545;
-    }
-
-    #deleteBtn:hover {
-        background-color: #c82333;
-    }
-
+    /* Notes / Buttons */
     .note-button {
-        position: relative;
-        padding-right: 30px;
-        color: black;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      border: none;
+      border-radius: calc(var(--border-radius) / 2);
+      background-color: var(--primary);
+      color: white;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .note-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
     .edit-icon {
-        position: absolute;
-        right: 5px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 20px;
-        height: 20px;
-        background-color: rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 1.5rem;
+      height: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color var(--transition-speed);
+      margin-left: 0.5rem;
+      flex-shrink: 0;
+      font-size: 0.75rem;
     }
 
-    #copyNotification {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: var(--primary-color);
-        color: white;
-        padding: 10px 20px;
-        border-radius: 12px;
-        opacity: 0;
-        transition: opacity 0.3s;
+    .note-button:hover .edit-icon {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Action Buttons */
+    .icon-button {
+      background: none;
+      border: none;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text);
+      opacity: 0.7;
+      transition: all var(--transition-speed);
+    }
+
+    .icon-button:hover {
+      opacity: 1;
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .dark-mode .icon-button:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-primary {
+      background-color: var(--text);
+      color: var(--bg);
+    }
+
+    .btn-danger {
+      background-color: var(--danger);
+      color: white;
+    }
+
+    .btn-secondary {
+      background-color: rgba(128, 128, 128, 0.8);
+      color: var(--text);
+    }
+
+    /* Floating Action Button */
+    .fab {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 3.5rem;
+      height: 3.5rem;
+      border-radius: 50%;
+      background-color: var(--text);
+      color: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      border: none;
+      transition: transform var(--transition-speed), background-color var(--transition-speed), color var(--transition-speed);
+      z-index: 5;
+    }
+
+    .fab:hover {
+      transform: scale(1.1);
+      background-color: var(--text);
+      opacity: 0.9;
+    }
+
+    /* Modals */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 20;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      animation: fadeIn 0.2s;
+    }
+
+    .modal-content {
+      background-color: var(--surface);
+      margin: 10% auto;
+      padding: 2rem;
+      border-radius: var(--border-radius);
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      animation: slideUp 0.3s;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .close {
+      font-size: 1.5rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text);
+      opacity: 0.7;
+      transition: opacity var(--transition-speed);
+    }
+
+    .close:hover {
+      opacity: 1;
+    }
+
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: calc(var(--border-radius) / 2);
+      background-color: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1rem;
+      transition: border-color var(--transition-speed);
+    }
+
+    .dark-mode .form-control {
+      border-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    .color-picker {
+      height: 2.5rem;
+      padding: 0.25rem;
+    }
+
+    .button-group {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .btn {
+      padding: 0.75rem 1.25rem;
+      border: none;
+      border-radius: calc(var(--border-radius) / 2);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-text {
+      background: none;
+      color: var(--text);
+      opacity: 0.8;
+    }
+
+    .btn-text:hover {
+      opacity: 1;
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .dark-mode .btn-text:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Theme Controls - UPDATED */
+    .theme-control {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .theme-toggle {
+      background: none;
+      border: none;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.25rem;
+      color: var(--text);
+      background-color: var(--surface-alpha);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--box-shadow);
+      transition: all var(--transition-speed);
+      z-index: 11;
+    }
+
+    .theme-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
     }
 
     #themeOptionsContainer {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
+      position: absolute;
+      top: 4rem;
+      right: 0;
+      background-color: var(--surface-alpha);
+      backdrop-filter: blur(10px);
+      border-radius: var(--border-radius);
+      padding: 1.25rem;
+      box-shadow: var(--box-shadow);
+      width: 300px;
+      max-height: 80vh;
+      overflow-y: auto;
+      display: none;
+      flex-direction: column;
+      transform-origin: top right;
+      animation: scaleIn 0.2s ease;
+      border: 1px solid rgba(0, 0, 0, 0.05);
     }
 
-    #themeOptionsContainer:not(:hover) #darkModeToggle, #themeOptionsContainer:not(:hover) #themeOptions  {
-        opacity: 0;
+    .dark-mode #themeOptionsContainer {
+      border-color: rgba(255, 255, 255, 0.05);
     }
 
-    #themeOptionsContainer #darkModeToggle, #themeOptionsContainer #themeOptions {
-        transition: opacity 0.3s ease-out;
+    #themeOptionsContainer.visible {
+      display: flex;
     }
 
-    #darkModeToggle {
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        padding: 5px;
-        border-radius: 50%;
+    .theme-options-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 1rem;
+      text-align: center;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     }
 
-    #themeOptions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
+    .dark-mode .theme-options-title {
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .theme-buttons-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
     }
 
     .theme-button {
-        font-size: 24px;
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 5px;
-        border-radius: 50%;
-        transition: background-color 0.3s;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--surface);
+      color: var(--text);
+      border: none;
+      border-radius: calc(var(--border-radius) / 2);
+      padding: 0.75rem 0.25rem;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .dark-mode .theme-button {
+      background-color: rgba(255, 255, 255, 0.05);
     }
 
     .theme-button:hover {
-        background-color: rgba(128, 128, 128, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
     .theme-button.active {
-        background-color: rgba(128, 128, 128, 0.4);
+      background-color: var(--primary);
+      color: white;
     }
 
-    #rainCanvas, #starfieldCanvas, #waveContainer {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: -1;
+    .theme-button-label {
+      font-size: 0.65rem;
+      margin-top: 0.4rem;
+      font-weight: 500;
     }
 
+    .theme-button i {
+      font-size: 1.1rem;
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* Copy Notification */
+    .copy-notification {
+      position: fixed;
+      bottom: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--text);
+      color: var(--bg);
+      padding: 0.75rem 1.5rem;
+      border-radius: calc(var(--border-radius) / 2);
+      font-weight: 500;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      z-index: 10;
+      transition: bottom 0.3s ease-in-out;
+    }
+
+    .copy-notification.show {
+      bottom: 2rem;
+    }
+
+    /* Background Effects */
+    .bg-effect {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    /* Particles Network Effect */
+    #particlesCanvas {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    /* Fireflies Effect */
+    #firefliesContainer {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+      overflow: hidden;
+    }
+    
+    .firefly {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 150, 0.8);
+      box-shadow: 0 0 10px 5px rgba(255, 255, 150, 0.3);
+      filter: blur(1px);
+    }
+    
+    /* Circuit Board Effect */
+    #circuitContainer {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+      overflow: hidden;
+      background-color: rgba(0, 20, 40, 0.05);
+    }
+    
+    .circuit-line {
+      position: absolute;
+      background-color: rgba(0, 200, 100, 0.15);
+      transform-origin: left center;
+    }
+    
+    .circuit-node {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: rgba(0, 200, 100, 0.3);
+      box-shadow: 0 0 5px rgba(0, 200, 100, 0.5);
+    }
+    
+    /* Geometric Patterns Effect */
+    #geometricContainer {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(240, 240, 240, 0.1) 0%, rgba(255, 255, 255, 0.1) 100%);
+    }
+    
+    .geometric-shape {
+      position: absolute;
+      opacity: 0.1;
+      transform-origin: center;
+      animation: rotateShape 40s linear infinite;
+    }
+    
+    @keyframes rotateShape {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Northern Lights Effect */
+    #auroraContainer {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+      overflow: hidden;
+      background: linear-gradient(to bottom, rgba(14, 14, 40, 0.2) 0%, rgba(3, 3, 22, 0.1) 100%);
+    }
+    
+    .aurora-band {
+      position: absolute;
+      bottom: 5%;
+      left: -10%;
+      width: 120%;
+      height: 50%;
+      background: linear-gradient(90deg, 
+        rgba(12, 206, 107, 0), 
+        rgba(12, 206, 107, 0.3), 
+        rgba(12, 206, 107, 0));
+      border-radius: 100% 100% 0 0;
+      filter: blur(20px);
+      transform-origin: bottom center;
+      opacity: 0.6;
+    }
+    
+    /* Rain Effect */
+    #rainCanvas {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    /* Stars Effect */
+    #starfieldCanvas {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    /* Waves Effect - ENHANCED */
+    #waveContainer {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+      overflow: hidden;
+      background: linear-gradient(to bottom, rgba(41, 128, 185, 0.1), rgba(41, 128, 185, 0.2));
+    }
+    
     .wave {
-        position: absolute;
-        bottom: 0;
-        width: 200%;
-        height: 20%;
-        background: rgba(0, 119, 190, 0.5);
-        opacity: 0.8;
-        border-radius: 50%;
+      position: absolute;
+      width: 200%;
+      opacity: 0.8;
+      border-radius: 40%;
+      background: linear-gradient(to bottom, transparent, currentColor);
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+      transform-origin: center bottom;
     }
-
-    #wave1 { animation: animateWave 5s linear infinite; }
-    #wave2 { animation: animateWave 6s linear infinite; opacity: 0.6; bottom: 10%; background: rgba(0, 89, 160, 0.5); }
-    #wave3 { animation: animateWave 7s linear infinite; opacity: 0.4; bottom: 20%; background: rgba(0, 59, 130, 0.5); }
-
-    @keyframes animateWave {
-        0% { transform: translateX(0) translateY(0); }
-        50% { transform: translateX(-50%) translateY(10px); }
-        100% { transform: translateX(-100%) translateY(0); }
+    
+    #wave1 { 
+      height: 25%; 
+      bottom: -10%; 
+      color: rgba(52, 152, 219, 0.7);
+      animation: animateWave1 12s ease-in-out infinite alternate; 
+      z-index: 3;
     }
-
-    /* Gooey Background Styles */
+    
+    #wave2 { 
+      height: 35%; 
+      bottom: -15%; 
+      left: -25%;
+      color: rgba(41, 128, 185, 0.5);
+      animation: animateWave2 14s ease-in-out infinite alternate; 
+      z-index: 2;
+    }
+    
+    #wave3 { 
+      height: 45%; 
+      bottom: -25%; 
+      left: -10%;
+      color: rgba(36, 113, 163, 0.3);
+      animation: animateWave3 16s ease-in-out infinite alternate; 
+      z-index: 1;
+    }
+    
+    #wave4 {
+      height: 50%;
+      bottom: -30%;
+      left: -5%;
+      color: rgba(26, 82, 118, 0.2);
+      animation: animateWave4 18s ease-in-out infinite alternate;
+      z-index: 0;
+    }
+    
+    @keyframes animateWave1 {
+      0% { transform: translateX(0) scale(1.05, 1); }
+      50% { transform: translateX(-25%) scale(1, 1.05); }
+      100% { transform: translateX(-50%) scale(1.05, 1); }
+    }
+    
+    @keyframes animateWave2 {
+      0% { transform: translateX(0) scale(1, 1.02); }
+      50% { transform: translateX(-30%) scale(1.03, 1); }
+      100% { transform: translateX(-60%) scale(1, 1.02); }
+    }
+    
+    @keyframes animateWave3 {
+      0% { transform: translateX(0) scale(1.02, 1); }
+      50% { transform: translateX(-20%) scale(1, 1.02); }
+      100% { transform: translateX(-40%) scale(1.02, 1); }
+    }
+    
+    @keyframes animateWave4 {
+      0% { transform: translateX(0) scale(1, 1.01); }
+      50% { transform: translateX(-15%) scale(1.01, 1); }
+      100% { transform: translateX(-30%) scale(1, 1.01); }
+    }
+    
+    /* Blobs Effect */
     .blobs-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: -2;
-        filter: url(#goo);
-        overflow: hidden;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -2;
+      filter: url(#goo);
+      overflow: hidden;
+      display: none;
     }
-
+    
     .blob {
-        position: absolute;
-        border-radius: 50%;
-        opacity: 0.8;
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.8;
     }
-
+    
     .black-blobs .blob {
-        background-color: #000;
+      background-color: #000;
     }
-
+    
     .colorful-blobs .blob {
-        /* Colorful blobs set by JS */
+      /* Colorful blobs set by JS */
     }
 
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text);
+      opacity: 0.6;
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .empty-state-text {
+      font-size: 1.25rem;
+      font-weight: 500;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    /* Enhanced Rainbow Gradient background */
     .rainbow-gradient {
-        background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
-        background-size: 200% 100%;
-        animation: rainbow-animation 10s linear infinite;
+      background: linear-gradient(-45deg, 
+        #ff7b00, #ff8800, #ff9500, #ffa200, 
+        #ffaa00, #ffb700, #ffc300, #ffd000, 
+        #ffdb00, #ffe700, #fff400, #fff700, 
+        #f7ff00, #e2ff00, #ccff00, #b7ff00, 
+        #a1ff00, #8cff00, #76ff00, #61ff00, 
+        #4cff00, #37ff00, #21ff00, #0cff00, 
+        #00ff0c, #00ff21, #00ff37, #00ff4c, 
+        #00ff61, #00ff76, #00ff8c, #00ffa1, 
+        #00ffb7, #00ffcc, #00ffe2, #00fff7, 
+        #00f7ff, #00e2ff, #00ccff, #00b7ff, 
+        #00a1ff, #008cff, #0076ff, #0061ff, 
+        #004cff, #0037ff, #0021ff, #000cff, 
+        #0c00ff, #2100ff, #3700ff, #4c00ff, 
+        #6100ff, #7600ff, #8c00ff, #a100ff, 
+        #b700ff, #cc00ff, #e200ff, #f700ff, 
+        #ff00f7, #ff00e2, #ff00cc, #ff00b7, 
+        #ff00a1, #ff008c, #ff0076, #ff0061, 
+        #ff004c, #ff0037, #ff0021, #ff000c);
+      background-size: 1000% 1000%;
+      animation: gradientAnimation 30s ease infinite;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .rainbow-gradient::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.2));
+      z-index: -1;
+      opacity: 0.7;
+      animation: pulseEffect 8s ease-in-out infinite;
+    }
+    
+    .dark-mode .rainbow-gradient::after {
+      background: radial-gradient(circle at center, transparent 30%, rgba(255, 255, 255, 0.1));
     }
 
-    @keyframes rainbow-animation {
-        from {
-            background-position: 0% 50%;
-        }
-        to {
-            background-position: 200% 50%;
-        }
+    @keyframes gradientAnimation {
+      0% { background-position: 0% 0%; }
+      25% { background-position: 50% 50%; }
+      50% { background-position: 100% 100%; }
+      75% { background-position: 50% 50%; }
+      100% { background-position: 0% 0%; }
+    }
+    
+    @keyframes pulseEffect {
+      0% { opacity: 0.3; }
+      50% { opacity: 0.7; }
+      100% { opacity: 0.3; }
+    }
+    
+    /* Tooltip for theme buttons */
+    .tooltip {
+      position: relative;
+    }
+    
+    .tooltip::before {
+      content: attr(aria-label);
+      position: absolute;
+      right: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      margin-right: 10px;
+      padding: 0.4rem 0.8rem;
+      background-color: var(--surface);
+      color: var(--text);
+      border-radius: var(--border-radius);
+      font-size: 0.75rem;
+      white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      box-shadow: var(--box-shadow);
+      pointer-events: none;
+      z-index: 20;
+    }
+    
+    .tooltip:hover::before {
+      opacity: 1;
+      visibility: visible;
     }
 
-    #addSectionButton {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 1;
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .sections-container {
+        grid-template-columns: 1fr;
+      }
+      
+      .app-title {
+        font-size: 2rem;
+      }
+      
+      .section {
+        max-width: 100%;
+      }
+      
+      .modal-content {
+        width: 95%;
+        margin: 5% auto;
+      }
+      
+      .fab {
+        bottom: 1.5rem;
+        right: 1.5rem;
+      }
+      
+      #themeOptionsContainer {
+        width: 220px;
+      }
     }
   </style>
 </head>
 <body>
+  <div class="container">
+    <header class="app-header">
+      <h1 class="app-title" id="appTitle">QuickNotes</h1>
+    </header>
+    
+    <main>
+      <div class="sections-container" id="sectionsContainer">
+        <!-- Sections will be generated here -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Floating Action Button -->
+  <button id="addSectionButton" class="fab" aria-label="Add Section">
+    <i class="fas fa-plus"></i>
+  </button>
+
+  <!-- Theme Controls -->
+  <div class="theme-control">
+    <button id="themeToggle" class="theme-toggle" aria-label="Theme Settings">
+      <i class="fas fa-palette"></i>
+    </button>
+    
+    <div id="themeOptionsContainer">
+      <div class="theme-options-title">Theme Settings</div>
+      
+      <!-- Dark Mode Toggle -->
+      <div class="dark-mode-toggle">
+        <span>Dark Mode</span>
+        <label class="switch">
+          <input type="checkbox" id="darkModeToggle">
+          <span class="slider round"></span>
+        </label>
+      </div>
+      
+      <div class="theme-section-title">Background Effects</div>
+      <div class="theme-buttons-grid">
+        <button class="theme-button tooltip" data-theme="default" aria-label="Default Theme">
+          <i class="fas fa-circle"></i>
+          <span class="theme-button-label">Default</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="rain" aria-label="Rain Theme">
+          <i class="fas fa-cloud-rain"></i>
+          <span class="theme-button-label">Rain</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="stars" aria-label="Stars Theme">
+          <i class="fas fa-star"></i>
+          <span class="theme-button-label">Stars</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="waves" aria-label="Waves Theme">
+          <i class="fas fa-water"></i>
+          <span class="theme-button-label">Waves</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="particles" aria-label="Particles Network">
+          <i class="fas fa-atom"></i>
+          <span class="theme-button-label">Particles</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="fireflies" aria-label="Fireflies">
+          <i class="fas fa-lightbulb"></i>
+          <span class="theme-button-label">Fireflies</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="circuit" aria-label="Circuit Board">
+          <i class="fas fa-microchip"></i>
+          <span class="theme-button-label">Circuit</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="geometric" aria-label="Geometric Patterns">
+          <i class="fas fa-shapes"></i>
+          <span class="theme-button-label">Geometric</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="aurora" aria-label="Northern Lights">
+          <i class="fas fa-stream"></i>
+          <span class="theme-button-label">Aurora</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="black-blobs" aria-label="Black Blobs Theme">
+          <i class="fas fa-circle"></i>
+          <span class="theme-button-label">Blobs</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="colorful-blobs" aria-label="Colorful Blobs Theme">
+          <i class="fas fa-palette"></i>
+          <span class="theme-button-label">Colors</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="rainbow-gradient" aria-label="Rainbow Gradient Theme">
+          <i class="fas fa-rainbow"></i>
+          <span class="theme-button-label">Rainbow</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <!-- Edit Note Modal -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle" class="modal-title">Edit Note</h2>
+        <button class="close" aria-label="Close">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="editButtonText" class="form-label">Button Text:</label>
+        <input type="text" id="editButtonText" class="form-control" placeholder="Enter button text">
+      </div>
+      <div class="form-group">
+        <label for="editCopyText" class="form-label">Content to Copy:</label>
+        <textarea id="editCopyText" class="form-control" placeholder="Enter text to copy" rows="4"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="editButtonColor" class="form-label">Button Color:</label>
+        <input type="color" id="editButtonColor" class="form-control color-picker" value="#4361ee">
+      </div>
+      <div class="button-group">
+        <button id="deleteBtn" class="btn btn-danger">Delete</button>
+        <button id="cancelEditBtn" class="btn btn-text">Cancel</button>
+        <button id="saveBtn" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Section Modal -->
+  <div id="newSectionModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Add New Section</h2>
+        <button class="close" aria-label="Close">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="newSectionTitle" class="form-label">Section Title:</label>
+        <input type="text" id="newSectionTitle" class="form-control" placeholder="Enter section title">
+      </div>
+      <div class="button-group">
+        <button id="cancelNewSectionBtn" class="btn btn-text">Cancel</button>
+        <button id="saveNewSectionBtn" class="btn btn-primary">Add Section</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rename Section Modal -->
+  <div id="renameSectionModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Rename Section</h2>
+        <button class="close" aria-label="Close">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="renameSectionTitle" class="form-label">New Section Title:</label>
+        <input type="text" id="renameSectionTitle" class="form-control" placeholder="Enter new section title">
+      </div>
+      <div class="button-group">
+        <button id="cancelRenameBtn" class="btn btn-text">Cancel</button>
+        <button id="saveRenameBtn" class="btn btn-primary">Rename</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Card Color Modal -->
+  <div id="cardColorModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Change Card Color</h2>
+        <button class="close" aria-label="Close">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="cardColorPicker" class="form-label">Card Background Color:</label>
+        <input type="color" id="cardColorPicker" class="form-control color-picker" value="#ffffff">
+      </div>
+      <div class="button-group">
+        <button id="resetCardColorBtn" class="btn btn-text">Reset to Default</button>
+        <button id="saveCardColorBtn" class="btn btn-primary">Apply Color</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Copy Notification -->
+  <div id="copyNotification" class="copy-notification">
+    <i class="fas fa-check-circle"></i> Copied to clipboard!
+  </div>
+
+  <!-- Background effect container -->
+  <div id="bgEffect" class="bg-effect"></div>
+  
+  <!-- Background elements -->
   <svg style="display: none;">
     <defs>
       <filter id="goo">
@@ -379,108 +1157,62 @@
       </filter>
     </defs>
   </svg>
-
+  
   <div class="blobs-container" id="blobsContainer"></div>
-  <div class="container">
-    <h1 id="appTitle">QuickNotes</h1>
-    <div class="sections-container" id="sectionsContainer"></div>
-  </div>
-
-  <button id="addSectionButton" onclick="openNewSectionModal()"><i class="fas fa-plus"></i> Add Section</button>
-  <!-- Existing Modals -->
-  <div id="editModal" class="modal">
-    <div class="modal-content">
-      <span class="close">×</span>
-      <h2 id="modalTitle">Edit Note</h2>
-      <div class="form-group">
-        <label for="editButtonText">Button Text:</label>
-        <input type="text" id="editButtonText" placeholder="Button Text">
-      </div>
-      <div class="form-group">
-        <label for="editCopyText">Content to Copy:</label>
-        <textarea id="editCopyText" placeholder="Text to Copy" rows="4"></textarea>
-      </div>
-      <div class="form-group">
-        <label for="editButtonColor">Button Color:</label>
-        <input type="color" id="editButtonColor">
-      </div>
-      <div class="form-group">
-        <label for="editTitleColor">Title Color:</label>
-        <input type="color" id="editTitleColor">
-      </div>
-      <div class="button-group">
-        <button id="deleteBtn">Delete</button>
-        <button id="saveBtn">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="newSectionModal" class="modal">
-    <div class="modal-content">
-      <span class="close">×</span>
-      <h2>Add New Section</h2>
-      <div class="form-group">
-        <label for="newSectionTitle">Section Title:</label>
-        <input type="text" id="newSectionTitle" placeholder="Section Title">
-      </div>
-      <div class="button-group">
-        <button onclick="closeModal()">Cancel</button>
-        <button onclick="saveNewSection()">Add Section</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="renameSectionModal" class="modal">
-    <div class="modal-content">
-      <span class="close">×</span>
-      <h2>Rename Section</h2>
-      <div class="form-group">
-        <label for="renameSectionTitle">New Section Title:</label>
-        <input type="text" id="renameSectionTitle" placeholder="New Section Title">
-      </div>
-      <div class="button-group">
-        <button onclick="closeModal()">Cancel</button>
-        <button onclick="saveRenamedSection()">Rename</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Copy Notification and Theme Buttons -->
-  <div id="copyNotification">Copied!</div>
-  <div id="themeOptionsContainer">
-    <button id="darkModeToggle" aria-label="Toggle Dark Mode"><i class="fas fa-adjust"></i></button>
-    <div id="themeOptions">
-      <button class="theme-button" data-theme="default" aria-label="Default Theme"><i class="fas fa-home"></i></button>
-      <button class="theme-button" data-theme="rain" aria-label="Rain Theme"><i class="fas fa-cloud-rain"></i></button>
-      <button class="theme-button" data-theme="stars" aria-label="Stars Theme"><i class="fas fa-star"></i></button>
-      <button class="theme-button" data-theme="waves" aria-label="Waves Theme"><i class="fas fa-water"></i></button>
-      <button class="theme-button" data-theme="black-blobs" aria-label="Black Blobs Theme"><i class="fas fa-circle"></i></button>
-      <button class="theme-button" data-theme="colorful-blobs" aria-label="Colorful Blobs Theme"><i class="fas fa-palette"></i></button>
-      <button class="theme-button" data-theme="rainbow-gradient" aria-label="Rainbow Gradient Theme"><i class="fas fa-rainbow"></i></button>
-    </div>
-  </div>
-  <!-- Background Elements -->
   <canvas id="rainCanvas"></canvas>
   <canvas id="starfieldCanvas"></canvas>
+  <canvas id="particlesCanvas"></canvas>
   <div id="waveContainer">
     <div class="wave" id="wave1"></div>
     <div class="wave" id="wave2"></div>
     <div class="wave" id="wave3"></div>
+    <div class="wave" id="wave4"></div>
+  </div>
+  <div id="firefliesContainer"></div>
+  <div id="circuitContainer"></div>
+  <div id="geometricContainer"></div>
+  <div id="auroraContainer">
+    <div class="aurora-band" style="animation: auroraWave 15s ease-in-out infinite alternate; height: 40%;"></div>
+    <div class="aurora-band" style="animation: auroraWave 20s ease-in-out infinite alternate; height: 30%; background: linear-gradient(90deg, rgba(142, 45, 226, 0), rgba(142, 45, 226, 0.3), rgba(142, 45, 226, 0)); bottom: 10%;"></div>
+    <div class="aurora-band" style="animation: auroraWave 25s ease-in-out infinite alternate; height: 35%; background: linear-gradient(90deg, rgba(74, 0, 224, 0), rgba(74, 0, 224, 0.3), rgba(74, 0, 224, 0)); bottom: 15%;"></div>
   </div>
 
   <script>
-    // Default sections and notes data
-    let sections =  [
-      { id: 'no-truck', title: 'No Truck', titleColor: '#333' },
-      { id: 'truck-rolled', title: 'Truck Rolled', titleColor: '#333' },
-      { id: 'other', title: 'Other', titleColor: '#333' }
+    // App state
+    let sections = [
+      { id: 'no-truck', title: 'No Truck', cardColor: '#ffffff' },
+      { id: 'truck-rolled', title: 'Truck Rolled', cardColor: '#ffffff' },
+      { id: 'other', title: 'Other', cardColor: '#ffffff' }
     ];
     let notesData = {};
     let currentRenamingSection = null;
-    let hueRotation = 0;
-    const appTitle = document.getElementById('appTitle');
+    let isDarkMode = false;
+    let currentTheme = 'default';
 
-    // Use localStorage for saving/loading data
+    // DOM Elements
+    const sectionsContainer = document.getElementById('sectionsContainer');
+    const addSectionButton = document.getElementById('addSectionButton');
+    const themeToggle = document.getElementById('themeToggle');
+    const appTitle = document.getElementById('appTitle');
+    const copyNotification = document.getElementById('copyNotification');
+    const bgEffect = document.getElementById('bgEffect');
+    const themeOptionsContainer = document.getElementById('themeOptionsContainer');
+    const darkModeBtn = document.getElementById('darkModeBtn');
+    
+    // Modals
+    const editModal = document.getElementById('editModal');
+    const newSectionModal = document.getElementById('newSectionModal');
+    const renameSectionModal = document.getElementById('renameSectionModal');
+
+    // Initialize App
+    function initializeApp() {
+      loadData();
+      renderSections();
+      setupEventListeners();
+      loadThemePreference();
+    }
+
+    // Data Persistence
     function loadData() {
       const storedData = localStorage.getItem('quicknotesData');
       if (storedData) {
@@ -489,10 +1221,16 @@
           sections = data.sections || sections;
           notesData = data.notesData || {};
         } catch (error) {
-          console.error('Error parsing saved data:', error);
+          console.error('Error loading saved data:', error);
         }
       }
-      initializeApp();
+      
+      // Initialize empty note arrays for new sections
+      sections.forEach(section => {
+        if (!notesData[section.id]) {
+          notesData[section.id] = [];
+        }
+      });
     }
 
     function saveData() {
@@ -503,47 +1241,112 @@
       localStorage.setItem('quicknotesData', JSON.stringify(dataToSave));
     }
 
-    function initializeApp() {
-      const container = document.getElementById('sectionsContainer');
-      container.innerHTML = '';
+    // Rendering Functions
+    function renderSections() {
+      sectionsContainer.innerHTML = '';
+      
+      if (sections.length === 0) {
+        renderEmptyState();
+        return;
+      }
+      
       sections.forEach(section => {
-        const sectionElement = createSection(section);
-        container.appendChild(sectionElement);
-        if (!notesData[section.id]) {
-          notesData[section.id] = [];
-        }
+        const sectionElement = createSectionElement(section);
+        sectionsContainer.appendChild(sectionElement);
         renderNotes(section.id);
       });
     }
 
-    function createSection(section) {
+    function renderEmptyState() {
+      const emptyState = document.createElement('div');
+      emptyState.className = 'empty-state';
+      emptyState.innerHTML = `
+        <i class="fas fa-sticky-note"></i>
+        <p class="empty-state-text">No sections yet. Click the + button to add one!</p>
+      `;
+      sectionsContainer.appendChild(emptyState);
+    }
+
+    function createSectionElement(section) {
       const sectionElement = document.createElement('div');
       sectionElement.className = 'section';
       sectionElement.id = section.id;
-      sectionElement.innerHTML = `
-        <div class="section-header">
-          <h2 style="color: ${section.titleColor}">${section.title}</h2>
-          <div>
-            <button class="edit-btn" onclick="openRenameSectionModal('${section.id}')"><i class="fas fa-edit"></i></button>
-            <button class="edit-btn" onclick="deleteSection('${section.id}')"><i class="fas fa-trash-alt"></i></button>
-            <button class="add-btn" onclick="openNewNoteModal('${section.id}')"><i class="fas fa-plus"></i></button>
-          </div>
-        </div>
-        <div class="button-container"></div>
-      `;
+      
+      // Apply card background color if set
+      if (section.cardColor) {
+        sectionElement.style.backgroundColor = section.cardColor;
+        
+        // Adjust text color based on background
+        if (getContrastColor(section.cardColor) === '#000000') {
+          sectionElement.style.color = '#000000';
+        } else {
+          sectionElement.style.color = '#ffffff';
+        }
+      }
+      
+      const headerElement = document.createElement('div');
+      headerElement.className = 'section-header';
+      
+      const titleElement = document.createElement('h2');
+      titleElement.className = 'section-title';
+      titleElement.textContent = section.title;
+      
+      const actionsElement = document.createElement('div');
+      actionsElement.className = 'section-actions';
+      
+      const editButton = createIconButton('fa-edit', () => openRenameSectionModal(section.id));
+      const deleteButton = createIconButton('fa-trash-alt', () => deleteSection(section.id));
+      const addButton = createIconButton('fa-plus', () => openNewNoteModal(section.id));
+      const colorButton = createIconButton('fa-fill-drip', () => openCardColorModal(section.id));
+      
+      actionsElement.appendChild(editButton);
+      actionsElement.appendChild(colorButton);
+      actionsElement.appendChild(deleteButton);
+      actionsElement.appendChild(addButton);
+      
+      headerElement.appendChild(titleElement);
+      headerElement.appendChild(actionsElement);
+      
+      const buttonContainer = document.createElement('div');
+      buttonContainer.className = 'button-container';
+      
+      sectionElement.appendChild(headerElement);
+      sectionElement.appendChild(buttonContainer);
+      
       return sectionElement;
+    }
+
+    function createIconButton(iconClass, clickHandler) {
+      const button = document.createElement('button');
+      button.className = 'icon-button';
+      button.innerHTML = `<i class="fas ${iconClass}"></i>`;
+      button.addEventListener('click', clickHandler);
+      return button;
     }
 
     function renderNotes(sectionId) {
       const container = document.querySelector(`#${sectionId} .button-container`);
+      if (!container) return;
+      
       container.innerHTML = '';
+      
+      if (!notesData[sectionId] || notesData[sectionId].length === 0) {
+        const emptyText = document.createElement('p');
+        emptyText.textContent = 'No notes yet. Click + to add one.';
+        emptyText.style.opacity = '0.6';
+        emptyText.style.textAlign = 'center';
+        emptyText.style.padding = '1rem 0';
+        container.appendChild(emptyText);
+        return;
+      }
+      
       notesData[sectionId].forEach((note, index) => {
         const button = document.createElement('button');
         button.className = 'note-button';
         button.textContent = note.buttonText;
         button.style.backgroundColor = note.color;
         button.style.color = getContrastColor(note.color);
-
+        
         const editIcon = document.createElement('span');
         editIcon.className = 'edit-icon';
         editIcon.innerHTML = '<i class="fas fa-edit"></i>';
@@ -551,262 +1354,449 @@
           e.stopPropagation();
           openEditModal(sectionId, index);
         };
-
+        
         button.appendChild(editIcon);
-        button.onclick = () => copyToClipboard(note.copyText);
+        button.addEventListener('click', () => copyToClipboard(note.copyText));
         container.appendChild(button);
       });
     }
 
-    function getContrastColor(hexColor) {
-      const r = parseInt(hexColor.substr(1, 2), 16);
-      const g = parseInt(hexColor.substr(3, 2), 16);
-      const b = parseInt(hexColor.substr(5, 2), 16);
-      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      return luminance > 0.5 ? 'black' : 'white';
+    // Event Handlers
+    function setupEventListeners() {
+      // Add Section Button
+      addSectionButton.addEventListener('click', openNewSectionModal);
+      
+      // Theme Toggle
+      themeToggle.addEventListener('click', toggleThemeOptions);
+      
+      // Dark Mode Toggle
+      const darkModeToggle = document.getElementById('darkModeToggle');
+      darkModeToggle.addEventListener('change', function() {
+        toggleDarkMode(this.checked);
+      });
+      
+      // Theme Buttons
+      document.querySelectorAll('.theme-button').forEach(button => {
+        button.addEventListener('click', () => {
+          setTheme(button.dataset.theme);
+          // Mark only this button as active
+          document.querySelectorAll('.theme-button').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          button.classList.add('active');
+          // Close theme options after selection
+          //themeOptionsContainer.classList.remove('visible');
+        });
+      });
+      
+      // Close theme options when clicking outside
+      document.addEventListener('click', (event) => {
+        if (!event.target.closest('.theme-control')) {
+          themeOptionsContainer.classList.remove('visible');
+        }
+      });
+      
+      // Modal Close Buttons
+      document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', () => closeAllModals());
+      });
+      
+      // Close modals when clicking outside
+      window.addEventListener('click', (event) => {
+        if (event.target.classList.contains('modal')) {
+          closeAllModals();
+        }
+      });
+      
+      // Cancel buttons
+      document.getElementById('cancelEditBtn').addEventListener('click', closeAllModals);
+      document.getElementById('cancelNewSectionBtn').addEventListener('click', closeAllModals);
+      document.getElementById('cancelRenameBtn').addEventListener('click', closeAllModals);
+      
+      // Save buttons
+      document.getElementById('saveNewSectionBtn').addEventListener('click', saveNewSection);
+      document.getElementById('saveRenameBtn').addEventListener('click', saveRenamedSection);
+      
+      // Window resize handler for canvas backgrounds
+      window.addEventListener('resize', () => {
+        if (currentTheme === 'rain') {
+          const canvas = document.getElementById('rainCanvas');
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        } else if (currentTheme === 'stars') {
+          const canvas = document.getElementById('starfieldCanvas');
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        } else if (currentTheme === 'particles') {
+          const canvas = document.getElementById('particlesCanvas');
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        }
+      });
+      
+      // Add animation to app title
+      requestAnimationFrame(animateTitle);
     }
 
+    // Toggle theme options dropdown
+    function toggleThemeOptions(e) {
+      e.stopPropagation();
+      themeOptionsContainer.classList.toggle('visible');
+    }
+
+    // Modal Functions
     function openNewNoteModal(sectionId) {
-      openModal('New Note', () => saveNewNote(sectionId));
+      const modal = editModal;
+      document.getElementById('modalTitle').textContent = 'Add New Note';
+      document.getElementById('editButtonText').value = '';
+      document.getElementById('editCopyText').value = '';
+      document.getElementById('editButtonColor').value = '#4361ee';
+      document.getElementById('deleteBtn').style.display = 'none';
+      
+      document.getElementById('saveBtn').onclick = () => saveNewNote(sectionId);
+      
+      openModal(modal);
     }
 
     function openEditModal(sectionId, noteIndex) {
       const note = notesData[sectionId][noteIndex];
-      openModal('Edit Note', () => saveEdit(sectionId, noteIndex), sectionId, noteIndex);
-    }
-
-    function openNewSectionModal() {
-      const modal = document.getElementById('newSectionModal');
-      modal.style.display = 'block';
-    }
-
-    function openRenameSectionModal(sectionId) {
-      currentRenamingSection = sectionId;
-      const modal = document.getElementById('renameSectionModal');
-      modal.style.display = 'block';
-    }
-
-    function openModal(title, saveFunction, sectionId, noteIndex) {
-      const modal = document.getElementById('editModal');
-      document.getElementById('modalTitle').textContent = title;
-      document.getElementById('editButtonText').value = noteIndex !== undefined ? notesData[sectionId][noteIndex].buttonText : '';
-      document.getElementById('editCopyText').value = noteIndex !== undefined ? notesData[sectionId][noteIndex].copyText : '';
-      document.getElementById('editButtonColor').value = noteIndex !== undefined ? notesData[sectionId][noteIndex].color : '#007bff';
-      document.getElementById('editTitleColor').value = noteIndex !== undefined ? sections.find(sec => sec.id === sectionId).titleColor : '#007bff';
-      document.getElementById('saveBtn').onclick = saveFunction;
-      document.getElementById('deleteBtn').style.display = noteIndex !== undefined ? 'inline-block' : 'none';
+      const modal = editModal;
+      
+      document.getElementById('modalTitle').textContent = 'Edit Note';
+      document.getElementById('editButtonText').value = note.buttonText;
+      document.getElementById('editCopyText').value = note.copyText;
+      document.getElementById('editButtonColor').value = note.color;
+      document.getElementById('deleteBtn').style.display = 'inline-block';
+      
+      document.getElementById('saveBtn').onclick = () => saveEdit(sectionId, noteIndex);
       document.getElementById('deleteBtn').onclick = () => {
         if (confirm('Are you sure you want to delete this note?')) {
           deleteNote(sectionId, noteIndex);
         }
       };
-      modal.style.display = 'block';
+      
+      openModal(modal);
     }
 
+    function openNewSectionModal() {
+      document.getElementById('newSectionTitle').value = '';
+      openModal(newSectionModal);
+    }
+
+    function openRenameSectionModal(sectionId) {
+      currentRenamingSection = sectionId;
+      const section = sections.find(sec => sec.id === sectionId);
+      document.getElementById('renameSectionTitle').value = section.title;
+      openModal(renameSectionModal);
+    }
+    
+    function openCardColorModal(sectionId) {
+      currentRenamingSection = sectionId;
+      const section = sections.find(sec => sec.id === sectionId);
+      document.getElementById('cardColorPicker').value = section.cardColor || '#ffffff';
+      
+      // Setup event handlers for the card color modal
+      document.getElementById('saveCardColorBtn').onclick = () => saveCardColor(sectionId);
+      document.getElementById('resetCardColorBtn').onclick = () => resetCardColor(sectionId);
+      
+      openModal(document.getElementById('cardColorModal'));
+    }
+
+    function openModal(modal) {
+      closeAllModals();
+      modal.style.display = 'block';
+      // Focus the first input in the modal
+      const firstInput = modal.querySelector('input');
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 100);
+      }
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal').forEach(modal => {
+        modal.style.display = 'none';
+      });
+    }
+
+    // CRUD Operations
     function saveNewNote(sectionId) {
-      const newNote = {
-        buttonText: document.getElementById('editButtonText').value,
-        copyText: document.getElementById('editCopyText').value,
-        color: document.getElementById('editButtonColor').value
-      };
+      const buttonText = document.getElementById('editButtonText').value.trim();
+      const copyText = document.getElementById('editCopyText').value;
+      const color = document.getElementById('editButtonColor').value;
+      
+      if (!buttonText) {
+        alert('Please enter button text');
+        return;
+      }
+      
+      const newNote = { buttonText, copyText, color };
       notesData[sectionId].push(newNote);
       renderNotes(sectionId);
-      closeModal();
+      closeAllModals();
       saveData();
     }
 
     function saveEdit(sectionId, noteIndex) {
-      notesData[sectionId][noteIndex] = {
-        buttonText: document.getElementById('editButtonText').value,
-        copyText: document.getElementById('editCopyText').value,
-        color: document.getElementById('editButtonColor').value
-      };
-      const section = sections.find(sec => sec.id === sectionId);
-      if (section) {
-        section.titleColor = document.getElementById('editTitleColor').value;
+      const buttonText = document.getElementById('editButtonText').value.trim();
+      const copyText = document.getElementById('editCopyText').value;
+      const color = document.getElementById('editButtonColor').value;
+      
+      if (!buttonText) {
+        alert('Please enter button text');
+        return;
       }
-      saveData();
-      initializeApp();
+      
+      notesData[sectionId][noteIndex] = { buttonText, copyText, color };
       renderNotes(sectionId);
-      closeModal();
+      closeAllModals();
       saveData();
     }
 
     function deleteNote(sectionId, noteIndex) {
       notesData[sectionId].splice(noteIndex, 1);
       renderNotes(sectionId);
-      closeModal();
+      closeAllModals();
       saveData();
     }
 
     function saveNewSection() {
-      const title = document.getElementById('newSectionTitle').value;
-      if (title.trim()) {
-        const newSection = {
-          id: title.toLowerCase().replace(/\s+/g, '-'),
-          title: title,
-          titleColor: '#333'
-        };
-        sections.push(newSection);
-        notesData[newSection.id] = [];
-        saveData();
-        initializeApp();
+      const title = document.getElementById('newSectionTitle').value.trim();
+      
+      if (!title) {
+        alert('Please enter a section title');
+        return;
       }
-      closeModal();
+      
+      const id = title.toLowerCase().replace(/\s+/g, '-');
+      
+      // Check for duplicates
+      if (sections.some(section => section.id === id)) {
+        alert('A section with this name already exists');
+        return;
+      }
+      
+      const newSection = { id, title, cardColor: '#ffffff' };
+      sections.push(newSection);
+      notesData[id] = [];
+      saveData();
+      renderSections();
+      closeAllModals();
+    }
+    
+    function saveCardColor(sectionId) {
+      const color = document.getElementById('cardColorPicker').value;
+      const section = sections.find(sec => sec.id === sectionId);
+      
+      if (section) {
+        section.cardColor = color;
+        saveData();
+        renderSections();
+      }
+      
+      closeAllModals();
+    }
+    
+    function resetCardColor(sectionId) {
+      const section = sections.find(sec => sec.id === sectionId);
+      
+      if (section) {
+        section.cardColor = '#ffffff';
+        saveData();
+        renderSections();
+      }
+      
+      closeAllModals();
     }
 
     function saveRenamedSection() {
-      const title = document.getElementById('renameSectionTitle').value;
+      const title = document.getElementById('renameSectionTitle').value.trim();
+      
+      if (!title) {
+        alert('Please enter a section title');
+        return;
+      }
+      
       const section = sections.find(sec => sec.id === currentRenamingSection);
-      if (title.trim() && currentRenamingSection && section) {
+      if (section) {
         section.title = title;
         saveData();
-        initializeApp();
+        renderSections();
       }
-      closeModal();
+      
+      closeAllModals();
     }
 
     function deleteSection(sectionId) {
-      if (confirm('Are you sure you want to delete this section? All notes in this section will also be deleted.')) {
+      if (confirm('Are you sure you want to delete this section? All notes in this section will be lost.')) {
         const sectionIndex = sections.findIndex(sec => sec.id === sectionId);
         if (sectionIndex !== -1) {
           sections.splice(sectionIndex, 1);
           delete notesData[sectionId];
           saveData();
-          initializeApp();
+          renderSections();
         }
       }
+    }
+
+    // Utility Functions
+    function getContrastColor(hexColor) {
+      if (!hexColor || hexColor === '') return '#ffffff';
+      
+      // Convert hex to RGB
+      const r = parseInt(hexColor.substr(1, 2), 16);
+      const g = parseInt(hexColor.substr(3, 2), 16);
+      const b = parseInt(hexColor.substr(5, 2), 16);
+      
+      // Calculate luminance
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      
+      // Return white for dark colors and black for light colors
+      return luminance > 0.5 ? '#000000' : '#ffffff';
     }
 
     function copyToClipboard(text) {
       navigator.clipboard.writeText(text).then(() => {
         showCopyNotification();
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
       });
     }
 
     function showCopyNotification() {
-      const notification = document.getElementById('copyNotification');
-      notification.style.opacity = '1';
+      copyNotification.classList.add('show');
       setTimeout(() => {
-        notification.style.opacity = '0';
+        copyNotification.classList.remove('show');
       }, 2000);
     }
 
-    function closeModal() {
-      document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
+    // Theme Functions
+    function toggleDarkMode(forceState) {
+      if (forceState !== undefined) {
+        isDarkMode = forceState;
+      } else {
+        isDarkMode = !isDarkMode;
+      }
+      
+      document.body.classList.toggle('dark-mode', isDarkMode);
+      updateDarkModeToggle();
+      localStorage.setItem('darkMode', isDarkMode);
     }
 
-    document.querySelectorAll('.close').forEach(closeBtn => {
-      closeBtn.onclick = closeModal;
-    });
-
-    window.onclick = (event) => {
-      if (event.target.classList.contains('modal')) {
-        closeModal();
-      }
-    };
-
-    // Theme handling
-    const themeButtons = document.querySelectorAll('.theme-button');
-    const darkModeToggle = document.getElementById('darkModeToggle');
-    const rainCanvas = document.getElementById('rainCanvas');
-    const starfieldCanvas = document.getElementById('starfieldCanvas');
-    const waveContainer = document.getElementById('waveContainer');
-    const blobsContainer = document.getElementById('blobsContainer');
-
-    let currentTheme = 'default';
-    let rainAnimation, starfieldAnimation;
-
-    darkModeToggle.addEventListener('click', () => {
-      document.body.classList.toggle('dark-mode');
-      localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    function loadThemePreference() {
+      // Load dark mode preference
+      isDarkMode = localStorage.getItem('darkMode') === 'true';
+      document.body.classList.toggle('dark-mode', isDarkMode);
       updateDarkModeToggle();
-    });
+      
+      // Apply saved theme if any
+      const savedTheme = localStorage.getItem('theme') || 'default';
+      setTheme(savedTheme);
+    }
 
-    themeButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const theme = button.dataset.theme;
-        setTheme(theme);
-      });
-    });
+    function updateDarkModeToggle() {
+      const darkModeToggle = document.getElementById('darkModeToggle');
+      if (darkModeToggle) {
+        darkModeToggle.checked = isDarkMode;
+      }
+    }
 
     function setTheme(theme) {
-      if (theme === currentTheme) return;
-
-      themeButtons.forEach(btn => btn.classList.remove('active'));
-      document.querySelector(`[data-theme="${theme}"]`).classList.add('active');
-
-      // Reset styles
-      document.body.classList.remove('rainbow-gradient');
-      blobsContainer.style.display = 'none';
-      blobsContainer.className = 'blobs-container';
-      clearBlobs();
-
-      rainCanvas.style.display = 'none';
-      starfieldCanvas.style.display = 'none';
-      waveContainer.style.display = 'none';
-
-      if (rainAnimation) cancelAnimationFrame(rainAnimation);
-      if (starfieldAnimation) cancelAnimationFrame(starfieldAnimation);
-
-      switch (theme) {
+      // Reset all theme elements
+      document.body.classList.remove('gradient-bg', 'rainbow-gradient');
+      document.getElementById('rainCanvas').style.display = 'none';
+      document.getElementById('starfieldCanvas').style.display = 'none';
+      document.getElementById('waveContainer').style.display = 'none';
+      document.getElementById('blobsContainer').style.display = 'none';
+      document.getElementById('blobsContainer').className = 'blobs-container';
+      
+      // Clear any existing animations
+      if (window.rainAnimation) cancelAnimationFrame(window.rainAnimation);
+      if (window.starfieldAnimation) cancelAnimationFrame(window.starfieldAnimation);
+      if (window.blobsInterval) clearInterval(window.blobsInterval);
+      
+      // Clear any blobs
+      document.getElementById('blobsContainer').innerHTML = '';
+      
+      // Update active class on theme buttons
+      document.querySelectorAll('.theme-button').forEach(btn => {
+        if (btn.id !== 'darkModeBtn') {
+          btn.classList.toggle('active', btn.dataset.theme === theme);
+        }
+      });
+      
+      // Set new theme
+      currentTheme = theme;
+      localStorage.setItem('theme', theme);
+      
+      // Apply the selected theme
+      switch(theme) {
         case 'rain':
-          rainCanvas.style.display = 'block';
+          document.getElementById('rainCanvas').style.display = 'block';
           setupRain();
           break;
         case 'stars':
-          starfieldCanvas.style.display = 'block';
+          document.getElementById('starfieldCanvas').style.display = 'block';
           setupStarfield();
           break;
         case 'waves':
-          waveContainer.style.display = 'block';
+          document.getElementById('waveContainer').style.display = 'block';
           break;
         case 'black-blobs':
-          blobsContainer.style.display = 'block';
-          blobsContainer.classList.add('black-blobs');
-          setupBlobs();
+          document.getElementById('blobsContainer').style.display = 'block';
+          document.getElementById('blobsContainer').classList.add('black-blobs');
+          setupBlobs(false);
           break;
         case 'colorful-blobs':
-          blobsContainer.style.display = 'block';
-          blobsContainer.classList.add('colorful-blobs');
-          setupBlobs();
+          document.getElementById('blobsContainer').style.display = 'block';
+          document.getElementById('blobsContainer').classList.add('colorful-blobs');
+          setupBlobs(true);
           break;
-        case 'rainbow-gradient':
+                  case 'rainbow-gradient':
           document.body.classList.add('rainbow-gradient');
           break;
-        default:
-          document.body.style.backgroundColor = '';
+        case 'particles':
+          document.getElementById('particlesCanvas').style.display = 'block';
+          setupParticles();
+          break;
+        case 'fireflies':
+          document.getElementById('firefliesContainer').style.display = 'block';
+          setupFireflies();
+          break;
+        case 'circuit':
+          document.getElementById('circuitContainer').style.display = 'block';
+          setupCircuit();
+          break;
+        case 'geometric':
+          document.getElementById('geometricContainer').style.display = 'block';
+          setupGeometric();
+          break;
+        case 'aurora':
+          document.getElementById('auroraContainer').style.display = 'block';
+          break;
       }
-
-      currentTheme = theme;
     }
-
+    
+    // Background Effect Functions
     function setupRain() {
-      const ctx = rainCanvas.getContext('2d');
+      const canvas = document.getElementById('rainCanvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      
       const raindrops = [];
       const splashes = [];
       const numRaindrops = 500;
-      const gravity = 0.1;
-      const splashDecay = 0.01;
-
-      rainCanvas.width = window.innerWidth;
-      rainCanvas.height = window.innerHeight;
-
+      
       function createRaindrop() {
         return {
-          x: Math.random() * rainCanvas.width,
-          y: Math.random() * rainCanvas.height,
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
           speed: Math.random() * 5 + 2,
           length: Math.random() * 20 + 10
         };
       }
-
-      function createRaindrops() {
-        for (let i = 0; i < numRaindrops; i++) {
-          raindrops.push(createRaindrop());
-        }
-      }
-
+      
       function createSplash(x, y) {
         return {
           x: x,
@@ -815,197 +1805,455 @@
           opacity: 1
         };
       }
-
-      function moveRaindrops() {
+      
+      // Initialize raindrops
+      for (let i = 0; i < numRaindrops; i++) {
+        raindrops.push(createRaindrop());
+      }
+      
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw and update raindrops
+        ctx.strokeStyle = 'rgba(174, 194, 224, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
         for (let i = 0; i < raindrops.length; i++) {
           const raindrop = raindrops[i];
+          
+          // Move raindrop
           raindrop.y += raindrop.speed;
-          if (raindrop.y > rainCanvas.height) {
-            raindrop.y = 0;
-            raindrop.x = Math.random() * rainCanvas.width;
-            splashes.push(createSplash(raindrop.x, rainCanvas.height));
+          
+          // Draw raindrop
+          ctx.moveTo(raindrop.x, raindrop.y);
+          ctx.lineTo(raindrop.x, raindrop.y - raindrop.length);
+          
+          // Reset if out of bounds
+          if (raindrop.y > canvas.height) {
+            raindrops[i] = createRaindrop();
+            raindrops[i].y = 0;
+            
+            // Create splash effect
+            splashes.push(createSplash(raindrop.x, canvas.height));
           }
         }
-      }
-
-      function moveSplashes() {
+        
+        ctx.stroke();
+        
+        // Draw and update splashes
         for (let i = 0; i < splashes.length; i++) {
           const splash = splashes[i];
-          splash.opacity -= splashDecay;
-          if (splash.opacity <= 0) {
+          
+          // Update splash opacity
+          splash.opacity -= 0.01;
+          
+          // Draw splash
+          if (splash.opacity > 0) {
+            ctx.beginPath();
+            ctx.arc(splash.x, splash.y, splash.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${splash.opacity})`;
+            ctx.fill();
+          } else {
+            // Remove faded splashes
             splashes.splice(i, 1);
             i--;
           }
         }
+        
+        // Continue animation
+        window.rainAnimation = requestAnimationFrame(animate);
       }
-
-      function drawRaindrops() {
-        ctx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
-        ctx.strokeStyle = 'rgba(174,194,224,0.5)';
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        for (let i = 0; i < raindrops.length; i++) {
-          const raindrop = raindrops[i];
-          ctx.beginPath();
-          ctx.moveTo(raindrop.x, raindrop.y);
-          ctx.lineTo(raindrop.x, raindrop.y - raindrop.length);
-          ctx.stroke();
-        }
-      }
-
-      function drawSplashes() {
-        for (let i = 0; i < splashes.length; i++) {
-          const splash = splashes[i];
-          ctx.beginPath();
-          ctx.arc(splash.x, splash.y, splash.radius, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(255, 255, 255, ${splash.opacity})`;
-          ctx.fill();
-        }
-      }
-
-      function animate() {
-        moveRaindrops();
-        moveSplashes();
-        drawRaindrops();
-        drawSplashes();
-        rainAnimation = requestAnimationFrame(animate);
-      }
-
-      createRaindrops();
+      
       animate();
     }
-
+    
+    // Particles Network
+    function setupParticles() {
+      const canvas = document.getElementById('particlesCanvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      
+      const particles = [];
+      const numParticles = 80;
+      const connectionDistance = 150;
+      const isDark = document.body.classList.contains('dark-mode');
+      const particleColor = isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
+      const lineColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+      
+      // Create particles
+      for (let i = 0; i < numParticles; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * 3 + 1,
+          speedX: (Math.random() - 0.5) * 0.8,
+          speedY: (Math.random() - 0.5) * 0.8
+        });
+      }
+      
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Update and draw each particle
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          
+          // Move particle
+          p.x += p.speedX;
+          p.y += p.speedY;
+          
+          // Boundary check
+          if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
+          if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+          
+          // Draw particle
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = particleColor;
+          ctx.fill();
+          
+          // Connect particles
+          for (let j = i + 1; j < particles.length; j++) {
+            const p2 = particles[j];
+            const distance = Math.sqrt((p.x - p2.x) ** 2 + (p.y - p2.y) ** 2);
+            
+            if (distance < connectionDistance) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p2.x, p2.y);
+              const opacity = 1 - distance / connectionDistance;
+              ctx.strokeStyle = lineColor.replace('0.1', opacity * 0.3);
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+          }
+        }
+        
+        window.particlesAnimation = requestAnimationFrame(animate);
+      }
+      
+      animate();
+      
+      // Add mouse interaction
+      let mouseX = 0;
+      let mouseY = 0;
+      
+      window.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+      });
+    }
+    
+    // Fireflies Effect
+    function setupFireflies() {
+      const container = document.getElementById('firefliesContainer');
+      const numFireflies = 50;
+      
+      // Create fireflies
+      for (let i = 0; i < numFireflies; i++) {
+        const firefly = document.createElement('div');
+        firefly.className = 'firefly';
+        
+        const x = Math.random() * window.innerWidth;
+        const y = Math.random() * window.innerHeight;
+        
+        firefly.style.left = `${x}px`;
+        firefly.style.top = `${y}px`;
+        
+        // Random animation duration and delay
+        const duration = Math.random() * 10 + 10;
+        const delay = Math.random() * 15;
+        
+        firefly.style.animation = `fireflyFade ${duration}s ease-in-out ${delay}s infinite`;
+        
+        // Random size
+        const size = Math.random() * 4 + 2;
+        firefly.style.width = `${size}px`;
+        firefly.style.height = `${size}px`;
+        
+        container.appendChild(firefly);
+        
+        // Animate position
+        animateFirefly(firefly);
+      }
+      
+      // Firefly animation
+      function animateFirefly(firefly) {
+        const x = Math.random() * window.innerWidth;
+        const y = Math.random() * window.innerHeight;
+        const duration = Math.random() * 20 + 10;
+        
+        firefly.style.transition = `left ${duration}s ease-in-out, top ${duration}s ease-in-out, opacity 2s ease-in-out`;
+        firefly.style.left = `${x}px`;
+        firefly.style.top = `${y}px`;
+        
+        // Pulse opacity
+        setInterval(() => {
+          firefly.style.opacity = Math.random() * 0.7 + 0.3;
+        }, 2000);
+        
+        // Continue animation
+        setTimeout(() => {
+          animateFirefly(firefly);
+        }, duration * 1000);
+      }
+      
+      // Add CSS keyframes
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes fireflyFade {
+          0%, 100% { opacity: 0.1; box-shadow: 0 0 5px 1px rgba(255, 255, 150, 0.1); }
+          50% { opacity: 0.8; box-shadow: 0 0 15px 5px rgba(255, 255, 150, 0.5); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Circuit Board Effect
+    function setupCircuit() {
+      const container = document.getElementById('circuitContainer');
+      const numLines = 30;
+      const numNodes = 50;
+      
+      // Create circuit lines
+      for (let i = 0; i < numLines; i++) {
+        const line = document.createElement('div');
+        line.className = 'circuit-line';
+        
+        const x = Math.random() * window.innerWidth;
+        const y = Math.random() * window.innerHeight;
+        const width = Math.random() * 100 + 50;
+        const height = 2;
+        const angle = Math.floor(Math.random() * 4) * 90; // 0, 90, 180, or 270 degrees
+        
+        line.style.left = `${x}px`;
+        line.style.top = `${y}px`;
+        line.style.width = `${width}px`;
+        line.style.height = `${height}px`;
+        line.style.transform = `rotate(${angle}deg)`;
+        
+        container.appendChild(line);
+      }
+      
+      // Create circuit nodes
+      for (let i = 0; i < numNodes; i++) {
+        const node = document.createElement('div');
+        node.className = 'circuit-node';
+        
+        const x = Math.random() * window.innerWidth;
+        const y = Math.random() * window.innerHeight;
+        
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        
+        // Random pulse animation
+        const duration = Math.random() * 3 + 2;
+        const delay = Math.random() * 5;
+        node.style.animation = `nodePulse ${duration}s ease-in-out ${delay}s infinite`;
+        
+        container.appendChild(node);
+      }
+      
+      // Add CSS keyframes
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes nodePulse {
+          0%, 100% { opacity: 0.2; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.5); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Geometric Patterns Effect
+    function setupGeometric() {
+      const container = document.getElementById('geometricContainer');
+      const numShapes = 15;
+      const shapes = ['square', 'circle', 'triangle', 'hexagon'];
+      
+      const colors = [
+        'rgba(66, 133, 244, 0.1)',
+        'rgba(219, 68, 55, 0.1)',
+        'rgba(244, 180, 0, 0.1)',
+        'rgba(15, 157, 88, 0.1)',
+        'rgba(66, 133, 244, 0.1)'
+      ];
+      
+      // Create shapes
+      for (let i = 0; i < numShapes; i++) {
+        const shape = document.createElement('div');
+        shape.className = 'geometric-shape';
+        
+        const shapeType = shapes[Math.floor(Math.random() * shapes.length)];
+        const size = Math.random() * 300 + 100;
+        const x = Math.random() * (window.innerWidth - size);
+        const y = Math.random() * (window.innerHeight - size);
+        
+        shape.style.left = `${x}px`;
+        shape.style.top = `${y}px`;
+        shape.style.width = `${size}px`;
+        shape.style.height = `${size}px`;
+        shape.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        // Randomly select shape
+        switch (shapeType) {
+          case 'square':
+            // Already square by default
+            break;
+          case 'circle':
+            shape.style.borderRadius = '50%';
+            break;
+          case 'triangle':
+            shape.style.backgroundColor = 'transparent';
+            shape.style.width = '0';
+            shape.style.height = '0';
+            shape.style.borderLeft = `${size/2}px solid transparent`;
+            shape.style.borderRight = `${size/2}px solid transparent`;
+            shape.style.borderBottom = `${size}px solid ${colors[Math.floor(Math.random() * colors.length)]}`;
+            break;
+          case 'hexagon':
+            shape.style.backgroundColor = 'transparent';
+            shape.style.width = `${size}px`;
+            shape.style.height = `${size * 0.866}px`;  // height = width * sin(60°)
+            shape.style.position = 'absolute';
+            shape.style.clipPath = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
+            shape.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            break;
+        }
+        
+        // Animation speed and direction
+        const speed = Math.random() * 20 + 20; // 20-40s rotation
+        const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
+        shape.style.animation = `rotateShape ${speed}s linear infinite ${direction}`;
+        
+        container.appendChild(shape);
+      }
+    }
+    
     function setupStarfield() {
-      const context = starfieldCanvas.getContext('2d');
+      const canvas = document.getElementById('starfieldCanvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      
       const stars = [];
       const numStars = 500;
       const speed = 2;
-
-      starfieldCanvas.width = window.innerWidth;
-      starfieldCanvas.height = window.innerHeight;
-
-      function createStar() {
-        return {
-          x: Math.random() * starfieldCanvas.width,
-          y: Math.random() * starfieldCanvas.height,
-          z: Math.random() * starfieldCanvas.width
-        };
+      
+      // Create stars
+      for (let i = 0; i < numStars; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          z: Math.random() * canvas.width
+        });
       }
-
-      function createStars() {
-        for (let i = 0; i < numStars; i++) {
-          stars.push(createStar());
-        }
-      }
-
-      function moveStars() {
-        for (let i = 0; i < stars.length; i++) {
-          stars[i].z -= speed;
-          if (stars[i].z <= 0) {
-            stars[i].z = starfieldCanvas.width;
-          }
-        }
-      }
-
-      function drawStars() {
-        context.fillStyle = 'black';
-        context.fillRect(0, 0, starfieldCanvas.width, starfieldCanvas.height);
-        context.fillStyle = 'white';
+      
+      function animate() {
+        // Clear canvas
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw stars
+        ctx.fillStyle = 'white';
         for (let i = 0; i < stars.length; i++) {
           const star = stars[i];
-          const x = (star.x - starfieldCanvas.width / 2) * (starfieldCanvas.width / star.z) + starfieldCanvas.width / 2;
-          const y = (star.y - starfieldCanvas.height / 2) * (starfieldCanvas.width / star.z) + starfieldCanvas.height / 2;
-          const size = (1 - star.z / starfieldCanvas.width) * 2;
-          context.beginPath();
-          context.arc(x, y, size, 0, Math.PI * 2);
-          context.fill();
+          
+          // Calculate position with perspective
+          const x = (star.x - canvas.width / 2) * (canvas.width / star.z) + canvas.width / 2;
+          const y = (star.y - canvas.height / 2) * (canvas.width / star.z) + canvas.height / 2;
+          
+          // Calculate size based on depth
+          const size = (1 - star.z / canvas.width) * 2;
+          
+          // Draw star
+          ctx.beginPath();
+          ctx.arc(x, y, size, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Move star
+          star.z -= speed;
+          
+          // Reset if star goes beyond screen
+          if (star.z <= 0) {
+            star.z = canvas.width;
+            star.x = Math.random() * canvas.width;
+            star.y = Math.random() * canvas.height;
+          }
         }
+        
+        // Continue animation
+        window.starfieldAnimation = requestAnimationFrame(animate);
       }
-
-      function animate() {
-        moveStars();
-        drawStars();
-        starfieldAnimation = requestAnimationFrame(animate);
-      }
-
-      createStars();
+      
       animate();
     }
-
-    window.addEventListener('resize', () => {
-      if (rainCanvas.width !== window.innerWidth || rainCanvas.height !== window.innerHeight) {
-        rainCanvas.width = window.innerWidth;
-        rainCanvas.height = window.innerHeight;
-      }
-      if (starfieldCanvas.width !== window.innerWidth || starfieldCanvas.height !== window.innerHeight) {
-        starfieldCanvas.width = window.innerWidth;
-        starfieldCanvas.height = window.innerHeight;
-      }
-    });
-
-    // Check for saved dark mode preference
-    if (localStorage.getItem('darkMode') === 'true') {
-      document.body.classList.add('dark-mode');
-    }
-    updateDarkModeToggle();
-
-    function animateTitle() {
-      function updateHue() {
-        hueRotation = (hueRotation + 0.5) % 360;
-        appTitle.style.color = `hsl(${hueRotation}, 100%, 50%)`;
-        requestAnimationFrame(updateHue);
-      }
-      updateHue();
-    }
-
-    loadData();
-    animateTitle();
-
-    // Gooey Background Functions
-    function setupBlobs() {
-      const colors = currentTheme === 'colorful-blobs' ? ['#FF5733', '#FFC300', '#33FF57', '#3357FF', '#900C3F'] : null;
-      const numBlobs = 7;
-      for (let i = 0; i < numBlobs; i++) {
+    
+    function setupBlobs(colorful) {
+      const blobsContainer = document.getElementById('blobsContainer');
+      const colors = colorful ? 
+        ['#FF5733', '#FFC300', '#33FF57', '#3357FF', '#900C3F'] : 
+        ['#000000'];
+      
+      // Create blobs
+      for (let i = 0; i < 7; i++) {
         createBlob(colors);
       }
-    }
-
-    function createBlob(colors) {
-      const blob = document.createElement('div');
-      blob.classList.add('blob');
-      const size = Math.random() * 300 + 200;
-      blob.style.width = `${size}px`;
-      blob.style.height = `${size}px`;
-      if (colors) {
-        blob.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-      }
-      blobsContainer.appendChild(blob);
-      animateBlob(blob);
-    }
-
-    function animateBlob(blob) {
-      const x = Math.random() * window.innerWidth;
-      const y = Math.random() * window.innerHeight;
-      const duration = Math.random() * 8 + 4;
-      blob.style.transition = `transform ${duration}s linear`;
-      blob.style.transform = `translate(${x}px, ${y}px)`;
-      setTimeout(() => {
+      
+      function createBlob(colors) {
+        const blob = document.createElement('div');
+        blob.classList.add('blob');
+        
+        // Set size
+        const size = Math.random() * 300 + 200;
+        blob.style.width = `${size}px`;
+        blob.style.height = `${size}px`;
+        
+        // Set color
+        if (colorful) {
+          blob.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        // Set initial position
+        const x = Math.random() * window.innerWidth;
+        const y = Math.random() * window.innerHeight;
+        blob.style.transform = `translate(${x}px, ${y}px)`;
+        
+        blobsContainer.appendChild(blob);
+        
+        // Animate blob
         animateBlob(blob);
-      }, duration * 1000);
-    }
-
-    function clearBlobs() {
-      blobsContainer.innerHTML = '';
-    }
-
-    function updateDarkModeToggle() {
-      const darkModeToggle = document.getElementById('darkModeToggle');
-      if (document.body.classList.contains('dark-mode')) {
-        darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-      } else {
-        darkModeToggle.innerHTML = '<i class="fas fa-adjust"></i>';
+      }
+      
+      function animateBlob(blob) {
+        const x = Math.random() * window.innerWidth;
+        const y = Math.random() * window.innerHeight;
+        const duration = Math.random() * 8 + 4;
+        
+        blob.style.transition = `transform ${duration}s linear`;
+        blob.style.transform = `translate(${x}px, ${y}px)`;
+        
+        // Continue animation
+        setTimeout(() => {
+          animateBlob(blob);
+        }, duration * 1000);
       }
     }
+
+    // Animations
+    function animateTitle() {
+      // Subtle pulse animation
+      const scale = 1 + Math.sin(Date.now() / 1000) * 0.01;
+      appTitle.style.transform = `scale(${scale})`;
+      requestAnimationFrame(animateTitle);
+    }
+
+    // Initialize the app
+    initializeApp();
   </script>
 </body>
 </html>
