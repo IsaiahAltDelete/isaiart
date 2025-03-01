@@ -35,8 +35,12 @@
       --bg-dark: #121212;
       
       --transition-speed: 0.25s;
-      --border-radius: 12px;
-      --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      --border-radius: 18px;
+      --border-radius-sm: 12px;
+      --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      
+      /* Sizing scale */
+      --scale-factor: 0.9;
       
       /* Default light theme */
       --bg: var(--bg-light);
@@ -71,23 +75,23 @@
     }
 
     .container {
-      width: 100%;
-      max-width: 1200px;
+      width: 90%;
+      max-width: 1080px;
       margin: 0 auto;
-      padding: 2rem 1rem;
+      padding: 1.75rem 0.9rem;
     }
 
     /* Header styles */
     .app-header {
       text-align: center;
-      padding: 1rem 0 2rem;
+      padding: 0.9rem 0 1.8rem;
       position: relative;
     }
 
     .app-title {
-      font-size: 2.5rem;
+      font-size: 2.25rem;
       font-weight: 700;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.45rem;
       background: linear-gradient(90deg, var(--text), rgba(128, 128, 128, 0.8));
       background-clip: text;
       -webkit-background-clip: text;
@@ -98,16 +102,16 @@
     /* Sections Container */
     .sections-container {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 4rem;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 1.35rem;
+      margin-bottom: 3.6rem;
     }
 
     /* Section Card */
     .section {
       background-color: var(--surface);
       border-radius: var(--border-radius);
-      padding: 1.5rem;
+      padding: 1.35rem;
       box-shadow: var(--box-shadow);
       transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
       position: relative;
@@ -121,7 +125,7 @@
 
     .section:hover {
       transform: translateY(-5px);
-      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
     }
 
     /* Section Header */
@@ -129,8 +133,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1.25rem;
-      padding-bottom: 0.75rem;
+      margin-bottom: 1.15rem;
+      padding-bottom: 0.7rem;
       border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     }
 
@@ -139,21 +143,21 @@
     }
 
     .section-title {
-      font-size: 1.25rem;
+      font-size: 1.15rem;
       font-weight: 600;
       margin: 0;
     }
 
     .section-actions {
       display: flex;
-      gap: 0.5rem;
+      gap: 0.45rem;
     }
 
     /* Buttons Container */
     .button-container {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 0.75rem;
+      grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+      gap: 0.68rem;
     }
 
     /* Notes / Buttons */
@@ -161,12 +165,12 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0.75rem 1rem;
+      padding: 0.68rem 0.9rem;
       border: none;
-      border-radius: calc(var(--border-radius) / 2);
+      border-radius: var(--border-radius-sm);
       background-color: var(--primary);
       color: white;
-      font-size: 0.875rem;
+      font-size: 0.8rem;
       font-weight: 500;
       cursor: pointer;
       transition: all var(--transition-speed);
@@ -179,21 +183,21 @@
 
     .note-button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
     }
 
     .edit-icon {
       background-color: rgba(255, 255, 255, 0.2);
       border-radius: 50%;
-      width: 1.5rem;
-      height: 1.5rem;
+      width: 1.35rem;
+      height: 1.35rem;
       display: flex;
       align-items: center;
       justify-content: center;
       transition: background-color var(--transition-speed);
-      margin-left: 0.5rem;
+      margin-left: 0.45rem;
       flex-shrink: 0;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
     }
 
     .note-button:hover .edit-icon {
@@ -204,8 +208,8 @@
     .icon-button {
       background: none;
       border: none;
-      width: 2rem;
-      height: 2rem;
+      width: 1.8rem;
+      height: 1.8rem;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -243,18 +247,18 @@
     /* Floating Action Button */
     .fab {
       position: fixed;
-      bottom: 2rem;
-      right: 2rem;
-      width: 3.5rem;
-      height: 3.5rem;
+      bottom: 1.8rem;
+      right: 1.8rem;
+      width: 3.15rem;
+      height: 3.15rem;
       border-radius: 50%;
       background-color: var(--text);
       color: var(--bg);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.25rem;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      font-size: 1.1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
       cursor: pointer;
       border: none;
       transition: transform var(--transition-speed), background-color var(--transition-speed), color var(--transition-speed);
@@ -262,9 +266,8 @@
     }
 
     .fab:hover {
-      transform: scale(1.1);
-      background-color: var(--text);
-      opacity: 0.9;
+      transform: scale(1.1) rotate(5deg);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
     }
 
     /* Modals */
@@ -283,12 +286,12 @@
 
     .modal-content {
       background-color: var(--surface);
-      margin: 10% auto;
-      padding: 2rem;
+      margin: 9% auto;
+      padding: 1.8rem;
       border-radius: var(--border-radius);
       width: 90%;
-      max-width: 500px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      max-width: 450px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
       animation: slideUp 0.3s;
     }
 
@@ -296,17 +299,17 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.35rem;
     }
 
     .modal-title {
-      font-size: 1.5rem;
+      font-size: 1.35rem;
       font-weight: 600;
       margin: 0;
     }
 
     .close {
-      font-size: 1.5rem;
+      font-size: 1.35rem;
       background: none;
       border: none;
       cursor: pointer;
@@ -321,26 +324,26 @@
 
     /* Form Styles */
     .form-group {
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.15rem;
     }
 
     .form-label {
       display: block;
-      font-size: 0.875rem;
+      font-size: 0.8rem;
       font-weight: 500;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.45rem;
       color: var(--text);
     }
 
     .form-control {
       width: 100%;
-      padding: 0.75rem;
+      padding: 0.68rem;
       border: 1px solid rgba(0, 0, 0, 0.1);
-      border-radius: calc(var(--border-radius) / 2);
+      border-radius: var(--border-radius-sm);
       background-color: var(--surface);
       color: var(--text);
       font-family: inherit;
-      font-size: 1rem;
+      font-size: 0.9rem;
       transition: border-color var(--transition-speed);
     }
 
@@ -356,28 +359,30 @@
     }
 
     .color-picker {
-      height: 2.5rem;
+      height: 2.25rem;
       padding: 0.25rem;
     }
 
     .button-group {
       display: flex;
       justify-content: flex-end;
-      gap: 0.75rem;
-      margin-top: 1.5rem;
+      gap: 0.68rem;
+      margin-top: 1.35rem;
     }
 
     .btn {
-      padding: 0.75rem 1.25rem;
+      padding: 0.68rem 1.15rem;
       border: none;
-      border-radius: calc(var(--border-radius) / 2);
+      border-radius: var(--border-radius-sm);
       font-weight: 500;
       cursor: pointer;
       transition: all var(--transition-speed);
+      font-size: 0.9rem;
     }
 
     .btn:hover {
       transform: translateY(-2px);
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
     }
 
     .btn-text {
@@ -398,8 +403,8 @@
     /* Theme Controls - UPDATED */
     .theme-control {
       position: fixed;
-      top: 1.5rem;
-      right: 1.5rem;
+      top: 1.35rem;
+      right: 1.35rem;
       z-index: 10;
       display: flex;
       flex-direction: column;
@@ -409,14 +414,14 @@
     .theme-toggle {
       background: none;
       border: none;
-      width: 3rem;
-      height: 3rem;
+      width: 2.7rem;
+      height: 2.7rem;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 1.25rem;
+      font-size: 1.1rem;
       color: var(--text);
       background-color: var(--surface-alpha);
       backdrop-filter: blur(10px);
@@ -426,20 +431,20 @@
     }
 
     .theme-toggle:hover {
-      transform: translateY(-2px);
+      transform: translateY(-2px) rotate(5deg);
       box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
     }
 
     #themeOptionsContainer {
       position: absolute;
-      top: 4rem;
+      top: 3.6rem;
       right: 0;
       background-color: var(--surface-alpha);
       backdrop-filter: blur(10px);
       border-radius: var(--border-radius);
-      padding: 1.25rem;
+      padding: 1.15rem;
       box-shadow: var(--box-shadow);
-      width: 300px;
+      width: 270px;
       max-height: 80vh;
       overflow-y: auto;
       display: none;
@@ -474,7 +479,7 @@
     .theme-buttons-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 0.75rem;
+      gap: 0.68rem;
     }
 
     .theme-button {
@@ -486,8 +491,8 @@
       background-color: var(--surface);
       color: var(--text);
       border: none;
-      border-radius: calc(var(--border-radius) / 2);
-      padding: 0.75rem 0.25rem;
+      border-radius: var(--border-radius-sm);
+      padding: 0.68rem 0.25rem;
       cursor: pointer;
       transition: all var(--transition-speed);
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -508,13 +513,13 @@
     }
 
     .theme-button-label {
-      font-size: 0.65rem;
-      margin-top: 0.4rem;
+      font-size: 0.6rem;
+      margin-top: 0.36rem;
       font-weight: 500;
     }
 
     .theme-button i {
-      font-size: 1.1rem;
+      font-size: 1rem;
     }
 
     @keyframes scaleIn {
