@@ -78,7 +78,7 @@
         
         .countdown-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 10px;
         }
         
@@ -86,20 +86,25 @@
             border: 1px solid #333;
             padding: 15px;
             position: relative;
+            overflow: hidden;
         }
         
         .countdown-label {
             font-size: 1rem;
             margin-bottom: 10px;
             text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .countdown-time {
-            font-size: 2.2rem;
+            font-size: 1.8rem;
             font-weight: bold;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             margin-bottom: 5px;
             font-variant-numeric: tabular-nums;
+            white-space: nowrap;
         }
         
         .countdown-date {
@@ -143,6 +148,17 @@
             100% { opacity: 1; }
         }
         
+        @media (max-width: 800px) {
+            .countdown-list {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            }
+            
+            .countdown-time {
+                font-size: 1.6rem;
+                letter-spacing: 0;
+            }
+        }
+        
         @media (max-width: 600px) {
             .countdown-list {
                 grid-template-columns: 1fr;
@@ -150,6 +166,10 @@
             
             .current-time {
                 font-size: 2.5rem;
+            }
+            
+            .countdown-time {
+                font-size: 1.8rem;
             }
         }
     </style>
