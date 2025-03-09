@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUE CLOCK</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #000;
+            color: #fff;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            font-weight: normal;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .current-time {
+            font-size: 3.5rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin: 15px 0;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 30px;
+        }
+        
+        input, button {
+            font-family: 'Courier New', monospace;
+            height: 36px;
+            border: 1px solid #444;
+            padding: 0 10px;
+            font-size: 0.9rem;
+            background-color: #000;
+            color: #fff;
+        }
+        
+        input {
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        button {
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #222;
+        }
+        
+        .countdown-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+        }
+        
+        .countdown-item {
+            border: 1px solid #333;
+            padding: 15px;
+            position: relative;
+        }
+        
+        .countdown-label {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .countdown-time {
+            font-size: 2.2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .countdown-date {
+            font-size: 0.8rem;
+            opacity: 0.6;
+        }
+        
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            color: #555;
+            cursor: pointer;
+            font-size: 1.2rem;
+            height: auto;
+            padding: 2px 5px;
+        }
+        
+        .delete-btn:hover {
+            color: #fff;
+            background: none;
+        }
+        
+        .warning .countdown-time {
+            color: #ff0;
+        }
+        
+        .critical .countdown-time {
+            color: #f00;
+        }
+        
+        .critical.blink .countdown-time {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        
+        @media (max-width: 600px) {
+            .countdown-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .current-time {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CUE CLOCK</h1>
+            <div id="current-time" class="current-time">00:00:00</div>
+        </header>
+        
+        <div class="controls">
+            <input type="text" id="event-name" placeholder="CUE NAME">
+            <input type="datetime-local" id="event-datetime">
+            <button id="add-preset-15">+15</button>
+            <button id="add-preset-30">+30</button>
+            <button id="add-preset-60">+60</button>
+            <button id="add-countdown">SET</button>
+            <button id="clear-all">CLEAR</button>
+        </div>
+        
+        <div class="countdown-list" id="countdown-list">
+            <!-- Countdown items will be added here dynamically -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const countdownList = document.getElementById('countdown-list');
+            const eventNameInput = document.getElementById('event-name');
+            const eventDatetimeInput = document.getElementById('event-datetime');
+            const addCountdownBtn = document.getElementById('add-countdown');
+            const currentTimeEl = document.getElementById('current-time');
+            const clearAllBtn = document.getElementById('clear-all');
+            const add15MinBtn = document.getElementById('add-preset-15');
+            const add30MinBtn = document.getElementById('add-preset-30');
+            const add60MinBtn = document.getElementById('add-preset-60');
+            
+            let countdowns = [];
+            
+            // Set current datetime as default
+            const now = new Date();
+            const localDatetime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
+                .toISOString()
+                .slice(0, 16);
+            eventDatetimeInput.value = localDatetime;
+            
+            // Load countdowns from localStorage if available
+            if (localStorage.getItem('stageCountdowns')) {
+                try {
+                    countdowns = JSON.parse(localStorage.getItem('stageCountdowns'));
+                    renderCountdowns();
+                } catch (e) {
+                    console.error('Failed to load countdowns:', e);
+                    localStorage.removeItem('stageCountdowns');
+                }
+            }
+            
+            // Update current time
+            function updateCurrentTime() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour12: false });
+                currentTimeEl.textContent = timeString;
+            }
+            
+            // Update current time every second
+            setInterval(updateCurrentTime, 1000);
+            updateCurrentTime();
+            
+            // Add new countdown
+            addCountdownBtn.addEventListener('click', function() {
+                addNewCountdown();
+            });
+            
+            // Add preset countdowns
+            add15MinBtn.addEventListener('click', function() {
+                addPresetCountdown('15 MIN', 15);
+            });
+            
+            add30MinBtn.addEventListener('click', function() {
+                addPresetCountdown('30 MIN', 30);
+            });
+            
+            add60MinBtn.addEventListener('click', function() {
+                addPresetCountdown('60 MIN', 60);
+            });
+            
+            // Clear all countdowns
+            clearAllBtn.addEventListener('click', function() {
+                countdowns = [];
+                saveCountdowns();
+                renderCountdowns();
+            });
+            
+            function addPresetCountdown(name, minutes) {
+                const now = new Date();
+                const targetDate = new Date(now.getTime() + (minutes * 60000));
+                
+                countdowns.push({
+                    id: Date.now().toString(),
+                    name: name,
+                    targetDate: targetDate.getTime(),
+                    completed: false
+                });
+                
+                saveCountdowns();
+                renderCountdowns();
+            }
+            
+            function addNewCountdown() {
+                const name = eventNameInput.value.trim() || 'CUE';
+                const datetime = eventDatetimeInput.value;
+                
+                if (!datetime) {
+                    return;
+                }
+                
+                const targetDate = new Date(datetime).getTime();
+                if (isNaN(targetDate)) {
+                    return;
+                }
+                
+                // Add the new countdown
+                countdowns.push({
+                    id: Date.now().toString(),
+                    name: name,
+                    targetDate: targetDate,
+                    completed: false
+                });
+                
+                // Save to localStorage
+                saveCountdowns();
+                
+                // Clear name input but keep the datetime
+                eventNameInput.value = '';
+                
+                // Render countdowns
+                renderCountdowns();
+            }
+            
+            // Delete countdown
+            countdownList.addEventListener('click', function(e) {
+                if (e.target.classList.contains('delete-btn')) {
+                    const countdownId = e.target.dataset.id;
+                    countdowns = countdowns.filter(countdown => countdown.id !== countdownId);
+                    saveCountdowns();
+                    renderCountdowns();
+                }
+            });
+            
+            // Save countdowns to localStorage
+            function saveCountdowns() {
+                localStorage.setItem('stageCountdowns', JSON.stringify(countdowns));
+            }
+            
+            // Render all countdowns
+            function renderCountdowns() {
+                countdownList.innerHTML = '';
+                
+                if (countdowns.length === 0) {
+                    return;
+                }
+                
+                // Sort countdowns by target date (soonest first)
+                countdowns.sort((a, b) => a.targetDate - b.targetDate);
+                
+                countdowns.forEach(countdown => {
+                    const countdownEl = document.createElement('div');
+                    countdownEl.className = 'countdown-item';
+                    
+                    countdownEl.innerHTML = `
+                        <button class="delete-btn" data-id="${countdown.id}">X</button>
+                        <div class="countdown-label">${countdown.name}</div>
+                        <div class="countdown-time" id="time-${countdown.id}">--:--:--</div>
+                        <div class="countdown-date">${new Date(countdown.targetDate).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'})}</div>
+                    `;
+                    
+                    countdownList.appendChild(countdownEl);
+                });
+                
+                // Start the countdown timers
+                updateAllCountdowns();
+            }
+            
+            // Update all countdowns
+            function updateAllCountdowns() {
+                countdowns.forEach(countdown => {
+                    updateCountdown(countdown);
+                });
+            }
+            
+            // Update a single countdown
+            function updateCountdown(countdown) {
+                const countdownEl = document.getElementById(`time-${countdown.id}`);
+                if (!countdownEl) return;
+                
+                const countdownItem = countdownEl.closest('.countdown-item');
+                const now = new Date().getTime();
+                const distance = countdown.targetDate - now;
+                
+                if (distance < 0) {
+                    countdownEl.innerHTML = "00:00:00";
+                    countdownItem.className = 'countdown-item critical blink';
+                    
+                    if (!countdown.completed) {
+                        countdown.completed = true;
+                        saveCountdowns();
+                    }
+                    return;
+                }
+                
+                // Time calculations
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                
+                // Format time
+                let formattedTime;
+                if (days > 0) {
+                    formattedTime = `${days}d ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                } else {
+                    formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+                
+                countdownEl.innerHTML = formattedTime;
+                
+                // Add warning class if getting close
+                if (distance < 1000 * 60 * 5) { // Less than 5 minutes
+                    countdownItem.className = 'countdown-item critical';
+                } else if (distance < 1000 * 60 * 15) { // Less than 15 minutes
+                    countdownItem.className = 'countdown-item warning';
+                } else {
+                    countdownItem.className = 'countdown-item';
+                }
+            }
+            
+            // Update countdowns every second
+            setInterval(updateAllCountdowns, 1000);
+        });
+    </script>
+</body>
+</html>
