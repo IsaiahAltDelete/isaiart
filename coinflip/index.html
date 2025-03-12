@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extreme Coin Flip | isaiart.com</title>
+    
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="Extreme 3D Coin Flip App | isaiart.com">
+    <meta name="description" content="The best free online coin flipper with realistic 3D animation. Perfect for making random decisions, settling debates, or teaching probability.">
+    <meta name="keywords" content="coin flip, coin toss, heads or tails, random decision maker, 3D coin, animation, minimalist design, black and white, probability tool, isaiart">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://isaiart.com/coinflip">
+    <meta property="og:title" content="Extreme 3D Coin Flip App | isaiart.com">
+    <meta property="og:description" content="The best free online coin flipper with realistic 3D animation. Perfect for making random decisions, settling debates, or teaching probability.">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://isaiart.com/coinflip">
+    <meta property="twitter:title" content="Extreme 3D Coin Flip App | isaiart.com">
+    <meta property="twitter:description" content="The best free online coin flipper with realistic 3D animation. Perfect for making random decisions, settling debates, or teaching probability.">
+    
+    <!-- Schema.org markup for Google -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Extreme 3D Coin Flip App",
+      "applicationCategory": "Utility",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "url": "https://isaiart.com/coinflip",
+      "creator": {
+        "@type": "Person",
+        "name": "IsaiArt"
+      }
+    }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+        
+        .result-text {
+            font-family: monospace;
+            font-size: 2rem;
+            margin-bottom: 3rem;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        
+        .coin-container {
+            position: relative;
+            width: 16rem;
+            height: 16rem;
+            cursor: pointer;
+            margin-bottom: 4rem;
+        }
+        
+        .coin {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 3s cubic-bezier(0.1, 0.7, 0.5, 1);
+        }
+        
+        .coin-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .heads {
+            background-color: #fff;
+            border: 4px solid #000;
+        }
+        
+        .heads-inner {
+            width: 83%;
+            height: 83%;
+            border-radius: 50%;
+            border: 4px solid #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .heads-inner span {
+            color: #000;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .tails {
+            background-color: #000;
+            border: 4px solid #fff;
+            transform: rotateY(180deg);
+        }
+        
+        .tails-inner {
+            width: 83%;
+            height: 83%;
+            border-radius: 50%;
+            border: 4px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .tails-inner span {
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .coin-edge {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+        
+        .edge-left {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 1px;
+            background: linear-gradient(to right, #808080, #fff);
+            transform: translateX(-1px);
+        }
+        
+        .edge-right {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            width: 1px;
+            background: linear-gradient(to left, #808080, #fff);
+            transform: translateX(1px);
+        }
+        
+        .flip-button {
+            padding: 1rem 2rem;
+            background-color: #fff;
+            color: #000;
+            font-weight: bold;
+            font-size: 1.25rem;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .flip-button:hover {
+            background-color: #e6e6e6;
+        }
+        
+        .flip-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .flip-button svg {
+            width: 1.5rem;
+            height: 1.5rem;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hidden SEO Content -->
+    <div class="sr-only">
+        <h1>Extreme 3D Coin Flip App | isaiart.com</h1>
+        <p>The best free online coin flipper with realistic 3D animation. Perfect for making random decisions, settling debates, or teaching probability. This minimalist black and white coin toss simulator features heads and tails with beautiful animations.</p>
+        <p>Keywords: coin flip, coin toss, heads or tails, random decision maker, 3D coin, animation, minimalist design, black and white, probability tool, isaiart</p>
+    </div>
+    
+    <div class="result-text" id="result">FLIP ME</div>
+    
+    <div class="coin-container" id="coinContainer">
+        <div class="coin" id="coin">
+            <!-- Heads side -->
+            <div class="coin-face heads">
+                <div class="heads-inner">
+                    <span>H</span>
+                </div>
+            </div>
+            
+            <!-- Tails side -->
+            <div class="coin-face tails">
+                <div class="tails-inner">
+                    <span>T</span>
+                </div>
+            </div>
+            
+            <!-- Coin edge -->
+            <div class="coin-edge">
+                <div class="edge-left"></div>
+                <div class="edge-right"></div>
+            </div>
+        </div>
+    </div>
+    
+    <button class="flip-button" id="flipButton">
+        <svg viewBox="0 0 24 24">
+            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm4.17-5.24l-4.17-4.17V6h-2v7.17l4.76 4.76 1.41-1.41z"></path>
+        </svg>
+        FLIP
+    </button>
+    
+    <script>
+        // Get elements
+        const coin = document.getElementById('coin');
+        const result = document.getElementById('result');
+        const flipButton = document.getElementById('flipButton');
+        const coinContainer = document.getElementById('coinContainer');
+        
+        // Track state
+        let isFlipping = false;
+        let rotations = 0;
+        
+        // Function to flip the coin
+        function flipCoin() {
+            if (isFlipping) return;
+            
+            // Random number of rotations (5-10) for dramatic effect
+            rotations += 5 + Math.floor(Math.random() * 5);
+            
+            // Determine result (heads or tails)
+            const newResult = Math.random() > 0.5 ? 'HEADS' : 'TAILS';
+            
+            // Start flipping
+            isFlipping = true;
+            result.textContent = 'FLIPPING...';
+            flipButton.disabled = true;
+            
+            // Apply the rotation
+            coin.style.transform = `rotateY(${rotations * 180}deg)`;
+            
+            // Wait for animation to complete before showing result
+            setTimeout(() => {
+                result.textContent = newResult;
+                isFlipping = false;
+                flipButton.disabled = false;
+            }, 3000);
+        }
+        
+        // Add event listeners
+        flipButton.addEventListener('click', flipCoin);
+        coinContainer.addEventListener('click', flipCoin);
+        
+        // Add keyboard accessibility
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                flipCoin();
+                e.preventDefault();
+            }
+        });
+    </script>
+    
+    <!-- Additional SEO comments that will be indexed by search engines -->
+    <!--
+      Extreme 3D Coin Flip App - isaiart.com/coinflip
+      A minimalist black and white coin flipper with realistic 3D animations.
+      Features: Random coin toss, heads or tails, 3D animation, minimalist design
+      Perfect for: Decision making, games, teaching probability, settling debates
+      Created by isaiart.com - Free online tools and apps
+      Tags: coin flip, random, 3D, animation, black and white, minimalist, decision maker
+    -->
+</body>
+</html>
