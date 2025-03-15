@@ -113,6 +113,26 @@
         .square.last-move {
             background-color: rgba(255, 193, 7, 0.3);
         }
+        .square.check {
+            background-color: rgba(220, 53, 69, 0.5) !important;
+        }
+        .piece-tooltip {
+            position: absolute;
+            background-color: rgba(33, 37, 41, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 5;
+            pointer-events: none;
+            white-space: nowrap;
+            transform: translateY(-30px);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .piece:hover + .piece-tooltip {
+            opacity: 1;
+        }
         .piece {
             width: 50px;
             height: 50px;
@@ -443,6 +463,7 @@
             let computerDifficulty = 5;
             let lastMove = null;
             let awaitingPromotion = null;
+            let gameOver = false;
 
             // Initialize board
             function initializeBoard() {
@@ -494,6 +515,7 @@
                 capturedPieces = { 'white': [], 'black': [] };
                 lastMove = null;
                 awaitingPromotion = null;
+                gameOver = false;
                 
                 renderBoard();
                 updateStatus();
@@ -547,6 +569,18 @@
                             pieceElement.className = `piece ${piece.color}`;
                             pieceElement.textContent = PIECES[piece.color][piece.piece];
                             square.appendChild(pieceElement);
+                            
+                            // Add tooltip to show piece name
+                            const tooltipElement = document.createElement('div');
+                            tooltipElement.className = 'piece-tooltip';
+                            tooltipElement.textContent = piece.color.charAt(0).toUpperCase() + piece.color.slice(1) + ' ' + 
+                                                       piece.piece.charAt(0).toUpperCase() + piece.piece.slice(1);
+                            square.appendChild(tooltipElement);
+                        }
+                        
+                        // Highlight king in check
+                        if (piece && piece.piece === 'king' && isInCheck(piece.color)) {
+                            square.classList.add('check');
                         }
                         
                         square.addEventListener('click', () => handleSquareClick(displayRow, displayCol));
@@ -562,6 +596,9 @@
 
             // Handle square click
             function handleSquareClick(row, col) {
+                // If game is over, ignore clicks
+                if (gameOver) return;
+                
                 // If awaiting promotion, ignore clicks
                 if (awaitingPromotion) return;
                 
@@ -605,7 +642,7 @@
                                 selectedPiece = null;
                                 
                                 // If in computer mode and it's black's turn, make computer move
-                                if (gameMode === 'computer' && currentPlayer === 'black') {
+                                if (gameMode === 'computer' && currentPlayer === 'black' && !gameOver) {
                                     setTimeout(makeComputerMove, 500);
                                 }
                             }
@@ -861,7 +898,7 @@
             }
 
             // Get valid moves for a piece
-            function getValidMoves(piece) {
+            function getValidMoves(piece, ignoreCheck = false) {
                 const { row, col, piece: pieceType, color } = piece;
                 let moves = [];
                 
@@ -958,6 +995,44 @@
                         break;
                 }
                 
+                // Filter moves that would leave king in check (unless ignoreCheck is true)
+                if (!ignoreCheck) {
+                    moves = moves.filter(move => {
+                        // Simulate the move
+                        const originalRow = piece.row;
+                        const originalCol = piece.col;
+                        
+                        // Temporarily store any captured piece
+                        const capturedPiece = findPieceAt(move.row, move.col);
+                        let capturedPieceRemoved = false;
+                        
+                        if (capturedPiece) {
+                            // Remove the captured piece temporarily
+                            board = board.filter(p => !(p.row === capturedPiece.row && p.col === capturedPiece.col));
+                            capturedPieceRemoved = true;
+                        }
+                        
+                        // Move the piece
+                        piece.row = move.row;
+                        piece.col = move.col;
+                        
+                        // Check if king is in check after this move
+                        const kingInCheck = isInCheck(color);
+                        
+                        // Restore the original position
+                        piece.row = originalRow;
+                        piece.col = originalCol;
+                        
+                        // Restore the captured piece if any
+                        if (capturedPieceRemoved) {
+                            board.push(capturedPiece);
+                        }
+                        
+                        // Return true if the move doesn't leave king in check
+                        return !kingInCheck;
+                    });
+                }
+                
                 return moves;
             }
 
@@ -1003,6 +1078,11 @@
                 // Check if there's a piece to capture
                 const capturedPiece = findPieceAt(targetRow, targetCol);
                 if (capturedPiece) {
+                    // Check if captured piece is a king (game over)
+                    if (capturedPiece.piece === 'king') {
+                        gameOver = true;
+                    }
+                    
                     // Remove the captured piece from the board
                     board = board.filter(p => !(p.row === capturedPiece.row && p.col === capturedPiece.col));
                     
@@ -1034,6 +1114,11 @@
                 
                 // Switch players
                 currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+                
+                // Check for checkmate
+                if (isInCheckmate(currentPlayer)) {
+                    gameOver = true;
+                }
                 
                 // Update the UI
                 renderBoard();
@@ -1073,12 +1158,143 @@
                     notation += '=' + promotionLetters[promotionPiece || 'queen'];
                 }
                 
+                // Simulate the move to check for check or checkmate
+                const originalRow = piece.row;
+                const originalCol = piece.col;
+                let capturedPieceRemoved = false;
+                
+                if (capturedPiece) {
+                    // Remove the captured piece temporarily
+                    board = board.filter(p => !(p.row === capturedPiece.row && p.col === capturedPiece.col));
+                    capturedPieceRemoved = true;
+                }
+                
+                // Move the piece
+                piece.row = targetRow;
+                piece.col = targetCol;
+                
+                // Check if this move puts the opponent in check
+                const opponentColor = piece.color === 'white' ? 'black' : 'white';
+                const inCheck = isInCheck(opponentColor);
+                
+                // Check for checkmate
+                let inCheckmate = false;
+                if (inCheck) {
+                    inCheckmate = isInCheckmate(opponentColor);
+                }
+                
+                // Restore the board state
+                piece.row = originalRow;
+                piece.col = originalCol;
+                if (capturedPieceRemoved) {
+                    board.push(capturedPiece);
+                }
+                
+                // Add check or checkmate symbol
+                if (inCheckmate) {
+                    notation += '#';
+                } else if (inCheck) {
+                    notation += '+';
+                }
+                
                 return notation;
             }
 
+            // Check if a king is in check
+            function isInCheck(kingColor) {
+                // Find the king
+                const king = board.find(p => p.piece === 'king' && p.color === kingColor);
+                if (!king) return false;
+                
+                // Check if any opponent piece can capture the king
+                const opponentColor = kingColor === 'white' ? 'black' : 'white';
+                const opponentPieces = board.filter(p => p.color === opponentColor);
+                
+                for (const piece of opponentPieces) {
+                    const validMoves = getValidMoves(piece, true);
+                    if (validMoves.some(move => move.row === king.row && move.col === king.col)) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            // Check if a player is in checkmate
+            function isInCheckmate(kingColor) {
+                // If not in check, not in checkmate
+                if (!isInCheck(kingColor)) return false;
+                
+                // Get all pieces of this color
+                const pieces = board.filter(p => p.color === kingColor);
+                
+                // Check if any move can get out of check
+                for (const piece of pieces) {
+                    const validMoves = getValidMoves(piece);
+                    
+                    // Try each move to see if it gets out of check
+                    for (const move of validMoves) {
+                        // Simulate the move
+                        const originalRow = piece.row;
+                        const originalCol = piece.col;
+                        
+                        // Temporarily store any captured piece
+                        const capturedPiece = findPieceAt(move.row, move.col);
+                        let capturedPieceRemoved = false;
+                        
+                        if (capturedPiece) {
+                            // Remove the captured piece temporarily
+                            board = board.filter(p => !(p.row === capturedPiece.row && p.col === capturedPiece.col));
+                            capturedPieceRemoved = true;
+                        }
+                        
+                        // Move the piece
+                        piece.row = move.row;
+                        piece.col = move.col;
+                        
+                        // Check if king is still in check
+                        const stillInCheck = isInCheck(kingColor);
+                        
+                        // Restore the original position
+                        piece.row = originalRow;
+                        piece.col = originalCol;
+                        
+                        // Restore the captured piece if any
+                        if (capturedPieceRemoved) {
+                            board.push(capturedPiece);
+                        }
+                        
+                        // If any move gets out of check, not in checkmate
+                        if (!stillInCheck) {
+                            return false;
+                        }
+                    }
+                }
+                
+                // If no move gets out of check, it's checkmate
+                return true;
+            }
+            
             // Update game status
             function updateStatus() {
-                statusElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} to move`;
+                if (gameOver) {
+                    const winner = currentPlayer === 'white' ? 'Black' : 'White';
+                    statusElement.textContent = `Checkmate! ${winner} wins`;
+                    return;
+                }
+                
+                const inCheck = isInCheck(currentPlayer);
+                const inCheckmate = isInCheckmate(currentPlayer);
+                
+                if (inCheckmate) {
+                    const winner = currentPlayer === 'white' ? 'Black' : 'White';
+                    statusElement.textContent = `Checkmate! ${winner} wins`;
+                    gameOver = true;
+                } else if (inCheck) {
+                    statusElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} is in check!`;
+                } else {
+                    statusElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} to move`;
+                }
             }
 
             // Update captured pieces display
