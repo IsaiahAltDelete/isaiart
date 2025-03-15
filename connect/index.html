@@ -10,8 +10,8 @@
         :root {
             --cell-size: 50px;
             --border-color: #000;
-            --player-one-color: #000;
-            --player-two-color: #fff;
+            --player-one-color: #e53935; /* Red */
+            --player-two-color: #1e88e5; /* Blue */
             --board-bg: #fff;
             --hover-color: #f0f0f0;
         }
@@ -107,7 +107,6 @@
 
         .cell.player-2 {
             background-color: var(--player-two-color);
-            border: 2px solid var(--player-one-color);
             animation: drop 0.5s ease-in-out;
         }
 
@@ -552,11 +551,11 @@
             function updatePlayerIndicator() {
                 if (currentPlayer === 1) {
                     currentPlayerEl.textContent = 'radio_button_checked';
-                    currentPlayerEl.style.color = '#000';
+                    currentPlayerEl.style.color = 'var(--player-one-color)';
                     statusEl.textContent = vsComputer ? 'Your turn:' : 'Current player:';
                 } else {
-                    currentPlayerEl.textContent = 'radio_button_unchecked';
-                    currentPlayerEl.style.color = '#000';
+                    currentPlayerEl.textContent = 'radio_button_checked';
+                    currentPlayerEl.style.color = 'var(--player-two-color)';
                     statusEl.textContent = vsComputer ? 'Computer\'s turn:' : 'Current player:';
                 }
             }
