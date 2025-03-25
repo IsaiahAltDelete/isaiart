@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Line Art Converter</title>
+  <!-- Google Fonts & Material Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #6c5ce7;
+      --primary-light: #a29bfe;
+      --secondary: #00cec9;
+      --bg-dark: #13131a;
+      --bg-card: #1e1e2a;
+      --text-light: #f8f9fa;
+      --text-muted: #b2bec3;
+      --shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+      --radius: 12px;
+      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-light);
+      line-height: 1.6;
+      padding: 0;
+      margin: 0;
+      overflow-x: hidden;
+      transition: var(--transition);
+    }
+    
+    .app-container {
+      max-width: 1400px;
+      margin: 1.5rem auto;
+      padding: 1rem;
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 1.5rem;
+      height: calc(100vh - 3rem);
+    }
+    
+    @media (max-width: 768px) {
+      .app-container {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+    }
+    
+    .controls {
+      background-color: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 1.5rem;
+      height: calc(100vh - 3rem);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .controls::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .controls::-webkit-scrollbar-thumb {
+      background-color: var(--primary-light);
+      border-radius: 10px;
+    }
+    
+    .app-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-light);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .material-icons-round {
+      font-size: 1.5rem;
+    }
+    
+    .tab-container {
+      display: flex;
+      margin-bottom: 1.5rem;
+      background-color: rgba(0, 0, 0, 0.15);
+      border-radius: var(--radius);
+      padding: 0.35rem;
+    }
+    
+    .tab {
+      flex: 1;
+      padding: 0.5rem;
+      cursor: pointer;
+      border-radius: var(--radius);
+      text-align: center;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: var(--transition);
+      color: var(--text-muted);
+    }
+    
+    .tab.active {
+      background-color: var(--primary);
+      color: white;
+      box-shadow: 0 4px 10px rgba(108, 92, 231, 0.3);
+    }
+    
+    .tab-content {
+      display: none;
+      animation: fadeUp 0.3s ease-out;
+    }
+    
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .dropzone {
+      border: 2px dashed var(--primary-light);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      transition: var(--transition);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .dropzone.drag-active {
+      border-color: var(--secondary);
+      background-color: rgba(0, 206, 201, 0.05);
+      transform: scale(1.02);
+    }
+    
+    .dropzone-icon {
+      background-color: rgba(108, 92, 231, 0.15);
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.5rem;
+    }
+    
+    .dropzone-icon .material-icons-round {
+      color: var(--primary-light);
+      font-size: 2rem;
+    }
+    
+    .dropzone-text {
+      font-size: 0.9rem;
+    }
+    
+    .dropzone-subtext {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    
+    #fileInput {
+      display: none;
+    }
+    
+    .control-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .control-group h3 {
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      color: var(--text-light);
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+    
+    .control-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .control-label {
+      flex: 1;
+      font-size: 0.875rem;
+    }
+    
+    .control-value {
+      width: 40px;
+      text-align: right;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .slider-container {
+      flex: 2;
+      position: relative;
+      margin: 0 0.75rem;
+    }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: var(--primary);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.1);
+    }
+    
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: var(--secondary);
+      transform: scale(1.2);
+    }
+    
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 20px;
+      margin-right: 0.75rem;
+    }
+    
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: var(--transition);
+      border-radius: 20px;
+    }
+    
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: var(--transition);
+      border-radius: 50%;
+    }
+    
+    input:checked + .switch-slider {
+      background-color: var(--primary);
+    }
+    
+    input:checked + .switch-slider:before {
+      transform: translateX(20px);
+    }
+    
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    
+    .checkbox-label {
+      font-size: 0.875rem;
+      margin-left: 0.5rem;
+    }
+    
+    .button-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: auto;
+      padding-top: 1.5rem;
+    }
+    
+    button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.75rem 1.25rem;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      flex: 1;
+    }
+    
+    button:hover {
+      background-color: #5d4dcf;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(108, 92, 231, 0.3);
+    }
+    
+    button.outline {
+      background-color: transparent;
+      border: 1px solid var(--primary-light);
+      color: var(--text-light);
+    }
+    
+    button.outline:hover {
+      background-color: rgba(108, 92, 231, 0.1);
+      border-color: var(--primary);
+    }
+    
+    button.icon-only {
+      padding: 0.5rem;
+      border-radius: 50%;
+      flex: 0;
+    }
+    
+    .image-preview {
+      background-color: var(--bg-card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 3rem);
+      overflow: hidden;
+    }
+    
+    .image-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .tool-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .image-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: rgba(0, 0, 0, 0.3);
+      background-image: 
+        linear-gradient(45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%), 
+        linear-gradient(-45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.05) 75%), 
+        linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.05) 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    
+    canvas {
+      max-width: 100%;
+      max-height: 100%;
+      transition: var(--transition);
+      object-fit: contain;
+    }
+    
+    .split-view canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      margin: auto;
+    }
+    
+    #originalCanvas {
+      clip-path: polygon(0 0, var(--split) 0, var(--split) 100%, 0 100%);
+    }
+    
+    .split-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: white;
+      left: var(--split);
+      pointer-events: none;
+      z-index: 10;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+    
+    .split-handle {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: white;
+      left: calc(var(--split) - 15px);
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 11;
+      cursor: ew-resize;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .split-handle::before, .split-handle::after {
+      content: "";
+      position: absolute;
+      width: 2px;
+      height: 10px;
+      background-color: #555;
+      border-radius: 1px;
+    }
+    
+    .split-handle::before {
+      left: 10px;
+    }
+    
+    .split-handle::after {
+      right: 10px;
+    }
+    
+    .view-toggle {
+      position: absolute;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background-color: var(--primary);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+      transition: var(--transition);
+    }
+    
+    .view-toggle:hover {
+      transform: scale(1.1);
+      background-color: var(--secondary);
+    }
+    
+    .notification {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: var(--bg-card);
+      border-left: 4px solid var(--primary);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      z-index: 1000;
+      max-width: 300px;
+    }
+    
+    .notification.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      color: var(--text-muted);
+      height: 100%;
+      text-align: center;
+    }
+    
+    .empty-icon {
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      background-size: 400% 400%;
+      animation: gradient 5s ease infinite;
+    }
+    
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .tooltip .material-icons-round {
+      font-size: 1rem;
+      color: var(--text-muted);
+      cursor: help;
+    }
+    
+    .tooltip-text {
+      visibility: hidden;
+      width: 200px;
+      background-color: var(--bg-dark);
+      color: var(--text-light);
+      text-align: center;
+      border-radius: 6px;
+      padding: 0.75rem;
+      position: absolute;
+      z-index: 100;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 0.8rem;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      pointer-events: none;
+    }
+    
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    .tooltip-text::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: var(--bg-dark) transparent transparent transparent;
+    }
+    
+    @media (max-width: 768px) {
+      .app-container {
+        padding: 0.5rem;
+        margin: 0;
+        height: auto;
+      }
+      
+      .controls {
+        height: auto;
+        max-height: none;
+        position: relative;
+        top: 0;
+      }
+      
+      .image-preview {
+        height: auto;
+        min-height: 50vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="controls">
+    <div class="app-title">
+      <span class="material-icons-round">brush</span>
+      Line Art Converter
+    </div>
+    
+    <div class="tab-container">
+      <div class="tab active" data-tab="basic">Basic</div>
+      <div class="tab" data-tab="advanced">Advanced</div>
+      <div class="tab" data-tab="effects">Effects</div>
+    </div>
+    
+    <div class="tab-content active" id="basic-tab">
+      <label for="fileInput" class="dropzone" id="dropZone">
+        <div class="dropzone-icon">
+          <span class="material-icons-round">upload_file</span>
+        </div>
+        <div class="dropzone-text">Drag & drop image here</div>
+        <div class="dropzone-subtext">or click to browse</div>
+      </label>
+      <input type="file" accept="image/*" id="fileInput">
+      
+      <div class="control-group">
+        <h3>Basic Adjustments</h3>
+        
+        <div class="control-row">
+          <span class="control-label">Threshold</span>
+          <div class="slider-container">
+            <input type="range" id="thresholdSlider" min="0" max="255" value="128">
+          </div>
+          <span class="control-value" id="thresholdValue">128</span>
+          <div class="tooltip">
+            <span class="material-icons-round">info</span>
+            <span class="tooltip-text">Determines the cutoff between black and white pixels</span>
+          </div>
+        </div>
+        
+        <div class="checkbox-row">
+          <label class="switch">
+            <input type="checkbox" id="invertToggle">
+            <span class="switch-slider"></span>
+          </label>
+          <span class="checkbox-label">Invert Colors</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="tab-content" id="advanced-tab">
+      <div class="control-group">
+        <h3>Edge Detection</h3>
+        
+        <div class="checkbox-row">
+          <label class="switch">
+            <input type="checkbox" id="edgeDetectionToggle">
+            <span class="switch-slider"></span>
+          </label>
+          <span class="checkbox-label">Enable Edge Detection</span>
+        </div>
+        
+        <div class="control-row">
+          <span class="control-label">Edge Strength</span>
+          <div class="slider-container">
+            <input type="range" id="edgeStrengthSlider" min="0" max="100" value="50">
+          </div>
+          <span class="control-value" id="edgeStrengthValue">50</span>
+        </div>
+      </div>
+      
+      <div class="control-group">
+        <h3>Adjustments</h3>
+        
+        <div class="control-row">
+          <span class="control-label">Contrast</span>
+          <div class="slider-container">
+            <input type="range" id="contrastSlider" min="-100" max="100" value="0">
+          </div>
+          <span class="control-value" id="contrastValue">0</span>
+        </div>
+        
+        <div class="control-row">
+          <span class="control-label">Brightness</span>
+          <div class="slider-container">
+            <input type="range" id="brightnessSlider" min="-100" max="100" value="0">
+          </div>
+          <span class="control-value" id="brightnessValue">0</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="tab-content" id="effects-tab">
+      <div class="control-group">
+        <h3>Artistic Effects</h3>
+        
+        <div class="control-row">
+          <span class="control-label">Blur</span>
+          <div class="slider-container">
+            <input type="range" id="blurSlider" min="0" max="20" value="0">
+          </div>
+          <span class="control-value" id="blurValue">0</span>
+        </div>
+        
+        <div class="control-row">
+          <span class="control-label">Sharpen</span>
+          <div class="slider-container">
+            <input type="range" id="sharpenSlider" min="0" max="10" value="0">
+          </div>
+          <span class="control-value" id="sharpenValue">0</span>
+        </div>
+        
+        <div class="control-row">
+          <span class="control-label">Posterize</span>
+          <div class="slider-container">
+            <input type="range" id="posterizeSlider" min="0" max="10" value="0">
+          </div>
+          <span class="control-value" id="posterizeValue">0</span>
+        </div>
+        
+        <div class="control-row">
+          <span class="control-label">Noise</span>
+          <div class="slider-container">
+            <input type="range" id="noiseSlider" min="0" max="50" value="0">
+          </div>
+          <span class="control-value" id="noiseValue">0</span>
+        </div>
+        
+        <div class="control-row">
+          <span class="control-label">Line Width</span>
+          <div class="slider-container">
+            <input type="range" id="lineWidthSlider" min="1" max="5" value="1">
+          </div>
+          <span class="control-value" id="lineWidthValue">1</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="button-row">
+      <button id="resetBtn" class="outline">
+        <span class="material-icons-round">refresh</span>
+        Reset
+      </button>
+      <button id="downloadBtn">
+        <span class="material-icons-round">download</span>
+        Download
+      </button>
+    </div>
+  </div>
+  
+  <div class="image-preview">
+    <div class="image-toolbar">
+      <div class="tool-group">
+        <button id="toggleViewBtn" class="outline icon-only">
+          <span class="material-icons-round">compare</span>
+        </button>
+        <button id="undoBtn" class="outline icon-only" disabled>
+          <span class="material-icons-round">undo</span>
+        </button>
+      </div>
+      <div class="tool-group">
+        <button id="zoomOutBtn" class="outline icon-only">
+          <span class="material-icons-round">zoom_out</span>
+        </button>
+        <button id="zoomInBtn" class="outline icon-only">
+          <span class="material-icons-round">zoom_in</span>
+        </button>
+        <button id="zoomResetBtn" class="outline icon-only">
+          <span class="material-icons-round">fit_screen</span>
+        </button>
+      </div>
+    </div>
+    
+    <div class="image-container" id="imageContainer">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+          <span class="material-icons-round" style="font-size: 3rem; color: white;">image</span>
+        </div>
+        <h3>No Image Loaded</h3>
+        <p>Drag & drop or click the upload area to begin</p>
+      </div>
+      <canvas id="canvas" style="display: none;"></canvas>
+      <canvas id="originalCanvas" style="display: none;"></canvas>
+      <div class="split-line" style="display: none;"></div>
+      <div class="split-handle" style="display: none;"></div>
+      <div class="view-toggle" id="viewToggle" style="display: none;">
+        <span class="material-icons-round">visibility</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="notification" id="notification"></div>
+
+<script>
+  // DOM Elements
+  const fileInput = document.getElementById('fileInput');
+  const dropZone = document.getElementById('dropZone');
+  const canvas = document.getElementById('canvas');
+  const originalCanvas = document.getElementById('originalCanvas');
+  const ctx = canvas.getContext('2d');
+  const originalCtx = originalCanvas.getContext('2d');
+  const imageContainer = document.getElementById('imageContainer');
+  const emptyState = document.getElementById('emptyState');
+  const notification = document.getElementById('notification');
+  const viewToggle = document.getElementById('viewToggle');
+  const splitLine = document.querySelector('.split-line');
+  const splitHandle = document.querySelector('.split-handle');
+  
+  // Sliders and Values
+  const thresholdSlider = document.getElementById('thresholdSlider');
+  const thresholdValue = document.getElementById('thresholdValue');
+  const invertToggle = document.getElementById('invertToggle');
+  const edgeDetectionToggle = document.getElementById('edgeDetectionToggle');
+  const edgeStrengthSlider = document.getElementById('edgeStrengthSlider');
+  const edgeStrengthValue = document.getElementById('edgeStrengthValue');
+  const contrastSlider = document.getElementById('contrastSlider');
+  const contrastValue = document.getElementById('contrastValue');
+  const brightnessSlider = document.getElementById('brightnessSlider');
+  const brightnessValue = document.getElementById('brightnessValue');
+  const blurSlider = document.getElementById('blurSlider');
+  const blurValue = document.getElementById('blurValue');
+  const sharpenSlider = document.getElementById('sharpenSlider');
+  const sharpenValue = document.getElementById('sharpenValue');
+  const posterizeSlider = document.getElementById('posterizeSlider');
+  const posterizeValue = document.getElementById('posterizeValue');
+  const noiseSlider = document.getElementById('noiseSlider');
+  const noiseValue = document.getElementById('noiseValue');
+  const lineWidthSlider = document.getElementById('lineWidthSlider');
+  const lineWidthValue = document.getElementById('lineWidthValue');
+  
+  // Buttons
+  const resetBtn = document.getElementById('resetBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const toggleViewBtn = document.getElementById('toggleViewBtn');
+  const undoBtn = document.getElementById('undoBtn');
+  const zoomInBtn = document.getElementById('zoomInBtn');
+  const zoomOutBtn = document.getElementById('zoomOutBtn');
+  const zoomResetBtn = document.getElementById('zoomResetBtn');
+  
+  // Tabs
+  const tabs = document.querySelectorAll('.tab');
+  const tabContents = document.querySelectorAll('.tab-content');
+  
+  // State variables
+  let originalImage = null;
+  let currentZoom = 1;
+  let viewMode = 'normal'; // 'normal', 'split', 'compare'
+  let splitPosition = 50; // percentage
+  let isProcessing = false;
+  
+  // Update slider values display
+  function updateSliderValues() {
+    thresholdValue.textContent = thresholdSlider.value;
+    edgeStrengthValue.textContent = edgeStrengthSlider.value;
+    contrastValue.textContent = contrastSlider.value;
+    brightnessValue.textContent = brightnessSlider.value;
+    blurValue.textContent = blurSlider.value;
+    sharpenValue.textContent = sharpenSlider.value;
+    posterizeValue.textContent = posterizeSlider.value;
+    noiseValue.textContent = noiseSlider.value;
+    lineWidthValue.textContent = lineWidthSlider.value;
+  }
+  
+  // Tab functionality
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabId = tab.getAttribute('data-tab');
+      
+      // Update active tab
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      
+      // Show corresponding content
+      tabContents.forEach(content => content.classList.remove('active'));
+      document.getElementById(`${tabId}-tab`).classList.add('active');
+    });
+  });
+  
+  // Show notification
+  function showNotification(message, duration = 2000) {
+    notification.textContent = message;
+    notification.classList.add('show');
+    
+    setTimeout(() => {
+      notification.classList.remove('show');
+    }, duration);
+  }
+  
+  // Update split view
+  function updateSplitView() {
+    if (viewMode === 'split') {
+      originalCanvas.style.display = 'block';
+      splitLine.style.display = 'block';
+      splitHandle.style.display = 'flex';
+      document.documentElement.style.setProperty('--split', `${splitPosition}%`);
+    } else {
+      originalCanvas.style.display = viewMode === 'compare' ? 'block' : 'none';
+      splitLine.style.display = 'none';
+      splitHandle.style.display = 'none';
+    }
+  }
+  
+  // Process image with all filters
+  function processImage() {
+    if (!originalImage || isProcessing) return;
+    
+    isProcessing = true;
+    showNotification('Processing image...');
+    
+    // Use setTimeout to allow UI to update before processing starts
+    setTimeout(() => {
+      // Reset canvas and draw original image
+      canvas.width = originalImage.width;
+      canvas.height = originalImage.height;
+      originalCanvas.width = originalImage.width;
+      originalCanvas.height = originalImage.height;
+      
+      // Draw original image to both canvases
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      originalCtx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(originalImage, 0, 0);
+      originalCtx.drawImage(originalImage, 0, 0);
+      
+      // Get current settings
+      const threshold = parseInt(thresholdSlider.value);
+      const invert = invertToggle.checked;
+      const useEdgeDetection = edgeDetectionToggle.checked;
+      const edgeStrength = parseInt(edgeStrengthSlider.value) / 100;
+      const contrast = parseInt(contrastSlider.value) / 100;
+      const brightness = parseInt(brightnessSlider.value) / 100;
+      const blurRadius = parseInt(blurSlider.value);
+      const sharpen = parseInt(sharpenSlider.value) / 10;
+      const posterize = parseInt(posterizeSlider.value);
+      const noise = parseInt(noiseSlider.value) / 100;
+      const lineWidth = parseInt(lineWidthSlider.value);
+      
+      // Get image data
+      let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      // Apply brightness/contrast
+      if (contrast !== 0 || brightness !== 0) {
+        applyBrightnessContrast(imageData, brightness, contrast);
+      }
+      
+      // Apply blur
+      if (blurRadius > 0) {
+        applyBlur(imageData, blurRadius);
+      }
+      
+      // Apply edge detection
+      if (useEdgeDetection) {
+        applyEdgeDetection(imageData, edgeStrength);
+      }
+      
+      // Apply sharpen
+      if (sharpen > 0) {
+        applySharpen(imageData, sharpen);
+      }
+      
+      // Apply posterize
+      if (posterize > 0) {
+        applyPosterize(imageData, posterize);
+      }
+      
+      // Apply noise
+      if (noise > 0) {
+        applyNoise(imageData, noise);
+      }
+      
+      // Apply threshold
+      applyThreshold(imageData, threshold);
+      
+      // Apply line width
+      if (lineWidth > 1) {
+        applyLineWidth(imageData, lineWidth);
+      }
+      
+      // Apply invert if needed
+      if (invert) {
+        applyInvert(imageData);
+      }
+      
+      // Put processed image data back to canvas
+      ctx.putImageData(imageData, 0, 0);
+      
+      // Update UI
+      updateSplitView();
+      isProcessing = false;
+      showNotification('Processing complete!');
+    }, 100);
+  }
+  
+  // Filter functions
+  function applyThreshold(imageData, threshold) {
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      // Convert pixel to grayscale
+      const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+      const bw = gray >= threshold ? 255 : 0;
+      data[i] = data[i+1] = data[i+2] = bw;
+    }
+  }
+  
+  function applyInvert(imageData) {
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = 255 - data[i];
+      data[i+1] = 255 - data[i+1];
+      data[i+2] = 255 - data[i+2];
+    }
+  }
+  
+  function applyBrightnessContrast(imageData, brightness, contrast) {
+    const data = imageData.data;
+    const factor = (259 * (contrast + 1)) / (255 * (1 - contrast));
+    
+    for (let i = 0; i < data.length; i += 4) {
+      // Apply brightness
+      data[i] += 255 * brightness;
+      data[i+1] += 255 * brightness;
+      data[i+2] += 255 * brightness;
+      
+      // Apply contrast
+      data[i] = clamp(factor * (data[i] - 128) + 128);
+      data[i+1] = clamp(factor * (data[i+1] - 128) + 128);
+      data[i+2] = clamp(factor * (data[i+2] - 128) + 128);
+    }
+  }
+  
+  function applyBlur(imageData, radius) {
+    // Simple box blur implementation
+    const width = imageData.width;
+    const height = imageData.height;
+    const data = imageData.data;
+    const tempData = new Uint8ClampedArray(data);
+    
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let r = 0, g = 0, b = 0, count = 0;
+        
+        for (let ky = -radius; ky <= radius; ky++) {
+          for (let kx = -radius; kx <= radius; kx++) {
+            const px = x + kx;
+            const py = y + ky;
+            
+            if (px >= 0 && px < width && py >= 0 && py < height) {
+              const i = (py * width + px) * 4;
+              r += tempData[i];
+              g += tempData[i+1];
+              b += tempData[i+2];
+              count++;
+            }
+          }
+        }
+        
+        const i = (y * width + x) * 4;
+        data[i] = r / count;
+        data[i+1] = g / count;
+        data[i+2] = b / count;
+      }
+    }
+  }
+  
+  function applyEdgeDetection(imageData, strength) {
+    const width = imageData.width;
+    const height = imageData.height;
+    const data = imageData.data;
+    const tempData = new Uint8ClampedArray(data);
+    
+    // Simple Sobel operator
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        // Calculate gradient using Sobel operator
+        const idx = (y * width + x) * 4;
+        
+        // Horizontal gradient
+        const gx = 
+          -1 * tempData[((y-1) * width + (x-1)) * 4] +
+          -2 * tempData[((y) * width + (x-1)) * 4] +
+          -1 * tempData[((y+1) * width + (x-1)) * 4] +
+          1 * tempData[((y-1) * width + (x+1)) * 4] +
+          2 * tempData[((y) * width + (x+1)) * 4] +
+          1 * tempData[((y+1) * width + (x+1)) * 4];
+        
+        // Vertical gradient
+        const gy = 
+          -1 * tempData[((y-1) * width + (x-1)) * 4] +
+          -2 * tempData[((y-1) * width + (x)) * 4] +
+          -1 * tempData[((y-1) * width + (x+1)) * 4] +
+          1 * tempData[((y+1) * width + (x-1)) * 4] +
+          2 * tempData[((y+1) * width + (x)) * 4] +
+          1 * tempData[((y+1) * width + (x+1)) * 4];
+        
+        // Magnitude
+        const mag = Math.sqrt(gx*gx + gy*gy) * strength;
+        const val = clamp(mag);
+        
+        data[idx] = data[idx+1] = data[idx+2] = val;
+      }
+    }
+  }
+  
+  function applySharpen(imageData, amount) {
+    const width = imageData.width;
+    const height = imageData.height;
+    const data = imageData.data;
+    const tempData = new Uint8ClampedArray(data);
+    
+    // Simple sharpening kernel
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const center = (y * width + x) * 4;
+        const top = ((y - 1) * width + x) * 4;
+        const bottom = ((y + 1) * width + x) * 4;
+        const left = (y * width + (x - 1)) * 4;
+        const right = (y * width + (x + 1)) * 4;
+        
+        for (let c = 0; c < 3; c++) {
+          const centerVal = tempData[center + c];
+          const topVal = tempData[top + c];
+          const bottomVal = tempData[bottom + c];
+          const leftVal = tempData[left + c];
+          const rightVal = tempData[right + c];
+          
+          data[center + c] = clamp(centerVal * (1 + 4 * amount) - amount * (topVal + bottomVal + leftVal + rightVal));
+        }
+      }
+    }
+  }
+  
+  function applyPosterize(imageData, levels) {
+    if (levels <= 1) return;
+    
+    const data = imageData.data;
+    const step = 255 / (levels - 1);
+    
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = Math.round(data[i] / step) * step;
+      data[i+1] = Math.round(data[i+1] / step) * step;
+      data[i+2] = Math.round(data[i+2] / step) * step;
+    }
+  }
+  
+  function applyNoise(imageData, amount) {
+    const data = imageData.data;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      const randomValue = (Math.random() - 0.5) * 2 * amount * 255;
+      data[i] = clamp(data[i] + randomValue);
+      data[i+1] = clamp(data[i+1] + randomValue);
+      data[i+2] = clamp(data[i+2] + randomValue);
+    }
+  }
+  
+  function applyLineWidth(imageData, width) {
+    if (width <= 1) return;
+    
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCanvas.width = imageData.width;
+    tempCanvas.height = imageData.height;
+    
+    // Put image data to temp canvas
+    tempCtx.putImageData(imageData, 0, 0);
+    
+    // Clear main canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw with line width
+    ctx.filter = `blur(${width/2}px)`;
+    ctx.drawImage(tempCanvas, 0, 0);
+    ctx.filter = 'none';
+    
+    // Apply threshold again to get clean lines
+    const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    applyThreshold(newImageData, 128);
+    
+    // Copy back the processed data
+    for (let i = 0; i < imageData.data.length; i++) {
+      imageData.data[i] = newImageData.data[i];
+    }
+  }
+  
+  // Helper function to clamp color values
+  function clamp(value) {
+    return Math.max(0, Math.min(255, value));
+  }
+  
+  // Reset all settings to default
+  function resetSettings() {
+    thresholdSlider.value = 128;
+    invertToggle.checked = false;
+    edgeDetectionToggle.checked = false;
+    edgeStrengthSlider.value = 50;
+    contrastSlider.value = 0;
+    brightnessSlider.value = 0;
+    blurSlider.value = 0;
+    sharpenSlider.value = 0;
+    posterizeSlider.value = 0;
+    noiseSlider.value = 0;
+    lineWidthSlider.value = 1;
+    
+    updateSliderValues();
+    
+    if (originalImage) {
+      processImage();
+    }
+    
+    showNotification('Settings reset to default');
+  }
+  
+  // Toggle view mode
+  function toggleViewMode() {
+    if (viewMode === 'normal') {
+      viewMode = 'split';
+      viewToggle.innerHTML = '<span class="material-icons-round">visibility</span>';
+    } else if (viewMode === 'split') {
+      viewMode = 'compare';
+      viewToggle.innerHTML = '<span class="material-icons-round">visibility_off</span>';
+    } else {
+      viewMode = 'normal';
+      viewToggle.innerHTML = '<span class="material-icons-round">compare</span>';
+    }
+    
+    updateSplitView();
+    showNotification(`View mode: ${viewMode}`);
+  }
+  
+  // Zoom functionality
+  function zoomIn() {
+    if (currentZoom < 5) {
+      currentZoom += 0.25;
+      updateZoom();
+    }
+  }
+  
+  function zoomOut() {
+    if (currentZoom > 0.25) {
+      currentZoom -= 0.25;
+      updateZoom();
+    }
+  }
+  
+  function resetZoom() {
+    currentZoom = 1;
+    updateZoom();
+  }
+  
+  function updateZoom() {
+    canvas.style.transform = `scale(${currentZoom})`;
+    originalCanvas.style.transform = `scale(${currentZoom})`;
+    showNotification(`Zoom: ${Math.round(currentZoom * 100)}%`);
+  }
+  
+  // Handle file upload
+  function handleFile(e) {
+    const file = e.target ? e.target.files[0] : e.dataTransfer.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(event) {
+      originalImage = new Image();
+      originalImage.onload = function() {
+        // Hide empty state, show canvas
+        emptyState.style.display = 'none';
+        canvas.style.display = 'block';
+        viewToggle.style.display = 'flex';
+        
+        // Process image
+        processImage();
+      };
+      originalImage.src = event.target.result;
+    };
+    
+    reader.readAsDataURL(file);
+  }
+  
+  // Download image
+  function downloadImage() {
+    if (!originalImage) return;
+    
+    const link = document.createElement('a');
+    link.download = 'line-art.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    
+    showNotification('Image downloaded!');
+  }
+  
+  // Improved drag and drop handling
+  function setupDragAndDrop() {
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, preventDefaults, false);
+      document.body.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    // Highlight drop zone when item is dragged over it
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, highlight, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, unhighlight, false);
+    });
+    
+    // Handle dropped files
+    dropZone.addEventListener('drop', handleDrop, false);
+    
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    function highlight() {
+      dropZone.classList.add('drag-active');
+    }
+    
+    function unhighlight() {
+      dropZone.classList.remove('drag-active');
+    }
+    
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      
+      if (files.length) {
+        handleFile(e);
+      }
+    }
+  }
+  
+  // Initialize
+  function init() {
+    updateSliderValues();
+    setupDragAndDrop();
+    showNotification('Ready! Upload an image to begin.', 3000);
+    
+    // Add event listeners
+    
+    // File input
+    fileInput.addEventListener('change', handleFile);
+    
+    // Sliders and toggles
+    [thresholdSlider, edgeStrengthSlider, contrastSlider, brightnessSlider, 
+     blurSlider, sharpenSlider, posterizeSlider, noiseSlider, lineWidthSlider].forEach(slider => {
+      slider.addEventListener('input', () => {
+        updateSliderValues();
+        if (originalImage) processImage();
+      });
+    });
+    
+    [invertToggle, edgeDetectionToggle].forEach(toggle => {
+      toggle.addEventListener('change', () => {
+        if (originalImage) processImage();
+      });
+    });
+    
+    // Buttons
+    resetBtn.addEventListener('click', resetSettings);
+    downloadBtn.addEventListener('click', downloadImage);
+    toggleViewBtn.addEventListener('click', toggleViewMode);
+    viewToggle.addEventListener('click', toggleViewMode);
+    zoomInBtn.addEventListener('click', zoomIn);
+    zoomOutBtn.addEventListener('click', zoomOut);
+    zoomResetBtn.addEventListener('click', resetZoom);
+    
+    // Split view drag
+    splitHandle.addEventListener('mousedown', () => {
+      document.addEventListener('mousemove', handleSplitDrag);
+      document.addEventListener('mouseup', () => {
+        document.removeEventListener('mousemove', handleSplitDrag);
+      }, { once: true });
+    });
+    
+    function handleSplitDrag(e) {
+      if (viewMode === 'split') {
+        const rect = imageContainer.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        splitPosition = (x / rect.width) * 100;
+        splitPosition = Math.max(0, Math.min(100, splitPosition));
+        document.documentElement.style.setProperty('--split', `${splitPosition}%`);
+      }
+    }
+  }
+  
+  // Start the app
+  init();
+</script>
+
+</body>
+</html>
