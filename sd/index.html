@@ -189,9 +189,10 @@
       font-weight: 500;
       max-width: 100%;
       overflow: hidden;
-      text-overflow: ellipsis;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
       transition: all var(--transition-speed);
+      /* Allow the button to expand vertically if needed */
+      white-space: normal;
     }
 
     .note-button:hover {
@@ -203,9 +204,8 @@
       padding: 0.68rem 0.9rem;
       flex: 1;
       cursor: pointer;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow-wrap: break-word;
       text-align: left;
     }
 
@@ -1117,6 +1117,8 @@
         button.className = 'note-button';
         button.style.backgroundColor = buttonColor;
         button.style.color = getContrastColor(buttonColor);
+        // Add the full copy text as a data attribute for search purposes
+        button.setAttribute('data-copy', note.copyText);
           
         // Copy text part
         const copyPart = document.createElement('div');
@@ -1213,7 +1215,7 @@
       // Add animation to app title
       requestAnimationFrame(animateTitle);
 
-      // Search functionality
+      // Search functionality: check both button text and the copy text attribute
       const searchInput = document.getElementById('searchInput');
       if (searchInput) {
         searchInput.addEventListener('input', searchNotes);
@@ -1436,7 +1438,8 @@
       }, 2000);
     }
   
-    // Search functionality: filters notes based on the search input text
+    // Search functionality: filters notes based on the search input text,
+    // including both the button text and the full content to copy
     function searchNotes() {
       const query = document.getElementById('searchInput').value.toLowerCase().trim();
       sections.forEach(section => {
@@ -1445,8 +1448,9 @@
         const noteButtons = sectionElement.querySelectorAll('.note-button');
         let anyVisible = false;
         noteButtons.forEach(button => {
-          const text = button.querySelector('.copy-part').textContent.toLowerCase();
-          if (text.indexOf(query) !== -1) {
+          const buttonText = button.querySelector('.copy-part').textContent.toLowerCase();
+          const copyData = button.getAttribute('data-copy') ? button.getAttribute('data-copy').toLowerCase() : "";
+          if (buttonText.indexOf(query) !== -1 || copyData.indexOf(query) !== -1) {
             button.style.display = '';
             anyVisible = true;
           } else {
