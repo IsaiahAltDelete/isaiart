@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Support Directory</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2216%22>📧</text></svg>">
+  <!-- Font Awesome is still loaded for other icons if needed -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- Load Google Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
       
@@ -209,12 +212,19 @@
       text-align: left;
     }
 
+    /* Updated .ehh-part styling to match the circular style of .edit-icon */
     .ehh-part {
-      padding: 0.68rem 0.65rem;
       background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 1.35rem;
+      height: 1.35rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
-      border-left: 1px solid rgba(255, 255, 255, 0.3);
       transition: background-color 0.2s ease;
+      margin-left: 0.45rem;
+      margin-right: 0.45rem;
     }
       
     .ehh-part:hover {
@@ -1126,10 +1136,10 @@
         copyPart.textContent = note.buttonText;
         copyPart.addEventListener('click', () => copyToClipboard(note.copyText));
           
-        // Website link part
+        // Website link part using Google Material icon "open_in_new"
         const linkPart = document.createElement('div');
         linkPart.className = 'ehh-part';
-        linkPart.innerHTML = '<i class="fas fa-external-link-alt"></i>';
+        linkPart.innerHTML = '<span class="material-icons" style="font-size:inherit;">open_in_new</span>';
         linkPart.title = 'Open website link';
         linkPart.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -1140,10 +1150,10 @@
           }
         });
           
-        // Edit icon
+        // Edit icon using Google Material icon "edit"
         const editIcon = document.createElement('span');
         editIcon.className = 'edit-icon';
-        editIcon.innerHTML = '<i class="fas fa-edit"></i>';
+        editIcon.innerHTML = '<span class="material-icons" style="font-size:inherit;">edit</span>';
         editIcon.addEventListener('click', (e) => {
           e.stopPropagation();
           openEditModal(sectionId, index);
