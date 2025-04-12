@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support Directory</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2216%22>📧</text></svg>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+      
+    /* CSS Variables for theme management */
+    :root {
+      --primary: #4361ee;
+      --primary-light: #4895ef;
+      --secondary: #2ec4b6;
+      --success: #06d6a0;
+      --danger: #e63946;
+      --warning: #ffd166;
+      --info: #7209b7;
+        
+      --surface-light: #ffffff;
+      --surface-dark: #1e1e2e;
+        
+      --text-light: #252525;
+      --text-dark: #e0e0e0;
+        
+      --bg-light: #f8f9fa;
+      --bg-dark: #121220;
+        
+      --border-light: rgba(0, 0, 0, 0.05);
+      --border-dark: rgba(255, 255, 255, 0.1);
+        
+      --transition-speed: 0.25s;
+      --border-radius: 18px;
+      --border-radius-sm: 12px;
+      --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --box-shadow-dark: 0 4px 12px rgba(0, 0, 0, 0.2);
+        
+      /* Default light theme */
+      --bg: var(--bg-light);
+      --surface: var(--surface-light);
+      --text: var(--text-light);
+      --border: var(--border-light);
+      --shadow: var(--box-shadow);
+      --surface-alpha: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Dark theme overrides */
+    .dark-mode {
+      --bg: var(--bg-dark);
+      --surface: var(--surface-dark);
+      --text: var(--text-dark);
+      --border: var(--border-dark);
+      --shadow: var(--box-shadow-dark);
+      --surface-alpha: rgba(30, 30, 46, 0.8);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+      min-height: 100vh;
+      max-width: 100vw;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 1.75rem 0.9rem;
+    }
+
+    /* Header styles */
+    .app-header {
+      text-align: center;
+      padding: 0.9rem 0 1.8rem;
+      position: relative;
+    }
+
+    .app-title {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 0.45rem;
+      color: var(--text);
+      transition: color 0.3s;
+    }
+
+    /* Search Bar Styles */
+    .search-container {
+      width: 100%;
+      margin: 1rem 0;
+      text-align: center;
+    }
+    .search-container input {
+      width: 90%;
+      max-width: 400px;
+      padding: 0.6rem 1rem;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--border-radius-sm);
+      transition: border-color var(--transition-speed);
+    }
+    .search-container input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    /* Sections Container */
+    .sections-container {
+      margin-bottom: 3.6rem;
+    }
+
+    /* Section Card */
+    .section {
+      background-color: var(--surface);
+      border-radius: var(--border-radius);
+      padding: 1.35rem;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-bottom: 1.35rem;
+    }
+
+    .dark-mode .section {
+      border-color: var(--border);
+    }
+
+    .section:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Section Header */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.15rem;
+      padding-bottom: 0.7rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .dark-mode .section-header {
+      border-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .section-actions {
+      display: flex;
+      gap: 0.45rem;
+    }
+
+    /* Buttons Container */
+    .button-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.68rem;
+    }
+
+    /* Notes / Buttons */
+    .note-button {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0;
+      border: none;
+      border-radius: var(--border-radius-sm);
+      background-color: var(--primary);
+      color: white;
+      font-size: 0.8rem;
+      font-weight: 500;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transition: all var(--transition-speed);
+    }
+
+    .note-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+    }
+
+    .copy-part {
+      padding: 0.68rem 0.9rem;
+      flex: 1;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+    }
+
+    .ehh-part {
+      padding: 0.68rem 0.65rem;
+      background-color: rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      border-left: 1px solid rgba(255, 255, 255, 0.3);
+      transition: background-color 0.2s ease;
+    }
+      
+    .ehh-part:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .edit-icon {
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 1.35rem;
+      height: 1.35rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color var(--transition-speed);
+      margin-left: 0.45rem;
+      margin-right: 0.45rem;
+      flex-shrink: 0;
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+
+    .note-button:hover .edit-icon {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Action Buttons */
+    .icon-button {
+      background: none;
+      border: none;
+      width: 1.8rem;
+      height: 1.8rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text);
+      opacity: 0.7;
+      transition: all var(--transition-speed);
+    }
+
+    .icon-button:hover {
+      opacity: 1;
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .dark-mode .icon-button:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-primary {
+      background-color: var(--text);
+      color: var(--bg);
+    }
+
+    .btn-danger {
+      background-color: var(--danger);
+      color: white;
+    }
+
+    .btn-secondary {
+      background-color: rgba(128, 128, 128, 0.8);
+      color: var(--text);
+    }
+
+    /* Floating Action Button */
+    .fab {
+      position: fixed;
+      bottom: 1.8rem;
+      right: 1.8rem;
+      width: 3.15rem;
+      height: 3.15rem;
+      border-radius: 50%;
+      background-color: var(--text);
+      color: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      border: none;
+      transition: transform var(--transition-speed), background-color var(--transition-speed), color var(--transition-speed);
+      z-index: 5;
+    }
+
+    .fab:hover {
+      transform: scale(1.1) rotate(5deg);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Modals */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 20;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      animation: fadeIn 0.2s;
+    }
+
+    .modal-content {
+      background-color: var(--surface);
+      margin: 9% auto;
+      padding: 1.8rem;
+      border-radius: var(--border-radius);
+      width: 90%;
+      max-width: 450px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      animation: slideUp 0.3s;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.35rem;
+    }
+
+    .modal-title {
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .close {
+      font-size: 1.35rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text);
+      opacity: 0.7;
+      transition: opacity var(--transition-speed);
+    }
+
+    .close:hover {
+      opacity: 1;
+    }
+
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 1.15rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-bottom: 0.45rem;
+      color: var(--text);
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.68rem;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: var(--border-radius-sm);
+      background-color: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: border-color var(--transition-speed);
+    }
+
+    .dark-mode .form-control {
+      border-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+    }
+      
+    .dark-mode input::placeholder,
+    .dark-mode textarea::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    .color-picker {
+      height: 2.25rem;
+      padding: 0.25rem;
+    }
+
+    .button-group {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.68rem;
+      margin-top: 1.35rem;
+    }
+
+    .btn {
+      padding: 0.68rem 1.15rem;
+      border: none;
+      border-radius: var(--border-radius-sm);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      font-size: 0.9rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-text {
+      background: none;
+      color: var(--text);
+      opacity: 0.8;
+    }
+
+    .btn-text:hover {
+      opacity: 1;
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .dark-mode .btn-text:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Theme Controls */
+    .theme-control {
+      position: fixed;
+      top: 1.35rem;
+      right: 1.35rem;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    /* Theme toggle button styles */
+    .theme-toggle {
+      background: none;
+      border: none;
+      width: 2.7rem;
+      height: 2.7rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: var(--text);
+      background-color: var(--surface-alpha);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      transition: all var(--transition-speed);
+      z-index: 11;
+    }
+      
+    .dark-mode .theme-toggle {
+      color: var(--text);
+      background-color: var(--surface-alpha);
+    }
+
+    .theme-toggle:hover {
+      transform: translateY(-2px) rotate(5deg);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    #themeOptionsContainer {
+      position: absolute;
+      top: 3.6rem;
+      right: 0;
+      background-color: var(--surface-alpha);
+      backdrop-filter: blur(10px);
+      border-radius: var(--border-radius);
+      padding: 1.15rem;
+      box-shadow: var(--box-shadow);
+      width: 270px;
+      max-height: 80vh;
+      overflow-y: auto;
+      display: none;
+      flex-direction: column;
+      transform-origin: top right;
+      animation: scaleIn 0.2s ease;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .dark-mode #themeOptionsContainer {
+      border-color: rgba(255, 255, 255, 0.05);
+    }
+
+    #themeOptionsContainer.visible {
+      display: flex;
+    }
+
+    .theme-options-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 1rem;
+      text-align: center;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .dark-mode .theme-options-title {
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .theme-buttons-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.68rem;
+    }
+
+    .theme-button {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--surface);
+      color: var(--text);
+      border: none;
+      border-radius: var(--border-radius-sm);
+      padding: 0.68rem 0.25rem;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .dark-mode .theme-button {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .theme-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .theme-button.active {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .theme-button-label {
+      font-size: 0.6rem;
+      margin-top: 0.36rem;
+      font-weight: 500;
+    }
+
+    .theme-button i {
+      font-size: 1rem;
+    }
+
+    /* Switch toggle for dark mode */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+    }
+
+    input:checked + .slider {
+      background-color: #2196F3;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    .slider.round {
+      border-radius: 34px;
+    }
+
+    .slider.round:before {
+      border-radius: 50%;
+    }
+
+    /* Dark mode toggle container */
+    .dark-mode-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* Copy Notification */
+    .copy-notification {
+      position: fixed;
+      bottom: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--primary);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: calc(var(--border-radius) / 2);
+      font-weight: 500;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      z-index: 10;
+      transition: bottom 0.3s ease-in-out;
+    }
+
+    .copy-notification.show {
+      bottom: 2rem;
+    }
+
+    /* Custom Link Error Toast */
+    .link-error-notification {
+      position: fixed;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #e63946;
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: var(--border-radius-sm);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .link-error-notification.show {
+      opacity: 1;
+      animation: shake 0.5s;
+    }
+    @keyframes shake {
+      0% { transform: translateX(-50%) translateX(0); }
+      25% { transform: translateX(-50%) translateX(-10px); }
+      50% { transform: translateX(-50%) translateX(10px); }
+      75% { transform: translateX(-50%) translateX(-10px); }
+      100% { transform: translateX(-50%) translateX(0); }
+    }
+      
+    /* Background Effects */
+    .bg-effect {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
+      
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text);
+      opacity: 0.6;
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .empty-state-text {
+      font-size: 1.25rem;
+      font-weight: 500;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    /* Rainbow Gradient background */
+    .rainbow-gradient {
+      background: linear-gradient(-45deg,   
+        #ff7b00, #ff8800, #ff9500, #ffa200,   
+        #ffaa00, #ffb700, #ffc300, #ffd000,   
+        #ffdb00, #ffe700, #fff400, #fff700,   
+        #f7ff00, #e2ff00, #ccff00, #b7ff00,   
+        #a1ff00, #8cff00, #76ff00, #61ff00,   
+        #4cff00, #37ff00, #21ff00, #0cff00,   
+        #00ff0c, #00ff21, #00ff37, #00ff4c,   
+        #00ff61, #00ff76, #00ff8c, #00ffa1,   
+        #00ffb7, #00ffcc, #00ffe2, #00fff7,   
+        #00f7ff, #00e2ff, #00ccff, #00b7ff,   
+        #00a1ff, #008cff, #0076ff, #0061ff,   
+        #004cff, #0037ff, #0021ff, #000cff,   
+        #0c00ff, #2100ff, #3700ff, #4c00ff,   
+        #6100ff, #7600ff, #8c00ff, #a100ff,   
+        #b700ff, #cc00ff, #e200ff, #f700ff,   
+        #ff00f7, #ff00e2, #ff00cc, #ff00b7,   
+        #ff00a1, #ff008c, #ff0076, #ff0061,   
+        #ff004c, #ff0037, #ff0021, #ff000c);
+      background-size: 1000% 1000%;
+      animation: gradientAnimation 30s ease infinite;
+    }
+      
+    @keyframes gradientAnimation {
+      0% { background-position: 0% 0%; }
+      25% { background-position: 50% 50%; }
+      50% { background-position: 100% 100%; }
+      75% { background-position: 50% 50%; }
+      100% { background-position: 0% 0%; }
+    }
+      
+    /* Tooltip for theme buttons */
+    .tooltip {
+      position: relative;
+    }
+      
+    .tooltip::before {
+      content: attr(aria-label);
+      position: absolute;
+      right: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      margin-right: 10px;
+      padding: 0.4rem 0.8rem;
+      background-color: var(--surface);
+      color: var(--text);
+      border-radius: var(--border-radius);
+      font-size: 0.75rem;
+      white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      box-shadow: var(--box-shadow);
+      pointer-events: none;
+      z-index: 20;
+    }
+      
+    .tooltip:hover::before {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .button-container {
+        grid-template-columns: 1fr;
+      }
+        
+      .app-title {
+        font-size: 2rem;
+      }
+        
+      .section {
+        max-width: 100%;
+      }
+        
+      .modal-content {
+        width: 95%;
+        margin: 5% auto;
+      }
+        
+      .fab {
+        bottom: 1.5rem;
+        right: 1.5rem;
+      }
+        
+      #themeOptionsContainer {
+        width: 220px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="app-header">
+      <h1 class="app-title" id="appTitle">Support Directory</h1>
+    </header>
+    
+    <!-- Search Bar -->
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Search notes...">
+    </div>
+      
+    <main>
+      <div class="sections-container" id="sectionsContainer">
+        <!-- Single section will be generated here -->
+      </div>
+    </main>
+  </div>
+  
+  <!-- Floating Action Button -->
+  <button id="addSectionButton" class="fab" aria-label="Add Note">
+    <i class="fas fa-plus"></i>
+  </button>
+  
+  <!-- Theme Controls -->
+  <div class="theme-control">
+    <button id="themeToggle" class="theme-toggle" aria-label="Theme Settings">
+      <i class="fas fa-palette"></i>
+    </button>
+      
+    <div id="themeOptionsContainer">
+      <div class="theme-options-title">Theme Settings</div>
+        
+      <!-- Dark Mode Toggle -->
+      <div class="dark-mode-toggle">
+        <span>Dark Mode</span>
+        <label class="switch">
+          <input type="checkbox" id="darkModeToggle">
+          <span class="slider round"></span>
+        </label>
+      </div>
+        
+      <div style="margin-bottom: 0.5rem;">Background Effects</div>
+      <div class="theme-buttons-grid">
+        <button class="theme-button tooltip" data-theme="default" aria-label="Default Theme">
+          <i class="fas fa-circle"></i>
+          <span class="theme-button-label">Default</span>
+        </button>
+        <button class="theme-button tooltip" data-theme="rainbow-gradient" aria-label="Rainbow Gradient Theme">
+          <i class="fas fa-rainbow"></i>
+          <span class="theme-button-label">Rainbow</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modals -->
+  <!-- Edit Note Modal -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle" class="modal-title">Edit Note</h2>
+        <button class="close" aria-label="Close">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="editButtonText" class="form-label">Button Text:</label>
+        <input type="text" id="editButtonText" class="form-control" placeholder="Enter button text">
+      </div>
+      <div class="form-group">
+        <label for="editCopyText" class="form-label">Content to Copy:</label>
+        <textarea id="editCopyText" class="form-control" placeholder="Enter text to copy" rows="4"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="editLinkUrl" class="form-label">Website Link (optional):</label>
+        <input type="url" id="editLinkUrl" class="form-control" placeholder="https://example.com">
+      </div>
+      <div class="form-group">
+        <label for="editButtonColor" class="form-label">Button Color (optional):</label>
+        <input type="color" id="editButtonColor" class="form-control color-picker" value="#4361ee">
+        <small style="font-size: 0.7rem; opacity: 0.7;">Leave as default to automatically generate color from text</small>
+      </div>
+      <div class="button-group">
+        <button id="deleteBtn" class="btn btn-danger">Delete</button>
+        <button id="cancelEditBtn" class="btn btn-text">Cancel</button>
+        <button id="saveBtn" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Card Color Modal -->
+  <div id="cardColorModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Change Card Color</h2>
+        <button class="close" aria-label="Close">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="cardColorPicker" class="form-label">Card Background Color:</label>
+        <input type="color" id="cardColorPicker" class="form-control color-picker" value="#ffffff">
+      </div>
+      <div class="button-group">
+        <button id="resetCardColorBtn" class="btn btn-text">Reset to Default</button>
+        <button id="saveCardColorBtn" class="btn btn-primary">Apply Color</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Copy Notification -->
+  <div id="copyNotification" class="copy-notification">
+    <i class="fas fa-check-circle"></i> Copied to clipboard!
+  </div>
+  
+  <!-- Custom Link Error Toast -->
+  <div id="linkErrorNotification" class="link-error-notification"></div>
+  
+  <script>
+    // App state
+    let sections = [
+      { id: 'directory', title: 'Directory', cardColor: '#ffffff' }
+    ];
+    let notesData = {};
+    let currentRenamingSection = null;
+    let isDarkMode = false;
+    let currentTheme = 'default';
+  
+    // DOM Elements
+    const sectionsContainer = document.getElementById('sectionsContainer');
+    const addSectionButton = document.getElementById('addSectionButton');
+    const themeToggle = document.getElementById('themeToggle');
+    const appTitle = document.getElementById('appTitle');
+    const copyNotification = document.getElementById('copyNotification');
+    const themeOptionsContainer = document.getElementById('themeOptionsContainer');
+      
+    // Modals
+    const editModal = document.getElementById('editModal');
+    const cardColorModal = document.getElementById('cardColorModal');
+  
+    // Initialize App
+    function initializeApp() {
+      loadData();
+      renderSections();
+      setupEventListeners();
+      loadThemePreference();
+    }
+  
+    // Data Persistence
+    function loadData() {
+      const storedData = localStorage.getItem('ehhDirectoryData');
+      if (storedData) {
+        try {
+          const data = JSON.parse(storedData);
+          sections = data.sections || sections;
+          notesData = data.notesData || {};
+        } catch (error) {
+          console.error('Error loading saved data:', error);
+        }
+      }
+        
+      // Initialize empty note arrays for new sections
+      sections.forEach(section => {
+        if (!notesData[section.id]) {
+          notesData[section.id] = [];
+        }
+      });
+    }
+  
+    function saveData() {
+      const dataToSave = {
+        sections: sections,
+        notesData: notesData
+      };
+      localStorage.setItem('ehhDirectoryData', JSON.stringify(dataToSave));
+    }
+  
+    // Rendering Functions
+    function renderSections() {
+      sectionsContainer.innerHTML = '';
+        
+      if (sections.length === 0) {
+        renderEmptyState();
+        return;
+      }
+        
+      sections.forEach(section => {
+        const sectionElement = createSectionElement(section);
+        sectionsContainer.appendChild(sectionElement);
+        renderNotes(section.id);
+      });
+    }
+  
+    function renderEmptyState() {
+      const emptyState = document.createElement('div');
+      emptyState.className = 'empty-state';
+      emptyState.innerHTML = `
+        <i class="fas fa-envelope"></i>
+        <p class="empty-state-text">No items yet. Click the + button to add one!</p>
+      `;
+      sectionsContainer.appendChild(emptyState);
+    }
+  
+    function createSectionElement(section) {
+      const sectionElement = document.createElement('div');
+      sectionElement.className = 'section';
+      sectionElement.id = section.id;
+        
+      // Apply card background color if set
+      if (section.cardColor) {
+        sectionElement.style.backgroundColor = section.cardColor;
+          
+        // Adjust text color based on background
+        if (getContrastColor(section.cardColor) === '#000000') {
+          sectionElement.style.color = '#000000';
+        } else {
+          sectionElement.style.color = '#ffffff';
+        }
+      }
+        
+      const headerElement = document.createElement('div');
+      headerElement.className = 'section-header';
+        
+      const titleElement = document.createElement('h2');
+      titleElement.className = 'section-title';
+      titleElement.textContent = section.title;
+        
+      const actionsElement = document.createElement('div');
+      actionsElement.className = 'section-actions';
+        
+      const colorButton = createIconButton('fa-fill-drip', () => openCardColorModal(section.id));
+      const addButton = createIconButton('fa-plus', () => openNewNoteModal(section.id));
+        
+      actionsElement.appendChild(colorButton);
+      actionsElement.appendChild(addButton);
+        
+      headerElement.appendChild(titleElement);
+      headerElement.appendChild(actionsElement);
+        
+      const buttonContainer = document.createElement('div');
+      buttonContainer.className = 'button-container';
+        
+      sectionElement.appendChild(headerElement);
+      sectionElement.appendChild(buttonContainer);
+        
+      return sectionElement;
+    }
+  
+    function createIconButton(iconClass, clickHandler) {
+      const button = document.createElement('button');
+      button.className = 'icon-button';
+      button.innerHTML = `<i class="fas ${iconClass}"></i>`;
+      button.addEventListener('click', clickHandler);
+      return button;
+    }
+  
+    // Calculate color from text using a seeded algorithm based on the text
+    function getColorFromText(text) {
+      let hash = 0;
+      for (let i = 0; i < text.length; i++) {
+        hash = text.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const h = Math.abs(hash) % 360;
+      const s = 60 + (Math.abs(hash) % 31); // Saturation between 60 and 90%
+      const l = 45 + (Math.abs(hash) % 21); // Lightness between 45 and 65%
+      return `hsl(${h}, ${s}%, ${l}%)`;
+    }
+  
+    function renderNotes(sectionId) {
+      const container = document.querySelector(`#${sectionId} .button-container`);
+      if (!container) return;
+        
+      container.innerHTML = '';
+        
+      if (!notesData[sectionId] || notesData[sectionId].length === 0) {
+        const emptyText = document.createElement('p');
+        emptyText.textContent = 'No items yet. Click + to add one.';
+        emptyText.style.opacity = '0.6';
+        emptyText.style.textAlign = 'center';
+        emptyText.style.padding = '1rem 0';
+        container.appendChild(emptyText);
+        return;
+      }
+        
+      notesData[sectionId].forEach((note, index) => {
+        // Use algorithm to determine color based on text if not already set
+        const buttonColor = note.color || getColorFromText(note.buttonText);
+          
+        const button = document.createElement('div');
+        button.className = 'note-button';
+        button.style.backgroundColor = buttonColor;
+        button.style.color = getContrastColor(buttonColor);
+          
+        // Copy text part
+        const copyPart = document.createElement('div');
+        copyPart.className = 'copy-part';
+        copyPart.textContent = note.buttonText;
+        copyPart.addEventListener('click', () => copyToClipboard(note.copyText));
+          
+        // Website link part
+        const linkPart = document.createElement('div');
+        linkPart.className = 'ehh-part';
+        linkPart.innerHTML = '<i class="fas fa-external-link-alt"></i>';
+        linkPart.title = 'Open website link';
+        linkPart.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (note.linkUrl) {
+            window.open(note.linkUrl, '_blank');
+          } else {
+            showLinkErrorNotification("No link specified for this item");
+          }
+        });
+          
+        // Edit icon
+        const editIcon = document.createElement('span');
+        editIcon.className = 'edit-icon';
+        editIcon.innerHTML = '<i class="fas fa-edit"></i>';
+        editIcon.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openEditModal(sectionId, index);
+        });
+          
+        button.appendChild(copyPart);
+        button.appendChild(linkPart);
+        button.appendChild(editIcon);
+        container.appendChild(button);
+      });
+    }
+  
+    // Event Handlers
+    function setupEventListeners() {
+      // Add Note Button
+      addSectionButton.addEventListener('click', () => {
+        // There's only one section, so we can directly open the new note modal
+        openNewNoteModal(sections[0].id);
+      });
+        
+      // Theme Toggle
+      themeToggle.addEventListener('click', toggleThemeOptions);
+        
+      // Dark Mode Toggle
+      const darkModeToggle = document.getElementById('darkModeToggle');
+      darkModeToggle.addEventListener('change', function() {
+        toggleDarkMode(this.checked);
+      });
+        
+      // Theme Buttons
+      document.querySelectorAll('.theme-button').forEach(button => {
+        button.addEventListener('click', () => {
+          setTheme(button.dataset.theme);
+          // Mark only this button as active
+          document.querySelectorAll('.theme-button').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          button.classList.add('active');
+        });
+      });
+        
+      // Close theme options when clicking outside
+      document.addEventListener('click', (event) => {
+        if (!event.target.closest('.theme-control')) {
+          themeOptionsContainer.classList.remove('visible');
+        }
+      });
+        
+      // Modal Close Buttons
+      document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', () => closeAllModals());
+      });
+        
+      // Close modals when clicking outside
+      window.addEventListener('click', (event) => {
+        if (event.target.classList.contains('modal')) {
+          closeAllModals();
+        }
+      });
+        
+      // Cancel buttons
+      document.getElementById('cancelEditBtn').addEventListener('click', closeAllModals);
+        
+      // Add window resize handler for animations
+      window.addEventListener('resize', () => {
+        // Handle any resize-specific functionality here if needed
+      });
+        
+      // Add animation to app title
+      requestAnimationFrame(animateTitle);
+
+      // Search functionality
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.addEventListener('input', searchNotes);
+      }
+    }
+  
+    // Toggle theme options dropdown
+    function toggleThemeOptions(e) {
+      e.stopPropagation();
+      themeOptionsContainer.classList.toggle('visible');
+    }
+  
+    // Modal Functions
+    function openNewNoteModal(sectionId) {
+      document.getElementById('modalTitle').textContent = 'Add New Item';
+      document.getElementById('editButtonText').value = '';
+      document.getElementById('editCopyText').value = '';
+      document.getElementById('editLinkUrl').value = '';
+      document.getElementById('editButtonColor').value = '#4361ee';
+      document.getElementById('deleteBtn').style.display = 'none';
+        
+      // Store section ID for save function
+      document.getElementById('saveBtn').onclick = () => saveNewNote(sectionId);
+        
+      openModal(editModal);
+    }
+  
+    function openEditModal(sectionId, noteIndex) {
+      const note = notesData[sectionId][noteIndex];
+        
+      document.getElementById('modalTitle').textContent = 'Edit Item';
+      document.getElementById('editButtonText').value = note.buttonText;
+      document.getElementById('editCopyText').value = note.copyText;
+      document.getElementById('editLinkUrl').value = note.linkUrl || '';
+      document.getElementById('editButtonColor').value = note.color || getColorFromText(note.buttonText);
+      document.getElementById('deleteBtn').style.display = 'inline-block';
+        
+      document.getElementById('saveBtn').onclick = () => saveEdit(sectionId, noteIndex);
+      document.getElementById('deleteBtn').onclick = () => {
+        if (confirm('Are you sure you want to delete this item?')) {
+          deleteNote(sectionId, noteIndex);
+        }
+      };
+        
+      openModal(editModal);
+    }
+  
+    function openCardColorModal(sectionId) {
+      currentRenamingSection = sectionId;
+      const section = sections.find(sec => sec.id === sectionId);
+      document.getElementById('cardColorPicker').value = section.cardColor || '#ffffff';
+        
+      document.getElementById('saveCardColorBtn').onclick = () => saveCardColor(sectionId);
+      document.getElementById('resetCardColorBtn').onclick = () => resetCardColor(sectionId);
+        
+      openModal(cardColorModal);
+    }
+  
+    function openModal(modal) {
+      closeAllModals();
+      modal.style.display = 'block';
+      // Focus the first input in the modal
+      const firstInput = modal.querySelector('input');
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 100);
+      }
+    }
+  
+    function closeAllModals() {
+      document.querySelectorAll('.modal').forEach(modal => {
+        modal.style.display = 'none';
+      });
+    }
+  
+    // CRUD Operations
+    function saveNewNote(sectionId) {
+      const buttonText = document.getElementById('editButtonText').value.trim();
+      const copyText = document.getElementById('editCopyText').value;
+      const linkUrl = document.getElementById('editLinkUrl').value.trim();
+      let color = document.getElementById('editButtonColor').value;
+        
+      if (!buttonText) {
+        alert('Please enter button text');
+        return;
+      }
+        
+      // If color is default, use algorithm
+      if (color === '#4361ee') {
+        color = getColorFromText(buttonText);
+      }
+        
+      console.log("Validating saveNewNote with params:", {
+        buttonText, copyText, linkUrl, color
+      });
+        
+      const newNote = { buttonText, copyText, linkUrl, color };
+      notesData[sectionId].push(newNote);
+      renderNotes(sectionId);
+      closeAllModals();
+      saveData();
+        
+      // Show confirmation
+      showCopyNotification("Item added successfully");
+    }
+  
+    function saveEdit(sectionId, noteIndex) {
+      const buttonText = document.getElementById('editButtonText').value.trim();
+      const copyText = document.getElementById('editCopyText').value;
+      const linkUrl = document.getElementById('editLinkUrl').value.trim();
+      let color = document.getElementById('editButtonColor').value;
+        
+      if (!buttonText) {
+        alert('Please enter button text');
+        return;
+      }
+        
+      console.log("Validating saveEdit with params:", {
+        sectionId, noteIndex, buttonText, copyText, linkUrl, color
+      });
+        
+      // If color picker was reset to default, regenerate from text
+      if (color === '#4361ee') {
+        color = getColorFromText(buttonText);
+      }
+        
+      notesData[sectionId][noteIndex] = { buttonText, copyText, linkUrl, color };
+      renderNotes(sectionId);
+      closeAllModals();
+      saveData();
+        
+      // Show confirmation
+      showCopyNotification("Item updated successfully");
+    }
+  
+    function deleteNote(sectionId, noteIndex) {
+      notesData[sectionId].splice(noteIndex, 1);
+      renderNotes(sectionId);
+      closeAllModals();
+      saveData();
+        
+      showCopyNotification("Item deleted");
+    }
+      
+    function saveCardColor(sectionId) {
+      const color = document.getElementById('cardColorPicker').value;
+      const section = sections.find(sec => sec.id === sectionId);
+        
+      if (section) {
+        section.cardColor = color;
+        saveData();
+        renderSections();
+      }
+        
+      closeAllModals();
+    }
+      
+    function resetCardColor(sectionId) {
+      const section = sections.find(sec => sec.id === sectionId);
+        
+      if (section) {
+        section.cardColor = '#ffffff';
+        saveData();
+        renderSections();
+      }
+        
+      closeAllModals();
+    }
+  
+    // Utility Functions
+    function getContrastColor(hexColor) {
+      if (!hexColor || hexColor === '') return '#ffffff';
+        
+      // For HSL colors
+      if (hexColor.startsWith('hsl')) {
+        const match = hexColor.match(/hsl[\d.]+,\s*[\d.]+%,\s*([\d.]+)%/);
+        if (match && match[1]) {
+          const lightness = parseFloat(match[1]);
+          return lightness > 50 ? '#000000' : '#ffffff';
+        }
+        return '#ffffff';
+      }
+        
+      // For Hex colors
+      try {
+        const r = parseInt(hexColor.substr(1, 2), 16);
+        const g = parseInt(hexColor.substr(3, 2), 16);
+        const b = parseInt(hexColor.substr(5, 2), 16);
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminance > 0.5 ? '#000000' : '#ffffff';
+      } catch (e) {
+        return '#ffffff';
+      }
+    }
+  
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        showCopyNotification("Copied to clipboard!");
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
+        alert('Failed to copy text to clipboard');
+      });
+    }
+  
+    function showCopyNotification(message = "Copied to clipboard!") {
+      copyNotification.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+      copyNotification.classList.add('show');
+      setTimeout(() => {
+        copyNotification.classList.remove('show');
+      }, 2000);
+    }
+  
+    // Custom Link Error Notification: Red shaking toast
+    function showLinkErrorNotification(message = "No link specified for this item") {
+      const errorToast = document.getElementById('linkErrorNotification');
+      if (!errorToast) return;
+      errorToast.textContent = message;
+      errorToast.classList.add('show');
+      setTimeout(() => {
+        errorToast.classList.remove('show');
+      }, 2000);
+    }
+  
+    // Search functionality: filters notes based on the search input text
+    function searchNotes() {
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      sections.forEach(section => {
+        const sectionElement = document.getElementById(section.id);
+        if (!sectionElement) return;
+        const noteButtons = sectionElement.querySelectorAll('.note-button');
+        let anyVisible = false;
+        noteButtons.forEach(button => {
+          const text = button.querySelector('.copy-part').textContent.toLowerCase();
+          if (text.indexOf(query) !== -1) {
+            button.style.display = '';
+            anyVisible = true;
+          } else {
+            button.style.display = 'none';
+          }
+        });
+        // Remove or add "No matching items" message
+        const container = sectionElement.querySelector('.button-container');
+        let noMatchMessage = container.querySelector('.no-match');
+        if (!anyVisible && query !== '') {
+          if (!noMatchMessage) {
+            noMatchMessage = document.createElement('p');
+            noMatchMessage.className = 'no-match';
+            noMatchMessage.textContent = 'No matching items.';
+            noMatchMessage.style.opacity = '0.6';
+            noMatchMessage.style.textAlign = 'center';
+            noMatchMessage.style.padding = '1rem 0';
+            container.appendChild(noMatchMessage);
+          }
+        } else {
+          if (noMatchMessage) {
+            noMatchMessage.remove();
+          }
+        }
+      });
+    }
+  
+    // Theme Functions
+    function toggleDarkMode(forceState) {
+      if (forceState !== undefined) {
+        isDarkMode = forceState;
+      } else {
+        isDarkMode = !isDarkMode;
+      }
+        
+      document.body.classList.toggle('dark-mode', isDarkMode);
+      updateDarkModeToggle();
+      localStorage.setItem('darkMode', isDarkMode);
+    }
+  
+    function loadThemePreference() {
+      // Load dark mode preference
+      isDarkMode = localStorage.getItem('darkMode') === 'true';
+      document.body.classList.toggle('dark-mode', isDarkMode);
+      updateDarkModeToggle();
+        
+      // Apply saved theme if any
+      const savedTheme = localStorage.getItem('theme') || 'default';
+      setTheme(savedTheme);
+    }
+  
+    function updateDarkModeToggle() {
+      const darkModeToggle = document.getElementById('darkModeToggle');
+      if (darkModeToggle) {
+        darkModeToggle.checked = isDarkMode;
+      }
+    }
+  
+    function setTheme(theme) {
+      // Reset all theme elements
+      document.body.classList.remove('rainbow-gradient');
+        
+      // Update active class on theme buttons
+      document.querySelectorAll('.theme-button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === theme);
+      });
+        
+      // Set new theme
+      currentTheme = theme;
+      localStorage.setItem('theme', theme);
+        
+      // Apply the selected theme
+      if (theme === 'rainbow-gradient') {
+        document.body.classList.add('rainbow-gradient');
+      }
+    }
+  
+    // Animations
+    function animateTitle() {
+      // Subtle pulse animation
+      const scale = 1 + Math.sin(Date.now() / 1000) * 0.01;
+      appTitle.style.transform = `scale(${scale})`;
+      requestAnimationFrame(animateTitle);
+    }
+  
+    // Initialize the app
+    initializeApp();
+  </script>
+</body>
+</html>
