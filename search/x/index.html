@@ -1,477 +1,988 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X/Twitter Search Maestro</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <style>
-        /* (Previous CSS styles remain mostly unchanged) */
-        body {
-            font-family: 'Poppins', sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f8fa;
-            color: #14171a;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Advanced Twitter Search</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1da1f2;
+      --primary-dark: #0c85d0;
+      --primary-light: #a8dcfa;
+      --secondary: #794bc4;
+      --text-dark: #14171a;
+      --text-light: #f5f8fa;
+      --gray-100: #f7f9fa;
+      --gray-200: #e6ecf0;
+      --gray-300: #aab8c2;
+      --gray-800: #3d4852;
+      --gray-900: #282c37;
+      --success: #17bf63;
+      --warning: #ffad1f;
+      --danger: #e0245e;
+      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      --card-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
+      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --header-height: 70px;
+    }
 
-        h1 {
-            color: #1da1f2;
-            text-align: center;
-            margin-bottom: 30px;
-        }
+    .dark-mode {
+      --primary: #1da1f2;
+      --primary-dark: #1a91da;
+      --text-dark: #e6ecf0;
+      --text-light: #14171a;
+      --gray-100: #22303c;
+      --gray-200: #192734;
+      --gray-300: #38444d;
+      --gray-800: #8899a6;
+      --gray-900: #aab8c2;
+      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      --card-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.25);
+    }
 
-        .form-group {
-            margin-bottom: 15px;
-        }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--gray-100);
+      color: var(--text-dark);
+      margin: 0;
+      padding: 0;
+      transition: var(--transition);
+      padding-bottom: 100px;
+    }
 
-        input[type="text"],
-        input[type="number"],
-        input[type="date"],
-        input[type="radio"] {
-            padding: 10px;
-            border: 1px solid #ccd6dd;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 16px;
-            transition: border-color 0.3s ease;
-        }
-        input[type="text"],
-        input[type="number"],
-        input[type="date"]{
-            width: 100%;
-        }
+    /* Header Styles */
+    header {
+      background: white;
+      height: var(--header-height);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      transition: var(--transition);
+    }
 
-        input[type="text"]:focus,
-        input[type="number"]:focus,
-        input[type="date"]:focus {
-            border-color: #1da1f2;
-            outline: none;
-        }
+    .dark-mode header {
+      background: var(--gray-200);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
 
-        input[type="checkbox"] {
-            margin-right: 5px;
-        }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-        .checkbox-label, .radio-label {
-            display: inline-block;
-            vertical-align: middle;
-        }
+    .logo-icon {
+      color: var(--primary);
+      font-size: 2rem;
+    }
 
-        #searchButton {
-            background-color: #1da1f2;
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 18px;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.3s ease;
-        }
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(45deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: none;
+    }
 
-        #searchButton:hover {
-            background-color: #0d8bf0;
-        }
+    #toggleDarkMode {
+      padding: 10px;
+      border: none;
+      border-radius: 50%;
+      background: var(--gray-200);
+      color: var(--text-dark);
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: var(--transition);
+    }
 
-        #searchButton .material-icons {
-            margin-right: 8px;
-        }
+    #toggleDarkMode:hover {
+      background: var(--gray-300);
+    }
 
-        /* Responsive adjustments */
-        @media (max-width: 600px) {
-            input[type="text"],
-            input[type="number"],
-            input[type="date"] {
-                width: 100%;
-            }
-        }
+    .dark-mode #toggleDarkMode {
+      background: var(--gray-300);
+      color: var(--text-light);
+    }
 
-        .input-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    /* Main Layout */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
 
-        .input-group input {
-            flex-grow: 1;
-        }
+    .main-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
 
-        #getLocationButton {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-            display: flex;
-            align-items: center;
-        }
-        #getLocationButton:hover{
-            background-color:#367c39;
-        }
+    /* Make the preview card span full width */
+    .preview-card {
+      grid-column: 1 / -1;
+    }
 
-        #getLocationButton .material-icons {
-            margin-right: 5px;
-        }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: var(--radius);
+      box-shadow: var(--card-shadow);
+      transition: var(--transition);
+      border: 1px solid transparent;
+    }
 
-        #locationStatus {
-            margin-top: 5px;
-            font-size: 14px;
-            color: #888;
-        }
+    .card:hover {
+      box-shadow: var(--card-shadow-hover);
+      transform: translateY(-2px);
+    }
 
-        .location-group {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
+    .dark-mode .card {
+      background: var(--gray-200);
+      border-color: var(--gray-300);
+    }
 
-        @media (max-width: 600px) {
-            .location-group {
-                flex-direction: column;
-            }
-        }
-        .hidden {
-            display: none;
-        }
-        .radio-group label{
-            margin-right:15px;
-        }
-    </style>
+    .card h2 {
+      margin-top: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--gray-200);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card h2 .material-icons-round {
+      color: var(--primary);
+    }
+
+    .dark-mode .card h2 {
+      border-bottom-color: var(--gray-300);
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--gray-800);
+      font-size: 0.9rem;
+    }
+
+    .dark-mode .form-group label {
+      color: var(--gray-900);
+    }
+
+    .input-group {
+      display: flex;
+      align-items: center;
+      background: var(--gray-100);
+      border-radius: var(--radius-sm);
+      padding: 0 12px;
+      transition: var(--transition);
+      border: 2px solid transparent;
+    }
+
+    .input-group:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(29, 161, 242, 0.2);
+    }
+
+    .dark-mode .input-group {
+      background: var(--gray-300);
+    }
+
+    .input-group .material-icons-round {
+      color: var(--gray-300);
+      margin-right: 8px;
+    }
+
+    .dark-mode .input-group .material-icons-round {
+      color: var(--gray-800);
+    }
+
+    .input-group input[type="text"],
+    .input-group input[type="number"],
+    .input-group input[type="date"] {
+      width: 100%;
+      padding: 12px 0;
+      border: none;
+      background: transparent;
+      color: var(--text-dark);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+    }
+
+    .input-group input:focus {
+      outline: none;
+    }
+
+    .dark-mode .input-group input {
+      color: var(--text-dark);
+    }
+
+    /* Checkbox & Radio Styles */
+    .checkbox-group, .radio-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .checkbox-wrapper, .radio-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .custom-checkbox,
+    .custom-radio {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--gray-300);
+      border-radius: 4px;
+      display: inline-block;
+      position: relative;
+      transition: var(--transition);
+    }
+
+    .custom-radio {
+      border-radius: 50%;
+    }
+
+    .checkbox-wrapper input:checked ~ .custom-checkbox,
+    .radio-wrapper input:checked ~ .custom-radio {
+      background-color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .checkbox-wrapper input:checked ~ .custom-checkbox:after {
+      content: "";
+      position: absolute;
+      top: 4px;
+      left: 7px;
+      width: 4px;
+      height: 9px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .radio-wrapper input:checked ~ .custom-radio:after {
+      content: "";
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: white;
+    }
+
+    .checkbox-wrapper input,
+    .radio-wrapper input {
+      opacity: 0;
+      position: absolute;
+    }
+
+    .checkbox-wrapper span,
+    .radio-wrapper span {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--gray-800);
+    }
+
+    .dark-mode .checkbox-wrapper span,
+    .dark-mode .radio-wrapper span {
+      color: var(--gray-900);
+    }
+
+    /* Location Options */
+    #locationInputs {
+      margin-top: 16px;
+      display: none;
+      background: var(--gray-100);
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .dark-mode #locationInputs {
+      background: var(--gray-300);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #locationInputs.active {
+      display: block;
+    }
+
+    .location-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    #getLocationButton {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    #getLocationButton:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    #locationStatus {
+      font-size: 0.85rem;
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--gray-200);
+      display: none;
+    }
+
+    #locationStatus.active {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .dark-mode #locationStatus {
+      background: var(--gray-800);
+    }
+
+    /* Search Preview */
+    #queryPreview {
+      word-wrap: break-word;
+      background: var(--gray-200);
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      font-family: 'Consolas', monospace;
+      font-size: 0.9rem;
+      position: relative;
+      border-left: 4px solid var(--primary);
+    }
+
+    .dark-mode #queryPreview {
+      background: var(--gray-300);
+    }
+
+    .preview-label {
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      background: var(--primary);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    /* Fixed Search Button */
+    #searchButton {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 48px);
+      max-width: 400px;
+      padding: 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      background: var(--primary);
+      border: none;
+      border-radius: 30px;
+      color: white;
+      cursor: pointer;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(29, 161, 242, 0.4);
+      transition: var(--transition);
+    }
+
+    #searchButton:hover {
+      background: var(--primary-dark);
+      transform: translateX(-50%) translateY(-2px);
+      box-shadow: 0 6px 20px rgba(29, 161, 242, 0.5);
+    }
+
+    .separator {
+      margin: 10px 0;
+      border: none;
+      height: 1px;
+      background: var(--gray-200);
+    }
+
+    .dark-mode .separator {
+      background: var(--gray-300);
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      margin-left: 6px;
+    }
+
+    .tooltip .material-icons-round {
+      font-size: 18px;
+      color: var(--gray-300);
+      cursor: help;
+    }
+
+    .tooltip .tooltip-text {
+      visibility: hidden;
+      width: 200px;
+      background-color: var(--gray-800);
+      color: white;
+      text-align: center;
+      border-radius: 6px;
+      padding: 8px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 0.8rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    @media (max-width: 768px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+      
+      header {
+        padding: 0 16px;
+      }
+      
+      .container {
+        padding: 16px;
+      }
+      
+      .card {
+        padding: 16px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <h1>X/Twitter Search Maestro</h1>
+  <header>
+    <div class="logo">
+      <span class="material-icons-round logo-icon">search</span>
+      <h1>Advanced Twitter Search</h1>
+    </div>
+    <button id="toggleDarkMode">
+      <span class="material-icons-round">dark_mode</span>
+    </button>
+  </header>
 
-    <!-- (Previous form groups remain unchanged) -->
-    <div class="form-group">
-        <label for="exactPhrase">Exact Phrase:</label>
-        <div class="input-group">
-            <span class="material-icons">format_quote</span>
-            <input type="text" id="exactPhrase" placeholder="e.g., 'artificial intelligence'">
+  <div class="container">
+    <div class="main-container">
+      <!-- Preview Card (Spanning full width) -->
+      <div class="card preview-card">
+        <h2>
+          <span class="material-icons-round">code</span>
+          Search Preview
+        </h2>
+        <div id="queryPreview">
+          <span class="preview-label">Query</span>
         </div>
-    </div>
+      </div>
 
-    <div class="form-group">
-        <label for="anyOfTheseWords">Any of These Words:</label>
-        <div class="input-group">
-            <span class="material-icons">filter_list</span>
-        <input type="text" id="anyOfTheseWords" placeholder="e.g., machine learning, deep learning">
+      <!-- Card: Search Keywords -->
+      <div class="card">
+        <h2>
+          <span class="material-icons-round">text_fields</span>
+          Search Keywords
+        </h2>
+        <div class="form-group">
+          <label for="exactPhrase">Exact Phrase</label>
+          <div class="input-group">
+            <span class="material-icons-round">format_quote</span>
+            <input type="text" id="exactPhrase" placeholder="e.g., artificial intelligence">
+          </div>
         </div>
-    </div>
-
-    <div class="form-group">
-        <label for="noneOfTheseWords">None of These Words:</label>
-        <div class="input-group">
-            <span class="material-icons">block</span>
-        <input type="text" id="noneOfTheseWords" placeholder="e.g., politics, sports">
+        <div class="form-group">
+          <label for="anyOfTheseWords">Any of These Words</label>
+          <div class="input-group">
+            <span class="material-icons-round">filter_list</span>
+            <input type="text" id="anyOfTheseWords" placeholder="e.g., machine learning, deep learning">
+          </div>
         </div>
-    </div>
-
-    <div class="form-group">
-        <label for="hashtags">Hashtags:</label>
-        <div class="input-group">
-            <span class="material-icons">tag</span>
-        <input type="text" id="hashtags" placeholder="e.g., #AI, #MachineLearning">
+        <div class="form-group">
+          <label for="noneOfTheseWords">None of These Words</label>
+          <div class="input-group">
+            <span class="material-icons-round">block</span>
+            <input type="text" id="noneOfTheseWords" placeholder="e.g., politics, sports">
+          </div>
         </div>
-    </div>
-
-    <div class="form-group">
-        <label for="fromAccount">From Account:</label>
-        <div class="input-group">
-            <span class="material-icons">person</span>
-        <input type="text" id="fromAccount" placeholder="e.g., @elonmusk">
+        <div class="form-group">
+          <label for="hashtags">Hashtags</label>
+          <div class="input-group">
+            <span class="material-icons-round">tag</span>
+            <input type="text" id="hashtags" placeholder="e.g., #AI, #ML">
+          </div>
         </div>
-    </div>
+      </div>
 
-    <div class="form-group">
-        <label for="toAccount">To Account:</label>
-        <div class="input-group">
-            <span class="material-icons">alternate_email</span>
-        <input type="text" id="toAccount" placeholder="e.g., @OpenAI">
+      <!-- Card: Account Options -->
+      <div class="card">
+        <h2>
+          <span class="material-icons-round">person</span>
+          Account Options
+        </h2>
+        <div class="form-group">
+          <label for="fromAccount">From Account</label>
+          <div class="input-group">
+            <span class="material-icons-round">person</span>
+            <input type="text" id="fromAccount" placeholder="e.g., @username">
+          </div>
         </div>
-    </div>
-
-    <div class="form-group">
-        <label for="mentioningAccount">Mentioning Account:</label>
-        <div class="input-group">
-            <span class="material-icons">alternate_email</span>
-        <input type="text" id="mentioningAccount" placeholder="e.g., @GoogleAI">
+        <div class="form-group">
+          <label for="toAccount">To Account</label>
+          <div class="input-group">
+            <span class="material-icons-round">alternate_email</span>
+            <input type="text" id="toAccount" placeholder="e.g., @username">
+          </div>
         </div>
-    </div>
-
-    <div class="form-group">
-        <label for="minLikes">Minimum Likes:</label>
-        <div class="input-group">
-            <span class="material-icons">favorite</span>
-        <input type="number" id="minLikes" placeholder="e.g., 100">
+        <div class="form-group">
+          <label for="mentioningAccount">Mentioning Account</label>
+          <div class="input-group">
+            <span class="material-icons-round">alternate_email</span>
+            <input type="text" id="mentioningAccount" placeholder="e.g., @username">
+          </div>
         </div>
-    </div>
+      </div>
 
-    <div class="form-group">
-        <label for="minRetweets">Minimum Retweets:</label>
-        <div class="input-group">
-            <span class="material-icons">repeat</span>
-        <input type="number" id="minRetweets" placeholder="e.g., 50">
+      <!-- Card: Engagement & Date -->
+      <div class="card">
+        <h2>
+          <span class="material-icons-round">analytics</span>
+          Engagement & Date
+        </h2>
+        <div class="form-group">
+          <label for="minLikes">Minimum Likes
+            <div class="tooltip">
+              <span class="material-icons-round">help_outline</span>
+              <span class="tooltip-text">Filter tweets with at least this many likes</span>
+            </div>
+          </label>
+          <div class="input-group">
+            <span class="material-icons-round">favorite</span>
+            <input type="number" id="minLikes" placeholder="e.g., 100">
+          </div>
         </div>
-    </div>
-
-    <div class="form-group">
-        <label for="minReplies">Minimum Replies:</label>
-        <div class="input-group">
-            <span class="material-icons">reply</span>
-        <input type="number" id="minReplies" placeholder="e.g., 10">
+        <div class="form-group">
+          <label for="minRetweets">Minimum Retweets</label>
+          <div class="input-group">
+            <span class="material-icons-round">repeat</span>
+            <input type="number" id="minRetweets" placeholder="e.g., 50">
+          </div>
         </div>
-    </div>
-
-    <div class="form-group">
-        <label for="beforeDate">Before Date:</label>
-        <div class="input-group">
-            <span class="material-icons">calendar_today</span>
-        <input type="date" id="beforeDate">
+        <div class="form-group">
+          <label for="minReplies">Minimum Replies</label>
+          <div class="input-group">
+            <span class="material-icons-round">reply</span>
+            <input type="number" id="minReplies" placeholder="e.g., 10">
+          </div>
         </div>
-    </div>
-
-    <div class="form-group">
-        <label for="sinceDate">Since Date:</label>
-        <div class="input-group">
-            <span class="material-icons">calendar_today</span>
-        <input type="date" id="sinceDate">
+        
+        <div class="separator"></div>
+        
+        <div class="form-group">
+          <label for="beforeDate">Before Date</label>
+          <div class="input-group">
+            <span class="material-icons-round">event</span>
+            <input type="date" id="beforeDate">
+          </div>
         </div>
-    </div>
-    <div class="form-group">
-        <label class="checkbox-label">
-            <input type="checkbox" id="includeImages"> Include Images
-        </label>
-    </div>
-     <div class="form-group">
-        <label class="checkbox-label">
-            <input type="checkbox" id="includeVideos"> Include Videos
-        </label>
-    </div>
+        <div class="form-group">
+          <label for="sinceDate">Since Date</label>
+          <div class="input-group">
+            <span class="material-icons-round">event</span>
+            <input type="date" id="sinceDate">
+          </div>
+        </div>
+      </div>
 
-    <div class="form-group">
-        <label class="checkbox-label">
-            <input type="checkbox" id="enableLocation"> Enable Location Search
-        </label>
-        <div id="locationInputs" class="hidden">
+      <!-- Card: Media & Location -->
+      <div class="card">
+        <h2>
+          <span class="material-icons-round">perm_media</span>
+          Media & Location
+        </h2>
+        
+        <div class="form-group">
+          <label>Media Type</label>
+          <div class="checkbox-group">
+            <label class="checkbox-wrapper">
+              <input type="checkbox" id="includeImages">
+              <span class="custom-checkbox"></span>
+              <span>Include Images</span>
+            </label>
+            <label class="checkbox-wrapper">
+              <input type="checkbox" id="includeVideos">
+              <span class="custom-checkbox"></span>
+              <span>Include Videos</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Link Options</label>
+          <div class="radio-group">
+            <label class="radio-wrapper">
+              <input type="radio" name="linkOption" value="ignore" checked>
+              <span class="custom-radio"></span>
+              <span>Don't Care</span>
+            </label>
+            <label class="radio-wrapper">
+              <input type="radio" name="linkOption" value="exclude">
+              <span class="custom-radio"></span>
+              <span>Exclude Links</span>
+            </label>
+            <label class="radio-wrapper">
+              <input type="radio" name="linkOption" value="only">
+              <span class="custom-radio"></span>
+              <span>Only Links</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div class="form-group">
+          <label class="checkbox-wrapper">
+            <input type="checkbox" id="enableLocation">
+            <span class="custom-checkbox"></span>
+            <span>Enable Location Search</span>
+          </label>
+          <div id="locationInputs">
             <div class="location-group">
-                <button id="getLocationButton"><span class="material-icons">my_location</span>Get Location</button>
+              <button id="getLocationButton">
+                <span class="material-icons-round">my_location</span>
+                Get My Location
+              </button>
+              <div class="input-group" style="width: 120px;">
+                <span class="material-icons-round">explore</span>
                 <input type="number" id="searchRadius" placeholder="Radius (mi)" value="15">
+              </div>
+            </div>
+            <div class="form-group" style="margin-top: 12px;">
+              <div class="input-group">
+                <span class="material-icons-round">location_on</span>
                 <input type="text" id="manualLocation" placeholder="Or enter a place name">
+              </div>
             </div>
             <div id="locationStatus"></div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 
-    <div class="form-group">
-        <label>Link Options:</label>
-        <div class="radio-group">
-            <label class="radio-label">
-                <input type="radio" name="linkOption" value="ignore" checked> Don't Care
-            </label>
-            <label class="radio-label">
-                <input type="radio" name="linkOption" value="exclude"> Exclude Links
-            </label>
-            <label class="radio-label">
-                <input type="radio" name="linkOption" value="only"> Only Links
-            </label>
-        </div>
-    </div>
+  <!-- Fixed Search Button -->
+  <button id="searchButton">
+    <span class="material-icons-round">search</span>
+    Search on Twitter
+  </button>
 
-    <button id="searchButton"><span class="material-icons">search</span>Search on X/Twitter</button>
+  <script>
+    // Global variables for location
+    let latitude = null;
+    let longitude = null;
 
-    <script>
-        let latitude = null;
-        let longitude = null;
+    // Dark Mode Toggle
+    document.getElementById('toggleDarkMode').addEventListener('click', function() {
+      document.body.classList.toggle('dark-mode');
+      const icon = this.querySelector('.material-icons-round');
+      if (document.body.classList.contains('dark-mode')) {
+        icon.textContent = 'light_mode';
+      } else {
+        icon.textContent = 'dark_mode';
+      }
+    });
 
-        document.getElementById('enableLocation').addEventListener('change', function() {
-            const locationInputs = document.getElementById('locationInputs');
-            if (this.checked) {
-                locationInputs.classList.remove('hidden');
-            } else {
-                locationInputs.classList.add('hidden');
-                // Clear location data when disabling
-                latitude = null;
-                longitude = null;
-                document.getElementById('locationStatus').textContent = '';
-                document.getElementById('searchRadius').value = '15';
-                document.getElementById('manualLocation').value = '';
+    // Toggle location inputs visibility
+    document.getElementById('enableLocation').addEventListener('change', function() {
+      const locationInputs = document.getElementById('locationInputs');
+      if (this.checked) {
+        locationInputs.classList.add('active');
+      } else {
+        locationInputs.classList.remove('active');
+        latitude = null;
+        longitude = null;
+        document.getElementById('locationStatus').textContent = '';
+        document.getElementById('locationStatus').classList.remove('active');
+        document.getElementById('searchRadius').value = '15';
+        document.getElementById('manualLocation').value = '';
+      }
+      updateQueryPreview();
+    });
+
+    // Get location button click
+    document.getElementById('getLocationButton').addEventListener('click', function() {
+      const locationStatus = document.getElementById('locationStatus');
+      locationStatus.textContent = 'Fetching location...';
+      locationStatus.style.color = '#888';
+      locationStatus.classList.add('active');
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            latitude = position.coords.latitude;
+            longitude = position.coords.longitude;
+            locationStatus.textContent = `Location acquired: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+            locationStatus.style.color = 'var(--success)';
+            updateQueryPreview();
+          },
+          function(error) {
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                locationStatus.textContent = "User denied the request for Geolocation.";
+                break;
+              case error.POSITION_UNAVAILABLE:
+                locationStatus.textContent = "Location information is unavailable.";
+                break;
+              case error.TIMEOUT:
+                locationStatus.textContent = "The request to get user location timed out.";
+                break;
+              default:
+                locationStatus.textContent = "An unknown error occurred.";
+                break;
             }
-        });
+            locationStatus.style.color = 'var(--danger)';
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      } else {
+        locationStatus.textContent = "Geolocation is not supported by this browser.";
+        locationStatus.style.color = 'var(--danger)';
+      }
+    });
 
-        document.getElementById('getLocationButton').addEventListener('click', function() {
-            const locationStatus = document.getElementById('locationStatus');
-            locationStatus.textContent = 'Fetching location...';
-            locationStatus.style.color = '#888';
+    // Build query string from all fields
+    function buildQuery() {
+      let query = '';
+      const exactPhrase = document.getElementById('exactPhrase').value;
+      if (exactPhrase) {
+        query += `"${exactPhrase}" `;
+      }
+      const anyWords = document.getElementById('anyOfTheseWords').value;
+      if (anyWords) {
+        query += `${anyWords.split(',').join(' OR ')} `;
+      }
+      const noneWords = document.getElementById('noneOfTheseWords').value;
+      if (noneWords) {
+        const arr = noneWords.split(',')
+          .map(word => '-' + word.trim())
+          .filter(word => word !== '-');
+        query += arr.join(' ') + ' ';
+      }
+      const hashtags = document.getElementById('hashtags').value;
+      if (hashtags) {
+        query += `${hashtags.split(',').map(tag => {
+          tag = tag.trim();
+          return tag.startsWith('#') ? tag : '#' + tag;
+        }).join(' ')} `;
+      }
+      const fromAccount = document.getElementById('fromAccount').value;
+      if (fromAccount) {
+        query += `from:${fromAccount.replace('@', '')} `;
+      }
+      const toAccount = document.getElementById('toAccount').value;
+      if (toAccount) {
+        query += `to:${toAccount.replace('@', '')} `;
+      }
+      const mentioningAccount = document.getElementById('mentioningAccount').value;
+      if (mentioningAccount) {
+        const mention = mentioningAccount.trim();
+        query += `${mention.startsWith('@') ? mention : '@' + mention} `;
+      }
+      const minLikes = document.getElementById('minLikes').value;
+      if (minLikes) {
+        query += `min_faves:${minLikes} `;
+      }
+      const minRetweets = document.getElementById('minRetweets').value;
+      if (minRetweets) {
+        query += `min_retweets:${minRetweets} `;
+      }
+      const minReplies = document.getElementById('minReplies').value;
+      if (minReplies) {
+        query += `min_replies:${minReplies} `;
+      }
+      const beforeDate = document.getElementById('beforeDate').value;
+      if (beforeDate) {
+        query += `until:${beforeDate} `;
+      }
+      const sinceDate = document.getElementById('sinceDate').value;
+      if (sinceDate) {
+        query += `since:${sinceDate} `;
+      }
+      if (document.getElementById('includeImages').checked) {
+        query += `filter:images `;
+      }
+      if (document.getElementById('includeVideos').checked) {
+        query += `filter:videos `;
+      }
+      if (document.getElementById('enableLocation').checked) {
+        const manualLocation = document.getElementById('manualLocation').value;
+        const searchRadius = document.getElementById('searchRadius').value;
+        if (manualLocation && searchRadius) {
+          query += `near:"${manualLocation}" within:${searchRadius}mi `;
+        } else if (latitude && longitude && searchRadius) {
+          query += `geocode:${latitude},${longitude},${searchRadius}mi `;
+        }
+      }
+      const linkOption = document.querySelector('input[name="linkOption"]:checked').value;
+      if (linkOption === 'exclude') {
+        query += '-filter:links ';
+      } else if (linkOption === 'only') {
+        query += 'filter:links ';
+      }
+      return query.trim();
+    }
 
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        latitude = position.coords.latitude;
-                        longitude = position.coords.longitude;
-                        locationStatus.textContent = `Location acquired: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-                        locationStatus.style.color = 'green';
-                    },
-                    function(error) {
-                        // (Error handling from previous version)
-                        switch (error.code) {
-                            case error.PERMISSION_DENIED:
-                                locationStatus.textContent = "User denied the request for Geolocation.";
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                locationStatus.textContent = "Location information is unavailable.";
-                                break;
-                            case error.TIMEOUT:
-                                locationStatus.textContent = "The request to get user location timed out.";
-                                break;
-                            case error.UNKNOWN_ERROR:
-                                locationStatus.textContent = "An unknown error occurred.";
-                                break;
-                        }
-                        locationStatus.style.color = 'red';
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 5000,
-                        maximumAge: 0
-                    }
-                );
-            } else {
-                locationStatus.textContent = "Geolocation is not supported by this browser.";
-                locationStatus.style.color = 'red';
-            }
-        });
-        document.getElementById('searchButton').addEventListener('click', function() {
-            let query = '';
+    // Update search preview card with current query
+    function updateQueryPreview() {
+      document.getElementById('queryPreview').textContent = buildQuery() || "Your search query will appear here...";
+    }
 
-            // Exact phrase
-            const exactPhrase = document.getElementById('exactPhrase').value;
-            if (exactPhrase) {
-                query += `"${encodeURIComponent(exactPhrase)}" `;
-            }
+    // Add subtle animations to inputs on focus
+    const allInputs = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"]');
+    allInputs.forEach(input => {
+      input.addEventListener('focus', function() {
+        this.closest('.input-group').style.borderColor = 'var(--primary)';
+      });
+      
+      input.addEventListener('blur', function() {
+        if (!this.value) {
+          this.closest('.input-group').style.borderColor = 'transparent';
+        }
+      });
+      
+      // Attach event listeners to update preview when fields change
+      input.addEventListener('input', updateQueryPreview);
+      input.addEventListener('change', updateQueryPreview);
+    });
 
-            // Any of these words
-            const anyOfTheseWords = document.getElementById('anyOfTheseWords').value;
-            if (anyOfTheseWords) {
-                query += `${encodeURIComponent(anyOfTheseWords.split(',').join(' OR ')) } `;
-            }
+    // Add listeners for checkboxes and radio buttons
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    const radios = document.querySelectorAll('input[type="radio"]');
+    
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', updateQueryPreview);
+    });
+    
+    radios.forEach(radio => {
+      radio.addEventListener('change', updateQueryPreview);
+    });
 
-            // None of these words
-            const noneOfTheseWords = document.getElementById('noneOfTheseWords').value;
-            if (noneOfTheseWords) {
-                query += `-${encodeURIComponent(noneOfTheseWords.split(',').join(' -'))} `;
-            }
+    // Search Button: Build URL and open in new tab
+    document.getElementById('searchButton').addEventListener('click', function() {
+      const query = buildQuery();
+      if (query) {
+        const twitterUrl = `https://twitter.com/search?q=${encodeURIComponent(query)}`;
+        window.open(twitterUrl, '_blank');
+        
+        // Add a nice ripple effect on click
+        const ripple = document.createElement('span');
+        ripple.style.position = 'absolute';
+        ripple.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+        ripple.style.borderRadius = '50%';
+        ripple.style.width = '100px';
+        ripple.style.height = '100px';
+        ripple.style.top = '50%';
+        ripple.style.left = '50%';
+        ripple.style.transform = 'translate(-50%, -50%) scale(0)';
+        ripple.style.animation = 'ripple 0.6s linear';
+        this.appendChild(ripple);
+        
+        setTimeout(() => {
+          this.removeChild(ripple);
+        }, 600);
+      }
+    });
 
-            // Hashtags
-            const hashtags = document.getElementById('hashtags').value;
-            if (hashtags) {
-                query += `${encodeURIComponent(hashtags.split(',').map(tag => '#' + tag.trim()).join(' ')) } `;
-            }
+    // Add ripple animation to style
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes ripple {
+        0% {
+          transform: translate(-50%, -50%) scale(0);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(3);
+          opacity: 0;
+        }
+      }
+    `;
+    document.head.appendChild(style);
 
-            // From account
-            const fromAccount = document.getElementById('fromAccount').value;
-            if (fromAccount) {
-                query += `from:${encodeURIComponent(fromAccount)} `;
-            }
-
-            // To account
-            const toAccount = document.getElementById('toAccount').value;
-            if (toAccount) {
-                query += `to:${encodeURIComponent(toAccount)} `;
-            }
-
-            // Mentioning account
-            const mentioningAccount = document.getElementById('mentioningAccount').value;
-            if (mentioningAccount) {
-                query += ` @${encodeURIComponent(mentioningAccount)} `;
-            }
-
-            // Minimum likes
-            const minLikes = document.getElementById('minLikes').value;
-            if (minLikes) {
-                query += `min_faves:${encodeURIComponent(minLikes)} `;
-            }
-
-            // Minimum retweets
-            const minRetweets = document.getElementById('minRetweets').value;
-            if (minRetweets) {
-                query += `min_retweets:${encodeURIComponent(minRetweets)} `;
-            }
-
-            // Minimum replies
-            const minReplies = document.getElementById('minReplies').value;
-            if (minReplies) {
-                query += `min_replies:${encodeURIComponent(minReplies)} `;
-            }
-
-            // Before date
-            const beforeDate = document.getElementById('beforeDate').value;
-            if (beforeDate) {
-                query += `until:${encodeURIComponent(beforeDate)} `;
-            }
-            
-            // Since date
-            const sinceDate = document.getElementById('sinceDate').value;
-            if (sinceDate) {
-                query += `since:${encodeURIComponent(sinceDate)} `;
-            }
-
-            // Include images
-            const includeImages = document.getElementById('includeImages').checked;
-            if (includeImages) {
-                query += `filter:images `;
-            }
-            // Include videos
-            const includeVideos = document.getElementById('includeVideos').checked;
-            if (includeVideos) {
-                query += `filter:videos `;
-            }
-
-            // Location
-            if (document.getElementById('enableLocation').checked) {
-                const manualLocation = document.getElementById('manualLocation').value;
-                const searchRadius = document.getElementById('searchRadius').value;
-
-                if (manualLocation && searchRadius) {
-                    query += `near:"${encodeURIComponent(manualLocation)}" within:${encodeURIComponent(searchRadius)}mi `;
-                } else if (latitude && longitude && searchRadius) {
-                    query += `geocode:${latitude},${longitude},${encodeURIComponent(searchRadius)}mi `;
-                }
-            }
-
-            // Link Options
-            const linkOption = document.querySelector('input[name="linkOption"]:checked').value;
-            if (linkOption === 'exclude') {
-                query += '-filter:links ';
-            } else if (linkOption === 'only') {
-                query += 'filter:links ';
-            }
-
-            // Trim any trailing spaces
-            query = query.trim();
-
-            // Construct the final URL
-            const twitterAppUrl = `twitter://search?q=${query}`;
-            const twitterWebUrl = `https://twitter.com/search?q=${query}`;
-
-            // Attempt to open the Twitter app, fallback to the website
-            // This approach is more reliable for mobile devices
-            window.location.href = twitterWebUrl;
-
-        });
-    </script>
+    // Initialize preview on page load
+    updateQueryPreview();
+    
+    // Check if user prefers dark mode
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.body.classList.add('dark-mode');
+      document.querySelector('#toggleDarkMode .material-icons-round').textContent = 'light_mode';
+    }
+  </script>
 </body>
 </html>
