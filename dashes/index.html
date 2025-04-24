@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Clean up your text by replacing hyphens with spaces and em-dashes with commas, with smooth UX and easy copy/paste features.">
+  <title>Paper-Themed Dash Remover</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lora&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    :root {
+      --paper-bg: #fdfaf6;
+      --paper-border: #e3dcd2;
+      --paper-shadow: rgba(0,0,0,0.1);
+      --accent: #b35c00;
+      --text: #333;
+      --highlight: #fffae6;
+      --transition: 0.3s ease;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; }
+    body {
+      display: flex; justify-content: center; align-items: center;
+      background: var(--paper-bg); font-family: 'Lora', serif; color: var(--text);
+      padding: 1rem;
+    }
+    .container {
+      background: white; border: 1px solid var(--paper-border);
+      box-shadow: 0 4px 12px var(--paper-shadow); border-radius: 8px;
+      width: 100%; max-width: 900px; height: 100%; max-height: 100vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    header { padding: 1rem; text-align: center; }
+    header h1 { margin: 0; font-size: 2rem; color: var(--accent); }
+    header p { margin: 0.5rem 0 0; font-style: italic; }
+    .main {
+      flex: 1; display: flex; gap: 1rem; padding: 1rem;
+      overflow: hidden;
+    }
+    .pane {
+      flex: 1; display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    label { font-weight: bold; margin-bottom: 0.5rem; }
+    textarea {
+      flex: 1; width: 100%; padding: 0.75rem;
+      border: 1px solid var(--paper-border); border-radius: 4px;
+      resize: none; font-family: inherit; font-size: 1rem;
+      transition: height var(--transition), border-color var(--transition);
+      overflow-y: auto;
+    }
+    textarea:focus { border-color: var(--accent); outline: none; }
+    .controls {
+      display: flex; gap: 0.5rem; margin-top: 0.5rem;
+    }
+    .controls button {
+      flex: none; background: var(--accent); border: none;
+      color: white; padding: 0.5rem; border-radius: 4px;
+      cursor: pointer; transition: transform var(--transition), background var(--transition);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .controls button:hover { transform: scale(1.05); background: #933e00; }
+    .controls .material-icons { font-size: 20px; }
+    #processBtn {
+      margin: 0 auto; background: var(--accent); color: white;
+      padding: 0.75rem 1.5rem; font-size: 1rem; border: none;
+      border-radius: 4px; cursor: pointer;
+      transition: background var(--transition), transform var(--transition);
+    }
+    #processBtn:hover { background: #933e00; transform: translateY(-2px); }
+    #changes {
+      background: var(--highlight); padding: 1rem; border-top: 1px solid var(--paper-border);
+      max-height: 30vh; overflow-y: auto; transition: opacity var(--transition);
+    }
+    #changes.hidden { opacity: 0; height: 0; padding: 0; border: none; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    th, td {
+      border: 1px solid var(--paper-border); padding: 0.5rem; text-align: left;
+    }
+    th { background: var(--paper-border); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Dash Remover</h1>
+      <p>Paste your text to swap dashes for spaces and commas</p>
+    </header>
+    <div class="main">
+      <div class="pane">
+        <label for="inputText">Original Text</label>
+        <textarea id="inputText" placeholder="Enter or paste here..."></textarea>
+        <div class="controls">
+          <button id="pasteBtn" title="Paste"><i class="material-icons">content_paste</i></button>
+          <button id="clearBtn" title="Clear"><i class="material-icons">clear</i></button>
+        </div>
+      </div>
+
+      <div class="pane">
+        <label for="outputText">Processed Text</label>
+        <textarea id="outputText" placeholder="Processed result..." readonly></textarea>
+        <div class="controls">
+          <button id="copyBtn" title="Copy"><i class="material-icons">content_copy</i></button>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;padding:0.5rem 0;">
+      <button id="processBtn">Process Text</button>
+    </div>
+
+    <section id="changes" class="hidden" aria-live="polite">
+      <h2>Changes Summary</h2>
+      <p id="counts"></p>
+      <table aria-describedby="counts">
+        <thead>
+          <tr><th>Character</th><th>Replaced With</th><th>Count</th></tr>
+        </thead>
+        <tbody id="details"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('inputText');
+    const outputEl = document.getElementById('outputText');
+    const processBtn = document.getElementById('processBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const pasteBtn = document.getElementById('pasteBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const changesEl = document.getElementById('changes');
+    const countsEl = document.getElementById('counts');
+    const detailsEl = document.getElementById('details');
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+    inputEl.addEventListener('input', () => autoResize(inputEl));
+
+    processBtn.addEventListener('click', () => {
+      const text = inputEl.value;
+      if (!text) return;
+      const hyphens = (text.match(/-/g) || []).length;
+      const emDashes = (text.match(/—/g) || []).length;
+      let processed = text.replace(/—\s*/g, ', ').replace(/-/g, ' ');
+      processed = processed.replace(/,\s*,/g, ',');
+      outputEl.value = processed;
+      autoResize(outputEl);
+
+      countsEl.textContent = `Found ${hyphens} hyphen${hyphens!==1?'s':''} and ${emDashes} em-dash${emDashes!==1?'es':''}.`;
+      detailsEl.innerHTML = `
+        <tr><td>'-'</td><td>space</td><td>${hyphens}</td></tr>
+        <tr><td>'—'</td><td>comma + space</td><td>${emDashes}</td></tr>
+      `;
+      changesEl.classList.remove('hidden');
+    });
+
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(outputEl.value || '').then(() => {
+        copyBtn.style.transform = 'scale(1.2)';
+        setTimeout(() => copyBtn.style.transform = '', 200);
+      });
+    });
+
+    pasteBtn.addEventListener('click', async () => {
+      try {
+        const clip = await navigator.clipboard.readText();
+        inputEl.value = clip;
+        autoResize(inputEl);
+      } catch (e) {
+        alert('Paste failed. Please allow clipboard permissions.');
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      inputEl.value = '';
+      outputEl.value = '';
+      autoResize(inputEl);
+      autoResize(outputEl);
+      changesEl.classList.add('hidden');
+    });
+  </script>
+</body>
+</html>
