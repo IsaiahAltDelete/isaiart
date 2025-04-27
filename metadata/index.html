@@ -1,320 +1,383 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>METADATA VIEWER</title>
-  <!-- Import Poppins font -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    /* Global reset and box-sizing */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Metadata Viewer</title>
 
-    /* Body styling */
-    body {
-      background-color: #fff;
-      color: #000;
-      font-family: 'Poppins', sans-serif;
-      padding: 2rem;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-    /* Container centering and responsive width */
-    .container {
-      max-width: 800px;
-      width: 100%;
-      text-align: center;
-      gap: 1.5rem;
-    }
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    /* Headings */
-    h3 {
-      font-weight: 800;
-      margin-bottom: 2rem;
-    }
+    <!-- Google Material Symbols (Outlined version) -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 
-    /* Hide the actual file input */
-    #fileInput {
-      display: none;
-    }
-
-    /* Drop zone styling (also used as the clickable file selector) */
-    #dropZone {
-      display: inline-block;
-      padding: 2rem;
-      border: 2px solid #000;
-      border-radius: 16px;
-      cursor: pointer;
-      font-weight: 700;
-      text-transform: uppercase;
-      background-color: #fff;
-      transition: background-color 0.3s, color 0.3s;
-      width: 100%;
-    }
-    #dropZone.dragover {
-      background-color: #000;
-      color: #fff;
-    }
-
-    /* Metadata card styling */
-    .metadata-card {
-      border: 2px solid #000;
-      border-radius: 16px;
-      padding: 2rem;
-      margin-top: 1.5rem;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
-      text-align: left;
-    }
-    .metadata-card h6 {
-      font-weight: 700;
-      text-transform: uppercase;
-      margin-bottom: 0.5rem;
-    }
-    .metadata-card pre {
-      background-color: #fff;
-      border: 2px solid #000;
-      border-radius: 12px;
-      padding: 1rem;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      margin-bottom: 1rem;
-    }
-
-    /* Toast styling */
-    .custom-toast {
-      position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: #000;
-      color: #fff;
-      border: 2px solid #000;
-      border-radius: 16px;
-      padding: 1rem 2rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      opacity: 1;
-      transition: opacity 0.5s ease;
-      z-index: 1000;
-    }
-    .custom-toast.fade-out {
-      opacity: 0;
-    }
-
-    /* Responsive adjustments */
-    @media (max-width: 600px) {
-      #dropZone {
-        padding: 1.5rem;
-      }
-      .metadata-card {
-        padding: 1.5rem;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h3>METADATA VIEWER</h3>
-    <!-- Drop zone for drag & drop, click to select, and paste -->
-    <div id="dropZone">Drag & Drop Image Here or Click to Select</div>
-    <!-- Hidden file input -->
-    <input type="file" id="fileInput" accept="image/png" />
-    <div id="metadataOutput"></div>
-  </div>
-
-  <script>
-    // Custom toast function for displaying error messages.
-    function showToast(message, duration = 3000) {
-      const toast = document.createElement('div');
-      toast.className = 'custom-toast';
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      setTimeout(() => {
-        toast.classList.add('fade-out');
-        toast.addEventListener('transitionend', () => {
-          toast.remove();
-        });
-      }, duration);
-    }
-
-    // Process the file (from file input, drag & drop, or paste)
-    function processFile(file) {
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        const arrayBuffer = evt.target.result;
-        const data = new DataView(arrayBuffer);
-
-        // Verify PNG signature (first 8 bytes)
-        const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
-        for (let i = 0; i < 8; i++) {
-          if (data.getUint8(i) !== pngSignature[i]) {
-            showToast('Not a valid PNG file.');
-            return;
-          }
+    <!-- Custom Styles -->
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        // Parse PNG chunks for tEXt metadata
-        let offset = 8;
-        const metadata = {};
-        while (offset < data.byteLength) {
-          if (offset + 8 > data.byteLength) break;
-          const length = data.getUint32(offset);
-          offset += 4;
-          let type = '';
-          for (let i = 0; i < 4; i++) {
-            type += String.fromCharCode(data.getUint8(offset + i));
-          }
-          offset += 4;
-          if (offset + length > data.byteLength) break;
+        /* Custom scrollbar for the metadata section */
+        .metadata-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .metadata-scrollbar::-webkit-scrollbar-track {
+            background: #f3f4f6; /* gray-100 */
+            border-radius: 10px;
+        }
+        .metadata-scrollbar::-webkit-scrollbar-thumb {
+            background: #9ca3af; /* gray-400 */
+            border-radius: 10px;
+            border: 2px solid #f3f4f6; /* gray-100 */
+        }
+        .metadata-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* gray-500 */
+        }
 
-          // Handle tEXt chunks
-          if (type === 'tEXt') {
-            const textBytes = new Uint8Array(arrayBuffer, offset, length);
-            const nullIndex = textBytes.indexOf(0);
-            if (nullIndex !== -1) {
-              const keyword = new TextDecoder().decode(textBytes.slice(0, nullIndex));
-              const textValue = new TextDecoder().decode(textBytes.slice(nullIndex + 1));
-              metadata[keyword] = textValue;
+        .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24;
+          vertical-align: middle;
+        }
+
+        #dropZone {
+            transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        #dropZone.dragover {
+            /* Updated dragover state with red accent */
+            border-color: #dc2626; /* red-600 */
+            background-color: #fee2e2; /* red-50 */
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2); /* Red ring */
+        }
+
+        /* Modal Styles */
+        #imageModal {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #imageModal:not(.hidden) {
+            opacity: 1;
+            visibility: visible;
+        }
+        #imageModal.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        /* Animation for toast */
+        .custom-toast {
+            animation: toast-in 0.5s ease forwards;
+        }
+        .custom-toast.fade-out {
+            animation: toast-out 0.5s ease forwards;
+        }
+        @keyframes toast-in {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        @keyframes toast-out {
+            from { opacity: 1; transform: translate(-50%, 0); }
+            to { opacity: 0; transform: translate(-50%, 20px); }
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        pre .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            opacity: 0.6;
+            transition: opacity 0.2s ease, background-color 0.2s ease;
+        }
+        pre:hover .copy-btn {
+            opacity: 1;
+        }
+        pre .copy-btn:hover {
+             background-color: rgba(0, 0, 0, 0.08); /* Slightly darker gray hover */
+        }
+
+    </style>
+
+    <!-- Tailwind Configuration -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Poppins', 'sans-serif'],
+            },
+            boxShadow: {
+                'subtle': '0 4px 12px rgba(0, 0, 0, 0.05)',
+                'card': '0 8px 20px rgba(0, 0, 0, 0.07)',
+            },
+            maxHeight: {
+                'modal-img': 'calc(100vh - 8rem)',
+                'preview-area': 'calc(100vh - 20rem)'
+            },
+            // Extend colors if needed, but we'll primarily use default grays and reds
+            colors: {
+                // Example: primary: '#dc2626' // red-600
             }
           }
-          // Skip the data and the 4-byte CRC
-          offset += length + 4;
         }
-        displayMetadata(metadata);
-      };
-      reader.readAsArrayBuffer(file);
-    }
+      }
+    </script>
 
-    // File input change event listener
-    document.getElementById('fileInput').addEventListener('change', function (e) {
-      processFile(e.target.files[0]);
-    });
+</head>
+<!-- Updated background gradient to grayscale -->
+<body class="bg-gradient-to-br from-gray-50 to-gray-200 text-gray-800 flex items-center justify-center min-h-screen p-4 sm:p-8 overflow-hidden">
 
-    // Drop zone event listeners
+  <!-- Main Container Card -->
+  <div class="container max-w-7xl w-full bg-white rounded-2xl shadow-card p-6 md:p-10 flex flex-col gap-8 max-h-[95vh] h-full">
+
+    <!-- Header Section: Updated icon color to red -->
+    <div class="title-section text-center border-b border-gray-200 pb-4 mb-2 flex-shrink-0">
+      <h3 class="text-3xl sm:text-4xl font-bold text-gray-800 tracking-tight flex items-center justify-center gap-3">
+        <span class="material-symbols-outlined text-red-600 text-4xl">wysiwyg</span> <!-- Red icon -->
+        Metadata Viewer
+      </h3>
+      <p class="text-gray-500 text-sm mt-1">Extract and view metadata embedded in PNG images.</p>
+    </div>
+
+    <!-- Content Area -->
+    <div class="content-area flex flex-col lg:flex-row gap-8 flex-grow overflow-hidden">
+
+      <!-- Left Column -->
+      <div class="left-column lg:w-2/5 flex flex-col gap-6 overflow-hidden">
+
+        <!-- Drop Zone: Updated border/text/hover colors -->
+        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:py-8 flex flex-col items-center justify-center text-center text-gray-600 cursor-pointer hover:border-red-500 hover:bg-red-50 hover:text-red-700 flex-shrink-0">
+          <span class="material-symbols-outlined text-5xl mb-3 text-gray-400 group-hover:text-red-500">upload_file</span> <!-- Icon color changes on hover via parent -->
+          <span class="font-semibold text-lg text-gray-700 group-hover:text-red-700">Drop Image Here</span>
+          <span class="text-gray-500 text-sm mt-1">or click to select a PNG file</span>
+          <span class="text-gray-400 text-xs mt-3">(Paste with Ctrl+V)</span>
+        </div>
+
+        <!-- Image Preview Container -->
+        <div class="image-preview-container border border-gray-200 rounded-xl overflow-hidden flex justify-center items-center bg-gray-100 relative group flex-grow min-h-0"> <!-- Slightly darker bg -->
+           <img id="imagePreview" alt="Image Preview" class="object-contain max-w-full max-h-full hidden group-hover:opacity-90 transition-opacity duration-300 cursor-pointer" />
+           <div id="previewPlaceholder" class="text-gray-400 flex flex-col items-center text-center p-4">
+                <span class="material-symbols-outlined text-6xl">image</span>
+                <span class="mt-2 text-sm">Image preview will appear here</span>
+           </div>
+        </div>
+
+        <input type="file" id="fileInput" accept="image/png" class="hidden" />
+      </div>
+
+      <!-- Right Column: Updated heading icon color -->
+      <div class="right-column lg:w-3/5 flex flex-col overflow-hidden">
+        <h4 class="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2 flex-shrink-0">
+            <span class="material-symbols-outlined text-red-600">description</span> <!-- Red icon -->
+            Extracted Metadata
+        </h4>
+        <div id="metadataOutput" class="metadata-scrollbar flex-grow bg-gray-100 border border-gray-200 rounded-xl p-5 overflow-y-auto min-h-0"> <!-- Slightly darker bg -->
+             <div class="no-metadata flex flex-col items-center justify-center h-full text-gray-500 text-center">
+                <span class="material-symbols-outlined text-6xl mb-3">search_off</span>
+                <p class="font-medium">No metadata to display yet.</p>
+                <p class="text-sm">Upload or drop a PNG image to see its metadata.</p>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Modal -->
+  <div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-8" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div class="relative bg-white p-4 rounded-lg shadow-xl max-w-4xl w-full max-h-full flex flex-col">
+          <div class="flex justify-between items-center pb-3 border-b border-gray-200 flex-shrink-0">
+              <h5 id="modal-title" class="text-lg font-medium text-gray-800">Image Preview</h5>
+              <button id="closeModalBtn" type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" aria-label="Close modal">
+                  <span class="material-symbols-outlined">close</span>
+              </button>
+          </div>
+          <div class="mt-4 flex-grow overflow-auto flex items-center justify-center">
+              <img id="modalImage" src="" alt="Full image preview" class="max-w-full max-h-modal-img object-contain">
+          </div>
+      </div>
+  </div>
+
+
+  <script>
+    // DOM Elements (remain the same)
     const dropZone = document.getElementById('dropZone');
-    dropZone.addEventListener('dragover', function(e) {
-      e.preventDefault();
-      dropZone.classList.add('dragover');
-    });
-    dropZone.addEventListener('dragleave', function(e) {
-      e.preventDefault();
-      dropZone.classList.remove('dragover');
-    });
-    dropZone.addEventListener('drop', function(e) {
-      e.preventDefault();
-      dropZone.classList.remove('dragover');
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        processFile(e.dataTransfer.files[0]);
-        e.dataTransfer.clearData();
-      }
-    });
-    // Clicking the drop zone opens the file selector
-    dropZone.addEventListener('click', function() {
-      document.getElementById('fileInput').click();
-    });
+    const fileInput = document.getElementById('fileInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewPlaceholder = document.getElementById('previewPlaceholder');
+    const metadataOutput = document.getElementById('metadataOutput');
+    const imageModal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    const closeModalBtn = document.getElementById('closeModalBtn');
 
-    // Listen for Ctrl+V paste events for images.
-    document.addEventListener('paste', function(e) {
-      if (e.clipboardData) {
-        const items = e.clipboardData.items;
-        for (let i = 0; i < items.length; i++) {
-          if (items[i].type.indexOf('image') !== -1) {
-            const file = items[i].getAsFile();
-            processFile(file);
-            break;
-          }
+    // --- Modal Logic (remains the same) ---
+    function openModal(imageUrl) { if (!imageUrl) return; modalImage.src = imageUrl; imageModal.classList.remove('hidden'); document.body.classList.add('modal-open'); document.addEventListener('keydown', handleEscapeKey); }
+    function closeModal() { imageModal.classList.add('hidden'); modalImage.src = ""; document.body.classList.remove('modal-open'); document.removeEventListener('keydown', handleEscapeKey); }
+    function handleEscapeKey(event) { if (event.key === 'Escape') closeModal(); }
+    imagePreview.addEventListener('click', () => { if (imagePreview.src && !imagePreview.src.endsWith('#')) openModal(imagePreview.src); });
+    closeModalBtn.addEventListener('click', closeModal);
+    imageModal.addEventListener('click', (event) => { if (event.target === imageModal) closeModal(); });
+
+
+    // --- Toast Notification (Colors remain standard for usability) ---
+    function showToast(message, icon = 'info', type = 'info', duration = 3000) {
+        document.querySelectorAll('.custom-toast').forEach(t => t.remove());
+        const toast = document.createElement('div');
+        toast.className = 'custom-toast fixed bottom-6 left-1/2 -translate-x-1/2 text-sm font-medium px-5 py-3 rounded-lg shadow-lg flex items-center gap-2 z-[100]';
+        let bgColor = 'bg-gray-800', textColor = 'text-white', iconColor = 'text-white';
+        switch (type) {
+            case 'success': bgColor = 'bg-green-600'; icon = 'check_circle'; break; // Keep green for success
+            case 'error': bgColor = 'bg-red-600'; icon = 'error'; break; // Keep red for error
+            case 'warning': bgColor = 'bg-yellow-500'; textColor = 'text-yellow-900'; iconColor = 'text-yellow-900'; icon = 'warning'; break; // Keep yellow for warning
         }
-      }
-    });
-
-    // Display metadata in styled cards.
-    function displayMetadata(metadata) {
-      const outputDiv = document.getElementById('metadataOutput');
-      outputDiv.innerHTML = '';
-
-      if (Object.keys(metadata).length === 0) {
-        outputDiv.innerHTML = '<p>No metadata found.</p>';
-        return;
-      }
-
-      // Handle "parameters" key for Stable Diffusion metadata.
-      if (metadata["parameters"]) {
-        let paramText = metadata["parameters"];
-        let posPrompt = paramText;
-        let negPrompt = "";
-        let extraParams = "";
-        const negIndex = paramText.indexOf("Negative prompt:");
-        if (negIndex !== -1) {
-          posPrompt = paramText.substring(0, negIndex).trim();
-          const rest = paramText.substring(negIndex).trim();
-          const newlineIndex = rest.indexOf("\n");
-          if (newlineIndex !== -1) {
-            negPrompt = rest.substring(0, newlineIndex).replace("Negative prompt:", "").trim();
-            extraParams = rest.substring(newlineIndex).trim();
-          } else {
-            negPrompt = rest.replace("Negative prompt:", "").trim();
-          }
-        }
-
-        // Create a card for generation parameters.
-        const card = document.createElement('div');
-        card.className = 'metadata-card';
-        const title = document.createElement('h6');
-        title.textContent = "Generation Parameters";
-        card.appendChild(title);
-
-        // Positive prompt.
-        const posLabel = document.createElement('h6');
-        posLabel.textContent = "Positive Prompt";
-        card.appendChild(posLabel);
-        const posPre = document.createElement('pre');
-        posPre.textContent = posPrompt;
-        card.appendChild(posPre);
-
-        // Negative prompt (if available).
-        if (negPrompt) {
-          const negLabel = document.createElement('h6');
-          negLabel.textContent = "Negative Prompt";
-          card.appendChild(negLabel);
-          const negPre = document.createElement('pre');
-          negPre.textContent = negPrompt;
-          card.appendChild(negPre);
-        }
-
-        // Extra parameters (if available).
-        if (extraParams) {
-          const extraLabel = document.createElement('h6');
-          extraLabel.textContent = "Other Parameters";
-          card.appendChild(extraLabel);
-          const extraPre = document.createElement('pre');
-          extraPre.textContent = extraParams;
-          card.appendChild(extraPre);
-        }
-        outputDiv.appendChild(card);
-      }
-
-      // Display any additional metadata fields (other than "parameters").
-      Object.keys(metadata).forEach(function (key) {
-        if (key === "parameters") return;
-        const card = document.createElement('div');
-        card.className = 'metadata-card';
-        const title = document.createElement('h6');
-        title.textContent = key;
-        card.appendChild(title);
-        const pre = document.createElement('pre');
-        pre.textContent = metadata[key];
-        card.appendChild(pre);
-        outputDiv.appendChild(card);
-      });
+        toast.classList.add(bgColor, textColor);
+        const iconSpan = document.createElement('span'); iconSpan.className = `material-symbols-outlined ${iconColor}`; iconSpan.textContent = icon; toast.appendChild(iconSpan);
+        const messageSpan = document.createElement('span'); messageSpan.textContent = message; toast.appendChild(messageSpan);
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.classList.add('fade-out'); toast.addEventListener('animationend', () => { if (toast.parentNode) toast.remove(); }); }, duration);
     }
+
+    // --- Clipboard Functionality (Uses green for success feedback) ---
+    function copyToClipboard(text, elementToFeedback) {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                showToast('Copied!', 'content_copy', 'success', 1500);
+                if (elementToFeedback && elementToFeedback.querySelector('.material-symbols-outlined')) {
+                    const icon = elementToFeedback.querySelector('.material-symbols-outlined'); const originalIcon = icon.textContent; icon.textContent = 'check';
+                    elementToFeedback.classList.add('bg-green-100', 'text-green-700'); // Keep green feedback
+                    setTimeout(() => { icon.textContent = originalIcon; elementToFeedback.classList.remove('bg-green-100', 'text-green-700'); }, 1500);
+                }
+            })
+            .catch(err => { showToast('Failed to copy.', 'error', 'error'); console.error('Copy failed: ', err); });
+    }
+
+    // --- File Processing Logic (remains the same) ---
+    function processFile(file) {
+        if (!file || !file.type.startsWith('image/png')) { showToast('Please select a valid PNG file.', 'warning', 'warning'); return; }
+        const imageUrl = URL.createObjectURL(file); imagePreview.src = imageUrl; imagePreview.classList.remove('hidden'); imagePreview.classList.add('cursor-pointer'); previewPlaceholder.classList.add('hidden');
+        metadataOutput.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-500"><span class="material-symbols-outlined text-4xl animate-spin">progress_activity</span><p class="mt-2 text-sm">Reading metadata...</p></div>`;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const arrayBuffer = evt.target.result; const data = new DataView(arrayBuffer); const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+                for (let i = 0; i < 8; i++) { if (data.getUint8(i) !== pngSignature[i]) throw new Error('Invalid PNG signature.'); }
+                let offset = 8; const metadata = {};
+                while (offset < data.byteLength) {
+                    if (offset + 8 > data.byteLength) break; const length = data.getUint32(offset); offset += 4; let type = '';
+                    for (let i = 0; i < 4; i++) type += String.fromCharCode(data.getUint8(offset + i)); offset += 4;
+                    if (offset + length + 4 > data.byteLength) { console.warn(`Chunk ${type} exceeds file boundary.`); break; }
+                    if (type === 'tEXt' || type === 'iTXt') {
+                        const textBytes = new Uint8Array(arrayBuffer, offset, length); let keyword = '', textValue = ''; const nullIndex = textBytes.indexOf(0);
+                        if (nullIndex !== -1) { keyword = new TextDecoder("utf-8").decode(textBytes.slice(0, nullIndex));
+                            if (type === 'tEXt') { textValue = new TextDecoder("latin1").decode(textBytes.slice(nullIndex + 1)); }
+                            else { const separators = []; for(let i=nullIndex + 1; i<textBytes.length; i++) if (textBytes[i] === 0) separators.push(i); if (separators.length >= 4 && textBytes[nullIndex + 1] === 0) { textValue = new TextDecoder("utf-8").decode(textBytes.slice(separators[3] + 1)); } else { console.warn(`Skipping iTXt chunk for ${keyword}`); keyword = ''; } }
+                            if (keyword) metadata[keyword] = textValue;
+                        } else console.warn(`${type} chunk found without null separator.`);
+                    } offset += length + 4;
+                } displayMetadata(metadata);
+            } catch (error) {
+                console.error("Error processing PNG:", error); showToast(`Error processing file: ${error.message}`, 'error', 'error');
+                metadataOutput.innerHTML = `<div class="no-metadata flex flex-col items-center justify-center h-full text-red-500 text-center"><span class="material-symbols-outlined text-6xl mb-3">error</span><p class="font-medium">Failed to process image.</p><p class="text-sm">${error.message}</p></div>`;
+                imagePreview.src = '#'; imagePreview.classList.add('hidden'); imagePreview.classList.remove('cursor-pointer'); previewPlaceholder.classList.remove('hidden');
+            }
+        };
+        reader.onerror = () => {
+            showToast('Error reading file.', 'error', 'error');
+            metadataOutput.innerHTML = `<div class="no-metadata flex flex-col items-center justify-center h-full text-red-500 text-center"><span class="material-symbols-outlined text-6xl mb-3">error</span><p class="font-medium">Failed to read file.</p></div>`;
+            imagePreview.src = '#'; imagePreview.classList.add('hidden'); imagePreview.classList.remove('cursor-pointer'); previewPlaceholder.classList.remove('hidden');
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // --- Metadata Parsing and Display ---
+    function parseParameters(paramsString) { /* ... same logic ... */
+        const paramsList = {}; const lines = paramsString.split('\n'); lines.forEach(line => { const parts = line.split(': '); if (parts.length >= 2) { const key = parts[0].trim(); const value = parts.slice(1).join(': ').trim(); paramsList[key] = value; } else if (line.trim()) { paramsList[`_info_${Object.keys(paramsList).length}`] = line.trim(); } }); return paramsList;
+    }
+    function createParamItem(label, value) { /* ... Updated copy button hover/focus colors ... */
+        const paramItem = document.createElement('div'); paramItem.className = 'param-item flex flex-col sm:flex-row justify-between sm:items-center bg-white border border-gray-200 rounded-lg p-3 mb-2 gap-1 sm:gap-3 hover:bg-gray-50 transition-colors duration-150'; // Use gray-50 for hover
+        const paramLabel = document.createElement('div'); paramLabel.className = 'param-label font-medium text-gray-600 text-sm flex-shrink-0 sm:w-1/3'; paramLabel.textContent = label.replace(/_/g, ' ') + ':';
+        const paramValueContainer = document.createElement('div'); paramValueContainer.className = 'param-value-container flex items-center justify-end sm:justify-start flex-grow gap-2';
+        const paramValue = document.createElement('div'); paramValue.className = 'param-value text-gray-800 text-sm break-all text-right sm:text-left flex-grow'; paramValue.textContent = value;
+        const copyButton = document.createElement('button');
+        // Updated copy button hover/focus to use red accent
+        copyButton.className = 'copy-btn flex-shrink-0 p-1.5 rounded-full text-gray-500 hover:bg-gray-200 hover:text-red-600 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-red-500 transition-all duration-200';
+        copyButton.title = `Copy ${label}`; copyButton.onclick = (e) => { e.stopPropagation(); copyToClipboard(value, copyButton); };
+        const copyIcon = document.createElement('span'); copyIcon.className = 'material-symbols-outlined text-base'; copyIcon.textContent = 'content_copy'; copyButton.appendChild(copyIcon);
+        paramValueContainer.appendChild(paramValue); paramValueContainer.appendChild(copyButton); paramItem.appendChild(paramLabel); paramItem.appendChild(paramValueContainer); return paramItem;
+    }
+    function displayMetadata(metadata) { /* ... Updated section header colors ... */
+        metadataOutput.innerHTML = '';
+        if (Object.keys(metadata).length === 0) { metadataOutput.innerHTML = `<div class="no-metadata flex flex-col items-center justify-center h-full text-gray-500 text-center"><span class="material-symbols-outlined text-6xl mb-3">info</span><p class="font-medium">No metadata found.</p><p class="text-sm">This PNG image does not contain tEXt or iTXt metadata chunks.</p></div>`; return; }
+        const metadataCard = document.createElement('div'); metadataCard.className = 'metadata-content space-y-6';
+        if (metadata["parameters"]) {
+            let paramText = metadata["parameters"], posPrompt = paramText, negPrompt = "", extraParams = "";
+            const negPromptKeyword = "Negative prompt:"; const negIndex = paramText.indexOf(negPromptKeyword);
+            if (negIndex !== -1) { posPrompt = paramText.substring(0, negIndex).trim(); const rest = paramText.substring(negIndex + negPromptKeyword.length).trim(); const newlineIndex = rest.indexOf("\n"); if (newlineIndex !== -1) { negPrompt = rest.substring(0, newlineIndex).trim(); extraParams = rest.substring(newlineIndex).trim(); } else { negPrompt = rest; } }
+            else { const firstNewline = paramText.indexOf("\n"); if (firstNewline !== -1) { posPrompt = paramText.substring(0, firstNewline).trim(); extraParams = paramText.substring(firstNewline).trim(); } }
+
+            const createSection = (title, icon, content, colorClass = 'text-gray-700', isPrompt = false) => { // Default color is gray
+                const section = document.createElement('div'); section.className = 'metadata-section';
+                section.innerHTML = `<h5 class="text-sm font-semibold ${colorClass} uppercase mb-2 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">${icon}</span>${title}</h5>`;
+                if (isPrompt) {
+                    const pre = document.createElement('pre'); pre.className = 'bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-700 relative font-sans'; pre.textContent = content;
+                    const copyBtn = document.createElement('button');
+                    // Updated copy button hover/focus inside pre
+                    copyBtn.className = 'copy-btn p-1.5 rounded-full text-gray-400 hover:text-red-600 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-red-500 transition-colors duration-200';
+                    copyBtn.title = `Copy ${title}`; copyBtn.innerHTML = '<span class="material-symbols-outlined text-base">content_copy</span>'; copyBtn.onclick = (e) => { e.stopPropagation(); copyToClipboard(content, copyBtn); }; pre.appendChild(copyBtn); section.appendChild(pre);
+                } else section.appendChild(content);
+                return section;
+            };
+
+            // Positive prompt uses default gray, Negative uses red
+            metadataCard.appendChild(createSection('Positive Prompt', 'palette', posPrompt, 'text-gray-700', true));
+            if (negPrompt) metadataCard.appendChild(createSection('Negative Prompt', 'block', negPrompt, 'text-red-700', true)); // Keep red for negative
+            if (extraParams) {
+                const paramsContainer = document.createElement('div'); paramsContainer.className = 'space-y-2';
+                const parsedParams = parseParameters(extraParams);
+                const modelInfo = [], samplingInfo = [], sizeSeedInfo = [], otherInfo = [];
+                Object.entries(parsedParams).forEach(([key, value]) => { const keyLower = key.toLowerCase(); const item = createParamItem(key, value); if (keyLower.includes('model') || keyLower.includes('vae') || keyLower.includes('lora') || keyLower.includes('version') || keyLower.includes('hash')) modelInfo.push(item); else if (keyLower.includes('sampler') || keyLower.includes('steps') || keyLower.includes('cfg scale') || keyLower.includes('scheduler') || keyLower.includes('denoise')) samplingInfo.push(item); else if (keyLower.includes('seed') || keyLower.includes('size') || keyLower.includes('clip skip')) sizeSeedInfo.push(item); else otherInfo.push(item); });
+                const appendCategory = (title, icon, items) => { if (items.length > 0) { const categoryDiv = document.createElement('div'); categoryDiv.className = 'mt-4';
+                    // Updated category header color to red
+                    categoryDiv.innerHTML = `<h6 class="text-xs font-semibold text-red-600 uppercase mb-2 flex items-center gap-1"><span class="material-symbols-outlined text-sm">${icon}</span>${title}</h6>`;
+                    items.forEach(item => categoryDiv.appendChild(item)); paramsContainer.appendChild(categoryDiv); } };
+                appendCategory('Model & VAE', 'deployed_code', modelInfo); appendCategory('Sampling', 'filter_tilt_shift', samplingInfo); appendCategory('Seed & Dimensions', 'grain', sizeSeedInfo); appendCategory('Other Settings', 'settings', otherInfo);
+                metadataCard.appendChild(createSection('Generation Parameters', 'tune', paramsContainer, 'text-gray-600', false)); // Main param header is gray
+            }
+        }
+        const otherMetadata = Object.entries(metadata).filter(([key]) => key !== "parameters");
+        if (otherMetadata.length > 0) {
+            const additionalContainer = document.createElement('div'); additionalContainer.className = 'space-y-2';
+            otherMetadata.forEach(([key, value]) => additionalContainer.appendChild(createParamItem(key, value)));
+            const additionalSection = document.createElement('div'); additionalSection.className = 'metadata-section pt-4 border-t border-gray-200';
+            additionalSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">label_important</span>Additional Metadata</h5>`; // Gray header
+            additionalSection.appendChild(additionalContainer); metadataCard.appendChild(additionalSection);
+        }
+        metadataOutput.appendChild(metadataCard);
+    }
+
+
+    // --- Event Listeners (remain the same) ---
+    fileInput.addEventListener('change', (e) => { if (e.target.files && e.target.files.length > 0) { processFile(e.target.files[0]); fileInput.value = ''; } });
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files && e.dataTransfer.files.length > 0) { processFile(e.dataTransfer.files[0]); e.dataTransfer.clearData(); } else { showToast('Could not detect a file.', 'warning', 'warning'); } });
+    document.addEventListener('paste', (e) => { let file = null; if (e.clipboardData && e.clipboardData.files.length > 0) file = e.clipboardData.files[0]; else if (e.clipboardData && e.clipboardData.items) { for (let i = 0; i < e.clipboardData.items.length; i++) { if (e.clipboardData.items[i].type.indexOf('image') !== -1) { file = e.clipboardData.items[i].getAsFile(); break; } } } if (file) { if (file.type === 'image/png') { showToast('Pasted PNG image!', 'add_photo_alternate', 'info'); processFile(file); } else if (file.type.startsWith('image/')) { showToast('Pasted image is not PNG.', 'warning', 'warning'); } } });
+
   </script>
+
 </body>
 </html>
