@@ -4,16 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pixel Artist</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --main-bg: #f8f8f8;
-      --panel-bg: #fff;
-      --accent: #000;
-      --border-radius: 15px;
-      --transition-speed: 0.3s;
+      --main-bg: #f0f2f5; /* Slightly softer background */
+      --panel-bg: #ffffff;
+      --accent: #1a1a1a; /* Darker accent for better contrast */
+      --border-color: #d1d5db; /* Tailwind gray-300 */
+      --border-radius: 12px; /* Slightly smaller for a sharper look */
+      --transition-speed: 0.2s;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
     }
+
     /* Global Styles and Resets */
     * {
       box-sizing: border-box;
@@ -28,399 +33,462 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      padding: 2rem;
+      padding: 1rem; /* Reduced padding for smaller screens */
+      overflow: hidden; /* Prevent body scroll during canvas drag */
     }
+
     /* Editor Container Layout */
     #editor-container {
       display: grid;
-      grid-template-columns: minmax(250px, 300px) 1fr minmax(250px, 300px);
-      gap: 2rem;
+      grid-template-columns: minmax(280px, 320px) 1fr minmax(280px, 320px); /* Adjusted panel widths */
+      gap: 1.5rem;
       width: 100%;
-      max-width: 1600px;
-      height: 90vh;
+      max-width: 1800px; /* Increased max-width */
+      height: 95vh; /* Increased height */
     }
-    /* Left Panel & Canvas Card remain unchanged */
+
     .controls-panel {
       background-color: var(--panel-bg);
-      border-radius: 20px;
-      border: 2px solid var(--accent);
-      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
-      padding: 1.5rem;
-    }
-    /* Hide scrollbars */
-    .controls-panel {
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-md);
+      padding: 1.25rem; /* Adjusted padding */
       overflow-y: auto;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
+      scrollbar-width: thin; /* For Firefox */
+      scrollbar-color: var(--border-color) var(--panel-bg); /* For Firefox */
     }
     .controls-panel::-webkit-scrollbar {
-      display: none;
+      width: 8px;
     }
+    .controls-panel::-webkit-scrollbar-track {
+      background: var(--panel-bg);
+      border-radius: var(--border-radius);
+    }
+    .controls-panel::-webkit-scrollbar-thumb {
+      background-color: var(--border-color);
+      border-radius: 10px;
+      border: 2px solid var(--panel-bg);
+    }
+
     .control-group {
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
     }
     .control-group:last-child {
       margin-bottom: 0;
     }
     .control-title {
-      font-size: 1.2rem;
-      font-weight: 700;
-      margin-bottom: 1rem;
-      text-align: center;
+      font-size: 1.1rem; /* Adjusted size */
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      text-align: left; /* Align left for conventional look */
+      color: var(--accent);
     }
+
     /* Upload Box Styling */
-    #upload-container {
-      position: relative;
-    }
     #upload-container label {
       display: flex;
+      flex-direction: column; /* Stack icon and text */
       align-items: center;
       justify-content: center;
-      padding: 1rem;
-      border: 2px dashed var(--accent);
+      padding: 1.5rem 1rem; /* Adjusted padding */
+      border: 2px dashed var(--border-color);
       border-radius: var(--border-radius);
       cursor: pointer;
-      transition: background-color var(--transition-speed), transform var(--transition-speed);
+      transition: background-color var(--transition-speed), border-color var(--transition-speed), transform var(--transition-speed);
+      text-align: center;
+      color: #6b7280; /* Tailwind gray-500 */
+    }
+    #upload-container label i.material-icons {
+      font-size: 2.5rem; /* Larger icon */
+      margin-bottom: 0.5rem;
+    }
+    #upload-container label:hover {
+      background-color: #f9fafb; /* Tailwind gray-50 */
+      border-color: var(--accent);
+      color: var(--accent);
     }
     #upload-container label.dragover {
-      background-color: #eaeaea;
+      background-color: #eff6ff; /* Tailwind blue-100 */
+      border-color: #3b82f6; /* Tailwind blue-500 */
       transform: scale(1.02);
+      color: #3b82f6;
     }
+
     /* Slider and Select Groups */
-    .slider-container,
-    .select-container {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      width: 100%;
-    }
-    .slider-label,
-    .select-label {
+    .slider-label, .select-label {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 1rem;
-      font-weight: 600;
+      font-size: 0.9rem; /* Adjusted size */
+      font-weight: 500;
+      color: #4b5563; /* Tailwind gray-600 */
+      margin-bottom: 0.25rem;
     }
-    .slider-label i.material-icons,
-    .select-label i.material-icons {
-      font-size: 1.2rem;
-      margin-right: 0.3rem;
+    .slider-label i.material-icons, .select-label i.material-icons {
+      font-size: 1.1rem;
+      margin-right: 0.4rem;
       vertical-align: middle;
+      color: #6b7280; /* Tailwind gray-500 */
     }
+    .slider-label span, .select-label span {
+        font-weight: 600;
+        color: var(--accent);
+    }
+
     /* Custom Range Sliders */
     input[type="range"] {
       -webkit-appearance: none;
-      -moz-appearance: none;
       appearance: none;
       width: 100%;
-      height: 1rem;
-      background: #f0f0f0;
+      height: 0.75rem; /* Slimmer track */
+      background: #e5e7eb; /* Tailwind gray-200 */
       border-radius: var(--border-radius);
       outline: none;
-      border: 2px solid var(--accent);
+      border: 1px solid var(--border-color);
+      transition: background-color var(--transition-speed);
     }
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 1.5rem;
-      height: 1.5rem;
+      width: 1.25rem; /* Slightly larger thumb */
+      height: 1.25rem;
       background: var(--accent);
-      border: none;
+      border: 2px solid var(--panel-bg); /* Border for thumb */
       border-radius: 50%;
       cursor: pointer;
-      transition: transform var(--transition-speed);
+      box-shadow: var(--shadow-sm);
+      transition: transform var(--transition-speed), background-color var(--transition-speed);
     }
     input[type="range"]::-moz-range-thumb {
-      -moz-appearance: none;
-      appearance: none;
-      width: 1.5rem;
-      height: 1.5rem;
+      width: 1.25rem;
+      height: 1.25rem;
       background: var(--accent);
-      border: none;
+      border: 2px solid var(--panel-bg);
       border-radius: 50%;
       cursor: pointer;
-      transition: transform var(--transition-speed);
+      box-shadow: var(--shadow-sm);
+      transition: transform var(--transition-speed), background-color var(--transition-speed);
     }
-    input[type="range"]::-webkit-slider-thumb:hover,
-    input[type="range"]::-moz-range-thumb:hover {
-      transform: scale(1.1);
+    input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.1); }
+    input[type="range"]:hover::-moz-range-thumb { transform: scale(1.1); }
+    input[type="range"]:active::-webkit-slider-thumb { transform: scale(0.95); }
+    input[type="range"]:active::-moz-range-thumb { transform: scale(0.95); }
+    input[type="range"]:focus {
+        outline: none; /* Tailwind handles focus rings */
     }
-    input[type="range"]::-webkit-slider-thumb:active,
-    input[type="range"]::-moz-range-thumb:active {
-      transform: scale(0.95);
+    input[type="range"]:focus::-webkit-slider-thumb {
+        box-shadow: 0 0 0 3px var(--panel-bg), 0 0 0 5px var(--accent); /* Focus ring for thumb */
     }
-    /* Center dropdown text */
+     input[type="range"]:focus::-moz-range-thumb {
+        box-shadow: 0 0 0 3px var(--panel-bg), 0 0 0 5px var(--accent); /* Focus ring for thumb */
+    }
+
+
+    /* Custom Select */
     select {
-      padding: 0.75rem;
+      padding: 0.6rem 2.25rem; /* Adjusted horizontal padding for centered text and arrow */
       border-radius: var(--border-radius);
-      border: 2px solid var(--accent);
+      border: 1px solid var(--border-color);
       background-color: var(--panel-bg);
       color: var(--accent);
-      font-size: 1rem;
-      text-align: center;
+      font-size: 0.9rem;
+      width: 100%; /* Full width */
       -webkit-appearance: none;
       -moz-appearance: none;
       appearance: none;
-      background-image: url('data:image/svg+xml;utf8,<svg fill="black" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+      background-image: url('data:image/svg+xml;utf8,<svg fill="%236b7280" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); /* Tailwind gray-500 for arrow */
       background-repeat: no-repeat;
-      background-position-x: right 0.75rem;
-      background-position-y: center;
+      background-position: right 0.75rem center; /* Standard arrow positioning */
+      transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+      text-align: center; /* Center the selected text */
     }
-    select::-ms-expand {
-      display: none;
+    select:hover {
+        border-color: #9ca3af; /* Tailwind gray-400 */
     }
+    select:focus {
+        outline: none; /* Tailwind handles focus rings */
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(26,26,26,0.2); /* Subtle focus shadow */
+    }
+
     /* Aspect Ratio Button Group */
     .aspect-ratio-buttons {
-      display: flex;
+      display: grid; /* Use grid for better alignment */
+      grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
       gap: 0.5rem;
-      justify-content: center;
-      margin-top: 0.5rem;
+      margin-top: 0.75rem;
     }
-    .aspect-ratio-buttons button {
+    .aspect-ratio-buttons button, #action-buttons button, .canvas-tool-btn {
       background-color: var(--panel-bg);
       color: var(--accent);
-      padding: 0.5rem;
-      border: 2px solid var(--accent);
+      padding: 0.6rem; /* Uniform padding */
+      border: 1px solid var(--border-color);
       border-radius: var(--border-radius);
       cursor: pointer;
-      transition: background-color var(--transition-speed), color var(--transition-speed);
+      transition: all var(--transition-speed) ease-in-out;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 500;
+      box-shadow: var(--shadow-sm);
     }
-    .aspect-ratio-buttons button:hover {
+    .aspect-ratio-buttons button:hover, #action-buttons button:hover, .canvas-tool-btn:hover {
       background-color: var(--accent);
       color: var(--panel-bg);
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
     }
+    .aspect-ratio-buttons button:active, #action-buttons button:active, .canvas-tool-btn:active {
+      transform: translateY(0px) scale(0.95);
+      box-shadow: var(--shadow-sm);
+    }
+    .aspect-ratio-buttons button i.material-icons, #action-buttons button i.material-icons, .canvas-tool-btn i.material-icons {
+        font-size: 1.25rem; /* Consistent icon size */
+    }
+
     /* Canvas Card */
     #canvas-card {
       display: flex;
       flex-direction: column;
-      align-items: center;
       background-color: var(--panel-bg);
-      border-radius: 20px;
-      border: 2px solid var(--accent);
-      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
-      padding: 1.5rem;
-      overflow: hidden;
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-md);
+      padding: 1.25rem;
+      overflow: hidden; /* Important for canvas viewport */
     }
     #canvas-card h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
       margin-bottom: 1rem;
+      text-align: center;
+      color: var(--accent);
     }
-    #canvas-container {
+    #canvas-viewport-wrapper {
       width: 100%;
+      flex-grow: 1; /* Takes available space */
+      min-height: 300px; /* Minimum height for the canvas area */
+      background-color: #e5e7eb; /* Fallback, Tailwind gray-200 */
+      border-radius: calc(var(--border-radius) - 4px); /* Inner radius */
+      box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.05);
+      position: relative;
+      overflow: hidden; /* Crucial for panning/zooming */
+      cursor: grab;
+      /* Checkerboard background */
+      background-image:
+        linear-gradient(45deg, #cccccc 25%, transparent 25%),
+        linear-gradient(-45deg, #cccccc 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #cccccc 75%),
+        linear-gradient(-45deg, transparent 75%, #cccccc 75%);
+      background-size: 20px 20px; /* Size of the squares */
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    #canvas-viewport-wrapper.grabbing {
+        cursor: grabbing;
+    }
+    #canvas {
+      display: block; /* Removes extra space below canvas */
+      position: absolute; /* Positioned by JS transforms */
+      top: 0; left: 0;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -webkit-crisp-edges;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      will-change: transform; /* Hint for browser optimization */
+    }
+    #canvas-controls {
+      margin-top: 1rem;
       display: flex;
+      align-items: center;
       justify-content: center;
-      background: #fff;
-      padding: 1rem;
-      border-radius: var(--border-radius);
-      box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+      gap: 0.5rem; /* Gap between button groups */
+      flex-wrap: wrap; /* Allow controls to wrap on smaller screens */
     }
-    canvas {
-      max-width: 100%;
-      max-height: 70vh;
-      border-radius: var(--border-radius);
+    #zoom-level-display {
+      min-width: 60px; /* Ensure space for "1000%" */
+      text-align: center;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--accent);
+      background-color: #f3f4f6; /* Tailwind gray-100 */
+      padding: 0.4rem 0.6rem;
+      border-radius: calc(var(--border-radius) / 2);
+      border: 1px solid var(--border-color);
     }
+    .canvas-tool-btn.active-tool { /* For toggle buttons like grid */
+        background-color: var(--accent);
+        color: var(--panel-bg);
+    }
+
+
     /* Right Panel: Split into two cards */
     #right-controls {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      height: 100%;
+      gap: 1.5rem; /* Gap between adjustment and save/load cards */
     }
     #adjustments-card {
-      flex: 1;
-      overflow-y: auto;
+      flex: 1; /* Takes up remaining space */
     }
     #save-load-card {
-      /* Fixed height to always show */
-      flex-shrink: 0;
+      flex-shrink: 0; /* Doesn't shrink */
     }
-    /* Action Buttons: Smaller buttons, all in one row */
+
+    /* Action Buttons */
     #action-buttons {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
       gap: 0.5rem;
-      justify-content: center;
-      flex-wrap: nowrap;
       margin-top: 1rem;
     }
-    #action-buttons button {
-      background-color: var(--panel-bg);
-      color: var(--accent);
-      padding: 0.5rem;
-      font-size: 1rem;
-      border: 2px solid var(--accent);
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      transition: background-color var(--transition-speed), color var(--transition-speed);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 32px;
-      min-height: 32px;
+
+    /* Tailwind Focus Rings - apply utility classes in HTML */
+    .tw-focus-ring {
+        @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+        /* Customize ring color and offset color based on context */
     }
-    #action-buttons button:hover {
-      background-color: var(--accent);
-      color: var(--panel-bg);
-    }
+    /* Example: focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)] */
+
+
     /* Responsive Design */
     @media (max-width: 1200px) {
       #editor-container {
-        grid-template-columns: auto 1fr;
+        grid-template-columns: minmax(250px, 300px) 1fr; /* Two columns */
         grid-template-rows: auto 1fr;
         grid-template-areas:
           "controls-left canvas"
           "controls-right canvas";
-        height: auto;
-        flex-direction: column;
+        height: auto; /* Allow height to adjust */
+        max-height: none;
+        padding: 1rem;
       }
       .controls-panel {
-        max-height: none;
-        overflow-y: visible;
-        width: 100%;
+        max-height: none; /* Remove max height for panels in this layout */
       }
       #canvas-card {
-        grid-column: 1 / -1;
+        grid-area: canvas;
+        min-height: 400px; /* Ensure canvas area has decent height */
       }
+      #left-controls { grid-area: controls-left; }
+      #right-controls { grid-area: controls-right; }
     }
+
     @media (max-width: 768px) {
+      body { padding: 0.5rem; }
       #editor-container {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto 1fr;
+        grid-template-columns: 1fr; /* Single column */
+        grid-template-rows: auto auto auto; /* Panels first, then canvas */
         grid-template-areas:
           "controls-left"
           "controls-right"
           "canvas";
         gap: 1rem;
+        height: auto;
       }
       .controls-panel {
         padding: 1rem;
-        border-radius: 15px;
+        border-radius: var(--border-radius);
       }
       #canvas-card {
         padding: 1rem;
-        border-radius: 15px;
+        border-radius: var(--border-radius);
+        min-height: 350px;
       }
     }
     @media (max-width: 600px) {
-      h1 {
-        font-size: 2rem;
+      .control-title { font-size: 1rem; }
+      .aspect-ratio-buttons button, #action-buttons button, .canvas-tool-btn {
+        padding: 0.5rem;
       }
-      .control-title {
+      .aspect-ratio-buttons button i.material-icons, #action-buttons button i.material-icons, .canvas-tool-btn i.material-icons {
         font-size: 1.1rem;
       }
-      button, select, input[type="range"] {
-        font-size: 0.9rem;
-        padding: 0.6rem;
-      }
+      #zoom-level-display { font-size: 0.8rem; padding: 0.3rem 0.5rem; }
+      #canvas-controls { gap: 0.25rem; } /* Reduce gap for smaller screens */
     }
+
   </style>
 </head>
 <body>
   <div id="editor-container">
     <!-- Left Controls Panel -->
     <div id="left-controls" class="controls-panel">
-      <!-- Upload & Preview with Drag-and-Drop -->
       <div class="control-group">
-        <h3 class="control-title">Upload & Preview</h3>
+        <h3 class="control-title">Upload Image</h3>
         <div id="upload-container">
-          <label for="image-upload"> 
-            <i class="material-icons">image</i> Upload Image
+          <label for="image-upload" class="tw-focus-ring focus:ring-blue-500 focus:ring-offset-white">
+            <i class="material-icons">cloud_upload</i>
+            <span>Click or Drag & Drop</span>
           </label>
-          <input type="file" id="image-upload" accept="image/*" style="display: none;" />
+          <input type="file" id="image-upload" accept="image/*" class="sr-only" />
         </div>
       </div>
-      <!-- Resolution Preset -->
+
       <div class="control-group">
-        <h3 class="control-title">Resolution Preset</h3>
-        <div class="select-container">
+        <h3 class="control-title">Base Resolution</h3>
+        <div class="select-container mb-2">
           <label for="resolution-preset" class="select-label">
             <i class="material-icons">settings_overscan</i> Preset:
           </label>
-          <select id="resolution-preset">
+          <select id="resolution-preset" class="tw-focus-ring focus:ring-[var(--accent)] focus:border-[var(--accent)]">
             <option value="custom" selected>Custom</option>
+            <option value="25">Tiny (25%)</option>
             <option value="50">Low (50%)</option>
-            <option value="100">Medium (100%)</option>
+            <option value="100">Original (100%)</option>
             <option value="150">High (150%)</option>
             <option value="200">Ultra (200%)</option>
           </select>
         </div>
-      </div>
-      <!-- Resolution Slider -->
-      <div class="control-group">
-        <h3 class="control-title">Resolution</h3>
         <div class="slider-container">
           <div class="slider-label">
-            <label for="resolution">
-              <i class="material-icons">photo_size_select_small</i> Resolution:
-            </label>
+            <label for="resolution"><i class="material-icons">photo_size_select_small</i> Scale:</label>
             <span id="resolution-value">100%</span>
           </div>
-          <input type="range" id="resolution" min="50" max="200" step="1" value="100" />
+          <input type="range" id="resolution" min="10" max="200" step="1" value="100" class="tw-focus-ring focus:ring-[var(--accent)]"/>
         </div>
       </div>
-      <!-- Pixel Size -->
+
       <div class="control-group">
-        <h3 class="control-title">Pixel Size</h3>
-        <div class="slider-container">
+        <h3 class="control-title">Pixelation</h3>
+        <div class="slider-container mb-2">
           <div class="slider-label">
-            <label for="pixel-size">
-              <i class="material-icons">texture</i> Size:
-            </label>
+            <label for="pixel-size"><i class="material-icons">texture</i> Pixel Size:</label>
             <span id="pixel-size-value">10 px</span>
           </div>
-          <input type="range" id="pixel-size" min="2" max="50" step="1" value="10" />
+          <input type="range" id="pixel-size" min="1" max="50" step="1" value="10" class="tw-focus-ring focus:ring-[var(--accent)]"/>
         </div>
-      </div>
-      <!-- Pixelation Style -->
-      <div class="control-group">
-        <h3 class="control-title">Pixelation Style</h3>
         <div class="select-container">
-          <label for="pixelation-style" class="select-label">
-            <i class="material-icons">style</i> Style:
-          </label>
-          <select id="pixelation-style">
-            <option value="standard" selected>Standard</option>
-            <option value="mosaic">Mosaic</option>
+          <label for="pixelation-style" class="select-label"><i class="material-icons">style</i> Style:</label>
+          <select id="pixelation-style" class="tw-focus-ring focus:ring-[var(--accent)] focus:border-[var(--accent)]">
+            <option value="standard" selected>Standard Average</option>
+            <option value="mosaic" disabled>Mosaic (TBD)</option>
           </select>
         </div>
       </div>
-      <!-- Aspect Ratio -->
+
       <div class="control-group">
         <h3 class="control-title">Aspect Ratio</h3>
-        <div class="slider-container">
+        <div class="slider-container mb-2">
           <div class="slider-label">
-            <label for="aspect-ratio-width">
-              <i class="material-icons">swap_horiz</i> Width:
-            </label>
+            <label for="aspect-ratio-width"><i class="material-icons">swap_horiz</i> Width:</label>
             <span id="aspect-ratio-width-value">100%</span>
           </div>
-          <input type="range" id="aspect-ratio-width" min="50" max="200" step="1" value="100" />
+          <input type="range" id="aspect-ratio-width" min="25" max="200" step="1" value="100" class="tw-focus-ring focus:ring-[var(--accent)]"/>
         </div>
         <div class="slider-container">
           <div class="slider-label">
-            <label for="aspect-ratio-height">
-              <i class="material-icons">swap_vert</i> Height:
-            </label>
+            <label for="aspect-ratio-height"><i class="material-icons">swap_vert</i> Height:</label>
             <span id="aspect-ratio-height-value">100%</span>
           </div>
-          <input type="range" id="aspect-ratio-height" min="50" max="200" step="1" value="100" />
+          <input type="range" id="aspect-ratio-height" min="25" max="200" step="1" value="100" class="tw-focus-ring focus:ring-[var(--accent)]"/>
         </div>
-        <!-- Aspect Ratio Icon Buttons -->
         <div class="aspect-ratio-buttons">
-          <button id="default-aspect-btn" title="Reset to Default (100%)">
-            <i class="material-icons">settings_backup_restore</i>
-          </button>
-          <button id="even-aspect-btn" title="Even Out Aspect Ratio">
-            <i class="material-icons">equalizer</i>
-          </button>
-          <button id="switch-aspect-btn" title="Switch Width and Height">
-            <i class="material-icons">swap_horiz</i>
-          </button>
-          <button id="lock-aspect-btn" title="Lock/Unlock Aspect Ratio">
-            <i class="material-icons">lock_open</i>
-          </button>
+          <button id="default-aspect-btn" title="Reset Aspect (100%)" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">aspect_ratio</i></button>
+          <button id="even-aspect-btn" title="Square Aspect Ratio" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">crop_square</i></button>
+          <button id="switch-aspect-btn" title="Swap Width & Height" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">sync_alt</i></button>
+          <button id="lock-aspect-btn" title="Lock Aspect Ratio" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">lock_open</i></button>
         </div>
       </div>
     </div>
@@ -428,117 +496,97 @@
     <!-- Canvas Card (Center) -->
     <div id="canvas-card">
       <h2>Preview</h2>
-      <div id="canvas-container">
+      <div id="canvas-viewport-wrapper" class="tw-focus-ring focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[var(--panel-bg)]" tabindex="0">
         <canvas id="canvas"></canvas>
+      </div>
+      <div id="canvas-controls">
+        <button id="preview-original-btn" class="canvas-tool-btn tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]" title="Hold to Preview Original"><i class="material-icons">visibility</i></button>
+        <button id="zoom-out-btn" class="canvas-tool-btn tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]" title="Zoom Out (Scroll Wheel)"><i class="material-icons">zoom_out</i></button>
+        <span id="zoom-level-display">100%</span>
+        <button id="zoom-in-btn" class="canvas-tool-btn tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]" title="Zoom In (Scroll Wheel)"><i class="material-icons">zoom_in</i></button>
+        <button id="reset-view-btn" class="canvas-tool-btn ml-2 tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]" title="Reset View"><i class="material-icons">filter_center_focus</i></button>
+        <button id="toggle-grid-btn" class="canvas-tool-btn ml-2 tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]" title="Toggle Pixel Grid"><i class="material-icons">grid_on</i></button>
       </div>
     </div>
 
-    <!-- Right Controls Panel: Two Cards -->
+    <!-- Right Controls Panel -->
     <div id="right-controls">
-      <!-- Adjustments Card (Scrolls) -->
       <div id="adjustments-card" class="controls-panel">
-        <!-- Color Adjustments -->
         <div class="control-group">
-          <h3 class="control-title">Color Adjustments</h3>
-          <div class="slider-container">
+          <h3 class="control-title">Color Palette</h3>
+          <div class="slider-container mb-2">
             <div class="slider-label">
-              <label for="color-reduction">
-                <i class="material-icons">palette</i> Colors:
-              </label>
+              <label for="color-reduction"><i class="material-icons">palette</i> Max Colors:</label>
               <span id="color-reduction-value">16</span>
             </div>
-            <input type="range" id="color-reduction" min="2" max="256" step="1" value="16" />
+            <input type="range" id="color-reduction" min="2" max="256" step="1" value="16" class="tw-focus-ring focus:ring-[var(--accent)]"/>
           </div>
-          <div class="slider-container">
-            <div class="slider-label">
-              <label for="saturation">
-                <i class="material-icons">colorize</i> Saturation:
-              </label>
-              <span id="saturation-value">100%</span>
-            </div>
-            <input type="range" id="saturation" min="0" max="200" step="1" value="100" />
-          </div>
-          <div class="slider-container">
-            <div class="slider-label">
-              <label for="contrast">
-                <i class="material-icons">contrast</i> Contrast:
-              </label>
-              <span id="contrast-value">100%</span>
-            </div>
-            <input type="range" id="contrast" min="0" max="200" step="1" value="100" />
-          </div>
-        </div>
-        <!-- Effects -->
-        <div class="control-group">
-          <h3 class="control-title">Effects</h3>
-          <div class="slider-container">
-            <div class="slider-label">
-              <label for="noise">
-                <i class="material-icons">grain</i> Noise:
-              </label>
-              <span id="noise-value">0%</span>
-            </div>
-            <input type="range" id="noise" min="0" max="100" step="1" value="0" />
-          </div>
-          <div class="slider-container">
-            <div class="slider-label">
-              <label for="dithering">
-                <i class="material-icons">filter_dither</i> Dithering:
-              </label>
-              <span id="dithering-value">0%</span>
-            </div>
-            <input type="range" id="dithering" min="0" max="100" step="1" value="0" />
-          </div>
-        </div>
-        <!-- Palette: Now with an extra "Default" option -->
-        <div class="control-group">
-          <h3 class="control-title">Palette</h3>
           <div class="select-container">
-            <label for="color-palette" class="select-label">
-              <i class="material-icons">color_lens</i>
-            </label>
-            <select id="color-palette">
-              <option value="default">Default (from Image)</option>
-              <option value="random">Random</option>
+            <label for="color-palette" class="select-label"><i class="material-icons">color_lens</i> Palette Type:</label>
+            <select id="color-palette" class="tw-focus-ring focus:ring-[var(--accent)] focus:border-[var(--accent)]">
+              <option value="default">Image Colors (Default)</option>
+              <option value="random">Random Palette</option>
               <option value="grayscale">Grayscale</option>
               <option value="vibrant">Vibrant</option>
               <option value="pastel">Pastel</option>
-              <option value="custom">Custom</option>
+              <option value="custom" disabled>Custom Palette (TBD)</option>
             </select>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3 class="control-title">Adjustments</h3>
+          <div class="slider-container mb-2">
+            <div class="slider-label">
+              <label for="saturation"><i class="material-icons">tonality</i> Saturation:</label>
+              <span id="saturation-value">100%</span>
+            </div>
+            <input type="range" id="saturation" min="0" max="200" step="1" value="100" class="tw-focus-ring focus:ring-[var(--accent)]"/>
+          </div>
+          <div class="slider-container">
+            <div class="slider-label">
+              <label for="contrast"><i class="material-icons">contrast</i> Contrast:</label>
+              <span id="contrast-value">100%</span>
+            </div>
+            <input type="range" id="contrast" min="0" max="200" step="1" value="100" class="tw-focus-ring focus:ring-[var(--accent)]"/>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3 class="control-title">Effects</h3>
+          <div class="slider-container mb-2">
+            <div class="slider-label">
+              <label for="dithering"><i class="material-icons">gradient</i> Dithering:</label> <!-- Changed icon -->
+              <span id="dithering-value">0%</span>
+            </div>
+            <input type="range" id="dithering" min="0" max="100" step="1" value="0" class="tw-focus-ring focus:ring-[var(--accent)]"/>
+          </div>
+          <div class="slider-container">
+            <div class="slider-label">
+              <label for="noise"><i class="material-icons">grain</i> Noise:</label>
+              <span id="noise-value">0%</span>
+            </div>
+            <input type="range" id="noise" min="0" max="100" step="1" value="0" class="tw-focus-ring focus:ring-[var(--accent)]"/>
           </div>
         </div>
       </div>
-      <!-- Save & Load Card (Always Visible) -->
+
       <div id="save-load-card" class="controls-panel">
-        <!-- Save & Load -->
         <div class="control-group">
-          <h3 class="control-title">Save & Load</h3>
-          <div class="select-container">
-            <label for="saved-settings" class="select-label">
-              <i class="material-icons">bookmark</i>
-            </label>
-            <select id="saved-settings">
-              <option value="" disabled selected>Select Saved Settings</option>
+          <h3 class="control-title">Project</h3>
+          <div class="select-container mb-2">
+            <label for="saved-settings" class="select-label"><i class="material-icons">bookmarks</i> Saved Presets:</label>
+            <select id="saved-settings" class="tw-focus-ring focus:ring-[var(--accent)] focus:border-[var(--accent)]">
+              <option value="" disabled selected>Load a preset...</option>
             </select>
           </div>
-        </div>
-        <!-- Action Buttons -->
-        <div id="action-buttons">
-          <button id="download-btn" title="Download">
-            <i class="material-icons">file_download</i>
-          </button>
-          <button id="reset-btn" title="Reset">
-            <i class="material-icons">restart_alt</i>
-          </button>
-          <button id="randomize-btn" title="Randomize">
-            <i class="material-icons">casino</i>
-          </button>
-          <button id="save-btn" title="Save Settings">
-            <i class="material-icons">save</i>
-          </button>
-          <button id="load-btn" title="Load Settings">
-            <i class="material-icons">folder_open</i>
-          </button>
+          <div id="action-buttons">
+            <button id="load-btn" title="Load Selected Preset" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">folder_open</i></button>
+            <button id="save-btn" title="Save Current Settings as Preset" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">save</i></button>
+            <button id="randomize-btn" title="Randomize Settings" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">casino</i></button>
+            <button id="reset-btn" title="Reset All Settings" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">restart_alt</i></button>
+            <button id="download-btn" title="Download Image" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">file_download</i></button>
+          </div>
         </div>
       </div>
     </div>
@@ -546,9 +594,20 @@
 
   <script>
     // DOM Elements
-    const imageUpload = document.getElementById('image-upload');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+    const imageUploadInput = document.getElementById('image-upload');
+    const uploadContainer = document.getElementById('upload-container');
+    const uploadLabel = uploadContainer.querySelector('label');
+
+    const visibleCanvas = document.getElementById('canvas');
+    const vCtx = visibleCanvas.getContext('2d');
+    const canvasViewportWrapper = document.getElementById('canvas-viewport-wrapper');
+    
+    const processedCanvas = document.createElement('canvas'); // For final pixelated image
+    const pCtx = processedCanvas.getContext('2d');
+    const originalBaseImageCanvas = document.createElement('canvas'); // For original scaled image preview
+    const obCtx = originalBaseImageCanvas.getContext('2d');
+
+
     const savedSettingsSelect = document.getElementById('saved-settings');
     const colorPaletteSelect = document.getElementById('color-palette');
     const resolutionSlider = document.getElementById('resolution');
@@ -571,25 +630,54 @@
     const ditheringSlider = document.getElementById('dithering');
     const ditheringValue = document.getElementById('dithering-value');
     const pixelationStyleSelect = document.getElementById('pixelation-style');
-    // Aspect Ratio Buttons
+
     const defaultAspectBtn = document.getElementById('default-aspect-btn');
     const evenAspectBtn = document.getElementById('even-aspect-btn');
     const switchAspectBtn = document.getElementById('switch-aspect-btn');
     const lockAspectBtn = document.getElementById('lock-aspect-btn');
-    // Action Buttons
+    
     const downloadBtn = document.getElementById('download-btn');
     const resetBtn = document.getElementById('reset-btn');
     const randomizeBtn = document.getElementById('randomize-btn');
     const saveBtn = document.getElementById('save-btn');
     const loadBtn = document.getElementById('load-btn');
 
-    // Variables
-    let originalImageData = null;
+    const previewOriginalBtn = document.getElementById('preview-original-btn');
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const resetViewBtn = document.getElementById('reset-view-btn');
+    const zoomLevelDisplay = document.getElementById('zoom-level-display');
+    const toggleGridBtn = document.getElementById('toggle-grid-btn');
+
+    // State Variables
+    let sourceImageElement = null; 
     let originalWidth = 0;
     let originalHeight = 0;
-    let savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves')) || [];
+    
+    let savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves_v2')) || [];
     let paletteCache = {};
-    let aspectLock = false; // Determines whether width and height are locked
+    let aspectLock = false;
+
+    // Canvas View State
+    const viewTransform = { x: 0, y: 0, scale: 1 };
+    let isPanning = false;
+    let lastPanPosition = { x: 0, y: 0 };
+    let showPixelGrid = false;
+    const MIN_GRID_CELL_SIZE = 5; 
+    let isPreviewingOriginal = false;
+
+
+    // Inertial Glide Variables
+    let panVelocity = { x: 0, y: 0 };
+    let lastMoveTimestamp = 0;
+    let recentPanMoves = []; 
+    let glideRequestID = null; 
+
+    const DAMPING_FACTOR = 0.92; 
+    const MIN_GLIDE_VELOCITY = 0.01; 
+    const RECENT_MOVES_SAMPLES = 5; 
+    const MAX_RECENT_MOVES = 10; 
+    const MAX_GLIDE_DT = 100; 
 
     // Debounce Function
     function debounce(func, wait) {
@@ -599,103 +687,28 @@
         timeout = setTimeout(() => func.apply(this, args), wait);
       };
     }
-    const debouncedApplyPixelation = debounce(applyPixelation, 100);
+    const debouncedProcessAndRender = debounce(processImageAndRender, 250);
+    const debouncedDrawVisibleCanvas = debounce(drawVisibleCanvas, 16); 
 
-    // Load Saved Settings
-    function loadSavedSettings() {
-      savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves')) || [];
-      savedSettingsSelect.innerHTML = '<option value="" disabled selected>Select Saved Settings</option>';
-      savedSettings.forEach((save, index) => {
-        const option = document.createElement('option');
-        option.value = index;
-        option.textContent = `Save ${index + 1}`;
-        savedSettingsSelect.appendChild(option);
-      });
-    }
-    loadSavedSettings();
-
-    // Predefined Palettes
-    const predefinedPalettes = {
-      grayscale: generateGrayscalePalette(16),
-      vibrant: [
-        { r: 255, g: 99, b: 132 },
-        { r: 54, g: 162, b: 235 },
-        { r: 255, g: 206, b: 86 },
-        { r: 75, g: 192, b: 192 },
-        { r: 153, g: 102, b: 255 },
-        { r: 255, g: 159, b: 64 }
-      ],
-      pastel: [
-        { r: 255, g: 179, b: 186 },
-        { r: 255, g: 223, b: 186 },
-        { r: 255, g: 255, b: 186 },
-        { r: 186, g: 255, b: 201 },
-        { r: 186, g: 225, b: 255 },
-        { r: 255, g: 186, b: 255 }
-      ],
-      custom: [] // Placeholder for custom palette
-    };
-    function generateGrayscalePalette(numColors) {
-      const palette = [];
-      for (let i = 0; i < numColors; i++) {
-        const gray = Math.floor((i / (numColors - 1)) * 255);
-        palette.push({ r: gray, g: gray, b: gray });
-      }
-      return palette;
-    }
-
-    // Drag-and-Drop for Upload
-    const uploadContainer = document.getElementById('upload-container');
-    uploadContainer.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadContainer.querySelector('label').classList.add('dragover');
-    });
-    uploadContainer.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      uploadContainer.querySelector('label').classList.remove('dragover');
-    });
-    uploadContainer.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadContainer.querySelector('label').classList.remove('dragover');
-      if(e.dataTransfer.files.length) {
-        imageUpload.files = e.dataTransfer.files;
-        const event = new Event('change');
-        imageUpload.dispatchEvent(event);
-      }
+    document.addEventListener('DOMContentLoaded', () => {
+        loadSavedSettings();
+        updateAllSliderValueDisplays();
+        setupCanvasViewport();
+        window.addEventListener('resize', debounce(setupCanvasViewport, 200));
     });
 
-    // Image Upload Handler
-    imageUpload.addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        const img = new Image();
-        img.onload = function() {
-          originalWidth = img.width;
-          originalHeight = img.height;
-          const scale = parseInt(resolutionSlider.value) / 100;
-          const targetWidth = originalWidth * scale;
-          const targetHeight = originalHeight * scale;
-          canvas.width = targetWidth;
-          canvas.height = targetHeight;
-          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-          originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          applyPixelation();
+    function setupCanvasViewport() {
+        const rect = canvasViewportWrapper.getBoundingClientRect();
+        visibleCanvas.width = rect.width;
+        visibleCanvas.height = rect.height;
+        if (sourceImageElement) {
+            resetViewTransform(); 
+        } else {
+            drawVisibleCanvas(); 
         }
-        img.onerror = function() {
-          alert('Failed to load the image. Please try a different file.');
-        }
-        img.src = event.target.result;
-      }
-      reader.onerror = function() {
-        alert('Failed to read the file. Please try again.');
-      }
-      reader.readAsDataURL(file);
-    });
-
-    // Update Slider Value Displays
-    function updateSliderValues() {
+    }
+    
+    function updateAllSliderValueDisplays() {
       pixelSizeValue.textContent = pixelSizeSlider.value + ' px';
       colorReductionValue.textContent = colorReductionSlider.value;
       ditheringValue.textContent = ditheringSlider.value + '%';
@@ -707,417 +720,689 @@
       noiseValue.textContent = noiseSlider.value + '%';
     }
 
-    // Resolution Preset Handler
-    resolutionPresetSelect.addEventListener('change', function() {
-      if (resolutionPresetSelect.value !== 'custom') {
-        resolutionSlider.value = resolutionPresetSelect.value;
-        resolutionSlider.disabled = true;
-      } else {
-        resolutionSlider.disabled = false;
-      }
-      debouncedApplyPixelation();
+    uploadContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadLabel.classList.add('dragover');
     });
-    resolutionSlider.addEventListener('input', function() {
-      if (resolutionPresetSelect.value !== 'custom') {
-        resolutionPresetSelect.value = 'custom';
-        resolutionSlider.disabled = false;
+    uploadContainer.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      uploadLabel.classList.remove('dragover');
+    });
+    uploadContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadLabel.classList.remove('dragover');
+      if(e.dataTransfer.files.length) {
+        imageUploadInput.files = e.dataTransfer.files;
+        handleImageUpload(e.dataTransfer.files[0]);
       }
-      debouncedApplyPixelation();
+    });
+    imageUploadInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) handleImageUpload(file);
     });
 
-    // Aspect Ratio Lock: update the other slider if locked
-    aspectRatioWidthSlider.addEventListener('input', function() {
-      aspectRatioWidthValue.textContent = aspectRatioWidthSlider.value + '%';
-      if (aspectLock) {
-        aspectRatioHeightSlider.value = aspectRatioWidthSlider.value;
-        aspectRatioHeightValue.textContent = aspectRatioWidthSlider.value + '%';
+    function handleImageUpload(file) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          sourceImageElement = img;
+          originalWidth = img.naturalWidth;
+          originalHeight = img.naturalHeight;
+          resetViewTransform(); 
+          processImageAndRender();
+        }
+        img.onerror = () => alert('Failed to load image. Please try a different file.');
+        img.src = event.target.result;
       }
-      debouncedApplyPixelation();
-    });
-    aspectRatioHeightSlider.addEventListener('input', function() {
-      aspectRatioHeightValue.textContent = aspectRatioHeightSlider.value + '%';
-      if (aspectLock) {
-        aspectRatioWidthSlider.value = aspectRatioHeightSlider.value;
-        aspectRatioWidthValue.textContent = aspectRatioHeightSlider.value + '%';
-      }
-      debouncedApplyPixelation();
-    });
+      reader.onerror = () => alert('Failed to read file. Please try again.');
+      reader.readAsDataURL(file);
+    }
 
-    // Aspect Ratio Buttons
-    defaultAspectBtn.addEventListener('click', function() {
-      aspectRatioWidthSlider.value = 100;
-      aspectRatioHeightSlider.value = 100;
-      aspectRatioWidthValue.textContent = '100%';
-      aspectRatioHeightValue.textContent = '100%';
-      debouncedApplyPixelation();
-    });
-    evenAspectBtn.addEventListener('click', function() {
-      const avg = Math.round((parseInt(aspectRatioWidthSlider.value) + parseInt(aspectRatioHeightSlider.value)) / 2);
-      aspectRatioWidthSlider.value = avg;
-      aspectRatioHeightSlider.value = avg;
-      aspectRatioWidthValue.textContent = avg + '%';
-      aspectRatioHeightValue.textContent = avg + '%';
-      debouncedApplyPixelation();
-    });
-    switchAspectBtn.addEventListener('click', function() {
-      const temp = aspectRatioWidthSlider.value;
-      aspectRatioWidthSlider.value = aspectRatioHeightSlider.value;
-      aspectRatioHeightSlider.value = temp;
-      aspectRatioWidthValue.textContent = aspectRatioWidthSlider.value + '%';
-      aspectRatioHeightValue.textContent = aspectRatioHeightSlider.value + '%';
-      debouncedApplyPixelation();
-    });
-    lockAspectBtn.addEventListener('click', function() {
-      aspectLock = !aspectLock;
-      lockAspectBtn.querySelector('i.material-icons').textContent = aspectLock ? 'lock' : 'lock_open';
-      lockAspectBtn.title = aspectLock ? 'Click to unlock aspect ratio' : 'Click to lock aspect ratio';
-      if (aspectLock) {
-        aspectRatioHeightSlider.value = aspectRatioWidthSlider.value;
-        aspectRatioHeightValue.textContent = aspectRatioWidthSlider.value + '%';
-        debouncedApplyPixelation();
-      }
-    });
+    function processImageAndRender() {
+      if (!sourceImageElement) return;
+      updateAllSliderValueDisplays();
 
-    // Listen to other controls
-    [ pixelSizeSlider, colorReductionSlider, ditheringSlider,
-      saturationSlider, contrastSlider, noiseSlider,
-      colorPaletteSelect, pixelationStyleSelect
-    ].forEach(control => {
-      control.addEventListener('input', debouncedApplyPixelation);
-    });
+      const resScale = parseInt(resolutionSlider.value) / 100;
+      const aspectW = parseInt(aspectRatioWidthSlider.value) / 100;
+      const aspectH = parseInt(aspectRatioHeightSlider.value) / 100;
 
-    // Pixelation Function
-    function applyPixelation() {
-      if (!originalImageData) return;
-      updateSliderValues();
-      const scale = parseInt(resolutionSlider.value) / 100;
-      const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
-      const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
-      const targetWidth = originalWidth * scale * aspectWidth;
-      const targetHeight = originalHeight * scale * aspectHeight;
-      redrawOriginalImage(targetWidth, targetHeight);
+      const procWidth = Math.round(originalWidth * resScale * aspectW);
+      const procHeight = Math.round(originalHeight * resScale * aspectH);
+
+      if (procWidth <= 0 || procHeight <= 0) return; 
+
+      // 1. Prepare the original base image (scaled, no effects) for preview
+      originalBaseImageCanvas.width = procWidth;
+      originalBaseImageCanvas.height = procHeight;
+      obCtx.clearRect(0, 0, procWidth, procHeight);
+      obCtx.drawImage(sourceImageElement, 0, 0, procWidth, procHeight);
+
+      // 2. Prepare the processed canvas
+      processedCanvas.width = procWidth;
+      processedCanvas.height = procHeight;
+      pCtx.clearRect(0, 0, procWidth, procHeight);
+      pCtx.drawImage(sourceImageElement, 0, 0, procWidth, procHeight); // Start with scaled image
+      
+      let imageData = pCtx.getImageData(0, 0, procWidth, procHeight);
+
+      // Apply effects to imageData for processedCanvas
+      imageData = applySaturationContrast(imageData, parseInt(saturationSlider.value), parseInt(contrastSlider.value));
+      
       const paletteChoice = colorPaletteSelect.value;
+      const numColors = parseInt(colorReductionSlider.value);
+      let activePalette = null;
+
       if (paletteChoice !== 'default') {
-        let palette;
-        if (paletteChoice === 'random') {
-          palette = generatePalette(parseInt(colorReductionSlider.value));
-        } else if (predefinedPalettes[paletteChoice].length > 0) {
-          palette = predefinedPalettes[paletteChoice];
-        } else {
-          palette = generatePalette(parseInt(colorReductionSlider.value));
-        }
-        reduceColors(parseInt(colorReductionSlider.value), palette);
-        if (parseInt(ditheringSlider.value) > 0) {
-          applyDithering(parseInt(ditheringSlider.value), palette);
+        if (paletteChoice === 'random') activePalette = generateRandomPalette(numColors);
+        else if (predefinedPalettes[paletteChoice]) activePalette = predefinedPalettes[paletteChoice];
+        
+        if (activePalette) {
+            imageData = reduceColors(imageData, activePalette);
         }
       }
-      adjustSaturationContrast(parseInt(saturationSlider.value), parseInt(contrastSlider.value));
-      pixelate(parseInt(pixelSizeSlider.value));
+      
+      if (activePalette && parseInt(ditheringSlider.value) > 0) {
+        imageData = applyDithering(imageData, parseInt(ditheringSlider.value), activePalette);
+      }
+      
       if (parseInt(noiseSlider.value) > 0) {
-        applyNoise(parseInt(noiseSlider.value));
+        imageData = applyNoise(imageData, parseInt(noiseSlider.value));
       }
+      
+      pCtx.putImageData(imageData, 0, 0); // Put modified data back to processedCanvas
+
+      // Apply pixelation to processedCanvas
+      const currentPixelSize = parseInt(pixelSizeSlider.value);
+      if (currentPixelSize > 1) { 
+          applyPixelationEffect(currentPixelSize, pCtx, processedCanvas);
+      }
+
+      drawVisibleCanvas(); // This will draw either originalBase or processed based on isPreviewingOriginal
     }
 
-    // Redraw Original Image with New Dimensions
-    function redrawOriginalImage(targetWidth, targetHeight) {
-      if (!originalImageData) return;
-      const tempCanvas = document.createElement('canvas');
-      const tempCtx = tempCanvas.getContext('2d');
-      tempCanvas.width = canvas.width;
-      tempCanvas.height = canvas.height;
-      tempCtx.putImageData(originalImageData, 0, 0);
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-      ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, targetWidth, targetHeight);
-      originalImageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+    function drawVisibleCanvas() {
+      vCtx.setTransform(1, 0, 0, 1, 0, 0); 
+      vCtx.clearRect(0, 0, visibleCanvas.width, visibleCanvas.height);
+      
+      vCtx.translate(viewTransform.x, viewTransform.y);
+      vCtx.scale(viewTransform.scale, viewTransform.scale);
+
+      const sourceToDraw = isPreviewingOriginal && originalBaseImageCanvas.width > 0 ? originalBaseImageCanvas : processedCanvas;
+
+      if (sourceToDraw.width > 0 && sourceToDraw.height > 0) {
+        vCtx.drawImage(sourceToDraw, 0, 0);
+        if (showPixelGrid && !isPreviewingOriginal) drawPixelGrid(); // Only show grid on processed view
+      }
+      
+      zoomLevelDisplay.textContent = `${Math.round(viewTransform.scale * 100)}%`;
     }
 
-    // Adjust Saturation and Contrast
-    function adjustSaturationContrast(saturation, contrast) {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      for (let i = 0; i < data.length; i += 4) {
-        let { h, s, l } = rgbToHsl(data[i], data[i + 1], data[i + 2]);
-        s = s * (saturation / 100);
-        s = Math.max(0, Math.min(1, s));
-        let { r, g, b } = hslToRgb(h, s, l);
-        r = ((r - 128) * (contrast / 100)) + 128;
-        g = ((g - 128) * (contrast / 100)) + 128;
-        b = ((b - 128) * (contrast / 100)) + 128;
-        data[i] = clamp(r, 0, 255);
-        data[i + 1] = clamp(g, 0, 255);
-        data[i + 2] = clamp(b, 0, 255);
-      }
-      ctx.putImageData(imageData, 0, 0);
-    }
-    function rgbToHsl(r, g, b) {
-      r /= 255; g /= 255; b /= 255;
-      const max = Math.max(r, g, b), min = Math.min(r, g, b);
-      let h, s, l = (max + min) / 2;
-      if (max === min) {
-        h = s = 0;
-      } else {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        switch (max) {
-          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-          case g: h = (b - r) / d + 2; break;
-          case b: h = (r - g) / d + 4; break;
+    // --- Preview Original Button Logic ---
+    previewOriginalBtn.addEventListener('mousedown', () => {
+        if (!sourceImageElement) return;
+        isPreviewingOriginal = true;
+        drawVisibleCanvas();
+    });
+    // Add mouseup to document to catch release anywhere
+    document.addEventListener('mouseup', () => {
+        if (isPreviewingOriginal) {
+            isPreviewingOriginal = false;
+            drawVisibleCanvas();
         }
-        h /= 6;
-      }
-      return { h, s, l };
-    }
-    function hslToRgb(h, s, l) {
-      let r, g, b;
-      if (s === 0) {
-        r = g = b = l;
-      } else {
-        const hue2rgb = function(p, q, t) {
-          if(t < 0) t += 1;
-          if(t > 1) t -= 1;
-          if(t < 1/6) return p + (q - p) * 6 * t;
-          if(t < 1/2) return q;
-          if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-          return p;
+    });
+    previewOriginalBtn.addEventListener('mouseleave', () => {
+        if (isPreviewingOriginal) { // If mouse was down on button and dragged off
+            isPreviewingOriginal = false;
+            drawVisibleCanvas();
         }
-        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        const p = 2 * l - q;
-        r = hue2rgb(p, q, h + 1/3);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1/3);
-      }
-      return { r: r * 255, g: g * 255, b: b * 255 };
+    });
+
+
+    function applySaturationContrast(imageData, saturation, contrast) {
+        const data = imageData.data;
+        const sat = saturation / 100;
+        const con = contrast / 100;
+
+        for (let i = 0; i < data.length; i += 4) {
+            let r = data[i], g = data[i+1], b = data[i+2];
+            const gray = 0.299 * r + 0.587 * g + 0.114 * b; 
+            r = clamp(gray + (r - gray) * sat, 0, 255);
+            g = clamp(gray + (g - gray) * sat, 0, 255);
+            b = clamp(gray + (b - gray) * sat, 0, 255);
+            r = clamp(((r / 255 - 0.5) * con + 0.5) * 255, 0, 255);
+            g = clamp(((g / 255 - 0.5) * con + 0.5) * 255, 0, 255);
+            b = clamp(((b / 255 - 0.5) * con + 0.5) * 255, 0, 255);
+            data[i] = r; data[i+1] = g; data[i+2] = b;
+        }
+        return imageData;
     }
-    function clamp(value, min, max) {
-      return Math.max(min, Math.min(max, value));
+
+    function reduceColors(imageData, palette) {
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            const color = { r: data[i], g: data[i + 1], b: data[i + 2] };
+            const nearest = findNearestColor(color, palette);
+            data[i] = nearest.r; data[i+1] = nearest.g; data[i+2] = nearest.b;
+        }
+        return imageData;
     }
-    // Pixelate
-    function pixelate(pixelSize) {
-      const width = canvas.width;
-      const height = canvas.height;
-      const tempCanvas = document.createElement('canvas');
-      const tempCtx = tempCanvas.getContext('2d');
-      tempCanvas.width = Math.ceil(width / pixelSize);
-      tempCanvas.height = Math.ceil(height / pixelSize);
-      tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, width, height);
-    }
-    // Reduce Colors
-    function reduceColors(numColors, palette) {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      for (let i = 0; i < data.length; i += 4) {
-        const color = { r: data[i], g: data[i + 1], b: data[i + 2] };
-        const nearest = findNearestColor(color, palette);
-        data[i] = nearest.r;
-        data[i + 1] = nearest.g;
-        data[i + 2] = nearest.b;
-      }
-      ctx.putImageData(imageData, 0, 0);
-    }
-    function generatePalette(numColors) {
-      if (paletteCache[numColors]) return paletteCache[numColors];
-      const palette = [];
-      for (let i = 0; i < numColors; i++) {
-        palette.push({
-          r: Math.floor(Math.random() * 256),
-          g: Math.floor(Math.random() * 256),
-          b: Math.floor(Math.random() * 256)
-        });
-      }
-      paletteCache[numColors] = palette;
-      return palette;
-    }
+    
     function findNearestColor(color, palette) {
-      let minDistance = Infinity;
+      let minDistanceSq = Infinity;
       let nearestColor = palette[0];
-      for (let i = 0; i < palette.length; i++) {
-        const pColor = palette[i];
-        const distance = (color.r - pColor.r) ** 2 +
-                         (color.g - pColor.g) ** 2 +
-                         (color.b - pColor.b) ** 2;
-        if (distance < minDistance) {
-          minDistance = distance;
+      for (const pColor of palette) {
+        const dr = color.r - pColor.r;
+        const dg = color.g - pColor.g;
+        const db = color.b - pColor.b;
+        const distanceSq = dr*dr + dg*dg + db*db;
+        if (distanceSq < minDistanceSq) {
+          minDistanceSq = distanceSq;
           nearestColor = pColor;
         }
       }
       return nearestColor;
     }
-    // Dithering (Floyd-Steinberg)
-    function applyDithering(percentage, palette) {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      const ditherAmount = percentage / 100;
-      for (let y = 0; y < canvas.height; y++) {
-        for (let x = 0; x < canvas.width; x++) {
-          const idx = (y * canvas.width + x) * 4;
-          const oldR = data[idx], oldG = data[idx + 1], oldB = data[idx + 2];
-          const newColor = findNearestColor({ r: oldR, g: oldG, b: oldB }, palette);
-          data[idx] = newColor.r;
-          data[idx + 1] = newColor.g;
-          data[idx + 2] = newColor.b;
-          const errorR = oldR - newColor.r;
-          const errorG = oldG - newColor.g;
-          const errorB = oldB - newColor.b;
-          distributeError(data, x + 1, y, errorR, errorG, errorB, ditherAmount);
-          distributeError(data, x - 1, y + 1, errorR, errorG, errorB, ditherAmount);
-          distributeError(data, x, y + 1, errorR, errorG, errorB, ditherAmount);
-          distributeError(data, x + 1, y + 1, errorR, errorG, errorB, ditherAmount);
+
+    function applyDithering(imageData, percentage, palette) {
+        const data = imageData.data;
+        const width = imageData.width;
+        const height = imageData.height;
+        
+        const dataCopy = new Float32Array(data.length);
+        for(let i=0; i<data.length; i++) dataCopy[i] = data[i];
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                const oldR = dataCopy[idx], oldG = dataCopy[idx + 1], oldB = dataCopy[idx + 2];
+                const newColor = findNearestColor({ r: oldR, g: oldG, b: oldB }, palette);
+                
+                data[idx] = newColor.r; data[idx+1] = newColor.g; data[idx+2] = newColor.b;
+
+                const errR = oldR - newColor.r;
+                const errG = oldG - newColor.g;
+                const errB = oldB - newColor.b;
+
+                if (x + 1 < width) {
+                    const i = idx + 4;
+                    dataCopy[i]   = clamp(dataCopy[i]   + errR * 7/16, 0, 255);
+                    dataCopy[i+1] = clamp(dataCopy[i+1] + errG * 7/16, 0, 255);
+                    dataCopy[i+2] = clamp(dataCopy[i+2] + errB * 7/16, 0, 255);
+                }
+                if (x - 1 >= 0 && y + 1 < height) {
+                    const i = idx + width*4 - 4;
+                    dataCopy[i]   = clamp(dataCopy[i]   + errR * 3/16, 0, 255);
+                    dataCopy[i+1] = clamp(dataCopy[i+1] + errG * 3/16, 0, 255);
+                    dataCopy[i+2] = clamp(dataCopy[i+2] + errB * 3/16, 0, 255);
+                }
+                if (y + 1 < height) {
+                    const i = idx + width*4;
+                    dataCopy[i]   = clamp(dataCopy[i]   + errR * 5/16, 0, 255);
+                    dataCopy[i+1] = clamp(dataCopy[i+1] + errG * 5/16, 0, 255);
+                    dataCopy[i+2] = clamp(dataCopy[i+2] + errB * 5/16, 0, 255);
+                }
+                if (x + 1 < width && y + 1 < height) {
+                    const i = idx + width*4 + 4;
+                    dataCopy[i]   = clamp(dataCopy[i]   + errR * 1/16, 0, 255);
+                    dataCopy[i+1] = clamp(dataCopy[i+1] + errG * 1/16, 0, 255);
+                    dataCopy[i+2] = clamp(dataCopy[i+2] + errB * 1/16, 0, 255);
+                }
+            }
+        }
+        return imageData; 
+    }
+    
+    function applyNoise(imageData, amount) {
+        const data = imageData.data;
+        const noiseLevel = amount / 100 * 128; 
+        for (let i = 0; i < data.length; i += 4) {
+            const rand = (Math.random() - 0.5) * noiseLevel;
+            data[i]   = clamp(data[i] + rand, 0, 255);
+            data[i+1] = clamp(data[i+1] + rand, 0, 255);
+            data[i+2] = clamp(data[i+2] + rand, 0, 255);
+        }
+        return imageData;
+    }
+
+    function applyPixelationEffect(pixelSize, targetCtx, sourceCanvas) {
+        const width = sourceCanvas.width;
+        const height = sourceCanvas.height;
+        if (pixelSize <= 1) { 
+            if (targetCtx.canvas !== sourceCanvas) {
+                targetCtx.clearRect(0,0,width,height);
+                targetCtx.drawImage(sourceCanvas, 0,0,width,height);
+            }
+            return;
+        }
+
+        const tempSmallCanvas = document.createElement('canvas'); 
+        const tempSmallCtx = tempSmallCanvas.getContext('2d');
+        
+        const smallWidth = Math.max(1, Math.floor(width / pixelSize));
+        const smallHeight = Math.max(1, Math.floor(height / pixelSize));
+        tempSmallCanvas.width = smallWidth;
+        tempSmallCanvas.height = smallHeight;
+
+        tempSmallCtx.imageSmoothingEnabled = true; 
+        tempSmallCtx.drawImage(sourceCanvas, 0, 0, width, height, 0, 0, smallWidth, smallHeight);
+        
+        targetCtx.imageSmoothingEnabled = false; 
+        targetCtx.clearRect(0, 0, width, height);
+        targetCtx.drawImage(tempSmallCanvas, 0, 0, smallWidth, smallHeight, 0, 0, width, height);
+        targetCtx.imageSmoothingEnabled = true; 
+    }
+
+    function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+
+    const predefinedPalettes = {
+      grayscale: (() => { const p=[]; for(let i=0;i<16;i++){const g=Math.floor(i/15*255);p.push({r:g,g:g,b:g});} return p; })(),
+      vibrant: [{r:255,g:99,b:132},{r:54,g:162,b:235},{r:255,g:206,b:86},{r:75,g:192,b:192},{r:153,g:102,b:255},{r:255,g:159,b:64}],
+      pastel: [{r:255,g:179,b:186},{r:255,g:223,b:186},{r:255,g:255,b:186},{r:186,g:255,b:201},{r:186,g:225,b:255},{r:200,g:186,b:255}]
+    };
+    function generateRandomPalette(numColors) {
+      if (paletteCache[numColors]) return paletteCache[numColors];
+      const palette = [];
+      for (let i = 0; i < numColors; i++) {
+        palette.push({r:getRandomInt(0,255),g:getRandomInt(0,255),b:getRandomInt(0,255)});
+      }
+      paletteCache[numColors] = palette;
+      return palette;
+    }
+
+    // --- Canvas Interaction: Pan, Zoom, Grid, Glide ---
+    canvasViewportWrapper.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return; 
+      isPanning = true;
+      lastPanPosition = { x: e.clientX, y: e.clientY };
+      canvasViewportWrapper.classList.add('grabbing');
+      canvasViewportWrapper.style.cursor = 'grabbing';
+
+      if (glideRequestID) {
+        cancelAnimationFrame(glideRequestID);
+        glideRequestID = null;
+      }
+      panVelocity = { x: 0, y: 0 }; 
+      recentPanMoves = [];
+      lastMoveTimestamp = performance.now();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      const currentTime = performance.now();
+      const dt = currentTime - lastMoveTimestamp;
+
+      const dx = e.clientX - lastPanPosition.x;
+      const dy = e.clientY - lastPanPosition.y;
+
+      viewTransform.x += dx;
+      viewTransform.y += dy;
+
+      if (dt > 0) {
+        const vx = dx / dt; 
+        const vy = dy / dt; 
+        recentPanMoves.push({ x: e.clientX, y: e.clientY, timestamp: currentTime, vx, vy });
+        if (recentPanMoves.length > MAX_RECENT_MOVES) {
+          recentPanMoves.shift(); 
         }
       }
-      ctx.putImageData(imageData, 0, 0);
-    }
-    function distributeError(data, x, y, errorR, errorG, errorB, amount) {
-      if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return;
-      const idx = (y * canvas.width + x) * 4;
-      data[idx] = clamp(data[idx] + errorR * amount, 0, 255);
-      data[idx + 1] = clamp(data[idx + 1] + errorG * amount, 0, 255);
-      data[idx + 2] = clamp(data[idx + 2] + errorB * amount, 0, 255);
-    }
-    // Noise
-    function applyNoise(amount) {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      const noiseLevel = amount / 100;
-      for (let i = 0; i < data.length; i += 4) {
-        const rand = (Math.random() - 0.5) * 255 * noiseLevel;
-        data[i] = clamp(data[i] + rand, 0, 255);
-        data[i + 1] = clamp(data[i + 1] + rand, 0, 255);
-        data[i + 2] = clamp(data[i + 2] + rand, 0, 255);
+
+      lastPanPosition = { x: e.clientX, y: e.clientY };
+      lastMoveTimestamp = currentTime;
+      drawVisibleCanvas();
+    });
+
+    document.addEventListener('mouseup', (e) => { // This listener is now also used by previewOriginalBtn
+      if (isPanning) {
+        isPanning = false;
+        canvasViewportWrapper.classList.remove('grabbing');
+        canvasViewportWrapper.style.cursor = 'grab';
+
+        if (recentPanMoves.length > 0) {
+          let totalVx = 0;
+          let totalVy = 0;
+          const samplesToAverage = Math.min(recentPanMoves.length, RECENT_MOVES_SAMPLES);
+          
+          for (let i = 0; i < samplesToAverage; i++) {
+            const move = recentPanMoves[recentPanMoves.length - 1 - i];
+            totalVx += move.vx;
+            totalVy += move.vy;
+          }
+          if (samplesToAverage > 0) {
+            panVelocity.x = totalVx / samplesToAverage;
+            panVelocity.y = totalVy / samplesToAverage;
+          }
+        }
+        
+        recentPanMoves = [];
+
+        if (Math.abs(panVelocity.x) > MIN_GLIDE_VELOCITY || Math.abs(panVelocity.y) > MIN_GLIDE_VELOCITY) {
+          lastGlideTimestamp = 0; 
+          if (glideRequestID) cancelAnimationFrame(glideRequestID);
+          glideRequestID = requestAnimationFrame(glideStep);
+        }
       }
-      ctx.putImageData(imageData, 0, 0);
-    }
-    // Function to generate random file names (8 alphanumeric characters)
-    function generateRandomFileName() {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      let result = '';
-      for (let i = 0; i < 8; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      // Moved from previewOriginalBtn's mouseup to here for global release
+      if (isPreviewingOriginal) {
+          isPreviewingOriginal = false;
+          drawVisibleCanvas();
       }
-      return result + '.png';
+    });
+
+    let lastGlideTimestamp = 0;
+    function glideStep(timestamp) {
+        if (isPanning) { 
+            panVelocity = { x: 0, y: 0 };
+            glideRequestID = null;
+            return;
+        }
+
+        if (lastGlideTimestamp === 0) { 
+            lastGlideTimestamp = timestamp;
+            glideRequestID = requestAnimationFrame(glideStep); 
+            return;
+        }
+
+        let dt = timestamp - lastGlideTimestamp;
+        lastGlideTimestamp = timestamp;
+
+        if (dt <= 0) { 
+            glideRequestID = requestAnimationFrame(glideStep);
+            return;
+        }
+        
+        const effectiveDt = Math.min(dt, MAX_GLIDE_DT); 
+
+        viewTransform.x += panVelocity.x * effectiveDt;
+        viewTransform.y += panVelocity.y * effectiveDt;
+
+        const dampingExponent = effectiveDt / (1000 / 60); 
+        panVelocity.x *= Math.pow(DAMPING_FACTOR, dampingExponent);
+        panVelocity.y *= Math.pow(DAMPING_FACTOR, dampingExponent);
+        
+        drawVisibleCanvas();
+
+        if (Math.abs(panVelocity.x) > MIN_GLIDE_VELOCITY || Math.abs(panVelocity.y) > MIN_GLIDE_VELOCITY) {
+            glideRequestID = requestAnimationFrame(glideStep);
+        } else {
+            panVelocity = { x: 0, y: 0 }; 
+            glideRequestID = null;
+            lastGlideTimestamp = 0; 
+        }
     }
-    // Button Handlers
-    downloadBtn.addEventListener('click', function() {
-      if (!canvas.width || !canvas.height) {
-        alert('Please upload an image first.');
-        return;
+
+
+    canvasViewportWrapper.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (glideRequestID) {
+        cancelAnimationFrame(glideRequestID);
+        glideRequestID = null;
+        panVelocity = { x: 0, y: 0 };
+      }
+
+      const zoomFactor = 1.1;
+      const oldScale = viewTransform.scale;
+      
+      if (e.deltaY < 0) viewTransform.scale *= zoomFactor; 
+      else viewTransform.scale /= zoomFactor; 
+      viewTransform.scale = clamp(viewTransform.scale, 0.1, 20); 
+
+      const rect = canvasViewportWrapper.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left; 
+      const mouseY = e.clientY - rect.top;  
+
+      viewTransform.x = mouseX - (mouseX - viewTransform.x) * (viewTransform.scale / oldScale);
+      viewTransform.y = mouseY - (mouseY - viewTransform.y) * (viewTransform.scale / oldScale);
+      
+      drawVisibleCanvas();
+    });
+
+    zoomInBtn.addEventListener('click', () => zoomCanvas(1.25));
+    zoomOutBtn.addEventListener('click', () => zoomCanvas(0.8));
+    resetViewBtn.addEventListener('click', () => {
+        if (glideRequestID) { 
+            cancelAnimationFrame(glideRequestID);
+            glideRequestID = null;
+            panVelocity = { x: 0, y: 0 };
+        }
+        resetViewTransform();
+        drawVisibleCanvas();
+    });
+
+    function zoomCanvas(factor) {
+        if (glideRequestID) { 
+            cancelAnimationFrame(glideRequestID);
+            glideRequestID = null;
+            panVelocity = { x: 0, y: 0 };
+        }
+        const oldScale = viewTransform.scale;
+        viewTransform.scale *= factor;
+        viewTransform.scale = clamp(viewTransform.scale, 0.1, 20);
+
+        const centerX = visibleCanvas.width / 2;
+        const centerY = visibleCanvas.height / 2;
+        viewTransform.x = centerX - (centerX - viewTransform.x) * (viewTransform.scale / oldScale);
+        viewTransform.y = centerY - (centerY - viewTransform.y) * (viewTransform.scale / oldScale);
+        
+        drawVisibleCanvas();
+    }
+    
+    function resetViewTransform() {
+        viewTransform.scale = 1;
+        if (processedCanvas.width > 0 && processedCanvas.height > 0) {
+            viewTransform.x = (visibleCanvas.width - processedCanvas.width * viewTransform.scale) / 2;
+            viewTransform.y = (visibleCanvas.height - processedCanvas.height * viewTransform.scale) / 2;
+        } else {
+            viewTransform.x = 0;
+            viewTransform.y = 0;
+        }
+    }
+
+    toggleGridBtn.addEventListener('click', () => {
+        showPixelGrid = !showPixelGrid;
+        toggleGridBtn.classList.toggle('active-tool', showPixelGrid);
+        drawVisibleCanvas();
+    });
+
+    function drawPixelGrid() {
+        if (!processedCanvas.width || !sourceImageElement) return;
+
+        const pixelArtPixelSize = parseInt(pixelSizeSlider.value); 
+        const numCols = Math.floor(processedCanvas.width / pixelArtPixelSize);
+        const numRows = Math.floor(processedCanvas.height / pixelArtPixelSize);
+
+        const cellWidthOnScreen = pixelArtPixelSize * viewTransform.scale;
+        const cellHeightOnScreen = pixelArtPixelSize * viewTransform.scale;
+
+        if (cellWidthOnScreen < MIN_GRID_CELL_SIZE && cellHeightOnScreen < MIN_GRID_CELL_SIZE) return; 
+
+        vCtx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        vCtx.lineWidth = 1 / viewTransform.scale; 
+
+        for (let i = 0; i <= numCols; i++) {
+            const x = i * pixelArtPixelSize;
+            vCtx.beginPath();
+            vCtx.moveTo(x, 0);
+            vCtx.lineTo(x, processedCanvas.height); 
+            vCtx.stroke();
+        }
+        for (let i = 0; i <= numRows; i++) {
+            const y = i * pixelArtPixelSize;
+            vCtx.beginPath();
+            vCtx.moveTo(0, y);
+            vCtx.lineTo(processedCanvas.width, y); 
+            vCtx.stroke();
+        }
+    }
+
+    [ resolutionSlider, pixelSizeSlider, aspectRatioWidthSlider, aspectRatioHeightSlider,
+      colorReductionSlider, saturationSlider, contrastSlider, noiseSlider, ditheringSlider,
+      resolutionPresetSelect, colorPaletteSelect, pixelationStyleSelect
+    ].forEach(control => {
+      control.addEventListener('input', () => {
+        if (control === resolutionSlider || control === resolutionPresetSelect) {
+            if (control === resolutionPresetSelect && resolutionPresetSelect.value !== 'custom') {
+                resolutionSlider.value = resolutionPresetSelect.value;
+                resolutionSlider.disabled = true;
+            } else if (control === resolutionSlider) {
+                resolutionPresetSelect.value = 'custom';
+                resolutionSlider.disabled = false;
+            }
+        }
+        debouncedProcessAndRender();
+      });
+    });
+    
+    aspectRatioWidthSlider.addEventListener('input', function() {
+      if (aspectLock) aspectRatioHeightSlider.value = this.value;
+    });
+    aspectRatioHeightSlider.addEventListener('input', function() {
+      if (aspectLock) aspectRatioWidthSlider.value = this.value;
+    });
+
+    defaultAspectBtn.addEventListener('click', () => {
+      aspectRatioWidthSlider.value = 100; aspectRatioHeightSlider.value = 100;
+      debouncedProcessAndRender();
+    });
+    evenAspectBtn.addEventListener('click', () => {
+      const avg = Math.round((parseInt(aspectRatioWidthSlider.value) + parseInt(aspectRatioHeightSlider.value)) / 2);
+      aspectRatioWidthSlider.value = avg; aspectRatioHeightSlider.value = avg;
+      debouncedProcessAndRender();
+    });
+    switchAspectBtn.addEventListener('click', () => {
+      const temp = aspectRatioWidthSlider.value;
+      aspectRatioWidthSlider.value = aspectRatioHeightSlider.value; aspectRatioHeightSlider.value = temp;
+      debouncedProcessAndRender();
+    });
+    lockAspectBtn.addEventListener('click', () => {
+      aspectLock = !aspectLock;
+      lockAspectBtn.querySelector('i.material-icons').textContent = aspectLock ? 'lock' : 'lock_open';
+      lockAspectBtn.title = aspectLock ? 'Unlock Aspect Ratio' : 'Lock Aspect Ratio';
+      if (aspectLock) aspectRatioHeightSlider.value = aspectRatioWidthSlider.value; 
+      debouncedProcessAndRender();
+    });
+
+    function collectCurrentSettings() {
+        return {
+            resolution: resolutionSlider.value, pixelSize: pixelSizeSlider.value,
+            aspectRatioWidth: aspectRatioWidthSlider.value, aspectRatioHeight: aspectRatioHeightSlider.value,
+            aspectLock: aspectLock,
+            colorReduction: colorReductionSlider.value, colorPalette: colorPaletteSelect.value,
+            saturation: saturationSlider.value, contrast: contrastSlider.value,
+            dithering: ditheringSlider.value, noise: noiseSlider.value,
+            pixelationStyle: pixelationStyleSelect.value,
+        };
+    }
+
+    function applySettings(settings) {
+        resolutionSlider.value = settings.resolution;
+        pixelSizeSlider.value = settings.pixelSize;
+        aspectRatioWidthSlider.value = settings.aspectRatioWidth;
+        aspectRatioHeightSlider.value = settings.aspectRatioHeight;
+        aspectLock = settings.aspectLock || false;
+        lockAspectBtn.querySelector('i.material-icons').textContent = aspectLock ? 'lock' : 'lock_open';
+        
+        colorReductionSlider.value = settings.colorReduction;
+        colorPaletteSelect.value = settings.colorPalette;
+        saturationSlider.value = settings.saturation;
+        contrastSlider.value = settings.contrast;
+        ditheringSlider.value = settings.dithering;
+        noiseSlider.value = settings.noise;
+        pixelationStyleSelect.value = settings.pixelationStyle;
+
+        const matchingPreset = Array.from(resolutionPresetSelect.options).find(opt => opt.value === settings.resolution);
+        if (matchingPreset && matchingPreset.value !== 'custom') {
+            resolutionPresetSelect.value = settings.resolution;
+            resolutionSlider.disabled = true;
+        } else {
+            resolutionPresetSelect.value = 'custom';
+            resolutionSlider.disabled = false;
+        }
+        
+        updateAllSliderValueDisplays();
+        processImageAndRender();
+        resetViewTransform(); 
+        drawVisibleCanvas();
+    }
+    
+    resetBtn.addEventListener('click', () => {
+      if (!sourceImageElement) { alert("Upload an image first."); return; }
+      const defaultSettings = {
+        resolution: "100", pixelSize: "10", aspectRatioWidth: "100", aspectRatioHeight: "100", aspectLock: false,
+        colorReduction: "16", colorPalette: "default", saturation: "100", contrast: "100",
+        dithering: "0", noise: "0", pixelationStyle: "standard"
+      };
+      applySettings(defaultSettings);
+    });
+
+    randomizeBtn.addEventListener('click', () => {
+      if (!sourceImageElement) { alert("Upload an image first."); return; }
+      const randomSettings = {
+        resolution: getRandomInt(10, 200).toString(),
+        pixelSize: getRandomInt(1, 50).toString(),
+        aspectRatioWidth: getRandomInt(25, 200).toString(),
+        aspectRatioHeight: getRandomInt(25, 200).toString(),
+        aspectLock: Math.random() < 0.3, 
+        colorReduction: getRandomInt(2, 64).toString(), 
+        colorPalette: Object.keys(predefinedPalettes)[getRandomInt(0, Object.keys(predefinedPalettes).length -1)],
+        saturation: getRandomInt(50, 150).toString(),
+        contrast: getRandomInt(50, 150).toString(),
+        dithering: (getRandomInt(0, 1) * getRandomInt(20,80)).toString(), 
+        noise: (getRandomInt(0, 1) * getRandomInt(5,30)).toString(), 
+        pixelationStyle: "standard"
+      };
+      if (randomSettings.colorPalette === 'default' && Math.random() < 0.7) {
+          randomSettings.colorPalette = 'random';
+      }
+      applySettings(randomSettings);
+    });
+
+    saveBtn.addEventListener('click', () => {
+      const name = prompt("Enter a name for this preset:", `Preset ${savedSettings.length + 1}`);
+      if (!name) return;
+      const currentSettings = collectCurrentSettings();
+      savedSettings.push({ name, ...currentSettings });
+      localStorage.setItem('pixelArtSaves_v2', JSON.stringify(savedSettings));
+      loadSavedSettings(); 
+      alert(`Preset "${name}" saved!`);
+    });
+
+    loadBtn.addEventListener('click', () => {
+      if (savedSettingsSelect.value === "") { alert('Please select a preset to load.'); return; }
+      if (!sourceImageElement && !confirm("No image loaded. Some settings might not apply correctly. Load preset anyway?")) return;
+      
+      const selectedPreset = savedSettings.find(s => s.name === savedSettingsSelect.value);
+      if (selectedPreset) {
+        applySettings(selectedPreset);
+        alert(`Preset "${selectedPreset.name}" loaded.`);
+      } else {
+        alert("Could not find selected preset.");
+      }
+    });
+    
+    function loadSavedSettings() {
+      savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves_v2')) || [];
+      savedSettingsSelect.innerHTML = '<option value="" disabled selected>Load a preset...</option>';
+      savedSettings.forEach(save => {
+        const option = document.createElement('option');
+        option.value = save.name; 
+        option.textContent = save.name;
+        savedSettingsSelect.appendChild(option);
+      });
+    }
+
+    downloadBtn.addEventListener('click', () => {
+      if (!sourceImageElement || !processedCanvas.width || !processedCanvas.height) {
+        alert('Please process an image first.'); return;
       }
       const link = document.createElement('a');
-      link.download = generateRandomFileName();
-      link.href = canvas.toDataURL();
+      link.download = `pixel-art-${Date.now()}.png`;
+      link.href = processedCanvas.toDataURL('image/png');
       link.click();
     });
-    resetBtn.addEventListener('click', function() {
-      if (!originalImageData) return;
-      resolutionSlider.value = 100;
-      pixelSizeSlider.value = 10;
-      colorReductionSlider.value = 16;
-      ditheringSlider.value = 0;
-      saturationSlider.value = 100;
-      contrastSlider.value = 100;
-      noiseSlider.value = 0;
-      colorPaletteSelect.value = 'default';
-      aspectRatioWidthSlider.value = 100;
-      aspectRatioHeightSlider.value = 100;
-      resolutionPresetSelect.value = 'custom';
-      resolutionSlider.disabled = false;
-      updateSliderValues();
-      const targetWidth = originalWidth;
-      const targetHeight = originalHeight;
-      redrawOriginalImage(targetWidth, targetHeight);
-      applyPixelation();
-    });
-    randomizeBtn.addEventListener('click', function() {
-      if (!originalImageData) return;
-      resolutionSlider.value = getRandomInt(50, 200);
-      pixelSizeSlider.value = getRandomInt(2, 50);
-      colorReductionSlider.value = getRandomInt(2, 256);
-      ditheringSlider.value = getRandomInt(0, 100);
-      saturationSlider.value = getRandomInt(50, 200);
-      contrastSlider.value = getRandomInt(50, 200);
-      noiseSlider.value = getRandomInt(0, 100);
-      colorPaletteSelect.value = getRandomPaletteChoice();
-      aspectRatioWidthSlider.value = getRandomInt(50, 200);
-      aspectRatioHeightSlider.value = getRandomInt(50, 200);
-      resolutionPresetSelect.value = 'custom';
-      resolutionSlider.disabled = false;
-      updateSliderValues();
-      const scale = parseInt(resolutionSlider.value) / 100;
-      const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
-      const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
-      const targetWidth = originalWidth * scale * aspectWidth;
-      const targetHeight = originalHeight * scale * aspectHeight;
-      redrawOriginalImage(targetWidth, targetHeight);
-      applyPixelation();
-    });
-    saveBtn.addEventListener('click', function() {
-      if (!originalImageData) {
-        alert('Please upload an image first.');
-        return;
-      }
-      const currentSettings = {
-        resolution: resolutionSlider.value,
-        pixelSize: pixelSizeSlider.value,
-        colorReduction: colorReductionSlider.value,
-        dithering: ditheringSlider.value,
-        saturation: saturationSlider.value,
-        contrast: contrastSlider.value,
-        noise: noiseSlider.value,
-        colorPalette: colorPaletteSelect.value,
-        aspectRatioWidth: aspectRatioWidthSlider.value,
-        aspectRatioHeight: aspectRatioHeightSlider.value,
-        pixelationStyle: pixelationStyleSelect.value
-      };
-      savedSettings.push(currentSettings);
-      localStorage.setItem('pixelArtSaves', JSON.stringify(savedSettings));
-      loadSavedSettings();
-      alert('Settings saved successfully!');
-    });
-    loadBtn.addEventListener('click', function() {
-      if (savedSettingsSelect.value === "") {
-        alert('Please select a saved setting to load.');
-        return;
-      }
-      const selectedIndex = savedSettingsSelect.value;
-      const selectedSave = savedSettings[selectedIndex];
-      if (selectedSave) {
-        resolutionSlider.value = selectedSave.resolution;
-        pixelSizeSlider.value = selectedSave.pixelSize;
-        colorReductionSlider.value = selectedSave.colorReduction;
-        ditheringSlider.value = selectedSave.dithering;
-        saturationSlider.value = selectedSave.saturation;
-        contrastSlider.value = selectedSave.contrast;
-        noiseSlider.value = selectedSave.noise;
-        colorPaletteSelect.value = selectedSave.colorPalette;
-        aspectRatioWidthSlider.value = selectedSave.aspectRatioWidth;
-        aspectRatioHeightSlider.value = selectedSave.aspectRatioHeight;
-        pixelationStyleSelect.value = selectedSave.pixelationStyle || 'standard';
-        updateSliderValues();
-        const scale = parseInt(resolutionSlider.value) / 100;
-        const aspectWidth = parseInt(aspectRatioWidthSlider.value) / 100;
-        const aspectHeight = parseInt(aspectRatioHeightSlider.value) / 100;
-        const targetWidth = originalWidth * scale * aspectWidth;
-        const targetHeight = originalHeight * scale * aspectHeight;
-        redrawOriginalImage(targetWidth, targetHeight);
-        applyPixelation();
-      }
-    });
-    colorPaletteSelect.addEventListener('change', function() {
-      if (colorPaletteSelect.value === 'custom') {
-        alert('Custom palette feature is not implemented yet.');
-        colorPaletteSelect.value = 'default';
-      }
-      applyPixelation();
-    });
-    function getRandomInt(min, max) {
-      return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-    function getRandomPaletteChoice() {
-      const choices = Object.keys(predefinedPalettes);
-      return choices[getRandomInt(0, choices.length - 1)];
-    }
+
+    function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
   </script>
 </body>
 </html>
