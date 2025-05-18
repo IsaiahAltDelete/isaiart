@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Material Symbols (Icons) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <title>Modular Notepad</title> <!-- Title for browser tab, not visible on page -->
+
+    <style>
+        :root {
+            /* Light Theme */
+            --bg-color-light: #f8f9fa; /* Very light gray */
+            --text-color-light: #212529; /* Dark gray */
+            --card-bg-light: rgba(255, 255, 255, 0.7);
+            --card-border-light: rgba(0, 0, 0, 0.1);
+            --toolbar-bg-light: rgba(255, 255, 255, 0.85);
+            --toolbar-shadow-light: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --grid-color-light: rgba(0, 0, 0, 0.08);
+            --icon-color-light: #343A40;
+            --accent-color: #FFD700; /* Yellow accent */
+            --accent-text-color: #333;
+
+            /* Dark Theme */
+            --bg-color-dark: #1a1c1e; /* Very dark gray */
+            --text-color-dark: #e0e0e0; /* Light gray */
+            --card-bg-dark: rgba(40, 42, 44, 0.7);
+            --card-border-dark: rgba(255, 255, 255, 0.1);
+            --toolbar-bg-dark: rgba(30, 32, 34, 0.85);
+            --toolbar-shadow-dark: 0 4px 12px rgba(0, 0, 0, 0.3);
+            --grid-color-dark: rgba(255, 255, 255, 0.08);
+            --icon-color-dark: #E0E0E0;
+        }
+
+        html {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color-light);
+            color: var(--text-color-light);
+            transition: background-color 0.3s ease, color 0.3s ease;
+            overflow: hidden; /* Prevent scrollbars on body */
+            margin: 0;
+            padding: 0;
+        }
+
+        html.dark body {
+            background-color: var(--bg-color-dark);
+            color: var(--text-color-dark);
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden; /* Crucial for panning/zooming */
+            cursor: grab;
+            transition: background-image 0.3s ease; /* For grid toggle */
+        }
+
+        .grid-visible {
+            background-image:
+                linear-gradient(to right, var(--grid-color-light) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-color-light) 1px, transparent 1px);
+            background-size: 20px 20px; /* GRID_SIZE: This must match JS GRID_SIZE */
+        }
+        html.dark .grid-visible {
+             background-image:
+                linear-gradient(to right, var(--grid-color-dark) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-color-dark) 1px, transparent 1px);
+        }
+
+
+        #canvas {
+            position: absolute;
+            transform-origin: 0 0; /* For zooming */
+            width: 1px; /* Effectively infinite, content defines size */
+            height: 1px;
+        }
+
+        .note {
+            position: absolute;
+            /* min-width and min-height will be handled by JS snapping logic and MIN_NOTE_WIDTH/HEIGHT */
+            background-color: var(--card-bg-light);
+            border: 1px solid var(--card-border-light);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 12px; /* This padding affects content area size relative to note width/height */
+            cursor: move;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); /* Safari */
+            transition: box-shadow 0.2s ease-out, background-color 0.3s ease, border-color 0.3s ease;
+            /* Removed transform transition to prevent jitter during drag/resize updates */
+            overflow: hidden; /* Important for resize handle positioning and content clipping */
+        }
+        html.dark .note {
+            background-color: var(--card-bg-dark);
+            border: 1px solid var(--card-border-dark);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .note:hover {
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
+        html.dark .note:hover {
+            box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+        }
+
+        .note.selected {
+            box-shadow: 0 0 0 3px var(--accent-color), 0 6px 16px rgba(0,0,0,0.15);
+            border-color: var(--accent-color);
+        }
+        html.dark .note.selected {
+            box-shadow: 0 0 0 3px var(--accent-color), 0 6px 16px rgba(0,0,0,0.35);
+        }
+
+
+        .note-header {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            min-height: 20px; /* Ensure header is always visible a bit */
+            flex-shrink: 0; /* Prevent header from shrinking */
+        }
+        html.dark .note-header {
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .note-content {
+            flex-grow: 1;
+            outline: none;
+            font-size: 14px;
+            line-height: 1.6;
+            overflow-y: auto; /* For content longer than note height */
+            color: var(--text-color-light);
+            /* min-height removed, will be dictated by note size minus header/padding */
+        }
+        html.dark .note-content {
+            color: var(--text-color-dark);
+        }
+
+        .note-color-picker {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.2);
+            cursor: pointer;
+            margin-left: 8px;
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.2s ease;
+        }
+        .note:hover .note-color-picker, .note.selected .note-color-picker {
+            opacity: 1;
+        }
+
+        .note-resize-handle {
+            position: absolute;
+            bottom: 1px; /* Adjust for border and visual preference */
+            right: 1px;  /* Adjust for border and visual preference */
+            width: 20px;
+            height: 20px;
+            cursor: nwse-resize; /* Standard resize cursor for bottom-right */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 10; /* Above content, below potential popups */
+        }
+        .note.selected .note-resize-handle { /* Only show on selected note */
+            opacity: 0.7; /* Slightly transparent until hovered */
+        }
+        .note.selected .note-resize-handle:hover {
+            opacity: 1;
+        }
+        .note-resize-handle .material-symbols-outlined {
+            font-size: 18px; /* Smaller icon for the handle */
+            color: var(--icon-color-light);
+        }
+        html.dark .note-resize-handle .material-symbols-outlined {
+            color: var(--icon-color-dark);
+        }
+
+
+        #toolbar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--toolbar-bg-light);
+            padding: 10px 15px;
+            border-radius: 16px;
+            box-shadow: var(--toolbar-shadow-light);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        html.dark #toolbar {
+            background-color: var(--toolbar-bg-dark);
+            box-shadow: var(--toolbar-shadow-dark);
+        }
+
+        .toolbar-button {
+            background-color: transparent;
+            border: none;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--icon-color-light);
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        html.dark .toolbar-button {
+            color: var(--icon-color-dark);
+        }
+
+        .toolbar-button:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+        html.dark .toolbar-button:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        .toolbar-button.active {
+            background-color: var(--accent-color);
+            color: var(--accent-text-color);
+        }
+        .toolbar-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .toolbar-button:disabled:hover {
+            background-color: transparent;
+        }
+
+
+        .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24;
+          font-size: 22px; /* Default icon size */
+        }
+
+        .color-palette {
+            position: absolute;
+            background-color: var(--toolbar-bg-light);
+            border: 1px solid var(--card-border-light);
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 6px;
+            z-index: 1001; /* Above notes */
+        }
+        html.dark .color-palette {
+            background-color: var(--toolbar-bg-dark);
+            border: 1px solid var(--card-border-dark);
+        }
+
+        .color-option {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        html.dark .color-option {
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Custom scrollbar for note content */
+        .note-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .note-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .note-content::-webkit-scrollbar-thumb {
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+        html.dark .note-content::-webkit-scrollbar-thumb {
+            background-color: rgba(255,255,255,0.2);
+        }
+        .note-content::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(0,0,0,0.3);
+        }
+        html.dark .note-content::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255,255,255,0.3);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <div id="canvas">
+            <!-- Notes will be appended here -->
+        </div>
+    </div>
+
+    <div id="toolbar">
+        <button id="addNoteBtn" class="toolbar-button" title="Add Note">
+            <span class="material-symbols-outlined">add_circle</span>
+        </button>
+        <button id="deleteNoteBtn" class="toolbar-button" title="Delete Selected Note" disabled>
+            <span class="material-symbols-outlined">delete</span>
+        </button>
+        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+        <button id="zoomInBtn" class="toolbar-button" title="Zoom In">
+            <span class="material-symbols-outlined">zoom_in</span>
+        </button>
+        <button id="zoomOutBtn" class="toolbar-button" title="Zoom Out">
+            <span class="material-symbols-outlined">zoom_out</span>
+        </button>
+        <button id="resetZoomBtn" class="toolbar-button" title="Reset Zoom & Pan">
+            <span class="material-symbols-outlined">center_focus_strong</span>
+        </button>
+        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+        <button id="boldBtn" class="toolbar-button" title="Bold" disabled>
+            <span class="material-symbols-outlined">format_bold</span>
+        </button>
+        <button id="italicBtn" class="toolbar-button" title="Italic" disabled>
+            <span class="material-symbols-outlined">format_italic</span>
+        </button>
+        <button id="underlineBtn" class="toolbar-button" title="Underline" disabled>
+            <span class="material-symbols-outlined">format_underlined</span>
+        </button>
+        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+        <button id="toggleGridBtn" class="toolbar-button" title="Toggle Grid">
+            <span class="material-symbols-outlined">grid_on</span>
+        </button>
+        <button id="toggleThemeBtn" class="toolbar-button" title="Toggle Theme">
+            <span class="material-symbols-outlined">brightness_6</span>
+        </button>
+    </div>
+
+    <script>
+        const canvasContainer = document.getElementById('canvas-container');
+        const canvas = document.getElementById('canvas');
+        const addNoteBtn = document.getElementById('addNoteBtn');
+        const deleteNoteBtn = document.getElementById('deleteNoteBtn');
+        const zoomInBtn = document.getElementById('zoomInBtn');
+        const zoomOutBtn = document.getElementById('zoomOutBtn');
+        const resetZoomBtn = document.getElementById('resetZoomBtn');
+        const boldBtn = document.getElementById('boldBtn');
+        const italicBtn = document.getElementById('italicBtn');
+        const underlineBtn = document.getElementById('underlineBtn');
+        const toggleGridBtn = document.getElementById('toggleGridBtn');
+        const toggleThemeBtn = document.getElementById('toggleThemeBtn');
+
+        let notes = [];
+        let selectedNoteId = null;
+        let highestZIndex = 1;
+
+        let zoomLevel = 1;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let lastPanX, lastPanY;
+
+        const GRID_SIZE = 20; // Must match CSS background-size for .grid-visible
+        const MIN_NOTE_WIDTH = GRID_SIZE * 4; // e.g., 80px
+        const MIN_NOTE_HEIGHT = GRID_SIZE * 3; // e.g., 60px
+
+
+        const NOTE_COLORS = [
+            'rgba(255, 215, 0, 0.7)', // Yellow (accent)
+            'rgba(173, 216, 230, 0.7)', // Light Blue
+            'rgba(144, 238, 144, 0.7)', // Light Green
+            'rgba(255, 182, 193, 0.7)', // Light Pink
+            'rgba(221, 160, 221, 0.7)', // Plum
+            'rgba(240, 240, 240, 0.7)'  // Light Gray (defaultish)
+        ];
+        const DARK_NOTE_COLORS = [
+            'rgba(255, 215, 0, 0.6)', // Yellow (accent)
+            'rgba(70, 130, 180, 0.6)',  // Steel Blue
+            'rgba(60, 179, 113, 0.6)',  // Medium Sea Green
+            'rgba(219, 112, 147, 0.6)', // Pale Violet Red
+            'rgba(147, 112, 219, 0.6)', // Medium Purple
+            'rgba(60, 60, 60, 0.7)'     // Dark Gray (defaultish)
+        ];
+
+        // --- Utility ---
+        function snapToGrid(value, gridSize = GRID_SIZE) {
+            return Math.round(value / gridSize) * gridSize;
+        }
+
+        // --- Initialization ---
+        function init() {
+            loadState(); // Load notes, transform, theme, grid settings
+            updateCanvasTransform(); // Apply loaded transform
+            renderNotes(); // Display loaded notes
+            updateToolbarState(); // Set initial toolbar button states
+            applyTheme(localStorage.getItem('modularNotepad_theme') || 'light');
+            applyGridVisibility(localStorage.getItem('modularNotepad_gridVisible') === 'true');
+
+            // Canvas interaction listeners
+            canvasContainer.addEventListener('mousedown', handleCanvasMouseDown);
+            canvasContainer.addEventListener('mousemove', handleCanvasMouseMove); // For canvas panning
+            canvasContainer.addEventListener('wheel', handleCanvasWheel, { passive: false });
+
+            // Global listeners for drag/resize operations ending anywhere & canvas panning
+            document.addEventListener('mousemove', handleGlobalMouseMove); // For note drag/resize
+            document.addEventListener('mouseup', handleGlobalMouseUp);   // For all mouseup events
+
+            // Toolbar button listeners
+            addNoteBtn.addEventListener('click', addNote);
+            deleteNoteBtn.addEventListener('click', deleteSelectedNote);
+            zoomInBtn.addEventListener('click', () => zoomViaButton(1.2));
+            zoomOutBtn.addEventListener('click', () => zoomViaButton(1 / 1.2));
+            resetZoomBtn.addEventListener('click', resetView);
+            
+            boldBtn.addEventListener('click', () => formatText('bold'));
+            italicBtn.addEventListener('click', () => formatText('italic'));
+            underlineBtn.addEventListener('click', () => formatText('underline'));
+
+            toggleGridBtn.addEventListener('click', toggleGrid);
+            toggleThemeBtn.addEventListener('click', toggleTheme);
+
+            document.addEventListener('selectionchange', updateFormattingButtonStates);
+        }
+
+        // --- Theme & Grid ---
+        function applyTheme(theme) {
+            document.documentElement.classList.toggle('dark', theme === 'dark');
+            toggleThemeBtn.querySelector('.material-symbols-outlined').textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+            localStorage.setItem('modularNotepad_theme', theme);
+        }
+
+        function toggleTheme() {
+            applyTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
+        }
+
+        function applyGridVisibility(visible) {
+            canvasContainer.classList.toggle('grid-visible', visible);
+            toggleGridBtn.classList.toggle('active', visible);
+            localStorage.setItem('modularNotepad_gridVisible', visible);
+        }
+
+        function toggleGrid() {
+            applyGridVisibility(!canvasContainer.classList.contains('grid-visible'));
+        }
+
+        // --- Canvas Interaction (Zoom & Pan) ---
+        function updateCanvasTransform() {
+            canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+            // saveState(); // Save is called by functions that change these values
+        }
+
+        function zoomAtPoint(mouseX, mouseY, factor) {
+            const mouseBeforeZoomX = (mouseX - panX) / zoomLevel;
+            const mouseBeforeZoomY = (mouseY - panY) / zoomLevel;
+
+            zoomLevel *= factor;
+            zoomLevel = Math.max(0.1, Math.min(zoomLevel, 5)); // Zoom limits
+
+            panX = mouseX - mouseBeforeZoomX * zoomLevel;
+            panY = mouseY - mouseBeforeZoomY * zoomLevel;
+            
+            updateCanvasTransform();
+            saveState();
+        }
+
+        function zoomViaButton(factor) {
+            const rect = canvasContainer.getBoundingClientRect();
+            const centerX = rect.width / 2; // Zoom towards center of viewport
+            const centerY = rect.height / 2;
+            zoomAtPoint(centerX, centerY, factor);
+        }
+        
+        function resetView() {
+            zoomLevel = 1;
+            panX = 0;
+            panY = 0;
+            updateCanvasTransform();
+            saveState();
+        }
+
+        function handleCanvasMouseDown(e) {
+            // Pan only if clicking directly on canvasContainer or canvas itself
+            if (e.target === canvasContainer || e.target === canvas) {
+                isPanning = true;
+                canvasContainer.style.cursor = 'grabbing';
+                lastPanX = e.clientX;
+                lastPanY = e.clientY;
+                deselectAllNotes(); // Deselect notes when clicking canvas background
+            }
+        }
+
+        function handleCanvasMouseMove(e) { // Only for canvas panning
+            if (isPanning) {
+                const dx = e.clientX - lastPanX;
+                const dy = e.clientY - lastPanY;
+                panX += dx;
+                panY += dy;
+                lastPanX = e.clientX;
+                lastPanY = e.clientY;
+                updateCanvasTransform();
+                // No saveState here, saved on mouseup for panning
+            }
+        }
+
+        function handleCanvasWheel(e) {
+            e.preventDefault(); // Prevent page scroll
+            const deltaFactor = e.deltaY > 0 ? 1 / 1.1 : 1.1; // Zoom factor
+            const rect = canvasContainer.getBoundingClientRect();
+            // Zoom relative to mouse pointer position on the canvasContainer
+            zoomAtPoint(e.clientX - rect.left, e.clientY - rect.top, deltaFactor);
+        }
+
+        // --- Note Management ---
+        // Global state for current drag/resize operation
+        let isDraggingNote = false;
+        let isResizingNote = false;
+        let dragOffsetX, dragOffsetY; // For note dragging
+        let initialResizeMouseX, initialResizeMouseY, initialNoteWidth, initialNoteHeight; // For note resizing
+
+        function createNoteElement(note) {
+            const noteEl = document.createElement('div');
+            noteEl.classList.add('note');
+            noteEl.dataset.id = note.id;
+            noteEl.style.left = `${note.x}px`;
+            noteEl.style.top = `${note.y}px`;
+            noteEl.style.width = `${note.width}px`;
+            noteEl.style.height = `${note.height}px`;
+            noteEl.style.zIndex = note.zIndex;
+            if (note.color) noteEl.style.backgroundColor = note.color;
+            if (note.id === selectedNoteId) noteEl.classList.add('selected');
+
+            const headerEl = document.createElement('div');
+            headerEl.classList.add('note-header');
+            
+            const colorPickerInput = document.createElement('input');
+            colorPickerInput.type = 'button';
+            colorPickerInput.classList.add('note-color-picker');
+            colorPickerInput.title = "Change note color";
+            colorPickerInput.style.backgroundColor = note.color || (document.documentElement.classList.contains('dark') ? DARK_NOTE_COLORS[5] : NOTE_COLORS[5]);
+            colorPickerInput.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent note selection/drag
+                showColorPalette(e.target, note.id);
+            });
+            headerEl.appendChild(colorPickerInput);
+
+            const contentEl = document.createElement('div');
+            contentEl.classList.add('note-content');
+            contentEl.setAttribute('contenteditable', 'true');
+            contentEl.innerHTML = note.content;
+            
+            contentEl.addEventListener('focus', () => {
+                selectNote(note.id); // Select note when its content is focused
+                updateFormattingButtonStates();
+            });
+            contentEl.addEventListener('blur', () => { // Save content on blur
+                const currentNote = notes.find(n => n.id === note.id);
+                if (currentNote) {
+                    currentNote.content = contentEl.innerHTML;
+                    saveState();
+                }
+                // updateFormattingButtonStates(); // Buttons disable if no selection
+            });
+            contentEl.addEventListener('input', () => { // Save on input for robustness
+                const currentNote = notes.find(n => n.id === note.id);
+                if (currentNote) {
+                    currentNote.content = contentEl.innerHTML;
+                    // Debounced save could be an optimization here
+                    saveState();
+                }
+            });
+
+            const resizeHandleEl = document.createElement('div');
+            resizeHandleEl.classList.add('note-resize-handle');
+            resizeHandleEl.innerHTML = `<span class="material-symbols-outlined">aspect_ratio</span>`;
+            
+            noteEl.appendChild(headerEl);
+            noteEl.appendChild(contentEl);
+            noteEl.appendChild(resizeHandleEl);
+
+            // --- Event Listeners for this specific note element ---
+            noteEl.addEventListener('mousedown', (e) => {
+                // If click is on content, color picker, or resize handle, do not start drag.
+                // But do select the note if it's not already selected.
+                if (e.target.closest('.note-content') || e.target.closest('.note-color-picker') || e.target.closest('.note-resize-handle')) {
+                    if (!noteEl.classList.contains('selected')) {
+                         selectNote(note.id);
+                    }
+                    return; 
+                }
+                e.stopPropagation(); // Prevent canvas pan
+
+                isDraggingNote = true;
+                selectNote(note.id); // Selects and brings to front
+                noteEl.style.cursor = 'grabbing';
+                canvasContainer.style.cursor = 'grabbing'; // Global cursor feedback
+
+                const noteRect = noteEl.getBoundingClientRect();
+                dragOffsetX = (e.clientX - noteRect.left) / zoomLevel;
+                dragOffsetY = (e.clientY - noteRect.top) / zoomLevel;
+
+                // Bring to front (already handled by selectNote if zIndex needs update)
+                const currentNote = notes.find(n => n.id === note.id);
+                if (currentNote && currentNote.zIndex < highestZIndex) {
+                    highestZIndex++;
+                    currentNote.zIndex = highestZIndex;
+                    noteEl.style.zIndex = currentNote.zIndex;
+                    // saveState(); // z-index change will be saved on mouseup
+                }
+            });
+
+            resizeHandleEl.addEventListener('mousedown', (e) => {
+                e.stopPropagation(); // Prevent note drag and canvas pan
+                isResizingNote = true;
+                selectNote(note.id); // Selects and brings to front
+                
+                noteEl.style.cursor = 'nwse-resize';
+                canvasContainer.style.cursor = 'nwse-resize'; // Global cursor feedback
+
+                // Mouse position relative to the unzoomed, unpanned canvas origin
+                initialResizeMouseX = (e.clientX - panX) / zoomLevel;
+                initialResizeMouseY = (e.clientY - panY) / zoomLevel;
+                initialNoteWidth = parseFloat(noteEl.style.width);
+                initialNoteHeight = parseFloat(noteEl.style.height);
+
+                const currentNote = notes.find(n => n.id === note.id);
+                 if (currentNote && currentNote.zIndex < highestZIndex) {
+                    highestZIndex++;
+                    currentNote.zIndex = highestZIndex;
+                    noteEl.style.zIndex = currentNote.zIndex;
+                    // saveState(); // z-index change will be saved on mouseup
+                }
+            });
+            return noteEl;
+        }
+        
+        function handleGlobalMouseMove(e) {
+            if (isDraggingNote && selectedNoteId) {
+                const note = notes.find(n => n.id === selectedNoteId);
+                const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
+                if (!note || !noteEl) return;
+
+                // Calculate new top-left position in canvas space
+                let newX = (e.clientX - panX) / zoomLevel - dragOffsetX;
+                let newY = (e.clientY - panY) / zoomLevel - dragOffsetY;
+                
+                noteEl.style.left = `${newX}px`;
+                noteEl.style.top = `${newY}px`;
+                // Snapping and saving happens on mouseup
+
+            } else if (isResizingNote && selectedNoteId) {
+                const note = notes.find(n => n.id === selectedNoteId);
+                const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
+                if (!note || !noteEl) return;
+
+                const currentMouseX = (e.clientX - panX) / zoomLevel;
+                const currentMouseY = (e.clientY - panY) / zoomLevel;
+
+                let newWidth = initialNoteWidth + (currentMouseX - initialResizeMouseX);
+                let newHeight = initialNoteHeight + (currentMouseY - initialResizeMouseY);
+
+                // Update visual size during resize, enforce min dimensions visually
+                noteEl.style.width = `${Math.max(newWidth, MIN_NOTE_WIDTH)}px`;
+                noteEl.style.height = `${Math.max(newHeight, MIN_NOTE_HEIGHT)}px`;
+                // Snapping and saving happens on mouseup
+            }
+        }
+
+        function handleGlobalMouseUp(e) {
+            if (isPanning) { // Finalize canvas panning
+                isPanning = false;
+                canvasContainer.style.cursor = 'grab';
+                saveState(); // Save panX, panY
+            }
+
+            if (isDraggingNote && selectedNoteId) {
+                const note = notes.find(n => n.id === selectedNoteId);
+                const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
+                if (note && noteEl) {
+                    // Snap final position
+                    note.x = snapToGrid(parseFloat(noteEl.style.left));
+                    note.y = snapToGrid(parseFloat(noteEl.style.top));
+                    noteEl.style.left = `${note.x}px`;
+                    noteEl.style.top = `${note.y}px`;
+                    
+                    noteEl.style.cursor = 'move'; // Reset note cursor
+                    if (!isPanning) canvasContainer.style.cursor = 'grab'; // Reset canvas cursor if not panning
+                    saveState(); // Save note position and z-index
+                }
+                isDraggingNote = false;
+            }
+            
+            if (isResizingNote && selectedNoteId) {
+                const note = notes.find(n => n.id === selectedNoteId);
+                const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
+                if (note && noteEl) {
+                    // Snap final dimensions, ensuring minimums
+                    note.width = snapToGrid(Math.max(parseFloat(noteEl.style.width), MIN_NOTE_WIDTH));
+                    note.height = snapToGrid(Math.max(parseFloat(noteEl.style.height), MIN_NOTE_HEIGHT));
+                    noteEl.style.width = `${note.width}px`;
+                    noteEl.style.height = `${note.height}px`;
+
+                    noteEl.style.cursor = 'move'; // Reset note cursor
+                    if (!isPanning) canvasContainer.style.cursor = 'grab'; // Reset canvas cursor
+                    saveState(); // Save note dimensions and z-index
+                }
+                isResizingNote = false;
+            }
+            // Reset canvas cursor if no other operation is active
+            if (!isPanning && !isDraggingNote && !isResizingNote) {
+                 canvasContainer.style.cursor = 'grab';
+            }
+        }
+
+        function renderNotes() {
+            canvas.innerHTML = ''; // Clear existing notes
+            notes.forEach(note => {
+                const noteEl = createNoteElement(note);
+                canvas.appendChild(noteEl);
+            });
+        }
+
+        function addNote() {
+            highestZIndex++;
+            // Calculate position for the new note in the center of the current view, snapped to grid
+            const viewCenterX = (canvasContainer.offsetWidth / 2 - panX) / zoomLevel;
+            const viewCenterY = (canvasContainer.offsetHeight / 2 - panY) / zoomLevel;
+            const initialWidth = snapToGrid(200);
+            const initialHeight = snapToGrid(150);
+
+            const newNote = {
+                id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                content: '',
+                x: snapToGrid(viewCenterX - initialWidth / 2),
+                y: snapToGrid(viewCenterY - initialHeight / 2),
+                width: initialWidth,
+                height: initialHeight,
+                color: document.documentElement.classList.contains('dark') ? DARK_NOTE_COLORS[5] : NOTE_COLORS[5], // Default color
+                zIndex: highestZIndex
+            };
+            notes.push(newNote);
+            const noteEl = createNoteElement(newNote);
+            canvas.appendChild(noteEl);
+            selectNote(newNote.id);
+            // Focus the content area of the new note
+            noteEl.querySelector('.note-content').focus();
+            saveState();
+        }
+
+        function deleteSelectedNote() {
+            if (selectedNoteId) {
+                notes = notes.filter(note => note.id !== selectedNoteId);
+                const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
+                if (noteEl) {
+                    noteEl.remove();
+                }
+                selectedNoteId = null;
+                updateToolbarState();
+                saveState();
+            }
+        }
+
+        function selectNote(noteId) {
+            if (selectedNoteId === noteId && document.querySelector(`.note[data-id="${noteId}"].selected`)) {
+                // If already selected, and it's the one being clicked, do nothing extra for selection itself
+                // but ensure z-index is handled if it was brought to front by another action
+            } else {
+                deselectAllNotes(); // Deselect any other note
+                selectedNoteId = noteId;
+                const noteEl = canvas.querySelector(`.note[data-id="${noteId}"]`);
+                if (noteEl) {
+                    noteEl.classList.add('selected');
+                }
+            }
+            
+            // Bring to front logic
+            const note = notes.find(n => n.id === noteId);
+            const noteEl = canvas.querySelector(`.note[data-id="${noteId}"]`);
+            if (note && noteEl) {
+                if (note.zIndex < highestZIndex || notes.filter(n => n.zIndex === note.zIndex).length > 1 && note.zIndex !== highestZIndex) {
+                    highestZIndex++;
+                    note.zIndex = highestZIndex;
+                    noteEl.style.zIndex = note.zIndex;
+                    // saveState(); // Will be saved by the action (drag/resize/add) or on blur/input
+                }
+            }
+            updateToolbarState();
+            updateFormattingButtonStates();
+        }
+
+        function deselectAllNotes() {
+            if (selectedNoteId) { // Only run if a note was actually selected
+                const prevSelectedNoteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"].selected`);
+                if (prevSelectedNoteEl) {
+                    prevSelectedNoteEl.classList.remove('selected');
+                }
+            }
+            selectedNoteId = null;
+            updateToolbarState();
+            updateFormattingButtonStates(); // Ensure formatting buttons are disabled
+        }
+        
+        function updateNoteColor(noteId, color) {
+            const note = notes.find(n => n.id === noteId);
+            const noteEl = canvas.querySelector(`.note[data-id="${noteId}"]`);
+            if (note && noteEl) {
+                note.color = color;
+                noteEl.style.backgroundColor = color;
+                noteEl.querySelector('.note-color-picker').style.backgroundColor = color;
+                saveState();
+            }
+        }
+
+        let activeColorPalette = null;
+        function showColorPalette(anchorElement, noteId) {
+            if (activeColorPalette) {
+                activeColorPalette.remove();
+                activeColorPalette = null;
+            }
+
+            const palette = document.createElement('div');
+            palette.classList.add('color-palette');
+            
+            const currentColors = document.documentElement.classList.contains('dark') ? DARK_NOTE_COLORS : NOTE_COLORS;
+
+            currentColors.forEach(color => {
+                const colorOption = document.createElement('div');
+                colorOption.classList.add('color-option');
+                colorOption.style.backgroundColor = color;
+                colorOption.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    updateNoteColor(noteId, color);
+                    palette.remove();
+                    activeColorPalette = null;
+                });
+                palette.appendChild(colorOption);
+            });
+
+            document.body.appendChild(palette); // Append to body to avoid clipping issues
+            const anchorRect = anchorElement.getBoundingClientRect();
+            // Position palette relative to the viewport
+            palette.style.position = 'fixed'; 
+            palette.style.top = `${anchorRect.bottom + 5}px`;
+            palette.style.left = `${anchorRect.left}px`;
+            
+            activeColorPalette = palette;
+
+            // Close palette if clicked outside
+            setTimeout(() => { // Timeout to prevent immediate close due to event bubbling
+                 document.addEventListener('click', closePaletteHandler, { once: true });
+            },0);
+        }
+        
+        function closePaletteHandler(event) {
+            if (activeColorPalette && !activeColorPalette.contains(event.target) && !event.target.classList.contains('note-color-picker')) {
+                activeColorPalette.remove();
+                activeColorPalette = null;
+            }
+        }
+
+
+        // --- Toolbar & Formatting ---
+        function updateToolbarState() {
+            const isNoteSelected = !!selectedNoteId;
+            deleteNoteBtn.disabled = !isNoteSelected;
+            // Formatting buttons are enabled if a note is selected, active state depends on focus within contenteditable
+            boldBtn.disabled = !isNoteSelected;
+            italicBtn.disabled = !isNoteSelected;
+            underlineBtn.disabled = !isNoteSelected;
+        }
+        
+        function formatText(command) {
+            if (!selectedNoteId) return; // Should not happen if buttons are disabled correctly
+
+            const selectedNoteContentEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"] .note-content`);
+            
+            // Ensure the content area is focused before executing command
+            if (document.activeElement !== selectedNoteContentEl) {
+                selectedNoteContentEl.focus();
+                // Wait a tick for focus to apply before execCommand, or execCommand might fail or apply to wrong selection
+                // A more robust way might be to store the command and execute it on next focus event if needed.
+                // For simplicity, we focus and then execute.
+            }
+
+            // Check if there's a selection within the contenteditable
+            const selection = window.getSelection();
+            if (selectedNoteContentEl && selection && selection.rangeCount > 0 && selectedNoteContentEl.contains(selection.anchorNode)) {
+                 document.execCommand(command, false, null);
+                // Save content after formatting
+                const note = notes.find(n => n.id === selectedNoteId);
+                if (note) {
+                    note.content = selectedNoteContentEl.innerHTML;
+                    saveState();
+                }
+                updateFormattingButtonStates(); // Update button active state
+            } else if (selectedNoteContentEl) {
+                // If no selection but focused, execCommand might still work (e.g. for block elements, though less relevant here)
+                // Or, it might apply to where the cursor is.
+                // For safety, we could choose to do nothing if there's no explicit text selection.
+                // However, standard behavior is often to apply to the word at cursor or prepare for typed text.
+                document.execCommand(command, false, null);
+                const note = notes.find(n => n.id === selectedNoteId);
+                if (note) {
+                    note.content = selectedNoteContentEl.innerHTML;
+                    saveState();
+                }
+                updateFormattingButtonStates();
+            }
+        }
+
+        function updateFormattingButtonStates() {
+            if (!selectedNoteId) { // No note selected, disable and deactivate all
+                boldBtn.classList.remove('active'); boldBtn.disabled = true;
+                italicBtn.classList.remove('active'); italicBtn.disabled = true;
+                underlineBtn.classList.remove('active'); underlineBtn.disabled = true;
+                return;
+            }
+
+            // A note is selected, so buttons should be enabled
+            boldBtn.disabled = false;
+            italicBtn.disabled = false;
+            underlineBtn.disabled = false;
+
+            const selectedNoteContentEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"] .note-content`);
+            // Check if the selected note's content area is the active focused element
+            if (document.activeElement === selectedNoteContentEl) {
+                try {
+                    boldBtn.classList.toggle('active', document.queryCommandState('bold'));
+                    italicBtn.classList.toggle('active', document.queryCommandState('italic'));
+                    underlineBtn.classList.toggle('active', document.queryCommandState('underline'));
+                } catch (e) {
+                    console.warn("Could not query command state:", e);
+                    boldBtn.classList.remove('active');
+                    italicBtn.classList.remove('active');
+                    underlineBtn.classList.remove('active');
+                }
+            } else {
+                // Note is selected, but its content is not focused. Deactivate formatting buttons.
+                boldBtn.classList.remove('active');
+                italicBtn.classList.remove('active');
+                underlineBtn.classList.remove('active');
+            }
+        }
+
+
+        // --- Local Storage ---
+        // Increment version if data structure changes significantly to avoid loading incompatible old data.
+        const LS_APP_PREFIX = 'modularNotepad_';
+        const LS_NOTES_KEY = LS_APP_PREFIX + 'notes_v3_snap';
+        const LS_TRANSFORM_KEY = LS_APP_PREFIX + 'transform_v3_snap';
+        const LS_HIGHEST_Z_KEY = LS_APP_PREFIX + 'highestZ_v3_snap';
+        const LS_THEME_KEY = LS_APP_PREFIX + 'theme'; // Re-use if structure is same
+        const LS_GRID_VISIBLE_KEY = LS_APP_PREFIX + 'gridVisible'; // Re-use
+
+        function saveState() {
+            // Basic validation to prevent saving NaN values which can break loading
+            if (notes.some(note => isNaN(note.x) || isNaN(note.y) || isNaN(note.width) || isNaN(note.height) || isNaN(note.zIndex))) {
+                console.error("Attempted to save invalid (NaN) note data. Aborting save.", JSON.parse(JSON.stringify(notes)));
+                // Consider adding a user notification or more robust recovery here
+                return; 
+            }
+            localStorage.setItem(LS_NOTES_KEY, JSON.stringify(notes));
+            localStorage.setItem(LS_TRANSFORM_KEY, JSON.stringify({ zoomLevel, panX, panY }));
+            localStorage.setItem(LS_HIGHEST_Z_KEY, highestZIndex.toString());
+            // Theme and grid are saved by their respective functions (applyTheme, applyGridVisibility)
+        }
+
+        function loadState() {
+            const storedNotes = localStorage.getItem(LS_NOTES_KEY);
+            if (storedNotes) {
+                try {
+                    notes = JSON.parse(storedNotes).map(note => ({
+                        ...note,
+                        // Ensure dimensions and positions are snapped and valid on load
+                        // Use defaults if properties are missing or invalid
+                        x: snapToGrid(parseFloat(note.x) || 0),
+                        y: snapToGrid(parseFloat(note.y) || 0),
+                        width: snapToGrid(Math.max(parseFloat(note.width) || MIN_NOTE_WIDTH, MIN_NOTE_WIDTH)),
+                        height: snapToGrid(Math.max(parseFloat(note.height) || MIN_NOTE_HEIGHT, MIN_NOTE_HEIGHT)),
+                        zIndex: parseInt(note.zIndex, 10) || 1,
+                        content: note.content || "" // Ensure content is at least an empty string
+                    }));
+                } catch (error) {
+                    console.error("Error parsing stored notes, initializing with empty notes:", error);
+                    notes = [];
+                }
+            }
+
+            const storedTransform = localStorage.getItem(LS_TRANSFORM_KEY);
+            if (storedTransform) {
+                try {
+                    const t = JSON.parse(storedTransform);
+                    zoomLevel = parseFloat(t.zoomLevel) || 1;
+                    panX = parseFloat(t.panX) || 0;
+                    panY = parseFloat(t.panY) || 0;
+                } catch (error) {
+                    console.error("Error parsing stored transform, resetting to default:", error);
+                    zoomLevel = 1; panX = 0; panY = 0;
+                }
+            }
+            
+            const storedZIndex = localStorage.getItem(LS_HIGHEST_Z_KEY);
+            if (storedZIndex) {
+                highestZIndex = parseInt(storedZIndex, 10) || 1;
+            } else { // If no stored z-index, calculate from loaded notes
+                highestZIndex = notes.length > 0 ? Math.max(...notes.map(n => n.zIndex || 0), 0) + 1 : 1;
+            }
+
+            // Theme and grid visibility are loaded by their respective apply functions in init()
+        }
+
+        // --- Global Event Listeners ---
+        // Deselect note if clicked outside any note on the canvas (already in handleCanvasMouseDown)
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            const activeEl = document.activeElement;
+            // If focus is within a note's contenteditable area
+            if (activeEl && activeEl.classList.contains('note-content') && activeEl.isContentEditable) {
+                 if ((e.ctrlKey || e.metaKey)) { // CMD on Mac, Ctrl on Win/Linux
+                    if (e.key === 'b') { e.preventDefault(); formatText('bold'); }
+                    else if (e.key === 'i') { e.preventDefault(); formatText('italic'); }
+                    else if (e.key === 'u') { e.preventDefault(); formatText('underline'); }
+                 }
+                 // Allow Delete/Backspace for text editing, so don't proceed to delete note
+                 return; 
+            }
+            // If focus is not in contenteditable, then Delete/Backspace can delete the selected note
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNoteId) {
+                e.preventDefault(); // Prevent browser back navigation on Backspace
+                deleteSelectedNote();
+            }
+        });
+
+
+        // Start the application
+        init();
+
+    </script>
+</body>
+</html>
