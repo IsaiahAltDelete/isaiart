@@ -6,21 +6,23 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <title>NOTES</title>
+    <title>Notes</title>
 
     <style>
         :root {
             --bg-color-light: #f8f9fa;
             --text-color-light: #212529;
-            --card-bg-light: rgba(255, 255, 255, 0.75); /* Slightly less transparent for readability */
+            --card-bg-light: rgba(255, 255, 255, 0.75);
             --card-border-light: rgba(0, 0, 0, 0.1);
             --toolbar-bg-light: rgba(255, 255, 255, 0.9);
             --toolbar-shadow-light: 0 4px 12px rgba(0, 0, 0, 0.1);
             --grid-color-light: rgba(0, 0, 0, 0.08);
             --icon-color-light: #343A40;
-            --accent-color: #FFD700;
+            --accent-color: #FFD700; /* Yellow */
             --accent-text-color: #333;
             --placeholder-color-light: #6c757d;
+            --danger-color: #dc3545; /* Red for delete */
+            --danger-text-color: #ffffff;
 
             --bg-color-dark: #1a1c1e;
             --text-color-dark: #e0e0e0;
@@ -62,8 +64,7 @@
             position: absolute;
             background-color: var(--card-bg-light); border: 1px solid var(--card-border-light);
             border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            padding: 0; /* Padding will be on inner elements */
-            cursor: move; display: flex; flex-direction: column;
+            padding: 0; cursor: move; display: flex; flex-direction: column;
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             transition: box-shadow 0.2s ease-out, background-color 0.3s ease, border-color 0.3s ease;
             overflow: hidden;
@@ -83,103 +84,70 @@
         }
 
         .note-header {
-            display: flex; align-items: center;
-            padding: 8px 12px;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            flex-shrink: 0;
+            display: flex; align-items: center; padding: 8px 12px;
+            border-bottom: 1px solid rgba(0,0,0,0.05); flex-shrink: 0;
         }
         html.dark .note-header { border-bottom: 1px solid rgba(255,255,255,0.05); }
-
         .note-title {
             flex-grow: 1; font-weight: 600; font-size: 16px;
             outline: none; color: var(--text-color-light);
         }
         html.dark .note-title { color: var(--text-color-dark); }
         .note-title:empty:before {
-            content: attr(placeholder);
-            color: var(--placeholder-color-light);
-            font-weight: 500;
+            content: attr(placeholder); color: var(--placeholder-color-light); font-weight: 500;
         }
         html.dark .note-title:empty:before { color: var(--placeholder-color-dark); }
-
-
         .note-color-picker {
             width: 16px; height: 16px; border-radius: 50%;
             border: 1px solid rgba(0,0,0,0.2); cursor: pointer;
-            margin-left: 8px; opacity: 0; transition: opacity 0.2s ease;
-            flex-shrink: 0;
+            margin-left: 8px; opacity: 0; transition: opacity 0.2s ease; flex-shrink: 0;
         }
         .note:hover .note-color-picker, .note.selected .note-color-picker { opacity: 1; }
-
-        .note-content-wrapper { /* New wrapper for padding and scroll */
-            flex-grow: 1;
-            padding: 12px;
-            overflow-y: auto;
-        }
-
+        .note-content-wrapper { flex-grow: 1; padding: 12px; overflow-y: auto; }
         .note-content {
-            outline: none; font-size: 14px; line-height: 1.7; /* Increased line height */
-            color: var(--text-color-light);
-            min-height: 40px; /* Minimum height for the content area itself */
+            outline: none; font-size: 14px; line-height: 1.7;
+            color: var(--text-color-light); min-height: 40px;
         }
         html.dark .note-content { color: var(--text-color-dark); }
         .note-content:empty:before {
-            content: attr(placeholder);
-            color: var(--placeholder-color-light);
+            content: attr(placeholder); color: var(--placeholder-color-light);
             pointer-events: none; display: block;
         }
         html.dark .note-content:empty:before { color: var(--placeholder-color-dark); }
 
-        /* Checklist styles */
         .checklist-item { display: flex; align-items: flex-start; margin-bottom: 6px; }
         .checklist-item input[type="checkbox"] {
-            margin-right: 8px; margin-top: 5px; /* Align with text better */
-            flex-shrink: 0;
-            width: 16px; height: 16px;
-            accent-color: var(--accent-color); /* Style checkbox color */
+            margin-right: 8px; margin-top: 5px; flex-shrink: 0;
+            width: 16px; height: 16px; accent-color: var(--accent-color);
         }
-        .checklist-item span {
-            flex-grow: 1; outline: none;
-        }
-        .checklist-item input[type="checkbox"]:checked + span {
-            text-decoration: line-through;
-            color: gray;
-        }
+        .checklist-item span { flex-grow: 1; outline: none; }
+        .checklist-item input[type="checkbox"]:checked + span { text-decoration: line-through; color: gray; }
 
-        /* Markdown-like element styling */
         .note-content h1, .note-content h2, .note-content h3 { margin-top: 0.5em; margin-bottom: 0.25em; font-weight: 600; }
-        .note-content h1 { font-size: 1.5em; }
-        .note-content h2 { font-size: 1.3em; }
-        .note-content h3 { font-size: 1.15em; }
+        .note-content h1 { font-size: 1.5em; } .note-content h2 { font-size: 1.3em; } .note-content h3 { font-size: 1.15em; }
         .note-content a { color: var(--accent-color); text-decoration: underline; }
-        html.dark .note-content a { color: var(--accent-color); } /* Ensure accent is visible in dark mode */
+        html.dark .note-content a { color: var(--accent-color); }
         .note-content ul, .note-content ol { margin-left: 20px; padding-left: 5px; }
         .note-content blockquote {
-            border-left: 3px solid var(--accent-color);
-            margin-left: 0; padding-left: 1em; color: gray; font-style: italic;
+            border-left: 3px solid var(--accent-color); margin-left: 0;
+            padding-left: 1em; color: gray; font-style: italic;
         }
         .note-content pre {
-            background-color: rgba(0,0,0,0.05);
-            padding: 10px; border-radius: 6px;
+            background-color: rgba(0,0,0,0.05); padding: 10px; border-radius: 6px;
             overflow-x: auto; font-family: 'Courier New', Courier, monospace;
             font-size: 0.9em; margin: 0.5em 0;
         }
         html.dark .note-content pre { background-color: rgba(255,255,255,0.05); }
-        .note-content code { /* Inline code */
-            background-color: rgba(0,0,0,0.05);
-            padding: 2px 4px; border-radius: 4px;
+        .note-content code {
+            background-color: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px;
             font-family: 'Courier New', Courier, monospace; font-size: 0.9em;
         }
         html.dark .note-content code { background-color: rgba(255,255,255,0.05); }
-        .note-content pre code { /* Reset for code inside pre */
-            background-color: transparent; padding: 0; border-radius: 0;
-        }
-
+        .note-content pre code { background-color: transparent; padding: 0; border-radius: 0; }
 
         .note-resize-handle {
-            position: absolute; bottom: 1px; right: 1px;
-            width: 20px; height: 20px; cursor: nwse-resize;
-            display: flex; align-items: center; justify-content: center;
+            position: absolute; bottom: 1px; right: 1px; width: 20px; height: 20px;
+            cursor: nwse-resize; display: flex; align-items: center; justify-content: center;
             opacity: 0; transition: opacity 0.2s ease; z-index: 10;
         }
         .note.selected .note-resize-handle { opacity: 0.7; }
@@ -189,23 +157,21 @@
 
         #toolbar {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            background-color: var(--toolbar-bg-light); padding: 8px 10px; /* Adjusted padding */
+            background-color: var(--toolbar-bg-light); padding: 8px 10px;
             border-radius: 16px; box-shadow: var(--toolbar-shadow-light);
-            display: flex; flex-wrap: wrap; /* Allow wrapping for more buttons */
-            gap: 5px; /* Adjusted gap */
-            align-items: center; z-index: 1000;
+            display: flex; flex-wrap: wrap; gap: 5px;
+            align-items: center; z-index: 1000; /* Toolbar z-index */
             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            max-width: 90vw; /* Prevent toolbar from being too wide */
-            justify-content: center;
+            max-width: 90vw; justify-content: center;
         }
         html.dark #toolbar { background-color: var(--toolbar-bg-dark); box-shadow: var(--toolbar-shadow-dark); }
-
         .toolbar-button {
-            background-color: transparent; border: none; padding: 7px; /* Adjusted padding */
+            background-color: transparent; border: none; padding: 7px;
             border-radius: 8px; cursor: pointer; display: flex;
             align-items: center; justify-content: center;
             color: var(--icon-color-light);
             transition: background-color 0.2s ease, color 0.2s ease;
+            position: relative; /* For tooltip positioning context if needed */
         }
         html.dark .toolbar-button { color: var(--icon-color-dark); }
         .toolbar-button:hover { background-color: rgba(0,0,0,0.05); }
@@ -216,14 +182,13 @@
         .toolbar-separator { width: 1px; height: 24px; background-color: rgba(0,0,0,0.1); margin: 0 4px; }
         html.dark .toolbar-separator { background-color: rgba(255,255,255,0.1); }
 
-
-        .material-symbols-outlined { font-size: 20px; /* Slightly smaller default for toolbar */ }
+        .material-symbols-outlined { font-size: 20px; }
 
         .color-palette {
-            position: fixed; /* Use fixed for palette too */
-            background-color: var(--toolbar-bg-light); border: 1px solid var(--card-border-light);
-            border-radius: 8px; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            display: flex; gap: 6px; z-index: 1001;
+            position: fixed; background-color: var(--toolbar-bg-light);
+            border: 1px solid var(--card-border-light); border-radius: 8px;
+            padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex; gap: 6px; z-index: 1001; /* Above toolbar */
         }
         html.dark .color-palette {
             background-color: var(--toolbar-bg-dark); border: 1px solid var(--card-border-dark);
@@ -240,6 +205,59 @@
         html.dark .note-content::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.2); }
         .note-content::-webkit-scrollbar-thumb:hover { background-color: rgba(0,0,0,0.3); }
         html.dark .note-content::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.3); }
+
+        /* Custom Tooltip */
+        #customTooltip {
+            background-color: var(--text-color-light); /* Dark text on light bg */
+            color: var(--bg-color-light); /* Light text on dark bg */
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1050; /* Above modal overlay, below modal itself if needed, but generally above everything else */
+            pointer-events: none; /* So it doesn't interfere with mouse events on buttons */
+            white-space: nowrap;
+            transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+            opacity: 0;
+            transform: translateY(5px); /* Start slightly lower */
+        }
+        #customTooltip.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        html.dark #customTooltip {
+            background-color: var(--text-color-dark);
+            color: var(--bg-color-dark);
+        }
+
+        /* Confirm Delete Modal */
+        #confirmDeleteOverlay { z-index: 1040; } /* Below modal, above toolbar */
+        #confirmDeleteModal { z-index: 1045; } /* Above overlay */
+        #confirmDeleteModal button.confirm {
+            background-color: var(--danger-color);
+            color: var(--danger-text-color);
+        }
+        #confirmDeleteModal button.confirm:hover {
+            background-color: #c82333; /* Darker red */
+        }
+        #confirmDeleteModal button.cancel {
+            background-color: var(--bg-color-light);
+            color: var(--text-color-light);
+            border: 1px solid var(--card-border-light);
+        }
+        html.dark #confirmDeleteModal button.cancel {
+            background-color: var(--card-bg-dark);
+            color: var(--text-color-dark);
+            border: 1px solid var(--card-border-dark);
+        }
+        html.dark #confirmDeleteModal button.cancel:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+         #confirmDeleteModal button.cancel:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+
     </style>
 </head>
 <body>
@@ -276,71 +294,72 @@
         <button id="toggleThemeBtn" class="toolbar-button" title="Toggle Theme"><span class="material-symbols-outlined">brightness_6</span></button>
     </div>
 
+    <!-- Custom Tooltip Element -->
+    <div id="customTooltip" class="absolute hidden"></div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="confirmDeleteOverlay" class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 hidden"></div>
+    <div id="confirmDeleteModal" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] p-6 rounded-lg shadow-xl hidden w-full max-w-sm backdrop-blur-md dark:backdrop-blur-md border border-[var(--card-border-light)] dark:border-[var(--card-border-dark)]">
+        <h3 class="text-xl font-semibold mb-2 text-[var(--text-color-light)] dark:text-[var(--text-color-dark)]">Delete Note?</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to permanently delete this note? This action cannot be undone.</p>
+        <div class="flex justify-end space-x-3">
+            <button id="cancelDeleteBtn" class="px-4 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cancel">Cancel</button>
+            <button id="confirmDeleteFinalBtn" class="px-4 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 confirm">Delete</button>
+        </div>
+    </div>
+
+
     <script>
         // DOM Elements
         const canvasContainer = document.getElementById('canvas-container');
         const canvas = document.getElementById('canvas');
         const toolbar = document.getElementById('toolbar');
-        // Toolbar Buttons (dynamically get all formatting buttons later)
+        const customTooltipEl = document.getElementById('customTooltip');
+        const confirmDeleteOverlay = document.getElementById('confirmDeleteOverlay');
+        const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        const confirmDeleteFinalBtn = document.getElementById('confirmDeleteFinalBtn');
+
         const addNoteBtn = document.getElementById('addNoteBtn');
-        const deleteNoteBtn = document.getElementById('deleteNoteBtn');
+        const deleteNoteBtn = document.getElementById('deleteNoteBtn'); // This button will trigger the popup
         const zoomInBtn = document.getElementById('zoomInBtn');
         const zoomOutBtn = document.getElementById('zoomOutBtn');
         const resetZoomBtn = document.getElementById('resetZoomBtn');
         const toggleGridBtn = document.getElementById('toggleGridBtn');
         const toggleThemeBtn = document.getElementById('toggleThemeBtn');
-        // Formatting buttons
-        const formattingButtons = {
-            bold: document.getElementById('boldBtn'),
-            italic: document.getElementById('italicBtn'),
-            underline: document.getElementById('underlineBtn'),
-            strikethrough: document.getElementById('strikethroughBtn'),
-            link: document.getElementById('linkBtn'),
-            h1: document.getElementById('h1Btn'),
-            h2: document.getElementById('h2Btn'),
-            h3: document.getElementById('h3Btn'),
-            ul: document.getElementById('ulBtn'),
-            ol: document.getElementById('olBtn'),
-            checklist: document.getElementById('checklistBtn'),
-            quote: document.getElementById('quoteBtn'),
-            inlineCode: document.getElementById('inlineCodeBtn'),
-            codeBlock: document.getElementById('codeBlockBtn'),
-        };
+        const formattingButtons = { /* ... same as before ... */ };
+        Object.assign(formattingButtons, {
+            bold: document.getElementById('boldBtn'), italic: document.getElementById('italicBtn'),
+            underline: document.getElementById('underlineBtn'), strikethrough: document.getElementById('strikethroughBtn'),
+            link: document.getElementById('linkBtn'), h1: document.getElementById('h1Btn'),
+            h2: document.getElementById('h2Btn'), h3: document.getElementById('h3Btn'),
+            ul: document.getElementById('ulBtn'), ol: document.getElementById('olBtn'),
+            checklist: document.getElementById('checklistBtn'), quote: document.getElementById('quoteBtn'),
+            inlineCode: document.getElementById('inlineCodeBtn'), codeBlock: document.getElementById('codeBlockBtn'),
+        });
+
 
         // State
         let notes = [];
         let selectedNoteId = null;
+        let noteIdToDelete = null; // For delete confirmation
         let highestZIndex = 1;
         let zoomLevel = 1;
-        let panX = 0;
-        let panY = 0;
-        let isPanning = false;
-        let lastPanX, lastPanY;
-        let isDraggingNote = false;
-        let isResizingNote = false;
+        let panX = 0, panY = 0;
+        let isPanning = false, lastPanX, lastPanY;
+        let isDraggingNote = false, isResizingNote = false;
         let dragOffsetX, dragOffsetY;
         let initialResizeMouseX, initialResizeMouseY, initialNoteWidth, initialNoteHeight;
 
         // Constants
         const GRID_SIZE = 20;
-        const MIN_NOTE_WIDTH = GRID_SIZE * 5; // 100px
-        const MIN_NOTE_HEIGHT = GRID_SIZE * 4; // 80px
-        const NOTE_COLORS = [ /* ... same as before ... */ ];
-        const DARK_NOTE_COLORS = [ /* ... same as before ... */ ];
-        // (Copy NOTE_COLORS and DARK_NOTE_COLORS from previous version)
-        NOTE_COLORS.push(...[
-            'rgba(255, 215, 0, 0.7)', 'rgba(173, 216, 230, 0.7)', 'rgba(144, 238, 144, 0.7)',
-            'rgba(255, 182, 193, 0.7)', 'rgba(221, 160, 221, 0.7)', 'rgba(240, 240, 240, 0.7)'
-        ]);
-        DARK_NOTE_COLORS.push(...[
-            'rgba(255, 215, 0, 0.6)', 'rgba(70, 130, 180, 0.6)', 'rgba(60, 179, 113, 0.6)',
-            'rgba(219, 112, 147, 0.6)', 'rgba(147, 112, 219, 0.6)', 'rgba(60, 60, 60, 0.7)'
-        ]);
-
+        const MIN_NOTE_WIDTH = GRID_SIZE * 5;
+        const MIN_NOTE_HEIGHT = GRID_SIZE * 4;
+        const NOTE_COLORS = ['rgba(255, 215, 0, 0.7)', 'rgba(173, 216, 230, 0.7)', 'rgba(144, 238, 144, 0.7)', 'rgba(255, 182, 193, 0.7)', 'rgba(221, 160, 221, 0.7)', 'rgba(240, 240, 240, 0.7)'];
+        const DARK_NOTE_COLORS = ['rgba(255, 215, 0, 0.6)', 'rgba(70, 130, 180, 0.6)', 'rgba(60, 179, 113, 0.6)', 'rgba(219, 112, 147, 0.6)', 'rgba(147, 112, 219, 0.6)', 'rgba(60, 60, 60, 0.7)'];
 
         // --- Utility Functions ---
         function snapToGrid(value, gridSize = GRID_SIZE) { return Math.round(value / gridSize) * gridSize; }
-        
         function getSelectedNoteContentElement() {
             if (!selectedNoteId) return null;
             const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
@@ -349,12 +368,9 @@
 
         // --- Initialization ---
         function init() {
-            loadState();
-            updateCanvasTransform();
-            renderNotes();
-            updateToolbarState();
-            applyTheme(localStorage.getItem('modularNotepad_theme_v4') || 'light');
-            applyGridVisibility(localStorage.getItem('modularNotepad_gridVisible_v4') === 'true');
+            loadState(); updateCanvasTransform(); renderNotes(); updateToolbarState();
+            applyTheme(localStorage.getItem('modularNotepad_theme_v5') || 'light');
+            applyGridVisibility(localStorage.getItem('modularNotepad_gridVisible_v5') === 'true');
 
             canvasContainer.addEventListener('mousedown', handleCanvasMouseDown);
             canvasContainer.addEventListener('wheel', handleCanvasWheel, { passive: false });
@@ -362,51 +378,121 @@
             document.addEventListener('mouseup', handleGlobalMouseUp);
 
             setupToolbarButtonListeners();
+            setupCustomTooltips();
+            setupDeleteConfirmation();
+
             document.addEventListener('selectionchange', updateFormattingButtonStates);
-            document.addEventListener('click', handleDocumentClickForDeselectionAndPalette); // Consolidated
+            document.addEventListener('click', handleDocumentClickForDeselectionAndPalette);
         }
 
         function setupToolbarButtonListeners() {
             addNoteBtn.addEventListener('click', addNote);
-            deleteNoteBtn.addEventListener('click', deleteSelectedNote);
+            deleteNoteBtn.addEventListener('click', triggerDeleteConfirmation); // Changed
             zoomInBtn.addEventListener('click', () => zoomViaButton(1.2));
             zoomOutBtn.addEventListener('click', () => zoomViaButton(1 / 1.2));
             resetZoomBtn.addEventListener('click', resetView);
             toggleGridBtn.addEventListener('click', toggleGrid);
             toggleThemeBtn.addEventListener('click', toggleTheme);
-
-            // Formatting buttons
-            formattingButtons.bold.addEventListener('click', () => execCmd('bold'));
-            formattingButtons.italic.addEventListener('click', () => execCmd('italic'));
-            formattingButtons.underline.addEventListener('click', () => execCmd('underline'));
-            formattingButtons.strikethrough.addEventListener('click', () => execCmd('strikeThrough'));
-            formattingButtons.link.addEventListener('click', createLink);
-            formattingButtons.h1.addEventListener('click', () => execCmdFormatBlock('h1'));
-            formattingButtons.h2.addEventListener('click', () => execCmdFormatBlock('h2'));
-            formattingButtons.h3.addEventListener('click', () => execCmdFormatBlock('h3'));
-            formattingButtons.ul.addEventListener('click', () => execCmd('insertUnorderedList'));
-            formattingButtons.ol.addEventListener('click', () => execCmd('insertOrderedList'));
-            formattingButtons.checklist.addEventListener('click', insertChecklistItem);
-            formattingButtons.quote.addEventListener('click', () => execCmdFormatBlock('blockquote'));
-            formattingButtons.inlineCode.addEventListener('click', insertInlineCode);
-            formattingButtons.codeBlock.addEventListener('click', insertCodeBlock);
+            // Formatting buttons (same as before)
+            Object.entries(formattingButtons).forEach(([key, btn]) => {
+                switch (key) {
+                    case 'bold': btn.addEventListener('click', () => execCmd('bold')); break;
+                    case 'italic': btn.addEventListener('click', () => execCmd('italic')); break;
+                    case 'underline': btn.addEventListener('click', () => execCmd('underline')); break;
+                    case 'strikethrough': btn.addEventListener('click', () => execCmd('strikeThrough')); break;
+                    case 'link': btn.addEventListener('click', createLink); break;
+                    case 'h1': btn.addEventListener('click', () => execCmdFormatBlock('h1')); break;
+                    case 'h2': btn.addEventListener('click', () => execCmdFormatBlock('h2')); break;
+                    case 'h3': btn.addEventListener('click', () => execCmdFormatBlock('h3')); break;
+                    case 'ul': btn.addEventListener('click', () => execCmd('insertUnorderedList')); break;
+                    case 'ol': btn.addEventListener('click', () => execCmd('insertOrderedList')); break;
+                    case 'checklist': btn.addEventListener('click', insertChecklistItem); break;
+                    case 'quote': btn.addEventListener('click', () => execCmdFormatBlock('blockquote')); break;
+                    case 'inlineCode': btn.addEventListener('click', insertInlineCode); break;
+                    case 'codeBlock': btn.addEventListener('click', insertCodeBlock); break;
+                }
+            });
         }
 
-        // --- Theme & Grid --- (Mostly same as before, ensure keys are updated for localStorage if needed)
+        // --- Custom Tooltips ---
+        function setupCustomTooltips() {
+            const buttonsWithTooltips = toolbar.querySelectorAll('button[title]');
+            buttonsWithTooltips.forEach(button => {
+                button.addEventListener('mouseenter', (e) => {
+                    const tooltipText = button.getAttribute('title');
+                    if (tooltipText) {
+                        customTooltipEl.textContent = tooltipText;
+                        const btnRect = button.getBoundingClientRect();
+                        customTooltipEl.style.left = `${btnRect.left + btnRect.width / 2 - customTooltipEl.offsetWidth / 2}px`;
+                        customTooltipEl.style.top = `${btnRect.top - customTooltipEl.offsetHeight - 6}px`; // 6px offset
+                        customTooltipEl.classList.remove('hidden');
+                        customTooltipEl.classList.add('visible');
+                    }
+                });
+                button.addEventListener('mouseleave', () => {
+                    customTooltipEl.classList.remove('visible');
+                    // Use a timeout to allow fade-out transition before hiding
+                    setTimeout(() => {
+                        if (!customTooltipEl.classList.contains('visible')) { // Check again in case mouse re-entered quickly
+                           customTooltipEl.classList.add('hidden');
+                        }
+                    }, 150); // Match transition duration or slightly longer
+                });
+            });
+        }
+
+        // --- Delete Confirmation Modal ---
+        function setupDeleteConfirmation() {
+            cancelDeleteBtn.addEventListener('click', hideConfirmDeletePopup);
+            confirmDeleteFinalBtn.addEventListener('click', () => {
+                if (noteIdToDelete) {
+                    performActualDeletion(noteIdToDelete);
+                }
+                hideConfirmDeletePopup();
+            });
+            confirmDeleteOverlay.addEventListener('click', hideConfirmDeletePopup); // Click outside to close
+        }
+
+        function triggerDeleteConfirmation() {
+            if (selectedNoteId) {
+                noteIdToDelete = selectedNoteId; // Store the ID of the note to be deleted
+                confirmDeleteOverlay.classList.remove('hidden');
+                confirmDeleteModal.classList.remove('hidden');
+                confirmDeleteFinalBtn.focus(); // Focus the confirm button for accessibility
+            }
+        }
+
+        function hideConfirmDeletePopup() {
+            confirmDeleteOverlay.classList.add('hidden');
+            confirmDeleteModal.classList.add('hidden');
+            noteIdToDelete = null; // Clear the stored ID
+        }
+
+        function performActualDeletion(idOfNoteToDelete) {
+            notes = notes.filter(note => note.id !== idOfNoteToDelete);
+            canvas.querySelector(`.note[data-id="${idOfNoteToDelete}"]`)?.remove();
+            if (selectedNoteId === idOfNoteToDelete) { // If the deleted note was selected
+                selectedNoteId = null;
+            }
+            updateToolbarState();
+            saveState();
+        }
+        
+        // --- Theme & Grid ---
         function applyTheme(theme) {
             document.documentElement.classList.toggle('dark', theme === 'dark');
             toggleThemeBtn.querySelector('.material-symbols-outlined').textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
-            localStorage.setItem('modularNotepad_theme_v4', theme);
+            localStorage.setItem('modularNotepad_theme_v5', theme);
         }
         function toggleTheme() { applyTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark'); }
         function applyGridVisibility(visible) {
             canvasContainer.classList.toggle('grid-visible', visible);
             toggleGridBtn.classList.toggle('active', visible);
-            localStorage.setItem('modularNotepad_gridVisible_v4', visible);
+            localStorage.setItem('modularNotepad_gridVisible_v5', visible);
         }
         function toggleGrid() { applyGridVisibility(!canvasContainer.classList.contains('grid-visible')); }
 
-        // --- Canvas Interaction (Zoom & Pan) --- (Mostly same as before)
+        // --- Canvas Interaction (Zoom & Pan) ---
         function updateCanvasTransform() { canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`; }
         function zoomAtPoint(mouseX, mouseY, factor) {
             const mouseBeforeZoomX = (mouseX - panX) / zoomLevel;
@@ -425,10 +511,8 @@
             if (e.target === canvasContainer || e.target === canvas) {
                 isPanning = true; canvasContainer.style.cursor = 'grabbing';
                 lastPanX = e.clientX; lastPanY = e.clientY;
-                // Deselection is handled by global click listener now
             }
         }
-        // handleCanvasMouseMove for panning is removed, integrated into handleGlobalMouseMove
         function handleCanvasWheel(e) {
             e.preventDefault();
             const deltaFactor = e.deltaY > 0 ? 1 / 1.1 : 1.1;
@@ -448,7 +532,6 @@
             });
             if (note.id === selectedNoteId) noteEl.classList.add('selected');
 
-            // Header
             const headerEl = document.createElement('div');
             headerEl.className = 'note-header';
             const titleEl = document.createElement('div');
@@ -456,12 +539,9 @@
             titleEl.setAttribute('contenteditable', 'true');
             titleEl.setAttribute('placeholder', 'Title');
             titleEl.innerHTML = note.title || '';
-            titleEl.addEventListener('input', () => { note.title = titleEl.innerHTML; saveState(); });
-            titleEl.addEventListener('blur', () => { note.title = titleEl.innerHTML; saveState(); }); // Ensure save on blur
-            titleEl.addEventListener('keydown', (e) => { // Prevent new line in title
-                if (e.key === 'Enter') e.preventDefault();
-            });
-
+            titleEl.addEventListener('input', () => { note.title = titleEl.innerHTML; saveStateDebounced(); });
+            titleEl.addEventListener('blur', () => { note.title = titleEl.innerHTML; saveState(); });
+            titleEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
 
             const colorPickerInput = document.createElement('input');
             colorPickerInput.type = 'button';
@@ -473,7 +553,6 @@
             headerEl.appendChild(titleEl);
             headerEl.appendChild(colorPickerInput);
 
-            // Content Wrapper & Content
             const contentWrapperEl = document.createElement('div');
             contentWrapperEl.className = 'note-content-wrapper';
             const contentEl = document.createElement('div');
@@ -484,31 +563,22 @@
             contentEl.addEventListener('focus', () => { selectNote(note.id); updateFormattingButtonStates(); });
             contentEl.addEventListener('blur', () => { note.content = contentEl.innerHTML; saveState(); });
             contentEl.addEventListener('input', () => { note.content = contentEl.innerHTML; saveStateDebounced(); });
-            // Handle checklist item interaction
             contentEl.addEventListener('change', (e) => {
                 if (e.target.type === 'checkbox' && e.target.closest('.checklist-item')) {
-                    // The checked state is already part of the innerHTML.
-                    // We just need to ensure the note's content is updated in our data model.
-                    note.content = contentEl.innerHTML;
-                    saveState(); // Save immediately on checkbox change
+                    note.content = contentEl.innerHTML; saveState();
                 }
             });
-
-
             contentWrapperEl.appendChild(contentEl);
 
-            // Resize Handle
             const resizeHandleEl = document.createElement('div');
             resizeHandleEl.className = 'note-resize-handle';
             resizeHandleEl.innerHTML = `<span class="material-symbols-outlined">aspect_ratio</span>`;
 
             noteEl.append(headerEl, contentWrapperEl, resizeHandleEl);
 
-            // Event listeners for drag/resize initiation
             noteEl.addEventListener('mousedown', (e) => {
                 if (e.target.closest('.note-title') || e.target.closest('.note-content') || e.target.closest('.note-color-picker') || e.target.closest('.note-resize-handle') || e.target.closest('input[type="checkbox"]') || e.target.closest('a')) {
-                    if (!noteEl.classList.contains('selected')) selectNote(note.id);
-                    return;
+                    if (!noteEl.classList.contains('selected')) selectNote(note.id); return;
                 }
                 e.stopPropagation(); isDraggingNote = true; selectNote(note.id);
                 noteEl.style.cursor = 'grabbing'; canvasContainer.style.cursor = 'grabbing';
@@ -533,27 +603,22 @@
             const note = notes.find(n => n.id === noteId);
             const noteEl = canvas.querySelector(`.note[data-id="${noteId}"]`);
             if (note && noteEl && (note.zIndex < highestZIndex || notes.filter(n => n.zIndex === note.zIndex).length > 1 && note.zIndex !== highestZIndex)) {
-                highestZIndex++;
-                note.zIndex = highestZIndex;
-                noteEl.style.zIndex = note.zIndex;
-                // saveState(); // Saved on mouseup of drag/resize
+                highestZIndex++; note.zIndex = highestZIndex; noteEl.style.zIndex = note.zIndex;
             }
         }
         
-        // --- Global Mouse Move & Up Handlers (for drag, resize, pan) ---
         function handleGlobalMouseMove(e) {
-            if (isPanning) { // Canvas Panning
+            if (isPanning) {
                 const dx = e.clientX - lastPanX; const dy = e.clientY - lastPanY;
-                panX += dx; panY += dy;
-                lastPanX = e.clientX; lastPanY = e.clientY;
-                updateCanvasTransform(); // No save here, on mouseup
-            } else if (isDraggingNote && selectedNoteId) { // Note Dragging
+                panX += dx; panY += dy; lastPanX = e.clientX; lastPanY = e.clientY;
+                updateCanvasTransform();
+            } else if (isDraggingNote && selectedNoteId) {
                 const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
                 if (!noteEl) return;
                 let newX = (e.clientX - panX) / zoomLevel - dragOffsetX;
                 let newY = (e.clientY - panY) / zoomLevel - dragOffsetY;
                 noteEl.style.left = `${newX}px`; noteEl.style.top = `${newY}px`;
-            } else if (isResizingNote && selectedNoteId) { // Note Resizing
+            } else if (isResizingNote && selectedNoteId) {
                 const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
                 if (!noteEl) return;
                 const currentMouseX = (e.clientX - panX) / zoomLevel;
@@ -589,7 +654,6 @@
                 }
                 isResizingNote = false;
             }
-            // Reset cursors
             if (!isPanning && !isDraggingNote && !isResizingNote) {
                 canvasContainer.style.cursor = 'grab';
                 if (selectedNoteId) {
@@ -608,14 +672,11 @@
             highestZIndex++;
             const viewCenterX = (canvasContainer.offsetWidth / 2 - panX) / zoomLevel;
             const viewCenterY = (canvasContainer.offsetHeight / 2 - panY) / zoomLevel;
-            const initialWidth = snapToGrid(240); // Slightly wider default
-            const initialHeight = snapToGrid(180); // Slightly taller default
-
+            const initialWidth = snapToGrid(240); const initialHeight = snapToGrid(180);
             const newNote = {
                 id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 title: '', content: '',
-                x: snapToGrid(viewCenterX - initialWidth / 2),
-                y: snapToGrid(viewCenterY - initialHeight / 2),
+                x: snapToGrid(viewCenterX - initialWidth / 2), y: snapToGrid(viewCenterY - initialHeight / 2),
                 width: initialWidth, height: initialHeight,
                 color: document.documentElement.classList.contains('dark') ? DARK_NOTE_COLORS[5] : NOTE_COLORS[5],
                 zIndex: highestZIndex
@@ -624,56 +685,39 @@
             const noteEl = createNoteElement(newNote);
             canvas.appendChild(noteEl);
             selectNote(newNote.id);
-            noteEl.querySelector('.note-title').focus(); // Focus title of new note
+            noteEl.querySelector('.note-title').focus();
             saveState();
         }
 
-        function deleteSelectedNote() {
-            if (!selectedNoteId) return;
-            notes = notes.filter(note => note.id !== selectedNoteId);
-            canvas.querySelector(`.note[data-id="${selectedNoteId}"]`)?.remove();
-            selectedNoteId = null;
-            updateToolbarState(); saveState();
-        }
+        // deleteSelectedNote is replaced by triggerDeleteConfirmation and performActualDeletion
 
         function selectNote(noteId) {
             if (selectedNoteId === noteId && document.querySelector(`.note[data-id="${noteId}"].selected`)) {
-                // Already selected, but ensure z-index is handled if needed
                 bringToFront(noteId);
             } else {
-                deselectAllNotes();
-                selectedNoteId = noteId;
+                deselectAllNotes(); selectedNoteId = noteId;
                 const noteEl = canvas.querySelector(`.note[data-id="${noteId}"]`);
-                if (noteEl) {
-                    noteEl.classList.add('selected');
-                    bringToFront(noteId); // Bring to front on selection
-                }
+                if (noteEl) { noteEl.classList.add('selected'); bringToFront(noteId); }
             }
-            updateToolbarState();
-            updateFormattingButtonStates();
+            updateToolbarState(); updateFormattingButtonStates();
         }
 
         function deselectAllNotes() {
             if (selectedNoteId) {
                 canvas.querySelector(`.note[data-id="${selectedNoteId}"].selected`)?.classList.remove('selected');
             }
-            selectedNoteId = null;
-            updateToolbarState();
-            updateFormattingButtonStates();
+            selectedNoteId = null; updateToolbarState(); updateFormattingButtonStates();
         }
 
         function handleDocumentClickForDeselectionAndPalette(event) {
-            // Deselect note if clicked on canvas background
             if ((event.target === canvasContainer || event.target === canvas) && !isPanning && !isDraggingNote && !isResizingNote) {
                 deselectAllNotes();
             }
-            // Close color palette
             if (activeColorPalette && !activeColorPalette.contains(event.target) && !event.target.classList.contains('note-color-picker')) {
                 activeColorPalette.remove(); activeColorPalette = null;
             }
         }
         
-        // --- Color Palette --- (Mostly same as before)
         let activeColorPalette = null;
         function showColorPalette(anchorElement, noteId) {
             activeColorPalette?.remove();
@@ -712,125 +756,58 @@
 
         function execCmd(command, value = null) {
             const contentEl = getSelectedNoteContentElement();
-            if (!contentEl || document.activeElement !== contentEl) {
-                contentEl?.focus(); // Focus if not already, then user might need to click again or re-select
-            }
+            if (!contentEl || document.activeElement !== contentEl) contentEl?.focus();
             document.execCommand(command, false, value);
-            if (contentEl) { // Save after command
+            if (contentEl) {
                 const note = notes.find(n => n.id === selectedNoteId);
                 if (note) note.content = contentEl.innerHTML;
                 saveStateDebounced();
             }
             updateFormattingButtonStates();
         }
-
         function execCmdFormatBlock(tagName) { execCmd('formatBlock', `<${tagName}>`); }
-
         function createLink() {
-            const contentEl = getSelectedNoteContentElement();
-            if (!contentEl) return;
+            const contentEl = getSelectedNoteContentElement(); if (!contentEl) return;
             if (document.activeElement !== contentEl) contentEl.focus();
-            
-            const selection = window.getSelection();
-            let initialText = "";
-            if (selection && selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0);
-                if (range.startContainer.parentNode.closest('.note-content') === contentEl || range.endContainer.parentNode.closest('.note-content') === contentEl) {
-                     initialText = selection.toString();
-                }
-            }
-
             const url = prompt("Enter link URL:", "https://");
-            if (url) {
-                // If no text was selected, or selection was empty, use URL as text
-                if (!initialText.trim()) {
-                    // execCommand 'createLink' needs a selection. If none, insert URL text then link it.
-                    // This is a bit tricky. A simpler way is to ensure there's always some text.
-                    // For now, if no text is selected, it might not work as expected or link the prompt's default.
-                    // A robust solution would be to insert the URL as text if selection is empty, then select it and call createLink.
-                    // Let's try to make it work if there's no selection:
-                    if (!selection || selection.toString().length === 0) {
-                        document.execCommand('insertText', false, url);
-                        // Now re-select the inserted text. This is tricky.
-                        // For simplicity, we'll rely on user selecting text or execCommand's behavior.
-                    }
-                }
-                execCmd('createLink', url);
-            }
+            if (url) execCmd('createLink', url);
         }
-
         function insertChecklistItem() {
-            const contentEl = getSelectedNoteContentElement();
-            if (!contentEl) return;
+            const contentEl = getSelectedNoteContentElement(); if (!contentEl) return;
             if (document.activeElement !== contentEl) contentEl.focus();
-
             const id = `chk-${Date.now()}`;
             const html = `<div class="checklist-item"><input type="checkbox" id="${id}"><span contenteditable="true">List item</span></div>`;
             document.execCommand('insertHTML', false, html);
-            // Focus the new span
             const newSpan = contentEl.querySelector(`#${id}`)?.nextElementSibling;
             if (newSpan) {
-                const range = document.createRange();
-                const sel = window.getSelection();
-                range.selectNodeContents(newSpan);
-                range.collapse(false); // to end
-                sel.removeAllRanges();
-                sel.addRange(range);
+                const range = document.createRange(); const sel = window.getSelection();
+                range.selectNodeContents(newSpan); range.collapse(false);
+                sel.removeAllRanges(); sel.addRange(range);
             }
             const note = notes.find(n => n.id === selectedNoteId);
-            if (note) note.content = contentEl.innerHTML;
-            saveState(); // Save immediately for checklist
+            if (note) note.content = contentEl.innerHTML; saveState();
         }
-
-        function insertInlineCode() {
-            surroundSelection('<code>', '</code>', true);
-        }
-        function insertCodeBlock() {
-            surroundSelection('<pre><code>', '</code></pre>', false);
-        }
-
+        function insertInlineCode() { surroundSelection('<code>', '</code>', true); }
+        function insertCodeBlock() { surroundSelection('<pre><code>', '</code></pre>', false); }
         function surroundSelection(prefix, suffix, isInline) {
-            const contentEl = getSelectedNoteContentElement();
-            if (!contentEl) return;
+            const contentEl = getSelectedNoteContentElement(); if (!contentEl) return;
             if (document.activeElement !== contentEl) contentEl.focus();
-
             const sel = window.getSelection();
             if (sel.rangeCount > 0) {
                 const range = sel.getRangeAt(0);
-                // Check if selection is within the current note's content area
-                if (!contentEl.contains(range.commonAncestorContainer)) {
-                    console.warn("Selection is outside the active note content.");
-                    return;
-                }
-
+                if (!contentEl.contains(range.commonAncestorContainer)) return;
                 const selectedText = sel.toString();
-                let replacementHTML;
-
-                if (isInline) {
-                    replacementHTML = `${prefix}${selectedText || "code"}${suffix}`;
-                } else { // Block element
-                    // For <pre>, ensure it's on a new line or wraps the current block
-                    // This simple version just wraps the selection.
-                    // A more robust version would handle block-level insertion better.
-                    replacementHTML = `${prefix}${selectedText || "\n"}${suffix}`;
-                }
-                
+                let replacementHTML = isInline ? `${prefix}${selectedText || "code"}${suffix}` : `${prefix}${selectedText || "\n"}${suffix}`;
                 document.execCommand('insertHTML', false, replacementHTML);
-
                 const note = notes.find(n => n.id === selectedNoteId);
-                if (note) note.content = contentEl.innerHTML;
-                saveStateDebounced();
+                if (note) note.content = contentEl.innerHTML; saveStateDebounced();
             }
         }
-
-
         function updateFormattingButtonStates() {
             if (!selectedNoteId) {
-                Object.values(formattingButtons).forEach(btn => { btn.classList.remove('active'); btn.disabled = true; });
-                return;
+                Object.values(formattingButtons).forEach(btn => { btn.classList.remove('active'); btn.disabled = true; }); return;
             }
-            Object.values(formattingButtons).forEach(btn => btn.disabled = false); // Enable all if note selected
-
+            Object.values(formattingButtons).forEach(btn => btn.disabled = false);
             const contentEl = getSelectedNoteContentElement();
             if (document.activeElement === contentEl) {
                 try {
@@ -840,40 +817,28 @@
                     formattingButtons.strikethrough.classList.toggle('active', document.queryCommandState('strikeThrough'));
                     formattingButtons.ul.classList.toggle('active', document.queryCommandState('insertUnorderedList'));
                     formattingButtons.ol.classList.toggle('active', document.queryCommandState('insertOrderedList'));
-                    // For formatBlock elements, check parent node
                     const blockType = document.queryCommandValue('formatBlock').toLowerCase();
                     formattingButtons.h1.classList.toggle('active', blockType === 'h1');
                     formattingButtons.h2.classList.toggle('active', blockType === 'h2');
                     formattingButtons.h3.classList.toggle('active', blockType === 'h3');
                     formattingButtons.quote.classList.toggle('active', blockType === 'blockquote');
-                    // Link, checklist, code are harder to query state for, usually not toggled 'active'
-                    formattingButtons.link.classList.remove('active');
-                    formattingButtons.checklist.classList.remove('active');
-                    formattingButtons.inlineCode.classList.remove('active');
-                    formattingButtons.codeBlock.classList.remove('active');
-
+                    ['link', 'checklist', 'inlineCode', 'codeBlock'].forEach(k => formattingButtons[k].classList.remove('active'));
                 } catch (e) { console.warn("Could not query command state:", e); }
-            } else { // Note selected, but content not focused
-                Object.values(formattingButtons).forEach(btn => btn.classList.remove('active'));
-            }
+            } else { Object.values(formattingButtons).forEach(btn => btn.classList.remove('active')); }
         }
 
         // --- Local Storage ---
         const LS_APP_PREFIX = 'modularNotepad_';
-        const LS_NOTES_KEY = LS_APP_PREFIX + 'notes_v4_enhanced';
-        const LS_TRANSFORM_KEY = LS_APP_PREFIX + 'transform_v4';
-        const LS_HIGHEST_Z_KEY = LS_APP_PREFIX + 'highestZ_v4';
-        const LS_THEME_KEY = LS_APP_PREFIX + 'theme_v4';
-        const LS_GRID_VISIBLE_KEY = LS_APP_PREFIX + 'gridVisible_v4';
+        const LS_NOTES_KEY = LS_APP_PREFIX + 'notes_v5_final';
+        const LS_TRANSFORM_KEY = LS_APP_PREFIX + 'transform_v5';
+        const LS_HIGHEST_Z_KEY = LS_APP_PREFIX + 'highestZ_v5';
+        const LS_THEME_KEY = LS_APP_PREFIX + 'theme_v5';
+        const LS_GRID_VISIBLE_KEY = LS_APP_PREFIX + 'gridVisible_v5';
 
         let saveTimeout;
-        function saveStateDebounced() {
-            clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(saveState, 500); // Debounce save by 500ms
-        }
-
+        function saveStateDebounced() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveState, 500); }
         function saveState() {
-            clearTimeout(saveTimeout); // Clear any pending debounced save
+            clearTimeout(saveTimeout);
             if (notes.some(note => isNaN(note.x) || isNaN(note.y) || isNaN(note.width) || isNaN(note.height) || isNaN(note.zIndex))) {
                 console.error("Attempted to save invalid (NaN) note data. Aborting save."); return;
             }
@@ -881,21 +846,16 @@
             localStorage.setItem(LS_TRANSFORM_KEY, JSON.stringify({ zoomLevel, panX, panY }));
             localStorage.setItem(LS_HIGHEST_Z_KEY, highestZIndex.toString());
         }
-
         function loadState() {
             const storedNotes = localStorage.getItem(LS_NOTES_KEY);
             if (storedNotes) {
                 try {
                     notes = JSON.parse(storedNotes).map(note => ({
-                        id: note.id,
-                        title: note.title || '', // Add default for title
-                        content: note.content || '',
-                        x: snapToGrid(parseFloat(note.x) || 0),
-                        y: snapToGrid(parseFloat(note.y) || 0),
+                        id: note.id, title: note.title || '', content: note.content || '',
+                        x: snapToGrid(parseFloat(note.x) || 0), y: snapToGrid(parseFloat(note.y) || 0),
                         width: snapToGrid(Math.max(parseFloat(note.width) || MIN_NOTE_WIDTH, MIN_NOTE_WIDTH)),
                         height: snapToGrid(Math.max(parseFloat(note.height) || MIN_NOTE_HEIGHT, MIN_NOTE_HEIGHT)),
-                        color: note.color,
-                        zIndex: parseInt(note.zIndex, 10) || 1
+                        color: note.color, zIndex: parseInt(note.zIndex, 10) || 1
                     }));
                 } catch (e) { console.error("Error parsing notes:", e); notes = []; }
             }
@@ -903,22 +863,29 @@
             if (storedTransform) {
                 try {
                     const t = JSON.parse(storedTransform);
-                    zoomLevel = parseFloat(t.zoomLevel) || 1;
-                    panX = parseFloat(t.panX) || 0;
-                    panY = parseFloat(t.panY) || 0;
-                } catch (e) { console.error("Error parsing transform:", e); /* defaults already set */ }
+                    zoomLevel = parseFloat(t.zoomLevel) || 1; panX = parseFloat(t.panX) || 0; panY = parseFloat(t.panY) || 0;
+                } catch (e) { /* defaults already set */ }
             }
             highestZIndex = parseInt(localStorage.getItem(LS_HIGHEST_Z_KEY), 10) || (notes.length > 0 ? Math.max(...notes.map(n => n.zIndex || 0), 0) + 1 : 1);
         }
 
         // --- Keyboard Shortcuts ---
         document.addEventListener('keydown', (e) => {
+            // Handle Esc for popups first
+            if (e.key === 'Escape') {
+                if (!confirmDeleteModal.classList.contains('hidden')) {
+                    hideConfirmDeletePopup(); e.preventDefault(); return;
+                }
+                if (activeColorPalette) {
+                    activeColorPalette.remove(); activeColorPalette = null; e.preventDefault(); return;
+                }
+            }
+
             const activeEl = document.activeElement;
             const isContentFocused = activeEl && activeEl.classList.contains('note-content') && activeEl.isContentEditable;
             const isTitleFocused = activeEl && activeEl.classList.contains('note-title') && activeEl.isContentEditable;
 
-            if (isTitleFocused && e.key === 'Enter') { e.preventDefault(); activeEl.blur(); return; } // Prevent newline in title
-
+            if (isTitleFocused && e.key === 'Enter') { e.preventDefault(); activeEl.blur(); return; }
             if (isContentFocused) {
                 if (e.ctrlKey || e.metaKey) {
                     switch (e.key.toLowerCase()) {
@@ -927,59 +894,13 @@
                         case 'u': e.preventDefault(); execCmd('underline'); break;
                     }
                 }
-                return; // Allow other keys for text editing
+                return;
             }
-            // Global shortcuts (if not typing in content/title)
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNoteId && !isContentFocused && !isTitleFocused) {
-                e.preventDefault(); deleteSelectedNote();
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNoteId && !isContentFocused && !isTitleFocused && confirmDeleteModal.classList.contains('hidden')) { // Only trigger if modal not shown
+                e.preventDefault(); triggerDeleteConfirmation();
             }
         });
         
-        // --- Basic Markdown to HTML (Example, not fully integrated for live editing) ---
-        function markdownToHtml(text) {
-            let html = text;
-            // Headlines (simple # to ######)
-            html = html.replace(/^###### (.*$)/gim, '<h6>$1</h6>');
-            html = html.replace(/^##### (.*$)/gim, '<h5>$1</h5>');
-            html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
-            html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-            html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-            html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-            // Bold
-            html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
-            html = html.replace(/__(.*?)__/gim, '<strong>$1</strong>');
-            // Italic
-            html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
-            html = html.replace(/_(.*?)_/gim, '<em>$1</em>');
-            // Strikethrough
-            html = html.replace(/~~(.*?)~~/gim, '<del>$1</del>');
-            // Blockquote
-            html = html.replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>');
-            // Links
-            html = html.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2">$1</a>');
-            // Checklists (very basic, assumes one per line)
-            html = html.replace(/^\[x\] (.*$)/gim, '<div class="checklist-item"><input type="checkbox" checked><span>$1</span></div>');
-            html = html.replace(/^\[ \] (.*$)/gim, '<div class="checklist-item"><input type="checkbox"><span>$1</span></div>');
-            // Unordered List (simple, doesn't handle nesting well)
-            html = html.replace(/^\s*[\*\-\+] (.*)/gm, '<li>$1</li>');
-            html = html.replace(/<\/li>\n?<li>/gm, '</li><li>'); // Join adjacent items
-            html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
-            // Ordered List (simple)
-            html = html.replace(/^\s*\d+\. (.*)/gm, '<li>$1</li>');
-            // html = html.replace(/<\/li>\n?<li>/gm, '</li><li>'); // Already done
-            html = html.replace(/(<li>.*<\/li>)/gs, (match, p1) => { // Check if it's already in <ul>
-                if (!match.startsWith('<ul>')) return '<ol>' + p1 + '</ol>';
-                return match;
-            });
-            // Code blocks (``` lang ... ```) - simple version
-            html = html.replace(/```(\w*)\n([\s\S]*?)\n```/gim, (match, lang, code) => `<pre><code class="language-${lang || ''}">${code.trim()}</code></pre>`);
-            // Inline code (`code`)
-            html = html.replace(/`([^`]+)`/gim, '<code>$1</code>');
-            // New lines to <br> (careful with this, might interfere with block elements)
-            // html = html.replace(/\n/g, '<br>'); // Generally avoid this if using block elements properly
-            return html;
-        }
-
         // Start
         init();
     </script>
