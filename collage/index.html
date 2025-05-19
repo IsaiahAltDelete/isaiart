@@ -2,387 +2,518 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COLLAGE WALLPAPER CREATOR</title>
+    <title>Mosaic Maker - Ultra Clean UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
     <style>
-        /* Reset and Base Styles */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+        body { font-family: 'Poppins', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #737373; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a3a3a3; }
+
+        input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: #404040; border-radius: 5px; outline: none; opacity: 0.9; transition: opacity .2s; }
+        input[type="range"]:hover { opacity: 1; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: #F472B6; border-radius: 50%; cursor: pointer; border: 2px solid #d4d4d4; }
+        input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; background: #F472B6; border-radius: 50%; cursor: pointer; border: 2px solid #d4d4d4; }
+        
+        select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d4d4d4'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.1em; padding-right: 2rem; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+
+        .grid-background { background-image: linear-gradient(to right, rgba(64, 64, 64, 0.5) 1px, transparent 1px), linear-gradient(to bottom, rgba(64, 64, 64, 0.5) 1px, transparent 1px); background-size: 25px 25px; }
+
+        .sidebar-section-header { cursor: pointer; user-select: none; }
+        .sidebar-section-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out, padding 0.3s ease-out; }
+        .sidebar-section-content.open { max-height: 1000px; padding-top: 0.25rem; padding-bottom: 0.5rem; }
+        .material-symbols-outlined.rotate-90 { transform: rotate(90deg); }
+        
+        [data-tooltip] { position: relative; }
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #262626; 
+            color: #e5e5e5; 
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem; 
+            white-space: nowrap;
+            z-index: 50;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            bottom: 120%; 
+        }
+        #toolbar [data-tooltip]:hover::after {
+            bottom: 115%; 
+            top: auto; 
         }
 
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #fff;
-            color: #000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 2rem;
-            min-height: 100vh;
-        }
+        #collage-canvas { transform-origin: 0 0; transition: transform 0.05s linear; }
+        #canvas-wrapper { cursor: grab; }
+        #canvas-wrapper.reposition-active { cursor: default; }
+        #collage-canvas.reposition-active-canvas { cursor: cell; }
 
-        h1 {
-            font-size: 2rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            margin-bottom: 2.5rem;
-            text-align: center;
-            letter-spacing: 2px;
-        }
-
-        /* Upload Section */
-        #upload-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .custom-upload-btn {
-            display: inline-block;
-            padding: 1rem 2rem;
-            background-color: #fff;
-            color: #000;
-            border: 2px solid #000;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            transition: all 0.3s ease;
-            letter-spacing: 1px;
-        }
-
-        .custom-upload-btn:hover {
-            background-color: #000;
-            color: #fff;
-        }
-
-        #image-input {
-            display: none;
-        }
-
-        /* Preview Section */
-        #preview {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1.5rem;
-            justify-content: center;
-            margin-bottom: 2rem;
-        }
-
-        #preview img {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            border: 2px solid #000;
-            border-radius: 12px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        #preview img:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.16);
-        }
-
-        /* Filter Options */
-        #filters-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .filter-group label {
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .filter-group select, 
-        .filter-group input[type="range"] {
-            padding: 0.5rem;
-            border: 2px solid #000;
-            border-radius: 12px;
-            background-color: #fff;
-            color: #000;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .filter-group select:hover, 
-        .filter-group input[type="range"]:hover {
-            background-color: #000;
-            color: #fff;
-        }
-
-        /* Generate Button */
-        #generate-btn {
-            padding: 1rem 3rem;
-            background-color: #fff;
-            color: #000;
-            border: 2px solid #000;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 1.1rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            transition: all 0.3s ease;
-            letter-spacing: 1px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
-        }
-
-        #generate-btn:hover {
-            background-color: #000;
-            color: #fff;
-        }
-
-        /* Canvas and Download Section */
-        #canvas-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-
-        #result-canvas {
-            max-width: 100%;
-            border: 2px solid #000;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
-        }
-
-        #download-btn {
-            padding: 1rem 3rem;
-            background-color: #fff;
-            color: #000;
-            border: 2px solid #000;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 1.1rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            transition: all 0.3s ease;
-            letter-spacing: 1px;
-            display: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
-        }
-
-        #download-btn:hover {
-            background-color: #000;
-            color: #fff;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            #preview img {
-                width: 100px;
-                height: 100px;
-            }
-
-            .custom-upload-btn, #generate-btn, #download-btn {
-                padding: 0.8rem 2rem;
-                font-size: 0.9rem;
-            }
-        }
+        .toolbar-btn { display: flex; align-items: center; justify-content: center; }
+        .toolbar-btn.active { background-color: #EC4899; color: white; }
+        .toolbar-btn.active:hover { background-color: #F472B6; }
     </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'neutral-900': '#171717', 'neutral-800': '#262626', 'neutral-700': '#404040',
+              'neutral-600': '#525252', 'neutral-300': '#d4d4d4', 'neutral-200': '#e5e5e5',
+              'pink-400': '#F472B6', 'pink-500': '#EC4899',
+            }
+          }
+        }
+      }
+    </script>
 </head>
-<body>
+<body class="bg-neutral-900 text-neutral-200 flex h-screen overflow-hidden">
 
-    <h1>Collage Wallpaper Creator</h1>
-
-    <div id="upload-section">
-        <label class="custom-upload-btn" for="image-input">Upload Images</label>
-        <input type="file" id="image-input" accept="image/*" multiple>
-        <p>(You can upload up to 5 images)</p>
-    </div>
-
-    <div id="preview"></div>
-
-    <div id="filters-section">
-        <div class="filter-group">
-            <label for="filter-select">Select Filter</label>
-            <select id="filter-select">
-                <option value="none">None</option>
-                <option value="grayscale">Grayscale</option>
-                <option value="sepia">Sepia</option>
-                <option value="invert">Invert</option>
-                <option value="brightness">Brightness</option>
-            </select>
+    <aside id="sidebar" class="bg-neutral-800 h-full p-3 flex flex-col space-y-3 custom-scrollbar overflow-y-auto w-64">
+        <div class="flex items-center justify-start mb-1"> 
+            <h1 class="text-xl font-semibold text-pink-400">Mosaic Maker</h1>
         </div>
-        <div class="filter-group" id="brightness-group" style="display: none;">
-            <label for="brightness-range">Brightness</label>
-            <input type="range" id="brightness-range" min="50" max="150" value="100">
+        <div class="sidebar-section">
+            <div class="sidebar-section-header flex justify-between items-center p-1.5 bg-neutral-700/60 rounded-md hover:bg-neutral-600/80 transition-colors">
+                <div class="flex items-center gap-2"><span class="material-symbols-outlined text-base">photo_library</span><h2 class="text-sm font-medium">Image Bin</h2></div>
+                <span class="material-symbols-outlined text-lg transition-transform duration-300 rotate-90">expand_more</span>
+            </div>
+            <div class="sidebar-section-content space-y-2 text-xs open">
+                <label for="image-input-sidebar" class="mt-1 w-full flex items-center justify-center gap-1.5 bg-pink-500 hover:bg-pink-600 text-white font-medium py-1.5 px-3 rounded-md cursor-pointer transition-colors text-xs">
+                    <span class="material-symbols-outlined text-base">add_photo_alternate</span>Upload</label>
+                <input type="file" id="image-input-sidebar" accept="image/*" multiple class="hidden">
+                <div id="image-preview-container" class="grid grid-cols-4 gap-1.5 max-h-48 overflow-y-auto custom-scrollbar p-1 bg-neutral-900/50 rounded"></div>
+                <p class="text-neutral-400 text-center text-[10px]">Max 5. Click preview to remove.</p>
+            </div>
         </div>
-    </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-header flex justify-between items-center p-1.5 bg-neutral-700/60 rounded-md hover:bg-neutral-600/80 transition-colors">
+                <div class="flex items-center gap-2"><span class="material-symbols-outlined text-base">aspect_ratio</span><h2 class="text-sm font-medium">Canvas Setup</h2></div>
+                <span class="material-symbols-outlined text-lg transition-transform duration-300 rotate-90">expand_more</span>
+            </div>
+            <div class="sidebar-section-content space-y-2 text-xs open">
+                <div class="flex space-x-1.5">
+                    <div><label for="canvas-width" class="block text-[11px] font-medium text-neutral-300">Width (px)</label><input type="number" id="canvas-width" value="1920" class="mt-0.5 block w-full bg-neutral-700 border-neutral-600 rounded py-1 px-1.5 text-[11px] focus:ring-1 focus:ring-pink-400 focus:border-pink-400"></div>
+                    <div><label for="canvas-height" class="block text-[11px] font-medium text-neutral-300">Height (px)</label><input type="number" id="canvas-height" value="1080" class="mt-0.5 block w-full bg-neutral-700 border-neutral-600 rounded py-1 px-1.5 text-[11px] focus:ring-1 focus:ring-pink-400 focus:border-pink-400"></div>
+                </div>
+                <div><label for="aspect-ratio" class="block text-[11px] font-medium text-neutral-300">Aspect Ratio</label><select id="aspect-ratio" class="mt-0.5 block w-full bg-neutral-700 border-neutral-600 rounded py-1 px-1.5 text-[11px] focus:ring-1 focus:ring-pink-400 focus:border-pink-400"><option value="16:9">16:9</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="screen">Fit Screen</option><option value="custom">Custom</option></select></div>
+                <div><label for="canvas-bg-color" class="block text-[11px] font-medium text-neutral-300">Background Color</label><input type="color" id="canvas-bg-color" value="#171717" class="mt-0.5 block w-full h-7 bg-neutral-700 border-neutral-600 rounded p-0.5 cursor-pointer"></div>
+            </div>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-header flex justify-between items-center p-1.5 bg-neutral-700/60 rounded-md hover:bg-neutral-600/80 transition-colors">
+                <div class="flex items-center gap-2"><span class="material-symbols-outlined text-base">grid_on</span><h2 class="text-sm font-medium">Layout Grid</h2></div>
+                <span class="material-symbols-outlined text-lg transition-transform duration-300 rotate-90">expand_more</span>
+            </div>
+            <div class="sidebar-section-content space-y-2 text-xs open">
+                <div><label for="grid-columns" class="block text-[11px] font-medium text-neutral-300">Columns: <span id="grid-columns-value">3</span></label><input type="range" id="grid-columns" min="1" max="10" value="3" class="mt-0.5 w-full"></div>
+                <div><label for="image-padding" class="block text-[11px] font-medium text-neutral-300">Padding (px): <span id="image-padding-value">10</span></label><input type="range" id="image-padding" min="0" max="50" value="10" class="mt-0.5 w-full"></div>
+            </div>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-header flex justify-between items-center p-1.5 bg-neutral-700/60 rounded-md hover:bg-neutral-600/80 transition-colors">
+                <div class="flex items-center gap-2"><span class="material-symbols-outlined text-base">tune</span><h2 class="text-sm font-medium">Image Styling</h2></div>
+                <span class="material-symbols-outlined text-lg transition-transform duration-300 rotate-90">expand_more</span>
+            </div>
+            <div class="sidebar-section-content space-y-2 text-xs open">
+                <div><label for="object-fit" class="block text-[11px] font-medium text-neutral-300">Image Fit</label><select id="object-fit" class="mt-0.5 block w-full bg-neutral-700 border-neutral-600 rounded py-1 px-1.5 text-[11px] focus:ring-1 focus:ring-pink-400 focus:border-pink-400"><option value="cover">Cover</option><option value="contain">Contain</option></select></div>
+                <div><label for="filter-select" class="block text-[11px] font-medium text-neutral-300">Filter</label><select id="filter-select" class="mt-0.5 block w-full bg-neutral-700 border-neutral-600 rounded py-1 px-1.5 text-[11px] focus:ring-1 focus:ring-pink-400 focus:border-pink-400"><option value="none">None</option><option value="grayscale(100%)">Grayscale</option><option value="sepia(100%)">Sepia</option><option value="invert(100%)">Invert</option></select></div>
+                <div><label for="brightness-range" class="block text-[11px] font-medium text-neutral-300">Brightness: <span id="brightness-value">100</span>%</label><input type="range" id="brightness-range" min="0" max="200" value="100" class="mt-0.5 w-full"></div>
+                <div><label for="contrast-range" class="block text-[11px] font-medium text-neutral-300">Contrast: <span id="contrast-value">100</span>%</label><input type="range" id="contrast-range" min="0" max="200" value="100" class="mt-0.5 w-full"></div>
+                <div><label for="saturate-range" class="block text-[11px] font-medium text-neutral-300">Saturation: <span id="saturate-value">100</span>%</label><input type="range" id="saturate-range" min="0" max="200" value="100" class="mt-0.5 w-full"></div>
+            </div>
+        </div>
+    </aside>
 
-    <button id="generate-btn">Generate Collage</button>
-
-    <div id="canvas-container">
-        <canvas id="result-canvas"></canvas>
-        <button id="download-btn">Download Collage</button>
-    </div>
+    <main class="flex-1 flex flex-col items-center justify-center p-3 relative overflow-hidden">
+        <div id="toolbar" class="bg-neutral-800/80 backdrop-blur-sm absolute bottom-3 left-1/2 transform -translate-x-1/2 z-20 px-3 py-1.5 rounded-lg flex items-center space-x-2 shadow-lg">
+            <button id="upload-btn-toolbar" data-tooltip="Upload Images" class="toolbar-btn">
+                <span class="material-symbols-outlined">upload_file</span></button>
+            <input type="file" id="image-input-toolbar" accept="image/*" multiple class="hidden">
+            <div class="h-5 w-px bg-neutral-700"></div>
+            <button id="zoom-out-btn" data-tooltip="Zoom Out" class="toolbar-btn">
+                <span class="material-symbols-outlined">zoom_out</span></button>
+            <button id="reset-view-btn" data-tooltip="Reset View" class="toolbar-btn">
+                <span class="material-symbols-outlined">center_focus_strong</span></button>
+            <button id="zoom-in-btn" data-tooltip="Zoom In" class="toolbar-btn">
+                <span class="material-symbols-outlined">zoom_in</span></button>
+            <div class="h-5 w-px bg-neutral-700"></div>
+             <button id="reposition-mode-btn" data-tooltip="Reposition Images" class="toolbar-btn">
+                <span class="material-symbols-outlined">open_with</span></button>
+            <div class="h-5 w-px bg-neutral-700"></div>
+            <button id="download-btn" data-tooltip="Download Collage" class="toolbar-btn opacity-50 cursor-not-allowed" disabled>
+                <span class="material-symbols-outlined">download</span></button>
+        </div>
+        <div id="canvas-wrapper" class="w-full h-full flex items-center justify-center grid-background bg-neutral-900 rounded-md shadow-xl overflow-hidden">
+            <canvas id="collage-canvas" class="border border-neutral-700 shadow-2xl"></canvas>
+        </div>
+    </main>
 
     <script>
-        const imageInput = document.getElementById('image-input');
-        const preview = document.getElementById('preview');
-        const generateBtn = document.getElementById('generate-btn');
-        const resultCanvas = document.getElementById('result-canvas');
-        const downloadBtn = document.getElementById('download-btn');
+        const allToolbarBtnClasses = 'toolbar-btn p-1.5 rounded hover:bg-neutral-700 text-neutral-300 hover:text-pink-400 transition-colors focus:outline-none focus:ring-1 focus:ring-pink-400';
+        document.querySelectorAll('.toolbar-btn').forEach(btn => btn.className = allToolbarBtnClasses + (btn.classList.contains('active') ? ' active' : ''));
+
+        const imageInputSidebar = document.getElementById('image-input-sidebar');
+        const imageInputToolbar = document.getElementById('image-input-toolbar');
+        const uploadBtnToolbar = document.getElementById('upload-btn-toolbar');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        
+        const canvasWidthInput = document.getElementById('canvas-width');
+        const canvasHeightInput = document.getElementById('canvas-height');
+        const aspectRatioSelect = document.getElementById('aspect-ratio');
+        const canvasBgColorInput = document.getElementById('canvas-bg-color');
+        
+        const gridColumnsInput = document.getElementById('grid-columns');
+        const gridColumnsValue = document.getElementById('grid-columns-value');
+        const imagePaddingInput = document.getElementById('image-padding');
+        const imagePaddingValue = document.getElementById('image-padding-value');
+
+        const objectFitSelect = document.getElementById('object-fit');
         const filterSelect = document.getElementById('filter-select');
-        const brightnessGroup = document.getElementById('brightness-group');
         const brightnessRange = document.getElementById('brightness-range');
+        const brightnessValue = document.getElementById('brightness-value');
+        const contrastRange = document.getElementById('contrast-range');
+        const contrastValue = document.getElementById('contrast-value');
+        const saturateRange = document.getElementById('saturate-range');
+        const saturateValue = document.getElementById('saturate-value');
 
-        let images = [];
-        let filters = [];
+        const downloadBtn = document.getElementById('download-btn');
+        const collageCanvas = document.getElementById('collage-canvas');
+        const canvasWrapper = document.getElementById('canvas-wrapper');
+        const ctx = collageCanvas.getContext('2d');
 
-        // Handle Image Upload
-        imageInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files).slice(0,5); // Limit to 5 images
-            preview.innerHTML = '';
-            images = [];
-            filters = [];
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
+        const resetViewBtn = document.getElementById('reset-view-btn');
+        const repositionModeBtn = document.getElementById('reposition-mode-btn');
 
-            files.forEach((file, index) => {
+        let uploadedImages = []; 
+        const MAX_IMAGES = 5;
+        let canvasView = { x: 0, y: 0, scale: 1, isPanning: false, lastMouseX: 0, lastMouseY: 0 };
+        const MIN_SCALE = 0.05; const MAX_SCALE = 15;
+        const ZOOM_SENSITIVITY_WHEEL = 0.001; const ZOOM_SENSITIVITY_BUTTON = 0.15;
+
+        let isRepositionModeActive = false;
+        let activeDragImage = { index: -1, imgData: null, startImgOffsetX: 0, startImgOffsetY: 0, dragStartX: 0, dragStartY: 0, cellBoundaries: null };
+
+        function generateId() { return Math.random().toString(36).substr(2, 9); }
+        function updateSliderValue(slider, displayElement, suffix = '') { displayElement.textContent = slider.value + suffix; }
+        function debounce(func, delay) { let timeout; return function(...args) { const context = this; clearTimeout(timeout); timeout = setTimeout(() => func.apply(context, args), delay); }; }
+
+        document.querySelectorAll('.sidebar-section-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const content = header.nextElementSibling;
+                const icon = header.querySelector('.material-symbols-outlined:not([class*="gap"])');
+                content.classList.toggle('open');
+                icon.classList.toggle('rotate-90');
+            });
+        });
+
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                if (uploadedImages.length >= MAX_IMAGES || !file.type.startsWith('image/')) return;
                 const reader = new FileReader();
-                reader.onload = function(event) {
+                reader.onload = (e) => {
                     const img = new Image();
-                    img.src = event.target.result;
-                    img.onload = function() {
-                        images.push(img);
-                        filters.push('none'); // Default filter
-                        const imgElement = document.createElement('img');
-                        imgElement.src = img.src;
-                        imgElement.dataset.index = index;
-                        imgElement.title = "Click to remove";
-                        preview.appendChild(imgElement);
-                    }
-                }
+                    img.onload = () => {
+                        uploadedImages.push({ id: generateId(), file: file, element: img, offsetX: 0, offsetY: 0 });
+                        renderImagePreviews(); debouncedGenerateCollage();
+                    };
+                    img.src = e.target.result;
+                };
                 reader.readAsDataURL(file);
             });
-        });
+        }
 
-        // Handle Removing Images
-        preview.addEventListener('click', (e) => {
-            if (e.target.tagName === 'IMG') {
-                const index = e.target.dataset.index;
-                images.splice(index, 1);
-                filters.splice(index, 1);
-                e.target.remove();
-                // Update data-index for remaining images
-                const remainingImages = preview.querySelectorAll('img');
-                remainingImages.forEach((img, idx) => {
-                    img.dataset.index = idx;
-                });
-            }
-        });
-
-        // Handle Filter Selection
-        filterSelect.addEventListener('change', (e) => {
-            const selectedFilter = e.target.value;
-            // Show or hide brightness slider based on filter
-            if (selectedFilter === 'brightness') {
-                brightnessGroup.style.display = 'flex';
-            } else {
-                brightnessGroup.style.display = 'none';
-            }
-            // Apply selected filter to all images
-            filters = images.map(() => selectedFilter);
-        });
-
-        brightnessRange.addEventListener('input', (e) => {
-            const brightnessValue = e.target.value;
-            // Apply brightness filter with selected value
-            filters = images.map(() => `brightness(${brightnessValue}%)`);
-        });
-
-        // Handle Generate Collage
-        generateBtn.addEventListener('click', () => {
-            if (images.length === 0) {
-                alert('Please upload at least one image.');
-                return;
-            }
-
-            // Get screen width
-            const screenWidth = window.innerWidth;
-            const aspectRatio = 16 / 9; // You can change this as needed
-            const canvasWidth = screenWidth;
-            const canvasHeight = canvasWidth / aspectRatio;
-
-            // Calculate width per image
-            const imgCount = images.length;
-            const imgWidth = Math.floor(canvasWidth / imgCount);
-            const imgHeight = canvasHeight;
-
-            // Set canvas size
-            resultCanvas.width = canvasWidth;
-            resultCanvas.height = canvasHeight;
-            const ctx = resultCanvas.getContext('2d');
-
-            // Fill background with white
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-            // Draw each image with filters
-            images.forEach((img, index) => {
-                const filter = filters[index] || 'none';
-                ctx.filter = filter;
-                
-                // Calculate aspect ratios
-                const imgAspect = img.width / img.height;
-                const targetAspect = imgWidth / imgHeight;
-
-                let sourceX, sourceY, sourceWidth, sourceHeight;
-
-                if (imgAspect > targetAspect) {
-                    // Image is wider than target aspect ratio
-                    sourceHeight = img.height;
-                    sourceWidth = img.height * targetAspect;
-                    sourceX = (img.width - sourceWidth) / 2;
-                    sourceY = 0;
-                } else {
-                    // Image is taller than target aspect ratio
-                    sourceWidth = img.width;
-                    sourceHeight = img.width / targetAspect;
-                    sourceX = 0;
-                    sourceY = (img.height - sourceHeight) / 2;
-                }
-
-                ctx.drawImage(
-                    img,
-                    sourceX, sourceY, sourceWidth, sourceHeight, // Source
-                    index * imgWidth, 0, imgWidth, imgHeight // Destination
-                );
-
-                ctx.filter = 'none'; // Reset filter
+        function renderImagePreviews() {
+            imagePreviewContainer.innerHTML = '';
+            uploadedImages.forEach(imgData => {
+                const pW = document.createElement('div'); pW.className = 'relative aspect-square group rounded overflow-hidden';
+                const iE = document.createElement('img'); iE.src = imgData.element.src; iE.className = 'w-full h-full object-cover group-hover:opacity-60 transition-opacity';
+                const rB = document.createElement('button'); rB.className = 'absolute top-0.5 right-0.5 bg-red-600/80 hover:bg-red-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity';
+                rB.innerHTML = '<span class="material-symbols-outlined" style="font-size:10px;">close</span>';
+                rB.onclick = () => removeImage(imgData.id);
+                pW.append(iE, rB); imagePreviewContainer.appendChild(pW);
             });
+        }
 
-            downloadBtn.style.display = 'inline-block';
+        function removeImage(id) {
+            uploadedImages = uploadedImages.filter(imgData => imgData.id !== id);
+            renderImagePreviews(); debouncedGenerateCollage();
+        }
+
+        function updateCanvasCSSTransform() { collageCanvas.style.transform = `translate(${canvasView.x}px, ${canvasView.y}px) scale(${canvasView.scale})`; }
+
+        function resetCanvasView() {
+            const canvasWidth = collageCanvas.width || parseInt(canvasWidthInput.value) || 1920;
+            const canvasHeight = collageCanvas.height || parseInt(canvasHeightInput.value) || 1080;
+            if (canvasWidth <=0 || canvasHeight <=0) return;
+            const wrapperWidth = canvasWrapper.clientWidth; const wrapperHeight = canvasWrapper.clientHeight;
+            const scaleX = wrapperWidth / canvasWidth; const scaleY = wrapperHeight / canvasHeight;
+            canvasView.scale = Math.min(scaleX, scaleY) * 0.90; 
+            canvasView.scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, canvasView.scale || 0.5));
+            canvasView.x = (wrapperWidth - canvasWidth * canvasView.scale) / 2;
+            canvasView.y = (wrapperHeight - canvasHeight * canvasView.scale) / 2;
+            updateCanvasCSSTransform();
+        }
+        
+        canvasWrapper.addEventListener('mousedown', (e) => {
+            if (e.button !== 0 || isRepositionModeActive) return; 
+            canvasView.isPanning = true; canvasView.lastMouseX = e.clientX; canvasView.lastMouseY = e.clientY;
+            canvasWrapper.style.cursor = 'grabbing'; e.preventDefault();
+        });
+        canvasWrapper.addEventListener('mousemove', (e) => {
+            if (!canvasView.isPanning || isRepositionModeActive) return;
+            const dx = e.clientX - canvasView.lastMouseX; const dy = e.clientY - canvasView.lastMouseY;
+            canvasView.x += dx; canvasView.y += dy;
+            canvasView.lastMouseX = e.clientX; canvasView.lastMouseY = e.clientY;
+            updateCanvasCSSTransform();
+        });
+        const stopCanvasPanning = () => { if (canvasView.isPanning) { canvasView.isPanning = false; canvasWrapper.style.cursor = 'grab'; }};
+        canvasWrapper.addEventListener('mouseup', stopCanvasPanning);
+        canvasWrapper.addEventListener('mouseleave', stopCanvasPanning);
+        
+        canvasWrapper.addEventListener('wheel', (e) => {
+            if (isRepositionModeActive) return;
+            e.preventDefault();
+            const rect = canvasWrapper.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;  
+            const worldMouseX = (mouseX - canvasView.x) / canvasView.scale; const worldMouseY = (mouseY - canvasView.y) / canvasView.scale;
+            const delta = e.deltaY * -ZOOM_SENSITIVITY_WHEEL;
+            const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, canvasView.scale + delta * canvasView.scale));
+            canvasView.x = mouseX - worldMouseX * newScale; canvasView.y = mouseY - worldMouseY * newScale;
+            canvasView.scale = newScale; updateCanvasCSSTransform();
         });
 
-        // Handle Download
+        function zoomCanvas(factor) {
+            const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, canvasView.scale * factor));
+            const centerX = canvasWrapper.clientWidth / 2; const centerY = canvasWrapper.clientHeight / 2;
+            const worldCenterX = (centerX - canvasView.x) / canvasView.scale; const worldCenterY = (centerY - canvasView.y) / canvasView.scale;
+            canvasView.x = centerX - worldCenterX * newScale; canvasView.y = centerY - worldCenterY * newScale;
+            canvasView.scale = newScale; updateCanvasCSSTransform();
+        }
+        zoomInBtn.addEventListener('click', () => zoomCanvas(1 + ZOOM_SENSITIVITY_BUTTON));
+        zoomOutBtn.addEventListener('click', () => zoomCanvas(1 - ZOOM_SENSITIVITY_BUTTON));
+        resetViewBtn.addEventListener('click', resetCanvasView);
+
+        repositionModeBtn.addEventListener('click', () => {
+            isRepositionModeActive = !isRepositionModeActive;
+            repositionModeBtn.classList.toggle('active', isRepositionModeActive);
+            canvasWrapper.classList.toggle('reposition-active', isRepositionModeActive);
+            collageCanvas.classList.toggle('reposition-active-canvas', isRepositionModeActive);
+            if (!isRepositionModeActive && activeDragImage.index !== -1) { stopImageDrag(); }
+            canvasWrapper.style.cursor = isRepositionModeActive ? 'default' : 'grab';
+        });
+
+        collageCanvas.addEventListener('mousedown', (e) => {
+            if (!isRepositionModeActive || e.button !== 0) return;
+            const rect = collageCanvas.getBoundingClientRect(); 
+            const mouseCanvasX = e.clientX - rect.left; const mouseCanvasY = e.clientY - rect.top;
+            const worldMouseX = mouseCanvasX / canvasView.scale; const worldMouseY = mouseCanvasY / canvasView.scale;
+
+            const numImages = uploadedImages.length; if (numImages === 0) return;
+            const cols = parseInt(gridColumnsInput.value); const padding = parseInt(imagePaddingInput.value);
+            const cellWidth = Math.max(1, (collageCanvas.width - (cols + 1) * padding) / cols);
+            const cellHeight = Math.max(1, (collageCanvas.height - (Math.ceil(numImages / cols) + 1) * padding) / Math.ceil(numImages / cols));
+
+            for (let i = 0; i < numImages; i++) {
+                const row = Math.floor(i / cols); const col = i % cols;
+                const cellX = padding + col * (cellWidth + padding); const cellY = padding + row * (cellHeight + padding);
+                if (worldMouseX >= cellX && worldMouseX <= cellX + cellWidth && worldMouseY >= cellY && worldMouseY <= cellY + cellHeight) {
+                    activeDragImage.index = i; activeDragImage.imgData = uploadedImages[i];
+                    activeDragImage.startImgOffsetX = uploadedImages[i].offsetX; activeDragImage.startImgOffsetY = uploadedImages[i].offsetY;
+                    activeDragImage.dragStartX = e.clientX; activeDragImage.dragStartY = e.clientY;
+                    activeDragImage.cellBoundaries = { x: cellX, y: cellY, width: cellWidth, height: cellHeight };
+                    collageCanvas.style.cursor = 'move'; e.preventDefault(); return;
+                }
+            }
+        });
+
+        collageCanvas.addEventListener('mousemove', (e) => {
+            if (!isRepositionModeActive || activeDragImage.index === -1) return;
+            const mouseDx = e.clientX - activeDragImage.dragStartX; const mouseDy = e.clientY - activeDragImage.dragStartY;
+            activeDragImage.imgData.offsetX = activeDragImage.startImgOffsetX + (mouseDx / canvasView.scale);
+            activeDragImage.imgData.offsetY = activeDragImage.startImgOffsetY + (mouseDy / canvasView.scale);
+            redrawDraggedImageCell(); 
+        });
+
+        const stopImageDrag = () => {
+            if (!isRepositionModeActive || activeDragImage.index === -1) return;
+            const draggedImageIndex = activeDragImage.index; 
+            activeDragImage.index = -1; activeDragImage.imgData = null;
+            collageCanvas.style.cursor = isRepositionModeActive ? 'cell' : 'default';
+            if (draggedImageIndex !== -1) { generateCollage(); }
+        };
+        collageCanvas.addEventListener('mouseup', stopImageDrag);
+        collageCanvas.addEventListener('mouseleave', stopImageDrag);
+
+        function updateCanvasDimensionsFromAspectRatio() {
+            const ratio = aspectRatioSelect.value;
+            let width = parseInt(canvasWidthInput.value); let height = parseInt(canvasHeightInput.value);
+            if (ratio === 'custom') { debouncedGenerateCollage(); return; }
+            if (ratio === 'screen') { width = canvasWrapper.clientWidth; height = canvasWrapper.clientHeight; }
+            else {
+                const [rw, rh] = ratio.split(':').map(Number);
+                if (width > 0) height = Math.round((width / rw) * rh);
+                else if (height > 0) width = Math.round((height / rh) * rw);
+                else { width = 1920; height = Math.round((width / rw) * rh); }
+            }
+            canvasWidthInput.value = width; canvasHeightInput.value = height;
+            debouncedGenerateCollage();
+        }
+
+        function drawImageInCell(imgData, context, cellGeo, applyGlobalFilter = true) {
+            const img = imgData.element;
+            const fitMode = objectFitSelect.value;
+
+            if (applyGlobalFilter) {
+                const filters = [];
+                if (filterSelect.value !== 'none') filters.push(filterSelect.value);
+                filters.push(`brightness(${brightnessRange.value}%)`);
+                filters.push(`contrast(${contrastRange.value}%)`);
+                filters.push(`saturate(${saturateRange.value}%)`);
+                context.filter = filters.join(' ');
+            }
+
+            let base_sx = 0, base_sy = 0, base_sWidth = img.width, base_sHeight = img.height;
+            let dx = cellGeo.x, dy = cellGeo.y, dWidth = cellGeo.width, dHeight = cellGeo.height;
+
+            const imgAspectRatio = img.width / img.height;
+            const cellAspectRatio = cellGeo.width / cellGeo.height;
+
+            if (fitMode === 'cover') {
+                if (imgAspectRatio > cellAspectRatio) { 
+                    base_sHeight = img.height; base_sWidth = base_sHeight * cellAspectRatio; base_sx = (img.width - base_sWidth) / 2;
+                } else { 
+                    base_sWidth = img.width; base_sHeight = base_sWidth / cellAspectRatio; base_sy = (img.height - base_sHeight) / 2;
+                }
+            } else if (fitMode === 'contain') {
+                if (imgAspectRatio > cellAspectRatio) {
+                    dWidth = cellGeo.width; dHeight = dWidth / imgAspectRatio; dy = cellGeo.y + (cellGeo.height - dHeight) / 2;
+                } else {
+                    dHeight = cellGeo.height; dWidth = dHeight * imgAspectRatio; dx = cellGeo.x + (cellGeo.width - dWidth) / 2;
+                }
+            }
+            
+            let final_sx = base_sx; let final_sy = base_sy;
+            if (fitMode === 'cover') {
+                final_sx += imgData.offsetX; final_sy += imgData.offsetY;
+                final_sx = Math.max(0, Math.min(final_sx, img.width - base_sWidth));
+                final_sy = Math.max(0, Math.min(final_sy, img.height - base_sHeight));
+                imgData.offsetX = final_sx - base_sx; imgData.offsetY = final_sy - base_sy;
+            }
+            context.drawImage(img, final_sx, final_sy, base_sWidth, base_sHeight, dx, dy, dWidth, dHeight);
+            if (applyGlobalFilter) context.filter = 'none';
+        }
+
+        function redrawDraggedImageCell() {
+            if (!activeDragImage.imgData || !activeDragImage.cellBoundaries) return;
+            const cell = activeDragImage.cellBoundaries;
+            ctx.save();
+            ctx.fillStyle = canvasBgColorInput.value;
+            ctx.fillRect(cell.x, cell.y, cell.width, cell.height); 
+            drawImageInCell(activeDragImage.imgData, ctx, cell, true); 
+            ctx.restore();
+        }
+        
+        function generateCollage() {
+            const targetWidth = parseInt(canvasWidthInput.value) || 100;
+            const targetHeight = parseInt(canvasHeightInput.value) || 100;
+            if (collageCanvas.width !== targetWidth) collageCanvas.width = targetWidth;
+            if (collageCanvas.height !== targetHeight) collageCanvas.height = targetHeight;
+
+            ctx.fillStyle = canvasBgColorInput.value;
+            ctx.fillRect(0, 0, collageCanvas.width, collageCanvas.height);
+
+            const enableDownload = collageCanvas.width > 0 && collageCanvas.height > 0;
+            downloadBtn.disabled = !enableDownload;
+            downloadBtn.classList.toggle('opacity-50', !enableDownload);
+            downloadBtn.classList.toggle('cursor-not-allowed', !enableDownload);
+            downloadBtn.classList.toggle('hover:text-pink-400', enableDownload);
+
+            if (uploadedImages.length === 0) return;
+
+            const numImages = uploadedImages.length;
+            const cols = parseInt(gridColumnsInput.value);
+            const rows = Math.ceil(numImages / cols);
+            const padding = parseInt(imagePaddingInput.value);
+
+            const cellWidth = Math.max(1, (collageCanvas.width - (cols + 1) * padding) / cols);
+            const cellHeight = Math.max(1, (collageCanvas.height - (rows + 1) * padding) / rows);
+
+            uploadedImages.forEach((imgData, index) => {
+                const row = Math.floor(index / cols); const col = index % cols;
+                const cellX = padding + col * (cellWidth + padding);
+                const cellY = padding + row * (cellHeight + padding);
+                const cellGeo = { x: cellX, y: cellY, width: cellWidth, height: cellHeight };
+                drawImageInCell(imgData, ctx, cellGeo, true); 
+            });
+        }
+        const debouncedGenerateCollage = debounce(generateCollage, 150); 
+
+        imageInputSidebar.addEventListener('change', (e) => handleFiles(e.target.files));
+        imageInputToolbar.addEventListener('change', (e) => handleFiles(e.target.files));
+        uploadBtnToolbar.addEventListener('click', () => imageInputToolbar.click());
+
+        aspectRatioSelect.addEventListener('change', updateCanvasDimensionsFromAspectRatio);
+        [canvasWidthInput, canvasHeightInput, canvasBgColorInput].forEach(el => {
+            el.addEventListener('input', () => {
+                if (el === canvasWidthInput || el === canvasHeightInput) aspectRatioSelect.value = 'custom';
+                debouncedGenerateCollage();
+            });
+        });
+        
+        [gridColumnsInput, imagePaddingInput, objectFitSelect, filterSelect, brightnessRange, contrastRange, saturateRange].forEach(el => {
+            el.addEventListener('input', debouncedGenerateCollage); 
+            if (el.type === 'range') {
+                let displayElId;
+                if (el.id === 'grid-columns' || el.id === 'image-padding') { 
+                    displayElId = el.id + '-value';
+                } else if (el.id.endsWith('-range')) { 
+                    displayElId = el.id.replace('-range', '-value');
+                }
+                const displayEl = document.getElementById(displayElId);
+
+                if (displayEl) {
+                    el.addEventListener('input', () => {
+                        let suffix = '';
+                        if (el.id.includes('brightness') || el.id.includes('contrast') || el.id.includes('saturate')) {
+                            suffix = '%';
+                        }
+                        updateSliderValue(el, displayEl, suffix);
+                    });
+                }
+            }
+        });
+        
         downloadBtn.addEventListener('click', () => {
-            const link = document.createElement('a');
-            link.download = 'collage.png';
-            link.href = resultCanvas.toDataURL();
-            link.click();
+            if (downloadBtn.disabled) return;
+            const link = document.createElement('a'); link.download = 'mosaic-maker-collage.png';
+            link.href = collageCanvas.toDataURL('image/png'); link.click();
         });
-    </script>
+        
+        window.addEventListener('load', () => {
+            updateSliderValue(gridColumnsInput, gridColumnsValue);
+            updateSliderValue(imagePaddingInput, imagePaddingValue);
+            updateSliderValue(brightnessRange, brightnessValue, '%');
+            updateSliderValue(contrastRange, contrastValue, '%');
+            updateSliderValue(saturateRange, saturateValue, '%');
+            
+            updateCanvasDimensionsFromAspectRatio(); 
+            generateCollage(); 
+            resetCanvasView(); 
+        });
+        
+        window.addEventListener('resize', debounce(() => {
+            if (aspectRatioSelect.value === 'screen') updateCanvasDimensionsFromAspectRatio();
+            resetCanvasView(); 
+        }, 200));
 
+    </script>
 </body>
 </html>
