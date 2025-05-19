@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +6,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <title>Notepad</title>
+    <title>Enhanced Modular Notepad</title>
 
     <style>
         :root {
@@ -24,6 +23,9 @@
             --placeholder-color-light: #6c757d;
             --danger-color: #dc3545; /* Red for delete */
             --danger-text-color: #ffffff;
+            --info-color: #17a2b8; /* Teal for info/import */
+            --info-text-color: #ffffff;
+
 
             --bg-color-dark: #1a1c1e;
             --text-color-dark: #e0e0e0;
@@ -65,9 +67,7 @@
             position: absolute;
             background-color: var(--card-bg-light); border: 1px solid var(--card-border-light);
             border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            padding: 0; /* Overall note has no padding, header/content will have */
-            /* cursor: move; /* Moved to header */
-            display: flex; flex-direction: column;
+            padding: 0; display: flex; flex-direction: column;
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             transition: box-shadow 0.2s ease-out, background-color 0.3s ease, border-color 0.3s ease;
             overflow: hidden;
@@ -89,30 +89,23 @@
         .note-header {
             display: flex; align-items: center; padding: 8px 12px;
             border-bottom: 1px solid rgba(0,0,0,0.05); flex-shrink: 0;
-            cursor: move; /* Header is the draggable area */
+            cursor: move;
         }
         html.dark .note-header { border-bottom: 1px solid rgba(255,255,255,0.05); }
-
         .note-title {
             flex-grow: 1; font-weight: 600; font-size: 16px;
             outline: none; color: var(--text-color-light);
-            cursor: default; /* Default cursor, changes to text when editable */
-            padding: 2px 0; /* Small padding for better click/dblclick target */
+            cursor: default; padding: 2px 0;
         }
         .note-title[contenteditable="true"] {
-            cursor: text;
-            background-color: rgba(0,0,0,0.03); /* Subtle bg when editable */
-            border-radius: 3px;
+            cursor: text; background-color: rgba(0,0,0,0.03); border-radius: 3px;
         }
         html.dark .note-title { color: var(--text-color-dark); }
-        html.dark .note-title[contenteditable="true"] {
-            background-color: rgba(255,255,255,0.05);
-        }
+        html.dark .note-title[contenteditable="true"] { background-color: rgba(255,255,255,0.05); }
         .note-title:empty:before {
             content: attr(placeholder); color: var(--placeholder-color-light); font-weight: 500;
         }
         html.dark .note-title:empty:before { color: var(--placeholder-color-dark); }
-
         .note-color-picker {
             width: 16px; height: 16px; border-radius: 50%;
             border: 1px solid rgba(0,0,0,0.2); cursor: pointer;
@@ -179,7 +172,8 @@
             display: flex; flex-wrap: wrap; gap: 5px;
             align-items: center; z-index: 1000;
             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            max-width: 90vw; justify-content: center;
+            max-width: 95vw; /* Slightly more room for new buttons */
+            justify-content: center;
         }
         html.dark #toolbar { background-color: var(--toolbar-bg-dark); box-shadow: var(--toolbar-shadow-dark); }
         .toolbar-button {
@@ -234,38 +228,41 @@
         #customTooltip.visible { opacity: 1; transform: translateY(0); }
         html.dark #customTooltip { background-color: var(--text-color-dark); color: var(--bg-color-dark); }
 
-        #confirmDeleteOverlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); dark:bg-opacity-70; z-index: 1040; }
-        #confirmDeleteModal {
+        /* Generic Modal Styles */
+        .modal-overlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); dark:bg-opacity-70; z-index: 1040; }
+        .modal-content {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background-color: var(--card-bg-light); color: var(--text-color-light);
             padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             width: 100%; max-width: 24rem; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             border: 1px solid var(--card-border-light); z-index: 1045;
         }
-        html.dark #confirmDeleteModal {
+        html.dark .modal-content {
             background-color: var(--card-bg-dark); color: var(--text-color-dark);
             border: 1px solid var(--card-border-dark);
         }
-        #confirmDeleteModal h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
-        #confirmDeleteModal p { font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem; }
-        html.dark #confirmDeleteModal p { color: #9ca3af; }
-        #confirmDeleteModal .buttons { display: flex; justify-content: flex-end; gap: 0.75rem; }
-        #confirmDeleteModal button {
+        .modal-content h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .modal-content p { font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem; }
+        html.dark .modal-content p { color: #9ca3af; }
+        .modal-content .buttons { display: flex; justify-content: flex-end; gap: 0.75rem; }
+        .modal-content button {
             padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500;
             border: none; cursor: pointer; transition: background-color 0.2s ease;
         }
-        #confirmDeleteModal button.confirm { background-color: var(--danger-color); color: var(--danger-text-color); }
-        #confirmDeleteModal button.confirm:hover { background-color: #c82333; }
-        #confirmDeleteModal button.cancel {
+        .modal-content button.confirm-danger { background-color: var(--danger-color); color: var(--danger-text-color); }
+        .modal-content button.confirm-danger:hover { background-color: #c82333; }
+        .modal-content button.confirm-info { background-color: var(--info-color); color: var(--info-text-color); }
+        .modal-content button.confirm-info:hover { background-color: #138496; } /* Darker teal */
+        .modal-content button.cancel {
             background-color: var(--bg-color-light); color: var(--text-color-light);
             border: 1px solid var(--card-border-light);
         }
-        html.dark #confirmDeleteModal button.cancel {
+        html.dark .modal-content button.cancel {
             background-color: var(--toolbar-bg-dark); color: var(--text-color-dark);
             border: 1px solid var(--card-border-dark);
         }
-        #confirmDeleteModal button.cancel:hover { background-color: rgba(0,0,0,0.05); }
-        html.dark #confirmDeleteModal button.cancel:hover { background-color: rgba(255,255,255,0.1); }
+        .modal-content button.cancel:hover { background-color: rgba(0,0,0,0.05); }
+        html.dark .modal-content button.cancel:hover { background-color: rgba(255,255,255,0.1); }
     </style>
 </head>
 <body>
@@ -297,17 +294,34 @@
         <div class="toolbar-separator"></div>
         <button id="toggleGridBtn" class="toolbar-button" data-tooltip="Toggle Grid"><span class="material-symbols-outlined">grid_on</span></button>
         <button id="toggleThemeBtn" class="toolbar-button" data-tooltip="Toggle Theme"><span class="material-symbols-outlined">brightness_6</span></button>
+        <div class="toolbar-separator"></div>
+        <button id="exportCanvasBtn" class="toolbar-button" data-tooltip="Export Canvas"><span class="material-symbols-outlined">download</span></button>
+        <button id="importCanvasBtn" class="toolbar-button" data-tooltip="Import Canvas"><span class="material-symbols-outlined">upload_file</span></button>
     </div>
+    <input type="file" id="importFilePicker" accept=".json" class="hidden">
+
     <div id="customTooltip" class="hidden"></div>
-    <div id="confirmDeleteOverlay" class="hidden"></div>
-    <div id="confirmDeleteModal" class="hidden">
+
+    <div id="confirmDeleteOverlay" class="modal-overlay hidden"></div>
+    <div id="confirmDeleteModal" class="modal-content hidden">
         <h3>Delete Note?</h3>
         <p>Are you sure you want to permanently delete this note? This action cannot be undone.</p>
         <div class="buttons">
             <button id="cancelDeleteBtn" class="cancel">Cancel</button>
-            <button id="confirmDeleteFinalBtn" class="confirm">Delete</button>
+            <button id="confirmDeleteFinalBtn" class="confirm-danger">Delete</button>
         </div>
     </div>
+
+    <div id="confirmImportOverlay" class="modal-overlay hidden"></div>
+    <div id="confirmImportModal" class="modal-content hidden">
+        <h3>Import Canvas?</h3>
+        <p>Importing a canvas will overwrite your current notes and settings. Are you sure you want to proceed?</p>
+        <div class="buttons">
+            <button id="cancelImportBtn" class="cancel">Cancel</button>
+            <button id="confirmImportFinalBtn" class="confirm-info">Import</button>
+        </div>
+    </div>
+
 
     <script>
         // DOM Elements
@@ -319,6 +333,12 @@
         const confirmDeleteModal = document.getElementById('confirmDeleteModal');
         const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
         const confirmDeleteFinalBtn = document.getElementById('confirmDeleteFinalBtn');
+        const confirmImportOverlay = document.getElementById('confirmImportOverlay');
+        const confirmImportModal = document.getElementById('confirmImportModal');
+        const cancelImportBtn = document.getElementById('cancelImportBtn');
+        const confirmImportFinalBtn = document.getElementById('confirmImportFinalBtn');
+        const importFilePicker = document.getElementById('importFilePicker');
+
 
         const addNoteBtn = document.getElementById('addNoteBtn');
         const deleteNoteBtn = document.getElementById('deleteNoteBtn');
@@ -327,6 +347,8 @@
         const resetZoomBtn = document.getElementById('resetZoomBtn');
         const toggleGridBtn = document.getElementById('toggleGridBtn');
         const toggleThemeBtn = document.getElementById('toggleThemeBtn');
+        const exportCanvasBtn = document.getElementById('exportCanvasBtn');
+        const importCanvasBtn = document.getElementById('importCanvasBtn');
         const formattingButtons = {};
         Object.assign(formattingButtons, {
             bold: document.getElementById('boldBtn'), italic: document.getElementById('italicBtn'),
@@ -342,6 +364,7 @@
         let notes = [];
         let selectedNoteId = null;
         let noteIdToDelete = null;
+        let fileToImport = null; // For import confirmation
         let highestZIndex = 1;
         let zoomLevel = 1;
         let panX = 0, panY = 0;
@@ -356,6 +379,7 @@
         const MIN_NOTE_HEIGHT = GRID_SIZE * 4;
         const NOTE_COLORS = ['rgba(255, 215, 0, 0.7)', 'rgba(173, 216, 230, 0.7)', 'rgba(144, 238, 144, 0.7)', 'rgba(255, 182, 193, 0.7)', 'rgba(221, 160, 221, 0.7)', 'rgba(240, 240, 240, 0.7)'];
         const DARK_NOTE_COLORS = ['rgba(255, 215, 0, 0.6)', 'rgba(70, 130, 180, 0.6)', 'rgba(60, 179, 113, 0.6)', 'rgba(219, 112, 147, 0.6)', 'rgba(147, 112, 219, 0.6)', 'rgba(60, 60, 60, 0.7)'];
+        const EXPORT_VERSION = "1.0.0"; // For data structure versioning
 
         function snapToGrid(value, gridSize = GRID_SIZE) { return Math.round(value / gridSize) * gridSize; }
         function getSelectedNoteContentElement() {
@@ -366,8 +390,8 @@
 
         function init() {
             loadState(); updateCanvasTransform(); renderNotes(); updateToolbarState();
-            applyTheme(localStorage.getItem('modularNotepad_theme_v7') || 'light');
-            applyGridVisibility(localStorage.getItem('modularNotepad_gridVisible_v7') === 'true');
+            applyTheme(localStorage.getItem('modularNotepad_theme_v8') || 'light');
+            applyGridVisibility(localStorage.getItem('modularNotepad_gridVisible_v8') === 'true');
 
             canvasContainer.addEventListener('mousedown', handleCanvasMouseDown);
             canvasContainer.addEventListener('wheel', handleCanvasWheel, { passive: false });
@@ -377,6 +401,7 @@
             setupToolbarButtonListeners();
             setupCustomTooltips();
             setupDeleteConfirmation();
+            setupImportConfirmation();
 
             document.addEventListener('selectionchange', updateFormattingButtonStates);
             document.addEventListener('click', handleDocumentClickForDeselectionAndPalette);
@@ -390,6 +415,10 @@
             resetZoomBtn.addEventListener('click', resetView);
             toggleGridBtn.addEventListener('click', toggleGrid);
             toggleThemeBtn.addEventListener('click', toggleTheme);
+            exportCanvasBtn.addEventListener('click', exportCanvasData);
+            importCanvasBtn.addEventListener('click', () => importFilePicker.click());
+            importFilePicker.addEventListener('change', handleFileImportSelection);
+
             Object.entries(formattingButtons).forEach(([key, btn]) => {
                 switch (key) {
                     case 'bold': btn.addEventListener('click', () => execCmd('bold')); break;
@@ -420,17 +449,12 @@
                         const btnRect = button.getBoundingClientRect();
                         customTooltipEl.style.left = `${btnRect.left + btnRect.width / 2 - customTooltipEl.offsetWidth / 2}px`;
                         customTooltipEl.style.top = `${btnRect.top - customTooltipEl.offsetHeight - 6}px`;
-                        customTooltipEl.classList.remove('hidden');
-                        customTooltipEl.classList.add('visible');
+                        customTooltipEl.classList.remove('hidden'); customTooltipEl.classList.add('visible');
                     }
                 });
                 button.addEventListener('mouseleave', () => {
                     customTooltipEl.classList.remove('visible');
-                    setTimeout(() => {
-                        if (!customTooltipEl.classList.contains('visible')) {
-                           customTooltipEl.classList.add('hidden');
-                        }
-                    }, 150);
+                    setTimeout(() => { if (!customTooltipEl.classList.contains('visible')) customTooltipEl.classList.add('hidden'); }, 150);
                 });
             });
         }
@@ -446,14 +470,12 @@
         function triggerDeleteConfirmation() {
             if (selectedNoteId) {
                 noteIdToDelete = selectedNoteId;
-                confirmDeleteOverlay.classList.remove('hidden');
-                confirmDeleteModal.classList.remove('hidden');
+                confirmDeleteOverlay.classList.remove('hidden'); confirmDeleteModal.classList.remove('hidden');
                 confirmDeleteFinalBtn.focus();
             }
         }
         function hideConfirmDeletePopup() {
-            confirmDeleteOverlay.classList.add('hidden');
-            confirmDeleteModal.classList.add('hidden');
+            confirmDeleteOverlay.classList.add('hidden'); confirmDeleteModal.classList.add('hidden');
             noteIdToDelete = null;
         }
         function performActualDeletion(idOfNoteToDelete) {
@@ -462,17 +484,38 @@
             if (selectedNoteId === idOfNoteToDelete) selectedNoteId = null;
             updateToolbarState(); saveState();
         }
+
+        function setupImportConfirmation() {
+            cancelImportBtn.addEventListener('click', hideConfirmImportPopup);
+            confirmImportFinalBtn.addEventListener('click', () => {
+                if (fileToImport) performActualImport(fileToImport);
+                hideConfirmImportPopup();
+            });
+            confirmImportOverlay.addEventListener('click', hideConfirmImportPopup);
+        }
+        function triggerConfirmImportPopup(file) {
+            fileToImport = file;
+            confirmImportOverlay.classList.remove('hidden');
+            confirmImportModal.classList.remove('hidden');
+            confirmImportFinalBtn.focus();
+        }
+        function hideConfirmImportPopup() {
+            confirmImportOverlay.classList.add('hidden');
+            confirmImportModal.classList.add('hidden');
+            fileToImport = null;
+            importFilePicker.value = ''; // Reset file picker
+        }
         
         function applyTheme(theme) {
             document.documentElement.classList.toggle('dark', theme === 'dark');
             toggleThemeBtn.querySelector('.material-symbols-outlined').textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
-            localStorage.setItem('modularNotepad_theme_v7', theme);
+            localStorage.setItem('modularNotepad_theme_v8', theme);
         }
         function toggleTheme() { applyTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark'); }
         function applyGridVisibility(visible) {
             canvasContainer.classList.toggle('grid-visible', visible);
             toggleGridBtn.classList.toggle('active', visible);
-            localStorage.setItem('modularNotepad_gridVisible_v7', visible);
+            localStorage.setItem('modularNotepad_gridVisible_v8', visible);
         }
         function toggleGrid() { applyGridVisibility(!canvasContainer.classList.contains('grid-visible')); }
 
@@ -514,35 +557,23 @@
 
             const headerEl = document.createElement('div'); headerEl.className = 'note-header';
             const titleEl = document.createElement('div'); titleEl.className = 'note-title';
-            titleEl.setAttribute('contenteditable', 'false'); // Initially not editable
-            titleEl.setAttribute('placeholder', 'Title');
+            titleEl.setAttribute('contenteditable', 'false'); titleEl.setAttribute('placeholder', 'Title');
             titleEl.innerHTML = note.title || '';
-            
             titleEl.addEventListener('dblclick', () => {
-                titleEl.setAttribute('contenteditable', 'true');
-                titleEl.focus();
-                document.execCommand('selectAll', false, null); // Select all text for easy editing
+                titleEl.setAttribute('contenteditable', 'true'); titleEl.focus(); document.execCommand('selectAll', false, null);
             });
             titleEl.addEventListener('blur', () => {
-                titleEl.setAttribute('contenteditable', 'false');
-                note.title = titleEl.innerHTML; 
-                saveState();
+                titleEl.setAttribute('contenteditable', 'false'); note.title = titleEl.innerHTML; saveState();
             });
-            titleEl.addEventListener('input', () => { // Save while typing in title
-                if (titleEl.getAttribute('contenteditable') === 'true') {
-                    note.title = titleEl.innerHTML; 
-                    saveStateDebounced();
-                }
+            titleEl.addEventListener('input', () => {
+                if (titleEl.getAttribute('contenteditable') === 'true') { note.title = titleEl.innerHTML; saveStateDebounced(); }
             });
             titleEl.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && titleEl.getAttribute('contenteditable') === 'true') {
-                    e.preventDefault();
-                    titleEl.blur(); // Triggers blur, which saves and sets contenteditable=false
-                }
+                if (e.key === 'Enter' && titleEl.getAttribute('contenteditable') === 'true') { e.preventDefault(); titleEl.blur(); }
             });
 
             const colorPickerInput = document.createElement('input'); colorPickerInput.type = 'button';
-            colorPickerInput.className = 'note-color-picker'; colorPickerInput.title = "Change note color"; // Native title for this one is fine
+            colorPickerInput.className = 'note-color-picker'; colorPickerInput.title = "Change note color";
             colorPickerInput.style.backgroundColor = note.color || (document.documentElement.classList.contains('dark') ? DARK_NOTE_COLORS[5] : NOTE_COLORS[5]);
             colorPickerInput.addEventListener('click', (e) => { e.stopPropagation(); showColorPalette(e.target, note.id); });
             
@@ -556,9 +587,7 @@
             contentEl.addEventListener('blur', () => { note.content = contentEl.innerHTML; saveState(); });
             contentEl.addEventListener('input', () => { note.content = contentEl.innerHTML; saveStateDebounced(); });
             contentEl.addEventListener('change', (e) => {
-                if (e.target.type === 'checkbox' && e.target.closest('.checklist-item')) {
-                    note.content = contentEl.innerHTML; saveState();
-                }
+                if (e.target.type === 'checkbox' && e.target.closest('.checklist-item')) { note.content = contentEl.innerHTML; saveState(); }
             });
             contentEl.addEventListener('keydown', handleNoteContentKeydown);
             contentWrapperEl.appendChild(contentEl);
@@ -567,35 +596,18 @@
             resizeHandleEl.innerHTML = `<span class="material-symbols-outlined">aspect_ratio</span>`;
             noteEl.append(headerEl, contentWrapperEl, resizeHandleEl);
 
-            // Note Dragging initiated from header
             headerEl.addEventListener('mousedown', (e) => {
-                // Do NOT drag if:
-                // 1. Clicking the color picker
-                // 2. Clicking the title AND the title is currently editable
                 const titleIsEditable = titleEl.getAttribute('contenteditable') === 'true';
                 if (e.target.closest('.note-color-picker') || (e.target.closest('.note-title') && titleIsEditable)) {
-                    // If it's a single click on the title (not dblclick) and it's not editable,
-                    // we still want to select the note.
-                    if (e.target.closest('.note-title') && !titleIsEditable && !noteEl.classList.contains('selected')) {
-                        selectNote(note.id);
-                    }
+                    if (e.target.closest('.note-title') && !titleIsEditable && !noteEl.classList.contains('selected')) selectNote(note.id);
                     return; 
                 }
-                // Prevent mousedown on header from bubbling to canvasContainer if it's for drag
-                e.stopPropagation(); 
-
-                isDraggingNote = true;
-                selectNote(note.id); // Selects and brings to front
-                // Note: cursor style for header is already 'move' via CSS
-                canvasContainer.style.cursor = 'grabbing'; // Global feedback
-
+                e.stopPropagation(); isDraggingNote = true; selectNote(note.id);
+                canvasContainer.style.cursor = 'grabbing';
                 const noteRect = noteEl.getBoundingClientRect();
-                dragOffsetX = (e.clientX - noteRect.left) / zoomLevel;
-                dragOffsetY = (e.clientY - noteRect.top) / zoomLevel;
+                dragOffsetX = (e.clientX - noteRect.left) / zoomLevel; dragOffsetY = (e.clientY - noteRect.top) / zoomLevel;
                 bringToFront(note.id);
             });
-
-            // Resize handle mousedown (remains on the handle itself)
             resizeHandleEl.addEventListener('mousedown', (e) => {
                 e.stopPropagation(); isResizingNote = true; selectNote(note.id);
                 noteEl.style.cursor = 'nwse-resize'; canvasContainer.style.cursor = 'nwse-resize';
@@ -607,8 +619,7 @@
         }
 
         function handleNoteContentKeydown(e) {
-            const contentEl = e.target;
-            const selection = window.getSelection();
+            const contentEl = e.target; const selection = window.getSelection();
             const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
             if (e.key === 'Enter' && range) {
                 const parentNode = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
@@ -681,10 +692,7 @@
                 }
                 isResizingNote = false;
             }
-            if (!isPanning && !isDraggingNote && !isResizingNote) {
-                canvasContainer.style.cursor = 'grab';
-                // Note cursor is handled by CSS on .note-header
-            }
+            if (!isPanning && !isDraggingNote && !isResizingNote) canvasContainer.style.cursor = 'grab';
         }
         
         function renderNotes() { canvas.innerHTML = ''; notes.forEach(note => canvas.appendChild(createNoteElement(note))); }
@@ -702,12 +710,7 @@
             };
             notes.push(newNote);
             const noteEl = createNoteElement(newNote); canvas.appendChild(noteEl);
-            selectNote(newNote.id);
-            const titleField = noteEl.querySelector('.note-title');
-            // Double click to edit, then focus. For new notes, maybe focus directly?
-            // For now, let's make it consistent: dblclick to edit.
-            // titleField.dispatchEvent(new MouseEvent('dblclick')); // This could auto-enable edit
-            saveState();
+            selectNote(newNote.id); saveState();
         }
         function selectNote(noteId) {
             if (selectedNoteId === noteId && document.querySelector(`.note[data-id="${noteId}"].selected`)) {
@@ -724,7 +727,6 @@
                 const prevSelectedNoteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"].selected`);
                 if (prevSelectedNoteEl) {
                     prevSelectedNoteEl.classList.remove('selected');
-                    // If title was editable, blur it
                     const titleEl = prevSelectedNoteEl.querySelector('.note-title[contenteditable="true"]');
                     titleEl?.blur();
                 }
@@ -842,12 +844,95 @@
             } else { Object.values(formattingButtons).forEach(btn => btn.classList.remove('active')); }
         }
 
+        // --- Import/Export ---
+        function exportCanvasData() {
+            const dataToExport = {
+                version: EXPORT_VERSION,
+                notes: notes,
+                transform: { zoomLevel, panX, panY },
+                highestZIndex: highestZIndex,
+                settings: {
+                    theme: localStorage.getItem('modularNotepad_theme_v8') || 'light',
+                    gridVisible: localStorage.getItem('modularNotepad_gridVisible_v8') === 'true'
+                }
+            };
+            const jsonString = JSON.stringify(dataToExport, null, 2); // Pretty print
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            a.download = `notepad-canvas-backup-${timestamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function handleFileImportSelection(event) {
+            const file = event.target.files[0];
+            if (file && file.type === "application/json") {
+                triggerConfirmImportPopup(file);
+            } else if (file) {
+                alert("Invalid file type. Please select a .json file.");
+                importFilePicker.value = ''; // Reset
+            }
+        }
+
+        function performActualImport(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    // Basic validation
+                    if (!importedData || typeof importedData !== 'object' || !importedData.notes || !importedData.transform || !importedData.settings) {
+                        throw new Error("Invalid JSON structure for import.");
+                    }
+                    // Could add version check here: if (importedData.version !== EXPORT_VERSION) ...
+
+                    notes = importedData.notes.map(note => ({ // Sanitize/default imported notes
+                        ...note,
+                        x: snapToGrid(parseFloat(note.x) || 0),
+                        y: snapToGrid(parseFloat(note.y) || 0),
+                        width: snapToGrid(Math.max(parseFloat(note.width) || MIN_NOTE_WIDTH, MIN_NOTE_WIDTH)),
+                        height: snapToGrid(Math.max(parseFloat(note.height) || MIN_NOTE_HEIGHT, MIN_NOTE_HEIGHT)),
+                        zIndex: parseInt(note.zIndex, 10) || 1,
+                        title: note.title || '',
+                        content: note.content || ''
+                    }));
+                    
+                    zoomLevel = parseFloat(importedData.transform.zoomLevel) || 1;
+                    panX = parseFloat(importedData.transform.panX) || 0;
+                    panY = parseFloat(importedData.transform.panY) || 0;
+                    highestZIndex = parseInt(importedData.highestZIndex, 10) || (notes.length > 0 ? Math.max(...notes.map(n => n.zIndex || 0), 0) + 1 : 1);
+
+                    applyTheme(importedData.settings.theme || 'light');
+                    applyGridVisibility(importedData.settings.gridVisible === true); // Ensure boolean
+
+                    selectedNoteId = null; // Deselect any current note
+                    renderNotes();
+                    updateCanvasTransform();
+                    updateToolbarState();
+                    saveState(); // Save the newly imported state to localStorage
+                    alert("Canvas imported successfully!");
+
+                } catch (error) {
+                    console.error("Error importing file:", error);
+                    alert(`Error importing file: ${error.message}`);
+                } finally {
+                    importFilePicker.value = ''; // Reset file picker
+                }
+            };
+            reader.readAsText(file);
+        }
+
+
         const LS_APP_PREFIX = 'modularNotepad_';
-        const LS_NOTES_KEY = LS_APP_PREFIX + 'notes_v7_titleDrag';
-        const LS_TRANSFORM_KEY = LS_APP_PREFIX + 'transform_v7';
-        const LS_HIGHEST_Z_KEY = LS_APP_PREFIX + 'highestZ_v7';
-        const LS_THEME_KEY = LS_APP_PREFIX + 'theme_v7'; // Keep if structure is same
-        const LS_GRID_VISIBLE_KEY = LS_APP_PREFIX + 'gridVisible_v7';
+        const LS_NOTES_KEY = LS_APP_PREFIX + 'notes_v8_io';
+        const LS_TRANSFORM_KEY = LS_APP_PREFIX + 'transform_v8';
+        const LS_HIGHEST_Z_KEY = LS_APP_PREFIX + 'highestZ_v8';
+        const LS_THEME_KEY = LS_APP_PREFIX + 'theme_v8';
+        const LS_GRID_VISIBLE_KEY = LS_APP_PREFIX + 'gridVisible_v8';
 
         let saveTimeout;
         function saveStateDebounced() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveState, 500); }
@@ -859,6 +944,7 @@
             localStorage.setItem(LS_NOTES_KEY, JSON.stringify(notes));
             localStorage.setItem(LS_TRANSFORM_KEY, JSON.stringify({ zoomLevel, panX, panY }));
             localStorage.setItem(LS_HIGHEST_Z_KEY, highestZIndex.toString());
+            // Theme and grid are saved by their respective apply functions, which are called during import too.
         }
         function loadState() {
             const storedNotes = localStorage.getItem(LS_NOTES_KEY);
@@ -886,8 +972,8 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 if (!confirmDeleteModal.classList.contains('hidden')) { hideConfirmDeletePopup(); e.preventDefault(); return; }
+                if (!confirmImportModal.classList.contains('hidden')) { hideConfirmImportPopup(); e.preventDefault(); return; }
                 if (activeColorPalette) { activeColorPalette.remove(); activeColorPalette = null; e.preventDefault(); return; }
-                // If a title is being edited, blur it on Esc
                 const activeTitle = document.querySelector('.note-title[contenteditable="true"]');
                 if (activeTitle) { activeTitle.blur(); e.preventDefault(); return; }
             }
@@ -895,7 +981,6 @@
             const isContentFocused = activeEl && activeEl.classList.contains('note-content') && activeEl.isContentEditable;
             const isTitleFocused = activeEl && activeEl.classList.contains('note-title') && activeEl.isContentEditable;
 
-            // Enter key in title is handled by title's own keydown listener
             if (isContentFocused) {
                 if (e.ctrlKey || e.metaKey) {
                     switch (e.key.toLowerCase()) {
