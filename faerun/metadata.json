@@ -1,0 +1,5 @@
+{
+  "name": "D&D 5e Faerun Character Randomizer",
+  "description": "A web application that generates a random D&D 5th Edition character sheet suitable for the Faerun setting using Gemini API. It randomizes fields like name, race, class, stats, skills, equipment, personality, and backstory.",
+  "requestFramePermissions": []
+}
