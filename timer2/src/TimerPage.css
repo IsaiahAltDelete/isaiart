@@ -1,0 +1,30 @@
+.controls {
+  position: fixed;
+  bottom: -200px; /* This hides it initially */
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 10px;
+  border-radius: 10px 10px 0 0;
+  z-index: 5; /* Should be highest */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transition: bottom 0.3s ease;
+}
+
+.controls-trigger {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 10%; /* Area to hover */
+  z-index: 4;
+}
+
+.controls-trigger:hover + .controls,
+.controls:hover {
+  bottom: 0; /* This makes it appear */
+}
