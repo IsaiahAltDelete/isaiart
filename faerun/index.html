@@ -1,0 +1,76 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D&D 5e Faerun Character Randomizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <style>
+    body {
+      font-family: 'Merriweather', serif;
+      background-color: #F5EFE6; /* Light parchment color */
+    }
+    /* Custom scrollbar for themed look */
+    ::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #E0CDAF; /* Parchment track */
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #6B4F4F; /* A muted, dark reddish-brown */
+      border-radius: 10px;
+      border: 2px solid #E0CDAF; /* Parchment border for thumb */
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: #503a3a;
+    }
+
+    /* For Firefox */
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: #6B4F4F #E0CDAF;
+    }
+
+    /* General selection color */
+    ::selection {
+      background-color: #B58A69; /* Muted accent for selection */
+      color: #FDFBF5;
+    }
+    ::-moz-selection { /* Firefox */
+      background-color: #B58A69;
+      color: #FDFBF5;
+    }
+
+    .material-symbols-outlined {
+      font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24;
+      vertical-align: middle; /* Helps align icons with text */
+    }
+
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.0.0"
+  }
+}
+</script>
+</head>
+<body class="text-stone-800">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html><link rel="stylesheet" href="index.css">
+<script src="index.tsx" type="module"></script>
