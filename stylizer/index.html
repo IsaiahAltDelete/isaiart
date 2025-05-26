@@ -1,304 +1,892 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Stylizer Pro</title>
+    <!-- No title as per request -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
     <style>
         :root {
-            --bg-main: #111827; /* gray-900 */
-            --text-main: #d1d5db; /* gray-300 */
-            --text-secondary: #9ca3af; /* gray-400 */
-            --panel-bg: rgba(17, 24, 39, 0.85); 
-            --panel-border: rgba(55, 65, 81, 0.6); 
-            --input-bg: rgba(55, 65, 81, 0.9); 
-            --hover-bg: rgba(75, 85, 99, 0.7); 
-            --active-bg: rgba(107, 114, 128, 0.7);
+            --accent-color: #FA8072; /* Salmon Pink */
+            --accent-color-hover: #F06A58;
+            --accent-color-text: #FFFFFF;
+
+            --bg-main: #121212; /* Very dark gray for body */
+            --bg-canvas-area: #181818; /* Slightly lighter for canvas backdrop */
             
-            --primary-color: #6b7280; /* gray-500 */
-            --primary-color-hover: #9ca3af; /* gray-400 */
-            --primary-color-text: #111827; 
+            /* Glassmorphism Sidebar Vars */
+            --panel-bg: rgba(30, 30, 30, 0.75); /* Darker, less transparent */
+            --panel-bg-hover: rgba(45, 45, 45, 0.85);
+            --panel-border: rgba(68, 68, 68, 0.5); /* var(--border-color) equivalent */
+            
+            --text-light: #E0E0E0;
+            --text-muted: #AAAAAA;
+            --text-dark: #121212;
+
+            --input-bg: rgba(55, 65, 81, 0.7); /* From file 2, adapted */
+            --input-border: rgba(68, 68, 68, 0.8);
         }
 
         body {
             font-family: 'Poppins', sans-serif;
             background-color: var(--bg-main);
-            color: var(--text-main);
-            overflow: hidden; margin: 0; padding: 0;
-            height: 100vh; width: 100vw;
+            color: var(--text-light);
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
         }
 
-        .glassmorphism {
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+
+        /* Glassmorphism Panels */
+        .glass-panel {
             background: var(--panel-bg);
-            backdrop-filter: blur(16px) saturate(120%);
-            -webkit-backdrop-filter: blur(16px) saturate(120%);
+            backdrop-filter: blur(12px) saturate(150%);
+            -webkit-backdrop-filter: blur(12px) saturate(150%);
             border: 1px solid var(--panel-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
         }
 
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
+        ::-webkit-scrollbar-track { background: transparent; } /* Track inside glass panel */
+        ::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
 
+        /* Custom Sliders (Adapted from File 1, enhanced) */
         input[type="range"] {
             -webkit-appearance: none; appearance: none;
-            width: 100%; height: 10px;
-            background: #374151; /* gray-700 */
-            border-radius: 5px; outline: none; padding: 0; margin: 0;
-            cursor: pointer; border: 1px solid #4b5563; /* gray-600 */
+            width: 100%; height: 8px;
+            background: #374151; /* gray-700 from file 2 */
+            border-radius: 4px; outline: none; cursor: pointer;
+            border: 1px solid #4b5563; /* gray-600 from file 2 */
+            transition: background 0.2s ease-in-out;
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none; appearance: none;
-            width: 20px; height: 20px;
-            background: var(--primary-color-hover); 
-            border-radius: 50%; cursor: pointer;
-            border: 2px solid var(--bg-main);
-            transition: background-color 0.2s ease, transform 0.1s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+            width: 18px; height: 18px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            border: 2px solid var(--bg-main); /* Contrast against thumb */
+            cursor: pointer;
+            transition: background 0.2s ease-in-out, transform 0.1s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
         input[type="range"]::-moz-range-thumb {
-            width: 20px; height: 20px;
-            background: var(--primary-color-hover);
-            border-radius: 50%; cursor: pointer;
+            width: 18px; height: 18px;
+            background: var(--accent-color);
+            border-radius: 50%;
             border: 2px solid var(--bg-main);
-            transition: background-color 0.2s ease, transform 0.1s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: background 0.2s ease-in-out, transform 0.1s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
-        input[type="range"]:active::-webkit-slider-thumb, input[type="range"]:focus::-webkit-slider-thumb {
-            background: #d1d5db; /* gray-300 */
-            transform: scale(1.15);
+        input[type="range"]:hover::-webkit-slider-thumb, input[type="range"]:focus::-webkit-slider-thumb {
+            background: var(--accent-color-hover);
+            transform: scale(1.1);
         }
-        input[type="range"]:active::-moz-range-thumb, input[type="range"]:focus::-moz-range-thumb {
-            background: #d1d5db; /* gray-300 */
-            transform: scale(1.15);
+        input[type="range"]:hover::-moz-range-thumb, input[type="range"]:focus::-moz-range-thumb {
+            background: var(--accent-color-hover);
+            transform: scale(1.1);
         }
-
-        .control-button {
-            background-color: var(--input-bg); color: var(--text-main);
-            border: 1px solid var(--panel-border);
-            transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
-            /* --- MODIFICATION FOR CENTERING --- */
+        
+        /* Buttons (Harmonized) */
+        .editor-button {
+            background-color: var(--input-bg);
+            color: var(--text-light);
+            border: 1px solid var(--input-border);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem; /* rounded-md */
+            transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            /* --- END MODIFICATION --- */
+            font-size: 0.875rem; /* text-sm */
+            line-height: 1.25rem;
         }
-        .control-button:hover:not(:disabled) { background-color: var(--hover-bg); border-color: var(--primary-color-hover); }
-        .control-button:active:not(:disabled) { background-color: var(--active-bg); transform: scale(0.95); }
-        .control-button.active-primary { background-color: var(--primary-color); color: var(--primary-color-text); }
-        .control-button.active-primary:hover:not(:disabled) { background-color: var(--primary-color-hover); }
-        .control-button:disabled { opacity: 0.5; cursor: not-allowed !important; }
-
-
-        .tooltip { position: relative; display: inline-block; }
-        .tooltip .tooltiptext {
-            visibility: hidden; width: max-content; max-width: 200px;
-            background-color: #1f2937; color: var(--text-main);
-            text-align: center; border-radius: 6px; padding: 5px 8px;
-            position: absolute; z-index: 100; bottom: 125%; left: 50%;
-            transform: translateX(-50%); opacity: 0; transition: opacity 0.3s;
-            font-size: 0.8rem; pointer-events: none;
+        .editor-button:hover:not(:disabled) {
+            background-color: var(--panel-bg-hover);
+            border-color: var(--accent-color);
+            color: var(--accent-color);
         }
-        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+        .editor-button:active:not(:disabled) {
+            transform: scale(0.96);
+        }
+        .editor-button.primary {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            color: var(--accent-color-text);
+        }
+        .editor-button.primary:hover:not(:disabled) {
+            background-color: var(--accent-color-hover);
+            border-color: var(--accent-color-hover);
+        }
+        .editor-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed !important;
+        }
+        .icon-button { /* For small icon-only buttons */
+            background-color: transparent;
+            color: var(--text-muted);
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            transition: all 0.2s ease;
+        }
+        .icon-button:hover:not(:disabled) {
+            background-color: var(--input-bg);
+            color: var(--accent-color);
+        }
+        .icon-button.active {
+            background-color: var(--accent-color) !important;
+            color: var(--accent-color-text) !important;
+        }
+         .icon-button.active .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400;
+        }
 
-        #canvasContainer { cursor: grab; }
-        #canvasContainer.grabbing, #canvasContainer.momentum-panning { cursor: grabbing; }
 
-        .tab-button { border-bottom: 2px solid transparent; color: var(--text-secondary); }
-        .tab-button.active { border-bottom-color: var(--primary-color); color: var(--primary-color-hover); }
-        
+        /* Tooltip (File 1 style, adapted) */
+        [data-tooltip] { position: relative; }
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%; left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--bg-main); /* Darker tooltip bg */
+            color: var(--text-light);
+            padding: 6px 10px; border-radius: 4px; font-size: 0.8rem;
+            white-space: nowrap; opacity: 0; visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            z-index: 1000; pointer-events: none;
+            border: 1px solid var(--panel-border);
+        }
+        [data-tooltip]:hover::after { opacity: 1; visibility: visible; }
+
+        /* Toast Notifications (File 1 style) */
+        #toast-container {
+            position: fixed; bottom: 20px; right: 20px; z-index: 10000;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .toast {
+            background-color: var(--panel-bg); color: var(--text-light);
+            padding: 12px 18px; border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            opacity: 0; transform: translateX(100%);
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            border-left: 4px solid var(--accent-color);
+        }
+        .toast.show { opacity: 1; transform: translateX(0); }
+        .toast.error { border-left-color: #E57373; }
+        .toast.success { border-left-color: #81C784; }
+
+        /* Modal (File 1 style, using glassmorphism) */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background-color: var(--panel-bg); /* Glass panel bg */
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--panel-border);
+        }
+
+        /* Canvas Area */
+        #canvas-area { cursor: grab; background-color: var(--bg-canvas-area); }
+        #canvas-area.grabbing, #canvas-area.momentum-panning { cursor: grabbing; }
+        #canvas-area.cropping { cursor: crosshair; }
+
+        /* Loader (File 2 style, adapted colors) */
         .loader {
-            border: 4px solid var(--panel-border); border-top: 4px solid var(--primary-color);
-            border-radius: 50%; width: 40px; height: 40px;
+            border: 4px solid var(--panel-border); border-top: 4px solid var(--accent-color);
+            border-radius: 50%; width: 50px; height: 50px;
             animation: spin 1s linear infinite;
             position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); z-index: 1000; display: none;
+            transform: translate(-50%, -50%); z-index: 5000; display: none; /* Ensure it's on top */
         }
         @keyframes spin { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+        
+        /* Sidebar specific */
+        .sidebar-section {
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 0.75rem; margin-bottom: 0.75rem;
+        }
+        .sidebar-section:last-child { border-bottom: none; margin-bottom: 0; }
+        .sidebar-section-title {
+            font-size: 0.8rem; font-weight: 500; color: var(--text-muted);
+            margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+
+        /* Tabs for Right Sidebar */
+        .tab-button-group button {
+            border-bottom: 2px solid transparent; color: var(--text-muted);
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .tab-button-group button.active {
+            border-bottom-color: var(--accent-color); color: var(--accent-color);
+            font-weight: 500;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* File Input Styling */
+        #drop-zone {
+            border: 2px dashed var(--input-border);
+            background-color: rgba(0,0,0,0.1); /* Subtle bg */
+            transition: all 0.2s ease;
+        }
+        #drop-zone.dragover {
+            border-color: var(--accent-color);
+            background-color: rgba(var(--accent-color-rgb), 0.1); /* Salmon tint */
+        }
+        #file-input-native { display: none; }
+
+        .control-group { margin-bottom: 0.85rem; }
+        .control-group label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem; }
+        .control-group .value-display { font-size: 0.75rem; color: var(--text-light); min-width: 3em; text-align: right; }
     </style>
 </head>
 <body class="flex h-screen w-screen">
 
     <div id="loader" class="loader"></div>
 
-    <aside id="controlsPanel" class="w-80 h-full glassmorphism p-4 flex flex-col space-y-3 overflow-y-auto shadow-xl">
-        <div class="flex justify-between items-center pb-2 border-b border-[var(--panel-border)]">
-            <h1 class="text-xl font-semibold text-[var(--primary-color-hover)]">Image Stylizer</h1>
+    <!-- Left Sidebar: Global Actions & Tools -->
+    <aside id="left-sidebar" class="w-72 h-full glass-panel p-4 flex flex-col space-y-4 overflow-y-auto">
+        <div class="sidebar-section">
+            <h3 class="sidebar-section-title">File</h3>
+            <div id="drop-zone" class="p-5 rounded-lg text-center cursor-pointer mb-2">
+                <span class="material-symbols-outlined text-4xl text-gray-500">upload_file</span>
+                <p class="text-xs text-gray-400 mt-1">Drag & drop or click</p>
+            </div>
+            <input type="file" id="file-input-native" accept="image/*">
+            <button id="save-image-btn" class="editor-button primary w-full mt-1">
+                <span class="material-symbols-outlined mr-2 text-base">save</span>Save Image
+            </button>
         </div>
 
-        <div class="space-y-2">
-            <label for="imageUpload" class="block text-sm font-medium">Load Image</label>
-            <input type="file" id="imageUpload" accept="image/*" class="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--primary-color)] file:text-[var(--primary-color-text)] hover:file:bg-[var(--primary-color-hover)] cursor-pointer">
+        <div class="sidebar-section">
+            <h3 class="sidebar-section-title">History</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <button id="undo-btn" class="editor-button w-full" data-tooltip="Undo (Ctrl+Z)">
+                    <span class="material-symbols-outlined mr-1 text-base">undo</span>Undo
+                </button>
+                <button id="redo-btn" class="editor-button w-full" data-tooltip="Redo (Ctrl+Y)">
+                    <span class="material-symbols-outlined mr-1 text-base">redo</span>Redo
+                </button>
+            </div>
+            <button id="reset-all-btn" class="editor-button w-full mt-2" data-tooltip="Reset all changes">
+                <span class="material-symbols-outlined mr-2 text-base">refresh</span>Reset All
+            </button>
+        </div>
+
+        <div class="sidebar-section">
+            <h3 class="sidebar-section-title">Canvas Tools</h3>
+            <div class="grid grid-cols-3 gap-2 mb-2">
+                <button id="pan-tool-btn" class="icon-button active" data-tooltip="Pan Tool (P)">
+                    <span class="material-symbols-outlined">pan_tool</span>
+                </button>
+                <button id="crop-tool-btn" class="icon-button" data-tooltip="Crop Tool (C)">
+                    <span class="material-symbols-outlined">crop</span>
+                </button>
+                 <button id="rotate-left-btn" class="icon-button" data-tooltip="Rotate Left">
+                    <span class="material-symbols-outlined">rotate_left</span>
+                </button>
+                <button id="rotate-right-btn" class="icon-button" data-tooltip="Rotate Right">
+                    <span class="material-symbols-outlined">rotate_right</span>
+                </button>
+                <button id="zoom-in-btn" class="icon-button" data-tooltip="Zoom In (+)">
+                    <span class="material-symbols-outlined">zoom_in</span>
+                </button>
+                <button id="zoom-out-btn" class="icon-button" data-tooltip="Zoom Out (-)">
+                    <span class="material-symbols-outlined">zoom_out</span>
+                </button>
+            </div>
+            <button id="recenter-image-btn" class="editor-button w-full text-xs py-1.5" data-tooltip="Fit image to view">
+                <span class="material-symbols-outlined mr-1 text-sm">filter_center_focus</span>Recenter / Fit
+            </button>
+             <div id="crop-actions-div" class="mt-2 space-x-2 hidden">
+                <button id="apply-crop-btn" class="editor-button primary text-xs py-1 px-2.5">Apply Crop</button>
+                <button id="cancel-crop-btn" class="editor-button text-xs py-1 px-2.5 bg-gray-600 hover:bg-gray-500">Cancel</button>
+            </div>
         </div>
         
-        <div class="grid grid-cols-2 gap-2 pt-1">
-            <div class="tooltip"><button id="undoButton" class="control-button w-full py-2 px-3 rounded-md flex items-center justify-center text-sm"><span class="material-icons-outlined mr-1 text-base">undo</span>Undo</button><span class="tooltiptext">Undo (Ctrl+Z)</span></div>
-            <div class="tooltip"><button id="redoButton" class="control-button w-full py-2 px-3 rounded-md flex items-center justify-center text-sm"><span class="material-icons-outlined mr-1 text-base">redo</span>Redo</button><span class="tooltiptext">Redo (Ctrl+Y)</span></div>
-            <div class="tooltip"><button id="resetAllButton" class="control-button w-full py-2 px-3 rounded-md flex items-center justify-center text-sm col-span-2"><span class="material-icons-outlined mr-1 text-base">refresh</span>Reset All</button><span class="tooltiptext">Reset all</span></div>
-            <div class="tooltip"><button id="saveButton" class="control-button active-primary w-full py-2 px-3 rounded-md flex items-center justify-center text-sm col-span-2"><span class="material-icons-outlined mr-1 text-base">save</span>Save Image</button><span class="tooltiptext">Download</span></div>
+        <div class="mt-auto sidebar-section pt-2"> <!-- Preview Original pushed to bottom -->
+             <button id="preview-original-btn" class="editor-button w-full" data-tooltip="Hold to see original">
+                <span class="material-symbols-outlined mr-2 text-base">visibility</span>Preview Original
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Canvas Area -->
+    <main id="canvas-area" class="flex-grow h-full flex items-center justify-center relative overflow-hidden">
+        <canvas id="editor-canvas"></canvas>
+        <div id="image-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-8 text-[var(--text-muted)]">
+            <span class="material-symbols-outlined text-6xl opacity-70 mb-4">image</span>
+            <p class="text-xl font-semibold">Load an image to start</p>
+            <p class="text-sm opacity-70">Drag & drop or use the panel on the left</p>
+        </div>
+    </main>
+
+    <!-- Right Sidebar: Adjustments & Filters -->
+    <aside id="right-sidebar" class="w-80 h-full glass-panel p-4 flex flex-col overflow-y-hidden">
+        <div class="tab-button-group flex border-b border-[var(--panel-border)] text-sm mb-3">
+            <button class="flex-1 py-2 font-medium active" data-tab="adjustments">Adjust</button>
+            <button class="flex-1 py-2 font-medium" data-tab="effects">Effects</button>
+            <button class="flex-1 py-2 font-medium" data-tab="artistic">Artistic</button>
         </div>
 
-        <div class="flex border-b border-[var(--panel-border)] text-xs">
-            <button class="tab-button flex-1 py-2 font-medium active" data-tab="lens">Lens & Texture</button>
-            <button class="tab-button flex-1 py-2 font-medium" data-tab="color">Color & Tone</button>
-        </div>
-
-        <div id="filterControlsContainer" class="flex-grow overflow-y-auto space-y-3.5 pr-1">
-            <!-- Lens & Texture Tab -->
-            <div id="tab-lens" class="tab-content space-y-3.5">
-                <div class="control-group"><label for="blur" class="block text-xs font-medium">Blur (<span id="blurValue">0</span>px)</label><div class="flex items-center space-x-2"><input type="range" id="blur" min="0" max="20" value="0" step="0.1"><button class="reset-slider control-button p-1 rounded-md" data-slider="blur" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="softFocus" class="block text-xs font-medium">Soft Focus (<span id="softFocusValue">0</span>%)</label><div class="flex items-center space-x-2"><input type="range" id="softFocus" min="0" max="200" value="0" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="softFocus" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="noise" class="block text-xs font-medium">Grain (<span id="noiseValue">0</span>%)</label><div class="flex items-center space-x-2"><input type="range" id="noise" min="0" max="50" value="0" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="noise" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="chromaticAberration" class="block text-xs font-medium">Fringing (<span id="chromaticAberrationValue">0</span>px)</label><div class="flex items-center space-x-2"><input type="range" id="chromaticAberration" min="0" max="10" value="0" step="0.1"><button class="reset-slider control-button p-1 rounded-md" data-slider="chromaticAberration" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="pixelation" class="block text-xs font-medium">Pixelation (<span id="pixelationValue">100</span>%)</label><div class="flex items-center space-x-2"><input type="range" id="pixelation" min="10" max="100" value="100" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="pixelation" data-default="100"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="scanlines" class="block text-xs font-medium">Scanlines (<span id="scanlinesValue">0</span>%)</label><div class="flex items-center space-x-2"><input type="range" id="scanlines" min="0" max="100" value="0" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="scanlines" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="vignette" class="block text-xs font-medium">Vignette (<span id="vignetteValue">0</span>%)</label><div class="flex items-center space-x-2"><input type="range" id="vignette" min="0" max="100" value="0" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="vignette" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="polarization" class="block text-xs font-medium">Polarization (<span id="polarizationValue">0</span>%)</label><div class="flex items-center space-x-2"><input type="range" id="polarization" min="0" max="100" value="0" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="polarization" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
+        <div id="filter-controls-container" class="flex-grow overflow-y-auto space-y-1 pr-1">
+            <!-- Adjustments Tab -->
+            <div id="tab-adjustments" class="tab-content active space-y-3.5">
+                <!-- Sliders will be populated by JS -->
             </div>
-
-            <!-- Color & Tone Tab -->
-            <div id="tab-color" class="tab-content space-y-3.5 hidden">
-                <div class="control-group"><label for="brightness" class="block text-xs font-medium">Brightness (<span id="brightnessValue">100</span>%)</label><div class="flex items-center space-x-2"><input type="range" id="brightness" min="0" max="200" value="100" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="brightness" data-default="100"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="contrast" class="block text-xs font-medium">Contrast (<span id="contrastValue">100</span>%)</label><div class="flex items-center space-x-2"><input type="range" id="contrast" min="0" max="200" value="100" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="contrast" data-default="100"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="highlights" class="block text-xs font-medium">Highlights (<span id="highlightsValue">0</span>)</label><div class="flex items-center space-x-2"><input type="range" id="highlights" min="-100" max="100" value="0" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="highlights" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="shadows" class="block text-xs font-medium">Shadows (<span id="shadowsValue">0</span>)</label><div class="flex items-center space-x-2"><input type="range" id="shadows" min="-100" max="100" value="0" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="shadows" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="saturate" class="block text-xs font-medium">Saturation (<span id="saturateValue">100</span>%)</label><div class="flex items-center space-x-2"><input type="range" id="saturate" min="0" max="200" value="100" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="saturate" data-default="100"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="temperature" class="block text-xs font-medium">Temperature (<span id="temperatureValue">0</span>)</label><div class="flex items-center space-x-2"><input type="range" id="temperature" min="-100" max="100" value="0" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="temperature" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="hueRotate" class="block text-xs font-medium">Hue (<span id="hueRotateValue">0</span>deg)</label><div class="flex items-center space-x-2"><input type="range" id="hueRotate" min="0" max="360" value="0" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="hueRotate" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="sepia" class="block text-xs font-medium">Sepia (<span id="sepiaValue">0</span>%)</label><div class="flex items-center space-x-2"><input type="range" id="sepia" min="0" max="100" value="0" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="sepia" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
-                <div class="control-group"><label for="grayscale" class="block text-xs font-medium">Grayscale (<span id="grayscaleValue">0</span>%)</label><div class="flex items-center space-x-2"><input type="range" id="grayscale" min="0" max="100" value="0" step="1"><button class="reset-slider control-button p-1 rounded-md" data-slider="grayscale" data-default="0"><span class="material-icons-outlined text-sm">refresh</span></button></div></div>
+            <!-- Effects Tab -->
+            <div id="tab-effects" class="tab-content space-y-3.5">
+                <!-- Sliders will be populated by JS -->
+            </div>
+            <!-- Artistic Tab -->
+            <div id="tab-artistic" class="tab-content space-y-3.5">
+                <!-- Sliders will be populated by JS -->
             </div>
         </div>
     </aside>
 
-    <main class="flex-grow h-full flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[var(--bg-main)]">
-        <div id="canvasContainer" class="relative w-full h-full flex items-center justify-center">
-            <canvas id="imageCanvas" class="max-w-full max-h-full object-contain shadow-lg rounded-md bg-[rgba(0,0,0,0.2)]"></canvas>
-            <div id="dropInstructions" class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-8">
-                <span class="material-icons-outlined text-6xl text-[var(--primary-color)] opacity-70 mb-4">image</span>
-                <p class="text-xl font-semibold">Drag & Drop Image Here</p>
-                <p class="text-sm opacity-70">or use "Load Image"</p>
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- Modal/Popup Structure -->
+    <div id="confirm-modal" class="fixed inset-0 modal-overlay items-center justify-center z-50 hidden">
+        <div class="modal-content p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h3 id="modal-title" class="text-xl font-semibold mb-4 text-[var(--text-light)]">Confirm Action</h3>
+            <p id="modal-message" class="text-[var(--text-muted)] mb-6">Are you sure?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="modal-cancel" class="editor-button px-4 py-2 rounded">Cancel</button>
+                <button id="modal-confirm" class="editor-button primary px-4 py-2 rounded">Confirm</button>
             </div>
         </div>
-        <div class="absolute bottom-4 right-4 flex space-x-2">
-            <div class="tooltip"><button id="previewOriginalButton" class="control-button p-2 rounded-full shadow-md"><span class="material-icons-outlined">visibility</span></button><span class="tooltiptext">Hold to Preview Original</span></div>
-            <div class="tooltip"><button id="zoomInButton" class="control-button p-2 rounded-full shadow-md"><span class="material-icons-outlined">zoom_in</span></button><span class="tooltiptext">Zoom In</span></div>
-            <div class="tooltip"><button id="zoomOutButton" class="control-button p-2 rounded-full shadow-md"><span class="material-icons-outlined">zoom_out</span></button><span class="tooltiptext">Zoom Out</span></div>
-            <div class="tooltip"><button id="recenterButton" class="control-button p-2 rounded-full shadow-md"><span class="material-icons-outlined">filter_center_focus</span></button><span class="tooltiptext">Recenter</span></div>
-        </div>
-    </main>
+    </div>
 
     <script>
-        const imageUpload = document.getElementById('imageUpload');
-        const canvas = document.getElementById('imageCanvas');
+        // DOM Elements
+        const canvas = document.getElementById('editor-canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        const dropInstructions = document.getElementById('dropInstructions');
-        const canvasContainer = document.getElementById('canvasContainer');
+        const canvasArea = document.getElementById('canvas-area');
+        const imagePlaceholder = document.getElementById('image-placeholder');
         const loader = document.getElementById('loader');
-        const previewOriginalButton = document.getElementById('previewOriginalButton');
 
-        const undoButton = document.getElementById('undoButton');
-        const redoButton = document.getElementById('redoButton');
-        const saveButton = document.getElementById('saveButton');
-        const resetAllButton = document.getElementById('resetAllButton');
-
-        const zoomInButton = document.getElementById('zoomInButton');
-        const zoomOutButton = document.getElementById('zoomOutButton');
-        const recenterButton = document.getElementById('recenterButton');
-
-        let originalImage = null;
-        let history = [];
-        let historyIndex = -1;
-        const MAX_HISTORY = 20;
-
-        let zoomLevel = 1;
-        let panX = 0; let panY = 0;
-        let isPanning = false; let lastPanX, lastPanY;
+        const dropZone = document.getElementById('drop-zone');
+        const fileInputNative = document.getElementById('file-input-native');
+        const saveImageBtn = document.getElementById('save-image-btn');
+        const undoBtn = document.getElementById('undo-btn');
+        const redoBtn = document.getElementById('redo-btn');
+        const resetAllBtn = document.getElementById('reset-all-btn');
         
-        let panVelocityX = 0; let panVelocityY = 0;
-        const dampingFactor = 0.92; 
-        let animationFrameId = null; // Changed from momentumPanningIntervalId for requestAnimationFrame
+        const panToolBtn = document.getElementById('pan-tool-btn');
+        const cropToolBtn = document.getElementById('crop-tool-btn');
+        const rotateLeftBtn = document.getElementById('rotate-left-btn');
+        const rotateRightBtn = document.getElementById('rotate-right-btn');
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
+        const recenterImageBtn = document.getElementById('recenter-image-btn');
+        const cropActionsDiv = document.getElementById('crop-actions-div');
+        const applyCropBtn = document.getElementById('apply-crop-btn');
+        const cancelCropBtn = document.getElementById('cancel-crop-btn');
+        const previewOriginalBtn = document.getElementById('preview-original-btn');
+
+        const filterControlsContainer = document.getElementById('filter-controls-container');
+        const adjustmentTabContent = document.getElementById('tab-adjustments');
+        const effectsTabContent = document.getElementById('tab-effects');
+        const artisticTabContent = document.getElementById('tab-artistic');
+
+        // State Variables
+        let originalImage = null; // Pristine loaded image
+        let currentImageState = null; // Image object representing the current visual state (after crop, before filters)
+        let processedOffscreenCanvas = document.createElement('canvas'); // For pixel manipulation
+        let processedOffscreenCtx = processedOffscreenCanvas.getContext('2d', { willReadFrequently: true });
+
+        let imageLoaded = false;
+        let zoomLevel = 1;
+        let panX = 0, panY = 0;
+        let rotation = 0; // degrees
+
+        let isPanning = false, lastPanX, lastPanY;
+        let panVelocityX = 0, panVelocityY = 0;
+        const DAMPING_FACTOR = 0.92;
+        let momentumPanningFrameId = null;
         let isMomentumPanning = false;
 
+        let currentTool = 'pan'; // 'pan', 'crop'
+        let isCropping = false;
+        let cropStart = { x: 0, y: 0 }, cropEnd = { x: 0, y: 0 };
+        let cropRect = null; // {x, y, width, height} in image coordinates relative to currentImageState
 
-        let processedOffscreenCanvas = document.createElement('canvas');
-        let processedOffscreenCtx = processedOffscreenCanvas.getContext('2d', { willReadFrequently: true });
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY = 30;
+        let isApplyingHistoryState = false; // Flag to prevent feedback loops with history
+
         let isPreviewingOriginal = false;
 
-        const defaultFilters = {
-            blur: 0, softFocus: 0, noise: 0, chromaticAberration: 0, pixelation: 100, scanlines: 0, vignette: 0, polarization: 0,
-            brightness: 100, contrast: 100, highlights: 0, shadows: 0, saturate: 100, temperature: 0, hueRotate: 0, sepia: 0, grayscale: 0,
+        const initialFilterValues = {
+            // Adjustments Tab
+            brightness: 100, contrast: 100, saturate: 100, hueRotate: 0, 
+            highlights: 0, shadows: 0, temperature: 0,
+            // Effects Tab
+            blur: 0, grayscale: 0, sepia: 0, warmth: 0, // Warmth is like a gentle sepia
+            // Artistic Tab
+            softFocus: 0, noise: 0, chromaticAberration: 0, pixelation: 100, 
+            scanlines: 0, vignette: 0, polarization: 0, clarity: 0 // Clarity as subtle contrast/sharpen
         };
-        let currentFilters = { ...defaultFilters };
+        let currentFilters = { ...initialFilterValues };
 
-        function debounce(func, delay) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => func.apply(this,a), delay);}; }
-        function showLoader() { loader.style.display = 'block'; }
-        function hideLoader() { loader.style.display = 'none'; }
-        function generateRandomFilename(length = 6) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let result = '';
-            for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-            return result;
+        const filterConfigs = [
+            // Adjustments
+            { id: 'brightness', name: 'Brightness', min: 0, max: 200, unit: '%', default: 100, tab: 'adjustments', icon: 'brightness_6' },
+            { id: 'contrast', name: 'Contrast', min: 0, max: 200, unit: '%', default: 100, tab: 'adjustments', icon: 'contrast' },
+            { id: 'saturate', name: 'Saturation', min: 0, max: 200, unit: '%', default: 100, tab: 'adjustments', icon: 'tonality' },
+            { id: 'hueRotate', name: 'Hue', min: 0, max: 360, unit: '°', default: 0, tab: 'adjustments', icon: 'palette' },
+            { id: 'highlights', name: 'Highlights', min: -100, max: 100, unit: '', default: 0, tab: 'adjustments', icon: 'highlight' },
+            { id: 'shadows', name: 'Shadows', min: -100, max: 100, unit: '', default: 0, tab: 'adjustments', icon: 'shadows' }, // Custom icon name
+            { id: 'temperature', name: 'Temperature', min: -100, max: 100, unit: '', default: 0, tab: 'adjustments', icon: 'thermostat' },
+            { id: 'clarity', name: 'Clarity', min: 0, max: 100, unit: '%', default: 0, tab: 'adjustments', icon: 'auto_awesome'}, // Subtle sharpness/contrast
+            // Effects
+            { id: 'blur', name: 'Blur', min: 0, max: 20, unit: 'px', default: 0, step: 0.1, tab: 'effects', icon: 'blur_on' },
+            { id: 'grayscale', name: 'Grayscale', min: 0, max: 100, unit: '%', default: 0, tab: 'effects', icon: 'filter_b_and_w' },
+            { id: 'sepia', name: 'Sepia', min: 0, max: 100, unit: '%', default: 0, tab: 'effects', icon: 'camera_alt' }, // Using camera_alt for sepia
+            { id: 'warmth', name: 'Warmth', min: 0, max: 100, unit: '%', default: 0, tab: 'effects', icon: 'wb_sunny' },
+            // Artistic
+            { id: 'softFocus', name: 'Soft Focus', min: 0, max: 100, unit: '%', default: 0, tab: 'artistic', icon: 'flare' }, // Using flare for soft focus
+            { id: 'noise', name: 'Grain', min: 0, max: 50, unit: '%', default: 0, tab: 'artistic', icon: 'grain' },
+            { id: 'chromaticAberration', name: 'Fringing', min: 0, max: 10, unit: 'px', default: 0, step: 0.1, tab: 'artistic', icon: 'filter_vintage' }, // Using filter_vintage for CA
+            { id: 'pixelation', name: 'Pixelate', min: 10, max: 100, unit: '%', default: 100, tab: 'artistic', icon: 'grid_on' }, // Using grid_on for pixelation
+            { id: 'scanlines', name: 'Scanlines', min: 0, max: 100, unit: '%', default: 0, tab: 'artistic', icon: 'density_medium' }, // Using density_medium for scanlines
+            { id: 'vignette', name: 'Vignette', min: 0, max: 100, unit: '%', default: 0, tab: 'artistic', icon: 'vignette' },
+            { id: 'polarization', name: 'Polarize', min: 0, max: 100, unit: '%', default: 0, tab: 'artistic', icon: 'texture' }, // Using texture for polarization
+        ];
+        
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setupSliders();
+            setupEventListeners();
+            setupTabs();
+            handleResize(); // Initial canvas setup
+            window.addEventListener('resize', handleResize);
+            updateButtonStates();
+            // Set accent color CSS variable for JS access if needed (e.g., for dragover tint)
+            const accentRGB = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').match(/\w\w/g).map(x => parseInt(x, 16));
+            document.documentElement.style.setProperty('--accent-color-rgb', accentRGB.join(', '));
+        });
+
+        function setupTabs() {
+            const tabButtons = document.querySelectorAll('.tab-button-group button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    const tabId = button.dataset.tab;
+                    tabContents.forEach(content => content.classList.toggle('active', content.id === `tab-${tabId}`));
+                });
+            });
         }
 
-        function loadImage(file) {
-            showLoader();
+        function setupSliders() {
+            [adjustmentTabContent, effectsTabContent, artisticTabContent].forEach(tc => tc.innerHTML = ''); // Clear
+            filterConfigs.forEach(fc => {
+                const targetTabContent = document.getElementById(`tab-${fc.tab}`);
+                if (!targetTabContent) { console.warn(`Tab content for ${fc.tab} not found.`); return; }
+
+                const controlGroup = document.createElement('div');
+                controlGroup.className = 'control-group';
+                controlGroup.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="${fc.id}-slider" class="flex items-center">
+                            <span class="material-symbols-outlined text-base mr-1.5 text-[var(--text-muted)]">${fc.icon || 'tune'}</span>
+                            ${fc.name}
+                        </label>
+                        <div class="flex items-center">
+                            <span id="${fc.id}-value" class="value-display mr-2">${currentFilters[fc.id]}${fc.unit}</span>
+                            <button class="reset-slider-btn icon-button p-0.5" data-filter="${fc.id}" data-default="${fc.default}" data-tooltip="Reset ${fc.name}">
+                                <span class="material-symbols-outlined text-sm">refresh</span>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="range" id="${fc.id}-slider" min="${fc.min}" max="${fc.max}" value="${currentFilters[fc.id]}" step="${fc.step || 1}" data-filter="${fc.id}">
+                `;
+                targetTabContent.appendChild(controlGroup);
+            });
+        }
+        
+        function setupEventListeners() {
+            // File Handling
+            dropZone.addEventListener('click', () => fileInputNative.click());
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+            dropZone.addEventListener('drop', handleFileDrop);
+            fileInputNative.addEventListener('change', handleFileSelect);
+            saveImageBtn.addEventListener('click', downloadImage);
+
+            // History
+            undoBtn.addEventListener('click', undo);
+            redoBtn.addEventListener('click', redo);
+            resetAllBtn.addEventListener('click', () => {
+                showConfirmModal("Reset All Changes?", "This will revert the image to its original state and reset all adjustments.", () => {
+                    resetAllImageStates();
+                    showToast('All changes reset', 'success');
+                });
+            });
+
+            // Canvas Tools
+            panToolBtn.addEventListener('click', () => switchTool('pan'));
+            cropToolBtn.addEventListener('click', () => switchTool('crop'));
+            rotateLeftBtn.addEventListener('click', () => { applyRotation(-90); });
+            rotateRightBtn.addEventListener('click', () => { applyRotation(90); });
+            zoomInBtn.addEventListener('click', () => { applyZoom(1.2); });
+            zoomOutBtn.addEventListener('click', () => { applyZoom(1/1.2); });
+            recenterImageBtn.addEventListener('click', () => { centerAndFitImage(); renderCanvasContent(); });
+            
+            applyCropBtn.addEventListener('click', executeCrop);
+            cancelCropBtn.addEventListener('click', cancelCroppingMode);
+
+            previewOriginalBtn.addEventListener('mousedown', () => { if(imageLoaded) { isPreviewingOriginal = true; renderCanvasContent(); }});
+            previewOriginalBtn.addEventListener('mouseup', () => { if(imageLoaded && isPreviewingOriginal) { isPreviewingOriginal = false; renderCanvasContent(); }});
+            previewOriginalBtn.addEventListener('mouseleave', () => { if(imageLoaded && isPreviewingOriginal) { isPreviewingOriginal = false; renderCanvasContent(); }});
+
+
+            // Canvas Mouse/Touch for Pan/Zoom/Crop
+            canvasArea.addEventListener('mousedown', handleCanvasMouseDown);
+            canvasArea.addEventListener('mousemove', handleCanvasMouseMove);
+            window.addEventListener('mouseup', handleCanvasMouseUp); // Global mouseup
+            canvasArea.addEventListener('mouseleave', handleCanvasMouseLeave);
+            canvasArea.addEventListener('wheel', handleCanvasWheel, { passive: false });
+
+            // Filter Sliders
+            filterControlsContainer.addEventListener('input', (e) => {
+                if (e.target.type === 'range') {
+                    const filterId = e.target.dataset.filter;
+                    const value = parseFloat(e.target.value);
+                    currentFilters[filterId] = value;
+                    document.getElementById(`${filterId}-value`).textContent = `${value}${filterConfigs.find(f=>f.id===filterId).unit}`;
+                    debouncedProcessAndRender();
+                }
+            });
+            filterControlsContainer.addEventListener('change', (e) => { // For saving history on release
+                 if (e.target.type === 'range' && !isApplyingHistoryState) {
+                    saveState();
+                }
+            });
+            filterControlsContainer.addEventListener('click', (e) => {
+                const button = e.target.closest('.reset-slider-btn');
+                if (button) {
+                    const filterId = button.dataset.filter;
+                    const defaultValue = parseFloat(button.dataset.default);
+                    currentFilters[filterId] = defaultValue;
+                    document.getElementById(`${filterId}-slider`).value = defaultValue;
+                    document.getElementById(`${filterId}-value`).textContent = `${defaultValue}${filterConfigs.find(f=>f.id===filterId).unit}`;
+                    processImageAndRender().then(() => { if(!isApplyingHistoryState) saveState(); });
+                }
+            });
+            
+            // Keyboard Shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+                if (e.ctrlKey || e.metaKey) {
+                    if (e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+                    else if (e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+                    else if (e.key.toLowerCase() === 's') { e.preventDefault(); downloadImage(); }
+                    else if (e.key.toLowerCase() === 'o') { e.preventDefault(); fileInputNative.click(); }
+                } else {
+                    if (e.key === 'p' || e.key === 'P') switchTool('pan');
+                    if (e.key === 'c' || e.key === 'C') switchTool('crop');
+                    if (e.key === '+' || e.key === '=') { e.preventDefault(); applyZoom(1.2); }
+                    if (e.key === '-' || e.key === '_') { e.preventDefault(); applyZoom(1/1.2); }
+                    if (e.key === 'Escape' && currentTool === 'crop' && isCropping) cancelCroppingMode();
+                }
+            });
+
+            // Modal
+            document.getElementById('modal-cancel').addEventListener('click', hideConfirmModal);
+        }
+
+        // --- IMAGE LOADING & STATE ---
+        function handleFileDrop(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                loadImageFromFile(file);
+            } else {
+                showToast('Invalid file type. Please upload an image.', 'error');
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                loadImageFromFile(file);
+            }
+        }
+
+        function loadImageFromFile(file) {
+            showLoader(true);
             const reader = new FileReader();
-            reader.onload = (e) => {
-                originalImage = new Image();
-                originalImage.onload = () => {
-                    resetFiltersToDefault(); resetZoomAndPan();
-                    applyAllFilters().then(() => {
-                        saveState(); dropInstructions.style.display = 'none';
-                        toggleControlsAvailability(true); hideLoader();
-                    });
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalImage = img; // Store pristine original
+                    currentImageState = new Image(); // This will hold the image after crop/rotation, before filters
+                    currentImageState.onload = () => {
+                        resetAllImageStates(false); // Reset filters, zoom, pan, rotation but don't clear history yet
+                        centerAndFitImage();
+                        processImageAndRender().then(() => {
+                            history = []; // Clear history for new image
+                            saveState(); // Initial state
+                            imageLoaded = true;
+                            imagePlaceholder.classList.add('hidden');
+                            canvas.classList.remove('hidden');
+                            showLoader(false);
+                            showToast('Image loaded successfully!', 'success');
+                            updateButtonStates();
+                        });
+                    };
+                    currentImageState.src = originalImage.src; // Start with original
                 };
-                originalImage.onerror = () => { alert("Error loading image."); toggleControlsAvailability(false); hideLoader(); }
-                originalImage.src = e.target.result;
+                img.onerror = () => {
+                    showLoader(false);
+                    showToast('Error loading image.', 'error');
+                };
+                img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         }
-
-        imageUpload.addEventListener('change', (e) => { if (e.target.files && e.target.files[0]) loadImage(e.target.files[0]); });
-        canvasContainer.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); canvasContainer.classList.add('border-dashed', 'border-2', 'border-[var(--primary-color)]'); });
-        canvasContainer.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); canvasContainer.classList.remove('border-dashed', 'border-2', 'border-[var(--primary-color)]'); });
-        canvasContainer.addEventListener('drop', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            canvasContainer.classList.remove('border-dashed', 'border-2', 'border-[var(--primary-color)]');
-            if (e.dataTransfer.files && e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
-        });
         
-        function applyAllFilters() {
+        function resetAllImageStates(clearHistoryAndSave = true) {
+            if (!originalImage && clearHistoryAndSave) { // Allow reset even if no image for UI consistency
+                 showToast('No image loaded to reset.', 'info');
+            }
+            
+            if (originalImage) {
+                currentImageState = new Image();
+                currentImageState.src = originalImage.src; // Reset to uncropped, unrotated
+            }
+
+            currentFilters = { ...initialFilterValues };
+            setupSliders(); // Reset slider UI to defaults
+
+            zoomLevel = 1;
+            panX = 0; panY = 0;
+            rotation = 0;
+            
+            if (currentTool === 'crop') cancelCroppingMode();
+
+            if (imageLoaded) {
+                centerAndFitImage();
+                processImageAndRender().then(() => {
+                    if (clearHistoryAndSave) {
+                        history = [];
+                        saveState(); // Save this reset state
+                    }
+                });
+            } else {
+                renderCanvasContent(); // Render placeholder/grid
+            }
+            updateButtonStates();
+        }
+
+        function centerAndFitImage() {
+            if (!imageLoaded || !currentImageState || !currentImageState.complete || currentImageState.naturalWidth === 0) return;
+            
+            const dpr = window.devicePixelRatio || 1;
+            const canvasWidth = canvasArea.clientWidth; // Use clientWidth for fitting logic
+            const canvasHeight = canvasArea.clientHeight;
+
+            const imgAspect = currentImageState.naturalWidth / currentImageState.naturalHeight;
+            const canvasAspect = canvasWidth / canvasHeight;
+
+            if (imgAspect > canvasAspect) { // Image wider than canvas
+                zoomLevel = canvasWidth / currentImageState.naturalWidth;
+            } else { // Image taller than canvas
+                zoomLevel = canvasHeight / currentImageState.naturalHeight;
+            }
+            zoomLevel *= 0.95; // Add a little padding
+
+            // Pan to center
+            // Pan values are relative to canvas center for drawing logic
+            panX = 0; 
+            panY = 0;
+        }
+
+        // --- CANVAS RENDERING & TRANSFORMATIONS ---
+        function handleResize() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = canvasArea.clientWidth * dpr;
+            canvas.height = canvasArea.clientHeight * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Apply DPR scaling
+            
+            if (imageLoaded) {
+                // Optional: could try to maintain visual center on resize
+                renderCanvasContent();
+            } else {
+                renderGrid(); // Render grid if no image
+            }
+        }
+
+        function renderGrid() {
+            const dpr = window.devicePixelRatio || 1;
+            const actualCanvasWidth = canvas.width / dpr;
+            const actualCanvasHeight = canvas.height / dpr;
+            
+            ctx.save();
+            ctx.clearRect(0, 0, actualCanvasWidth, actualCanvasHeight); // Clear with non-DPR values
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 0.5;
+            const gridSize = 20; // Fixed grid size for simplicity
+            for (let x = (panX * zoomLevel) % gridSize; x < actualCanvasWidth; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, actualCanvasHeight); ctx.stroke();
+            }
+            for (let y = (panY * zoomLevel) % gridSize; y < actualCanvasHeight; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(actualCanvasWidth, y); ctx.stroke();
+            }
+            ctx.restore();
+        }
+        
+        function renderCanvasContent() {
+            const dpr = window.devicePixelRatio || 1;
+            const viewWidth = canvas.width / dpr;
+            const viewHeight = canvas.height / dpr;
+
+            ctx.save();
+            ctx.clearRect(0, 0, viewWidth, viewHeight);
+            renderGrid();
+
+            if (!imageLoaded || (!currentImageState && !isPreviewingOriginal) || 
+                (isPreviewingOriginal && (!originalImage || originalImage.naturalWidth === 0)) ||
+                (!isPreviewingOriginal && (!processedOffscreenCanvas || processedOffscreenCanvas.width === 0))) {
+                imagePlaceholder.classList.remove('hidden');
+                return;
+            }
+            imagePlaceholder.classList.add('hidden');
+
+            const imageToDraw = isPreviewingOriginal ? originalImage : processedOffscreenCanvas;
+            const imgNatWidth = imageToDraw.naturalWidth || imageToDraw.width;
+            const imgNatHeight = imageToDraw.naturalHeight || imageToDraw.height;
+
+            // Transformations are applied relative to the canvas center
+            ctx.translate(viewWidth / 2 + panX, viewHeight / 2 + panY);
+            ctx.scale(zoomLevel, zoomLevel);
+            ctx.rotate(rotation * Math.PI / 180);
+            
+            // Draw image centered at the origin of this new transformed space
+            ctx.imageSmoothingEnabled = !(currentFilters.pixelation < 100 && !isPreviewingOriginal);
+            ctx.drawImage(imageToDraw, -imgNatWidth / 2, -imgNatHeight / 2, imgNatWidth, imgNatHeight);
+            
+            ctx.restore();
+
+            // Draw crop selection if active (on top of everything)
+            if (currentTool === 'crop' && isCropping && cropRect) {
+                drawCropSelectionUI();
+            }
+        }
+
+        function applyZoom(factor, pivotX = null, pivotY = null) {
+            if (!imageLoaded) return;
+            stopMomentumPan();
+
+            const dpr = window.devicePixelRatio || 1;
+            const viewWidth = canvas.width / dpr;
+            const viewHeight = canvas.height / dpr;
+
+            // Pivot point relative to canvas center
+            const cPivotX = pivotX === null ? 0 : pivotX - viewWidth / 2;
+            const cPivotY = pivotY === null ? 0 : pivotY - viewHeight / 2;
+
+            // World coordinates of pivot point (relative to image center, pre-zoom)
+            // (cPivotX - panX) is screen pos of pivot relative to pan center. Divide by zoom to get world.
+            const worldX = (cPivotX - panX) / zoomLevel;
+            const worldY = (cPivotY - panY) / zoomLevel;
+
+            const oldZoom = zoomLevel;
+            zoomLevel *= factor;
+            zoomLevel = Math.max(0.05, Math.min(zoomLevel, 20)); // Clamp zoom
+
+            // Adjust pan to keep pivot point stationary
+            // New pan = cPivot - world * newZoom
+            panX = cPivotX - worldX * zoomLevel;
+            panY = cPivotY - worldY * zoomLevel;
+            
+            renderCanvasContent();
+        }
+
+        function applyRotation(angleDelta) {
+            if (!imageLoaded) return;
+            rotation = (rotation + angleDelta) % 360;
+            // After rotation, the "natural" aspect ratio of the displayed image effectively changes.
+            // To maintain a good view, we might want to re-fit or re-center.
+            // For simplicity now, just re-render. A more complex solution might adjust zoom/pan.
+            processImageAndRender().then(() => { if(!isApplyingHistoryState) saveState(); }); // Rotation affects final output
+        }
+
+        // --- IMAGE PROCESSING ---
+        const debouncedProcessAndRender = debounce(processImageAndRender, 200);
+
+        async function processImageAndRender() {
+            if (!imageLoaded || !currentImageState || currentImageState.naturalWidth === 0) {
+                 renderCanvasContent(); // Show placeholder or grid
+                 return;
+            }
+            showLoader(true);
+
             return new Promise(resolve => {
-                if (!originalImage) { resolve(); return; }
-                showLoader();
-                
-                const w = originalImage.width; const h = originalImage.height;
-                const tempSourceCanvas = document.createElement('canvas');
-                const tempSourceCtx = tempSourceCanvas.getContext('2d');
-                tempSourceCanvas.width = w; tempSourceCanvas.height = h;
+                // Ensure currentImageState (cropped/rotated base) is ready
+                const baseImage = currentImageState;
+                const w = baseImage.naturalWidth;
+                const h = baseImage.naturalHeight;
 
-                const scaleFactor = currentFilters.pixelation / 100;
-                if (scaleFactor < 1.0 && currentFilters.pixelation < 100) {
-                    const scaledW = w * scaleFactor; const scaledH = h * scaleFactor;
-                    tempSourceCtx.imageSmoothingEnabled = false;
-                    tempSourceCtx.drawImage(originalImage, 0, 0, scaledW, scaledH);
-                    tempSourceCtx.drawImage(tempSourceCanvas, 0, 0, scaledW, scaledH, 0, 0, w, h);
-                } else {
-                    tempSourceCtx.drawImage(originalImage, 0, 0);
-                }
-
-                processedOffscreenCanvas.width = w; processedOffscreenCanvas.height = h;
+                processedOffscreenCanvas.width = w;
+                processedOffscreenCanvas.height = h;
                 processedOffscreenCtx.clearRect(0, 0, w, h);
 
-                let filterString = `blur(${currentFilters.blur}px) brightness(${currentFilters.brightness}%) contrast(${currentFilters.contrast}%) saturate(${currentFilters.saturate}%) grayscale(${currentFilters.grayscale}%) sepia(${currentFilters.sepia}%) hue-rotate(${currentFilters.hueRotate}deg)`;
-                processedOffscreenCtx.filter = filterString.trim();
-                processedOffscreenCtx.drawImage(tempSourceCanvas, 0, 0);
-                processedOffscreenCtx.filter = 'none';
+                // 1. Initial Draw (Pixelation first if active)
+                let sourceForCssFilters = document.createElement('canvas');
+                sourceForCssFilters.width = w; sourceForCssFilters.height = h;
+                let sfcCtx = sourceForCssFilters.getContext('2d');
 
+                if (currentFilters.pixelation < 100) {
+                    const scaleFactor = currentFilters.pixelation / 100;
+                    const scaledW = Math.max(1, Math.floor(w * scaleFactor));
+                    const scaledH = Math.max(1, Math.floor(h * scaleFactor));
+                    sfcCtx.imageSmoothingEnabled = false;
+                    sfcCtx.drawImage(baseImage, 0, 0, scaledW, scaledH);
+                    sfcCtx.drawImage(sourceForCssFilters, 0, 0, scaledW, scaledH, 0, 0, w, h);
+                } else {
+                    sfcCtx.drawImage(baseImage, 0, 0);
+                }
+                
+                // 2. Apply CSS Filters
+                let cssFilterString = '';
+                cssFilterString += `brightness(${currentFilters.brightness}%) `;
+                cssFilterString += `contrast(${currentFilters.contrast + currentFilters.clarity / 2}%) `; // Clarity adds to contrast
+                cssFilterString += `saturate(${currentFilters.saturate}%) `;
+                cssFilterString += `hue-rotate(${currentFilters.hueRotate}deg) `;
+                cssFilterString += `grayscale(${currentFilters.grayscale}%) `;
+                cssFilterString += `sepia(${currentFilters.sepia + currentFilters.warmth}%) `; // Warmth and Sepia combine
+                cssFilterString += `blur(${currentFilters.blur}px) `;
+                
+                processedOffscreenCtx.filter = cssFilterString.trim();
+                processedOffscreenCtx.drawImage(sourceForCssFilters, 0, 0, w, h);
+                processedOffscreenCtx.filter = 'none'; // Reset for pixel ops
+
+                // 3. Pixel Manipulation Filters (Highlights, Shadows, Temp, Noise, CA)
                 const imageData = processedOffscreenCtx.getImageData(0, 0, w, h);
                 const data = imageData.data;
                 const srcDataForCA = (currentFilters.chromaticAberration > 0) ? new Uint8ClampedArray(data) : null;
@@ -306,18 +894,7 @@
                 for (let i = 0; i < data.length; i += 4) {
                     let r = data[i], g = data[i+1], b = data[i+2];
 
-                    if (currentFilters.chromaticAberration > 0) {
-                        const amount = currentFilters.chromaticAberration;
-                        const yPx = Math.floor((i/4) / w); const xPx = (i/4) % w;
-                        const rX = Math.max(0, Math.min(w - 1, xPx - Math.floor(amount)));
-                        const rIndex = (yPx * w + rX) * 4;
-                        data[i] = srcDataForCA[rIndex]; 
-                        const bX = Math.max(0, Math.min(w - 1, xPx + Math.floor(amount)));
-                        const bIndex = (yPx * w + bX) * 4;
-                        data[i + 2] = srcDataForCA[bIndex + 2]; 
-                        r = data[i]; g = data[i+1]; b = data[i+2];
-                    }
-                    
+                    // Highlights & Shadows
                     if (currentFilters.highlights !== 0 || currentFilters.shadows !== 0) {
                         const lum = 0.299 * r + 0.587 * g + 0.114 * b;
                         let factor = 1.0;
@@ -331,17 +908,36 @@
                         b = Math.max(0, Math.min(255, b * factor));
                     }
 
+                    // Temperature
                     if (currentFilters.temperature !== 0) {
                         const temp = currentFilters.temperature; 
-                        if (temp > 0) { 
-                            r = Math.min(255, r + temp * 0.5); b = Math.max(0, b - temp * 0.3);
-                        } else { 
-                            b = Math.min(255, b - temp * 0.5); r = Math.max(0, r + temp * 0.3);
+                        if (temp > 0) { // Warmer
+                            r = Math.min(255, r + temp * 0.6); g = Math.min(255, g + temp * 0.2); b = Math.max(0, b - temp * 0.4);
+                        } else { // Cooler
+                            b = Math.min(255, b - temp * 0.6); g = Math.min(255, g - temp * 0.1); r = Math.max(0, r + temp * 0.4);
                         }
                     }
-                    
+                     // Chromatic Aberration
+                    if (currentFilters.chromaticAberration > 0 && srcDataForCA) {
+                        const amount = currentFilters.chromaticAberration;
+                        const yPx = Math.floor((i/4) / w); const xPx = (i/4) % w;
+                        
+                        const rX = Math.max(0, Math.min(w - 1, xPx - Math.floor(amount)));
+                        const rIndex = (yPx * w + rX) * 4;
+                        data[i] = srcDataForCA[rIndex]; // Red channel from left
+                        
+                        // Green channel (original) is data[i+1] = g
+                        
+                        const bX = Math.max(0, Math.min(w - 1, xPx + Math.floor(amount)));
+                        const bIndex = (yPx * w + bX) * 4;
+                        data[i + 2] = srcDataForCA[bIndex + 2]; // Blue channel from right
+                        
+                        // Update r,g,b for noise if CA was applied
+                        r = data[i]; g = data[i+1]; b = data[i+2];
+                    }
+                    // Noise/Grain
                     if (currentFilters.noise > 0) {
-                        const random = (Math.random() - 0.5) * currentFilters.noise * 2.55;
+                        const random = (Math.random() - 0.5) * currentFilters.noise * 2.55; // Scale factor for noise
                         r = Math.min(255, Math.max(0, r + random));
                         g = Math.min(255, Math.max(0, g + random));
                         b = Math.min(255, Math.max(0, b + random));
@@ -350,35 +946,50 @@
                 }
                 processedOffscreenCtx.putImageData(imageData, 0, 0);
 
+                // 4. Canvas-based Effects (Soft Focus, Vignette, Scanlines, Polarization)
+                // Soft Focus
                 if (currentFilters.softFocus > 0) {
-                    const softFocusAmount = currentFilters.softFocus / 100; const blurRadius = softFocusAmount * 10;
+                    const softFocusAmount = currentFilters.softFocus / 100; 
+                    const blurRadius = softFocusAmount * 8; // Adjusted multiplier
                     const blurCanvas = document.createElement('canvas'); const blurCtx = blurCanvas.getContext('2d');
                     blurCanvas.width = w; blurCanvas.height = h;
-                    blurCtx.filter = `blur(${blurRadius}px)`; blurCtx.drawImage(processedOffscreenCanvas, 0, 0); blurCtx.filter = 'none';
-                    processedOffscreenCtx.globalAlpha = softFocusAmount * 0.35; 
-                    processedOffscreenCtx.drawImage(blurCanvas, 0, 0); processedOffscreenCtx.globalAlpha = 1.0;
-                }
-                if (currentFilters.vignette > 0) {
-                    const vAmt = currentFilters.vignette / 100; const cX = w/2; const cY = h/2;
-                    const oR = Math.sqrt(cX*cX + cY*cY); const iR = oR * (1 - vAmt * 1.5);
-                    const grad = processedOffscreenCtx.createRadialGradient(cX, cY, iR, cX, cY, oR);
-                    grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, `rgba(0,0,0,${vAmt * 0.8})`);
-                    processedOffscreenCtx.fillStyle = grad; processedOffscreenCtx.fillRect(0, 0, w, h);
-                }
-                if (currentFilters.scanlines > 0) {
-                    const intensity = currentFilters.scanlines / 100; const lineThickness = 1;
-                    const lineSpacing = Math.max(2, 3 + Math.floor((1 - intensity) * 8));
-                    processedOffscreenCtx.globalAlpha = intensity * 0.2;
-                    processedOffscreenCtx.fillStyle = 'rgba(0,0,0,1)';
-                    for (let y = 0; y < h; y += lineSpacing) processedOffscreenCtx.fillRect(0, y, w, lineThickness);
+                    blurCtx.filter = `blur(${blurRadius}px)`; 
+                    blurCtx.drawImage(processedOffscreenCanvas, 0, 0); // Blur the current state
+                    blurCtx.filter = 'none';
+                    processedOffscreenCtx.globalAlpha = softFocusAmount * 0.4; // Blend factor
+                    processedOffscreenCtx.drawImage(blurCanvas, 0, 0); 
                     processedOffscreenCtx.globalAlpha = 1.0;
                 }
+                // Vignette
+                if (currentFilters.vignette > 0) {
+                    const vAmt = currentFilters.vignette / 100; const cX = w/2; const cY = h/2;
+                    const outerRadius = Math.sqrt(cX*cX + cY*cY); 
+                    const innerRadius = outerRadius * (1 - vAmt * 1.2); // Make vignette effect stronger
+                    const grad = processedOffscreenCtx.createRadialGradient(cX, cY, Math.max(0, innerRadius), cX, cY, outerRadius);
+                    grad.addColorStop(0, 'rgba(0,0,0,0)'); 
+                    grad.addColorStop(0.8, `rgba(0,0,0,${vAmt * 0.7})`); // Darken more gradually
+                    grad.addColorStop(1, `rgba(0,0,0,${vAmt * 0.95})`);
+                    processedOffscreenCtx.fillStyle = grad; processedOffscreenCtx.fillRect(0, 0, w, h);
+                }
+                // Scanlines
+                if (currentFilters.scanlines > 0) {
+                    const intensity = currentFilters.scanlines / 100; 
+                    const lineThickness = 1;
+                    const lineSpacing = Math.max(2, 2 + Math.floor((1 - intensity) * 6)); // Adjust spacing
+                    processedOffscreenCtx.globalAlpha = intensity * 0.15; // Softer scanlines
+                    processedOffscreenCtx.fillStyle = 'rgba(0,0,0,1)';
+                    for (let yScan = 0; yScan < h; yScan += lineSpacing) {
+                        processedOffscreenCtx.fillRect(0, yScan, w, lineThickness);
+                    }
+                    processedOffscreenCtx.globalAlpha = 1.0;
+                }
+                // Polarization
                 if (currentFilters.polarization > 0) {
                     const amount = currentFilters.polarization / 100;
                     processedOffscreenCtx.save();
-                    processedOffscreenCtx.globalAlpha = amount * 0.1; 
-                    processedOffscreenCtx.strokeStyle = 'rgba(128, 128, 128, 0.3)';
-                    processedOffscreenCtx.lineWidth = 1; const step = 6;
+                    processedOffscreenCtx.globalAlpha = amount * 0.08; // Very subtle effect
+                    processedOffscreenCtx.strokeStyle = 'rgba(100, 100, 120, 0.2)'; // Bluish tint
+                    processedOffscreenCtx.lineWidth = 1; const step = 5;
                     for (let i = -h; i < w; i += step) {
                         processedOffscreenCtx.beginPath(); processedOffscreenCtx.moveTo(i, 0);
                         processedOffscreenCtx.lineTo(i + h, h); processedOffscreenCtx.stroke();
@@ -386,194 +997,403 @@
                     processedOffscreenCtx.restore();
                 }
                 
-                drawOutputOnCanvas(); hideLoader(); resolve();
+                renderCanvasContent();
+                showLoader(false);
+                resolve();
             });
-        }
-
-        function drawOutputOnCanvas() {
-            if (!originalImage || (!processedOffscreenCanvas.width && !isPreviewingOriginal)) return;
-            canvas.width = canvasContainer.clientWidth; canvas.height = canvasContainer.clientHeight;
-            ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.save();
-            
-            const imageToDraw = isPreviewingOriginal ? originalImage : processedOffscreenCanvas;
-            const imgWidth = isPreviewingOriginal ? originalImage.width : processedOffscreenCanvas.width;
-            const imgHeight = isPreviewingOriginal ? originalImage.height : processedOffscreenCanvas.height;
-
-            ctx.translate(canvas.width / 2 + panX, canvas.height / 2 + panY);
-            ctx.scale(zoomLevel, zoomLevel);
-            ctx.translate(-imgWidth / 2, -imgHeight / 2);
-            
-            ctx.imageSmoothingEnabled = !(currentFilters.pixelation < 100 && currentFilters.pixelation > 0 && !isPreviewingOriginal);
-            
-            ctx.drawImage(imageToDraw, 0, 0);
-            ctx.restore();
-        }
-        const debouncedApplyAllFilters = debounce(applyAllFilters, 300);
-
-        const sliders = document.querySelectorAll('input[type="range"]');
-        sliders.forEach(slider => {
-            const valueDisplay = document.getElementById(`${slider.id}Value`);
-            if (valueDisplay) valueDisplay.textContent = slider.value;
-            slider.addEventListener('input', (e) => {
-                currentFilters[e.target.id] = parseFloat(e.target.value);
-                if (valueDisplay) valueDisplay.textContent = e.target.value;
-                debouncedApplyAllFilters();
-            });
-            slider.addEventListener('change', () => { saveState(); });
-        });
-        
-        document.querySelectorAll('.reset-slider').forEach(button => {
-            button.addEventListener('click', () => {
-                const sId = button.dataset.slider; const defVal = parseFloat(button.dataset.default);
-                document.getElementById(sId).value = defVal; currentFilters[sId] = defVal;
-                document.getElementById(`${sId}Value`).textContent = defVal;
-                applyAllFilters().then(saveState);
-            });
-        });
-
-        function saveState() {
-            if (!originalImage) return;
-            const state = JSON.parse(JSON.stringify(currentFilters));
-            history = history.slice(0, historyIndex + 1); history.push(state);
-            if (history.length > MAX_HISTORY) history.shift();
-            historyIndex = history.length - 1; updateUndoRedoButtons();
-        }
-
-        function loadState(state) {
-            currentFilters = JSON.parse(JSON.stringify(state));
-            sliders.forEach(s => { s.value = currentFilters[s.id]; document.getElementById(`${s.id}Value`).textContent = s.value; });
-            applyAllFilters();
-        }
-
-        undoButton.addEventListener('click', () => { if (historyIndex > 0) { historyIndex--; loadState(history[historyIndex]); updateUndoRedoButtons(); }});
-        redoButton.addEventListener('click', () => { if (historyIndex < history.length - 1) { historyIndex++; loadState(history[historyIndex]); updateUndoRedoButtons(); }});
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                if (e.key.toLowerCase() === 'z') { e.preventDefault(); undoButton.click(); }
-                else if (e.key.toLowerCase() === 'y') { e.preventDefault(); redoButton.click(); }
-            }
-        });
-
-        function updateUndoRedoButtons() {
-            undoButton.disabled = historyIndex <= 0;
-            redoButton.disabled = historyIndex >= history.length - 1;
-        }
-
-        function resetFiltersToDefault() {
-            currentFilters = { ...defaultFilters };
-            sliders.forEach(s => { s.value = defaultFilters[s.id]; document.getElementById(`${s.id}Value`).textContent = s.value; });
-        }
-        resetAllButton.addEventListener('click', () => { if (!originalImage) return; resetFiltersToDefault(); applyAllFilters().then(saveState); });
-
-        saveButton.addEventListener('click', () => {
-            if (!originalImage || !processedOffscreenCanvas.width) { alert("Load an image first."); return; }
-            const dataURL = processedOffscreenCanvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = `stylized-${generateRandomFilename()}.png`;
-            link.href = dataURL; link.click();
-        });
-
-        function resetZoomAndPan() { zoomLevel = 1; panX = 0; panY = 0; panVelocityX = 0; panVelocityY = 0; stopMomentumPan(); }
-        zoomInButton.addEventListener('click', () => { zoomLevel = Math.min(8, zoomLevel * 1.2); drawOutputOnCanvas(); }); 
-        zoomOutButton.addEventListener('click', () => { zoomLevel = Math.max(0.1, zoomLevel / 1.2); drawOutputOnCanvas(); }); 
-        recenterButton.addEventListener('click', () => { resetZoomAndPan(); drawOutputOnCanvas(); });
-
-        function startMomentumPanLoop() { // Renamed for clarity
-            if (!isMomentumPanning || (Math.abs(panVelocityX) < 0.1 && Math.abs(panVelocityY) < 0.1)) {
-                stopMomentumPan();
-                return;
-            }
-            
-            panX += panVelocityX;
-            panY += panVelocityY;
-            panVelocityX *= dampingFactor;
-            panVelocityY *= dampingFactor;
-            drawOutputOnCanvas();
-            animationFrameId = requestAnimationFrame(startMomentumPanLoop);
         }
         
-        function stopMomentumPan() {
-            isMomentumPanning = false;
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
-            canvasContainer.classList.remove('momentum-panning', 'grabbing');
+        // --- TOOLING (PAN, CROP, ETC.) ---
+        function switchTool(tool) {
+            currentTool = tool;
+            panToolBtn.classList.toggle('active', tool === 'pan');
+            cropToolBtn.classList.toggle('active', tool === 'crop');
+            canvasArea.classList.toggle('cropping', tool === 'crop');
+            cropActionsDiv.classList.toggle('hidden', tool !== 'crop');
+            
+            if (tool === 'pan' && isCropping) { // Switched away from active crop
+                cancelCroppingVisuals();
+            }
+            if (tool === 'crop' && imageLoaded) {
+                cropActionsDiv.classList.remove('hidden');
+                // isCropping will be set on mousedown
+            }
+            renderCanvasContent(); // Re-render to clear/show crop selection potentially
         }
 
-        canvasContainer.addEventListener('mousedown', (e) => {
-            if (e.button === 0 && originalImage) {
-                stopMomentumPan(); 
+        function handleCanvasMouseDown(e) {
+            if (!imageLoaded || e.button !== 0) return;
+            stopMomentumPan();
+            
+            const rect = canvas.getBoundingClientRect(); // Use main canvas for mouse coords
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (currentTool === 'pan') {
                 isPanning = true;
-                panVelocityX = 0; panVelocityY = 0; 
+                panVelocityX = 0; panVelocityY = 0;
                 lastPanX = e.clientX; lastPanY = e.clientY;
-                canvasContainer.classList.add('grabbing');
+                canvasArea.classList.add('grabbing');
+            } else if (currentTool === 'crop') {
+                isCropping = true;
+                // Convert mouse coords on VIEWPORT to image coords on ROTATED, ZOOMED, PANNED image
+                // This needs to map screen coords to the unrotated currentImageState coordinates
+                const { x: imgX, y: imgY } = screenToImageCoordinates(mouseX, mouseY);
+
+                cropStart.x = Math.max(0, Math.min(imgX, currentImageState.naturalWidth));
+                cropStart.y = Math.max(0, Math.min(imgY, currentImageState.naturalHeight));
+                cropEnd = { ...cropStart };
+                cropRect = { x: cropStart.x, y: cropStart.y, width: 0, height: 0 };
+                cropActionsDiv.classList.remove('hidden'); // Ensure visible
             }
-        });
-        canvasContainer.addEventListener('mousemove', (e) => {
+        }
+
+        function handleCanvasMouseMove(e) {
+            if (!imageLoaded) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
             if (isPanning) {
                 const dx = e.clientX - lastPanX;
                 const dy = e.clientY - lastPanY;
                 panX += dx; panY += dy;
-                panVelocityX = dx; 
-                panVelocityY = dy;
+                panVelocityX = dx; panVelocityY = dy;
                 lastPanX = e.clientX; lastPanY = e.clientY;
-                drawOutputOnCanvas();
+                renderCanvasContent();
+            } else if (currentTool === 'crop' && isCropping) {
+                const { x: imgX, y: imgY } = screenToImageCoordinates(mouseX, mouseY);
+
+                cropEnd.x = Math.max(0, Math.min(imgX, currentImageState.naturalWidth));
+                cropEnd.y = Math.max(0, Math.min(imgY, currentImageState.naturalHeight));
+
+                cropRect.x = Math.min(cropStart.x, cropEnd.x);
+                cropRect.y = Math.min(cropStart.y, cropEnd.y);
+                cropRect.width = Math.abs(cropStart.x - cropEnd.x);
+                cropRect.height = Math.abs(cropStart.y - cropEnd.y);
+                renderCanvasContent(); // Re-render to show crop rectangle
             }
-        });
-        const handlePanEnd = () => {
+        }
+        
+        function handleCanvasMouseUp(e) {
+            if (e.button !== 0) return;
             if (isPanning) {
                 isPanning = false;
-                canvasContainer.classList.remove('grabbing');
+                canvasArea.classList.remove('grabbing');
                 if (Math.abs(panVelocityX) > 0.5 || Math.abs(panVelocityY) > 0.5) {
-                    isMomentumPanning = true; // Set flag before starting loop
-                    canvasContainer.classList.add('momentum-panning');
+                    isMomentumPanning = true;
+                    canvasArea.classList.add('momentum-panning');
                     startMomentumPanLoop();
                 }
             }
-        };
-        canvasContainer.addEventListener('mouseup', handlePanEnd);
-        canvasContainer.addEventListener('mouseleave', handlePanEnd);
-        
-        canvasContainer.addEventListener('wheel', (e) => {
-            if (!originalImage) return;
-            e.preventDefault(); stopMomentumPan();
-            const delta = e.deltaY > 0 ? -1 : 1; const zoomFactor = 1.1;
+            // For cropping, isCropping remains true until Apply/Cancel.
+        }
+        function handleCanvasMouseLeave(e) { // Similar to mouseup for panning
+            if (isPanning) {
+                isPanning = false;
+                canvasArea.classList.remove('grabbing');
+                 if (Math.abs(panVelocityX) > 0.5 || Math.abs(panVelocityY) > 0.5) {
+                    isMomentumPanning = true;
+                    canvasArea.classList.add('momentum-panning');
+                    startMomentumPanLoop();
+                }
+            }
+        }
+
+        function handleCanvasWheel(e) {
+            if (!imageLoaded) return;
+            e.preventDefault();
+            stopMomentumPan();
+            
             const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left - canvas.width / 2;
-            const mouseY = e.clientY - rect.top - canvas.height / 2;
-            const newZoomLevel = delta > 0 ? Math.min(8, zoomLevel * zoomFactor) : Math.max(0.1, zoomLevel / zoomFactor);
-            panX -= mouseX * (newZoomLevel / zoomLevel - 1);
-            panY -= mouseY * (newZoomLevel / zoomLevel - 1);
-            zoomLevel = newZoomLevel; drawOutputOnCanvas();
-        });
-        
-        previewOriginalButton.addEventListener('mousedown', () => { if(originalImage) { isPreviewingOriginal = true; stopMomentumPan(); drawOutputOnCanvas(); }});
-        previewOriginalButton.addEventListener('mouseup', () => { if(originalImage && isPreviewingOriginal) { isPreviewingOriginal = false; drawOutputOnCanvas(); }});
-        previewOriginalButton.addEventListener('mouseleave', () => { if(originalImage && isPreviewingOriginal) { isPreviewingOriginal = false; drawOutputOnCanvas(); }});
+            const mouseX = e.clientX - rect.left; // Mouse X relative to canvas viewport
+            const mouseY = e.clientY - rect.top;  // Mouse Y relative to canvas viewport
 
+            const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+            applyZoom(zoomFactor, mouseX, mouseY);
+        }
 
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = document.querySelectorAll('.tab-content');
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                const tabId = button.dataset.tab;
-                tabContents.forEach(content => content.classList.toggle('hidden', content.id !== `tab-${tabId}`));
-            });
-        });
-
-        const resizeObserver = new ResizeObserver(() => { if (originalImage) { stopMomentumPan(); drawOutputOnCanvas();} });
-        resizeObserver.observe(canvasContainer);
-
-        function toggleControlsAvailability(hasImage) {
-            const controls = [
-                ...sliders, resetAllButton, saveButton, zoomInButton, zoomOutButton, recenterButton, undoButton, redoButton, previewOriginalButton
-            ];
-            controls.forEach(c => { c.disabled = !hasImage; });
-            if (hasImage) updateUndoRedoButtons(); else { undoButton.disabled = true; redoButton.disabled = true; }
+        function startMomentumPanLoop() {
+            if (!isMomentumPanning || (Math.abs(panVelocityX) < 0.1 && Math.abs(panVelocityY) < 0.1)) {
+                stopMomentumPan();
+                return;
+            }
+            panX += panVelocityX;
+            panY += panVelocityY;
+            panVelocityX *= DAMPING_FACTOR;
+            panVelocityY *= DAMPING_FACTOR;
+            renderCanvasContent();
+            momentumPanningFrameId = requestAnimationFrame(startMomentumPanLoop);
         }
         
-        toggleControlsAvailability(false); updateUndoRedoButtons();
+        function stopMomentumPan() {
+            isMomentumPanning = false;
+            if (momentumPanningFrameId) cancelAnimationFrame(momentumPanningFrameId);
+            momentumPanningFrameId = null;
+            canvasArea.classList.remove('momentum-panning');
+        }
+
+        // Coordinate transformation for cropping
+        function screenToImageCoordinates(screenX, screenY) {
+            const dpr = window.devicePixelRatio || 1;
+            const viewWidth = canvas.width / dpr;
+            const viewHeight = canvas.height / dpr;
+
+            // 1. Normalize screen coordinates to canvas center origin
+            let x = screenX - viewWidth / 2;
+            let y = screenY - viewHeight / 2;
+
+            // 2. Account for pan
+            x -= panX;
+            y -= panY;
+
+            // 3. Account for zoom
+            x /= zoomLevel;
+            y /= zoomLevel;
+
+            // 4. Account for rotation (inverse rotation)
+            const rad = -rotation * Math.PI / 180; // Negative angle
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            const rotatedX = x * cos - y * sin;
+            const rotatedY = x * sin + y * cos;
+            
+            // 5. Translate from image center to top-left origin
+            const finalX = rotatedX + currentImageState.naturalWidth / 2;
+            const finalY = rotatedY + currentImageState.naturalHeight / 2;
+            
+            return { x: finalX, y: finalY };
+        }
+
+
+        function drawCropSelectionUI() {
+            if (!cropRect || cropRect.width < 1 || cropRect.height < 1) return;
+
+            const dpr = window.devicePixelRatio || 1;
+            const viewWidth = canvas.width / dpr;
+            const viewHeight = canvas.height / dpr;
+            
+            ctx.save();
+            // Apply same transforms as image to draw crop selection in correct place
+            ctx.translate(viewWidth / 2 + panX, viewHeight / 2 + panY);
+            ctx.scale(zoomLevel, zoomLevel);
+            ctx.rotate(rotation * Math.PI / 180);
+            ctx.translate(-currentImageState.naturalWidth / 2, -currentImageState.naturalHeight / 2); // To image top-left
+
+            // Crop rectangle coordinates are already in image space (relative to currentImageState top-left)
+            const { x, y, width, height } = cropRect;
+
+            // Dim area outside crop
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+            // Path for outer dimming
+            ctx.beginPath();
+            ctx.rect(0, 0, currentImageState.naturalWidth, currentImageState.naturalHeight); // Full image bounds
+            ctx.rect(x + width, y, -width, height); // Subtract crop area (clockwise for hole)
+            ctx.fill();
+            
+            // Draw crop border
+            ctx.strokeStyle = "rgba(250, 128, 114, 0.9)"; // Salmon pink accent
+            ctx.lineWidth = 2 / zoomLevel; // Keep line width visually consistent
+            ctx.strokeRect(x, y, width, height);
+            
+            ctx.restore();
+        }
+
+        function executeCrop() {
+            if (!imageLoaded || !cropRect || cropRect.width < 1 || cropRect.height < 1) {
+                showToast('Invalid crop area.', 'error');
+                return;
+            }
+            showLoader(true);
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Crop rect is relative to the currentImageState (which is unrotated original or previously cropped)
+            const img = currentImageState;
+            const { x, y, width, height } = cropRect;
+
+            tempCanvas.width = Math.round(width);
+            tempCanvas.height = Math.round(height);
+            
+            tempCtx.drawImage(
+                img,
+                Math.round(x), Math.round(y), Math.round(width), Math.round(height), // Source rect from currentImageState
+                0, 0, Math.round(width), Math.round(height)  // Destination rect (fill the tempCanvas)
+            );
+
+            // Update currentImageState with the cropped version
+            // The originalImage remains the pristine loaded one.
+            currentImageState = new Image();
+            currentImageState.onload = () => {
+                // Rotation is preserved. Filters will be reapplied by processImageAndRender.
+                // Pan/zoom should be reset to center the new cropped image.
+                centerAndFitImage(); 
+                cancelCroppingVisuals(); // Clear crop UI elements
+                switchTool('pan'); // Revert to pan tool
+                
+                processImageAndRender().then(() => {
+                    if(!isApplyingHistoryState) saveState(); // Save this crop action
+                    showLoader(false);
+                    showToast('Crop applied.', 'success');
+                });
+            };
+            currentImageState.onerror = () => {
+                showLoader(false);
+                showToast('Error applying crop.', 'error');
+            };
+            currentImageState.src = tempCanvas.toDataURL();
+        }
+
+        function cancelCroppingMode() {
+            cancelCroppingVisuals();
+            switchTool('pan');
+            renderCanvasContent(); // Redraw without crop UI
+        }
+        
+        function cancelCroppingVisuals() {
+            isCropping = false;
+            cropRect = null;
+            cropActionsDiv.classList.add('hidden');
+            canvasArea.classList.remove('cropping');
+        }
+
+        // --- HISTORY (UNDO/REDO) ---
+        function saveState() {
+            if (!imageLoaded || isApplyingHistoryState) return;
+            const state = {
+                filters: JSON.parse(JSON.stringify(currentFilters)),
+                imageSrc: currentImageState.src, // Save the base image state (after crop/rotation)
+                rotation: rotation,
+                // Not saving zoom/pan in history for simplicity, could be added
+            };
+            history = history.slice(0, historyIndex + 1);
+            history.push(state);
+            if (history.length > MAX_HISTORY) history.shift();
+            historyIndex = history.length - 1;
+            updateButtonStates();
+        }
+
+        function loadState(stateIndex) {
+            if (stateIndex < 0 || stateIndex >= history.length) return;
+            isApplyingHistoryState = true; // Prevent feedback loop
+            
+            const stateToLoad = history[stateIndex];
+            currentFilters = JSON.parse(JSON.stringify(stateToLoad.filters));
+            rotation = stateToLoad.rotation;
+            
+            // Restore image state
+            currentImageState = new Image();
+            currentImageState.onload = () => {
+                setupSliders(); // Update slider UI
+                processImageAndRender().then(() => {
+                    historyIndex = stateIndex;
+                    updateButtonStates();
+                    isApplyingHistoryState = false;
+                });
+            };
+            currentImageState.onerror = () => {
+                showToast('Error restoring history state.', 'error');
+                isApplyingHistoryState = false;
+            };
+            currentImageState.src = stateToLoad.imageSrc;
+        }
+
+        function undo() { if (historyIndex > 0) loadState(historyIndex - 1); }
+        function redo() { if (historyIndex < history.length - 1) loadState(historyIndex + 1); }
+
+        // --- ACTIONS (DOWNLOAD, ETC.) ---
+        function downloadImage() {
+            if (!imageLoaded || !processedOffscreenCanvas || processedOffscreenCanvas.width === 0) {
+                showToast('No image to download.', 'error');
+                return;
+            }
+            // The processedOffscreenCanvas already has filters applied to the currentImageState (cropped).
+            // Now, we need to apply rotation to this for the final download.
+            
+            const finalCanvas = document.createElement('canvas');
+            const finalCtx = finalCanvas.getContext('2d');
+            
+            const imgToDownload = processedOffscreenCanvas; // This has filters applied
+            const w = imgToDownload.width;
+            const h = imgToDownload.height;
+
+            // Calculate dimensions for rotated canvas
+            const rad = rotation * Math.PI / 180;
+            const absCos = Math.abs(Math.cos(rad));
+            const absSin = Math.abs(Math.sin(rad));
+            finalCanvas.width = w * absCos + h * absSin;
+            finalCanvas.height = w * absSin + h * absCos;
+
+            finalCtx.translate(finalCanvas.width / 2, finalCanvas.height / 2);
+            finalCtx.rotate(rad);
+            finalCtx.drawImage(imgToDownload, -w / 2, -h / 2, w, h);
+            
+            const dataURL = finalCanvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = `image-editor-${generateRandomFilename()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('Image download started.', 'success');
+        }
+        function generateRandomFilename(length = 6) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+            return result;
+        }
+
+        // --- UI UTILITIES ---
+        function showLoader(show) { loader.style.display = show ? 'block' : 'none'; }
+        function debounce(func, delay) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => func.apply(this,a), delay);}; }
+        
+        const toastContainer = document.getElementById('toast-container');
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            toast.offsetHeight; 
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => { if(toast.parentNode) toastContainer.removeChild(toast); }, 500);
+            }, 3000);
+        }
+
+        const confirmModal = document.getElementById('confirm-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalConfirmBtn = document.getElementById('modal-confirm');
+        let confirmCallback = null;
+
+        function showConfirmModal(title, message, onConfirm) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            confirmCallback = onConfirm;
+            modalConfirmBtn.onclick = () => { // Re-assign click each time
+                if (confirmCallback) confirmCallback();
+                hideConfirmModal();
+            };
+            confirmModal.style.display = 'flex';
+        }
+        function hideConfirmModal() { confirmModal.style.display = 'none'; confirmCallback = null; }
+
+        function updateButtonStates() {
+            const enable = imageLoaded;
+            [saveImageBtn, resetAllBtn, panToolBtn, cropToolBtn, rotateLeftBtn, rotateRightBtn, 
+             zoomInBtn, zoomOutBtn, recenterImageBtn, previewOriginalBtn, applyCropBtn, cancelCropBtn]
+            .forEach(btn => btn.disabled = !enable);
+            
+            document.querySelectorAll('#right-sidebar input[type="range"], #right-sidebar button').forEach(el => el.disabled = !enable);
+
+            undoBtn.disabled = !enable || historyIndex <= 0;
+            redoBtn.disabled = !enable || historyIndex >= history.length - 1;
+        }
+
     </script>
 </body>
 </html>
