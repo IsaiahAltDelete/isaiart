@@ -1,6 +1,0 @@
-{
-  "name": "Copy of D&D 5e Faerun Character Randomizer",
-  "description": "A web application template for D&D 5th Edition character parameters. This version demonstrates the UI structure and basic interactions using HTML, CSS, and JavaScript, and does not perform character generation via API.",
-  "requestFramePermissions": [],
-  "prompt": ""
-}
