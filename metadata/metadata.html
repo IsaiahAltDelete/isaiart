@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Inspector & Privacy Guard</title>
+
+    <!-- Core Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+
+    <style>
+        /* Base & Fonts */
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            -webkit-font-smoothing: antialiased; 
+            -moz-osx-font-smoothing: grayscale; 
+        }
+        .material-symbols-outlined { 
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; 
+            vertical-align: middle; 
+        }
+
+        /* Custom Scrollbar */
+        .metadata-scrollbar::-webkit-scrollbar { width: 8px; }
+        .metadata-scrollbar::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 10px; }
+        .metadata-scrollbar::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; border: 2px solid #f3f4f6; }
+        .metadata-scrollbar::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        /* Drop Zone Animation */
+        #dropZone { 
+            transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; 
+        }
+        #dropZone.dragover { 
+            border-color: #dc2626; 
+            background-color: #fee2e2; 
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2); 
+        }
+
+        /* Modal Styling */
+        #imageModal { 
+            transition: opacity 0.3s ease, visibility 0.3s ease; 
+        }
+        #imageModal:not(.hidden) { opacity: 1; visibility: visible; }
+        #imageModal.hidden { opacity: 0; visibility: hidden; }
+        body.modal-open { overflow: hidden; }
+
+        /* Toast Notification Animation */
+        .custom-toast { animation: toast-in 0.5s ease forwards; }
+        .custom-toast.fade-out { animation: toast-out 0.5s ease forwards; }
+        @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        @keyframes toast-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, 20px); } }
+
+        /* Metadata Content Styling */
+        pre { 
+            white-space: pre-wrap; 
+            word-wrap: break-word; 
+        }
+        pre .copy-btn { 
+            position: absolute; 
+            top: 0.5rem; 
+            right: 0.5rem; 
+            opacity: 0.6; 
+            transition: opacity 0.2s ease, background-color 0.2s ease; 
+        }
+        pre:hover .copy-btn { opacity: 1; }
+        pre .copy-btn:hover { background-color: rgba(0, 0, 0, 0.08); }
+    </style>
+
+    <script>
+      // Tailwind CSS Configuration
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Poppins', 'sans-serif'], },
+            boxShadow: { 'subtle': '0 4px 12px rgba(0, 0, 0, 0.05)', 'card': '0 8px 20px rgba(0, 0, 0, 0.07)', },
+            maxHeight: { 'modal-img': 'calc(100vh - 8rem)', 'preview-area': 'calc(100vh - 20rem)' }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-200 text-gray-800 flex items-center justify-center min-h-screen p-4 sm:p-8 overflow-hidden">
+
+  <div class="container max-w-7xl w-full bg-white rounded-2xl shadow-card p-6 md:p-10 flex flex-col gap-8 max-h-[95vh] h-full">
+    <!-- Header Section -->
+    <div class="title-section text-center border-b border-gray-200 pb-4 mb-2 flex-shrink-0">
+      <h3 class="text-3xl sm:text-4xl font-bold text-gray-800 tracking-tight flex items-center justify-center gap-3">
+        <span class="material-symbols-outlined text-red-600 text-4xl">policy</span>Image Inspector & Privacy Guard
+      </h3>
+      <p class="text-gray-500 text-sm mt-1">View detailed metadata and strip it for privacy. All processing is done in your browser.</p>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="content-area flex flex-col lg:flex-row gap-8 flex-grow overflow-hidden">
+      
+      <!-- Left Column: Upload, Preview, and Actions -->
+      <div class="left-column lg:w-2/5 flex flex-col gap-6 overflow-hidden">
+        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:py-8 flex flex-col items-center justify-center text-center text-gray-600 cursor-pointer hover:border-red-500 hover:bg-red-50 hover:text-red-700 flex-shrink-0 group">
+          <span class="material-symbols-outlined text-5xl mb-3 text-gray-400 group-hover:text-red-500">upload_file</span>
+          <span class="font-semibold text-lg text-gray-700 group-hover:text-red-700">Drop Image Here</span>
+          <span class="text-gray-500 text-sm mt-1">or click to select (PNG, JPG, WEBP)</span>
+          <span class="text-gray-400 text-xs mt-3">(Paste with Ctrl+V)</span>
+        </div>
+        <div class="image-preview-container border border-gray-200 rounded-xl overflow-hidden flex justify-center items-center bg-gray-100 relative group flex-grow min-h-0">
+           <img id="imagePreview" alt="Image Preview" class="object-contain max-w-full max-h-full hidden group-hover:opacity-90 transition-opacity duration-300 cursor-pointer" />
+           <div id="previewPlaceholder" class="text-gray-400 flex flex-col items-center text-center p-4">
+                <span class="material-symbols-outlined text-6xl">image</span>
+                <span class="mt-2 text-sm">Image preview will appear here</span>
+           </div>
+        </div>
+        <!-- Action Buttons -->
+        <div id="actionsContainer" class="flex-shrink-0 flex flex-col sm:flex-row gap-3 justify-center">
+            <button id="stripButton" class="hidden w-full sm:w-auto justify-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-wait disabled:shadow-none">
+                <span class="material-symbols-outlined">shield</span>
+                Strip Metadata
+            </button>
+            <a id="downloadButton" class="hidden w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg" href="#" download="cleaned_image.png">
+                <span class="material-symbols-outlined">download</span>
+                Download Cleaned
+            </a>
+            <button id="resetButton" class="hidden w-full sm:w-auto justify-center bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg">
+                <span class="material-symbols-outlined">refresh</span>
+                Reset
+            </button>
+        </div>
+        <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp" class="hidden" />
+      </div>
+
+      <!-- Right Column: Metadata Display -->
+      <div class="right-column lg:w-3/5 flex flex-col overflow-hidden">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
+            <h4 class="text-xl font-semibold text-gray-700 flex items-center gap-2">
+                <span class="material-symbols-outlined text-red-600">description</span>
+                Extracted Metadata
+            </h4>
+            <button id="copyAllMetadataBtn" class="hidden bg-red-500 hover:bg-red-600 text-white text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5 transition-colors duration-150">
+                <span class="material-symbols-outlined text-sm leading-none">inventory_2</span>
+                Copy All Raw
+            </button>
+        </div>
+        <div id="metadataOutput" class="metadata-scrollbar flex-grow bg-gray-100 border border-gray-200 rounded-xl p-5 overflow-y-auto min-h-0">
+             <div class="no-metadata flex flex-col items-center justify-center h-full text-gray-500 text-center">
+                <span class="material-symbols-outlined text-6xl mb-3">search_off</span>
+                <p class="font-medium">No metadata to display yet.</p>
+                <p class="text-sm">Upload an image to inspect its data.</p>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Modal -->
+  <div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-8" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div class="relative bg-white p-4 rounded-lg shadow-xl max-w-4xl w-full max-h-full flex flex-col">
+          <div class="flex justify-between items-center pb-3 border-b border-gray-200 flex-shrink-0">
+              <h5 id="modal-title" class="text-lg font-medium text-gray-800">Image Preview</h5>
+              <button id="closeModalBtn" type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" aria-label="Close modal">
+                  <span class="material-symbols-outlined">close</span>
+              </button>
+          </div>
+          <div class="mt-4 flex-grow overflow-auto flex items-center justify-center">
+              <img id="modalImage" src="" alt="Full image preview" class="max-w-full max-h-modal-img object-contain">
+          </div>
+      </div>
+  </div>
+
+  <script>
+    // --- DOM Elements ---
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewPlaceholder = document.getElementById('previewPlaceholder');
+    const metadataOutput = document.getElementById('metadataOutput');
+    const copyAllMetadataBtn = document.getElementById('copyAllMetadataBtn');
+    const imageModal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const stripButton = document.getElementById('stripButton');
+    const downloadButton = document.getElementById('downloadButton');
+    const resetButton = document.getElementById('resetButton');
+
+    // --- State Variables ---
+    let currentFile = null;
+    let originalImageDataUrl = null;
+    let textToCopy = "";
+
+    // --- UI Reset ---
+    function resetUI() {
+        fileInput.value = '';
+        currentFile = null;
+        originalImageDataUrl = null;
+        textToCopy = "";
+
+        imagePreview.src = '#';
+        imagePreview.classList.add('hidden');
+        previewPlaceholder.classList.remove('hidden');
+
+        metadataOutput.innerHTML = `<div class="no-metadata flex flex-col items-center justify-center h-full text-gray-500 text-center"><span class="material-symbols-outlined text-6xl mb-3">search_off</span><p class="font-medium">No metadata to display yet.</p><p class="text-sm">Upload an image to inspect its data.</p></div>`;
+        
+        copyAllMetadataBtn.classList.add('hidden');
+        stripButton.classList.add('hidden');
+        downloadButton.classList.add('hidden');
+        resetButton.classList.add('hidden');
+        stripButton.disabled = false;
+    }
+
+    // --- Modal Logic ---
+    function openModal(imageUrl) { if (!imageUrl || imageUrl.endsWith('#')) return; modalImage.src = imageUrl; imageModal.classList.remove('hidden'); document.body.classList.add('modal-open'); document.addEventListener('keydown', handleEscapeKey); }
+    function closeModal() { imageModal.classList.add('hidden'); modalImage.src = ""; document.body.classList.remove('modal-open'); document.removeEventListener('keydown', handleEscapeKey); }
+    function handleEscapeKey(event) { if (event.key === 'Escape') closeModal(); }
+    imagePreview.addEventListener('click', () => openModal(imagePreview.src));
+    closeModalBtn.addEventListener('click', closeModal);
+    imageModal.addEventListener('click', (event) => { if (event.target === imageModal) closeModal(); });
+
+    // --- Toast Notification ---
+    function showToast(message, icon = 'info', type = 'info', duration = 3000) {
+        document.querySelectorAll('.custom-toast').forEach(t => t.remove()); const toast = document.createElement('div');
+        toast.className = 'custom-toast fixed bottom-6 left-1/2 -translate-x-1/2 text-sm font-medium px-5 py-3 rounded-lg shadow-lg flex items-center gap-2 z-[100]';
+        let bgColor = 'bg-gray-800', textColor = 'text-white', iconColor = 'text-white';
+        if (type === 'success') { bgColor = 'bg-green-600'; icon = 'check_circle'; }
+        else if (type === 'error') { bgColor = 'bg-red-600'; icon = 'error'; }
+        else if (type === 'warning') { bgColor = 'bg-yellow-500'; textColor = 'text-yellow-900'; iconColor = 'text-yellow-900'; icon = 'warning'; }
+        toast.classList.add(bgColor, textColor); const iconSpan = document.createElement('span'); iconSpan.className = `material-symbols-outlined ${iconColor}`; iconSpan.textContent = icon; toast.appendChild(iconSpan);
+        const messageSpan = document.createElement('span'); messageSpan.textContent = message; toast.appendChild(messageSpan);
+        document.body.appendChild(toast); setTimeout(() => { toast.classList.add('fade-out'); toast.addEventListener('animationend', () => toast.remove()); }, duration);
+    }
+
+    // --- Clipboard Functionality ---
+    function copyToClipboard(text, elementToFeedback) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('Copied!', 'content_copy', 'success', 1500);
+            if (!elementToFeedback) return;
+            const icon = elementToFeedback.querySelector('.material-symbols-outlined');
+            const originalIcon = icon ? icon.textContent : null;
+            const originalText = elementToFeedback.textContent;
+            const originalClasses = Array.from(elementToFeedback.classList);
+            
+            elementToFeedback.classList.remove('bg-red-500', 'hover:bg-red-600', 'bg-gray-200');
+            elementToFeedback.classList.add('bg-green-500', 'hover:bg-green-600');
+            if(icon) icon.textContent = 'check';
+            
+            // For buttons with text
+            const textNode = Array.from(elementToFeedback.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+            if(textNode) textNode.nodeValue = ' Copied!';
+
+            setTimeout(() => {
+                elementToFeedback.className = originalClasses.join(' ');
+                if(icon) icon.textContent = originalIcon;
+                if(textNode) textNode.nodeValue = originalText.replace(icon.textContent, '').trim();
+            }, 1500);
+        }).catch(err => { showToast('Failed to copy.', 'error', 'error'); console.error('Copy failed: ', err); });
+    }
+    copyAllMetadataBtn.addEventListener('click', () => {
+        if (textToCopy) copyToClipboard(textToCopy, copyAllMetadataBtn);
+        else showToast("No metadata content to copy.", "info", "info");
+    });
+
+    // --- Main File Processing Logic ---
+    function processFile(file) {
+        if (!file || !file.type.startsWith('image/')) { showToast('Please select a valid image file.', 'warning', 'warning'); return; }
+        
+        resetUI();
+        currentFile = file;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            originalImageDataUrl = e.target.result;
+            imagePreview.src = originalImageDataUrl;
+            imagePreview.classList.remove('hidden');
+            previewPlaceholder.classList.add('hidden');
+            
+            stripButton.classList.remove('hidden');
+            resetButton.classList.remove('hidden');
+
+            metadataOutput.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-500"><span class="material-symbols-outlined text-4xl animate-spin">progress_activity</span><p class="mt-2 text-sm">Reading metadata...</p></div>`;
+
+            if (file.type === 'image/png') {
+                processPng(file);
+            } else if (file.type === 'image/jpeg') {
+                processJpeg(file, originalImageDataUrl);
+            } else {
+                displayBasicInfo(file);
+            }
+        };
+        reader.onerror = () => { showToast('Error reading file.', 'error', 'error'); resetUI(); };
+        reader.readAsDataURL(file);
+    }
+
+    // --- PNG Metadata Processing ---
+    function processPng(file) {
+        const fileReader = new FileReader();
+        fileReader.onload = (evt) => {
+            try {
+                const arrayBuffer = evt.target.result; const data = new DataView(arrayBuffer); const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+                for (let i = 0; i < 8; i++) { if (data.getUint8(i) !== pngSignature[i]) throw new Error('Invalid PNG signature.'); }
+                let offset = 8; const metadata = {};
+                while (offset < data.byteLength) {
+                    if (offset + 8 > data.byteLength) break; const length = data.getUint32(offset); offset += 4; let type = '';
+                    for (let i = 0; i < 4; i++) type += String.fromCharCode(data.getUint8(offset + i)); offset += 4;
+                    if (offset + length + 4 > data.byteLength) break;
+                    if (type === 'tEXt' || type === 'iTXt') {
+                        const textBytes = new Uint8Array(arrayBuffer, offset, length); let keyword = '', textValue = ''; const nullIndex = textBytes.indexOf(0);
+                        if (nullIndex !== -1) { keyword = new TextDecoder("utf-8").decode(textBytes.slice(0, nullIndex));
+                            if (type === 'tEXt') { textValue = new TextDecoder("latin1").decode(textBytes.slice(nullIndex + 1)); }
+                            else { const separators = []; for(let i=nullIndex + 1; i<textBytes.length; i++) if (textBytes[i] === 0) separators.push(i); if (separators.length >= 4 && textBytes[nullIndex + 1] === 0) { textValue = new TextDecoder("utf-8").decode(textBytes.slice(separators[3] + 1)); } else { keyword = ''; } }
+                            if (keyword) metadata[keyword] = textValue;
+                        }
+                    } offset += length + 4;
+                }
+                displayPngMetadata(metadata);
+                if (Object.keys(metadata).length > 0) {
+                    textToCopy = metadata.parameters || Object.entries(metadata).map(([k, v]) => `${k}: ${v}`).join('\n');
+                    copyAllMetadataBtn.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Error processing PNG:", error); showToast(`Error processing file: ${error.message}`, 'error', 'error');
+                displayBasicInfo(file, `Failed to parse PNG metadata. ${error.message}`);
+            }
+        };
+        fileReader.readAsArrayBuffer(file);
+    }
+
+    // --- JPEG Metadata Processing ---
+    function processJpeg(file, imageUrl) {
+        const imgForExif = new Image();
+        imgForExif.onload = () => {
+            EXIF.getData(imgForExif, function() {
+                const allTags = EXIF.getAllTags(this);
+                displayExifAndBasicInfo(file, allTags);
+                if (Object.keys(allTags).length > 0) {
+                    textToCopy = Object.entries(allTags).map(([k, v]) => `${k}: ${v}`).join('\n');
+                    copyAllMetadataBtn.classList.remove('hidden');
+                }
+            });
+        };
+        imgForExif.src = imageUrl;
+    }
+
+    // --- Metadata Display Functions ---
+    function displayBasicInfo(file, errorMsg = null) {
+        metadataOutput.innerHTML = '';
+        const card = document.createElement('div'); card.className = 'metadata-content space-y-6';
+        const section = document.createElement('div'); section.className = 'metadata-section';
+        section.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">info</span>Basic Information</h5>`;
+        const container = document.createElement('div'); container.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
+        
+        container.appendChild(createParamItem('File Name', file.name));
+        container.appendChild(createParamItem('File Type', file.type));
+        container.appendChild(createParamItem('File Size', `${(file.size / 1024).toFixed(2)} KB`));
+        container.appendChild(createParamItem('Last Modified', new Date(file.lastModified).toLocaleString()));
+        if (errorMsg) {
+            container.appendChild(createParamItem('Error', errorMsg, 'text-red-600'));
+        } else {
+            container.appendChild(createParamItem('Metadata', 'No specific AI or EXIF metadata found.'));
+        }
+
+        section.appendChild(container);
+        card.appendChild(section);
+        metadataOutput.appendChild(card);
+        textToCopy = `File Name: ${file.name}\nFile Type: ${file.type}\nFile Size: ${(file.size / 1024).toFixed(2)} KB`;
+        copyAllMetadataBtn.classList.remove('hidden');
+    }
+
+    function displayExifAndBasicInfo(file, exifData) {
+        metadataOutput.innerHTML = '';
+        const card = document.createElement('div'); card.className = 'metadata-content space-y-6';
+        
+        // Basic Info Section
+        const basicSection = document.createElement('div');
+        basicSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">info</span>Basic Information</h5>`;
+        const basicContainer = document.createElement('div'); basicContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
+        basicContainer.appendChild(createParamItem('File Name', file.name));
+        basicContainer.appendChild(createParamItem('File Size', `${(file.size / 1024).toFixed(2)} KB`));
+        basicSection.appendChild(basicContainer);
+        card.appendChild(basicSection);
+
+        // EXIF Data Section
+        if (Object.keys(exifData).length > 0) {
+            const exifSection = document.createElement('div');
+            exifSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">camera</span>EXIF Data</h5>`;
+            const exifContainer = document.createElement('div'); exifContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
+            
+            const commonTags = { "Make": "Camera Make", "Model": "Camera Model", "DateTimeOriginal": "Date/Time Original", "PixelXDimension": "Image Width", "PixelYDimension": "Image Height", "ISOSpeedRatings": "ISO Speed", "ExposureTime": "Exposure Time", "FNumber": "F-Number", "FocalLength": "Focal Length", "GPSLatitude": "GPS Latitude", "GPSLongitude": "GPS Longitude" };
+            
+            Object.entries(commonTags).forEach(([key, label]) => {
+                if (exifData[key]) {
+                    let value = exifData[key];
+                    if (key === "ExposureTime" && typeof value === 'number' && value > 0) value = value < 1 ? `1/${Math.round(1/value)}s` : `${value}s`;
+                    if (key === "FNumber" && typeof value === 'object') value = value.numerator / value.denominator;
+                    if ((key === "GPSLatitude" || key === "GPSLongitude") && Array.isArray(value)) value = `${value[0]}° ${value[1]}' ${value[2]}" ${exifData[key+"Ref"] || ''}`;
+                    exifContainer.appendChild(createParamItem(label, value.toString()));
+                }
+            });
+            if(exifContainer.children.length === 0) {
+                 exifContainer.appendChild(createParamItem('Status', 'No common EXIF tags found.'));
+            }
+            exifSection.appendChild(exifContainer);
+            card.appendChild(exifSection);
+        } else {
+            const noExifSection = document.createElement('div');
+            noExifSection.innerHTML = `<p class="text-sm text-gray-500 italic mt-4">No EXIF data found in this image.</p>`;
+            card.appendChild(noExifSection);
+        }
+        metadataOutput.appendChild(card);
+    }
+
+    function displayPngMetadata(metadata) {
+        metadataOutput.innerHTML = '';
+        if (Object.keys(metadata).length === 0) {
+            displayBasicInfo(currentFile, 'No PNG text chunks found.');
+            return;
+        }
+        const metadataCard = document.createElement('div'); metadataCard.className = 'metadata-content space-y-6';
+
+        if (metadata["parameters"]) {
+            let paramText = metadata["parameters"], posPrompt = paramText, negPrompt = "", extraParams = "";
+            const negPromptKeyword = "Negative prompt:"; const negIndex = paramText.indexOf(negPromptKeyword);
+            if (negIndex !== -1) { 
+                posPrompt = paramText.substring(0, negIndex).trim(); 
+                const rest = paramText.substring(negIndex + negPromptKeyword.length).trim(); 
+                const newlineIndexAfterNeg = rest.indexOf("\n"); 
+                if (newlineIndexAfterNeg !== -1) { negPrompt = rest.substring(0, newlineIndexAfterNeg).trim(); extraParams = rest.substring(newlineIndexAfterNeg).trim(); } 
+                else { negPrompt = rest; } 
+            } else { 
+                const firstNewline = paramText.indexOf("\n"); 
+                if (firstNewline !== -1) { posPrompt = paramText.substring(0, firstNewline).trim(); extraParams = paramText.substring(firstNewline).trim(); }
+                else { posPrompt = paramText.trim(); }
+            }
+
+            metadataCard.appendChild(createPromptSection('Positive Prompt', 'palette', posPrompt, 'text-gray-700'));
+            if (negPrompt) metadataCard.appendChild(createPromptSection('Negative Prompt', 'block', negPrompt, 'text-red-700'));
+
+            if (extraParams) {
+                const genParamsSection = document.createElement('div');
+                genParamsSection.className = 'metadata-section';
+                genParamsSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">tune</span>Generation Parameters</h5>`;
+                const parsedParams = parseParameters(extraParams);
+                if (Object.keys(parsedParams).length > 0) {
+                    const paramsGridContainer = document.createElement('div');
+                    paramsGridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2';
+                    Object.entries(parsedParams).forEach(([key, value]) => paramsGridContainer.appendChild(createIndividualParamCard(key, value)));
+                    genParamsSection.appendChild(paramsGridContainer);
+                }
+                metadataCard.appendChild(genParamsSection);
+            }
+        }
+        const otherMetadata = Object.entries(metadata).filter(([key]) => key !== "parameters");
+        if (otherMetadata.length > 0) {
+            const additionalSection = document.createElement('div'); additionalSection.className = 'metadata-section pt-4 border-t border-gray-200';
+            additionalSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">label_important</span>Additional Raw Metadata</h5>`;
+            const additionalContainer = document.createElement('div'); additionalContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
+            otherMetadata.forEach(([key, value]) => additionalContainer.appendChild(createParamItem(key, value)));
+            additionalSection.appendChild(additionalContainer); metadataCard.appendChild(additionalSection);
+        }
+        metadataOutput.appendChild(metadataCard);
+    }
+
+    // --- Metadata Display Helpers ---
+    function createParamItem(label, value, valueClass = 'text-gray-700') {
+        const item = document.createElement('div');
+        item.className = 'flex flex-col sm:flex-row justify-between sm:items-center bg-white rounded-md p-2 mb-1 gap-1 sm:gap-2';
+        item.innerHTML = `
+            <div class="param-label font-medium text-gray-500 text-xs sm:text-sm flex-shrink-0 sm:w-2/5">${label.replace(/_/g, ' ')}:</div>
+            <div class="param-value ${valueClass} text-xs sm:text-sm break-all text-right sm:text-left flex-grow">${value}</div>
+        `;
+        return item;
+    }
+    function createPromptSection(title, icon, content, colorClass) {
+        const section = document.createElement('div'); section.className = 'metadata-section';
+        section.innerHTML = `<h5 class="text-sm font-semibold ${colorClass} uppercase mb-2 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">${icon}</span>${title}</h5>`;
+        const pre = document.createElement('pre'); pre.className = 'bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-700 relative font-sans'; pre.textContent = content;
+        const copyBtn = document.createElement('button'); copyBtn.className = 'copy-btn p-1.5 rounded-full text-gray-400 hover:text-red-600 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-red-500 transition-colors duration-200';
+        copyBtn.title = `Copy ${title}`; copyBtn.innerHTML = '<span class="material-symbols-outlined text-base">content_copy</span>'; copyBtn.onclick = (e) => { e.stopPropagation(); copyToClipboard(content, copyBtn); }; pre.appendChild(copyBtn); section.appendChild(pre);
+        return section;
+    }
+    function createIndividualParamCard(label, value) {
+        const card = document.createElement('div');
+        card.className = 'bg-white border border-gray-200 rounded-lg p-3 shadow-sm flex flex-col gap-1.5 hover:shadow-md transition-shadow duration-150';
+        const header = document.createElement('div'); header.className = 'flex justify-between items-center';
+        const paramLabel = document.createElement('span'); paramLabel.className = 'text-xs font-semibold text-red-700 uppercase tracking-wider'; paramLabel.textContent = label.replace(/_/g, ' ');
+        const copyButton = document.createElement('button'); copyButton.className = 'copy-btn-card p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-red-600'; copyButton.title = `Copy ${label}`;
+        copyButton.onclick = (e) => { e.stopPropagation(); copyToClipboard(value, copyButton); };
+        copyButton.innerHTML = '<span class="material-symbols-outlined text-sm">content_copy</span>';
+        header.appendChild(paramLabel); header.appendChild(copyButton);
+        const paramValue = document.createElement('div'); paramValue.className = 'text-sm text-gray-700 break-all'; paramValue.textContent = value;
+        card.appendChild(header); card.appendChild(paramValue);
+        return card;
+    }
+    function parseParameters(paramsString) {
+        const paramsList = {};
+        if (!paramsString || typeof paramsString !== 'string') return paramsList;
+        paramsString.split(', ').forEach(pair => {
+            const colonIndex = pair.indexOf(':');
+            if (colonIndex !== -1) {
+                const key = pair.substring(0, colonIndex).trim();
+                const value = pair.substring(colonIndex + 1).trim();
+                if (key) paramsList[key] = value;
+            }
+        });
+        return paramsList;
+    }
+
+    // --- Metadata Stripping ---
+    function stripAndPrepareDownload() {
+        if (!originalImageDataUrl || !currentFile) {
+            showToast('No image loaded to process.', 'error', 'error');
+            return;
+        }
+        stripButton.disabled = true;
+        stripButton.innerHTML = `<span class="material-symbols-outlined animate-spin">progress_activity</span>Processing...`;
+
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+
+            try {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                let outputType = currentFile.type;
+                if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) {
+                    outputType = 'image/png'; // Fallback to PNG for safety
+                }
+                const cleanedDataUrl = canvas.toDataURL(outputType, 0.95); // Use high quality
+
+                const baseName = currentFile.name.substring(0, currentFile.name.lastIndexOf('.')) || currentFile.name;
+                const extension = outputType.split('/')[1];
+                downloadButton.href = cleanedDataUrl;
+                downloadButton.download = `${baseName}_cleaned.${extension}`;
+
+                showToast('Metadata stripped! Ready for download.', 'success', 'success');
+                stripButton.classList.add('hidden');
+                downloadButton.classList.remove('hidden');
+                
+                metadataOutput.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-green-600 text-center"><span class="material-symbols-outlined text-6xl mb-3">verified_user</span><p class="font-medium">Metadata Stripped Successfully</p><p class="text-sm text-gray-500">Your image is now clean and ready for download.</p></div>`;
+                copyAllMetadataBtn.classList.add('hidden');
+
+            } catch (error) {
+                 console.error("Canvas drawing error:", error);
+                 showToast('Error processing image. It might be too large.', 'error', 'error');
+                 stripButton.disabled = false;
+                 stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`;
+            }
+        };
+        img.onerror = () => {
+            showToast('Could not load image data for processing.', 'error', 'error');
+            stripButton.disabled = false;
+            stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`;
+        };
+        img.src = originalImageDataUrl;
+    }
+
+    // --- Event Listeners ---
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) processFile(e.target.files[0]); });
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) processFile(e.dataTransfer.files[0]); });
+    document.addEventListener('paste', (e) => {
+        const file = e.clipboardData?.files[0];
+        if (file && file.type.startsWith('image/')) {
+            showToast('Pasted image!', 'add_photo_alternate', 'info');
+            processFile(file);
+        }
+    });
+    stripButton.addEventListener('click', stripAndPrepareDownload);
+    resetButton.addEventListener('click', resetUI);
+
+    // --- Initial State ---
+    resetUI();
+
+  </script>
+</body>
+</html>
