@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Image Inspector & Privacy Guard</title>
+    <title>METADATA VIEWER</title>
 
     <!-- Core Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -28,16 +28,16 @@
         }
 
         /* Custom Scrollbar */
-        .metadata-scrollbar::-webkit-scrollbar { width: 8px; }
-        .metadata-scrollbar::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 10px; }
-        .metadata-scrollbar::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; border: 2px solid #f3f4f6; }
-        .metadata-scrollbar::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; border: 2px solid #f3f4f6; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 
         /* Drop Zone Animation */
-        #dropZone { 
+        .drop-zone-base { 
             transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; 
         }
-        #dropZone.dragover { 
+        .drop-zone-base.dragover { 
             border-color: #dc2626; 
             background-color: #fee2e2; 
             box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2); 
@@ -71,6 +71,66 @@
         }
         pre:hover .copy-btn { opacity: 1; }
         pre .copy-btn:hover { background-color: rgba(0, 0, 0, 0.08); }
+
+        /* Tab Styling & Transition */
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            color: #4b5563; /* gray-600 */
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s ease, border-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        .tab-btn:hover {
+            color: #dc2626; /* red-600 */
+        }
+        .tab-btn.active {
+            color: #dc2626; /* red-600 */
+            border-bottom-color: #dc2626; /* red-600 */
+            font-weight: 600;
+        }
+        
+        #tabViewport {
+            position: relative;
+            overflow: hidden; /* Crucial for sliding effect */
+            flex-grow: 1; /* Takes available space */
+            display: flex; /* Ensures it has a layout context */
+        }
+
+        .tab-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-out;
+            will-change: transform, opacity;
+            display: flex; /* For internal layout of tab content */
+            flex-direction: column; /* For internal layout */
+            overflow-y: auto; /* Allows individual tab content to scroll */
+            /* background-color: white; Ensure tabs have a background if needed for overlap */
+        }
+
+        .tab-content-center { /* Active tab, in view */
+            transform: translateX(0%);
+            opacity: 1;
+            z-index: 10;
+        }
+        .tab-content-left { /* Tab positioned off-screen to the left */
+            transform: translateX(-100%);
+            opacity: 0;
+            z-index: 1;
+        }
+        .tab-content-right { /* Tab positioned off-screen to the right */
+            transform: translateX(100%);
+            opacity: 0;
+            z-index: 1;
+        }
+        /* Tailwind's .hidden class (display: none !important) is used to remove from layout when not active/transitioning */
+
     </style>
 
     <script>
@@ -80,7 +140,7 @@
           extend: {
             fontFamily: { sans: ['Poppins', 'sans-serif'], },
             boxShadow: { 'subtle': '0 4px 12px rgba(0, 0, 0, 0.05)', 'card': '0 8px 20px rgba(0, 0, 0, 0.07)', },
-            maxHeight: { 'modal-img': 'calc(100vh - 8rem)', 'preview-area': 'calc(100vh - 20rem)' }
+            maxHeight: { 'modal-img': 'calc(100vh - 8rem)', 'preview-area': 'calc(100vh - 20rem)', 'bulk-list': 'calc(100vh - 28rem)' }
           }
         }
       }
@@ -88,72 +148,127 @@
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-200 text-gray-800 flex items-center justify-center min-h-screen p-4 sm:p-8 overflow-hidden">
 
-  <div class="container max-w-7xl w-full bg-white rounded-2xl shadow-card p-6 md:p-10 flex flex-col gap-8 max-h-[95vh] h-full">
+  <div class="container max-w-7xl w-full bg-white rounded-2xl shadow-card p-6 md:p-10 flex flex-col max-h-[95vh] h-full">
     <!-- Header Section -->
     <div class="title-section text-center border-b border-gray-200 pb-4 mb-2 flex-shrink-0">
       <h3 class="text-3xl sm:text-4xl font-bold text-gray-800 tracking-tight flex items-center justify-center gap-3">
-        <span class="material-symbols-outlined text-red-600 text-4xl">policy</span>Image Inspector & Privacy Guard
+        <span class="material-symbols-outlined text-red-600 text-4xl">policy</span>METADATA VIEWER
       </h3>
-      <p class="text-gray-500 text-sm mt-1">View detailed metadata and strip it for privacy. All processing is done in your browser.</p>
+      <p class="text-gray-500 text-sm mt-1">Inspect image metadata or strip it in bulk. All processing is done in your browser.</p>
     </div>
 
-    <!-- Main Content Area -->
-    <div class="content-area flex flex-col lg:flex-row gap-8 flex-grow overflow-hidden">
-      
-      <!-- Left Column: Upload, Preview, and Actions -->
-      <div class="left-column lg:w-2/5 flex flex-col gap-6 overflow-hidden">
-        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:py-8 flex flex-col items-center justify-center text-center text-gray-600 cursor-pointer hover:border-red-500 hover:bg-red-50 hover:text-red-700 flex-shrink-0 group">
-          <span class="material-symbols-outlined text-5xl mb-3 text-gray-400 group-hover:text-red-500">upload_file</span>
-          <span class="font-semibold text-lg text-gray-700 group-hover:text-red-700">Drop Image Here</span>
-          <span class="text-gray-500 text-sm mt-1">or click to select (PNG, JPG, WEBP)</span>
-          <span class="text-gray-400 text-xs mt-3">(Paste with Ctrl+V)</span>
-        </div>
-        <div class="image-preview-container border border-gray-200 rounded-xl overflow-hidden flex justify-center items-center bg-gray-100 relative group flex-grow min-h-0">
-           <img id="imagePreview" alt="Image Preview" class="object-contain max-w-full max-h-full hidden group-hover:opacity-90 transition-opacity duration-300 cursor-pointer" />
-           <div id="previewPlaceholder" class="text-gray-400 flex flex-col items-center text-center p-4">
-                <span class="material-symbols-outlined text-6xl">image</span>
-                <span class="mt-2 text-sm">Image preview will appear here</span>
-           </div>
-        </div>
-        <!-- Action Buttons -->
-        <div id="actionsContainer" class="flex-shrink-0 flex flex-col sm:flex-row gap-3 justify-center">
-            <button id="stripButton" class="hidden w-full sm:w-auto justify-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-wait disabled:shadow-none">
-                <span class="material-symbols-outlined">shield</span>
-                Strip Metadata
-            </button>
-            <a id="downloadButton" class="hidden w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg" href="#" download="cleaned_image.png">
-                <span class="material-symbols-outlined">download</span>
-                Download Cleaned
-            </a>
-            <button id="resetButton" class="hidden w-full sm:w-auto justify-center bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg">
-                <span class="material-symbols-outlined">refresh</span>
-                Reset
-            </button>
-        </div>
-        <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp" class="hidden" />
-      </div>
+    <!-- Tab Navigation -->
+    <div class="tabs-container mb-6 flex border-b border-gray-200 flex-shrink-0">
+        <button id="singleImageTabBtn" class="tab-btn"> 
+            <span class="material-symbols-outlined text-xl">image_search</span>Single Image Inspector
+        </button>
+        <button id="bulkStripTabBtn" class="tab-btn">
+            <span class="material-symbols-outlined text-xl">auto_fix_high</span>Bulk Metadata Stripper
+        </button>
+    </div>
 
-      <!-- Right Column: Metadata Display -->
-      <div class="right-column lg:w-3/5 flex flex-col overflow-hidden">
-        <div class="flex justify-between items-center mb-4 flex-shrink-0">
-            <h4 class="text-xl font-semibold text-gray-700 flex items-center gap-2">
-                <span class="material-symbols-outlined text-red-600">description</span>
-                Extracted Metadata
-            </h4>
-            <button id="copyAllMetadataBtn" class="hidden bg-red-500 hover:bg-red-600 text-white text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5 transition-colors duration-150">
-                <span class="material-symbols-outlined text-sm leading-none">inventory_2</span>
-                Copy All Raw
-            </button>
-        </div>
-        <div id="metadataOutput" class="metadata-scrollbar flex-grow bg-gray-100 border border-gray-200 rounded-xl p-5 overflow-y-auto min-h-0">
-             <div class="no-metadata flex flex-col items-center justify-center h-full text-gray-500 text-center">
-                <span class="material-symbols-outlined text-6xl mb-3">search_off</span>
-                <p class="font-medium">No metadata to display yet.</p>
-                <p class="text-sm">Upload an image to inspect its data.</p>
+    <!-- Tab Content Area / Viewport -->
+    <div id="tabViewport" class="flex-grow"> 
+
+        <!-- Single Image Inspector Tab Content -->
+        <div id="singleImageTabContent" class="tab-content"> 
+            <div class="content-area flex flex-col lg:flex-row gap-8 flex-grow overflow-hidden p-1"> <!-- Added p-1 to prevent scrollbar overlap issues sometimes -->
+                <!-- Left Column: Upload, Preview, and Actions -->
+                <div class="left-column lg:w-2/5 flex flex-col gap-6 overflow-hidden">
+                    <div id="dropZone" class="drop-zone-base border-2 border-dashed border-gray-300 rounded-xl p-6 sm:py-8 flex flex-col items-center justify-center text-center text-gray-600 cursor-pointer hover:border-red-500 hover:bg-red-50 hover:text-red-700 flex-shrink-0 group">
+                        <span class="material-symbols-outlined text-5xl mb-3 text-gray-400 group-hover:text-red-500">upload_file</span>
+                        <span class="font-semibold text-lg text-gray-700 group-hover:text-red-700">Drop Image Here</span>
+                        <span class="text-gray-500 text-sm mt-1">or click to select (PNG, JPG, WEBP)</span>
+                        <span class="text-gray-400 text-xs mt-3">(Paste with Ctrl+V)</span>
+                    </div>
+                    <div class="image-preview-container border border-gray-200 rounded-xl overflow-hidden flex justify-center items-center bg-gray-100 relative group flex-grow min-h-0">
+                        <img id="imagePreview" alt="Image Preview" class="object-contain max-w-full max-h-full hidden group-hover:opacity-90 transition-opacity duration-300 cursor-pointer" />
+                        <div id="previewPlaceholder" class="text-gray-400 flex flex-col items-center text-center p-4">
+                            <span class="material-symbols-outlined text-6xl">image</span>
+                            <span class="mt-2 text-sm">Image preview will appear here</span>
+                        </div>
+                    </div>
+                    <!-- Action Buttons -->
+                    <div id="actionsContainer" class="flex-shrink-0 flex flex-col sm:flex-row gap-3 justify-center">
+                        <button id="stripButton" class="hidden w-full sm:w-auto justify-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-wait disabled:shadow-none">
+                            <span class="material-symbols-outlined">shield</span>Strip Metadata
+                        </button>
+                        <a id="downloadButton" class="hidden w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg" href="#" download="cleaned_image.png">
+                            <span class="material-symbols-outlined">download</span>Download Cleaned
+                        </a>
+                        <button id="resetButton" class="hidden w-full sm:w-auto justify-center bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg">
+                            <span class="material-symbols-outlined">refresh</span>Reset
+                        </button>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp" class="hidden" />
+                </div>
+
+                <!-- Right Column: Metadata Display -->
+                <div class="right-column lg:w-3/5 flex flex-col overflow-hidden">
+                    <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                        <h4 class="text-xl font-semibold text-gray-700 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-red-600">description</span>
+                            Extracted Metadata
+                        </h4>
+                        <button id="copyAllMetadataBtn" class="hidden bg-red-500 hover:bg-red-600 text-white text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5 transition-colors duration-150">
+                            <span class="material-symbols-outlined text-sm leading-none">inventory_2</span>
+                            Copy All Raw
+                        </button>
+                    </div>
+                    <div id="metadataOutput" class="custom-scrollbar flex-grow bg-gray-100 border border-gray-200 rounded-xl p-5 overflow-y-auto min-h-0">
+                        <div class="no-metadata flex flex-col items-center justify-center h-full text-gray-500 text-center">
+                            <span class="material-symbols-outlined text-6xl mb-3">search_off</span>
+                            <p class="font-medium">No metadata to display yet.</p>
+                            <p class="text-sm">Upload an image to inspect its data.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-      </div>
+
+        <!-- Bulk Metadata Stripper Tab Content -->
+        <div id="bulkStripTabContent" class="tab-content"> 
+            <div class="flex flex-col gap-6 flex-grow overflow-hidden p-1"> <!-- Added p-1 -->
+                <div id="bulkDropZone" class="drop-zone-base border-2 border-dashed border-gray-300 rounded-xl p-6 sm:py-8 flex flex-col items-center justify-center text-center text-gray-600 cursor-pointer hover:border-red-500 hover:bg-red-50 hover:text-red-700 flex-shrink-0 group">
+                    <span class="material-symbols-outlined text-5xl mb-3 text-gray-400 group-hover:text-red-500">upload_file</span>
+                    <span class="font-semibold text-lg text-gray-700 group-hover:text-red-700">Drop Multiple Images Here</span>
+                    <span class="text-gray-500 text-sm mt-1">or click to select (PNG, JPG, WEBP)</span>
+                </div>
+                <input type="file" id="bulkFileInput" accept="image/png, image/jpeg, image/webp" class="hidden" multiple />
+
+                <div class="bulk-actions-container flex flex-col sm:flex-row gap-3 justify-center flex-shrink-0">
+                    <button id="stripAllBulkButton" class="w-full sm:w-auto justify-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-wait disabled:shadow-none">
+                        <span class="material-symbols-outlined">auto_fix_high</span>Strip All Metadata
+                    </button>
+                    <button id="downloadAllCleanedBulkButton" class="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span class="material-symbols-outlined">download_for_offline</span>Download All Cleaned
+                    </button>
+                    <button id="clearBulkQueueButton" class="w-full sm:w-auto justify-center bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg">
+                        <span class="material-symbols-outlined">delete_sweep</span>Clear Queue
+                    </button>
+                </div>
+                
+                <div class="bulk-image-list-container flex-grow overflow-hidden border border-gray-200 rounded-xl bg-gray-50">
+                    <div id="bulkImageListHeader" class="p-3 border-b border-gray-200 bg-gray-100 text-xs text-gray-600 font-semibold hidden">
+                        <div class="grid grid-cols-[auto_1fr_100px_120px_100px] gap-2 items-center">
+                            <span>Preview</span>
+                            <span>Filename</span>
+                            <span class="text-center">Size</span>
+                            <span class="text-center">Status</span>
+                            <span class="text-center">Action</span>
+                        </div>
+                    </div>
+                    <div id="bulkImageList" class="custom-scrollbar overflow-y-auto p-2 space-y-2 max-h-bulk-list">
+                        <div id="bulkPlaceholder" class="flex flex-col items-center justify-center h-full text-gray-400 text-center p-4">
+                            <span class="material-symbols-outlined text-6xl">imagesmode</span>
+                            <span class="mt-2 text-sm">Uploaded images will appear here</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
   </div>
 
   <!-- Image Modal -->
@@ -186,10 +301,30 @@
     const downloadButton = document.getElementById('downloadButton');
     const resetButton = document.getElementById('resetButton');
 
+    // Tab Elements
+    const singleImageTabBtn = document.getElementById('singleImageTabBtn');
+    const bulkStripTabBtn = document.getElementById('bulkStripTabBtn');
+    const singleImageTabContent = document.getElementById('singleImageTabContent');
+    const bulkStripTabContent = document.getElementById('bulkStripTabContent');
+    const tabViewport = document.getElementById('tabViewport'); // Viewport for sliding tabs
+
+    // Bulk Tab Elements
+    const bulkDropZone = document.getElementById('bulkDropZone');
+    const bulkFileInput = document.getElementById('bulkFileInput');
+    const stripAllBulkButton = document.getElementById('stripAllBulkButton');
+    const downloadAllCleanedBulkButton = document.getElementById('downloadAllCleanedBulkButton');
+    const clearBulkQueueButton = document.getElementById('clearBulkQueueButton');
+    const bulkImageList = document.getElementById('bulkImageList');
+    const bulkPlaceholder = document.getElementById('bulkPlaceholder');
+    const bulkImageListHeader = document.getElementById('bulkImageListHeader');
+
+
     // --- State Variables ---
     let currentFile = null;
     let originalImageDataUrl = null;
     let textToCopy = "";
+    let bulkFilesData = []; 
+    let nextBulkFileId = 0;
 
     // --- UI Reset ---
     function resetUI() {
@@ -208,7 +343,9 @@
         stripButton.classList.add('hidden');
         downloadButton.classList.add('hidden');
         resetButton.classList.add('hidden');
+        
         stripButton.disabled = false;
+        stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`;
     }
 
     // --- Modal Logic ---
@@ -239,21 +376,25 @@
             if (!elementToFeedback) return;
             const icon = elementToFeedback.querySelector('.material-symbols-outlined');
             const originalIcon = icon ? icon.textContent : null;
-            const originalText = elementToFeedback.textContent;
+            const originalTextContent = elementToFeedback.textContent; 
             const originalClasses = Array.from(elementToFeedback.classList);
             
             elementToFeedback.classList.remove('bg-red-500', 'hover:bg-red-600', 'bg-gray-200');
             elementToFeedback.classList.add('bg-green-500', 'hover:bg-green-600');
             if(icon) icon.textContent = 'check';
             
-            // For buttons with text
             const textNode = Array.from(elementToFeedback.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
             if(textNode) textNode.nodeValue = ' Copied!';
+            else if (!icon) elementToFeedback.textContent = 'Copied!';
+
 
             setTimeout(() => {
                 elementToFeedback.className = originalClasses.join(' ');
                 if(icon) icon.textContent = originalIcon;
-                if(textNode) textNode.nodeValue = originalText.replace(icon.textContent, '').trim();
+                
+                if(textNode) textNode.nodeValue = originalTextContent.replace(originalIcon || '', '').trim();
+                else if (!icon && elementToFeedback.textContent === 'Copied!') elementToFeedback.textContent = originalTextContent;
+
             }, 1500);
         }).catch(err => { showToast('Failed to copy.', 'error', 'error'); console.error('Copy failed: ', err); });
     }
@@ -262,11 +403,11 @@
         else showToast("No metadata content to copy.", "info", "info");
     });
 
-    // --- Main File Processing Logic ---
+    // --- Main File Processing Logic (Single Image) ---
     function processFile(file) {
         if (!file || !file.type.startsWith('image/')) { showToast('Please select a valid image file.', 'warning', 'warning'); return; }
         
-        resetUI();
+        resetUI(); 
         currentFile = file;
 
         const reader = new FileReader();
@@ -285,7 +426,7 @@
                 processPng(file);
             } else if (file.type === 'image/jpeg') {
                 processJpeg(file, originalImageDataUrl);
-            } else {
+            } else { 
                 displayBasicInfo(file);
             }
         };
@@ -305,11 +446,41 @@
                     if (offset + 8 > data.byteLength) break; const length = data.getUint32(offset); offset += 4; let type = '';
                     for (let i = 0; i < 4; i++) type += String.fromCharCode(data.getUint8(offset + i)); offset += 4;
                     if (offset + length + 4 > data.byteLength) break;
-                    if (type === 'tEXt' || type === 'iTXt') {
-                        const textBytes = new Uint8Array(arrayBuffer, offset, length); let keyword = '', textValue = ''; const nullIndex = textBytes.indexOf(0);
+                    if (type === 'tEXt' || type === 'iTXt' || type === 'zTXt') { 
+                        let textBytes = new Uint8Array(arrayBuffer, offset, length);
+                        if (type === 'zTXt') {
+                            const nullIdx = textBytes.indexOf(0);
+                            if (nullIdx !== -1 && textBytes[nullIdx+1] === 0) { 
+                                console.warn("zTXt chunk found, decompression not fully implemented without pako.js.");
+                                metadata['zTXt_chunk_present (not_decompressed)'] = `Length: ${length}`;
+                                offset += length + 4;
+                                continue;
+                            }
+                        }
+
+                        let keyword = '', textValue = ''; const nullIndex = textBytes.indexOf(0);
                         if (nullIndex !== -1) { keyword = new TextDecoder("utf-8").decode(textBytes.slice(0, nullIndex));
                             if (type === 'tEXt') { textValue = new TextDecoder("latin1").decode(textBytes.slice(nullIndex + 1)); }
-                            else { const separators = []; for(let i=nullIndex + 1; i<textBytes.length; i++) if (textBytes[i] === 0) separators.push(i); if (separators.length >= 4 && textBytes[nullIndex + 1] === 0) { textValue = new TextDecoder("utf-8").decode(textBytes.slice(separators[3] + 1)); } else { keyword = ''; } }
+                            else if (type === 'iTXt') { 
+                                const iTXtParts = [];
+                                let currentPartStart = nullIndex + 1;
+                                for(let i = nullIndex + 1; i < textBytes.length; i++) {
+                                    if (textBytes[i] === 0) {
+                                        iTXtParts.push(textBytes.slice(currentPartStart, i));
+                                        currentPartStart = i + 1;
+                                    }
+                                }
+                                iTXtParts.push(textBytes.slice(currentPartStart));
+
+                                const compressionFlag = iTXtParts[0] ? iTXtParts[0][0] : 0;
+                                const actualTextBytes = iTXtParts[4];
+
+                                if (compressionFlag === 0) { 
+                                    textValue = new TextDecoder("utf-8").decode(actualTextBytes);
+                                } else {
+                                    textValue = "[Compressed iTXt data - decompression not supported]";
+                                }
+                            }
                             if (keyword) metadata[keyword] = textValue;
                         }
                     } offset += length + 4;
@@ -318,6 +489,8 @@
                 if (Object.keys(metadata).length > 0) {
                     textToCopy = metadata.parameters || Object.entries(metadata).map(([k, v]) => `${k}: ${v}`).join('\n');
                     copyAllMetadataBtn.classList.remove('hidden');
+                } else {
+                     displayBasicInfo(file, 'No textual metadata chunks found in PNG.');
                 }
             } catch (error) {
                 console.error("Error processing PNG:", error); showToast(`Error processing file: ${error.message}`, 'error', 'error');
@@ -337,14 +510,20 @@
                 if (Object.keys(allTags).length > 0) {
                     textToCopy = Object.entries(allTags).map(([k, v]) => `${k}: ${v}`).join('\n');
                     copyAllMetadataBtn.classList.remove('hidden');
+                } else {
+                    displayBasicInfo(file, 'No EXIF data found.');
                 }
             });
+        };
+        imgForExif.onerror = () => {
+            showToast('Could not load image for EXIF processing.', 'error', 'error');
+            displayBasicInfo(file, 'Error loading image for EXIF data extraction.');
         };
         imgForExif.src = imageUrl;
     }
 
     // --- Metadata Display Functions ---
-    function displayBasicInfo(file, errorMsg = null) {
+    function displayBasicInfo(file, message = null) {
         metadataOutput.innerHTML = '';
         const card = document.createElement('div'); card.className = 'metadata-content space-y-6';
         const section = document.createElement('div'); section.className = 'metadata-section';
@@ -355,16 +534,22 @@
         container.appendChild(createParamItem('File Type', file.type));
         container.appendChild(createParamItem('File Size', `${(file.size / 1024).toFixed(2)} KB`));
         container.appendChild(createParamItem('Last Modified', new Date(file.lastModified).toLocaleString()));
-        if (errorMsg) {
-            container.appendChild(createParamItem('Error', errorMsg, 'text-red-600'));
-        } else {
-            container.appendChild(createParamItem('Metadata', 'No specific AI or EXIF metadata found.'));
+        
+        let statusMessage = message;
+        if (!statusMessage) {
+            if (file.type === 'image/webp') {
+                statusMessage = 'WEBP metadata parsing is limited. Only basic info shown.';
+            } else {
+                statusMessage = 'No specific AI or EXIF metadata found, or format not fully supported for deep inspection.';
+            }
         }
+        container.appendChild(createParamItem('Metadata Status', statusMessage, message && message.toLowerCase().includes('error') ? 'text-red-600' : 'text-gray-500'));
+
 
         section.appendChild(container);
         card.appendChild(section);
         metadataOutput.appendChild(card);
-        textToCopy = `File Name: ${file.name}\nFile Type: ${file.type}\nFile Size: ${(file.size / 1024).toFixed(2)} KB`;
+        textToCopy = `File Name: ${file.name}\nFile Type: ${file.type}\nFile Size: ${(file.size / 1024).toFixed(2)} KB\nLast Modified: ${new Date(file.lastModified).toLocaleString()}\nStatus: ${statusMessage}`;
         copyAllMetadataBtn.classList.remove('hidden');
     }
 
@@ -372,40 +557,41 @@
         metadataOutput.innerHTML = '';
         const card = document.createElement('div'); card.className = 'metadata-content space-y-6';
         
-        // Basic Info Section
         const basicSection = document.createElement('div');
         basicSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">info</span>Basic Information</h5>`;
         const basicContainer = document.createElement('div'); basicContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
         basicContainer.appendChild(createParamItem('File Name', file.name));
+        basicContainer.appendChild(createParamItem('File Type', file.type));
         basicContainer.appendChild(createParamItem('File Size', `${(file.size / 1024).toFixed(2)} KB`));
         basicSection.appendChild(basicContainer);
         card.appendChild(basicSection);
 
-        // EXIF Data Section
         if (Object.keys(exifData).length > 0) {
             const exifSection = document.createElement('div');
             exifSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">camera</span>EXIF Data</h5>`;
             const exifContainer = document.createElement('div'); exifContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
             
-            const commonTags = { "Make": "Camera Make", "Model": "Camera Model", "DateTimeOriginal": "Date/Time Original", "PixelXDimension": "Image Width", "PixelYDimension": "Image Height", "ISOSpeedRatings": "ISO Speed", "ExposureTime": "Exposure Time", "FNumber": "F-Number", "FocalLength": "Focal Length", "GPSLatitude": "GPS Latitude", "GPSLongitude": "GPS Longitude" };
+            const commonTags = { "Make": "Camera Make", "Model": "Camera Model", "DateTimeOriginal": "Date/Time Original", "PixelXDimension": "Image Width", "PixelYDimension": "Image Height", "ISOSpeedRatings": "ISO Speed", "ExposureTime": "Exposure Time", "FNumber": "F-Number", "FocalLength": "Focal Length", "GPSLatitude": "GPS Latitude", "GPSLongitude": "GPS Longitude", "Software": "Software", "Artist": "Artist", "Copyright": "Copyright" };
             
+            let foundCommonExif = false;
             Object.entries(commonTags).forEach(([key, label]) => {
                 if (exifData[key]) {
+                    foundCommonExif = true;
                     let value = exifData[key];
                     if (key === "ExposureTime" && typeof value === 'number' && value > 0) value = value < 1 ? `1/${Math.round(1/value)}s` : `${value}s`;
-                    if (key === "FNumber" && typeof value === 'object') value = value.numerator / value.denominator;
+                    if (key === "FNumber" && typeof value === 'object' && value.numerator && value.denominator) value = `f/${(value.numerator / value.denominator).toFixed(1)}`; else if (key === "FNumber") value = `f/${value}`;
                     if ((key === "GPSLatitude" || key === "GPSLongitude") && Array.isArray(value)) value = `${value[0]}° ${value[1]}' ${value[2]}" ${exifData[key+"Ref"] || ''}`;
                     exifContainer.appendChild(createParamItem(label, value.toString()));
                 }
             });
-            if(exifContainer.children.length === 0) {
-                 exifContainer.appendChild(createParamItem('Status', 'No common EXIF tags found.'));
+            if(!foundCommonExif) {
+                 exifContainer.appendChild(createParamItem('Status', 'No common EXIF tags found. Raw tags might exist.'));
             }
             exifSection.appendChild(exifContainer);
             card.appendChild(exifSection);
         } else {
             const noExifSection = document.createElement('div');
-            noExifSection.innerHTML = `<p class="text-sm text-gray-500 italic mt-4">No EXIF data found in this image.</p>`;
+            noExifSection.innerHTML = `<p class="text-sm text-gray-500 italic mt-4 p-2 bg-white rounded-md border border-gray-200 shadow-sm">No EXIF data found in this image.</p>`;
             card.appendChild(noExifSection);
         }
         metadataOutput.appendChild(card);
@@ -414,12 +600,22 @@
     function displayPngMetadata(metadata) {
         metadataOutput.innerHTML = '';
         if (Object.keys(metadata).length === 0) {
-            displayBasicInfo(currentFile, 'No PNG text chunks found.');
+            displayBasicInfo(currentFile, 'No PNG textual metadata chunks found.');
             return;
         }
         const metadataCard = document.createElement('div'); metadataCard.className = 'metadata-content space-y-6';
 
-        if (metadata["parameters"]) {
+        const basicSection = document.createElement('div');
+        basicSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">info</span>Basic Information</h5>`;
+        const basicContainer = document.createElement('div'); basicContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
+        basicContainer.appendChild(createParamItem('File Name', currentFile.name));
+        basicContainer.appendChild(createParamItem('File Type', currentFile.type));
+        basicContainer.appendChild(createParamItem('File Size', `${(currentFile.size / 1024).toFixed(2)} KB`));
+        basicSection.appendChild(basicContainer);
+        metadataCard.appendChild(basicSection);
+
+
+        if (metadata["parameters"]) { 
             let paramText = metadata["parameters"], posPrompt = paramText, negPrompt = "", extraParams = "";
             const negPromptKeyword = "Negative prompt:"; const negIndex = paramText.indexOf(negPromptKeyword);
             if (negIndex !== -1) { 
@@ -447,6 +643,8 @@
                     paramsGridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2';
                     Object.entries(parsedParams).forEach(([key, value]) => paramsGridContainer.appendChild(createIndividualParamCard(key, value)));
                     genParamsSection.appendChild(paramsGridContainer);
+                } else {
+                     genParamsSection.innerHTML += `<p class="text-sm text-gray-500 italic p-2 bg-white rounded-md border">No parsable key-value generation parameters found.</p>`;
                 }
                 metadataCard.appendChild(genParamsSection);
             }
@@ -465,17 +663,17 @@
     // --- Metadata Display Helpers ---
     function createParamItem(label, value, valueClass = 'text-gray-700') {
         const item = document.createElement('div');
-        item.className = 'flex flex-col sm:flex-row justify-between sm:items-center bg-white rounded-md p-2 mb-1 gap-1 sm:gap-2';
+        item.className = 'flex flex-col sm:flex-row justify-between sm:items-start bg-white rounded-md p-2 mb-1 gap-1 sm:gap-2'; 
         item.innerHTML = `
             <div class="param-label font-medium text-gray-500 text-xs sm:text-sm flex-shrink-0 sm:w-2/5">${label.replace(/_/g, ' ')}:</div>
-            <div class="param-value ${valueClass} text-xs sm:text-sm break-all text-right sm:text-left flex-grow">${value}</div>
-        `;
+            <div class="param-value ${valueClass} text-xs sm:text-sm break-all sm:text-right flex-grow">${value}</div>
+        `; 
         return item;
     }
     function createPromptSection(title, icon, content, colorClass) {
         const section = document.createElement('div'); section.className = 'metadata-section';
         section.innerHTML = `<h5 class="text-sm font-semibold ${colorClass} uppercase mb-2 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">${icon}</span>${title}</h5>`;
-        const pre = document.createElement('pre'); pre.className = 'bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-700 relative font-sans'; pre.textContent = content;
+        const pre = document.createElement('pre'); pre.className = 'bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-700 relative font-sans custom-scrollbar overflow-auto max-h-40'; pre.textContent = content;
         const copyBtn = document.createElement('button'); copyBtn.className = 'copy-btn p-1.5 rounded-full text-gray-400 hover:text-red-600 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-red-500 transition-colors duration-200';
         copyBtn.title = `Copy ${title}`; copyBtn.innerHTML = '<span class="material-symbols-outlined text-base">content_copy</span>'; copyBtn.onclick = (e) => { e.stopPropagation(); copyToClipboard(content, copyBtn); }; pre.appendChild(copyBtn); section.appendChild(pre);
         return section;
@@ -496,18 +694,23 @@
     function parseParameters(paramsString) {
         const paramsList = {};
         if (!paramsString || typeof paramsString !== 'string') return paramsList;
+        const pairs = paramsString.match(/([^:,]+:[^,]+(?:,\s*[^:,]+:[^,]+)*)|([^:,]+:[^,]+)/g) || [];
+
         paramsString.split(', ').forEach(pair => {
             const colonIndex = pair.indexOf(':');
             if (colonIndex !== -1) {
                 const key = pair.substring(0, colonIndex).trim();
-                const value = pair.substring(colonIndex + 1).trim();
+                let value = pair.substring(colonIndex + 1).trim();
+                if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                    value = value.substring(1, value.length - 1);
+                }
                 if (key) paramsList[key] = value;
             }
         });
         return paramsList;
     }
 
-    // --- Metadata Stripping ---
+    // --- Metadata Stripping (Single Image) ---
     function stripAndPrepareDownload() {
         if (!originalImageDataUrl || !currentFile) {
             showToast('No image loaded to process.', 'error', 'error');
@@ -527,9 +730,9 @@
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 let outputType = currentFile.type;
                 if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) {
-                    outputType = 'image/png'; // Fallback to PNG for safety
+                    outputType = 'image/png'; 
                 }
-                const cleanedDataUrl = canvas.toDataURL(outputType, 0.95); // Use high quality
+                const cleanedDataUrl = canvas.toDataURL(outputType, 0.95); 
 
                 const baseName = currentFile.name.substring(0, currentFile.name.lastIndexOf('.')) || currentFile.name;
                 const extension = outputType.split('/')[1];
@@ -545,18 +748,268 @@
 
             } catch (error) {
                  console.error("Canvas drawing error:", error);
-                 showToast('Error processing image. It might be too large.', 'error', 'error');
-                 stripButton.disabled = false;
-                 stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`;
+                 showToast('Error processing image. It might be too large or corrupted.', 'error', 'error');
+                 stripButton.disabled = false; 
+                 stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`; 
             }
         };
         img.onerror = () => {
             showToast('Could not load image data for processing.', 'error', 'error');
-            stripButton.disabled = false;
-            stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`;
+            stripButton.disabled = false; 
+            stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`; 
         };
         img.src = originalImageDataUrl;
     }
+
+    // --- Tab Switching Logic ---
+    function initializeTabs() {
+        const tabs = [
+            { btn: singleImageTabBtn, content: singleImageTabContent, id: 'single', index: 0 },
+            { btn: bulkStripTabBtn, content: bulkStripTabContent, id: 'bulk', index: 1 }
+        ];
+        let currentActiveTabIndex = 0; 
+        let isTransitioning = false;
+        const transitionDuration = 400; // ms, should match CSS transform transition duration
+
+        // Initial setup
+        tabs.forEach(tab => {
+            if (tab.index === currentActiveTabIndex) {
+                tab.content.classList.remove('hidden', 'tab-content-left', 'tab-content-right');
+                tab.content.classList.add('tab-content-center');
+                tab.btn.classList.add('active');
+            } else {
+                // Position inactive tabs to the right by default, and hide them
+                tab.content.classList.remove('tab-content-center', 'tab-content-left');
+                tab.content.classList.add('tab-content-right', 'hidden');
+                tab.btn.classList.remove('active');
+            }
+        });
+
+        tabs.forEach(tab => {
+            tab.btn.addEventListener('click', () => {
+                if (isTransitioning || tab.index === currentActiveTabIndex) return;
+                isTransitioning = true;
+
+                const newTabIndex = tab.index;
+                const oldTab = tabs.find(t => t.index === currentActiveTabIndex);
+                const newTab = tab;
+
+                // Determine slide direction
+                const slideToLeft = newTabIndex > currentActiveTabIndex; // New tab comes from right, old goes left
+
+                // Animate out current active tab
+                if (oldTab) {
+                    oldTab.content.classList.remove('tab-content-center');
+                    oldTab.content.classList.add(slideToLeft ? 'tab-content-left' : 'tab-content-right');
+                    oldTab.btn.classList.remove('active');
+                }
+
+                // Prepare and animate in new tab
+                newTab.content.classList.remove('hidden'); 
+                // Set initial off-screen position for incoming tab
+                newTab.content.classList.remove('tab-content-center', slideToLeft ? 'tab-content-left' : 'tab-content-right');
+                newTab.content.classList.add(slideToLeft ? 'tab-content-right' : 'tab-content-left');
+                
+                void newTab.content.offsetWidth; // Force reflow
+
+                requestAnimationFrame(() => {
+                    newTab.content.classList.remove(slideToLeft ? 'tab-content-right' : 'tab-content-left');
+                    newTab.content.classList.add('tab-content-center');
+                });
+                newTab.btn.classList.add('active');
+                
+                setTimeout(() => {
+                    if (oldTab) {
+                        oldTab.content.classList.add('hidden');
+                        // Reset old tab's position for next time it might be shown (optional, but clean)
+                        oldTab.content.classList.remove('tab-content-left', 'tab-content-right');
+                        oldTab.content.classList.add('tab-content-right'); // Default to right
+                    }
+                    isTransitioning = false;
+                }, transitionDuration);
+                
+                currentActiveTabIndex = newTabIndex;
+            });
+        });
+    }
+
+
+    // --- Bulk Processing Logic ---
+    function resetBulkUI() {
+        bulkFilesData = [];
+        nextBulkFileId = 0;
+        bulkFileInput.value = '';
+        renderBulkImageList();
+        stripAllBulkButton.disabled = true;
+        downloadAllCleanedBulkButton.disabled = true;
+        stripAllBulkButton.innerHTML = `<span class="material-symbols-outlined">auto_fix_high</span>Strip All Metadata`;
+    }
+
+    function addFilesToBulkQueue(files) {
+        bulkPlaceholder.classList.add('hidden');
+        bulkImageListHeader.classList.remove('hidden');
+
+        for (const file of files) {
+            if (!file.type.startsWith('image/')) {
+                showToast(`Skipping non-image file: ${file.name}`, 'warning', 'warning');
+                continue;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                bulkFilesData.push({
+                    id: nextBulkFileId++,
+                    file: file,
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    status: 'Pending', 
+                    originalSrc: e.target.result,
+                    cleanedSrc: null,
+                    error: null
+                });
+                renderBulkImageList();
+                stripAllBulkButton.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function renderBulkImageList() {
+        bulkImageList.innerHTML = '';
+        if (bulkFilesData.length === 0) {
+            bulkPlaceholder.classList.remove('hidden');
+            bulkImageListHeader.classList.add('hidden');
+            stripAllBulkButton.disabled = true;
+            downloadAllCleanedBulkButton.disabled = true;
+            return;
+        }
+
+        bulkFilesData.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'bulk-image-item grid grid-cols-[60px_1fr_100px_120px_100px] gap-2 items-center p-2 border-b border-gray-100 hover:bg-gray-100 transition-colors duration-150';
+            div.dataset.fileId = item.id;
+
+            let statusColor = 'text-gray-500';
+            let statusIcon = 'hourglass_empty';
+            if (item.status === 'Stripping') { statusColor = 'text-blue-500'; statusIcon = 'progress_activity animate-spin'; }
+            else if (item.status === 'Stripped') { statusColor = 'text-green-600'; statusIcon = 'check_circle'; }
+            else if (item.status === 'Error') { statusColor = 'text-red-600'; statusIcon = 'error'; }
+
+            div.innerHTML = `
+                <img src="${item.originalSrc}" alt="${item.name}" class="w-10 h-10 object-cover rounded border border-gray-200">
+                <div class="filename text-sm text-gray-700 truncate" title="${item.name}">${item.name}</div>
+                <div class="filesize text-xs text-gray-500 text-center">${(item.size / 1024).toFixed(1)} KB</div>
+                <div class="status ${statusColor} text-xs font-medium flex items-center justify-center gap-1">
+                    <span class="material-symbols-outlined text-sm">${statusIcon}</span>
+                    ${item.status}
+                </div>
+                <div class="action text-center">
+                    ${item.status === 'Stripped' && item.cleanedSrc ? 
+                        `<a href="${item.cleanedSrc}" download="${item.name.substring(0, item.name.lastIndexOf('.')) || item.name}_cleaned.${item.type.split('/')[1]}" class="text-green-600 hover:text-green-700 text-xs font-semibold inline-flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">download</span>Download
+                         </a>` : 
+                         item.status === 'Error' ? `<span class="text-red-500 text-xs" title="${item.error}">Failed</span>` :
+                         `<span class="text-gray-400 text-xs">-</span>`
+                    }
+                </div>
+            `;
+            bulkImageList.appendChild(div);
+        });
+        
+        const anyStripped = bulkFilesData.some(f => f.status === 'Stripped');
+        downloadAllCleanedBulkButton.disabled = !anyStripped;
+    }
+
+    async function stripSingleBulkImage(fileData) {
+        fileData.status = 'Stripping';
+        fileData.error = null;
+        renderBulkImageList();
+
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+
+                try {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    let outputType = fileData.type;
+                    if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) {
+                        outputType = 'image/png';
+                    }
+                    fileData.cleanedSrc = canvas.toDataURL(outputType, 0.95);
+                    fileData.status = 'Stripped';
+                } catch (e) {
+                    console.error(`Error stripping ${fileData.name}:`, e);
+                    fileData.status = 'Error';
+                    fileData.error = e.message || 'Canvas processing failed.';
+                }
+                renderBulkImageList();
+                resolve();
+            };
+            img.onerror = () => {
+                fileData.status = 'Error';
+                fileData.error = 'Could not load image data.';
+                renderBulkImageList();
+                resolve();
+            };
+            img.src = fileData.originalSrc;
+        });
+    }
+
+    async function handleStripAllBulk() {
+        if (bulkFilesData.length === 0 || bulkFilesData.every(f => f.status !== 'Pending')) {
+            showToast('No pending images to strip.', 'info', 'info');
+            return;
+        }
+        stripAllBulkButton.disabled = true;
+        stripAllBulkButton.innerHTML = `<span class="material-symbols-outlined animate-spin">progress_activity</span>Stripping...`;
+
+        for (const fileDataItem of bulkFilesData) {
+            if (fileDataItem.status === 'Pending') {
+                await stripSingleBulkImage(fileDataItem);
+            }
+        }
+        
+        stripAllBulkButton.innerHTML = `<span class="material-symbols-outlined">auto_fix_high</span>Strip All Metadata`;
+        const hasPending = bulkFilesData.some(f => f.status === 'Pending' || f.status === 'Error');
+        stripAllBulkButton.disabled = !hasPending && bulkFilesData.length > 0;
+
+
+        const successCount = bulkFilesData.filter(f => f.status === 'Stripped').length;
+        const errorCount = bulkFilesData.filter(f => f.status === 'Error').length;
+        if (successCount > 0) showToast(`${successCount} image(s) stripped successfully.`, 'success', 'success');
+        if (errorCount > 0) showToast(`${errorCount} image(s) failed to strip.`, 'error', 'error');
+        if (successCount === 0 && errorCount === 0 && bulkFilesData.length > 0) showToast('No images were processed.', 'info', 'info');
+    }
+    
+    function handleDownloadAllCleanedBulk() {
+        const cleanedFiles = bulkFilesData.filter(f => f.status === 'Stripped' && f.cleanedSrc);
+        if (cleanedFiles.length === 0) {
+            showToast('No cleaned images available for download.', 'info', 'info');
+            return;
+        }
+
+        cleanedFiles.forEach((fileData, index) => {
+            setTimeout(() => { 
+                const a = document.createElement('a');
+                a.href = fileData.cleanedSrc;
+                a.download = `${fileData.name.substring(0, fileData.name.lastIndexOf('.')) || fileData.name}_cleaned.${fileData.type.split('/')[1]}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }, index * 300);
+        });
+        showToast(`Downloading ${cleanedFiles.length} cleaned image(s)...`, 'download', 'info');
+    }
+
+    function handleClearBulkQueue() {
+        resetBulkUI();
+        showToast('Image queue cleared.', 'delete_sweep', 'info');
+    }
+
 
     // --- Event Listeners ---
     fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) processFile(e.target.files[0]); });
@@ -564,18 +1017,36 @@
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
     dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
     dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) processFile(e.dataTransfer.files[0]); });
+    
     document.addEventListener('paste', (e) => {
-        const file = e.clipboardData?.files[0];
-        if (file && file.type.startsWith('image/')) {
-            showToast('Pasted image!', 'add_photo_alternate', 'info');
-            processFile(file);
+        // Check if single image tab is currently the active one by checking its class
+        if (singleImageTabContent.classList.contains('tab-content-center')) { 
+            const file = e.clipboardData?.files[0];
+            if (file && file.type.startsWith('image/')) {
+                showToast('Pasted image!', 'add_photo_alternate', 'info');
+                processFile(file);
+            }
         }
     });
     stripButton.addEventListener('click', stripAndPrepareDownload);
     resetButton.addEventListener('click', resetUI);
 
+    // Bulk Tab Event Listeners
+    bulkFileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) addFilesToBulkQueue(e.target.files); });
+    bulkDropZone.addEventListener('click', () => bulkFileInput.click());
+    bulkDropZone.addEventListener('dragover', (e) => { e.preventDefault(); bulkDropZone.classList.add('dragover'); });
+    bulkDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); bulkDropZone.classList.remove('dragover'); });
+    bulkDropZone.addEventListener('drop', (e) => { e.preventDefault(); bulkDropZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) addFilesToBulkQueue(e.dataTransfer.files); });
+    
+    stripAllBulkButton.addEventListener('click', handleStripAllBulk);
+    downloadAllCleanedBulkButton.addEventListener('click', handleDownloadAllCleanedBulk);
+    clearBulkQueueButton.addEventListener('click', handleClearBulkQueue);
+
+
     // --- Initial State ---
     resetUI();
+    initializeTabs(); 
+    resetBulkUI(); 
 
   </script>
 </body>
