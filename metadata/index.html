@@ -93,41 +93,23 @@
             font-weight: 600;
         }
         
-        #tabViewport {
-            position: relative;
-            overflow: hidden; /* Crucial for sliding effect */
-            flex-grow: 1; /* Takes available space */
-            display: flex; /* Ensures it has a layout context */
-        }
-
         .tab-content {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-out;
-            will-change: transform, opacity;
-            display: flex; /* For internal layout of tab content */
-            flex-direction: column; /* For internal layout */
-            overflow-y: auto; /* Allows individual tab content to scroll */
-            /* background-color: white; Ensure tabs have a background if needed for overlap */
+            /* Base styles for tab content structure are applied by Tailwind (flex, flex-col, etc.) */
+            /* Transition properties for smooth animation */
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: opacity, transform; /* Hint for browser performance */
         }
 
-        .tab-content-center { /* Active tab, in view */
-            transform: translateX(0%);
+        /* State for a tab that is about to be shown or has just been hidden (animating out to this state) */
+        .tab-content-prepared {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        /* State for an active, fully visible tab (animating in to this state) */
+        .tab-content-active {
             opacity: 1;
-            z-index: 10;
-        }
-        .tab-content-left { /* Tab positioned off-screen to the left */
-            transform: translateX(-100%);
-            opacity: 0;
-            z-index: 1;
-        }
-        .tab-content-right { /* Tab positioned off-screen to the right */
-            transform: translateX(100%);
-            opacity: 0;
-            z-index: 1;
+            transform: translateY(0px);
         }
         /* Tailwind's .hidden class (display: none !important) is used to remove from layout when not active/transitioning */
 
@@ -159,7 +141,7 @@
 
     <!-- Tab Navigation -->
     <div class="tabs-container mb-6 flex border-b border-gray-200 flex-shrink-0">
-        <button id="singleImageTabBtn" class="tab-btn"> 
+        <button id="singleImageTabBtn" class="tab-btn"> <!-- Initial active state set by JS -->
             <span class="material-symbols-outlined text-xl">image_search</span>Single Image Inspector
         </button>
         <button id="bulkStripTabBtn" class="tab-btn">
@@ -167,12 +149,14 @@
         </button>
     </div>
 
-    <!-- Tab Content Area / Viewport -->
-    <div id="tabViewport" class="flex-grow"> 
+    <!-- Tab Content Area -->
+    <!-- The parent div for tab content panels. It handles overall flex growth and overflow. -->
+    <div class="flex-grow overflow-hidden flex flex-col">
 
         <!-- Single Image Inspector Tab Content -->
-        <div id="singleImageTabContent" class="tab-content"> 
-            <div class="content-area flex flex-col lg:flex-row gap-8 flex-grow overflow-hidden p-1"> <!-- Added p-1 to prevent scrollbar overlap issues sometimes -->
+        <!-- `tab-content` class is essential. `hidden`, `tab-content-prepared`, `tab-content-active` are managed by JS -->
+        <div id="singleImageTabContent" class="tab-content flex flex-col flex-grow overflow-hidden"> <!-- Added flex flex-col flex-grow overflow-hidden here -->
+            <div class="content-area flex flex-col lg:flex-row gap-8 flex-grow overflow-hidden">
                 <!-- Left Column: Upload, Preview, and Actions -->
                 <div class="left-column lg:w-2/5 flex flex-col gap-6 overflow-hidden">
                     <div id="dropZone" class="drop-zone-base border-2 border-dashed border-gray-300 rounded-xl p-6 sm:py-8 flex flex-col items-center justify-center text-center text-gray-600 cursor-pointer hover:border-red-500 hover:bg-red-50 hover:text-red-700 flex-shrink-0 group">
@@ -227,8 +211,8 @@
         </div>
 
         <!-- Bulk Metadata Stripper Tab Content -->
-        <div id="bulkStripTabContent" class="tab-content"> 
-            <div class="flex flex-col gap-6 flex-grow overflow-hidden p-1"> <!-- Added p-1 -->
+        <div id="bulkStripTabContent" class="tab-content flex flex-col flex-grow overflow-hidden"> <!-- Added flex flex-col flex-grow overflow-hidden here -->
+            <div class="flex flex-col gap-6 flex-grow overflow-hidden"> <!-- This inner div now handles the specific layout of bulk tab -->
                 <div id="bulkDropZone" class="drop-zone-base border-2 border-dashed border-gray-300 rounded-xl p-6 sm:py-8 flex flex-col items-center justify-center text-center text-gray-600 cursor-pointer hover:border-red-500 hover:bg-red-50 hover:text-red-700 flex-shrink-0 group">
                     <span class="material-symbols-outlined text-5xl mb-3 text-gray-400 group-hover:text-red-500">upload_file</span>
                     <span class="font-semibold text-lg text-gray-700 group-hover:text-red-700">Drop Multiple Images Here</span>
@@ -306,7 +290,6 @@
     const bulkStripTabBtn = document.getElementById('bulkStripTabBtn');
     const singleImageTabContent = document.getElementById('singleImageTabContent');
     const bulkStripTabContent = document.getElementById('bulkStripTabContent');
-    const tabViewport = document.getElementById('tabViewport'); // Viewport for sliding tabs
 
     // Bulk Tab Elements
     const bulkDropZone = document.getElementById('bulkDropZone');
@@ -763,72 +746,71 @@
 
     // --- Tab Switching Logic ---
     function initializeTabs() {
-        const tabs = [
-            { btn: singleImageTabBtn, content: singleImageTabContent, id: 'single', index: 0 },
-            { btn: bulkStripTabBtn, content: bulkStripTabContent, id: 'bulk', index: 1 }
+        const tabButtons = [
+            { btn: singleImageTabBtn, content: singleImageTabContent, id: 'single' },
+            { btn: bulkStripTabBtn, content: bulkStripTabContent, id: 'bulk' }
         ];
-        let currentActiveTabIndex = 0; 
+        let currentActiveTabId = 'single'; // Initial active tab
         let isTransitioning = false;
-        const transitionDuration = 400; // ms, should match CSS transform transition duration
+        const transitionDuration = 300; // ms, should match CSS transition duration
 
         // Initial setup
-        tabs.forEach(tab => {
-            if (tab.index === currentActiveTabIndex) {
-                tab.content.classList.remove('hidden', 'tab-content-left', 'tab-content-right');
-                tab.content.classList.add('tab-content-center');
+        tabButtons.forEach(tab => {
+            // Ensure base structural classes are on the tab content elements
+            // These define how the content *within* the tab panel behaves (flex, scroll, etc.)
+            // The .tab-content class itself is for the transition animation.
+            // Example: tab.content.classList.add('flex', 'flex-col', 'flex-grow', 'overflow-hidden');
+            // This is already handled by Tailwind classes directly in the HTML for each tab content.
+
+            if (tab.id === currentActiveTabId) {
+                tab.content.classList.remove('hidden', 'tab-content-prepared');
+                tab.content.classList.add('tab-content-active');
                 tab.btn.classList.add('active');
             } else {
-                // Position inactive tabs to the right by default, and hide them
-                tab.content.classList.remove('tab-content-center', 'tab-content-left');
-                tab.content.classList.add('tab-content-right', 'hidden');
+                tab.content.classList.add('hidden', 'tab-content-prepared');
+                tab.content.classList.remove('tab-content-active');
                 tab.btn.classList.remove('active');
             }
         });
 
-        tabs.forEach(tab => {
+        tabButtons.forEach(tab => {
             tab.btn.addEventListener('click', () => {
-                if (isTransitioning || tab.index === currentActiveTabIndex) return;
+                if (isTransitioning || tab.id === currentActiveTabId) return;
                 isTransitioning = true;
 
-                const newTabIndex = tab.index;
-                const oldTab = tabs.find(t => t.index === currentActiveTabIndex);
                 const newTab = tab;
-
-                // Determine slide direction
-                const slideToLeft = newTabIndex > currentActiveTabIndex; // New tab comes from right, old goes left
+                const oldTab = tabButtons.find(t => t.id === currentActiveTabId);
 
                 // Animate out current active tab
                 if (oldTab) {
-                    oldTab.content.classList.remove('tab-content-center');
-                    oldTab.content.classList.add(slideToLeft ? 'tab-content-left' : 'tab-content-right');
+                    oldTab.content.classList.remove('tab-content-active');
+                    oldTab.content.classList.add('tab-content-prepared'); // This triggers its transition out
                     oldTab.btn.classList.remove('active');
                 }
 
                 // Prepare and animate in new tab
-                newTab.content.classList.remove('hidden'); 
-                // Set initial off-screen position for incoming tab
-                newTab.content.classList.remove('tab-content-center', slideToLeft ? 'tab-content-left' : 'tab-content-right');
-                newTab.content.classList.add(slideToLeft ? 'tab-content-right' : 'tab-content-left');
+                newTab.content.classList.remove('hidden'); // Make it part of layout
+                // Ensure it's in the prepared state if it wasn't already (e.g. if JS was interrupted)
+                newTab.content.classList.add('tab-content-prepared'); 
                 
-                void newTab.content.offsetWidth; // Force reflow
+                // Force reflow to ensure 'prepared' state is rendered before animating to 'active'
+                void newTab.content.offsetWidth; 
 
                 requestAnimationFrame(() => {
-                    newTab.content.classList.remove(slideToLeft ? 'tab-content-right' : 'tab-content-left');
-                    newTab.content.classList.add('tab-content-center');
+                    newTab.content.classList.remove('tab-content-prepared');
+                    newTab.content.classList.add('tab-content-active'); // This triggers its transition in
                 });
                 newTab.btn.classList.add('active');
                 
+                // After transition duration, add 'hidden' to the old tab
                 setTimeout(() => {
                     if (oldTab) {
                         oldTab.content.classList.add('hidden');
-                        // Reset old tab's position for next time it might be shown (optional, but clean)
-                        oldTab.content.classList.remove('tab-content-left', 'tab-content-right');
-                        oldTab.content.classList.add('tab-content-right'); // Default to right
                     }
                     isTransitioning = false;
                 }, transitionDuration);
                 
-                currentActiveTabIndex = newTabIndex;
+                currentActiveTabId = newTab.id;
             });
         });
     }
@@ -1019,8 +1001,7 @@
     dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) processFile(e.dataTransfer.files[0]); });
     
     document.addEventListener('paste', (e) => {
-        // Check if single image tab is currently the active one by checking its class
-        if (singleImageTabContent.classList.contains('tab-content-center')) { 
+        if (singleImageTabContent.classList.contains('tab-content-active')) { // Check if single image tab is active
             const file = e.clipboardData?.files[0];
             if (file && file.type.startsWith('image/')) {
                 showToast('Pasted image!', 'add_photo_alternate', 'info');
@@ -1045,7 +1026,7 @@
 
     // --- Initial State ---
     resetUI();
-    initializeTabs(); 
+    initializeTabs(); // This will set up initial tab states and transitions
     resetBulkUI(); 
 
   </script>
