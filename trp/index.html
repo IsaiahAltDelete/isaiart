@@ -1,0 +1,410 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transfer Rate</title>
+
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Poppins & Roboto Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Symbols -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+    <style>
+        :root {
+            --accent-color: #F59E0B;
+            /* Dark Theme (Default) */
+            --background-color: #111111;
+            --text-color: #E5E7EB;
+            --subtle-text-color: #6B7280;
+            --card-bg-color: rgba(31, 41, 55, 0.65);
+            --panel-shadow-color: rgba(0,0,0,0.3);
+            --raised-element-shadow: rgba(0,0,0,0.2);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --hover-bg-color: #374151;
+            --list-item-bg: rgba(40, 50, 65, 0.8);
+            --rate-green: #22C55E;
+            --rate-red: #EF4444;
+            --danger-color: #DC2626;
+            --danger-hover-color: #B91C1C;
+        }
+
+        html.light-mode {
+            /* Light Theme */
+            --background-color: #F0F2F5;
+            --text-color: #1F2937;
+            --subtle-text-color: #6B7280;
+            --card-bg-color: rgba(255, 255, 255, 0.7);
+            --panel-shadow-color: rgba(0,0,0,0.1);
+            --raised-element-shadow: rgba(0,0,0,0.08);
+            --border-color: rgba(0, 0, 0, 0.1);
+            --hover-bg-color: #E5E7EB;
+            --list-item-bg: #FFFFFF;
+            --rate-green: #16A34A;
+            --rate-red: #DC2626;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
+        }
+        
+        #scene {
+            perspective: 1500px;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #trackerPanel {
+            width: 100%;
+            max-width: 600px;
+            padding: 2rem;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0); 
+            cursor: grab;
+            user-select: none;
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px var(--panel-shadow-color);
+            background: var(--card-bg-color);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+        }
+        #trackerPanel:active {
+            cursor: grabbing;
+        }
+
+        .raised-element {
+            transform: translateZ(30px);
+            box-shadow: 0 8px 20px var(--raised-element-shadow);
+            border-radius: 0.75rem;
+        }
+        .stat-card-raised {
+             transform: translateZ(20px);
+             box-shadow: 0 6px 15px var(--raised-element-shadow);
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #d98c0a; }
+
+        .glass-input {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+        html.light-mode .glass-input {
+            background: rgba(0,0,0,0.05);
+        }
+
+        .focus-accent:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--background-color), 0 0 0 4px var(--accent-color);
+        }
+
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; transition: color 0.3s ease; }
+        
+        #keptRate { transition: color 0.5s ease-in-out, transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+        #totalCalls, #totalTransfers { transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+
+        .bounce-stat { animation: stat-bounce-anim 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+        @keyframes stat-bounce-anim {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.25); }
+        }
+
+        .list-item-base { transition: opacity 0.3s ease, transform 0.3s ease; }
+        .list-item-enter-from { opacity: 0; transform: translateY(20px) scale(0.9); }
+        .list-item-enter-active { animation: item-enter-bounce-anim 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+        @keyframes item-enter-bounce-anim {
+            0%   { opacity: 0; transform: translateY(30px) scale(0.8); }
+            60%  { opacity: 1; transform: translateY(-10px) scale(1.1); }
+            80%  { transform: translateY(5px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .list-item-exit-active { opacity: 0; transform: translateX(30px) scale(0.9); }
+
+        .custom-hover:hover { background-color: var(--hover-bg-color); }
+        .list-item-bg { background-color: var(--list-item-bg); }
+        .subtle-text { color: var(--subtle-text-color); }
+        .accent-text { color: var(--accent-color); }
+        .accent-bg { background-color: var(--accent-color); }
+        .accent-bg:hover { background-color: #d98c0a; }
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.7); }
+        .modal-border-accent { border-color: var(--accent-color); }
+        .modal-border-danger { border-color: var(--danger-color); }
+        .danger-bg { background-color: var(--danger-color); }
+        .danger-bg:hover { background-color: var(--danger-hover-color); }
+
+        .fixed-modal { z-index: 50; }
+        #themeToggle { z-index: 60; }
+    </style>
+</head>
+<body>
+    <button id="themeToggle" class="fixed top-6 right-6 p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Toggle theme">
+        <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
+        <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
+    </button>
+
+    <div id="scene">
+        <main id="trackerPanel" class="space-y-6">
+            <!-- Stats Section -->
+            <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
+                    <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Total Calls</h2>
+                    <div class="flex items-center gap-3 mt-2">
+                        <button id="decrementCalls" aria-label="Decrement total calls" class="p-2 rounded-full custom-hover transition-colors"><span class="material-symbols-outlined text-lg">remove</span></button>
+                        <p id="totalCalls" class="text-4xl font-bold font-['Roboto_Mono']">0</p>
+                        <button id="incrementCalls" aria-label="Increment total calls" class="p-2 rounded-full custom-hover transition-colors"><span class="material-symbols-outlined text-lg">add</span></button>
+                    </div>
+                </div>
+                <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
+                    <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Transfers</h2>
+                    <p id="totalTransfers" class="text-4xl font-bold font-['Roboto_Mono'] mt-2">0</p>
+                </div>
+                <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
+                    <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Kept Rate</h2>
+                    <p id="keptRate" class="text-4xl font-bold font-['Roboto_Mono'] mt-2 subtle-text">0.0%</p>
+                </div>
+            </section>
+
+            <!-- Transfer Management Section -->
+            <section class="space-y-4 raised-element glass-effect p-4">
+                <div class="flex gap-3">
+                    <div class="relative flex-grow">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 subtle-text">edit_note</span>
+                        <input type="text" id="transferNoteInput" placeholder="Enter reason for transfer..." class="w-full pl-10 pr-4 py-3 glass-input rounded-lg focus-accent transition-shadow text-inherit">
+                    </div>
+                    <button id="addTransferBtn" class="accent-bg text-black font-bold px-4 py-3 rounded-lg transition-colors flex items-center gap-2 shadow-md hover:shadow-lg">
+                        <span class="material-symbols-outlined">add_circle</span>
+                        <span class="hidden sm:inline">Add</span>
+                    </button>
+                </div>
+                <div id="transferListContainer" class="space-y-3 max-h-[30vh] overflow-y-auto p-1">
+                    <p id="emptyState" class="text-center subtle-text py-8">No transfers logged yet.</p>
+                </div>
+            </section>
+
+            <!-- Footer Controls -->
+            <footer class="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm pt-2">
+                <button id="resetDataBtn" class="flex items-center gap-2 subtle-text hover:text-red-500 transition-colors py-2 px-3 rounded-lg custom-hover">
+                    <span class="material-symbols-outlined text-base">restart_alt</span>
+                    Reset Data
+                </button>
+                <div id="lastUpdatedEl" class="flex items-center gap-2 subtle-text">
+                    <span class="material-symbols-outlined text-base">history</span>
+                    <span></span>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Edit Modal (Stays Fixed) -->
+    <div id="editModal" class="fixed-modal fixed inset-0 modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="glass-effect rounded-xl p-6 w-full max-w-md space-y-4 border-2 modal-border-accent shadow-2xl">
+            <h3 class="text-lg font-semibold flex items-center gap-2"><span class="material-symbols-outlined accent-text">edit</span> Edit Transfer Note</h3>
+            <input type="text" id="editNoteInput" class="w-full p-3 glass-input rounded-lg focus-accent text-inherit">
+            <div class="flex justify-end gap-3">
+                <button id="cancelEditBtn" class="px-4 py-2 rounded-lg custom-hover transition-colors">Cancel</button>
+                <button id="saveEditBtn" class="accent-bg text-black font-bold px-4 py-2 rounded-lg transition-colors">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Confirmation Modal (Stays Fixed) -->
+    <div id="resetConfirmModal" class="fixed-modal fixed inset-0 modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="glass-effect rounded-xl p-6 w-full max-w-md space-y-4 border-2 modal-border-danger shadow-2xl">
+            <h3 class="text-lg font-semibold flex items-center gap-2 text-red-500"><span class="material-symbols-outlined">warning</span> Reset Confirmation</h3>
+            <p class="subtle-text">Are you sure? All data will be permanently deleted. This action cannot be undone.</p>
+            <div class="flex justify-end gap-3">
+                <button id="cancelResetBtn" class="px-4 py-2 rounded-lg custom-hover transition-colors">Cancel</button>
+                <button id="confirmResetBtn" class="danger-bg text-white font-bold px-4 py-2 rounded-lg transition-colors">Yes, Reset Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 3D Panel Interaction ---
+        const panel = document.getElementById('trackerPanel');
+        const transferList = document.getElementById('transferListContainer');
+        let isDragging = false;
+        let previousMouseX, previousMouseY;
+        let currentRotationX = 0;
+        let currentRotationY = 0;
+        const SENSITIVITY = 0.25;
+        const MAX_ROTATION_X = 30;
+        const DRAG_TRANSITION = 'transform 0.05s linear';
+        const SNAP_TRANSITION = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; 
+
+        panel.addEventListener('mousedown', (e) => {
+            const targetElement = e.target;
+            if (targetElement.closest('button, input, a')) {
+                return;
+            }
+            if (transferList.contains(targetElement)) {
+                const listRect = transferList.getBoundingClientRect();
+                const scrollbarWidth = transferList.offsetWidth - transferList.clientWidth;
+                if (e.clientX >= listRect.right - scrollbarWidth && e.clientX <= listRect.right &&
+                    e.clientY >= listRect.top && e.clientY <= listRect.bottom) { // More precise scrollbar check
+                    return; 
+                }
+            }
+
+            isDragging = true;
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+            panel.style.transition = DRAG_TRANSITION;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const dx = e.clientX - previousMouseX;
+            const dy = e.clientY - previousMouseY;
+
+            currentRotationY += dx * SENSITIVITY;
+            currentRotationX -= dy * SENSITIVITY;
+
+            currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX));
+
+            panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
+
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                panel.style.transition = SNAP_TRANSITION; 
+                panel.style.transform = `rotateX(0deg) rotateY(0deg)`; 
+
+                currentRotationX = 0;
+                currentRotationY = 0;
+            }
+        });
+        panel.ondragstart = () => false;
+
+
+        // --- THEME MANAGEMENT ---
+        const themeToggle = document.getElementById('themeToggle');
+        const lightIcon = document.getElementById('theme-icon-light');
+        const darkIcon = document.getElementById('theme-icon-dark');
+        const htmlEl = document.documentElement;
+
+        const applyTheme = (theme) => {
+            if (theme === 'light') {
+                htmlEl.classList.add('light-mode');
+                lightIcon.style.display = 'none';
+                darkIcon.style.display = 'inline-block';
+            } else {
+                htmlEl.classList.remove('light-mode');
+                lightIcon.style.display = 'inline-block';
+                darkIcon.style.display = 'none';
+            }
+        };
+
+        themeToggle.addEventListener('click', () => {
+            const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+            render();
+        });
+
+        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        applyTheme(savedTheme);
+
+        // --- APPLICATION LOGIC ---
+        const totalCallsEl = document.getElementById('totalCalls');
+        const totalTransfersEl = document.getElementById('totalTransfers');
+        const keptRateEl = document.getElementById('keptRate');
+        const incrementCallsBtn = document.getElementById('incrementCalls');
+        const decrementCallsBtn = document.getElementById('decrementCalls');
+        const transferNoteInput = document.getElementById('transferNoteInput');
+        const addTransferBtn = document.getElementById('addTransferBtn');
+        const transferListContainer = document.getElementById('transferListContainer');
+        const emptyStateEl = document.getElementById('emptyState');
+        const lastUpdatedEl = document.getElementById('lastUpdatedEl').querySelector('span:last-child');
+        
+        const editModal = document.getElementById('editModal');
+        const editNoteInput = document.getElementById('editNoteInput');
+        const saveEditBtn = document.getElementById('saveEditBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        
+        const resetDataBtn = document.getElementById('resetDataBtn');
+        const resetConfirmModal = document.getElementById('resetConfirmModal');
+        const confirmResetBtn = document.getElementById('confirmResetBtn');
+        const cancelResetBtn = document.getElementById('cancelResetBtn');
+
+        const getInitialState = () => ({
+            totalCalls: 0, transfers: [], editingTransferId: null, lastUpdated: null,
+        });
+        let state = getInitialState();
+
+        function loadState() {
+            const savedState = localStorage.getItem('transferTrackerState');
+            if (savedState) state = { ...getInitialState(), ...JSON.parse(savedState) };
+        }
+
+        function saveState() {
+            state.lastUpdated = new Date().toISOString();
+            localStorage.setItem('transferTrackerState', JSON.stringify(state));
+        }
+        
+        function applyBounce(element) {
+            if (!element) return;
+            element.classList.add('bounce-stat');
+            element.addEventListener('animationend', () => {
+                element.classList.remove('bounce-stat');
+            }, { once: true });
+        }
+
+        function render() {
+            const oldTotalCalls = parseInt(totalCallsEl.textContent);
+            const oldTotalTransfers = parseInt(totalTransfersEl.textContent);
+
+            totalCallsEl.textContent = state.totalCalls;
+            totalTransfersEl.textContent = state.transfers.length;
+
+            if (state.totalCalls !== oldTotalCalls) applyBounce(totalCallsEl);
+            if (state.transfers.length !== oldTotalTransfers) applyBounce(totalTransfersEl);
+
+            const rateGreen = getComputedStyle(htmlEl).getPropertyValue('--rate-green').trim();
+            const rateRed = getComputedStyle(htmlEl).getPropertyValue('--rate-red').trim();
+            const accentColor = getComputedStyle(htmlEl).getPropertyValue('--accent-color').trim();
+            const subtleTextColor = getComputedStyle(htmlEl).getPropertyValue('--subtle-text-color').trim();
+
+            if (state.totalCalls > 0) {
+                const keptCalls = state.totalCalls - state.transfers.length;
+                const rate = (keptCalls / state.totalCalls) * 100;
+                const rateToShow = Math.max(0, rate);
+                const oldRateText = keptRateEl.textContent;
+                // UPDATED: Display percentage with one decimal place
+                const newRateText = `${rateToShow.toFixed(1)}%`; 
+                
+                keptRateEl.textContent = newRateText;
+                if (newRateText !== oldRateText) applyBounce(keptRateEl);
+                
+                if (rateToShow >= 90) keptRateEl.style.color = rateGreen;
+                else if (rateToShow >= 75) keptRateEl.style.color = accentColor;
+                else 
