@@ -27,14 +27,93 @@
             --brand-black: #1a1a1a;
         }
 
+        /* --- Base Styles --- */
         body {
             font-family: 'Poppins', sans-serif;
             background-color: var(--brand-offwhite);
             color: var(--brand-maroon);
             overflow: hidden;
             height: 100vh;
+            width: 100vw;
         }
         
+        /* --- Lock Screen Styles --- */
+        #lock-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--brand-white);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        #passcode-container h2 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--brand-maroon);
+            margin-bottom: 0.5rem;
+        }
+        
+        #passcode-container p {
+            font-size: 0.9rem;
+            color: var(--brand-taupe);
+            margin-bottom: 2rem;
+        }
+
+        #passcode-dots {
+            display: flex;
+            justify-content: center; /* <-- FIX: This centers the dots */
+            gap: 1.25rem;
+        }
+
+        .dot {
+            width: 18px;
+            height: 18px;
+            background-color: #e6e0e1; /* offwhite */
+            border-radius: 50%;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .dot.filled {
+            background-color: var(--brand-maroon);
+            transform: scale(1.1);
+        }
+        
+        #passcode-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+            height: 0;
+        }
+
+        /* Animations */
+        @keyframes jump {
+            0%, 100% { transform: translateY(0) scale(1.1); }
+            50% { transform: translateY(-10px) scale(1.2); }
+        }
+        .dot.jump {
+            animation: jump 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+            20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+        #passcode-container.shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+
+        /* --- App Styles --- */
         #canvas {
             cursor: grab;
             max-width: 100%;
@@ -77,14 +156,33 @@
         .color-btn { width: 1.75rem; height: 1.75rem; }
 
         input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
             height: 4px;
             background: var(--brand-taupe);
             outline: none;
             opacity: 0.7;
             transition: opacity 0.2s;
             cursor: pointer;
+            border-radius: 2px;
         }
         input[type="range"]:hover { opacity: 1; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--brand-maroon);
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--brand-maroon);
+            cursor: pointer;
+            border-radius: 50%;
+        }
     </style>
 
     <script>
@@ -104,205 +202,225 @@
         }
     </script>
 </head>
-<body class="flex flex-col h-screen bg-brand-offwhite">
-    <!-- Header -->
-    <header class="bg-white shadow-sm px-6 py-3 flex items-center justify-between z-10">
-        <div>
-            <h1 class="font-['Playfair_Display'] text-2xl font-bold text-brand-maroon">The Holiday Cottage</h1>
-            <p class="text-sm text-brand-maroon/70">Canvas Post Creator</p>
+<body>
+
+    <!-- Lock Screen -->
+    <div id="lock-screen">
+        <div id="passcode-container" class="text-center">
+            <h2>Welcome Back</h2>
+            <p>Enter access code to continue</p>
+            <div id="passcode-dots">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
         </div>
-        <div class="flex gap-2">
-            <button id="download-png" class="bg-brand-raspberry text-white font-semibold py-2 px-4 rounded-lg hover:bg-brand-raspberry/90 transition-all text-sm flex items-center gap-2">
-                <span class="material-symbols-outlined text-base">image</span>PNG
-            </button>
-            <button id="download-jpg" class="bg-brand-maroon text-white font-semibold py-2 px-4 rounded-lg hover:bg-brand-maroon/90 transition-all text-sm flex items-center gap-2">
-                <span class="material-symbols-outlined text-base">image</span>JPG
-            </button>
+        <input type="password" id="passcode-input" maxlength="4" autofocus autocomplete="off">
+    </div>
+
+    <!-- Main Application Wrapper -->
+    <div id="app-wrapper" class="hidden flex-col h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm px-6 py-3 flex items-center justify-between z-10 flex-shrink-0">
+            <div>
+                <h1 class="font-['Playfair_Display'] text-2xl font-bold text-brand-maroon">The Holiday Cottage</h1>
+                <p class="text-sm text-brand-maroon/70">Canvas Post Creator</p>
+            </div>
+            <div class="flex gap-2">
+                <button id="download-png" class="bg-brand-raspberry text-white font-semibold py-2 px-4 rounded-lg hover:bg-brand-raspberry/90 transition-all text-sm flex items-center gap-2">
+                    <span class="material-symbols-outlined text-base">image</span>PNG
+                </button>
+                <button id="download-jpg" class="bg-brand-maroon text-white font-semibold py-2 px-4 rounded-lg hover:bg-brand-maroon/90 transition-all text-sm flex items-center gap-2">
+                    <span class="material-symbols-outlined text-base">image</span>JPG
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Left Sidebar -->
+            <aside class="w-80 bg-white shadow-lg overflow-y-auto flex-shrink-0">
+                <div class="p-4 space-y-3">
+                    <!-- Image Upload -->
+                    <div class="control-section">
+                        <h3><span class="material-symbols-outlined">image</span>Image</h3>
+                        <label for="image-upload" class="w-full bg-brand-maroon text-white font-medium py-2 px-3 rounded-lg flex items-center justify-center cursor-pointer hover:bg-brand-maroon/90 transition-all text-sm">
+                            <span class="material-symbols-outlined text-base mr-2">upload</span>Upload
+                        </label>
+                        <input type="file" id="image-upload" accept="image/*">
+                    </div>
+
+                    <!-- Canvas Size -->
+                    <div class="control-section">
+                        <h3><span class="material-symbols-outlined">aspect_ratio</span>Canvas Size</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button data-size="1080x1080" class="size-btn control-btn active border rounded-lg transition-all text-center">
+                                <span class="material-symbols-outlined block text-base">square</span>
+                                <span class="text-xs">Square</span>
+                            </button>
+                            <button data-size="1080x1350" class="size-btn control-btn border rounded-lg transition-all text-center">
+                                <span class="material-symbols-outlined block text-base">crop_portrait</span>
+                                <span class="text-xs">Portrait</span>
+                            </button>
+                            <button data-size="1920x1080" class="size-btn control-btn border rounded-lg transition-all text-center">
+                                <span class="material-symbols-outlined block text-base">crop_16_9</span>
+                                <span class="text-xs">Landscape</span>
+                            </button>
+                            <button data-size="1080x1920" class="size-btn control-btn border rounded-lg transition-all text-center">
+                                <span class="material-symbols-outlined block text-base">stay_current_portrait</span>
+                                <span class="text-xs">Story</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Layout -->
+                    <div class="control-section">
+                        <h3><span class="material-symbols-outlined">dashboard</span>Layout</h3>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button data-layout="bottom" class="layout-btn control-btn active border rounded-lg p-2 transition-all text-center">
+                                <div class="w-full h-8 bg-gray-200 rounded-sm relative mb-1"><div class="absolute bottom-0 left-0 w-full h-2 bg-brand-maroon/50"></div></div>
+                                <span class="text-xs">Bottom</span>
+                            </button>
+                            <button data-layout="top" class="layout-btn control-btn border rounded-lg p-2 transition-all text-center">
+                                <div class="w-full h-8 bg-gray-200 rounded-sm relative mb-1"><div class="absolute top-0 left-0 w-full h-2 bg-brand-maroon/50"></div></div>
+                                <span class="text-xs">Top</span>
+                            </button>
+                            <button data-layout="left" class="layout-btn control-btn border rounded-lg p-2 transition-all text-center">
+                                <div class="w-full h-8 bg-gray-200 rounded-sm relative mb-1"><div class="absolute left-0 top-0 w-2 h-full bg-brand-maroon/50"></div></div>
+                                <span class="text-xs">Left</span>
+                            </button>
+                            <button data-layout="right" class="layout-btn control-btn border rounded-lg p-2 transition-all text-center">
+                                <div class="w-full h-8 bg-gray-200 rounded-sm relative mb-1"><div class="absolute right-0 top-0 w-2 h-full bg-brand-maroon/50"></div></div>
+                                <span class="text-xs">Right</span>
+                            </button>
+                            <button data-layout="full" class="layout-btn control-btn border rounded-lg p-2 transition-all text-center">
+                                <div class="w-full h-8 bg-gray-200 rounded-sm mb-1"></div>
+                                <span class="text-xs">Full</span>
+                            </button>
+                            <button data-layout="padded" class="layout-btn control-btn border rounded-lg p-2 transition-all text-center">
+                                <div class="w-full h-8 bg-gray-200 rounded-sm p-1 mb-1"><div class="w-full h-full bg-white rounded-sm"></div></div>
+                                <span class="text-xs">Padded</span>
+                            </button>
+                        </div>
+                        <div id="bezel-controls" class="mt-3 space-y-1 transition-opacity">
+                            <label class="text-xs font-medium text-gray-600">Bezel Thickness</label>
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm text-gray-400">line_start</span>
+                                <input type="range" id="bezel-thickness" min="100" max="400" step="10" value="220" class="flex-1">
+                                <span class="material-symbols-outlined text-sm text-gray-400">line_end</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Colors -->
+                    <div class="control-section">
+                        <h3><span class="material-symbols-outlined">palette</span>Colors</h3>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="text-xs font-medium text-gray-600">Background</label>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    <button data-bg="#562e36" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-brand-raspberry" style="background-color: #562e36;"></button>
+                                    <button data-bg="#991933" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #991933;"></button>
+                                    <button data-bg="#ab9584" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #ab9584;"></button>
+                                    <button data-bg="#e6e0e1" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #e6e0e1;"></button>
+                                    <button data-bg="#a3b19c" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #a3b19c;"></button>
+                                    <button data-bg="#FFFFFF" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent border border-gray-300" style="background-color: #FFFFFF;"></button>
+                                    <button data-bg="#1a1a1a" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #1a1a1a;"></button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-600">Logo & Text</label>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    <button data-variant="white" data-color="#FFFFFF" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-brand-raspberry border border-gray-300" style="background-color: #FFFFFF;"></button>
+                                    <button data-variant="black" data-color="#1a1a1a" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #1a1a1a;"></button>
+                                    <button data-variant="original-red" data-color="#991933" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #991933;"></button>
+                                    <button data-variant="plum" data-color="#562e36" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #562e36;"></button>
+                                    <button data-variant="rose" data-color="#ab9584" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #ab9584;"></button>
+                                    <button data-variant="sage" data-color="#a3b19c" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #a3b19c;"></button>
+                                    <button data-variant="taupe" data-color="#e6e0e1" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #e6e0e1;"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Canvas Area -->
+            <main class="flex-1 flex items-center justify-center p-8 bg-brand-offwhite/50">
+                <div id="canvas-container" class="bg-white rounded-xl shadow-2xl overflow-hidden">
+                    <canvas id="canvas" width="1080" height="1080"></canvas>
+                </div>
+            </main>
+
+            <!-- Right Sidebar -->
+            <aside class="w-80 bg-white shadow-lg overflow-y-auto flex-shrink-0">
+                <div class="p-4 space-y-3">
+                    <!-- Logo & Text -->
+                    <div class="control-section">
+                        <h3><span class="material-symbols-outlined">text_fields</span>Logo & Text</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium">Show Logo</label>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="logo-toggle" class="sr-only peer" checked>
+                                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-brand-raspberry/30 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-raspberry"></div>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-600">Logo Alignment</label>
+                                <div class="grid grid-cols-3 gap-2 mt-1">
+                                    <button data-align="left" class="align-btn control-btn border rounded-lg transition-all"><span class="material-symbols-outlined">format_align_left</span></button>
+                                    <button data-align="center" class="align-btn control-btn active border rounded-lg transition-all"><span class="material-symbols-outlined">format_align_center</span></button>
+                                    <button data-align="right" class="align-btn control-btn border rounded-lg transition-all"><span class="material-symbols-outlined">format_align_right</span></button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-600">Logo Size</label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="material-symbols-outlined text-sm text-gray-400">text_decrease</span>
+                                    <input type="range" id="logo-size" min="0.2" max="2" step="0.05" value="1" class="flex-1">
+                                    <span class="material-symbols-outlined text-sm text-gray-400">text_increase</span>
+                                </div>
+                            </div>
+                            <div>
+                                <input type="text" id="custom-text" placeholder="Add a caption..." class="w-full bg-gray-50 p-2 rounded-lg text-sm border border-gray-200 focus:ring-brand-raspberry focus:border-brand-raspberry" maxlength="60">
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-600">Caption Size</label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="material-symbols-outlined text-sm text-gray-400">text_decrease</span>
+                                    <input type="range" id="caption-size" min="0.5" max="2" step="0.1" value="1" class="flex-1">
+                                    <span class="material-symbols-outlined text-sm text-gray-400">text_increase</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Image Controls -->
+                    <div id="image-controls" class="control-section hidden">
+                        <h3><span class="material-symbols-outlined">tune</span>Image Position</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-xs font-medium text-gray-600">Zoom</label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <button id="zoom-out" class="p-1 hover:bg-gray-100 rounded"><span class="material-symbols-outlined text-sm">zoom_out</span></button>
+                                    <input type="range" id="zoom-slider" min="0.1" max="3" step="0.05" value="1" class="flex-1">
+                                    <button id="zoom-in" class="p-1 hover:bg-gray-100 rounded"><span class="material-symbols-outlined text-sm">zoom_in</span></button>
+                                </div>
+                            </div>
+                            <button id="reset-image" class="w-full bg-gray-100 p-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition flex items-center justify-center">
+                                <span class="material-symbols-outlined text-base mr-1">restart_alt</span>Reset Position
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
         </div>
-    </header>
-
-    <!-- Main Content -->
-    <div class="flex-1 flex overflow-hidden">
-        <!-- Left Sidebar -->
-        <aside class="w-80 bg-white shadow-lg overflow-y-auto flex-shrink-0">
-            <div class="p-4 space-y-3">
-                <!-- Image Upload -->
-                <div class="control-section">
-                    <h3><span class="material-symbols-outlined">image</span>Image</h3>
-                    <label for="image-upload" class="w-full bg-brand-maroon text-white font-medium py-2 px-3 rounded-lg flex items-center justify-center cursor-pointer hover:bg-brand-maroon/90 transition-all text-sm">
-                        <span class="material-symbols-outlined text-base mr-2">upload</span>Upload
-                    </label>
-                    <input type="file" id="image-upload" accept="image/*">
-                </div>
-
-                <!-- Canvas Size -->
-                <div class="control-section">
-                    <h3><span class="material-symbols-outlined">aspect_ratio</span>Canvas Size</h3>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button data-size="1080x1080" class="size-btn control-btn active border rounded-lg transition-all text-center">
-                            <span class="material-symbols-outlined block text-base">square</span>
-                            <span class="text-xs">Square</span>
-                        </button>
-                        <button data-size="1080x1350" class="size-btn control-btn border rounded-lg transition-all text-center">
-                            <span class="material-symbols-outlined block text-base">crop_portrait</span>
-                            <span class="text-xs">Portrait</span>
-                        </button>
-                        <button data-size="1920x1080" class="size-btn control-btn border rounded-lg transition-all text-center">
-                            <span class="material-symbols-outlined block text-base">crop_16_9</span>
-                            <span class="text-xs">Landscape</span>
-                        </button>
-                        <button data-size="1080x1920" class="size-btn control-btn border rounded-lg transition-all text-center">
-                            <span class="material-symbols-outlined block text-base">stay_current_portrait</span>
-                            <span class="text-xs">Story</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Layout -->
-                <div class="control-section">
-                    <h3><span class="material-symbols-outlined">dashboard</span>Layout</h3>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button data-layout="bottom" class="layout-btn control-btn active border rounded-lg p-2 transition-all text-center">
-                            <div class="w-full h-8 bg-gray-200 rounded-sm relative mb-1"><div class="absolute bottom-0 left-0 w-full h-2 bg-brand-maroon/50"></div></div>
-                            <span class="text-xs">Bottom</span>
-                        </button>
-                        <button data-layout="top" class="layout-btn control-btn border rounded-lg p-2 transition-all text-center">
-                            <div class="w-full h-8 bg-gray-200 rounded-sm relative mb-1"><div class="absolute top-0 left-0 w-full h-2 bg-brand-maroon/50"></div></div>
-                            <span class="text-xs">Top</span>
-                        </button>
-                        <button data-layout="left" class="layout-btn control-btn border rounded-lg p-2 transition-all text-center">
-                            <div class="w-full h-8 bg-gray-200 rounded-sm relative mb-1"><div class="absolute left-0 top-0 w-2 h-full bg-brand-maroon/50"></div></div>
-                            <span class="text-xs">Left</span>
-                        </button>
-                        <button data-layout="right" class="layout-btn control-btn border rounded-lg p-2 transition-all text-center">
-                            <div class="w-full h-8 bg-gray-200 rounded-sm relative mb-1"><div class="absolute right-0 top-0 w-2 h-full bg-brand-maroon/50"></div></div>
-                            <span class="text-xs">Right</span>
-                        </button>
-                        <button data-layout="full" class="layout-btn control-btn border rounded-lg p-2 transition-all text-center">
-                            <div class="w-full h-8 bg-gray-200 rounded-sm mb-1"></div>
-                            <span class="text-xs">Full</span>
-                        </button>
-                        <button data-layout="padded" class="layout-btn control-btn border rounded-lg p-2 transition-all text-center">
-                            <div class="w-full h-8 bg-gray-200 rounded-sm p-1 mb-1"><div class="w-full h-full bg-white rounded-sm"></div></div>
-                            <span class="text-xs">Padded</span>
-                        </button>
-                    </div>
-                    <div id="bezel-controls" class="mt-3 space-y-1 transition-opacity">
-                        <label class="text-xs font-medium text-gray-600">Bezel Thickness</label>
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-sm text-gray-400">line_start</span>
-                            <input type="range" id="bezel-thickness" min="100" max="400" step="10" value="220" class="flex-1">
-                            <span class="material-symbols-outlined text-sm text-gray-400">line_end</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Colors -->
-                <div class="control-section">
-                    <h3><span class="material-symbols-outlined">palette</span>Colors</h3>
-                    <div class="space-y-2">
-                        <div>
-                            <label class="text-xs font-medium text-gray-600">Background</label>
-                            <div class="flex flex-wrap gap-1 mt-1">
-                                <button data-bg="#562e36" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-brand-raspberry" style="background-color: #562e36;"></button>
-                                <button data-bg="#991933" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #991933;"></button>
-                                <button data-bg="#ab9584" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #ab9584;"></button>
-                                <button data-bg="#e6e0e1" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #e6e0e1;"></button>
-                                <button data-bg="#a3b19c" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #a3b19c;"></button>
-                                <button data-bg="#FFFFFF" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent border border-gray-300" style="background-color: #FFFFFF;"></button>
-                                <button data-bg="#1a1a1a" class="bg-color-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #1a1a1a;"></button>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium text-gray-600">Logo & Text</label>
-                            <div class="flex flex-wrap gap-1 mt-1">
-                                <button data-variant="white" data-color="#FFFFFF" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-brand-raspberry border border-gray-300" style="background-color: #FFFFFF;"></button>
-                                <button data-variant="black" data-color="#1a1a1a" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #1a1a1a;"></button>
-                                <button data-variant="original-red" data-color="#991933" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #991933;"></button>
-                                <button data-variant="plum" data-color="#562e36" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #562e36;"></button>
-                                <button data-variant="rose" data-color="#ab9584" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #ab9584;"></button>
-                                <button data-variant="sage" data-color="#a3b19c" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #a3b19c;"></button>
-                                <button data-variant="taupe" data-color="#e6e0e1" class="logo-variant-btn color-btn rounded-full ring-2 ring-offset-1 ring-transparent" style="background-color: #e6e0e1;"></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Canvas Area -->
-        <main class="flex-1 flex items-center justify-center p-8 bg-brand-offwhite/50">
-            <div id="canvas-container" class="bg-white rounded-xl shadow-2xl overflow-hidden">
-                <canvas id="canvas" width="1080" height="1080"></canvas>
-            </div>
-        </main>
-
-        <!-- Right Sidebar -->
-        <aside class="w-80 bg-white shadow-lg overflow-y-auto flex-shrink-0">
-            <div class="p-4 space-y-3">
-                <!-- Logo & Text -->
-                <div class="control-section">
-                    <h3><span class="material-symbols-outlined">text_fields</span>Logo & Text</h3>
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <label class="text-sm font-medium">Show Logo</label>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="logo-toggle" checked>
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium text-gray-600">Logo Alignment</label>
-                            <div class="grid grid-cols-3 gap-2 mt-1">
-                                <button data-align="left" class="align-btn control-btn border rounded-lg transition-all"><span class="material-symbols-outlined">format_align_left</span></button>
-                                <button data-align="center" class="align-btn control-btn active border rounded-lg transition-all"><span class="material-symbols-outlined">format_align_center</span></button>
-                                <button data-align="right" class="align-btn control-btn border rounded-lg transition-all"><span class="material-symbols-outlined">format_align_right</span></button>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium text-gray-600">Logo Size</label>
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="material-symbols-outlined text-sm text-gray-400">text_decrease</span>
-                                <input type="range" id="logo-size" min="0.2" max="2" step="0.05" value="1" class="flex-1">
-                                <span class="material-symbols-outlined text-sm text-gray-400">text_increase</span>
-                            </div>
-                        </div>
-                        <div>
-                            <input type="text" id="custom-text" placeholder="Add a caption..." class="w-full bg-gray-50 p-2 rounded-lg text-sm" maxlength="60">
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium text-gray-600">Caption Size</label>
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="material-symbols-outlined text-sm text-gray-400">text_decrease</span>
-                                <input type="range" id="caption-size" min="0.5" max="2" step="0.1" value="1" class="flex-1">
-                                <span class="material-symbols-outlined text-sm text-gray-400">text_increase</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Image Controls -->
-                <div id="image-controls" class="control-section hidden">
-                    <h3><span class="material-symbols-outlined">tune</span>Image Position</h3>
-                    <div class="space-y-3">
-                        <div>
-                            <label class="text-xs font-medium text-gray-600">Zoom</label>
-                            <div class="flex items-center gap-2 mt-1">
-                                <button id="zoom-out" class="p-1 hover:bg-gray-100 rounded"><span class="material-symbols-outlined text-sm">zoom_out</span></button>
-                                <input type="range" id="zoom-slider" min="0.1" max="3" step="0.05" value="1" class="flex-1">
-                                <button id="zoom-in" class="p-1 hover:bg-gray-100 rounded"><span class="material-symbols-outlined text-sm">zoom_in</span></button>
-                            </div>
-                        </div>
-                        <button id="reset-image" class="w-full bg-gray-100 p-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition">
-                            <span class="material-symbols-outlined text-base mr-1">restart_alt</span>Reset Position
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </aside>
     </div>
 
     <script>
+        // --- App State & Elements ---
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const canvasContainer = document.getElementById('canvas-container');
@@ -314,19 +432,27 @@
         const preloadedLogos = {};
         let logosLoaded = 0;
 
+        // --- Preload Logo Images ---
         logoVariants.forEach(variant => {
             const img = new Image();
-            img.src = `Images/Logo-The-Holiday-Cottage-${variant}.png`;
+            // This path is a placeholder. Replace with your actual image paths.
+            img.src = `https://raw.githubusercontent.com/ai-made-this/assets/main/thc/Logo-The-Holiday-Cottage-${variant}.png`;
+            img.crossOrigin = "anonymous"; // Handle CORS for external images
             img.onload = () => {
                 logosLoaded++;
                 if (logosLoaded === logoVariants.length) {
                     console.log('All logos preloaded successfully.');
-                    draw();
+                    // Initial draw call is now handled by the unlock function
                 }
+            };
+            img.onerror = () => {
+                console.error(`Failed to load logo: ${variant}`);
+                logosLoaded++; // Still increment to not block the app
             };
             preloadedLogos[variant] = img;
         });
 
+        // --- App Configuration ---
         let config = {
             canvasWidth: 1080,
             canvasHeight: 1080,
@@ -351,6 +477,7 @@
         let isDragging = false;
         let dragStartX = 0, dragStartY = 0, dragStartImageX = 0, dragStartImageY = 0;
 
+        // --- Canvas & Drawing Functions ---
         function resizeCanvasDisplay() {
             const container = canvas.parentElement.parentElement;
             const containerWidth = container.clientWidth;
@@ -409,8 +536,13 @@
         }
 
         function draw() {
+            if (logosLoaded < logoVariants.length) {
+                console.warn("Drawing canvas before all logos are loaded.");
+            }
             ctx.save();
-            ctx.scale(dpr, dpr);
+            // No need to scale by DPR here if we set canvas width/height correctly before
+            canvas.width = config.canvasWidth;
+            canvas.height = config.canvasHeight;
 
             ctx.fillStyle = config.bgColor;
             ctx.fillRect(0, 0, config.canvasWidth, config.canvasHeight);
@@ -473,14 +605,11 @@
                     gradient.addColorStop(1, 'rgba(0,0,0,0.7)');
                     ctx.fillStyle = gradient;
                     ctx.fillRect(0, textArea.y - 100, config.canvasWidth, textArea.height + 100);
-                } else {
-                    ctx.fillStyle = config.bgColor;
-                    ctx.fillRect(textArea.x, textArea.y, textArea.width, textArea.height);
                 }
 
                 const logoImage = preloadedLogos[config.logoVariant];
                 const logoAspectRatio = 2047 / 763;
-                const captionSize = 18 * config.captionSize;
+                const captionSize = 32 * config.captionSize;
                 const textMargin = 20;
 
                 if (config.layout === 'left' || config.layout === 'right') {
@@ -488,7 +617,7 @@
                     ctx.translate(textArea.x + textArea.width / 2, textArea.y + textArea.height / 2);
                     ctx.rotate(-Math.PI / 2);
                     if (config.showLogo && logoImage && logoImage.complete) {
-                        const logoWidth = (textArea.height * 0.6) * config.logoSize;
+                        const logoWidth = (textArea.height * 0.4) * config.logoSize;
                         const logoHeight = logoWidth / logoAspectRatio;
                         ctx.drawImage(logoImage, -logoWidth / 2, -logoHeight / 2, logoWidth, logoHeight);
                     }
@@ -497,12 +626,12 @@
                     let logoHeight = 0;
                     let logoWidth = 0;
                     if (config.showLogo && logoImage && logoImage.complete) {
-                        logoWidth = (textArea.width * 0.6) * config.logoSize;
+                        logoWidth = (textArea.width * 0.3) * config.logoSize;
                         logoHeight = logoWidth / logoAspectRatio;
                     }
 
                     const totalContentHeight = logoHeight + (config.customText ? textMargin + captionSize : 0);
-                    let currentY = textArea.y + (textArea.height - totalContentHeight) / 2;
+                    let currentY = textArea.y + (textArea.height - totalContentHeight) / 2 + (logoHeight > 0 ? logoHeight : 0);
                     
                     let logoX;
                     let captionX;
@@ -527,13 +656,13 @@
                     }
 
                     if (config.showLogo && logoImage && logoImage.complete) {
-                        ctx.drawImage(logoImage, logoX, currentY, logoWidth, logoHeight);
-                        currentY += logoHeight + textMargin;
+                        ctx.drawImage(logoImage, logoX, currentY - logoHeight - (config.customText ? textMargin : 0), logoWidth, logoHeight);
                     }
 
                     if (config.customText) {
                         ctx.fillStyle = config.textColor;
-                        ctx.font = `${captionSize}px Poppins`;
+                        ctx.font = `500 ${captionSize}px Poppins`;
+                        ctx.textBaseline = 'bottom';
                         ctx.fillText(config.customText, captionX, currentY);
                     }
                 }
@@ -541,136 +670,201 @@
             ctx.restore();
         }
 
-        // --- ROBUST DOWNLOAD FUNCTION ---
         function downloadCanvas(format) {
             const mimeType = `image/${format}`;
             const filename = `holiday-cottage-post.${format}`;
-
             canvas.toBlob((blob) => {
                 if (blob) {
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = url;
                     link.download = filename;
-                    
-                    // Append to body to ensure click works in all browsers, especially Firefox
                     document.body.appendChild(link);
                     link.click();
-                    
-                    // Clean up
                     document.body.removeChild(link);
                     URL.revokeObjectURL(url);
                 } else {
                     console.error('Error: Could not create blob from canvas.');
                     alert('Sorry, there was an error creating the image file.');
                 }
-            }, mimeType, 0.95); // 0.95 is quality for jpeg
+            }, mimeType, 0.95);
         }
 
-        document.getElementById('image-upload').addEventListener('change', (e) => { if (e.target.files[0]) loadImage(e.target.files[0]); });
+        // --- Event Listeners ---
+        function initializeEventListeners() {
+            document.getElementById('image-upload').addEventListener('change', (e) => { if (e.target.files[0]) loadImage(e.target.files[0]); });
 
-        document.querySelectorAll('.size-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                const [width, height] = btn.dataset.size.split('x').map(Number);
-                config.canvasWidth = width;
-                config.canvasHeight = height;
-                canvas.width = width * dpr;
-                canvas.height = height * dpr;
-                resizeCanvasDisplay();
-                if (config.image) fitImageToCanvas();
-                draw();
+            document.querySelectorAll('.size-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const [width, height] = btn.dataset.size.split('x').map(Number);
+                    config.canvasWidth = width;
+                    config.canvasHeight = height;
+                    resizeCanvasDisplay();
+                    if (config.image) fitImageToCanvas();
+                    draw();
+                });
             });
-        });
 
-        document.querySelectorAll('.layout-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                config.layout = btn.dataset.layout;
-                
-                const bezelControls = document.getElementById('bezel-controls');
-                if (config.layout === 'full' || config.layout === 'padded') {
-                    bezelControls.classList.add('opacity-50', 'pointer-events-none');
-                } else {
-                    bezelControls.classList.remove('opacity-50', 'pointer-events-none');
+            document.querySelectorAll('.layout-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    config.layout = btn.dataset.layout;
+                    const bezelControls = document.getElementById('bezel-controls');
+                    if (config.layout === 'full' || config.layout === 'padded') {
+                        bezelControls.classList.add('opacity-50', 'pointer-events-none');
+                    } else {
+                        bezelControls.classList.remove('opacity-50', 'pointer-events-none');
+                    }
+                    draw();
+                });
+            });
+
+            document.querySelectorAll('.bg-color-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.bg-color-btn').forEach(b => b.classList.replace('ring-brand-raspberry', 'ring-transparent'));
+                    btn.classList.replace('ring-transparent', 'ring-brand-raspberry');
+                    config.bgColor = btn.dataset.bg;
+                    draw();
+                });
+            });
+
+            document.querySelectorAll('.logo-variant-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.logo-variant-btn').forEach(b => b.classList.replace('ring-brand-raspberry', 'ring-transparent'));
+                    btn.classList.replace('ring-transparent', 'ring-brand-raspberry');
+                    config.logoVariant = btn.dataset.variant;
+                    config.textColor = btn.dataset.color;
+                    draw();
+                });
+            });
+
+            document.querySelectorAll('.align-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.align-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    config.logoAlign = btn.dataset.align;
+                    draw();
+                });
+            });
+
+            document.getElementById('logo-toggle').addEventListener('change', (e) => { config.showLogo = e.target.checked; draw(); });
+            document.getElementById('logo-size').addEventListener('input', (e) => { config.logoSize = parseFloat(e.target.value); draw(); });
+            document.getElementById('bezel-thickness').addEventListener('input', (e) => { config.bezelThickness = parseInt(e.target.value, 10); draw(); });
+            document.getElementById('custom-text').addEventListener('input', (e) => { config.customText = e.target.value; draw(); });
+            document.getElementById('caption-size').addEventListener('input', (e) => { config.captionSize = parseFloat(e.target.value); draw(); });
+
+            document.getElementById('zoom-slider').addEventListener('input', (e) => { if (config.image) { config.imageScale = parseFloat(e.target.value); draw(); } });
+            document.getElementById('zoom-in').addEventListener('click', () => { document.getElementById('zoom-slider').stepUp(); document.getElementById('zoom-slider').dispatchEvent(new Event('input')); });
+            document.getElementById('zoom-out').addEventListener('click', () => { document.getElementById('zoom-slider').stepDown(); document.getElementById('zoom-slider').dispatchEvent(new Event('input')); });
+            document.getElementById('reset-image').addEventListener('click', () => { if (config.image) { fitImageToCanvas(); document.getElementById('zoom-slider').value = config.imageScale; draw(); } });
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (config.image) {
+                    isDragging = true;
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    dragStartImageX = config.imageX;
+                    dragStartImageY = config.imageY;
+                    canvas.classList.add('dragging');
                 }
-                draw();
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const rect = canvas.getBoundingClientRect();
+                    const scaleX = config.canvasWidth / rect.width;
+                    const scaleY = config.canvasHeight / rect.height;
+                    const dx = (e.clientX - dragStartX) * scaleX;
+                    const dy = (e.clientY - dragStartY) * scaleY;
+                    config.imageX = dragStartImageX + dx;
+                    config.imageY = dragStartImageY + dy;
+                    draw();
+                }
+            });
+
+            window.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; canvas.classList.remove('dragging'); } });
+
+            document.getElementById('download-png').addEventListener('click', () => downloadCanvas('png'));
+            document.getElementById('download-jpg').addEventListener('click', () => downloadCanvas('jpeg'));
+
+            window.addEventListener('resize', resizeCanvasDisplay);
+        }
+    </script>
+
+    <script>
+        // --- Lock Screen Logic ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const lockScreen = document.getElementById('lock-screen');
+            const appWrapper = document.getElementById('app-wrapper');
+            const passcodeInput = document.getElementById('passcode-input');
+            const passcodeContainer = document.getElementById('passcode-container');
+            const dots = document.querySelectorAll('.dot');
+            
+            // Obfuscate passcode to deter casual inspection.
+            const correctPasscode = atob('MjAyNQ==');
+            let isChecking = false;
+
+            const handleIncorrectPasscode = () => {
+                isChecking = true;
+                passcodeContainer.classList.add('shake');
+                
+                setTimeout(() => {
+                    passcodeInput.value = '';
+                    dots.forEach(dot => dot.classList.remove('filled'));
+                    passcodeContainer.classList.remove('shake');
+                    isChecking = false;
+                    passcodeInput.focus();
+                }, 600);
+            };
+
+            const unlockPage = () => {
+                lockScreen.style.opacity = '0';
+                
+                setTimeout(() => {
+                    lockScreen.style.display = 'none';
+                    appWrapper.classList.remove('hidden');
+                    appWrapper.classList.add('flex');
+                    
+                    // Initialize the main app now that it's visible
+                    initializeEventListeners();
+                    document.querySelector('.size-btn.active').click(); // Trigger initial setup
+                    draw(); // Perform initial draw
+                }, 500);
+            };
+
+            passcodeInput.addEventListener('input', (e) => {
+                if (isChecking) return;
+                const value = e.target.value;
+
+                dots.forEach((dot, index) => {
+                    if (index < value.length) {
+                        if (!dot.classList.contains('filled')) {
+                            dot.classList.add('filled');
+                            dot.classList.add('jump');
+                            dot.addEventListener('animationend', () => dot.classList.remove('jump'), { once: true });
+                        }
+                    } else {
+                        dot.classList.remove('filled');
+                    }
+                });
+
+                if (value.length === 4) {
+                    if (value === correctPasscode) {
+                        unlockPage();
+                    } else {
+                        handleIncorrectPasscode();
+                    }
+                }
+            });
+
+            // Refocus on the hidden input if user clicks away
+            lockScreen.addEventListener('click', () => {
+                passcodeInput.focus();
             });
         });
-
-        document.querySelectorAll('.bg-color-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.bg-color-btn').forEach(b => b.classList.replace('ring-brand-raspberry', 'ring-transparent'));
-                btn.classList.replace('ring-transparent', 'ring-brand-raspberry');
-                config.bgColor = btn.dataset.bg;
-                draw();
-            });
-        });
-
-        document.querySelectorAll('.logo-variant-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.logo-variant-btn').forEach(b => b.classList.replace('ring-brand-raspberry', 'ring-transparent'));
-                btn.classList.replace('ring-transparent', 'ring-brand-raspberry');
-                config.logoVariant = btn.dataset.variant;
-                config.textColor = btn.dataset.color;
-                draw();
-            });
-        });
-
-        document.querySelectorAll('.align-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.align-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                config.logoAlign = btn.dataset.align;
-                draw();
-            });
-        });
-
-        document.getElementById('logo-toggle').addEventListener('change', (e) => { config.showLogo = e.target.checked; draw(); });
-        document.getElementById('logo-size').addEventListener('input', (e) => { config.logoSize = parseFloat(e.target.value); draw(); });
-        document.getElementById('bezel-thickness').addEventListener('input', (e) => { config.bezelThickness = parseInt(e.target.value, 10); draw(); });
-        document.getElementById('custom-text').addEventListener('input', (e) => { config.customText = e.target.value; draw(); });
-        document.getElementById('caption-size').addEventListener('input', (e) => { config.captionSize = parseFloat(e.target.value); draw(); });
-
-        document.getElementById('zoom-slider').addEventListener('input', (e) => { if (config.image) { config.imageScale = parseFloat(e.target.value); draw(); } });
-        document.getElementById('zoom-in').addEventListener('click', () => { document.getElementById('zoom-slider').stepUp(); document.getElementById('zoom-slider').dispatchEvent(new Event('input')); });
-        document.getElementById('zoom-out').addEventListener('click', () => { document.getElementById('zoom-slider').stepDown(); document.getElementById('zoom-slider').dispatchEvent(new Event('input')); });
-        document.getElementById('reset-image').addEventListener('click', () => { if (config.image) { fitImageToCanvas(); document.getElementById('zoom-slider').value = config.imageScale; draw(); } });
-
-        canvas.addEventListener('mousedown', (e) => {
-            if (config.image) {
-                isDragging = true;
-                dragStartX = e.clientX;
-                dragStartY = e.clientY;
-                dragStartImageX = config.imageX;
-                dragStartImageY = config.imageY;
-                canvas.classList.add('dragging');
-            }
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = config.canvasWidth / rect.width;
-                const scaleY = config.canvasHeight / rect.height;
-                const dx = (e.clientX - dragStartX) * scaleX;
-                const dy = (e.clientY - dragStartY) * scaleY;
-                config.imageX = dragStartImageX + dx;
-                config.imageY = dragStartImageY + dy;
-                draw();
-            }
-        });
-
-        window.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; canvas.classList.remove('dragging'); } });
-
-        document.getElementById('download-png').addEventListener('click', () => downloadCanvas('png'));
-        document.getElementById('download-jpg').addEventListener('click', () => downloadCanvas('jpeg'));
-
-        window.addEventListener('resize', resizeCanvasDisplay);
-
-        document.querySelector('.size-btn.active').click();
     </script>
 </body>
 </html>
