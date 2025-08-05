@@ -69,7 +69,7 @@
 
         #passcode-dots {
             display: flex;
-            justify-content: center; /* <-- FIX: This centers the dots */
+            justify-content: center;
             gap: 1.25rem;
         }
 
@@ -435,19 +435,17 @@
         // --- Preload Logo Images ---
         logoVariants.forEach(variant => {
             const img = new Image();
-            // This path is a placeholder. Replace with your actual image paths.
-            img.src = `https://raw.githubusercontent.com/ai-made-this/assets/main/thc/Logo-The-Holiday-Cottage-${variant}.png`;
-            img.crossOrigin = "anonymous"; // Handle CORS for external images
+            // --- THIS PATH HAS BEEN REVERTED TO YOUR ORIGINAL LOCAL PATH ---
+            img.src = `Images/Logo-The-Holiday-Cottage-${variant}.png`;
             img.onload = () => {
                 logosLoaded++;
                 if (logosLoaded === logoVariants.length) {
                     console.log('All logos preloaded successfully.');
-                    // Initial draw call is now handled by the unlock function
                 }
             };
             img.onerror = () => {
                 console.error(`Failed to load logo: ${variant}`);
-                logosLoaded++; // Still increment to not block the app
+                logosLoaded++;
             };
             preloadedLogos[variant] = img;
         });
@@ -540,7 +538,6 @@
                 console.warn("Drawing canvas before all logos are loaded.");
             }
             ctx.save();
-            // No need to scale by DPR here if we set canvas width/height correctly before
             canvas.width = config.canvasWidth;
             canvas.height = config.canvasHeight;
 
