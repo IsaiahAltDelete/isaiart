@@ -89,35 +89,19 @@
             cursor: grabbing;
         }
 
-        .raised-element {
-            transform: translateZ(30px);
-            box-shadow: 0 8px 20px var(--raised-element-shadow);
-            border-radius: 0.75rem;
-        }
-        .stat-card-raised {
-             transform: translateZ(20px);
-             box-shadow: 0 6px 15px var(--raised-element-shadow);
-        }
+        .raised-element { transform: translateZ(30px); box-shadow: 0 8px 20px var(--raised-element-shadow); border-radius: 0.75rem; }
+        .stat-card-raised { transform: translateZ(20px); box-shadow: 0 6px 15px var(--raised-element-shadow); }
+        .chart-container { transform: translateZ(40px); }
 
-        .chart-container {
-            transform: translateZ(40px);
-        }
         #completionChart {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            position: relative;
+            width: 150px; height: 150px; border-radius: 50%; position: relative;
             background: radial-gradient(circle closest-side, var(--card-bg-color) 80%, transparent 81%),
                         conic-gradient(var(--rate-green) 0% var(--completion-percentage), var(--rate-red) var(--completion-percentage) 100%);
             transition: background 0.5s ease-in-out;
         }
         #completionChart::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            background: var(--chart-bg-color);
-            z-index: -1;
+            content: ''; position: absolute; inset: 0; border-radius: 50%;
+            background: var(--chart-bg-color); z-index: -1;
         }
 
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; transition: color 0.3s ease; }
@@ -125,26 +109,49 @@
         #completionRate, #totalCalls, #completedFlows, #incompleteFlows { transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
 
         .bounce-stat { animation: stat-bounce-anim 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        @keyframes stat-bounce-anim {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.25); }
-        }
+        @keyframes stat-bounce-anim { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
 
         .custom-hover:hover { background-color: var(--hover-bg-color); }
         .subtle-text { color: var(--subtle-text-color); }
         .accent-bg { background-color: var(--accent-color); }
         .accent-bg:hover { background-color: var(--accent-color-hover); }
-        .modal-backdrop { background-color: rgba(0, 0, 0, 0.7); }
-        .modal-border-danger { border-color: var(--danger-color); }
         .danger-bg { background-color: var(--danger-color); }
         .danger-bg:hover { background-color: var(--danger-hover-color); }
 
-        .fixed-modal { z-index: 50; }
-        #themeToggle { z-index: 60; }
+        /* Log Panel Styles */
+        #logPanel {
+            position: fixed; inset: 0; z-index: 50;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #logBackdrop {
+            position: absolute; inset: 0;
+            background-color: rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #logContent {
+            position: absolute; top: 0; right: 0; bottom: 0;
+            width: 100%; max-width: 400px;
+            background: var(--card-bg-color);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-left: 1px solid var(--border-color);
+            box-shadow: -10px 0 30px rgba(0,0,0,0.2);
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+            display: flex; flex-direction: column;
+        }
+        #logPanel.log-panel-open { pointer-events: auto; }
+        #logPanel.log-panel-open #logBackdrop { opacity: 1; }
+        #logPanel.log-panel-open #logContent { transform: translateX(0); }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 10px; }
     </style>
 </head>
 <body>
-    <button id="themeToggle" class="fixed top-6 right-6 p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Toggle theme">
+    <button id="themeToggle" class="fixed top-6 right-6 p-3 rounded-full custom-hover transition-colors shadow-lg z-[60]" aria-label="Toggle theme">
         <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
         <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
     </button>
@@ -166,7 +173,6 @@
 
                 <!-- Right Column: Main Flow Tracker -->
                 <div class="md:col-span-2 space-y-6">
-                    <!-- Chart -->
                     <section class="flex flex-col items-center justify-center chart-container">
                         <div id="completionChart" class="flex items-center justify-center">
                             <div class="text-center">
@@ -176,7 +182,6 @@
                         </div>
                     </section>
 
-                    <!-- Stats Section -->
                     <section class="grid grid-cols-3 gap-4 text-center">
                         <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
                             <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Flows Completed</h2>
@@ -192,7 +197,6 @@
                         </div>
                     </section>
 
-                    <!-- Flow Management Section -->
                     <section class="raised-element glass-effect p-4 rounded-xl">
                         <div class="flex items-center justify-center gap-3">
                              <button id="decrementCompleted" aria-label="Decrement completed flows" class="danger-bg text-white font-bold p-3 rounded-lg transition-all flex items-center justify-center shadow-md hover:shadow-lg hover:scale-105 active:scale-100">
@@ -207,173 +211,181 @@
                 </div>
             </div>
 
-            <!-- Footer Controls -->
-            <footer class="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm pt-6 mt-6 border-t border-[var(--border-color)]">
+            <footer class="flex justify-between items-center gap-4 text-sm pt-6 mt-6 border-t border-[var(--border-color)]">
                 <button id="resetDataBtn" class="flex items-center gap-2 subtle-text hover:text-red-500 transition-colors py-2 px-3 rounded-lg custom-hover">
                     <span class="material-symbols-outlined text-base">restart_alt</span>
                     Reset Data
                 </button>
-                <div id="lastUpdatedEl" class="flex items-center gap-2 subtle-text">
-                    <span class="material-symbols-outlined text-base">history</span>
-                    <span></span>
+                <div class="flex items-center gap-2">
+                    <div id="lastUpdatedEl" class="flex items-center gap-2 subtle-text">
+                        <span class="material-symbols-outlined text-base">history</span>
+                        <span></span>
+                    </div>
+                    <button id="openLogBtn" class="flex items-center gap-2 subtle-text hover:text-[var(--accent-color)] transition-colors py-2 px-3 rounded-lg custom-hover">
+                        <span class="material-symbols-outlined text-base">receipt_long</span>
+                        History
+                    </button>
                 </div>
             </footer>
         </main>
     </div>
 
-    <!-- Reset Confirmation Modal -->
-    <div id="resetConfirmModal" class="fixed-modal fixed inset-0 modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
-        <div class="glass-effect rounded-xl p-6 w-full max-w-md space-y-4 border-2 modal-border-danger shadow-2xl">
-            <h3 class="text-lg font-semibold flex items-center gap-2 text-red-500"><span class="material-symbols-outlined">warning</span> Reset Confirmation</h3>
-            <p class="subtle-text">Are you sure? All data will be permanently deleted. This action cannot be undone.</p>
-            <div class="flex justify-end gap-3">
-                <button id="cancelResetBtn" class="px-4 py-2 rounded-lg custom-hover transition-colors">Cancel</button>
-                <button id="confirmResetBtn" class="danger-bg text-white font-bold px-4 py-2 rounded-lg transition-colors">Yes, Reset Data</button>
+    <!-- Event Log Panel -->
+    <div id="logPanel">
+        <div id="logBackdrop"></div>
+        <div id="logContent" class="p-6 space-y-4">
+            <header class="flex items-center justify-between pb-4 border-b border-[var(--border-color)]">
+                <h2 class="text-xl font-semibold flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[var(--accent-color)]">receipt_long</span>
+                    Event Log
+                </h2>
+                <button id="closeLogBtn" class="p-2 rounded-full custom-hover">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </header>
+            <div id="logListContainer" class="flex-grow overflow-y-auto space-y-3 pr-2">
+                <p id="logEmptyState" class="text-center subtle-text pt-16">No events logged yet.</p>
             </div>
         </div>
+    </div>
+
+    <!-- Reset Confirmation Modal -->
+    <div id="resetConfirmModal" class="fixed inset-0 z-[70] modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <!-- ... modal content ... -->
     </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         // --- 3D Panel Interaction ---
         const panel = document.getElementById('trackerPanel');
-        let isDragging = false;
-        let previousMouseX, previousMouseY;
-        let currentRotationX = 0, currentRotationY = 0;
+        let isDragging = false, previousMouseX, previousMouseY, currentRotationX = 0, currentRotationY = 0;
         const SENSITIVITY = 0.25, MAX_ROTATION_X = 20;
-        const DRAG_TRANSITION = 'transform 0.05s linear';
-        const SNAP_TRANSITION = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; 
-
         panel.addEventListener('mousedown', (e) => {
             if (e.target.closest('button, input, a')) return;
-            isDragging = true;
-            previousMouseX = e.clientX;
-            previousMouseY = e.clientY;
-            panel.style.transition = DRAG_TRANSITION;
+            isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY;
+            panel.style.transition = 'transform 0.05s linear';
         });
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
             const dx = e.clientX - previousMouseX, dy = e.clientY - previousMouseY;
-            currentRotationY += dx * SENSITIVITY;
-            currentRotationX -= dy * SENSITIVITY;
+            currentRotationY += dx * SENSITIVITY; currentRotationX -= dy * SENSITIVITY;
             currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX));
             panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
-            previousMouseX = e.clientX;
-            previousMouseY = e.clientY;
+            previousMouseX = e.clientX; previousMouseY = e.clientY;
         });
         document.addEventListener('mouseup', () => {
             if (isDragging) {
-                isDragging = false;
-                panel.style.transition = SNAP_TRANSITION; 
+                isDragging = false; panel.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; 
                 panel.style.transform = `rotateX(0deg) rotateY(0deg)`; 
-                currentRotationX = 0;
-                currentRotationY = 0;
+                currentRotationX = 0; currentRotationY = 0;
             }
         });
         panel.ondragstart = () => false;
 
         // --- THEME MANAGEMENT ---
-        const themeToggle = document.getElementById('themeToggle');
-        const lightIcon = document.getElementById('theme-icon-light');
-        const darkIcon = document.getElementById('theme-icon-dark');
-        const htmlEl = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle'), lightIcon = document.getElementById('theme-icon-light'), darkIcon = document.getElementById('theme-icon-dark'), htmlEl = document.documentElement;
         const applyTheme = (theme) => {
-            if (theme === 'light') {
-                htmlEl.classList.add('light-mode');
-                lightIcon.style.display = 'none';
-                darkIcon.style.display = 'inline-block';
-            } else {
-                htmlEl.classList.remove('light-mode');
-                lightIcon.style.display = 'inline-block';
-                darkIcon.style.display = 'none';
-            }
+            htmlEl.classList.toggle('light-mode', theme === 'light');
+            lightIcon.style.display = theme === 'light' ? 'none' : 'inline-block';
+            darkIcon.style.display = theme === 'light' ? 'inline-block' : 'none';
         };
         themeToggle.addEventListener('click', () => {
             const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light';
-            localStorage.setItem('theme', newTheme);
-            applyTheme(newTheme);
-            render();
+            localStorage.setItem('theme', newTheme); applyTheme(newTheme); render();
         });
-        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-        applyTheme(savedTheme);
+        applyTheme(localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
 
         // --- APPLICATION LOGIC ---
-        const totalCallsEl = document.getElementById('totalCalls');
-        const completedFlowsEl = document.getElementById('completedFlows');
-        const incompleteFlowsEl = document.getElementById('incompleteFlows');
-        const completionRateEl = document.getElementById('completionRate');
-        const addCompletedFlowBtn = document.getElementById('addCompletedFlowBtn');
-        const decrementCompletedBtn = document.getElementById('decrementCompleted');
-        const lastUpdatedEl = document.getElementById('lastUpdatedEl').querySelector('span:last-child');
-        const completionChart = document.getElementById('completionChart');
-        const chartPercentageEl = document.getElementById('chartPercentage');
+        const totalCallsEl = document.getElementById('totalCalls'), completedFlowsEl = document.getElementById('completedFlows'), incompleteFlowsEl = document.getElementById('incompleteFlows'), completionRateEl = document.getElementById('completionRate'), addCompletedFlowBtn = document.getElementById('addCompletedFlowBtn'), decrementCompletedBtn = document.getElementById('decrementCompleted'), lastUpdatedEl = document.getElementById('lastUpdatedEl').querySelector('span:last-child'), completionChart = document.getElementById('completionChart'), chartPercentageEl = document.getElementById('chartPercentage'), incrementCallsBtn = document.getElementById('incrementCalls'), decrementCallsBtn = document.getElementById('decrementCalls'), resetDataBtn = document.getElementById('resetDataBtn');
         
-        const incrementCallsBtn = document.getElementById('incrementCalls');
-        const decrementCallsBtn = document.getElementById('decrementCalls');
-        
-        const resetDataBtn = document.getElementById('resetDataBtn');
-        const resetConfirmModal = document.getElementById('resetConfirmModal');
-        const confirmResetBtn = document.getElementById('confirmResetBtn');
-        const cancelResetBtn = document.getElementById('cancelResetBtn');
+        // Log Panel Elements
+        const logPanel = document.getElementById('logPanel'), openLogBtn = document.getElementById('openLogBtn'), closeLogBtn = document.getElementById('closeLogBtn'), logBackdrop = document.getElementById('logBackdrop'), logListContainer = document.getElementById('logListContainer'), logEmptyState = document.getElementById('logEmptyState');
 
         const getInitialState = () => ({
             totalCalls: 0,
             completedFlows: 0,
+            eventLog: [], // NEW: To store event history
             lastUpdated: null,
         });
         let state = getInitialState();
 
         function loadState() {
-            const savedState = localStorage.getItem('flowTrackerStateV2');
+            const savedState = localStorage.getItem('flowTrackerStateV3'); // New key for new logic
             if (savedState) state = { ...getInitialState(), ...JSON.parse(savedState) };
         }
 
         function saveState() {
             state.lastUpdated = new Date().toISOString();
-            localStorage.setItem('flowTrackerStateV2', JSON.stringify(state));
+            localStorage.setItem('flowTrackerStateV3', JSON.stringify(state));
         }
         
         function applyBounce(element) {
-            if (!element) return;
             element.classList.add('bounce-stat');
-            element.addEventListener('animationend', () => {
-                element.classList.remove('bounce-stat');
-            }, { once: true });
+            element.addEventListener('animationend', () => element.classList.remove('bounce-stat'), { once: true });
+        }
+
+        function renderLog() {
+            logListContainer.innerHTML = ''; // Clear previous entries
+            if (state.eventLog.length === 0) {
+                logEmptyState.classList.remove('hidden');
+                return;
+            }
+            logEmptyState.classList.add('hidden');
+
+            const reversedLog = [...state.eventLog].reverse();
+            reversedLog.forEach(event => {
+                const isCompleted = event.type === 'completed';
+                const icon = isCompleted ? 'check_circle' : 'cancel';
+                const colorClass = isCompleted ? 'text-[var(--rate-green)]' : 'text-[var(--rate-red)]';
+                const text = isCompleted ? 'Flow Completed' : 'Call Added (Incomplete)';
+                const time = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                const logItem = document.createElement('div');
+                logItem.className = 'flex items-center gap-4 p-3 border-b border-[var(--border-color)]';
+                logItem.innerHTML = `
+                    <span class="material-symbols-outlined ${colorClass}">${icon}</span>
+                    <div class="flex-grow">
+                        <p class="font-medium">${text}</p>
+                        <p class="text-xs subtle-text">${new Date(event.timestamp).toLocaleString()}</p>
+                    </div>
+                    <p class="text-sm font-['Roboto_Mono'] subtle-text">${time}</p>
+                `;
+                logListContainer.appendChild(logItem);
+            });
         }
 
         function render() {
             totalCallsEl.textContent = state.totalCalls;
             completedFlowsEl.textContent = state.completedFlows;
-
             const incompleteCount = Math.max(0, state.totalCalls - state.completedFlows);
             incompleteFlowsEl.textContent = incompleteCount;
-
             const rate = state.totalCalls > 0 ? (state.completedFlows / state.totalCalls) * 100 : 0;
             const rateToShow = Math.max(0, rate);
-            const newRateText = `${rateToShow.toFixed(1)}%`; 
-            
-            completionRateEl.textContent = newRateText;
-            chartPercentageEl.textContent = newRateText;
-            
+            completionRateEl.textContent = `${rateToShow.toFixed(1)}%`;
+            chartPercentageEl.textContent = `${rateToShow.toFixed(1)}%`;
             completionChart.style.setProperty('--completion-percentage', `${rateToShow}%`);
-
             const rateGreen = getComputedStyle(htmlEl).getPropertyValue('--rate-green').trim();
             const rateRed = getComputedStyle(htmlEl).getPropertyValue('--rate-red').trim();
             const accentColor = getComputedStyle(htmlEl).getPropertyValue('--accent-color').trim();
-
             if (rateToShow >= 60) completionRateEl.style.color = rateGreen;
             else if (rateToShow >= 50) completionRateEl.style.color = accentColor;
             else completionRateEl.style.color = rateRed;
-
-            if (state.lastUpdated) lastUpdatedEl.textContent = `Last updated ${formatRelativeTime(new Date(state.lastUpdated))}`;
+            if (state.lastUpdated) lastUpdatedEl.textContent = `${formatRelativeTime(new Date(state.lastUpdated))}`;
             else lastUpdatedEl.textContent = 'No updates yet.';
             
+            renderLog(); // Render the log every time state changes
             saveState();
         }
         
         function handleAddCompletedFlow() {
             if (state.completedFlows < state.totalCalls) {
                 state.completedFlows++;
+                // Find the oldest 'incomplete' event and change its type to 'completed'
+                const incompleteEventIndex = state.eventLog.findIndex(e => e.type === 'incomplete');
+                if (incompleteEventIndex > -1) {
+                    state.eventLog[incompleteEventIndex].type = 'completed';
+                    state.eventLog[incompleteEventIndex].timestamp = new Date().toISOString(); // Update timestamp to completion time
+                }
                 applyBounce(completedFlowsEl);
                 render();
             }
@@ -382,6 +394,12 @@
         function handleDecrementCompleted() {
             if (state.completedFlows > 0) {
                 state.completedFlows--;
+                // Find the newest 'completed' event and change it back to 'incomplete'
+                const completedEventIndex = findLastIndex(state.eventLog, e => e.type === 'completed');
+                if (completedEventIndex > -1) {
+                    state.eventLog[completedEventIndex].type = 'incomplete';
+                    state.eventLog[completedEventIndex].timestamp = new Date().toISOString(); // Update timestamp
+                }
                 applyBounce(completedFlowsEl);
                 render();
             }
@@ -389,6 +407,8 @@
 
         function handleIncrementCalls() {
             state.totalCalls++;
+            // Add a new 'incomplete' event to the log
+            state.eventLog.push({ type: 'incomplete', timestamp: new Date().toISOString() });
             applyBounce(totalCallsEl);
             render();
         }
@@ -396,8 +416,10 @@
         function handleDecrementCalls() {
             if (state.totalCalls > 0) {
                 state.totalCalls--;
-                if (state.completedFlows > state.totalCalls) {
-                    state.completedFlows = state.totalCalls;
+                // Remove the last event from the log. If it was a completed one, also decrement completedFlows.
+                const lastEvent = state.eventLog.pop();
+                if (lastEvent && lastEvent.type === 'completed') {
+                    state.completedFlows--;
                     applyBounce(completedFlowsEl);
                 }
                 applyBounce(totalCallsEl);
@@ -407,34 +429,43 @@
 
         function handleResetData() {
             state = getInitialState();
-            localStorage.removeItem('flowTrackerStateV2'); 
-            state.lastUpdated = null;
-            closeResetModal();
+            localStorage.removeItem('flowTrackerStateV3'); 
             render();
         }
 
-        function openResetModal() { resetConfirmModal.classList.remove('hidden'); }
-        function closeResetModal() { resetConfirmModal.classList.add('hidden'); }
+        // Helper to find last index, as it's not in all browsers
+        const findLastIndex = (arr, predicate) => {
+            for (let i = arr.length - 1; i >= 0; i--) {
+                if (predicate(arr[i])) return i;
+            }
+            return -1;
+        };
 
         function formatRelativeTime(date) {
-            const now = new Date(); const seconds = Math.round((now - date) / 1000);
-            const minutes = Math.round(seconds / 60); const hours = Math.round(minutes / 60);
-            const days = Math.round(hours / 24);
-            if (seconds < 10) return `a few seconds ago`; if (seconds < 60) return `${seconds}s ago`;
-            if (minutes < 2) return `1m ago`; if (minutes < 60) return `${minutes}m ago`;
-            if (hours < 2) return `1h ago`; if (hours < 24) return `${hours}h ago`;
-            if (days < 2) return `yesterday`; return `${days}d ago`;
+            const seconds = Math.round((new Date() - date) / 1000);
+            if (seconds < 60) return `a few seconds ago`;
+            return `${Math.round(seconds / 60)}m ago`;
         }
 
+        // Event Listeners
         addCompletedFlowBtn.addEventListener('click', handleAddCompletedFlow);
         decrementCompletedBtn.addEventListener('click', handleDecrementCompleted);
         incrementCallsBtn.addEventListener('click', handleIncrementCalls);
         decrementCallsBtn.addEventListener('click', handleDecrementCalls);
-        resetDataBtn.addEventListener('click', openResetModal);
-        confirmResetBtn.addEventListener('click', handleResetData);
-        cancelResetBtn.addEventListener('click', closeResetModal);
-        resetConfirmModal.addEventListener('click', (e) => { if (e.target === resetConfirmModal) closeResetModal(); });
+        resetDataBtn.addEventListener('click', () => resetConfirmModal.classList.remove('hidden'));
+        
+        // Log Panel Listeners
+        openLogBtn.addEventListener('click', () => logPanel.classList.add('log-panel-open'));
+        closeLogBtn.addEventListener('click', () => logPanel.classList.remove('log-panel-open'));
+        logBackdrop.addEventListener('click', () => logPanel.classList.remove('log-panel-open'));
 
+        // Reset Modal (simplified for brevity)
+        const resetConfirmModal = document.getElementById('resetConfirmModal');
+        resetConfirmModal.innerHTML = `<div class="glass-effect rounded-xl p-6 w-full max-w-md space-y-4 border-2 border-[var(--danger-color)] shadow-2xl"><h3 class="text-lg font-semibold flex items-center gap-2 text-[var(--danger-color)]"><span class="material-symbols-outlined">warning</span>Reset Confirmation</h3><p class="subtle-text">Are you sure? All data will be permanently deleted.</p><div class="flex justify-end gap-3"><button id="cancelResetBtn" class="px-4 py-2 rounded-lg custom-hover">Cancel</button><button id="confirmResetBtn" class="danger-bg text-white font-bold px-4 py-2 rounded-lg">Yes, Reset</button></div></div>`;
+        document.getElementById('cancelResetBtn').addEventListener('click', () => resetConfirmModal.classList.add('hidden'));
+        document.getElementById('confirmResetBtn').addEventListener('click', () => { handleResetData(); resetConfirmModal.classList.add('hidden'); });
+
+        // Initial Load
         loadState();
         render();
     });
