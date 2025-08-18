@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Tracker</title>
+
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Poppins & Roboto Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Symbols -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+    <style>
+        :root {
+            --accent-color: #3B82F6; 
+            --accent-color-hover: #2563EB;
+            --rate-green: #22C55E;
+            --rate-red: #EF4444;
+            --chart-bg-color: rgba(255, 255, 255, 0.05);
+            --background-color: #111111;
+            --text-color: #E5E7EB;
+            --subtle-text-color: #6B7280;
+            --card-bg-color: rgba(31, 41, 55, 0.65);
+            --panel-shadow-color: rgba(0,0,0,0.3);
+            --raised-element-shadow: rgba(0,0,0,0.2);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --hover-bg-color: #374151;
+            --danger-color: #DC2626;
+            --danger-hover-color: #B91C1C;
+        }
+
+        html.light-mode {
+            --background-color: #F0F2F5;
+            --text-color: #1F2937;
+            --subtle-text-color: #6B7280;
+            --card-bg-color: rgba(255, 255, 255, 0.7);
+            --panel-shadow-color: rgba(0,0,0,0.1);
+            --raised-element-shadow: rgba(0,0,0,0.08);
+            --border-color: rgba(0, 0, 0, 0.1);
+            --hover-bg-color: #E5E7EB;
+            --rate-green: #16A34A;
+            --rate-red: #DC2626;
+            --chart-bg-color: rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
+        }
+        
+        #scene {
+            perspective: 1500px;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 1rem;
+        }
+
+        #trackerPanel {
+            width: 100%;
+            max-width: 750px;
+            padding: 2rem;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0); 
+            cursor: grab;
+            user-select: none;
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px var(--panel-shadow-color);
+            background: var(--card-bg-color);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+        }
+        #trackerPanel:active {
+            cursor: grabbing;
+        }
+
+        .raised-element {
+            transform: translateZ(30px);
+            box-shadow: 0 8px 20px var(--raised-element-shadow);
+            border-radius: 0.75rem;
+        }
+        .stat-card-raised {
+             transform: translateZ(20px);
+             box-shadow: 0 6px 15px var(--raised-element-shadow);
+        }
+
+        .chart-container {
+            transform: translateZ(40px);
+        }
+        #completionChart {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle closest-side, var(--card-bg-color) 80%, transparent 81%),
+                        conic-gradient(var(--rate-green) 0% var(--completion-percentage), var(--rate-red) var(--completion-percentage) 100%);
+            transition: background 0.5s ease-in-out;
+        }
+        #completionChart::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: var(--chart-bg-color);
+            z-index: -1;
+        }
+
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; transition: color 0.3s ease; }
+        
+        #completionRate, #totalCalls, #completedFlows, #incompleteFlows { transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+
+        .bounce-stat { animation: stat-bounce-anim 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+        @keyframes stat-bounce-anim {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.25); }
+        }
+
+        .custom-hover:hover { background-color: var(--hover-bg-color); }
+        .subtle-text { color: var(--subtle-text-color); }
+        .accent-bg { background-color: var(--accent-color); }
+        .accent-bg:hover { background-color: var(--accent-color-hover); }
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.7); }
+        .modal-border-danger { border-color: var(--danger-color); }
+        .danger-bg { background-color: var(--danger-color); }
+        .danger-bg:hover { background-color: var(--danger-hover-color); }
+
+        .fixed-modal { z-index: 50; }
+        #themeToggle { z-index: 60; }
+    </style>
+</head>
+<body>
+    <button id="themeToggle" class="fixed top-6 right-6 p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Toggle theme">
+        <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
+        <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
+    </button>
+
+    <div id="scene">
+        <main id="trackerPanel">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Left Column: Call Ticker -->
+                <div class="md:col-span-1 flex items-center justify-center">
+                    <div class="glass-effect stat-card-raised rounded-xl p-4 w-full h-full flex flex-col items-center justify-center text-center space-y-4">
+                        <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Calls Taken</h2>
+                        <p id="totalCalls" class="text-6xl font-bold font-['Roboto_Mono']">0</p>
+                        <div class="flex items-center gap-4">
+                            <button id="decrementCalls" aria-label="Decrement total calls" class="p-3 rounded-full custom-hover transition-colors"><span class="material-symbols-outlined">remove</span></button>
+                            <button id="incrementCalls" aria-label="Increment total calls" class="p-3 rounded-full custom-hover transition-colors"><span class="material-symbols-outlined">add</span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Main Flow Tracker -->
+                <div class="md:col-span-2 space-y-6">
+                    <!-- Chart -->
+                    <section class="flex flex-col items-center justify-center chart-container">
+                        <div id="completionChart" class="flex items-center justify-center">
+                            <div class="text-center">
+                                <p id="chartPercentage" class="text-3xl font-bold font-['Roboto_Mono']">0.0%</p>
+                                <p class="text-xs subtle-text uppercase tracking-wider">Completed</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Stats Section -->
+                    <section class="grid grid-cols-3 gap-4 text-center">
+                        <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
+                            <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Flows Completed</h2>
+                            <p id="completedFlows" class="text-4xl font-bold font-['Roboto_Mono'] mt-2">0</p>
+                        </div>
+                        <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
+                            <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Incomplete</h2>
+                            <p id="incompleteFlows" class="text-4xl font-bold font-['Roboto_Mono'] mt-2">0</p>
+                        </div>
+                        <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
+                            <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Completion Rate</h2>
+                            <p id="completionRate" class="text-4xl font-bold font-['Roboto_Mono'] mt-2 subtle-text">0.0%</p>
+                        </div>
+                    </section>
+
+                    <!-- Flow Management Section -->
+                    <section class="raised-element glass-effect p-4 rounded-xl">
+                        <div class="flex items-center justify-center gap-3">
+                             <button id="decrementCompleted" aria-label="Decrement completed flows" class="danger-bg text-white font-bold p-3 rounded-lg transition-all flex items-center justify-center shadow-md hover:shadow-lg hover:scale-105 active:scale-100">
+                                <span class="material-symbols-outlined">remove_circle</span>
+                            </button>
+                            <button id="addCompletedFlowBtn" class="flex-grow accent-bg text-white font-bold px-4 py-3 rounded-lg transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-105 active:scale-100">
+                                <span class="material-symbols-outlined">check_circle</span>
+                                <span>Log Completed Flow</span>
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Footer Controls -->
+            <footer class="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm pt-6 mt-6 border-t border-[var(--border-color)]">
+                <button id="resetDataBtn" class="flex items-center gap-2 subtle-text hover:text-red-500 transition-colors py-2 px-3 rounded-lg custom-hover">
+                    <span class="material-symbols-outlined text-base">restart_alt</span>
+                    Reset Data
+                </button>
+                <div id="lastUpdatedEl" class="flex items-center gap-2 subtle-text">
+                    <span class="material-symbols-outlined text-base">history</span>
+                    <span></span>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Reset Confirmation Modal -->
+    <div id="resetConfirmModal" class="fixed-modal fixed inset-0 modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="glass-effect rounded-xl p-6 w-full max-w-md space-y-4 border-2 modal-border-danger shadow-2xl">
+            <h3 class="text-lg font-semibold flex items-center gap-2 text-red-500"><span class="material-symbols-outlined">warning</span> Reset Confirmation</h3>
+            <p class="subtle-text">Are you sure? All data will be permanently deleted. This action cannot be undone.</p>
+            <div class="flex justify-end gap-3">
+                <button id="cancelResetBtn" class="px-4 py-2 rounded-lg custom-hover transition-colors">Cancel</button>
+                <button id="confirmResetBtn" class="danger-bg text-white font-bold px-4 py-2 rounded-lg transition-colors">Yes, Reset Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 3D Panel Interaction ---
+        const panel = document.getElementById('trackerPanel');
+        let isDragging = false;
+        let previousMouseX, previousMouseY;
+        let currentRotationX = 0, currentRotationY = 0;
+        const SENSITIVITY = 0.25, MAX_ROTATION_X = 20;
+        const DRAG_TRANSITION = 'transform 0.05s linear';
+        const SNAP_TRANSITION = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; 
+
+        panel.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button, input, a')) return;
+            isDragging = true;
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+            panel.style.transition = DRAG_TRANSITION;
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - previousMouseX, dy = e.clientY - previousMouseY;
+            currentRotationY += dx * SENSITIVITY;
+            currentRotationX -= dy * SENSITIVITY;
+            currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX));
+            panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+        });
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                panel.style.transition = SNAP_TRANSITION; 
+                panel.style.transform = `rotateX(0deg) rotateY(0deg)`; 
+                currentRotationX = 0;
+                currentRotationY = 0;
+            }
+        });
+        panel.ondragstart = () => false;
+
+        // --- THEME MANAGEMENT ---
+        const themeToggle = document.getElementById('themeToggle');
+        const lightIcon = document.getElementById('theme-icon-light');
+        const darkIcon = document.getElementById('theme-icon-dark');
+        const htmlEl = document.documentElement;
+        const applyTheme = (theme) => {
+            if (theme === 'light') {
+                htmlEl.classList.add('light-mode');
+                lightIcon.style.display = 'none';
+                darkIcon.style.display = 'inline-block';
+            } else {
+                htmlEl.classList.remove('light-mode');
+                lightIcon.style.display = 'inline-block';
+                darkIcon.style.display = 'none';
+            }
+        };
+        themeToggle.addEventListener('click', () => {
+            const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+            render();
+        });
+        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        applyTheme(savedTheme);
+
+        // --- APPLICATION LOGIC ---
+        const totalCallsEl = document.getElementById('totalCalls');
+        const completedFlowsEl = document.getElementById('completedFlows');
+        const incompleteFlowsEl = document.getElementById('incompleteFlows');
+        const completionRateEl = document.getElementById('completionRate');
+        const addCompletedFlowBtn = document.getElementById('addCompletedFlowBtn');
+        const decrementCompletedBtn = document.getElementById('decrementCompleted');
+        const lastUpdatedEl = document.getElementById('lastUpdatedEl').querySelector('span:last-child');
+        const completionChart = document.getElementById('completionChart');
+        const chartPercentageEl = document.getElementById('chartPercentage');
+        
+        const incrementCallsBtn = document.getElementById('incrementCalls');
+        const decrementCallsBtn = document.getElementById('decrementCalls');
+        
+        const resetDataBtn = document.getElementById('resetDataBtn');
+        const resetConfirmModal = document.getElementById('resetConfirmModal');
+        const confirmResetBtn = document.getElementById('confirmResetBtn');
+        const cancelResetBtn = document.getElementById('cancelResetBtn');
+
+        const getInitialState = () => ({
+            totalCalls: 0,
+            completedFlows: 0,
+            lastUpdated: null,
+        });
+        let state = getInitialState();
+
+        function loadState() {
+            const savedState = localStorage.getItem('flowTrackerStateV2');
+            if (savedState) state = { ...getInitialState(), ...JSON.parse(savedState) };
+        }
+
+        function saveState() {
+            state.lastUpdated = new Date().toISOString();
+            localStorage.setItem('flowTrackerStateV2', JSON.stringify(state));
+        }
+        
+        function applyBounce(element) {
+            if (!element) return;
+            element.classList.add('bounce-stat');
+            element.addEventListener('animationend', () => {
+                element.classList.remove('bounce-stat');
+            }, { once: true });
+        }
+
+        function render() {
+            totalCallsEl.textContent = state.totalCalls;
+            completedFlowsEl.textContent = state.completedFlows;
+
+            const incompleteCount = Math.max(0, state.totalCalls - state.completedFlows);
+            incompleteFlowsEl.textContent = incompleteCount;
+
+            const rate = state.totalCalls > 0 ? (state.completedFlows / state.totalCalls) * 100 : 0;
+            const rateToShow = Math.max(0, rate);
+            const newRateText = `${rateToShow.toFixed(1)}%`; 
+            
+            completionRateEl.textContent = newRateText;
+            chartPercentageEl.textContent = newRateText;
+            
+            completionChart.style.setProperty('--completion-percentage', `${rateToShow}%`);
+
+            const rateGreen = getComputedStyle(htmlEl).getPropertyValue('--rate-green').trim();
+            const rateRed = getComputedStyle(htmlEl).getPropertyValue('--rate-red').trim();
+            const accentColor = getComputedStyle(htmlEl).getPropertyValue('--accent-color').trim();
+
+            if (rateToShow >= 60) completionRateEl.style.color = rateGreen;
+            else if (rateToShow >= 50) completionRateEl.style.color = accentColor;
+            else completionRateEl.style.color = rateRed;
+
+            if (state.lastUpdated) lastUpdatedEl.textContent = `Last updated ${formatRelativeTime(new Date(state.lastUpdated))}`;
+            else lastUpdatedEl.textContent = 'No updates yet.';
+            
+            saveState();
+        }
+        
+        function handleAddCompletedFlow() {
+            if (state.completedFlows < state.totalCalls) {
+                state.completedFlows++;
+                applyBounce(completedFlowsEl);
+                render();
+            }
+        }
+
+        function handleDecrementCompleted() {
+            if (state.completedFlows > 0) {
+                state.completedFlows--;
+                applyBounce(completedFlowsEl);
+                render();
+            }
+        }
+
+        function handleIncrementCalls() {
+            state.totalCalls++;
+            applyBounce(totalCallsEl);
+            render();
+        }
+
+        function handleDecrementCalls() {
+            if (state.totalCalls > 0) {
+                state.totalCalls--;
+                if (state.completedFlows > state.totalCalls) {
+                    state.completedFlows = state.totalCalls;
+                    applyBounce(completedFlowsEl);
+                }
+                applyBounce(totalCallsEl);
+                render();
+            }
+        }
+
+        function handleResetData() {
+            state = getInitialState();
+            localStorage.removeItem('flowTrackerStateV2'); 
+            state.lastUpdated = null;
+            closeResetModal();
+            render();
+        }
+
+        function openResetModal() { resetConfirmModal.classList.remove('hidden'); }
+        function closeResetModal() { resetConfirmModal.classList.add('hidden'); }
+
+        function formatRelativeTime(date) {
+            const now = new Date(); const seconds = Math.round((now - date) / 1000);
+            const minutes = Math.round(seconds / 60); const hours = Math.round(minutes / 60);
+            const days = Math.round(hours / 24);
+            if (seconds < 10) return `a few seconds ago`; if (seconds < 60) return `${seconds}s ago`;
+            if (minutes < 2) return `1m ago`; if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 2) return `1h ago`; if (hours < 24) return `${hours}h ago`;
+            if (days < 2) return `yesterday`; return `${days}d ago`;
+        }
+
+        addCompletedFlowBtn.addEventListener('click', handleAddCompletedFlow);
+        decrementCompletedBtn.addEventListener('click', handleDecrementCompleted);
+        incrementCallsBtn.addEventListener('click', handleIncrementCalls);
+        decrementCallsBtn.addEventListener('click', handleDecrementCalls);
+        resetDataBtn.addEventListener('click', openResetModal);
+        confirmResetBtn.addEventListener('click', handleResetData);
+        cancelResetBtn.addEventListener('click', closeResetModal);
+        resetConfirmModal.addEventListener('click', (e) => { if (e.target === resetConfirmModal) closeResetModal(); });
+
+        loadState();
+        render();
+    });
+    </script>
+</body>
+</html>
