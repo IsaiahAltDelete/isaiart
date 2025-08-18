@@ -250,73 +250,41 @@
     </div>
 
     <!-- Reset Confirmation Modal -->
-    <div id="resetConfirmModal" class="fixed inset-0 z-[70] modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
-        <!-- ... modal content ... -->
-    </div>
+    <div id="resetConfirmModal" class="fixed inset-0 z-[70] modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden"></div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- 3D Panel Interaction ---
+        // --- 3D Panel & Theme Management (No changes) ---
         const panel = document.getElementById('trackerPanel');
         let isDragging = false, previousMouseX, previousMouseY, currentRotationX = 0, currentRotationY = 0;
         const SENSITIVITY = 0.25, MAX_ROTATION_X = 20;
-        panel.addEventListener('mousedown', (e) => {
-            if (e.target.closest('button, input, a')) return;
-            isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY;
-            panel.style.transition = 'transform 0.05s linear';
-        });
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const dx = e.clientX - previousMouseX, dy = e.clientY - previousMouseY;
-            currentRotationY += dx * SENSITIVITY; currentRotationX -= dy * SENSITIVITY;
-            currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX));
-            panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
-            previousMouseX = e.clientX; previousMouseY = e.clientY;
-        });
-        document.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false; panel.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; 
-                panel.style.transform = `rotateX(0deg) rotateY(0deg)`; 
-                currentRotationX = 0; currentRotationY = 0;
-            }
-        });
+        panel.addEventListener('mousedown', (e) => { if (e.target.closest('button, input, a')) return; isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY; panel.style.transition = 'transform 0.05s linear'; });
+        document.addEventListener('mousemove', (e) => { if (!isDragging) return; const dx = e.clientX - previousMouseX, dy = e.clientY - previousMouseY; currentRotationY += dx * SENSITIVITY; currentRotationX -= dy * SENSITIVITY; currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX)); panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`; previousMouseX = e.clientX; previousMouseY = e.clientY; });
+        document.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; panel.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; panel.style.transform = `rotateX(0deg) rotateY(0deg)`; currentRotationX = 0; currentRotationY = 0; } });
         panel.ondragstart = () => false;
-
-        // --- THEME MANAGEMENT ---
         const themeToggle = document.getElementById('themeToggle'), lightIcon = document.getElementById('theme-icon-light'), darkIcon = document.getElementById('theme-icon-dark'), htmlEl = document.documentElement;
-        const applyTheme = (theme) => {
-            htmlEl.classList.toggle('light-mode', theme === 'light');
-            lightIcon.style.display = theme === 'light' ? 'none' : 'inline-block';
-            darkIcon.style.display = theme === 'light' ? 'inline-block' : 'none';
-        };
-        themeToggle.addEventListener('click', () => {
-            const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light';
-            localStorage.setItem('theme', newTheme); applyTheme(newTheme); render();
-        });
+        const applyTheme = (theme) => { htmlEl.classList.toggle('light-mode', theme === 'light'); lightIcon.style.display = theme === 'light' ? 'none' : 'inline-block'; darkIcon.style.display = theme === 'light' ? 'inline-block' : 'none'; };
+        themeToggle.addEventListener('click', () => { const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); render(); });
         applyTheme(localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
 
         // --- APPLICATION LOGIC ---
         const totalCallsEl = document.getElementById('totalCalls'), completedFlowsEl = document.getElementById('completedFlows'), incompleteFlowsEl = document.getElementById('incompleteFlows'), completionRateEl = document.getElementById('completionRate'), addCompletedFlowBtn = document.getElementById('addCompletedFlowBtn'), decrementCompletedBtn = document.getElementById('decrementCompleted'), lastUpdatedEl = document.getElementById('lastUpdatedEl').querySelector('span:last-child'), completionChart = document.getElementById('completionChart'), chartPercentageEl = document.getElementById('chartPercentage'), incrementCallsBtn = document.getElementById('incrementCalls'), decrementCallsBtn = document.getElementById('decrementCalls'), resetDataBtn = document.getElementById('resetDataBtn');
-        
-        // Log Panel Elements
         const logPanel = document.getElementById('logPanel'), openLogBtn = document.getElementById('openLogBtn'), closeLogBtn = document.getElementById('closeLogBtn'), logBackdrop = document.getElementById('logBackdrop'), logListContainer = document.getElementById('logListContainer'), logEmptyState = document.getElementById('logEmptyState');
 
         const getInitialState = () => ({
-            totalCalls: 0,
-            completedFlows: 0,
-            eventLog: [], // NEW: To store event history
+            calls: [],
             lastUpdated: null,
         });
         let state = getInitialState();
 
         function loadState() {
-            const savedState = localStorage.getItem('flowTrackerStateV3'); // New key for new logic
+            const savedState = localStorage.getItem('flowTrackerStateV4');
             if (savedState) state = { ...getInitialState(), ...JSON.parse(savedState) };
         }
 
         function saveState() {
             state.lastUpdated = new Date().toISOString();
-            localStorage.setItem('flowTrackerStateV3', JSON.stringify(state));
+            localStorage.setItem('flowTrackerStateV4', JSON.stringify(state));
         }
         
         function applyBounce(element) {
@@ -325,20 +293,21 @@
         }
 
         function renderLog() {
-            logListContainer.innerHTML = ''; // Clear previous entries
-            if (state.eventLog.length === 0) {
+            logListContainer.innerHTML = '';
+            if (state.calls.length === 0) {
                 logEmptyState.classList.remove('hidden');
                 return;
             }
             logEmptyState.classList.add('hidden');
 
-            const reversedLog = [...state.eventLog].reverse();
-            reversedLog.forEach(event => {
-                const isCompleted = event.type === 'completed';
+            const reversedLog = [...state.calls].reverse();
+            reversedLog.forEach(call => {
+                const isCompleted = call.status === 'completed';
                 const icon = isCompleted ? 'check_circle' : 'cancel';
                 const colorClass = isCompleted ? 'text-[var(--rate-green)]' : 'text-[var(--rate-red)]';
-                const text = isCompleted ? 'Flow Completed' : 'Call Added (Incomplete)';
-                const time = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const text = isCompleted ? `Call #${call.callNumber} Completed` : `Call #${call.callNumber} Added (Incomplete)`;
+                const timestamp = isCompleted ? call.completedAt : call.addedAt;
+                const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
                 const logItem = document.createElement('div');
                 logItem.className = 'flex items-center gap-4 p-3 border-b border-[var(--border-color)]';
@@ -346,7 +315,7 @@
                     <span class="material-symbols-outlined ${colorClass}">${icon}</span>
                     <div class="flex-grow">
                         <p class="font-medium">${text}</p>
-                        <p class="text-xs subtle-text">${new Date(event.timestamp).toLocaleString()}</p>
+                        <p class="text-xs subtle-text">${new Date(timestamp).toLocaleString()}</p>
                     </div>
                     <p class="text-sm font-['Roboto_Mono'] subtle-text">${time}</p>
                 `;
@@ -355,73 +324,73 @@
         }
 
         function render() {
-            totalCallsEl.textContent = state.totalCalls;
-            completedFlowsEl.textContent = state.completedFlows;
-            const incompleteCount = Math.max(0, state.totalCalls - state.completedFlows);
+            const totalCalls = state.calls.length;
+            const completedFlows = state.calls.filter(c => c.status === 'completed').length;
+            const incompleteCount = totalCalls - completedFlows;
+
+            totalCallsEl.textContent = totalCalls;
+            completedFlowsEl.textContent = completedFlows;
             incompleteFlowsEl.textContent = incompleteCount;
-            const rate = state.totalCalls > 0 ? (state.completedFlows / state.totalCalls) * 100 : 0;
+
+            const rate = totalCalls > 0 ? (completedFlows / totalCalls) * 100 : 0;
             const rateToShow = Math.max(0, rate);
             completionRateEl.textContent = `${rateToShow.toFixed(1)}%`;
             chartPercentageEl.textContent = `${rateToShow.toFixed(1)}%`;
             completionChart.style.setProperty('--completion-percentage', `${rateToShow}%`);
+            
             const rateGreen = getComputedStyle(htmlEl).getPropertyValue('--rate-green').trim();
             const rateRed = getComputedStyle(htmlEl).getPropertyValue('--rate-red').trim();
             const accentColor = getComputedStyle(htmlEl).getPropertyValue('--accent-color').trim();
             if (rateToShow >= 60) completionRateEl.style.color = rateGreen;
             else if (rateToShow >= 50) completionRateEl.style.color = accentColor;
             else completionRateEl.style.color = rateRed;
+
             if (state.lastUpdated) lastUpdatedEl.textContent = `${formatRelativeTime(new Date(state.lastUpdated))}`;
             else lastUpdatedEl.textContent = 'No updates yet.';
             
-            renderLog(); // Render the log every time state changes
+            renderLog();
             saveState();
         }
         
         function handleAddCompletedFlow() {
-            if (state.completedFlows < state.totalCalls) {
-                state.completedFlows++;
-                // Find the oldest 'incomplete' event and change its type to 'completed'
-                const incompleteEventIndex = state.eventLog.findIndex(e => e.type === 'incomplete');
-                if (incompleteEventIndex > -1) {
-                    state.eventLog[incompleteEventIndex].type = 'completed';
-                    state.eventLog[incompleteEventIndex].timestamp = new Date().toISOString(); // Update timestamp to completion time
-                }
+            // CORRECTED LOGIC: Find the most RECENTLY added incomplete call by searching backwards.
+            const callToComplete = [...state.calls].reverse().find(c => c.status === 'incomplete');
+
+            if (callToComplete) {
+                callToComplete.status = 'completed';
+                callToComplete.completedAt = new Date().toISOString();
                 applyBounce(completedFlowsEl);
                 render();
             }
         }
 
         function handleDecrementCompleted() {
-            if (state.completedFlows > 0) {
-                state.completedFlows--;
-                // Find the newest 'completed' event and change it back to 'incomplete'
-                const completedEventIndex = findLastIndex(state.eventLog, e => e.type === 'completed');
-                if (completedEventIndex > -1) {
-                    state.eventLog[completedEventIndex].type = 'incomplete';
-                    state.eventLog[completedEventIndex].timestamp = new Date().toISOString(); // Update timestamp
-                }
+            // Find the last completed call (most recent one) to revert it.
+            const lastCompletedCall = [...state.calls].reverse().find(c => c.status === 'completed');
+            if (lastCompletedCall) {
+                lastCompletedCall.status = 'incomplete';
+                lastCompletedCall.completedAt = null;
                 applyBounce(completedFlowsEl);
                 render();
             }
         }
 
         function handleIncrementCalls() {
-            state.totalCalls++;
-            // Add a new 'incomplete' event to the log
-            state.eventLog.push({ type: 'incomplete', timestamp: new Date().toISOString() });
+            const newCallNumber = state.calls.length + 1;
+            state.calls.push({
+                id: Date.now(),
+                callNumber: newCallNumber,
+                status: 'incomplete',
+                addedAt: new Date().toISOString(),
+                completedAt: null
+            });
             applyBounce(totalCallsEl);
             render();
         }
 
         function handleDecrementCalls() {
-            if (state.totalCalls > 0) {
-                state.totalCalls--;
-                // Remove the last event from the log. If it was a completed one, also decrement completedFlows.
-                const lastEvent = state.eventLog.pop();
-                if (lastEvent && lastEvent.type === 'completed') {
-                    state.completedFlows--;
-                    applyBounce(completedFlowsEl);
-                }
+            if (state.calls.length > 0) {
+                state.calls.pop();
                 applyBounce(totalCallsEl);
                 render();
             }
@@ -429,17 +398,8 @@
 
         function handleResetData() {
             state = getInitialState();
-            localStorage.removeItem('flowTrackerStateV3'); 
             render();
         }
-
-        // Helper to find last index, as it's not in all browsers
-        const findLastIndex = (arr, predicate) => {
-            for (let i = arr.length - 1; i >= 0; i--) {
-                if (predicate(arr[i])) return i;
-            }
-            return -1;
-        };
 
         function formatRelativeTime(date) {
             const seconds = Math.round((new Date() - date) / 1000);
@@ -454,12 +414,11 @@
         decrementCallsBtn.addEventListener('click', handleDecrementCalls);
         resetDataBtn.addEventListener('click', () => resetConfirmModal.classList.remove('hidden'));
         
-        // Log Panel Listeners
         openLogBtn.addEventListener('click', () => logPanel.classList.add('log-panel-open'));
         closeLogBtn.addEventListener('click', () => logPanel.classList.remove('log-panel-open'));
         logBackdrop.addEventListener('click', () => logPanel.classList.remove('log-panel-open'));
 
-        // Reset Modal (simplified for brevity)
+        // Reset Modal
         const resetConfirmModal = document.getElementById('resetConfirmModal');
         resetConfirmModal.innerHTML = `<div class="glass-effect rounded-xl p-6 w-full max-w-md space-y-4 border-2 border-[var(--danger-color)] shadow-2xl"><h3 class="text-lg font-semibold flex items-center gap-2 text-[var(--danger-color)]"><span class="material-symbols-outlined">warning</span>Reset Confirmation</h3><p class="subtle-text">Are you sure? All data will be permanently deleted.</p><div class="flex justify-end gap-3"><button id="cancelResetBtn" class="px-4 py-2 rounded-lg custom-hover">Cancel</button><button id="confirmResetBtn" class="danger-bg text-white font-bold px-4 py-2 rounded-lg">Yes, Reset</button></div></div>`;
         document.getElementById('cancelResetBtn').addEventListener('click', () => resetConfirmModal.classList.add('hidden'));
