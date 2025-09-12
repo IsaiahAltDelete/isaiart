@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flow Tracker</title>
+    <title>Call Flow Tracker</title>
 
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Google Fonts: Poppins & Roboto Mono -->
+    <!-- Google Fonts: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Google Material Symbols -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
@@ -20,15 +20,13 @@
         :root {
             --accent-color: #3B82F6; 
             --accent-color-hover: #2563EB;
-            --rate-green: #22C55E;
-            --rate-red: #EF4444;
-            --chart-bg-color: rgba(255, 255, 255, 0.05);
+            --accent-color-translucent: rgba(59, 130, 246, 0.1);
+            --success-color: #22C55E;
             --background-color: #111111;
             --text-color: #E5E7EB;
             --subtle-text-color: #6B7280;
             --card-bg-color: rgba(31, 41, 55, 0.65);
             --panel-shadow-color: rgba(0,0,0,0.3);
-            --raised-element-shadow: rgba(0,0,0,0.2);
             --border-color: rgba(255, 255, 255, 0.1);
             --hover-bg-color: #374151;
             --danger-color: #DC2626;
@@ -41,12 +39,11 @@
             --subtle-text-color: #6B7280;
             --card-bg-color: rgba(255, 255, 255, 0.7);
             --panel-shadow-color: rgba(0,0,0,0.1);
-            --raised-element-shadow: rgba(0,0,0,0.08);
             --border-color: rgba(0, 0, 0, 0.1);
             --hover-bg-color: #E5E7EB;
-            --rate-green: #16A34A;
-            --rate-red: #DC2626;
-            --chart-bg-color: rgba(0, 0, 0, 0.05);
+            --success-color: #16A34A;
+            --danger-color: #DC2626;
+            --accent-color-translucent: rgba(59, 130, 246, 0.15);
         }
 
         body {
@@ -72,8 +69,10 @@
 
         #trackerPanel {
             width: 100%;
-            max-width: 750px;
-            padding: 2rem;
+            max-width: 500px;
+            height: 70vh;
+            max-height: 650px;
+            padding: 1.5rem 0.5rem 1.5rem 1.5rem;
             transform-style: preserve-3d;
             transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0); 
             cursor: grab;
@@ -81,73 +80,78 @@
             border-radius: 1.5rem;
             box-shadow: 0 25px 50px -12px var(--panel-shadow-color);
             background: var(--card-bg-color);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
         }
         #trackerPanel:active {
             cursor: grabbing;
         }
 
-        .raised-element { transform: translateZ(30px); box-shadow: 0 8px 20px var(--raised-element-shadow); border-radius: 0.75rem; }
-        .stat-card-raised { transform: translateZ(20px); box-shadow: 0 6px 15px var(--raised-element-shadow); }
-        .chart-container { transform: translateZ(40px); }
-
-        #completionChart {
-            width: 150px; height: 150px; border-radius: 50%; position: relative;
-            background: radial-gradient(circle closest-side, var(--card-bg-color) 80%, transparent 81%),
-                        conic-gradient(var(--rate-green) 0% var(--completion-percentage), var(--rate-red) var(--completion-percentage) 100%);
-            transition: background 0.5s ease-in-out;
-        }
-        #completionChart::before {
-            content: ''; position: absolute; inset: 0; border-radius: 50%;
-            background: var(--chart-bg-color); z-index: -1;
-        }
-
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; transition: color 0.3s ease; }
         
-        #completionRate, #totalCalls, #completedFlows, #incompleteFlows { transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-
-        .bounce-stat { animation: stat-bounce-anim 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        @keyframes stat-bounce-anim { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
-
         .custom-hover:hover { background-color: var(--hover-bg-color); }
         .subtle-text { color: var(--subtle-text-color); }
         .accent-bg { background-color: var(--accent-color); }
         .accent-bg:hover { background-color: var(--accent-color-hover); }
-        .danger-bg { background-color: var(--danger-color); }
-        .danger-bg:hover { background-color: var(--danger-hover-color); }
 
-        /* Log Panel Styles */
-        #logPanel {
-            position: fixed; inset: 0; z-index: 50;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
+        /* Scrollbar Styles */
+        #callListContainer::-webkit-scrollbar { width: 6px; }
+        #callListContainer::-webkit-scrollbar-track { background: transparent; }
+        #callListContainer::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 10px; }
+        #callListContainer::-webkit-scrollbar-thumb:hover { background: var(--accent-color-hover); }
+
+        /* Custom Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
         }
-        #logBackdrop {
-            position: absolute; inset: 0;
-            background-color: rgba(0,0,0,0.5);
+        .toggle-switch input {
             opacity: 0;
-            transition: opacity 0.3s ease;
+            width: 0;
+            height: 0;
         }
-        #logContent {
-            position: absolute; top: 0; right: 0; bottom: 0;
-            width: 100%; max-width: 400px;
-            background: var(--card-bg-color);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            border-left: 1px solid var(--border-color);
-            box-shadow: -10px 0 30px rgba(0,0,0,0.2);
-            transform: translateX(100%);
-            transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0);
-            display: flex; flex-direction: column;
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--hover-bg-color);
+            transition: .4s;
+            border-radius: 24px;
         }
-        #logPanel.log-panel-open { pointer-events: auto; }
-        #logPanel.log-panel-open #logBackdrop { opacity: 1; }
-        #logPanel.log-panel-open #logContent { transform: translateX(0); }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 10px; }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--success-color);
+        }
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+        
+        /* Call Item Animation */
+        .call-item {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -158,118 +162,77 @@
 
     <div id="scene">
         <main id="trackerPanel">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Left Column: Call Ticker -->
-                <div class="md:col-span-1 flex items-center justify-center">
-                    <div class="glass-effect stat-card-raised rounded-xl p-4 w-full h-full flex flex-col items-center justify-center text-center space-y-4">
-                        <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Calls Taken</h2>
-                        <p id="totalCalls" class="text-6xl font-bold font-['Roboto_Mono']">0</p>
-                        <div class="flex items-center gap-4">
-                            <button id="decrementCalls" aria-label="Decrement total calls" class="p-3 rounded-full custom-hover transition-colors"><span class="material-symbols-outlined">remove</span></button>
-                            <button id="incrementCalls" aria-label="Increment total calls" class="p-3 rounded-full custom-hover transition-colors"><span class="material-symbols-outlined">add</span></button>
-                        </div>
+            <!-- Header -->
+            <header class="px-4 pb-4 space-y-3 border-b border-[var(--border-color)]" style="transform: translateZ(20px);">
+                <h1 class="text-2xl font-bold">Call Flow Tracker</h1>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <p class="subtle-text">Completion</p>
+                        <p id="progressText" class="font-medium">0%</p>
+                    </div>
+                    <div class="w-full bg-[var(--hover-bg-color)] rounded-full h-2">
+                        <div id="progressBar" class="bg-[var(--success-color)] h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
                     </div>
                 </div>
+            </header>
 
-                <!-- Right Column: Main Flow Tracker -->
-                <div class="md:col-span-2 space-y-6">
-                    <section class="flex flex-col items-center justify-center chart-container">
-                        <div id="completionChart" class="flex items-center justify-center">
-                            <div class="text-center">
-                                <p id="chartPercentage" class="text-3xl font-bold font-['Roboto_Mono']">0.0%</p>
-                                <p class="text-xs subtle-text uppercase tracking-wider">Completed</p>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section class="grid grid-cols-3 gap-4 text-center">
-                        <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
-                            <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Flows Completed</h2>
-                            <p id="completedFlows" class="text-4xl font-bold font-['Roboto_Mono'] mt-2">0</p>
-                        </div>
-                        <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
-                            <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Incomplete</h2>
-                            <p id="incompleteFlows" class="text-4xl font-bold font-['Roboto_Mono'] mt-2">0</p>
-                        </div>
-                        <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
-                            <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Completion Rate</h2>
-                            <p id="completionRate" class="text-4xl font-bold font-['Roboto_Mono'] mt-2 subtle-text">0.0%</p>
-                        </div>
-                    </section>
-
-                    <section class="raised-element glass-effect p-4 rounded-xl">
-                        <div class="flex items-center justify-center gap-3">
-                             <button id="decrementCompleted" aria-label="Decrement completed flows" class="danger-bg text-white font-bold p-3 rounded-lg transition-all flex items-center justify-center shadow-md hover:shadow-lg hover:scale-105 active:scale-100">
-                                <span class="material-symbols-outlined">remove_circle</span>
-                            </button>
-                            <button id="addCompletedFlowBtn" class="flex-grow accent-bg text-white font-bold px-4 py-3 rounded-lg transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-105 active:scale-100">
-                                <span class="material-symbols-outlined">check_circle</span>
-                                <span>Log Completed Flow</span>
-                            </button>
-                        </div>
-                    </section>
+            <!-- Call List -->
+            <div id="callListContainer" class="flex-grow overflow-y-auto pr-4 py-2" style="transform: translateZ(10px);">
+                <!-- Calls will be dynamically inserted here -->
+                <div id="emptyState" class="flex flex-col items-center justify-center h-full text-center subtle-text p-4">
+                    <span class="material-symbols-outlined text-5xl mb-2">phone_in_talk</span>
+                    <p class="font-medium">Ready for calls!</p>
+                    <p class="text-sm">Add a new call to get started.</p>
                 </div>
             </div>
 
-            <footer class="flex justify-between items-center gap-4 text-sm pt-6 mt-6 border-t border-[var(--border-color)]">
-                <button id="resetDataBtn" class="flex items-center gap-2 subtle-text hover:text-red-500 transition-colors py-2 px-3 rounded-lg custom-hover">
-                    <span class="material-symbols-outlined text-base">restart_alt</span>
-                    Reset Data
-                </button>
-                <div class="flex items-center gap-2">
-                    <div id="lastUpdatedEl" class="flex items-center gap-2 subtle-text">
-                        <span class="material-symbols-outlined text-base">history</span>
-                        <span></span>
-                    </div>
-                    <button id="openLogBtn" class="flex items-center gap-2 subtle-text hover:text-[var(--accent-color)] transition-colors py-2 px-3 rounded-lg custom-hover">
-                        <span class="material-symbols-outlined text-base">receipt_long</span>
-                        History
+            <!-- Footer Actions -->
+            <footer class="px-4 pt-4 flex items-center justify-between border-t border-[var(--border-color)]" style="transform: translateZ(20px);">
+                <div class="flex items-center gap-4">
+                    <button id="resetDataBtn" class="flex items-center gap-2 subtle-text hover:text-[var(--danger-color)] transition-colors py-2 px-3 rounded-lg custom-hover">
+                        <span class="material-symbols-outlined text-base">restart_alt</span>
+                        Reset
                     </button>
+                    <div id="lastUpdatedContainer" class="flex items-center gap-1.5 subtle-text text-xs">
+                        <span class="material-symbols-outlined text-sm">history</span>
+                        <span id="lastUpdatedText"></span>
+                    </div>
                 </div>
+                <button id="addCallBtn" class="accent-bg text-white font-bold px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-105 active:scale-100">
+                    <span class="material-symbols-outlined">add_call</span>
+                    <span>Add New Call</span>
+                </button>
             </footer>
         </main>
     </div>
 
-    <!-- Event Log Panel -->
-    <div id="logPanel">
-        <div id="logBackdrop"></div>
-        <div id="logContent" class="p-6 space-y-4">
-            <header class="flex items-center justify-between pb-4 border-b border-[var(--border-color)]">
-                <h2 class="text-xl font-semibold flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[var(--accent-color)]">receipt_long</span>
-                    Event Log
-                </h2>
-                <button id="closeLogBtn" class="p-2 rounded-full custom-hover">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
-            </header>
-            <div id="logListContainer" class="flex-grow overflow-y-auto space-y-3 pr-2">
-                <p id="logEmptyState" class="text-center subtle-text pt-16">No events logged yet.</p>
-            </div>
-        </div>
-    </div>
-
     <!-- Reset Confirmation Modal -->
-    <div id="resetConfirmModal" class="fixed inset-0 z-[70] modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden"></div>
+    <div id="resetConfirmModal" class="fixed inset-0 z-[70] backdrop-blur-sm flex items-center justify-center p-4 hidden" style="background-color: rgba(0,0,0,0.5);"></div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- 3D Panel & Theme Management (No changes) ---
+        // --- 3D Panel & Theme Management (Unchanged) ---
         const panel = document.getElementById('trackerPanel');
         let isDragging = false, previousMouseX, previousMouseY, currentRotationX = 0, currentRotationY = 0;
-        const SENSITIVITY = 0.25, MAX_ROTATION_X = 20;
-        panel.addEventListener('mousedown', (e) => { if (e.target.closest('button, input, a')) return; isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY; panel.style.transition = 'transform 0.05s linear'; });
+        const SENSITIVITY = 0.25, MAX_ROTATION_X = 15;
+        panel.addEventListener('mousedown', (e) => { if (e.target.closest('button, input, a, .slider')) return; isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY; panel.style.transition = 'transform 0.05s linear'; });
         document.addEventListener('mousemove', (e) => { if (!isDragging) return; const dx = e.clientX - previousMouseX, dy = e.clientY - previousMouseY; currentRotationY += dx * SENSITIVITY; currentRotationX -= dy * SENSITIVITY; currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX)); panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`; previousMouseX = e.clientX; previousMouseY = e.clientY; });
         document.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; panel.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; panel.style.transform = `rotateX(0deg) rotateY(0deg)`; currentRotationX = 0; currentRotationY = 0; } });
         panel.ondragstart = () => false;
         const themeToggle = document.getElementById('themeToggle'), lightIcon = document.getElementById('theme-icon-light'), darkIcon = document.getElementById('theme-icon-dark'), htmlEl = document.documentElement;
         const applyTheme = (theme) => { htmlEl.classList.toggle('light-mode', theme === 'light'); lightIcon.style.display = theme === 'light' ? 'none' : 'inline-block'; darkIcon.style.display = theme === 'light' ? 'inline-block' : 'none'; };
-        themeToggle.addEventListener('click', () => { const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); render(); });
+        themeToggle.addEventListener('click', () => { const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
         applyTheme(localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
 
         // --- APPLICATION LOGIC ---
-        const totalCallsEl = document.getElementById('totalCalls'), completedFlowsEl = document.getElementById('completedFlows'), incompleteFlowsEl = document.getElementById('incompleteFlows'), completionRateEl = document.getElementById('completionRate'), addCompletedFlowBtn = document.getElementById('addCompletedFlowBtn'), decrementCompletedBtn = document.getElementById('decrementCompleted'), lastUpdatedEl = document.getElementById('lastUpdatedEl').querySelector('span:last-child'), completionChart = document.getElementById('completionChart'), chartPercentageEl = document.getElementById('chartPercentage'), incrementCallsBtn = document.getElementById('incrementCalls'), decrementCallsBtn = document.getElementById('decrementCalls'), resetDataBtn = document.getElementById('resetDataBtn');
-        const logPanel = document.getElementById('logPanel'), openLogBtn = document.getElementById('openLogBtn'), closeLogBtn = document.getElementById('closeLogBtn'), logBackdrop = document.getElementById('logBackdrop'), logListContainer = document.getElementById('logListContainer'), logEmptyState = document.getElementById('logEmptyState');
+        const callListContainer = document.getElementById('callListContainer');
+        const emptyState = document.getElementById('emptyState');
+        const progressText = document.getElementById('progressText');
+        const progressBar = document.getElementById('progressBar');
+        const addCallBtn = document.getElementById('addCallBtn');
+        const resetDataBtn = document.getElementById('resetDataBtn');
+        const resetConfirmModal = document.getElementById('resetConfirmModal');
+        const lastUpdatedText = document.getElementById('lastUpdatedText');
 
         const getInitialState = () => ({
             calls: [],
@@ -278,120 +241,103 @@
         let state = getInitialState();
 
         function loadState() {
-            const savedState = localStorage.getItem('flowTrackerStateV4');
+            const savedState = localStorage.getItem('callFlowStateV2');
             if (savedState) state = { ...getInitialState(), ...JSON.parse(savedState) };
         }
 
         function saveState() {
             state.lastUpdated = new Date().toISOString();
-            localStorage.setItem('flowTrackerStateV4', JSON.stringify(state));
-        }
-        
-        function applyBounce(element) {
-            element.classList.add('bounce-stat');
-            element.addEventListener('animationend', () => element.classList.remove('bounce-stat'), { once: true });
+            localStorage.setItem('callFlowStateV2', JSON.stringify(state));
         }
 
-        function renderLog() {
-            logListContainer.innerHTML = '';
-            if (state.calls.length === 0) {
-                logEmptyState.classList.remove('hidden');
-                return;
-            }
-            logEmptyState.classList.add('hidden');
+        function formatRelativeTime(dateString) {
+            if (!dateString) return 'No updates yet.';
+            const date = new Date(dateString);
+            const now = new Date();
+            const seconds = Math.round((now - date) / 1000);
+            const minutes = Math.round(seconds / 60);
+            const hours = Math.round(minutes / 60);
 
-            const reversedLog = [...state.calls].reverse();
-            reversedLog.forEach(call => {
-                const isCompleted = call.status === 'completed';
-                const icon = isCompleted ? 'check_circle' : 'cancel';
-                const colorClass = isCompleted ? 'text-[var(--rate-green)]' : 'text-[var(--rate-red)]';
-                const text = isCompleted ? `Call #${call.callNumber} Completed` : `Call #${call.callNumber} Added (Incomplete)`;
-                const timestamp = isCompleted ? call.completedAt : call.addedAt;
-                const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-                const logItem = document.createElement('div');
-                logItem.className = 'flex items-center gap-4 p-3 border-b border-[var(--border-color)]';
-                logItem.innerHTML = `
-                    <span class="material-symbols-outlined ${colorClass}">${icon}</span>
-                    <div class="flex-grow">
-                        <p class="font-medium">${text}</p>
-                        <p class="text-xs subtle-text">${new Date(timestamp).toLocaleString()}</p>
-                    </div>
-                    <p class="text-sm font-['Roboto_Mono'] subtle-text">${time}</p>
-                `;
-                logListContainer.appendChild(logItem);
-            });
+            if (seconds < 10) return 'just now';
+            if (seconds < 60) return `${seconds}s ago`;
+            if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 24) return `${hours}h ago`;
+            return date.toLocaleDateString();
         }
 
         function render() {
+            // 1. Update Header Stats
             const totalCalls = state.calls.length;
-            const completedFlows = state.calls.filter(c => c.status === 'completed').length;
-            const incompleteCount = totalCalls - completedFlows;
-
-            totalCallsEl.textContent = totalCalls;
-            completedFlowsEl.textContent = completedFlows;
-            incompleteFlowsEl.textContent = incompleteCount;
-
-            const rate = totalCalls > 0 ? (completedFlows / totalCalls) * 100 : 0;
-            const rateToShow = Math.max(0, rate);
-            completionRateEl.textContent = `${rateToShow.toFixed(1)}%`;
-            chartPercentageEl.textContent = `${rateToShow.toFixed(1)}%`;
-            completionChart.style.setProperty('--completion-percentage', `${rateToShow}%`);
+            const completedCalls = state.calls.filter(call => call.completed).length;
+            const progressPercentage = totalCalls > 0 ? (completedCalls / totalCalls) * 100 : 0;
             
-            const rateGreen = getComputedStyle(htmlEl).getPropertyValue('--rate-green').trim();
-            const rateRed = getComputedStyle(htmlEl).getPropertyValue('--rate-red').trim();
-            const accentColor = getComputedStyle(htmlEl).getPropertyValue('--accent-color').trim();
-            if (rateToShow >= 60) completionRateEl.style.color = rateGreen;
-            else if (rateToShow >= 50) completionRateEl.style.color = accentColor;
-            else completionRateEl.style.color = rateRed;
+            progressText.textContent = `${progressPercentage.toFixed(0)}%`;
+            progressBar.style.width = `${progressPercentage}%`;
 
-            if (state.lastUpdated) lastUpdatedEl.textContent = `${formatRelativeTime(new Date(state.lastUpdated))}`;
-            else lastUpdatedEl.textContent = 'No updates yet.';
+            // 2. Update Footer Timestamp
+            lastUpdatedText.textContent = `Updated ${formatRelativeTime(state.lastUpdated)}`;
+
+            // 3. Render Call List
+            callListContainer.innerHTML = ''; // Clear previous list
             
-            renderLog();
+            if (totalCalls === 0) {
+                callListContainer.appendChild(emptyState);
+                emptyState.style.display = 'flex';
+            } else {
+                emptyState.style.display = 'none';
+                
+                const reversedCalls = [...state.calls].reverse();
+
+                reversedCalls.forEach(call => {
+                    const callEl = document.createElement('div');
+                    callEl.className = `call-item flex items-center justify-between p-3 rounded-lg transition-all duration-300 ${call.completed ? 'opacity-60' : 'opacity-100'}`;
+                    callEl.dataset.id = call.id;
+                    
+                    const callTime = new Date(call.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    callEl.innerHTML = `
+                        <div class="flex-grow pr-4">
+                            <p class="${call.completed ? 'line-through subtle-text' : ''}">Call #${call.number}</p>
+                            <p class="text-xs subtle-text">${callTime}</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" ${call.completed ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    `;
+                    
+                    callEl.addEventListener('mouseenter', () => {
+                        if (!call.completed) {
+                           callEl.style.backgroundColor = 'var(--accent-color-translucent)';
+                        }
+                    });
+                    callEl.addEventListener('mouseleave', () => {
+                        callEl.style.backgroundColor = 'transparent';
+                    });
+
+                    callListContainer.appendChild(callEl);
+                });
+            }
+            
             saveState();
         }
-        
-        function handleAddCompletedFlow() {
-            // CORRECTED LOGIC: Find the most RECENTLY added incomplete call by searching backwards.
-            const callToComplete = [...state.calls].reverse().find(c => c.status === 'incomplete');
 
-            if (callToComplete) {
-                callToComplete.status = 'completed';
-                callToComplete.completedAt = new Date().toISOString();
-                applyBounce(completedFlowsEl);
-                render();
-            }
-        }
-
-        function handleDecrementCompleted() {
-            // Find the last completed call (most recent one) to revert it.
-            const lastCompletedCall = [...state.calls].reverse().find(c => c.status === 'completed');
-            if (lastCompletedCall) {
-                lastCompletedCall.status = 'incomplete';
-                lastCompletedCall.completedAt = null;
-                applyBounce(completedFlowsEl);
-                render();
-            }
-        }
-
-        function handleIncrementCalls() {
-            const newCallNumber = state.calls.length + 1;
-            state.calls.push({
+        function handleAddCall() {
+            const newCall = {
                 id: Date.now(),
-                callNumber: newCallNumber,
-                status: 'incomplete',
-                addedAt: new Date().toISOString(),
-                completedAt: null
-            });
-            applyBounce(totalCallsEl);
+                number: state.calls.length + 1,
+                completed: false,
+                createdAt: new Date().toISOString(),
+            };
+            state.calls.push(newCall);
             render();
+            callListContainer.scrollTop = 0;
         }
 
-        function handleDecrementCalls() {
-            if (state.calls.length > 0) {
-                state.calls.pop();
-                applyBounce(totalCallsEl);
+        function handleToggleCall(callId) {
+            const call = state.calls.find(c => c.id == callId);
+            if (call) {
+                call.completed = !call.completed;
                 render();
             }
         }
@@ -401,26 +347,20 @@
             render();
         }
 
-        function formatRelativeTime(date) {
-            const seconds = Math.round((new Date() - date) / 1000);
-            if (seconds < 60) return `a few seconds ago`;
-            return `${Math.round(seconds / 60)}m ago`;
-        }
+        // Event Delegation for call toggles
+        callListContainer.addEventListener('change', (e) => {
+            if (e.target.matches('input[type="checkbox"]')) {
+                const callId = e.target.closest('.call-item').dataset.id;
+                handleToggleCall(callId);
+            }
+        });
 
-        // Event Listeners
-        addCompletedFlowBtn.addEventListener('click', handleAddCompletedFlow);
-        decrementCompletedBtn.addEventListener('click', handleDecrementCompleted);
-        incrementCallsBtn.addEventListener('click', handleIncrementCalls);
-        decrementCallsBtn.addEventListener('click', handleDecrementCalls);
+        // Button Event Listeners
+        addCallBtn.addEventListener('click', handleAddCall);
         resetDataBtn.addEventListener('click', () => resetConfirmModal.classList.remove('hidden'));
-        
-        openLogBtn.addEventListener('click', () => logPanel.classList.add('log-panel-open'));
-        closeLogBtn.addEventListener('click', () => logPanel.classList.remove('log-panel-open'));
-        logBackdrop.addEventListener('click', () => logPanel.classList.remove('log-panel-open'));
 
-        // Reset Modal
-        const resetConfirmModal = document.getElementById('resetConfirmModal');
-        resetConfirmModal.innerHTML = `<div class="glass-effect rounded-xl p-6 w-full max-w-md space-y-4 border-2 border-[var(--danger-color)] shadow-2xl"><h3 class="text-lg font-semibold flex items-center gap-2 text-[var(--danger-color)]"><span class="material-symbols-outlined">warning</span>Reset Confirmation</h3><p class="subtle-text">Are you sure? All data will be permanently deleted.</p><div class="flex justify-end gap-3"><button id="cancelResetBtn" class="px-4 py-2 rounded-lg custom-hover">Cancel</button><button id="confirmResetBtn" class="danger-bg text-white font-bold px-4 py-2 rounded-lg">Yes, Reset</button></div></div>`;
+        // Reset Modal Logic
+        resetConfirmModal.innerHTML = `<div class="bg-[var(--card-bg-color)] backdrop-blur-lg rounded-xl p-6 w-full max-w-md space-y-4 border border-[var(--danger-color)] shadow-2xl"><h3 class="text-lg font-semibold flex items-center gap-2 text-[var(--danger-color)]"><span class="material-symbols-outlined">warning</span>Reset Confirmation</h3><p class="subtle-text">Are you sure? All calls will be permanently deleted.</p><div class="flex justify-end gap-3"><button id="cancelResetBtn" class="px-4 py-2 rounded-lg custom-hover">Cancel</button><button id="confirmResetBtn" class="bg-[var(--danger-color)] hover:bg-[var(--danger-hover-color)] text-white font-bold px-4 py-2 rounded-lg transition-colors">Yes, Reset</button></div></div>`;
         document.getElementById('cancelResetBtn').addEventListener('click', () => resetConfirmModal.classList.add('hidden'));
         document.getElementById('confirmResetBtn').addEventListener('click', () => { handleResetData(); resetConfirmModal.classList.add('hidden'); });
 
