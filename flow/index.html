@@ -70,8 +70,8 @@
 
         #trackerPanel {
             width: 100%;
-            max-width: 550px; /* Increased width for graph */
-            height: 80vh; /* Increased height for graph */
+            max-width: 550px;
+            height: 80vh;
             max-height: 750px;
             padding: 1.5rem 0.5rem 1.5rem 1.5rem;
             transform-style: preserve-3d;
@@ -87,24 +87,20 @@
             display: flex;
             flex-direction: column;
         }
-        #trackerPanel:active {
-            cursor: grabbing;
-        }
+        #trackerPanel:active { cursor: grabbing; }
 
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; transition: color 0.3s ease; }
-        
         .custom-hover:hover { background-color: var(--hover-bg-color); }
         .subtle-text { color: var(--subtle-text-color); }
         .accent-bg { background-color: var(--accent-color); }
         .accent-bg:hover { background-color: var(--accent-color-hover); }
 
-        /* Scrollbar Styles */
+        /* Scrollbar */
         #callListContainer::-webkit-scrollbar { width: 6px; }
         #callListContainer::-webkit-scrollbar-track { background: transparent; }
         #callListContainer::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 10px; }
-        #callListContainer::-webkit-scrollbar-thumb:hover { background: var(--accent-color-hover); }
 
-        /* Custom Toggle Switch */
+        /* Toggle Switch */
         .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--hover-bg-color); transition: .4s; border-radius: 24px; }
@@ -112,39 +108,53 @@
         input:checked + .slider { background-color: var(--success-color); }
         input:checked + .slider:before { transform: translateX(20px); }
         
-        /* Animation */
+        /* Animations */
         .call-item, .chart-point { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .is-reminding { animation: shake-anim 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake-anim {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
 
-        /* Chart Styles */
-        #chartContainer {
-            padding: 1rem 0;
-            height: 120px;
+        /* Chart */
+        #chartContainer { padding: 1rem 0; height: 120px; }
+        #rateChart .grid-line { stroke: var(--border-color); stroke-width: 1; stroke-dasharray: 2, 4; }
+        #rateChart .chart-line { stroke: var(--accent-color); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: url(#chartGradient); }
+        #rateChart .chart-point { fill: var(--accent-color); stroke: var(--card-bg-color); stroke-width: 2; transition: r 0.2s ease; }
+        #rateChart .chart-point:hover { r: 6; }
+
+        /* Reminder Controls */
+        #reminderControls {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            width: 250px;
+            background: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
-        #rateChart .grid-line {
-            stroke: var(--border-color);
-            stroke-width: 1;
-            stroke-dasharray: 2, 4;
+        #reminderControls.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
         }
-        #rateChart .chart-line {
-            stroke: var(--accent-color);
-            stroke-width: 2.5;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            fill: url(#chartGradient);
-        }
-        #rateChart .chart-point {
-            fill: var(--accent-color);
-            stroke: var(--card-bg-color);
-            stroke-width: 2;
-            transition: r 0.2s ease;
-        }
-        #rateChart .chart-point:hover {
-            r: 6;
-        }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--hover-bg-color); border-radius: 4px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent-color); cursor: pointer; margin-top: -6px; }
     </style>
 </head>
 <body>
@@ -185,19 +195,31 @@
 
             <!-- Footer Actions -->
             <footer class="px-4 pt-4 flex items-center justify-between border-t border-[var(--border-color)]" style="transform: translateZ(20px);">
-                <div class="flex items-center gap-4">
-                    <button id="resetDataBtn" class="flex items-center gap-2 subtle-text hover:text-[var(--danger-color)] transition-colors py-2 px-3 rounded-lg custom-hover">
+                <div class="flex items-center gap-2">
+                    <button id="resetDataBtn" class="flex items-center gap-2 subtle-text hover:text-[var(--danger-color)] transition-colors p-2 rounded-full custom-hover">
                         <span class="material-symbols-outlined text-base">restart_alt</span>
-                        Reset
                     </button>
-                    <div id="lastUpdatedContainer" class="flex items-center gap-1.5 subtle-text text-xs">
+                    <div class="relative">
+                        <button id="reminderToggleBtn" class="flex items-center gap-2 subtle-text p-2 rounded-full custom-hover">
+                            <span class="material-symbols-outlined text-base">notifications</span>
+                        </button>
+                        <div id="reminderControls">
+                            <label class="text-xs subtle-text mb-2 block">Reminder Interval</label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" id="reminderSlider" min="0" max="30" step="1" value="0" class="flex-grow">
+                                <span id="reminderTimeLabel" class="text-sm font-medium w-16 text-right">Off</span>
+                            </div>
+                            <button id="setReminderBtn" class="w-full mt-3 accent-bg text-white text-sm font-semibold py-1.5 rounded-md">Set Reminder</button>
+                        </div>
+                    </div>
+                    <div id="lastUpdatedContainer" class="hidden md:flex items-center gap-1.5 subtle-text text-xs ml-2">
                         <span class="material-symbols-outlined text-sm">history</span>
                         <span id="lastUpdatedText"></span>
                     </div>
                 </div>
                 <button id="addCallBtn" class="accent-bg text-white font-bold px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-105 active:scale-100">
                     <span class="material-symbols-outlined">add_call</span>
-                    <span>Add New Call</span>
+                    <span class="hidden sm:inline">Add New Call</span>
                 </button>
             </footer>
         </main>
@@ -231,21 +253,34 @@
         const resetDataBtn = document.getElementById('resetDataBtn');
         const lastUpdatedText = document.getElementById('lastUpdatedText');
         const rateChart = document.getElementById('rateChart');
+        const reminderToggleBtn = document.getElementById('reminderToggleBtn');
+        const reminderControls = document.getElementById('reminderControls');
+        const reminderSlider = document.getElementById('reminderSlider');
+        const reminderTimeLabel = document.getElementById('reminderTimeLabel');
+        const setReminderBtn = document.getElementById('setReminderBtn');
 
         const getInitialState = () => ({
             calls: [],
             lastUpdated: null,
+            reminderInterval: 0, // in minutes
+            reminderTimerId: null,
         });
         let state = getInitialState();
 
         function loadState() {
-            const savedState = localStorage.getItem('callFlowStateV3');
-            if (savedState) state = { ...getInitialState(), ...JSON.parse(savedState) };
+            const savedState = localStorage.getItem('callFlowStateV4');
+            if (savedState) {
+                const parsedState = JSON.parse(savedState);
+                // Don't load the timerId, it's not valid across sessions
+                state = { ...getInitialState(), ...parsedState, reminderTimerId: null };
+            }
         }
 
         function saveState() {
             state.lastUpdated = new Date().toISOString();
-            localStorage.setItem('callFlowStateV3', JSON.stringify(state));
+            // Don't save the timerId
+            const { reminderTimerId, ...stateToSave } = state;
+            localStorage.setItem('callFlowStateV4', JSON.stringify(stateToSave));
         }
 
         function formatRelativeTime(dateString) {
@@ -263,53 +298,24 @@
         function renderChart() {
             const dataPoints = [];
             let completedCount = 0;
-            // The graph should be based on the chronological order of calls
             const sortedCalls = [...state.calls].sort((a, b) => a.number - b.number);
-
             for (let i = 0; i < sortedCalls.length; i++) {
-                if (sortedCalls[i].completed) {
-                    completedCount++;
-                }
-                const rate = (completedCount / (i + 1)) * 100;
-                dataPoints.push(rate);
+                if (sortedCalls[i].completed) completedCount++;
+                dataPoints.push((completedCount / (i + 1)) * 100);
             }
-
-            const svgWidth = 500;
-            const svgHeight = 100;
-            const padding = 5; // Padding from top and bottom
-
-            rateChart.innerHTML = `
-                <defs>
-                    <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style="stop-color:var(--accent-color); stop-opacity:0.3"/>
-                        <stop offset="100%" style="stop-color:var(--accent-color); stop-opacity:0"/>
-                    </linearGradient>
-                </defs>
-                <line class="grid-line" x1="0" y1="${svgHeight/2}" x2="${svgWidth}" y2="${svgHeight/2}"></line>
-            `;
-
-            if (dataPoints.length < 2) {
-                return; // Not enough data to draw a line
-            }
-
-            const points = dataPoints.map((rate, index) => {
-                const x = (index / (dataPoints.length - 1)) * svgWidth;
-                const y = (svgHeight - padding * 2) - (rate / 100) * (svgHeight - padding * 2) + padding;
-                return `${x},${y}`;
-            }).join(' ');
-
+            const svgWidth = 500, svgHeight = 100, padding = 5;
+            rateChart.innerHTML = `<defs><linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:var(--accent-color); stop-opacity:0.3"/><stop offset="100%" style="stop-color:var(--accent-color); stop-opacity:0"/></linearGradient></defs><line class="grid-line" x1="0" y1="${svgHeight/2}" x2="${svgWidth}" y2="${svgHeight/2}"></line>`;
+            if (dataPoints.length < 2) return;
+            const points = dataPoints.map((rate, index) => `${(index / (dataPoints.length - 1)) * svgWidth},${(svgHeight - padding * 2) - (rate / 100) * (svgHeight - padding * 2) + padding}`).join(' ');
             const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
             polyline.setAttribute('class', 'chart-line');
             polyline.setAttribute('points', points);
             rateChart.appendChild(polyline);
-
             dataPoints.forEach((rate, index) => {
-                const x = (index / (dataPoints.length - 1)) * svgWidth;
-                const y = (svgHeight - padding * 2) - (rate / 100) * (svgHeight - padding * 2) + padding;
                 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 circle.setAttribute('class', 'chart-point');
-                circle.setAttribute('cx', x);
-                circle.setAttribute('cy', y);
+                circle.setAttribute('cx', (index / (dataPoints.length - 1)) * svgWidth);
+                circle.setAttribute('cy', (svgHeight - padding * 2) - (rate / 100) * (svgHeight - padding * 2) + padding);
                 circle.setAttribute('r', 4);
                 rateChart.appendChild(circle);
             });
@@ -325,110 +331,129 @@
             lastUpdatedText.textContent = `Updated ${formatRelativeTime(state.lastUpdated)}`;
 
             callListContainer.innerHTML = '';
-            
             if (totalCalls === 0) {
                 callListContainer.appendChild(emptyState);
                 emptyState.style.display = 'flex';
             } else {
                 emptyState.style.display = 'none';
-                const reversedCalls = [...state.calls].reverse();
-                reversedCalls.forEach(call => {
+                [...state.calls].reverse().forEach(call => {
                     const callEl = document.createElement('div');
                     callEl.className = `call-item flex items-center justify-between p-3 rounded-lg transition-all duration-300 ${call.completed ? 'opacity-60' : 'opacity-100'}`;
                     callEl.dataset.id = call.id;
-                    
                     const callTime = new Date(call.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                    callEl.innerHTML = `
-                        <div class="flex-grow pr-2">
-                            <p class="${call.completed ? 'line-through subtle-text' : ''}">Call #${call.number}</p>
-                            <p class="text-xs subtle-text">${callTime}</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button class="delete-btn p-2 rounded-full hover:bg-[var(--danger-color)] hover:text-white transition-colors" data-id="${call.id}" data-number="${call.number}">
-                                <span class="material-symbols-outlined text-base">delete</span>
-                            </button>
-                            <label class="toggle-switch">
-                                <input type="checkbox" ${call.completed ? 'checked' : ''}>
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                    `;
+                    callEl.innerHTML = `<div class="flex-grow pr-2"><p class="${call.completed ? 'line-through subtle-text' : ''}">Call #${call.number}</p><p class="text-xs subtle-text">${callTime}</p></div><div class="flex items-center gap-2"><button class="delete-btn p-2 rounded-full hover:bg-[var(--danger-color)] hover:text-white transition-colors" data-id="${call.id}" data-number="${call.number}"><span class="material-symbols-outlined text-base">delete</span></button><label class="toggle-switch"><input type="checkbox" ${call.completed ? 'checked' : ''}><span class="slider"></span></label></div>`;
                     callListContainer.appendChild(callEl);
                 });
             }
             
+            // Update reminder UI
+            reminderSlider.value = state.reminderInterval;
+            reminderTimeLabel.textContent = state.reminderInterval > 0 ? `${state.reminderInterval} min` : 'Off';
+            reminderToggleBtn.style.color = state.reminderInterval > 0 ? 'var(--accent-color)' : 'var(--subtle-text-color)';
+
             renderChart();
             saveState();
         }
 
+        // --- Core Logic ---
         function getNextCallNumber() {
             if (state.calls.length === 0) return 1;
-            const maxNumber = Math.max(...state.calls.map(c => c.number));
-            return maxNumber + 1;
+            return Math.max(...state.calls.map(c => c.number)) + 1;
         }
-
         function handleAddCall() {
-            const newCall = {
-                id: Date.now(),
-                number: getNextCallNumber(),
-                completed: false,
-                createdAt: new Date().toISOString(),
-            };
-            state.calls.push(newCall);
+            state.calls.push({ id: Date.now(), number: getNextCallNumber(), completed: false, createdAt: new Date().toISOString() });
             render();
             callListContainer.scrollTop = 0;
         }
-
         function handleToggleCall(callId) {
             const call = state.calls.find(c => c.id == callId);
-            if (call) {
-                call.completed = !call.completed;
-                render();
-            }
+            if (call) { call.completed = !call.completed; render(); }
         }
-
         function handleDeleteCall(callId) {
             state.calls = state.calls.filter(c => c.id != callId);
             render();
         }
-
         function handleResetData() {
+            cancelReminder();
             state = getInitialState();
             render();
         }
 
-        // --- Event Delegation ---
+        // --- Reminder Logic ---
+        function showNotification() {
+            // 1. On-screen shake
+            panel.classList.add('is-reminding');
+            panel.addEventListener('animationend', () => panel.classList.remove('is-reminding'), { once: true });
+
+            // 2. Browser notification
+            if (Notification.permission === 'granted') {
+                new Notification('Call Flow Reminder', {
+                    body: 'Time to log your calls!',
+                    icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔔</text></svg>'
+                });
+            }
+            
+            // 3. Set up the next reminder
+            setReminder(state.reminderInterval);
+        }
+
+        function setReminder(minutes) {
+            cancelReminder(); // Clear any existing timer
+            state.reminderInterval = minutes;
+            if (minutes > 0) {
+                const timerId = setTimeout(showNotification, minutes * 60 * 1000);
+                state.reminderTimerId = timerId;
+            }
+            render();
+        }
+
+        function cancelReminder() {
+            if (state.reminderTimerId) {
+                clearTimeout(state.reminderTimerId);
+                state.reminderTimerId = null;
+            }
+        }
+
+        // --- Event Listeners ---
         callListContainer.addEventListener('click', (e) => {
             const deleteBtn = e.target.closest('.delete-btn');
-            if (deleteBtn) {
-                const callId = deleteBtn.dataset.id;
-                const callNumber = deleteBtn.dataset.number;
-                openDeleteConfirmModal(callId, callNumber);
-            }
+            if (deleteBtn) openDeleteConfirmModal(deleteBtn.dataset.id, deleteBtn.dataset.number);
         });
-
         callListContainer.addEventListener('change', (e) => {
-            if (e.target.matches('input[type="checkbox"]')) {
-                const callId = e.target.closest('.call-item').dataset.id;
-                handleToggleCall(callId);
-            }
+            if (e.target.matches('input[type="checkbox"]')) handleToggleCall(e.target.closest('.call-item').dataset.id);
         });
-
         addCallBtn.addEventListener('click', handleAddCall);
         resetDataBtn.addEventListener('click', () => openResetConfirmModal());
+
+        // Reminder UI events
+        reminderToggleBtn.addEventListener('click', () => reminderControls.classList.toggle('visible'));
+        reminderSlider.addEventListener('input', (e) => {
+            const minutes = e.target.value;
+            reminderTimeLabel.textContent = minutes > 0 ? `${minutes} min` : 'Off';
+        });
+        setReminderBtn.addEventListener('click', () => {
+            const minutes = parseInt(reminderSlider.value, 10);
+            if (minutes > 0 && Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        setReminder(minutes);
+                    }
+                });
+            } else {
+                setReminder(minutes);
+            }
+            reminderControls.classList.remove('visible');
+        });
 
         // --- Modals ---
         const resetConfirmModal = document.getElementById('resetConfirmModal');
         const deleteConfirmModal = document.getElementById('deleteConfirmModal');
-
         function openResetConfirmModal() {
             resetConfirmModal.innerHTML = `<div class="bg-[var(--card-bg-color)] backdrop-blur-lg rounded-xl p-6 w-full max-w-md space-y-4 border border-[var(--danger-color)] shadow-2xl"><h3 class="text-lg font-semibold flex items-center gap-2 text-[var(--danger-color)]"><span class="material-symbols-outlined">warning</span>Reset Confirmation</h3><p class="subtle-text">Are you sure? All calls will be permanently deleted.</p><div class="flex justify-end gap-3"><button class="cancel-btn px-4 py-2 rounded-lg custom-hover">Cancel</button><button id="confirmResetBtn" class="bg-[var(--danger-color)] hover:bg-[var(--danger-hover-color)] text-white font-bold px-4 py-2 rounded-lg transition-colors">Yes, Reset</button></div></div>`;
             resetConfirmModal.classList.remove('hidden');
             resetConfirmModal.querySelector('.cancel-btn').addEventListener('click', () => resetConfirmModal.classList.add('hidden'));
             resetConfirmModal.querySelector('#confirmResetBtn').addEventListener('click', () => { handleResetData(); resetConfirmModal.classList.add('hidden'); });
         }
-
         function openDeleteConfirmModal(callId, callNumber) {
             deleteConfirmModal.innerHTML = `<div class="bg-[var(--card-bg-color)] backdrop-blur-lg rounded-xl p-6 w-full max-w-md space-y-4 border border-[var(--danger-color)] shadow-2xl"><h3 class="text-lg font-semibold flex items-center gap-2 text-[var(--danger-color)]"><span class="material-symbols-outlined">delete</span>Delete Confirmation</h3><p class="subtle-text">Are you sure you want to delete <strong>Call #${callNumber}</strong>? This action cannot be undone.</p><div class="flex justify-end gap-3"><button class="cancel-btn px-4 py-2 rounded-lg custom-hover">Cancel</button><button id="confirmDeleteBtn" class="bg-[var(--danger-color)] hover:bg-[var(--danger-hover-color)] text-white font-bold px-4 py-2 rounded-lg transition-colors">Yes, Delete</button></div></div>`;
             deleteConfirmModal.classList.remove('hidden');
@@ -436,8 +461,9 @@
             deleteConfirmModal.querySelector('#confirmDeleteBtn').addEventListener('click', () => { handleDeleteCall(callId); deleteConfirmModal.classList.add('hidden'); });
         }
 
-        // Initial Load
+        // --- Initial Load ---
         loadState();
+        setReminder(state.reminderInterval); // Re-initialize timer on load
         render();
     });
     </script>
