@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transfer Rate</title>
+    <title>Transfer Rate Tracker</title>
 
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -155,15 +154,20 @@
         .danger-bg { background-color: var(--danger-color); }
         .danger-bg:hover { background-color: var(--danger-hover-color); }
 
-        .fixed-modal { z-index: 50; }
-        #themeToggle { z-index: 60; }
+        .fixed-modal { z-index: 70; }
     </style>
 </head>
 <body>
-    <button id="themeToggle" class="fixed top-6 right-6 p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Toggle theme">
-        <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
-        <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
-    </button>
+    <!-- Top Right Controls -->
+    <div class="fixed top-6 right-6 flex items-center gap-2 z-[60]">
+        <a href="https://isaiart.com/smt" class="p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Back to Hub">
+            <span class="material-symbols-outlined">home</span>
+        </a>
+        <button id="themeToggle" class="p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Toggle theme">
+            <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
+            <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
+        </button>
+    </div>
 
     <div id="scene">
         <main id="trackerPanel" class="space-y-6">
@@ -334,7 +338,7 @@
         const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
         applyTheme(savedTheme);
 
-        // --- APPLICATION LOGIC ---
+        // --- APPLICATION LOGIC (Unchanged) ---
         const totalCallsEl = document.getElementById('totalCalls');
         const totalTransfersEl = document.getElementById('totalTransfers');
         const keptRateEl = document.getElementById('keptRate');
@@ -399,7 +403,6 @@
                 const rate = (keptCalls / state.totalCalls) * 100;
                 const rateToShow = Math.max(0, rate);
                 const oldRateText = keptRateEl.textContent;
-                // UPDATED: Display percentage with one decimal place
                 const newRateText = `${rateToShow.toFixed(1)}%`; 
                 
                 keptRateEl.textContent = newRateText;
@@ -409,7 +412,6 @@
                 else if (rateToShow >= 75) keptRateEl.style.color = accentColor;
                 else keptRateEl.style.color = rateRed;
             } else {
-                // UPDATED: Display 0.0% for consistency
                 keptRateEl.textContent = `0.0%`; 
                 keptRateEl.style.color = subtleTextColor;
             }

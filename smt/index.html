@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self Management Tools</title>
+
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Symbols -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+    <style>
+        :root {
+            --accent-color: #6366F1; /* Indigo for the hub */
+            --accent-color-hover: #4F46E5;
+            /* Dark Theme (Default) */
+            --background-color: #111111;
+            --text-color: #E5E7EB;
+            --subtle-text-color: #9CA3AF;
+            --card-bg-color: rgba(31, 41, 55, 0.65);
+            --panel-shadow-color: rgba(0,0,0,0.3);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --hover-bg-color: #374151;
+        }
+
+        html.light-mode {
+            /* Light Theme */
+            --background-color: #F0F2F5;
+            --text-color: #1F2937;
+            --subtle-text-color: #6B7280;
+            --card-bg-color: rgba(255, 255, 255, 0.7);
+            --panel-shadow-color: rgba(0,0,0,0.1);
+            --border-color: rgba(0, 0, 0, 0.1);
+            --hover-bg-color: #E5E7EB;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
+        }
+        
+        #scene {
+            perspective: 1500px;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 1rem;
+        }
+
+        #hubPanel {
+            width: 100%;
+            max-width: 700px;
+            padding: 2.5rem;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0); 
+            cursor: grab;
+            user-select: none;
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px var(--panel-shadow-color);
+            background: var(--card-bg-color);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+        }
+        #hubPanel:active {
+            cursor: grabbing;
+        }
+
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+        .custom-hover:hover { background-color: var(--hover-bg-color); }
+        .subtle-text { color: var(--subtle-text-color); }
+        
+        .app-card {
+            background-color: var(--hover-bg-color);
+            border: 1px solid var(--border-color);
+            transform: translateZ(20px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .app-card:hover {
+            transform: translateZ(20px) scale(1.05);
+            box-shadow: 0 0 25px 0 rgba(99, 102, 241, 0.3); /* Accent color glow */
+            border-color: var(--accent-color);
+        }
+        .app-card .launch-text .material-symbols-outlined {
+            transition: transform 0.3s ease;
+        }
+        .app-card:hover .launch-text .material-symbols-outlined {
+            transform: translateX(4px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Right Controls -->
+    <div class="fixed top-6 right-6 flex items-center gap-2 z-[60]">
+        <button id="themeToggle" class="p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Toggle theme">
+            <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
+            <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
+        </button>
+    </div>
+
+    <div id="scene">
+        <main id="hubPanel">
+            <!-- Header -->
+            <header class="text-center mb-8" style="transform: translateZ(40px);">
+                <h1 class="text-4xl font-bold mb-2">Self Management Tools</h1>
+            </header>
+
+            <!-- App Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Transfer Tracker Card -->
+                <a href="https://isaiart.com/transfer" class="app-card block p-6 rounded-xl space-y-4">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 rounded-lg" style="background-color: rgba(245, 158, 11, 0.1);">
+                            <span class="material-symbols-outlined text-3xl" style="color: #F59E0B;">swap_horiz</span>
+                        </div>
+                        <h2 class="text-xl font-semibold">Transfer Tracker</h2>
+                    </div>
+                    <p class="subtle-text text-sm">Monitor call transfers and calculate your transfer rate with detailed logging.</p>
+                    <p class="launch-text font-semibold flex items-center gap-2" style="color: #F59E0B;">
+                        Launch App <span class="material-symbols-outlined">arrow_right_alt</span>
+                    </p>
+                </a>
+
+                <!-- Call Flow Tracker Card -->
+                <a href="https://isaiart.com/flow" class="app-card block p-6 rounded-xl space-y-4">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 rounded-lg" style="background-color: rgba(59, 130, 246, 0.1);">
+                            <span class="material-symbols-outlined text-3xl" style="color: #3B82F6;">checklist_rtl</span>
+                        </div>
+                        <h2 class="text-xl font-semibold">Call Flow Tracker</h2>
+                    </div>
+                    <p class="subtle-text text-sm">Track call completion progress with a live graph, reminders, and a simple checklist.</p>
+                    <p class="launch-text font-semibold flex items-center gap-2" style="color: #3B82F6;">
+                        Launch App <span class="material-symbols-outlined">arrow_right_alt</span>
+                    </p>
+                </a>
+            </div>
+            
+            <!-- Footer -->
+            <footer class="text-center mt-10" style="transform: translateZ(20px);">
+                <p class="subtle-text text-sm">Created by Isaiah</p>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 3D Panel Interaction ---
+        const panel = document.getElementById('hubPanel');
+        let isDragging = false;
+        let previousMouseX, previousMouseY;
+        let currentRotationX = 0;
+        let currentRotationY = 0;
+        const SENSITIVITY = 0.20;
+        const MAX_ROTATION_X = 15;
+
+        panel.addEventListener('mousedown', (e) => {
+            if (e.target.closest('a, button')) return;
+            isDragging = true;
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+            panel.style.transition = 'transform 0.05s linear';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - previousMouseX;
+            const dy = e.clientY - previousMouseY;
+            currentRotationY += dx * SENSITIVITY;
+            currentRotationX -= dy * SENSITIVITY;
+            currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX));
+            panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                panel.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)';
+                panel.style.transform = `rotateX(0deg) rotateY(0deg)`;
+                currentRotationX = 0;
+                currentRotationY = 0;
+            }
+        });
+        panel.ondragstart = () => false;
+
+        // --- THEME MANAGEMENT ---
+        const themeToggle = document.getElementById('themeToggle');
+        const lightIcon = document.getElementById('theme-icon-light');
+        const darkIcon = document.getElementById('theme-icon-dark');
+        const htmlEl = document.documentElement;
+
+        const applyTheme = (theme) => {
+            if (theme === 'light') {
+                htmlEl.classList.add('light-mode');
+                lightIcon.style.display = 'none';
+                darkIcon.style.display = 'inline-block';
+            } else {
+                htmlEl.classList.remove('light-mode');
+                lightIcon.style.display = 'inline-block';
+                darkIcon.style.display = 'none';
+            }
+        };
+
+        themeToggle.addEventListener('click', () => {
+            const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        });
+
+        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        applyTheme(savedTheme);
+    });
+    </script>
+</body>
+</html>

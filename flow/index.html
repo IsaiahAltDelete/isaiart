@@ -158,10 +158,16 @@
     </style>
 </head>
 <body>
-    <button id="themeToggle" class="fixed top-6 right-6 p-3 rounded-full custom-hover transition-colors shadow-lg z-[60]" aria-label="Toggle theme">
-        <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
-        <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
-    </button>
+    <!-- Top Right Controls -->
+    <div class="fixed top-6 right-6 flex items-center gap-2 z-[60]">
+        <a href="https://isaiart.com/smt" class="p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Back to Hub">
+            <span class="material-symbols-outlined">home</span>
+        </a>
+        <button id="themeToggle" class="p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Toggle theme">
+            <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
+            <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
+        </button>
+    </div>
 
     <div id="scene">
         <main id="trackerPanel">
@@ -244,7 +250,7 @@
         themeToggle.addEventListener('click', () => { const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
         applyTheme(localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
 
-        // --- APPLICATION LOGIC ---
+        // --- APPLICATION LOGIC (Unchanged) ---
         const callListContainer = document.getElementById('callListContainer');
         const emptyState = document.getElementById('emptyState');
         const progressText = document.getElementById('progressText');
@@ -271,14 +277,12 @@
             const savedState = localStorage.getItem('callFlowStateV4');
             if (savedState) {
                 const parsedState = JSON.parse(savedState);
-                // Don't load the timerId, it's not valid across sessions
                 state = { ...getInitialState(), ...parsedState, reminderTimerId: null };
             }
         }
 
         function saveState() {
             state.lastUpdated = new Date().toISOString();
-            // Don't save the timerId
             const { reminderTimerId, ...stateToSave } = state;
             localStorage.setItem('callFlowStateV4', JSON.stringify(stateToSave));
         }
@@ -346,7 +350,6 @@
                 });
             }
             
-            // Update reminder UI
             reminderSlider.value = state.reminderInterval;
             reminderTimeLabel.textContent = state.reminderInterval > 0 ? `${state.reminderInterval} min` : 'Off';
             reminderToggleBtn.style.color = state.reminderInterval > 0 ? 'var(--accent-color)' : 'var(--subtle-text-color)';
@@ -355,7 +358,6 @@
             saveState();
         }
 
-        // --- Core Logic ---
         function getNextCallNumber() {
             if (state.calls.length === 0) return 1;
             return Math.max(...state.calls.map(c => c.number)) + 1;
@@ -379,26 +381,20 @@
             render();
         }
 
-        // --- Reminder Logic ---
         function showNotification() {
-            // 1. On-screen shake
             panel.classList.add('is-reminding');
             panel.addEventListener('animationend', () => panel.classList.remove('is-reminding'), { once: true });
-
-            // 2. Browser notification
             if (Notification.permission === 'granted') {
                 new Notification('Call Flow Reminder', {
                     body: 'Time to log your calls!',
                     icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔔</text></svg>'
                 });
             }
-            
-            // 3. Set up the next reminder
             setReminder(state.reminderInterval);
         }
 
         function setReminder(minutes) {
-            cancelReminder(); // Clear any existing timer
+            cancelReminder();
             state.reminderInterval = minutes;
             if (minutes > 0) {
                 const timerId = setTimeout(showNotification, minutes * 60 * 1000);
@@ -414,7 +410,6 @@
             }
         }
 
-        // --- Event Listeners ---
         callListContainer.addEventListener('click', (e) => {
             const deleteBtn = e.target.closest('.delete-btn');
             if (deleteBtn) openDeleteConfirmModal(deleteBtn.dataset.id, deleteBtn.dataset.number);
@@ -425,7 +420,6 @@
         addCallBtn.addEventListener('click', handleAddCall);
         resetDataBtn.addEventListener('click', () => openResetConfirmModal());
 
-        // Reminder UI events
         reminderToggleBtn.addEventListener('click', () => reminderControls.classList.toggle('visible'));
         reminderSlider.addEventListener('input', (e) => {
             const minutes = e.target.value;
@@ -445,7 +439,6 @@
             reminderControls.classList.remove('visible');
         });
 
-        // --- Modals ---
         const resetConfirmModal = document.getElementById('resetConfirmModal');
         const deleteConfirmModal = document.getElementById('deleteConfirmModal');
         function openResetConfirmModal() {
@@ -461,9 +454,8 @@
             deleteConfirmModal.querySelector('#confirmDeleteBtn').addEventListener('click', () => { handleDeleteCall(callId); deleteConfirmModal.classList.add('hidden'); });
         }
 
-        // --- Initial Load ---
         loadState();
-        setReminder(state.reminderInterval); // Re-initialize timer on load
+        setReminder(state.reminderInterval);
         render();
     });
     </script>
