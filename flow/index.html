@@ -3,29 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unified Call Tracker</title>
+    <title>Call Flow Tracker</title>
 
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Google Fonts: Poppins & Roboto Mono -->
+    <!-- Google Fonts: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Google Material Symbols -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
     <style>
-        /* --- GLOBAL & THEME VARIABLES --- */
         :root {
-            /* Dark Theme (Default) */
+            --accent-color: #3B82F6; 
+            --accent-color-hover: #2563EB;
+            --accent-color-translucent: rgba(59, 130, 246, 0.1);
+            --success-color: #22C55E;
             --background-color: #111111;
             --text-color: #E5E7EB;
             --subtle-text-color: #6B7280;
             --card-bg-color: rgba(31, 41, 55, 0.65);
             --panel-shadow-color: rgba(0,0,0,0.3);
-            --raised-element-shadow: rgba(0,0,0,0.2);
             --border-color: rgba(255, 255, 255, 0.1);
             --hover-bg-color: #374151;
             --danger-color: #EF4444;
@@ -33,37 +34,19 @@
         }
 
         html.light-mode {
-            /* Light Theme */
             --background-color: #F0F2F5;
             --text-color: #1F2937;
+            --subtle-text-color: #6B7280;
             --card-bg-color: rgba(255, 255, 255, 0.7);
             --panel-shadow-color: rgba(0,0,0,0.1);
-            --raised-element-shadow: rgba(0,0,0,0.08);
             --border-color: rgba(0, 0, 0, 0.1);
             --hover-bg-color: #E5E7EB;
-        }
-
-        /* Tool-specific Accent Colors */
-        body.tool-1-active {
-            --accent-color: #F59E0B; /* Orange */
-            --accent-color-hover: #d98c0a;
-            --rate-green: #22C55E;
-            --rate-red: #EF4444;
-        }
-        body.tool-2-active {
-            --accent-color: #3B82F6; /* Blue */
-            --accent-color-hover: #2563EB;
-            --success-color: #22C55E;
-        }
-        html.light-mode.tool-1-active {
-            --rate-green: #16A34A;
-            --rate-red: #DC2626;
-        }
-        html.light-mode.tool-2-active {
             --success-color: #16A34A;
+            --danger-color: #EF4444;
+            --danger-hover-color: #DC2626;
+            --accent-color-translucent: rgba(59, 130, 246, 0.15);
         }
 
-        /* --- BASE STYLES --- */
         body {
             font-family: 'Poppins', sans-serif;
             background-color: var(--background-color);
@@ -71,108 +54,21 @@
             transition: background-color 0.3s ease, color 0.3s ease;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            overflow: hidden; /* Prevents scrollbars during animation */
+            overflow: hidden;
         }
-
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; transition: color 0.3s ease, transform 0.3s ease; }
-        .custom-hover:hover { background-color: var(--hover-bg-color); }
-        .subtle-text { color: var(--subtle-text-color); }
-        .accent-text { color: var(--accent-color); }
-        .accent-bg { background-color: var(--accent-color); }
-        .accent-bg:hover { background-color: var(--accent-color-hover); }
-        .danger-bg { background-color: var(--danger-color); }
-        .danger-bg:hover { background-color: var(--danger-hover-color); }
-        .modal-backdrop { background-color: rgba(0, 0, 0, 0.7); }
-        .fixed-modal { z-index: 50; }
         
-        /* --- APP CONTAINER & SWITCHER --- */
-        #app-container {
-            display: flex;
-            width: 200vw; /* Container for two full-width tools */
-            height: 100vh;
-            transition: transform 0.6s cubic-bezier(0.45, 0, 0.55, 1);
-        }
-        body.show-tool-2 #app-container {
-            transform: translateX(-50%);
-        }
-        .tool-wrapper {
+        #scene {
+            perspective: 1500px;
             width: 100vw;
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            perspective: 1500px;
             overflow: hidden;
             padding: 1rem;
         }
 
-        #app-switcher {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            z-index: 60;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: var(--accent-color);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.2);
-            transition: background-color 0.3s ease, transform 0.3s ease;
-        }
-        #app-switcher:hover {
-            transform: scale(1.1);
-        }
-        #app-switcher .material-symbols-outlined {
-            font-size: 28px;
-            transition: transform 0.5s cubic-bezier(0.45, 0, 0.55, 1);
-        }
-        body.show-tool-2 #app-switcher .material-symbols-outlined {
-            transform: rotate(180deg);
-        }
-
-        /* --- TOOL 1: TRANSFER RATE STYLES --- */
-        #tool1-panel {
-            width: 100%;
-            max-width: 600px;
-            padding: 2rem;
-            transform-style: preserve-3d;
-            transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0); 
-            cursor: grab;
-            user-select: none;
-            border-radius: 1.5rem;
-            box-shadow: 0 25px 50px -12px var(--panel-shadow-color);
-            background: var(--card-bg-color);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--border-color);
-        }
-        #tool1-panel:active { cursor: grabbing; }
-        #tool1-panel .raised-element { transform: translateZ(30px); box-shadow: 0 8px 20px var(--raised-element-shadow); border-radius: 0.75rem; }
-        #tool1-panel .stat-card-raised { transform: translateZ(20px); box-shadow: 0 6px 15px var(--raised-element-shadow); }
-        #tool1-panel ::-webkit-scrollbar { width: 8px; }
-        #tool1-panel ::-webkit-scrollbar-track { background: transparent; }
-        #tool1-panel ::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 10px; }
-        #tool1-panel .glass-input { background: rgba(255,255,255,0.1); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); border: 1px solid var(--border-color); color: var(--text-color); }
-        html.light-mode #tool1-panel .glass-input { background: rgba(0,0,0,0.05); }
-        #tool1-panel .focus-accent:focus { outline: none; box-shadow: 0 0 0 2px var(--background-color), 0 0 0 4px var(--accent-color); }
-        #tool1-panel #keptRate { transition: color 0.5s ease-in-out, transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        #tool1-panel #totalCalls, #tool1-panel #totalTransfers { transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        #tool1-panel .bounce-stat { animation: stat-bounce-anim-t1 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        @keyframes stat-bounce-anim-t1 { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
-        #tool1-panel .list-item-base { transition: opacity 0.3s ease, transform 0.3s ease; }
-        #tool1-panel .list-item-enter-from { opacity: 0; transform: translateY(20px) scale(0.9); }
-        #tool1-panel .list-item-enter-active { animation: item-enter-bounce-anim-t1 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        @keyframes item-enter-bounce-anim-t1 { 0% { opacity: 0; transform: translateY(30px) scale(0.8); } 60% { opacity: 1; transform: translateY(-10px) scale(1.1); } 80% { transform: translateY(5px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
-        #tool1-panel .list-item-exit-active { opacity: 0; transform: translateX(30px) scale(0.9); }
-        #tool1-panel .list-item-bg { background-color: rgba(40, 50, 65, 0.8); }
-        #tool1-panel .modal-border-accent { border-color: var(--accent-color); }
-        #tool1-panel .modal-border-danger { border-color: var(--danger-color); }
-
-        /* --- TOOL 2: CALL FLOW TRACKER STYLES --- */
-        #tool2-panel {
+        #trackerPanel {
             width: 100%;
             max-width: 550px;
             height: 80vh;
@@ -191,368 +87,384 @@
             display: flex;
             flex-direction: column;
         }
-        #tool2-panel:active { cursor: grabbing; }
-        #tool2-panel #callListContainer::-webkit-scrollbar { width: 6px; }
-        #tool2-panel #callListContainer::-webkit-scrollbar-track { background: transparent; }
-        #tool2-panel #callListContainer::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 10px; }
-        #tool2-panel .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-        #tool2-panel .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        #tool2-panel .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--hover-bg-color); transition: .4s; border-radius: 24px; }
-        #tool2-panel .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s cubic-bezier(0.68, -0.55, 0.27, 1.55); border-radius: 50%; }
-        #tool2-panel input:checked + .slider { background-color: var(--success-color); }
-        #tool2-panel input:checked + .slider:before { transform: translateX(20px); }
-        #tool2-panel .call-item, #tool2-panel .chart-point { animation: fadeIn-t2 0.5s ease-out forwards; }
-        @keyframes fadeIn-t2 { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        #tool2-panel.is-reminding { animation: shake-anim-t2 0.5s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shake-anim-t2 { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
-        #tool2-panel #chartContainer { padding: 1rem 0; height: 120px; }
-        #tool2-panel #rateChart .grid-line { stroke: var(--border-color); stroke-width: 1; stroke-dasharray: 2, 4; }
-        #tool2-panel #rateChart .chart-line { stroke: var(--accent-color); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: url(#chartGradient); }
-        #tool2-panel #rateChart .chart-point { fill: var(--accent-color); stroke: var(--card-bg-color); stroke-width: 2; transition: r 0.2s ease; }
-        #tool2-panel #rateChart .chart-point:hover { r: 6; }
-        #tool2-panel #reminderControls { position: absolute; bottom: 100%; left: 0; width: 250px; background: var(--card-bg-color); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 0.75rem; margin-bottom: 0.5rem; box-shadow: 0 10px 20px rgba(0,0,0,0.2); opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease; }
-        #tool2-panel #reminderControls.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
-        #tool2-panel input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
-        #tool2-panel input[type=range]:focus { outline: none; }
-        #tool2-panel input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--hover-bg-color); border-radius: 4px; }
-        #tool2-panel input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent-color); cursor: pointer; margin-top: -6px; }
+        #trackerPanel:active { cursor: grabbing; }
+
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; transition: color 0.3s ease; }
+        .custom-hover:hover { background-color: var(--hover-bg-color); }
+        .subtle-text { color: var(--subtle-text-color); }
+        .accent-bg { background-color: var(--accent-color); }
+        .accent-bg:hover { background-color: var(--accent-color-hover); }
+
+        /* Scrollbar */
+        #callListContainer::-webkit-scrollbar { width: 6px; }
+        #callListContainer::-webkit-scrollbar-track { background: transparent; }
+        #callListContainer::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 10px; }
+
+        /* Toggle Switch */
+        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--hover-bg-color); transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s cubic-bezier(0.68, -0.55, 0.27, 1.55); border-radius: 50%; }
+        input:checked + .slider { background-color: var(--success-color); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        
+        /* Animations */
+        .call-item, .chart-point { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .is-reminding { animation: shake-anim 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake-anim {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* Chart */
+        #chartContainer { padding: 1rem 0; height: 120px; }
+        #rateChart .grid-line { stroke: var(--border-color); stroke-width: 1; stroke-dasharray: 2, 4; }
+        #rateChart .chart-line { stroke: var(--accent-color); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: url(#chartGradient); }
+        #rateChart .chart-point { fill: var(--accent-color); stroke: var(--card-bg-color); stroke-width: 2; transition: r 0.2s ease; }
+        #rateChart .chart-point:hover { r: 6; }
+
+        /* Reminder Controls */
+        #reminderControls {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            width: 250px;
+            background: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        #reminderControls.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--hover-bg-color); border-radius: 4px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent-color); cursor: pointer; margin-top: -6px; }
     </style>
 </head>
 <body>
-    <!-- SHARED UI ELEMENTS -->
     <button id="themeToggle" class="fixed top-6 right-6 p-3 rounded-full custom-hover transition-colors shadow-lg z-[60]" aria-label="Toggle theme">
         <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
         <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
     </button>
 
-    <div id="app-container">
-        <!-- TOOL 1: TRANSFER RATE -->
-        <div id="tool-1-wrapper" class="tool-wrapper">
-            <main id="tool1-panel" class="space-y-6">
-                <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                    <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
-                        <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Total Calls</h2>
-                        <div class="flex items-center gap-3 mt-2">
-                            <button id="decrementCalls" aria-label="Decrement total calls" class="p-2 rounded-full custom-hover transition-colors"><span class="material-symbols-outlined text-lg">remove</span></button>
-                            <p id="totalCalls" class="text-4xl font-bold font-['Roboto_Mono']">0</p>
-                            <button id="incrementCalls" aria-label="Increment total calls" class="p-2 rounded-full custom-hover transition-colors"><span class="material-symbols-outlined text-lg">add</span></button>
-                        </div>
+    <div id="scene">
+        <main id="trackerPanel">
+            <!-- Header -->
+            <header class="px-4 pb-4 space-y-3 border-b border-[var(--border-color)]" style="transform: translateZ(20px);">
+                <h1 class="text-2xl font-bold">Call Flow Tracker</h1>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <p class="subtle-text">Overall Completion</p>
+                        <p id="progressText" class="font-medium">0%</p>
                     </div>
-                    <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
-                        <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Transfers</h2>
-                        <p id="totalTransfers" class="text-4xl font-bold font-['Roboto_Mono'] mt-2">0</p>
+                    <div class="w-full bg-[var(--hover-bg-color)] rounded-full h-2">
+                        <div id="progressBar" class="bg-[var(--success-color)] h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
                     </div>
-                    <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
-                        <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Kept Rate</h2>
-                        <p id="keptRate" class="text-4xl font-bold font-['Roboto_Mono'] mt-2 subtle-text">0.0%</p>
-                    </div>
-                </section>
-                <section class="space-y-4 raised-element glass-effect p-4">
-                    <div class="flex gap-3">
-                        <div class="relative flex-grow">
-                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 subtle-text">edit_note</span>
-                            <input type="text" id="transferNoteInput" placeholder="Enter reason for transfer..." class="w-full pl-10 pr-4 py-3 glass-input rounded-lg focus-accent transition-shadow text-inherit">
-                        </div>
-                        <button id="addTransferBtn" class="accent-bg text-black font-bold px-4 py-3 rounded-lg transition-colors flex items-center gap-2 shadow-md hover:shadow-lg">
-                            <span class="material-symbols-outlined">add_circle</span>
-                            <span class="hidden sm:inline">Add</span>
-                        </button>
-                    </div>
-                    <div id="transferListContainer" class="space-y-3 max-h-[30vh] overflow-y-auto p-1">
-                        <p id="emptyStateT1" class="text-center subtle-text py-8">No transfers logged yet.</p>
-                    </div>
-                </section>
-                <footer class="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm pt-2">
-                    <button id="resetDataBtnT1" class="flex items-center gap-2 subtle-text hover:text-red-500 transition-colors py-2 px-3 rounded-lg custom-hover">
+                </div>
+            </header>
+
+            <!-- Live Graph -->
+            <div id="chartContainer" class="px-4" style="transform: translateZ(30px);">
+                <svg id="rateChart" width="100%" height="100%" viewBox="0 0 500 100" preserveAspectRatio="none"></svg>
+            </div>
+
+            <!-- Call List -->
+            <div id="callListContainer" class="flex-grow overflow-y-auto pr-4 py-2 border-t border-[var(--border-color)]" style="transform: translateZ(10px);">
+                <div id="emptyState" class="flex flex-col items-center justify-center h-full text-center subtle-text p-4">
+                    <span class="material-symbols-outlined text-5xl mb-2">phone_in_talk</span>
+                    <p class="font-medium">Ready for calls!</p>
+                    <p class="text-sm">Add a new call to get started.</p>
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <footer class="px-4 pt-4 flex items-center justify-between border-t border-[var(--border-color)]" style="transform: translateZ(20px);">
+                <div class="flex items-center gap-2">
+                    <button id="resetDataBtn" class="flex items-center gap-2 subtle-text hover:text-[var(--danger-color)] transition-colors p-2 rounded-full custom-hover">
                         <span class="material-symbols-outlined text-base">restart_alt</span>
-                        Reset Data
                     </button>
-                    <div id="lastUpdatedElT1" class="flex items-center gap-2 subtle-text">
-                        <span class="material-symbols-outlined text-base">history</span>
-                        <span></span>
-                    </div>
-                </footer>
-            </main>
-        </div>
-
-        <!-- TOOL 2: CALL FLOW TRACKER -->
-        <div id="tool-2-wrapper" class="tool-wrapper">
-            <main id="tool2-panel">
-                <header class="px-4 pb-4 space-y-3 border-b border-[var(--border-color)]" style="transform: translateZ(20px);">
-                    <h1 class="text-2xl font-bold">Call Flow Tracker</h1>
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center text-sm">
-                            <p class="subtle-text">Overall Completion</p>
-                            <p id="progressText" class="font-medium">0%</p>
-                        </div>
-                        <div class="w-full bg-[var(--hover-bg-color)] rounded-full h-2">
-                            <div id="progressBar" class="bg-[var(--success-color)] h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                    </div>
-                </header>
-                <div id="chartContainer" class="px-4" style="transform: translateZ(30px);">
-                    <svg id="rateChart" width="100%" height="100%" viewBox="0 0 500 100" preserveAspectRatio="none"></svg>
-                </div>
-                <div id="callListContainer" class="flex-grow overflow-y-auto pr-4 py-2 border-t border-[var(--border-color)]" style="transform: translateZ(10px);">
-                    <div id="emptyStateT2" class="flex flex-col items-center justify-center h-full text-center subtle-text p-4">
-                        <span class="material-symbols-outlined text-5xl mb-2">phone_in_talk</span>
-                        <p class="font-medium">Ready for calls!</p>
-                        <p class="text-sm">Add a new call to get started.</p>
-                    </div>
-                </div>
-                <footer class="px-4 pt-4 flex items-center justify-between border-t border-[var(--border-color)]" style="transform: translateZ(20px);">
-                    <div class="flex items-center gap-2">
-                        <button id="resetDataBtnT2" class="flex items-center gap-2 subtle-text hover:text-[var(--danger-color)] transition-colors p-2 rounded-full custom-hover">
-                            <span class="material-symbols-outlined text-base">restart_alt</span>
+                    <div class="relative">
+                        <button id="reminderToggleBtn" class="flex items-center gap-2 subtle-text p-2 rounded-full custom-hover">
+                            <span class="material-symbols-outlined text-base">notifications</span>
                         </button>
-                        <div class="relative">
-                            <button id="reminderToggleBtn" class="flex items-center gap-2 subtle-text p-2 rounded-full custom-hover">
-                                <span class="material-symbols-outlined text-base">notifications</span>
-                            </button>
-                            <div id="reminderControls">
-                                <label class="text-xs subtle-text mb-2 block">Reminder Interval</label>
-                                <div class="flex items-center gap-3">
-                                    <input type="range" id="reminderSlider" min="0" max="30" step="1" value="0" class="flex-grow">
-                                    <span id="reminderTimeLabel" class="text-sm font-medium w-16 text-right">Off</span>
-                                </div>
-                                <button id="setReminderBtn" class="w-full mt-3 accent-bg text-white text-sm font-semibold py-1.5 rounded-md">Set Reminder</button>
+                        <div id="reminderControls">
+                            <label class="text-xs subtle-text mb-2 block">Reminder Interval</label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" id="reminderSlider" min="0" max="30" step="1" value="0" class="flex-grow">
+                                <span id="reminderTimeLabel" class="text-sm font-medium w-16 text-right">Off</span>
                             </div>
-                        </div>
-                        <div id="lastUpdatedContainer" class="hidden md:flex items-center gap-1.5 subtle-text text-xs ml-2">
-                            <span class="material-symbols-outlined text-sm">history</span>
-                            <span id="lastUpdatedText"></span>
+                            <button id="setReminderBtn" class="w-full mt-3 accent-bg text-white text-sm font-semibold py-1.5 rounded-md">Set Reminder</button>
                         </div>
                     </div>
-                    <button id="addCallBtn" class="accent-bg text-white font-bold px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-105 active:scale-100">
-                        <span class="material-symbols-outlined">add_call</span>
-                        <span class="hidden sm:inline">Add New Call</span>
-                    </button>
-                </footer>
-            </main>
-        </div>
+                    <div id="lastUpdatedContainer" class="hidden md:flex items-center gap-1.5 subtle-text text-xs ml-2">
+                        <span class="material-symbols-outlined text-sm">history</span>
+                        <span id="lastUpdatedText"></span>
+                    </div>
+                </div>
+                <button id="addCallBtn" class="accent-bg text-white font-bold px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-105 active:scale-100">
+                    <span class="material-symbols-outlined">add_call</span>
+                    <span class="hidden sm:inline">Add New Call</span>
+                </button>
+            </footer>
+        </main>
     </div>
 
-    <!-- APP SWITCHER -->
-    <button id="app-switcher" aria-label="Switch Tool">
-        <span class="material-symbols-outlined">sync_alt</span>
-    </button>
-
-    <!-- MODALS (kept separate for clarity) -->
-    <!-- Tool 1 Modals -->
-    <div id="editModalT1" class="fixed-modal fixed inset-0 modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
-        <div class="glass-effect rounded-xl p-6 w-full max-w-md space-y-4 border-2 modal-border-accent shadow-2xl">
-            <h3 class="text-lg font-semibold flex items-center gap-2"><span class="material-symbols-outlined accent-text">edit</span> Edit Transfer Note</h3>
-            <input type="text" id="editNoteInputT1" class="w-full p-3 glass-input rounded-lg focus-accent text-inherit">
-            <div class="flex justify-end gap-3">
-                <button id="cancelEditBtnT1" class="px-4 py-2 rounded-lg custom-hover transition-colors">Cancel</button>
-                <button id="saveEditBtnT1" class="accent-bg text-black font-bold px-4 py-2 rounded-lg transition-colors">Save Changes</button>
-            </div>
-        </div>
-    </div>
-    <div id="resetConfirmModalT1" class="fixed-modal fixed inset-0 modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
-        <div class="glass-effect rounded-xl p-6 w-full max-w-md space-y-4 border-2 modal-border-danger shadow-2xl">
-            <h3 class="text-lg font-semibold flex items-center gap-2 text-red-500"><span class="material-symbols-outlined">warning</span> Reset Confirmation</h3>
-            <p class="subtle-text">Are you sure? All data will be permanently deleted. This action cannot be undone.</p>
-            <div class="flex justify-end gap-3">
-                <button id="cancelResetBtnT1" class="px-4 py-2 rounded-lg custom-hover transition-colors">Cancel</button>
-                <button id="confirmResetBtnT1" class="danger-bg text-white font-bold px-4 py-2 rounded-lg transition-colors">Yes, Reset Data</button>
-            </div>
-        </div>
-    </div>
-    <!-- Tool 2 Modals -->
-    <div id="resetConfirmModalT2" class="fixed inset-0 z-[70] backdrop-blur-sm flex items-center justify-center p-4 hidden" style="background-color: rgba(0,0,0,0.5);"></div>
-    <div id="deleteConfirmModalT2" class="fixed inset-0 z-[70] backdrop-blur-sm flex items-center justify-center p-4 hidden" style="background-color: rgba(0,0,0,0.5);"></div>
+    <!-- Modals -->
+    <div id="resetConfirmModal" class="fixed inset-0 z-[70] backdrop-blur-sm flex items-center justify-center p-4 hidden" style="background-color: rgba(0,0,0,0.5);"></div>
+    <div id="deleteConfirmModal" class="fixed inset-0 z-[70] backdrop-blur-sm flex items-center justify-center p-4 hidden" style="background-color: rgba(0,0,0,0.5);"></div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const body = document.body;
-        const htmlEl = document.documentElement;
+        // --- 3D Panel & Theme Management (Unchanged) ---
+        const panel = document.getElementById('trackerPanel');
+        let isDragging = false, previousMouseX, previousMouseY, currentRotationX = 0, currentRotationY = 0;
+        const SENSITIVITY = 0.25, MAX_ROTATION_X = 15;
+        panel.addEventListener('mousedown', (e) => { if (e.target.closest('button, input, a, .slider')) return; isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY; panel.style.transition = 'transform 0.05s linear'; });
+        document.addEventListener('mousemove', (e) => { if (!isDragging) return; const dx = e.clientX - previousMouseX, dy = e.clientY - previousMouseY; currentRotationY += dx * SENSITIVITY; currentRotationX -= dy * SENSITIVITY; currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX)); panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`; previousMouseX = e.clientX; previousMouseY = e.clientY; });
+        document.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; panel.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; panel.style.transform = `rotateX(0deg) rotateY(0deg)`; currentRotationX = 0; currentRotationY = 0; } });
+        panel.ondragstart = () => false;
+        const themeToggle = document.getElementById('themeToggle'), lightIcon = document.getElementById('theme-icon-light'), darkIcon = document.getElementById('theme-icon-dark'), htmlEl = document.documentElement;
+        const applyTheme = (theme) => { htmlEl.classList.toggle('light-mode', theme === 'light'); lightIcon.style.display = theme === 'light' ? 'none' : 'inline-block'; darkIcon.style.display = theme === 'light' ? 'inline-block' : 'none'; };
+        themeToggle.addEventListener('click', () => { const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
+        applyTheme(localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
 
-        // --- GLOBAL APP SWITCHER LOGIC ---
-        function initSwitcher() {
-            const appSwitcher = document.getElementById('app-switcher');
+        // --- APPLICATION LOGIC ---
+        const callListContainer = document.getElementById('callListContainer');
+        const emptyState = document.getElementById('emptyState');
+        const progressText = document.getElementById('progressText');
+        const progressBar = document.getElementById('progressBar');
+        const addCallBtn = document.getElementById('addCallBtn');
+        const resetDataBtn = document.getElementById('resetDataBtn');
+        const lastUpdatedText = document.getElementById('lastUpdatedText');
+        const rateChart = document.getElementById('rateChart');
+        const reminderToggleBtn = document.getElementById('reminderToggleBtn');
+        const reminderControls = document.getElementById('reminderControls');
+        const reminderSlider = document.getElementById('reminderSlider');
+        const reminderTimeLabel = document.getElementById('reminderTimeLabel');
+        const setReminderBtn = document.getElementById('setReminderBtn');
+
+        const getInitialState = () => ({
+            calls: [],
+            lastUpdated: null,
+            reminderInterval: 0, // in minutes
+            reminderTimerId: null,
+        });
+        let state = getInitialState();
+
+        function loadState() {
+            const savedState = localStorage.getItem('callFlowStateV4');
+            if (savedState) {
+                const parsedState = JSON.parse(savedState);
+                // Don't load the timerId, it's not valid across sessions
+                state = { ...getInitialState(), ...parsedState, reminderTimerId: null };
+            }
+        }
+
+        function saveState() {
+            state.lastUpdated = new Date().toISOString();
+            // Don't save the timerId
+            const { reminderTimerId, ...stateToSave } = state;
+            localStorage.setItem('callFlowStateV4', JSON.stringify(stateToSave));
+        }
+
+        function formatRelativeTime(dateString) {
+            if (!dateString) return 'No updates yet.';
+            const date = new Date(dateString);
+            const now = new Date();
+            const seconds = Math.round((now - date) / 1000);
+            const minutes = Math.round(seconds / 60);
+            if (seconds < 10) return 'just now';
+            if (seconds < 60) return `${seconds}s ago`;
+            if (minutes < 60) return `${minutes}m ago`;
+            return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderChart() {
+            const dataPoints = [];
+            let completedCount = 0;
+            const sortedCalls = [...state.calls].sort((a, b) => a.number - b.number);
+            for (let i = 0; i < sortedCalls.length; i++) {
+                if (sortedCalls[i].completed) completedCount++;
+                dataPoints.push((completedCount / (i + 1)) * 100);
+            }
+            const svgWidth = 500, svgHeight = 100, padding = 5;
+            rateChart.innerHTML = `<defs><linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:var(--accent-color); stop-opacity:0.3"/><stop offset="100%" style="stop-color:var(--accent-color); stop-opacity:0"/></linearGradient></defs><line class="grid-line" x1="0" y1="${svgHeight/2}" x2="${svgWidth}" y2="${svgHeight/2}"></line>`;
+            if (dataPoints.length < 2) return;
+            const points = dataPoints.map((rate, index) => `${(index / (dataPoints.length - 1)) * svgWidth},${(svgHeight - padding * 2) - (rate / 100) * (svgHeight - padding * 2) + padding}`).join(' ');
+            const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            polyline.setAttribute('class', 'chart-line');
+            polyline.setAttribute('points', points);
+            rateChart.appendChild(polyline);
+            dataPoints.forEach((rate, index) => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('class', 'chart-point');
+                circle.setAttribute('cx', (index / (dataPoints.length - 1)) * svgWidth);
+                circle.setAttribute('cy', (svgHeight - padding * 2) - (rate / 100) * (svgHeight - padding * 2) + padding);
+                circle.setAttribute('r', 4);
+                rateChart.appendChild(circle);
+            });
+        }
+
+        function render() {
+            const totalCalls = state.calls.length;
+            const completedCalls = state.calls.filter(call => call.completed).length;
+            const progressPercentage = totalCalls > 0 ? (completedCalls / totalCalls) * 100 : 0;
             
-            const setActiveTool = (tool) => {
-                if (tool === 'tool-2') {
-                    body.classList.add('show-tool-2');
-                    body.classList.remove('tool-1-active');
-                    body.classList.add('tool-2-active');
-                    localStorage.setItem('activeTool', 'tool-2');
-                } else {
-                    body.classList.remove('show-tool-2');
-                    body.classList.remove('tool-2-active');
-                    body.classList.add('tool-1-active');
-                    localStorage.setItem('activeTool', 'tool-1');
-                }
-            };
+            progressText.textContent = `${progressPercentage.toFixed(0)}%`;
+            progressBar.style.width = `${progressPercentage}%`;
+            lastUpdatedText.textContent = `Updated ${formatRelativeTime(state.lastUpdated)}`;
 
-            appSwitcher.addEventListener('click', () => {
-                const currentTool = body.classList.contains('show-tool-2') ? 'tool-1' : 'tool-2';
-                setActiveTool(currentTool);
-            });
-
-            // Load last active tool
-            const lastActiveTool = localStorage.getItem('activeTool') || 'tool-1';
-            setActiveTool(lastActiveTool);
-        }
-
-        // --- GLOBAL THEME MANAGEMENT ---
-        function initTheme() {
-            const themeToggle = document.getElementById('themeToggle');
-            const lightIcon = document.getElementById('theme-icon-light');
-            const darkIcon = document.getElementById('theme-icon-dark');
-
-            const applyTheme = (theme) => {
-                htmlEl.classList.toggle('light-mode', theme === 'light');
-                lightIcon.style.display = theme === 'light' ? 'none' : 'inline-block';
-                darkIcon.style.display = theme === 'light' ? 'inline-block' : 'none';
-            };
-
-            themeToggle.addEventListener('click', () => {
-                const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light';
-                localStorage.setItem('theme', newTheme);
-                applyTheme(newTheme);
-            });
-
-            const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-            applyTheme(savedTheme);
-        }
-
-        // --- TOOL 1: TRANSFER RATE LOGIC ---
-        function initTool1() {
-            const panel = document.getElementById('tool1-panel');
-            const transferList = document.getElementById('transferListContainer');
-            let isDragging = false, previousMouseX, previousMouseY, currentRotationX = 0, currentRotationY = 0;
-            const SENSITIVITY = 0.25, MAX_ROTATION_X = 30;
-            const DRAG_TRANSITION = 'transform 0.05s linear', SNAP_TRANSITION = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; 
-
-            panel.addEventListener('mousedown', (e) => {
-                if (e.target.closest('button, input, a') || transferList.contains(e.target)) return;
-                isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY; panel.style.transition = DRAG_TRANSITION;
-            });
-            document.addEventListener('mousemove', (e) => {
-                if (!isDragging || !panel.contains(e.target) && e.target !== panel) return;
-                const dx = e.clientX - previousMouseX, dy = e.clientY - previousMouseY;
-                currentRotationY += dx * SENSITIVITY; currentRotationX -= dy * SENSITIVITY;
-                currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX));
-                panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
-                previousMouseX = e.clientX; previousMouseY = e.clientY;
-            });
-            document.addEventListener('mouseup', () => {
-                if (isDragging) { isDragging = false; panel.style.transition = SNAP_TRANSITION; panel.style.transform = `rotateX(0deg) rotateY(0deg)`; currentRotationX = 0; currentRotationY = 0; }
-            });
-            panel.ondragstart = () => false;
-
-            const totalCallsEl = document.getElementById('totalCalls'), totalTransfersEl = document.getElementById('totalTransfers'), keptRateEl = document.getElementById('keptRate');
-            const incrementCallsBtn = document.getElementById('incrementCalls'), decrementCallsBtn = document.getElementById('decrementCalls');
-            const transferNoteInput = document.getElementById('transferNoteInput'), addTransferBtn = document.getElementById('addTransferBtn');
-            const transferListContainer = document.getElementById('transferListContainer'), emptyStateEl = document.getElementById('emptyStateT1');
-            const lastUpdatedEl = document.getElementById('lastUpdatedElT1').querySelector('span:last-child');
-            const editModal = document.getElementById('editModalT1'), editNoteInput = document.getElementById('editNoteInputT1'), saveEditBtn = document.getElementById('saveEditBtnT1'), cancelEditBtn = document.getElementById('cancelEditBtnT1');
-            const resetDataBtn = document.getElementById('resetDataBtnT1'), resetConfirmModal = document.getElementById('resetConfirmModalT1'), confirmResetBtn = document.getElementById('confirmResetBtnT1'), cancelResetBtn = document.getElementById('cancelResetBtnT1');
-
-            const getInitialState = () => ({ totalCalls: 0, transfers: [], editingTransferId: null, lastUpdated: null });
-            let state = getInitialState();
-
-            function loadState() { const savedState = localStorage.getItem('transferTrackerState'); if (savedState) state = { ...getInitialState(), ...JSON.parse(savedState) }; }
-            function saveState() { state.lastUpdated = new Date().toISOString(); localStorage.setItem('transferTrackerState', JSON.stringify(state)); }
-            function applyBounce(element) { if (!element) return; element.classList.add('bounce-stat'); element.addEventListener('animationend', () => element.classList.remove('bounce-stat'), { once: true }); }
-            function render() {
-                totalCallsEl.textContent = state.totalCalls; totalTransfersEl.textContent = state.transfers.length;
-                applyBounce(totalCallsEl); applyBounce(totalTransfersEl);
-                const rateGreen = getComputedStyle(htmlEl).getPropertyValue('--rate-green').trim(), rateRed = getComputedStyle(htmlEl).getPropertyValue('--rate-red').trim(), accentColor = getComputedStyle(htmlEl).getPropertyValue('--accent-color').trim(), subtleTextColor = getComputedStyle(htmlEl).getPropertyValue('--subtle-text-color').trim();
-                if (state.totalCalls > 0) {
-                    const keptCalls = state.totalCalls - state.transfers.length, rate = (keptCalls / state.totalCalls) * 100, rateToShow = Math.max(0, rate);
-                    keptRateEl.textContent = `${rateToShow.toFixed(1)}%`; applyBounce(keptRateEl);
-                    if (rateToShow >= 90) keptRateEl.style.color = rateGreen; else if (rateToShow >= 75) keptRateEl.style.color = accentColor; else keptRateEl.style.color = rateRed;
-                } else { keptRateEl.textContent = `0.0%`; keptRateEl.style.color = subtleTextColor; }
-                transferListContainer.innerHTML = ''; 
-                if (state.transfers.length === 0) { transferListContainer.appendChild(emptyStateEl); emptyStateEl.classList.remove('hidden'); } else {
-                    [...state.transfers].reverse().forEach(transfer => {
-                        const transferEl = document.createElement('div');
-                        transferEl.className = 'flex items-center justify-between p-3 list-item-bg rounded-lg list-item-base list-item-enter-from shadow';
-                        transferEl.dataset.id = transfer.id;
-                        transferEl.innerHTML = `<div class="flex-grow pr-4 overflow-hidden"><p class="text-inherit truncate">${escapeHTML(transfer.note)}</p><p class="text-xs subtle-text">${new Date(transfer.timestamp).toLocaleString()}</p></div><div class="flex items-center gap-1 flex-shrink-0"><button class="edit-btn p-2 rounded-full custom-hover transition-colors" aria-label="Edit note"><span class="material-symbols-outlined text-sm">edit</span></button><button class="delete-btn p-2 rounded-full custom-hover transition-colors" aria-label="Delete note"><span class="material-symbols-outlined text-sm">delete</span></button></div>`;
-                        transferListContainer.appendChild(transferEl);
-                        requestAnimationFrame(() => { transferEl.classList.remove('list-item-enter-from'); transferEl.classList.add('list-item-enter-active'); transferEl.addEventListener('animationend', () => transferEl.classList.remove('list-item-enter-active'), { once: true }); });
-                    });
-                }
-                if (state.lastUpdated) lastUpdatedEl.textContent = `Last updated ${formatRelativeTime(new Date(state.lastUpdated))}`; else lastUpdatedEl.textContent = 'No updates yet.';
-                saveState();
+            callListContainer.innerHTML = '';
+            if (totalCalls === 0) {
+                callListContainer.appendChild(emptyState);
+                emptyState.style.display = 'flex';
+            } else {
+                emptyState.style.display = 'none';
+                [...state.calls].reverse().forEach(call => {
+                    const callEl = document.createElement('div');
+                    callEl.className = `call-item flex items-center justify-between p-3 rounded-lg transition-all duration-300 ${call.completed ? 'opacity-60' : 'opacity-100'}`;
+                    callEl.dataset.id = call.id;
+                    const callTime = new Date(call.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    callEl.innerHTML = `<div class="flex-grow pr-2"><p class="${call.completed ? 'line-through subtle-text' : ''}">Call #${call.number}</p><p class="text-xs subtle-text">${callTime}</p></div><div class="flex items-center gap-2"><button class="delete-btn p-2 rounded-full hover:bg-[var(--danger-color)] hover:text-white transition-colors" data-id="${call.id}" data-number="${call.number}"><span class="material-symbols-outlined text-base">delete</span></button><label class="toggle-switch"><input type="checkbox" ${call.completed ? 'checked' : ''}><span class="slider"></span></label></div>`;
+                    callListContainer.appendChild(callEl);
+                });
             }
-            function handleAddTransfer() { const note = transferNoteInput.value.trim(); if (note) { state.transfers.push({ id: Date.now(), note, timestamp: new Date().toISOString() }); transferNoteInput.value = ''; render(); } }
-            function handleListClick(e) {
-                const target = e.target.closest('button'); if (!target) return; const transferEl = target.closest('[data-id]'); if (!transferEl) return; const transferId = Number(transferEl.dataset.id);
-                if (target.classList.contains('delete-btn')) { transferEl.classList.add('list-item-exit-active'); transferEl.addEventListener('transitionend', () => { state.transfers = state.transfers.filter(t => t.id !== transferId); render(); }, { once: true }); } 
-                else if (target.classList.contains('edit-btn')) { const transferToEdit = state.transfers.find(t => t.id === transferId); if (transferToEdit) { state.editingTransferId = transferId; editNoteInput.value = transferToEdit.note; editModal.classList.remove('hidden'); editNoteInput.focus(); } }
+            
+            // Update reminder UI
+            reminderSlider.value = state.reminderInterval;
+            reminderTimeLabel.textContent = state.reminderInterval > 0 ? `${state.reminderInterval} min` : 'Off';
+            reminderToggleBtn.style.color = state.reminderInterval > 0 ? 'var(--accent-color)' : 'var(--subtle-text-color)';
+
+            renderChart();
+            saveState();
+        }
+
+        // --- Core Logic ---
+        function getNextCallNumber() {
+            if (state.calls.length === 0) return 1;
+            return Math.max(...state.calls.map(c => c.number)) + 1;
+        }
+        function handleAddCall() {
+            state.calls.push({ id: Date.now(), number: getNextCallNumber(), completed: false, createdAt: new Date().toISOString() });
+            render();
+            callListContainer.scrollTop = 0;
+        }
+        function handleToggleCall(callId) {
+            const call = state.calls.find(c => c.id == callId);
+            if (call) { call.completed = !call.completed; render(); }
+        }
+        function handleDeleteCall(callId) {
+            state.calls = state.calls.filter(c => c.id != callId);
+            render();
+        }
+        function handleResetData() {
+            cancelReminder();
+            state = getInitialState();
+            render();
+        }
+
+        // --- Reminder Logic ---
+        function showNotification() {
+            // 1. On-screen shake
+            panel.classList.add('is-reminding');
+            panel.addEventListener('animationend', () => panel.classList.remove('is-reminding'), { once: true });
+
+            // 2. Browser notification
+            if (Notification.permission === 'granted') {
+                new Notification('Call Flow Reminder', {
+                    body: 'Time to log your calls!',
+                    icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔔</text></svg>'
+                });
             }
-            function handleSaveEdit() { const newNote = editNoteInput.value.trim(); if (newNote && state.editingTransferId !== null) { const transferIndex = state.transfers.findIndex(t => t.id === state.editingTransferId); if (transferIndex > -1) state.transfers[transferIndex].note = newNote; closeEditModal(); render(); } }
-            function handleResetData() { state = getInitialState(); localStorage.removeItem('transferTrackerState'); state.lastUpdated = null; closeResetModal(); render(); }
-            function closeEditModal() { state.editingTransferId = null; editModal.classList.add('hidden'); }
-            function openResetModal() { resetConfirmModal.classList.remove('hidden'); }
-            function closeResetModal() { resetConfirmModal.classList.add('hidden'); }
-            function escapeHTML(str) { const div = document.createElement('div'); div.appendChild(document.createTextNode(str)); return div.innerHTML; }
-            function formatRelativeTime(date) { const now = new Date(); const seconds = Math.round((now - date) / 1000); const minutes = Math.round(seconds / 60); const hours = Math.round(minutes / 60); const days = Math.round(hours / 24); if (seconds < 10) return `a few seconds ago`; if (seconds < 60) return `${seconds}s ago`; if (minutes < 2) return `1m ago`; if (minutes < 60) return `${minutes}m ago`; if (hours < 2) return `1h ago`; if (hours < 24) return `${hours}h ago`; if (days < 2) return `yesterday`; return `${days}d ago`; }
-            incrementCallsBtn.addEventListener('click', () => { state.totalCalls++; render(); });
-            decrementCallsBtn.addEventListener('click', () => { if (state.totalCalls > 0) { state.totalCalls--; render(); } });
-            addTransferBtn.addEventListener('click', handleAddTransfer);
-            transferNoteInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleAddTransfer(); });
-            transferListContainer.addEventListener('click', handleListClick);
-            saveEditBtn.addEventListener('click', handleSaveEdit);
-            cancelEditBtn.addEventListener('click', closeEditModal);
-            editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEditModal(); });
-            editNoteInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSaveEdit(); });
-            resetDataBtn.addEventListener('click', openResetModal);
-            confirmResetBtn.addEventListener('click', handleResetData);
-            cancelResetBtn.addEventListener('click', closeResetModal);
-            resetConfirmModal.addEventListener('click', (e) => { if (e.target === resetConfirmModal) closeResetModal(); });
-            loadState(); render();
+            
+            // 3. Set up the next reminder
+            setReminder(state.reminderInterval);
         }
 
-        // --- TOOL 2: CALL FLOW TRACKER LOGIC ---
-        function initTool2() {
-            const panel = document.getElementById('tool2-panel');
-            let isDragging = false, previousMouseX, previousMouseY, currentRotationX = 0, currentRotationY = 0;
-            const SENSITIVITY = 0.25, MAX_ROTATION_X = 15;
-            panel.addEventListener('mousedown', (e) => { if (e.target.closest('button, input, a, .slider')) return; isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY; panel.style.transition = 'transform 0.05s linear'; });
-            document.addEventListener('mousemove', (e) => { if (!isDragging || !panel.contains(e.target) && e.target !== panel) return; const dx = e.clientX - previousMouseX, dy = e.clientY - previousMouseY; currentRotationY += dx * SENSITIVITY; currentRotationX -= dy * SENSITIVITY; currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX)); panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`; previousMouseX = e.clientX; previousMouseY = e.clientY; });
-            document.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; panel.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; panel.style.transform = `rotateX(0deg) rotateY(0deg)`; currentRotationX = 0; currentRotationY = 0; } });
-            panel.ondragstart = () => false;
-
-            const callListContainer = document.getElementById('callListContainer'), emptyState = document.getElementById('emptyStateT2'), progressText = document.getElementById('progressText'), progressBar = document.getElementById('progressBar'), addCallBtn = document.getElementById('addCallBtn'), resetDataBtn = document.getElementById('resetDataBtnT2'), lastUpdatedText = document.getElementById('lastUpdatedText'), rateChart = document.getElementById('rateChart'), reminderToggleBtn = document.getElementById('reminderToggleBtn'), reminderControls = document.getElementById('reminderControls'), reminderSlider = document.getElementById('reminderSlider'), reminderTimeLabel = document.getElementById('reminderTimeLabel'), setReminderBtn = document.getElementById('setReminderBtn');
-            const getInitialState = () => ({ calls: [], lastUpdated: null, reminderInterval: 0, reminderTimerId: null });
-            let state = getInitialState();
-            function loadState() { const savedState = localStorage.getItem('callFlowStateV4'); if (savedState) { const parsedState = JSON.parse(savedState); state = { ...getInitialState(), ...parsedState, reminderTimerId: null }; } }
-            function saveState() { state.lastUpdated = new Date().toISOString(); const { reminderTimerId, ...stateToSave } = state; localStorage.setItem('callFlowStateV4', JSON.stringify(stateToSave)); }
-            function formatRelativeTime(dateString) { if (!dateString) return 'No updates yet.'; const date = new Date(dateString); const now = new Date(); const seconds = Math.round((now - date) / 1000); const minutes = Math.round(seconds / 60); if (seconds < 10) return 'just now'; if (seconds < 60) return `${seconds}s ago`; if (minutes < 60) return `${minutes}m ago`; return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
-            function renderChart() { const dataPoints = []; let completedCount = 0; const sortedCalls = [...state.calls].sort((a, b) => a.number - b.number); for (let i = 0; i < sortedCalls.length; i++) { if (sortedCalls[i].completed) completedCount++; dataPoints.push((completedCount / (i + 1)) * 100); } const svgWidth = 500, svgHeight = 100, padding = 5; rateChart.innerHTML = `<defs><linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:var(--accent-color); stop-opacity:0.3"/><stop offset="100%" style="stop-color:var(--accent-color); stop-opacity:0"/></linearGradient></defs><line class="grid-line" x1="0" y1="${svgHeight/2}" x2="${svgWidth}" y2="${svgHeight/2}"></line>`; if (dataPoints.length < 2) return; const points = dataPoints.map((rate, index) => `${(index / (dataPoints.length - 1)) * svgWidth},${(svgHeight - padding * 2) - (rate / 100) * (svgHeight - padding * 2) + padding}`).join(' '); const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); polyline.setAttribute('class', 'chart-line'); polyline.setAttribute('points', points); rateChart.appendChild(polyline); dataPoints.forEach((rate, index) => { const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); circle.setAttribute('class', 'chart-point'); circle.setAttribute('cx', (index / (dataPoints.length - 1)) * svgWidth); circle.setAttribute('cy', (svgHeight - padding * 2) - (rate / 100) * (svgHeight - padding * 2) + padding); circle.setAttribute('r', 4); rateChart.appendChild(circle); }); }
-            function render() { const totalCalls = state.calls.length, completedCalls = state.calls.filter(call => call.completed).length, progressPercentage = totalCalls > 0 ? (completedCalls / totalCalls) * 100 : 0; progressText.textContent = `${progressPercentage.toFixed(0)}%`; progressBar.style.width = `${progressPercentage}%`; lastUpdatedText.textContent = `Updated ${formatRelativeTime(state.lastUpdated)}`; callListContainer.innerHTML = ''; if (totalCalls === 0) { callListContainer.appendChild(emptyState); emptyState.style.display = 'flex'; } else { emptyState.style.display = 'none'; [...state.calls].reverse().forEach(call => { const callEl = document.createElement('div'); callEl.className = `call-item flex items-center justify-between p-3 rounded-lg transition-all duration-300 ${call.completed ? 'opacity-60' : 'opacity-100'}`; callEl.dataset.id = call.id; const callTime = new Date(call.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); callEl.innerHTML = `<div class="flex-grow pr-2"><p class="${call.completed ? 'line-through subtle-text' : ''}">Call #${call.number}</p><p class="text-xs subtle-text">${callTime}</p></div><div class="flex items-center gap-2"><button class="delete-btn p-2 rounded-full hover:bg-[var(--danger-color)] hover:text-white transition-colors" data-id="${call.id}" data-number="${call.number}"><span class="material-symbols-outlined text-base">delete</span></button><label class="toggle-switch"><input type="checkbox" ${call.completed ? 'checked' : ''}><span class="slider"></span></label></div>`; callListContainer.appendChild(callEl); }); } reminderSlider.value = state.reminderInterval; reminderTimeLabel.textContent = state.reminderInterval > 0 ? `${state.reminderInterval} min` : 'Off'; reminderToggleBtn.style.color = state.reminderInterval > 0 ? 'var(--accent-color)' : 'var(--subtle-text-color)'; renderChart(); saveState(); }
-            function getNextCallNumber() { if (state.calls.length === 0) return 1; return Math.max(...state.calls.map(c => c.number)) + 1; }
-            function handleAddCall() { state.calls.push({ id: Date.now(), number: getNextCallNumber(), completed: false, createdAt: new Date().toISOString() }); render(); callListContainer.scrollTop = 0; }
-            function handleToggleCall(callId) { const call = state.calls.find(c => c.id == callId); if (call) { call.completed = !call.completed; render(); } }
-            function handleDeleteCall(callId) { state.calls = state.calls.filter(c => c.id != callId); render(); }
-            function handleResetData() { cancelReminder(); state = getInitialState(); render(); }
-            function showNotification() { panel.classList.add('is-reminding'); panel.addEventListener('animationend', () => panel.classList.remove('is-reminding'), { once: true }); if (Notification.permission === 'granted') { new Notification('Call Flow Reminder', { body: 'Time to log your calls!', icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔔</text></svg>' }); } setReminder(state.reminderInterval); }
-            function setReminder(minutes) { cancelReminder(); state.reminderInterval = minutes; if (minutes > 0) { const timerId = setTimeout(showNotification, minutes * 60 * 1000); state.reminderTimerId = timerId; } render(); }
-            function cancelReminder() { if (state.reminderTimerId) { clearTimeout(state.reminderTimerId); state.reminderTimerId = null; } }
-            callListContainer.addEventListener('click', (e) => { const deleteBtn = e.target.closest('.delete-btn'); if (deleteBtn) openDeleteConfirmModal(deleteBtn.dataset.id, deleteBtn.dataset.number); });
-            callListContainer.addEventListener('change', (e) => { if (e.target.matches('input[type="checkbox"]')) handleToggleCall(e.target.closest('.call-item').dataset.id); });
-            addCallBtn.addEventListener('click', handleAddCall);
-            resetDataBtn.addEventListener('click', () => openResetConfirmModal());
-            reminderToggleBtn.addEventListener('click', () => reminderControls.classList.toggle('visible'));
-            reminderSlider.addEventListener('input', (e) => { const minutes = e.target.value; reminderTimeLabel.textContent = minutes > 0 ? `${minutes} min` : 'Off'; });
-            setReminderBtn.addEventListener('click', () => { const minutes = parseInt(reminderSlider.value, 10); if (minutes > 0 && Notification.permission === 'default') { Notification.requestPermission().then(permission => { if (permission === 'granted') { setReminder(minutes); } }); } else { setReminder(minutes); } reminderControls.classList.remove('visible'); });
-            const resetConfirmModal = document.getElementById('resetConfirmModalT2'), deleteConfirmModal = document.getElementById('deleteConfirmModalT2');
-            function openResetConfirmModal() { resetConfirmModal.innerHTML = `<div class="bg-[var(--card-bg-color)] backdrop-blur-lg rounded-xl p-6 w-full max-w-md space-y-4 border border-[var(--danger-color)] shadow-2xl"><h3 class="text-lg font-semibold flex items-center gap-2 text-[var(--danger-color)]"><span class="material-symbols-outlined">warning</span>Reset Confirmation</h3><p class="subtle-text">Are you sure? All calls will be permanently deleted.</p><div class="flex justify-end gap-3"><button class="cancel-btn px-4 py-2 rounded-lg custom-hover">Cancel</button><button id="confirmResetBtnT2" class="bg-[var(--danger-color)] hover:bg-[var(--danger-hover-color)] text-white font-bold px-4 py-2 rounded-lg transition-colors">Yes, Reset</button></div></div>`; resetConfirmModal.classList.remove('hidden'); resetConfirmModal.querySelector('.cancel-btn').addEventListener('click', () => resetConfirmModal.classList.add('hidden')); resetConfirmModal.querySelector('#confirmResetBtnT2').addEventListener('click', () => { handleResetData(); resetConfirmModal.classList.add('hidden'); }); }
-            function openDeleteConfirmModal(callId, callNumber) { deleteConfirmModal.innerHTML = `<div class="bg-[var(--card-bg-color)] backdrop-blur-lg rounded-xl p-6 w-full max-w-md space-y-4 border border-[var(--danger-color)] shadow-2xl"><h3 class="text-lg font-semibold flex items-center gap-2 text-[var(--danger-color)]"><span class="material-symbols-outlined">delete</span>Delete Confirmation</h3><p class="subtle-text">Are you sure you want to delete <strong>Call #${callNumber}</strong>? This action cannot be undone.</p><div class="flex justify-end gap-3"><button class="cancel-btn px-4 py-2 rounded-lg custom-hover">Cancel</button><button id="confirmDeleteBtnT2" class="bg-[var(--danger-color)] hover:bg-[var(--danger-hover-color)] text-white font-bold px-4 py-2 rounded-lg transition-colors">Yes, Delete</button></div></div>`; deleteConfirmModal.classList.remove('hidden'); deleteConfirmModal.querySelector('.cancel-btn').addEventListener('click', () => deleteConfirmModal.classList.add('hidden')); deleteConfirmModal.querySelector('#confirmDeleteBtnT2').addEventListener('click', () => { handleDeleteCall(callId); deleteConfirmModal.classList.add('hidden'); }); }
-            loadState(); setReminder(state.reminderInterval); render();
+        function setReminder(minutes) {
+            cancelReminder(); // Clear any existing timer
+            state.reminderInterval = minutes;
+            if (minutes > 0) {
+                const timerId = setTimeout(showNotification, minutes * 60 * 1000);
+                state.reminderTimerId = timerId;
+            }
+            render();
         }
 
-        // --- INITIALIZE EVERYTHING ---
-        initTheme();
-        initSwitcher();
-        initTool1();
-        initTool2();
+        function cancelReminder() {
+            if (state.reminderTimerId) {
+                clearTimeout(state.reminderTimerId);
+                state.reminderTimerId = null;
+            }
+        }
+
+        // --- Event Listeners ---
+        callListContainer.addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('.delete-btn');
+            if (deleteBtn) openDeleteConfirmModal(deleteBtn.dataset.id, deleteBtn.dataset.number);
+        });
+        callListContainer.addEventListener('change', (e) => {
+            if (e.target.matches('input[type="checkbox"]')) handleToggleCall(e.target.closest('.call-item').dataset.id);
+        });
+        addCallBtn.addEventListener('click', handleAddCall);
+        resetDataBtn.addEventListener('click', () => openResetConfirmModal());
+
+        // Reminder UI events
+        reminderToggleBtn.addEventListener('click', () => reminderControls.classList.toggle('visible'));
+        reminderSlider.addEventListener('input', (e) => {
+            const minutes = e.target.value;
+            reminderTimeLabel.textContent = minutes > 0 ? `${minutes} min` : 'Off';
+        });
+        setReminderBtn.addEventListener('click', () => {
+            const minutes = parseInt(reminderSlider.value, 10);
+            if (minutes > 0 && Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        setReminder(minutes);
+                    }
+                });
+            } else {
+                setReminder(minutes);
+            }
+            reminderControls.classList.remove('visible');
+        });
+
+        // --- Modals ---
+        const resetConfirmModal = document.getElementById('resetConfirmModal');
+        const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+        function openResetConfirmModal() {
+            resetConfirmModal.innerHTML = `<div class="bg-[var(--card-bg-color)] backdrop-blur-lg rounded-xl p-6 w-full max-w-md space-y-4 border border-[var(--danger-color)] shadow-2xl"><h3 class="text-lg font-semibold flex items-center gap-2 text-[var(--danger-color)]"><span class="material-symbols-outlined">warning</span>Reset Confirmation</h3><p class="subtle-text">Are you sure? All calls will be permanently deleted.</p><div class="flex justify-end gap-3"><button class="cancel-btn px-4 py-2 rounded-lg custom-hover">Cancel</button><button id="confirmResetBtn" class="bg-[var(--danger-color)] hover:bg-[var(--danger-hover-color)] text-white font-bold px-4 py-2 rounded-lg transition-colors">Yes, Reset</button></div></div>`;
+            resetConfirmModal.classList.remove('hidden');
+            resetConfirmModal.querySelector('.cancel-btn').addEventListener('click', () => resetConfirmModal.classList.add('hidden'));
+            resetConfirmModal.querySelector('#confirmResetBtn').addEventListener('click', () => { handleResetData(); resetConfirmModal.classList.add('hidden'); });
+        }
+        function openDeleteConfirmModal(callId, callNumber) {
+            deleteConfirmModal.innerHTML = `<div class="bg-[var(--card-bg-color)] backdrop-blur-lg rounded-xl p-6 w-full max-w-md space-y-4 border border-[var(--danger-color)] shadow-2xl"><h3 class="text-lg font-semibold flex items-center gap-2 text-[var(--danger-color)]"><span class="material-symbols-outlined">delete</span>Delete Confirmation</h3><p class="subtle-text">Are you sure you want to delete <strong>Call #${callNumber}</strong>? This action cannot be undone.</p><div class="flex justify-end gap-3"><button class="cancel-btn px-4 py-2 rounded-lg custom-hover">Cancel</button><button id="confirmDeleteBtn" class="bg-[var(--danger-color)] hover:bg-[var(--danger-hover-color)] text-white font-bold px-4 py-2 rounded-lg transition-colors">Yes, Delete</button></div></div>`;
+            deleteConfirmModal.classList.remove('hidden');
+            deleteConfirmModal.querySelector('.cancel-btn').addEventListener('click', () => deleteConfirmModal.classList.add('hidden'));
+            deleteConfirmModal.querySelector('#confirmDeleteBtn').addEventListener('click', () => { handleDeleteCall(callId); deleteConfirmModal.classList.add('hidden'); });
+        }
+
+        // --- Initial Load ---
+        loadState();
+        setReminder(state.reminderInterval); // Re-initialize timer on load
+        render();
     });
     </script>
 </body>
