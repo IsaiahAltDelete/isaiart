@@ -2,670 +2,527 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <!-- Ensure proper scaling on mobile devices -->
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Stipple Filter</title>
-  <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000000' d='M3 17.25V21h3.75l11.02-11.02-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/%3E%3C/svg%3E">
-  <!-- Google Fonts and Material Icons -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <style>
-    :root {
-      --main-bg: #f2f3f7;
-      --panel-bg: #fff;
-      --accent: #000;
-      --border-radius: 15px;
-      --transition-speed: 0.3s;
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stipple Art Studio</title>
+
+  <!-- Favicon (Modern SVG Icon) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='none' stroke='%23a78bfa' stroke-width='10'/%3E%3Ccircle cx='50' cy='25' r='5' fill='%23a78bfa'/%3E%3Ccircle cx='50' cy='75' r='5' fill='%23a78bfa'/%3E%3Ccircle cx='25' cy='50' r='5' fill='%23a78bfa'/%3E%3Ccircle cx='75' cy='50' r='5' fill='%23a78bfa'/%3E%3C/svg%3E">
+
+  <!-- Google Fonts: Poppins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Google Material Symbols (Outlined) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+  <!-- TailwindCSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- TailwindCSS Configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'base': '#111015',
+            'panel': 'rgba(38, 37, 43, 0.5)',
+            'surface': '#26252b',
+            'primary': '#a78bfa', // Violet-500
+            'primary-hover': '#c4b5fd', // Violet-300
+            'text-main': '#e5e7eb', // Gray-200
+            'text-muted': '#9ca3af', // Gray-400
+            'border-color': 'rgba(255, 255, 255, 0.1)',
+          }
+        }
+      }
     }
-    /* Global Reset & Base Styles */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+  </script>
+
+  <!-- Custom CSS for elements Tailwind can't easily style -->
+  <style>
+    /* Base styles */
     body {
       font-family: 'Poppins', sans-serif;
-      background: var(--main-bg);
-      color: #333;
-      overflow: hidden;
-      padding: 20px;
+      background-color: #111015;
+      background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0);
+      background-size: 25px 25px;
+      color: #e5e7eb;
     }
-    /* Editor Layout (3-column grid) */
-    #editor-container {
-      display: grid;
-      grid-template-columns: minmax(250px, 300px) 1fr minmax(250px, 300px);
-      gap: 2rem;
-      height: 90vh;
-      max-width: 1600px;
-      margin: auto;
+
+    /* Glassmorphism Panel Style */
+    .glass-panel {
+      background: rgba(38, 37, 43, 0.5);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
     }
-    /* Panel Cards */
-    .controls-panel {
-      background-color: var(--panel-bg);
-      border-radius: 20px;
-      border: 2px solid var(--accent);
-      box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08);
-      padding: 1.5rem;
-      overflow-y: auto;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
+
+    /* Custom Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
     }
-    .controls-panel::-webkit-scrollbar { display: none; }
-    /* Left & Right panels */
-    #left-controls, #right-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      height: 100%;
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
     }
-    /* Right panel split into two cards */
-    #right-controls { gap: 1rem; }
-    #export-card { flex-shrink: 0; }
-    /* Canvas Card (Center) */
-    #canvas-card {
-      background-color: var(--panel-bg);
-      border-radius: 20px;
-      border: 2px solid var(--accent);
-      box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08);
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      overflow: hidden;
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #4a4a52;
+      border-radius: 10px;
     }
-    #canvas-card h2 { margin-bottom: 0.5rem; }
-    /* New: Canvas Color control above preview */
-    .canvas-controls {
-      margin-bottom: 1rem;
-      text-align: center;
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #6b6b74;
     }
-    .canvas-controls label {
-      font-size: 0.9rem;
-      margin-right: 5px;
-      cursor: pointer;
-    }
-    #canvas-container {
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      background: var(--panel-bg);
-      padding: 1rem;
-      border-radius: var(--border-radius);
-      box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
-    }
-    canvas {
-      max-width: 100%;
-      max-height: 70vh;
-      border-radius: var(--border-radius);
-    }
-    /* Custom Controls Styling */
-    .control-group { margin-bottom: 1.5rem; }
-    .control-group h2 {
-      font-size: 1.1rem;
-      margin-bottom: 0.5rem;
-      text-align: center;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 5px;
-    }
-    .control {
-      margin-bottom: 1rem;
-    }
-    .control label {
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      margin-bottom: 5px;
-    }
-    /* Custom Range Slider (black knob) */
+
+    /* Custom Range Slider */
     input[type="range"] {
       -webkit-appearance: none;
+      appearance: none;
       width: 100%;
-      height: 4px;
-      background: #ddd;
-      border-radius: var(--border-radius);
+      height: 6px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 5px;
       outline: none;
-      border: 2px solid var(--accent);
+      transition: all 0.2s ease;
     }
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 1.5rem;
-      height: 1.5rem;
-      background: var(--accent);
-      border: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #a78bfa;
+      border: 3px solid #111015;
       border-radius: 50%;
       cursor: pointer;
-      transition: transform var(--transition-speed);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 10px #a78bfa;
     }
     input[type="range"]::-moz-range-thumb {
-      width: 1.5rem;
-      height: 1.5rem;
-      background: var(--accent);
-      border: none;
+      width: 20px;
+      height: 20px;
+      background: #a78bfa;
+      border: 3px solid #111015;
       border-radius: 50%;
       cursor: pointer;
-      transition: transform var(--transition-speed);
     }
-    input[type="range"]::-webkit-slider-thumb:hover,
-    input[type="range"]::-moz-range-thumb:hover { transform: scale(1.1); }
-    input[type="range"]::-webkit-slider-thumb:active,
-    input[type="range"]::-moz-range-thumb:active { transform: scale(0.95); }
-    /* Center dropdown text */
-    select {
-      width: 100%;
-      padding: 0.75rem;
-      border-radius: var(--border-radius);
-      border: 2px solid var(--accent);
-      background-color: var(--panel-bg);
-      color: var(--accent);
-      font-size: 0.9rem;
-      text-align: center;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-      background-image: url('data:image/svg+xml;utf8,<svg fill="black" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
-      background-repeat: no-repeat;
-      background-position-x: right 0.75rem;
-      background-position-y: center;
-    }
-    select::-ms-expand { display: none; }
+
     /* Custom Checkbox */
-    .custom-checkbox {
-      position: relative;
-      padding-left: 30px;
-      cursor: pointer;
-      display: inline-block;
-      font-size: 0.9rem;
-      user-select: none;
-    }
-    .custom-checkbox input {
-      position: absolute;
-      opacity: 0;
-      cursor: pointer;
-      height: 0;
-      width: 0;
-    }
-    .custom-checkbox .checkmark {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 20px;
-      width: 20px;
-      background-color: #eee;
-      border: 2px solid var(--accent);
-      border-radius: 4px;
-    }
     .custom-checkbox input:checked ~ .checkmark {
-      background-color: var(--accent);
+      background-color: #a78bfa;
+      border-color: #a78bfa;
     }
     .custom-checkbox .checkmark:after {
       content: "";
       position: absolute;
       display: none;
-    }
-    .custom-checkbox input:checked ~ .checkmark:after {
-      display: block;
-    }
-    .custom-checkbox .checkmark:after {
-      left: 6px;
-      top: 2px;
-      width: 5px;
-      height: 10px;
+      left: 7px;
+      top: 3px;
+      width: 6px;
+      height: 12px;
       border: solid white;
       border-width: 0 2px 2px 0;
       transform: rotate(45deg);
     }
+    .custom-checkbox input:checked ~ .checkmark:after {
+      display: block;
+    }
+
     /* Custom Color Picker */
-    .custom-color-picker {
-      display: inline-block;
-      position: relative;
-    }
-    .custom-color-picker input[type="color"] {
+    input[type="color"] {
       -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      width: 40px;
+      height: 40px;
+      background-color: transparent;
       border: none;
-      width: 32px;
-      height: 32px;
-      border-radius: 4px;
       cursor: pointer;
     }
-    .custom-color-picker input[type="color"]::-webkit-color-swatch-wrapper {
-      padding: 0;
+    input[type="color"]::-webkit-color-swatch {
+      border-radius: 8px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
     }
-    .custom-color-picker input[type="color"]::-webkit-color-swatch {
-      border: 2px solid var(--accent);
-      border-radius: 4px;
-    }
-    /* Action Buttons (smaller & in one row) */
-    #action-buttons {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: center;
-      flex-wrap: nowrap;
-      margin-top: 1rem;
-    }
-    #action-buttons button {
-      background-color: var(--panel-bg);
-      color: var(--accent);
-      padding: 0.5rem;
-      font-size: 1rem;
-      border: 2px solid var(--accent);
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      transition: background-color var(--transition-speed), color var(--transition-speed);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 32px;
-      min-height: 32px;
-    }
-    #action-buttons button:hover {
-      background-color: var(--accent);
-      color: var(--panel-bg);
-    }
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      #editor-container { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; gap: 1rem; }
-      .controls-panel { padding: 1rem; border-radius: 15px; }
-      #canvas-card { padding: 1rem; border-radius: 15px; }
+    input[type="color"]::-moz-color-swatch {
+      border-radius: 8px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
     }
   </style>
 </head>
-<body>
-  <div id="editor-container">
+<body class="p-4 lg:p-6 antialiased">
+
+  <main id="editor-container" class="grid grid-cols-1 lg:grid-cols-[340px_1fr_340px] gap-6 max-w-screen-2xl mx-auto h-[calc(100vh-3rem)]">
+
     <!-- Left Controls Panel: Filter Settings -->
-    <div id="left-controls" class="controls-panel">
-      <div class="control-group">
-        <h2>Filter Settings</h2>
-        <!-- File Upload with Drag-and-Drop -->
-        <div class="control" id="upload-container">
-          <label for="imageLoader">
-            <span class="material-icons">file_upload</span> Load Image
-          </label>
-          <input type="file" id="imageLoader" accept="image/*" style="display:none;">
-        </div>
-        <!-- Density Slider with Tooltip -->
-        <div class="control">
-          <label for="density" title="Determines the spacing between dots. Lower value = denser stipple.">
-            <span class="material-icons">grid_on</span> Density
-          </label>
+    <div id="left-controls" class="glass-panel rounded-2xl p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
+      <h2 class="text-xl font-bold text-center text-text-main border-b border-border-color pb-3">Stipple Controls</h2>
+      
+      <!-- File Upload -->
+      <div id="upload-container" class="border-2 border-dashed border-border-color rounded-lg p-6 text-center cursor-pointer transition-all duration-300 hover:border-primary hover:bg-surface">
+        <span class="material-symbols-outlined text-4xl text-primary">upload_file</span>
+        <p class="text-text-main font-semibold mt-2">Drop image here</p>
+        <p class="text-text-muted text-sm">or click to browse</p>
+        <input type="file" id="imageLoader" accept="image/*" class="hidden">
+      </div>
+
+      <!-- Controls -->
+      <div class="flex flex-col gap-5">
+        <div class="control-group">
+          <div class="flex justify-between items-center mb-2">
+            <label for="density" class="flex items-center gap-2 text-sm font-medium text-text-main"><span class="material-symbols-outlined text-lg">grid_on</span>Density</label>
+            <span id="density-value" class="text-xs font-mono bg-surface px-2 py-1 rounded">10</span>
+          </div>
           <input type="range" id="density" min="2" max="20" value="10">
         </div>
-        <!-- Dot Size Slider with Tooltip -->
-        <div class="control">
-          <label for="dotSize" title="Sets the maximum dot size.">
-            <span class="material-icons">blur_on</span> Dot Size
-          </label>
+
+        <div class="control-group">
+          <div class="flex justify-between items-center mb-2">
+            <label for="dotSize" class="flex items-center gap-2 text-sm font-medium text-text-main"><span class="material-symbols-outlined text-lg">blur_on</span>Dot Size</label>
+            <span id="dotSize-value" class="text-xs font-mono bg-surface px-2 py-1 rounded">5</span>
+          </div>
           <input type="range" id="dotSize" min="1" max="20" value="5">
         </div>
-        <!-- Intensity Slider with Tooltip -->
-        <div class="control">
-          <label for="amount" title="Controls overall effect intensity.">
-            <span class="material-icons">tune</span> Intensity
-          </label>
+
+        <div class="control-group">
+          <div class="flex justify-between items-center mb-2">
+            <label for="amount" class="flex items-center gap-2 text-sm font-medium text-text-main"><span class="material-symbols-outlined text-lg">tune</span>Intensity</label>
+            <span id="amount-value" class="text-xs font-mono bg-surface px-2 py-1 rounded">1.0</span>
+          </div>
           <input type="range" id="amount" min="0" max="2" step="0.1" value="1">
         </div>
-        <!-- Custom Checkbox: Use Original Colors -->
-        <div class="control">
-          <label class="custom-checkbox" title="When enabled, each dot uses the original image's color.">
-            <span class="material-icons">palette</span> Use Original Colors
-            <input type="checkbox" id="originalColors">
-            <span class="checkmark"></span>
+
+        <div class="control-group flex items-center justify-between p-3 bg-surface rounded-lg">
+          <label for="originalColors" class="flex items-center gap-2 text-sm font-medium text-text-main"><span class="material-symbols-outlined text-lg">palette</span>Use Original Colors</label>
+          <label class="custom-checkbox relative inline-block w-5 h-5">
+            <input type="checkbox" id="originalColors" class="opacity-0 w-0 h-0">
+            <span class="checkmark absolute top-0 left-0 h-5 w-5 bg-transparent border-2 border-border-color rounded transition-all"></span>
           </label>
         </div>
-        <!-- Custom Color Picker: Stipple Color -->
-        <div class="control" id="stippleColorContainer">
-          <label for="colorPicker" title="Select the color for the stipple if not using the original image colors.">
-            <span class="material-icons">color_lens</span> Stipple Color
-          </label>
-          <div class="custom-color-picker">
-            <input type="color" id="colorPicker" value="#000000">
-          </div>
+
+        <div id="stippleColorContainer" class="control-group flex items-center justify-between p-3 bg-surface rounded-lg">
+          <label for="colorPicker" class="flex items-center gap-2 text-sm font-medium text-text-main"><span class="material-symbols-outlined text-lg">colorize</span>Stipple Color</label>
+          <input type="color" id="colorPicker" value="#ffffff">
         </div>
-        <!-- Custom Checkbox: Invert Effect -->
-        <div class="control">
-          <label class="custom-checkbox" title="Invert the brightness calculation (lighter areas get larger dots).">
-            <span class="material-icons">invert_colors</span> Invert Effect
-            <input type="checkbox" id="invertEffect">
-            <span class="checkmark"></span>
+
+        <div class="control-group flex items-center justify-between p-3 bg-surface rounded-lg">
+          <label for="invertEffect" class="flex items-center gap-2 text-sm font-medium text-text-main"><span class="material-symbols-outlined text-lg">invert_colors</span>Invert Effect</label>
+          <label class="custom-checkbox relative inline-block w-5 h-5">
+            <input type="checkbox" id="invertEffect" class="opacity-0 w-0 h-0">
+            <span class="checkmark absolute top-0 left-0 h-5 w-5 bg-transparent border-2 border-border-color rounded transition-all"></span>
           </label>
         </div>
       </div>
     </div>
+
     <!-- Canvas Card (Center) -->
-    <div id="canvas-card">
-      <h2>Preview</h2>
-      <!-- New: Canvas Color control (affects only preview) -->
-      <div class="canvas-controls">
-        <label for="canvasColor" title="Change the preview canvas background. This does not affect exported images.">Canvas Color:</label>
-        <div class="custom-color-picker">
-          <input type="color" id="canvasColor" value="#ffffff">
+    <div id="canvas-card" class="glass-panel rounded-2xl p-6 flex flex-col">
+      <div class="flex justify-between items-center border-b border-border-color pb-3 mb-4">
+        <h2 class="text-xl font-bold text-text-main">Artwork Preview</h2>
+        <div class="flex items-center gap-2">
+          <label for="canvasColor" class="text-sm text-text-muted">BG</label>
+          <input type="color" id="canvasColor" value="#111015">
         </div>
       </div>
-      <div id="canvas-container">
-        <canvas id="stippleCanvas"></canvas>
+      <div id="canvas-container" class="flex-grow flex items-center justify-center bg-base rounded-lg transition-colors duration-300 p-4">
+        <canvas id="stippleCanvas" class="max-w-full max-h-full object-contain rounded-md"></canvas>
       </div>
     </div>
+
     <!-- Right Controls Panel: Export Settings -->
-    <div id="right-controls">
-      <div id="export-card" class="controls-panel">
+    <div id="right-controls" class="glass-panel rounded-2xl p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
+      <h2 class="text-xl font-bold text-center text-text-main border-b border-border-color pb-3">Export Options</h2>
+      
+      <div class="flex flex-col gap-5">
         <div class="control-group">
-          <h2>Export Settings</h2>
-          <div class="control">
-            <label for="exportFormat" title="Select the export format.">
-              <span class="material-icons">save_alt</span> Export Format
-            </label>
-            <select id="exportFormat">
-              <option value="png">PNG</option>
-              <option value="jpeg">JPEG</option>
-              <option value="svg">SVG (Vector)</option>
-            </select>
+          <label for="exportFormat" class="flex items-center gap-2 text-sm font-medium text-text-main mb-2"><span class="material-symbols-outlined text-lg">save</span>Export Format</label>
+          <select id="exportFormat" class="w-full p-3 bg-surface border border-border-color rounded-lg text-text-main focus:ring-2 focus:ring-primary focus:border-primary outline-none appearance-none" style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'%239ca3af\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/><path d=\'M0 0h24v24H0z\' fill=\'none\'/></svg>'); background-repeat: no-repeat; background-position-x: 95%; background-position-y: center;">
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="svg">SVG (Vector)</option>
+          </select>
+        </div>
+
+        <div id="transparentBgContainer" class="control-group flex items-center justify-between p-3 bg-surface rounded-lg">
+          <label for="transparentBg" class="flex items-center gap-2 text-sm font-medium text-text-main"><span class="material-symbols-outlined text-lg">layers_clear</span>Transparent BG (PNG)</label>
+          <label class="custom-checkbox relative inline-block w-5 h-5">
+            <input type="checkbox" id="transparentBg" class="opacity-0 w-0 h-0">
+            <span class="checkmark absolute top-0 left-0 h-5 w-5 bg-transparent border-2 border-border-color rounded transition-all"></span>
+          </label>
+        </div>
+
+        <div id="bgColorContainer" class="control-group flex items-center justify-between p-3 bg-surface rounded-lg">
+          <label for="bgColor" class="flex items-center gap-2 text-sm font-medium text-text-main"><span class="material-symbols-outlined text-lg">format_color_fill</span>Background Color</label>
+          <input type="color" id="bgColor" value="#111015">
+        </div>
+
+        <div id="qualityContainer" class="control-group hidden">
+          <div class="flex justify-between items-center mb-2">
+            <label for="qualitySlider" class="flex items-center gap-2 text-sm font-medium text-text-main"><span class="material-symbols-outlined text-lg">high_quality</span>JPEG Quality</label>
+            <span id="quality-value" class="text-xs font-mono bg-surface px-2 py-1 rounded">0.90</span>
           </div>
-          <div class="control" id="transparentBgContainer">
-            <label for="transparentBg" title="For PNG export only: enable transparent background.">
-              <span class="material-icons">format_clear</span> Transparent Background (PNG Only)
-            </label>
-            <input type="checkbox" id="transparentBg">
+          <input type="range" id="qualitySlider" min="0.1" max="1" step="0.05" value="0.9">
+        </div>
+
+        <div id="scaleContainer" class="control-group">
+          <div class="flex justify-between items-center mb-2">
+            <label for="scaleSlider" class="flex items-center gap-2 text-sm font-medium text-text-main"><span class="material-symbols-outlined text-lg">zoom_out_map</span>Output Scale</label>
+            <span id="scale-value" class="text-xs font-mono bg-surface px-2 py-1 rounded">1.0x</span>
           </div>
-          <div class="control" id="bgColorContainer">
-            <label for="bgColor" title="Select a background color for the export.">
-              <span class="material-icons">format_color_fill</span> Background Color
-            </label>
-            <div class="custom-color-picker">
-              <input type="color" id="bgColor" value="#ffffff">
-            </div>
-          </div>
-          <div class="control" id="qualityContainer" style="display:none;">
-            <label for="qualitySlider" title="Set JPEG quality. Lower quality = smaller file size.">
-              <span class="material-icons">high_quality</span> Image Quality
-            </label>
-            <input type="range" id="qualitySlider" min="0.1" max="1" step="0.05" value="0.9">
-            <p class="info">
-              Lower quality yields a smaller file size; 1 produces maximum quality.
-            </p>
-          </div>
-          <div class="control" id="scaleContainer">
-            <label for="scaleSlider" title="Increase scale for higher resolution output (affects raster exports only).">
-              <span class="material-icons">zoom_out_map</span> Output Scale
-            </label>
-            <input type="range" id="scaleSlider" min="1" max="3" step="0.1" value="1">
-            <p class="info">
-              Increase this factor to generate a higher resolution output image.
-            </p>
-          </div>
-          <div class="control">
-            <div id="action-buttons">
-              <button id="downloadBtn" title="Download Image">
-                <span class="material-icons">file_download</span>
-              </button>
-            </div>
-          </div>
+          <input type="range" id="scaleSlider" min="1" max="4" step="0.1" value="1">
         </div>
       </div>
+
+      <div class="mt-auto">
+        <button id="downloadBtn" class="w-full bg-primary text-base font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all duration-300 hover:bg-primary-hover hover:shadow-lg hover:shadow-primary/30 disabled:bg-surface disabled:text-text-muted disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined">download</span>
+          Generate & Download
+        </button>
+      </div>
     </div>
-  </div>
+  </main>
 
   <script>
-    // DOM Elements
-    const imageLoader = document.getElementById('imageLoader');
-    const canvas = document.getElementById('stippleCanvas');
-    const densitySlider = document.getElementById('density');
-    const dotSizeSlider = document.getElementById('dotSize');
-    const amountSlider = document.getElementById('amount');
-    const originalColorsCheckbox = document.getElementById('originalColors');
-    const colorPicker = document.getElementById('colorPicker');
-    const stippleColorContainer = document.getElementById('stippleColorContainer');
-    const invertEffectCheckbox = document.getElementById('invertEffect');
+    document.addEventListener('DOMContentLoaded', () => {
+      // --- DOM Elements ---
+      const imageLoader = document.getElementById('imageLoader');
+      const uploadContainer = document.getElementById('upload-container');
+      const canvas = document.getElementById('stippleCanvas');
+      const ctx = canvas.getContext('2d');
+      
+      const densitySlider = document.getElementById('density');
+      const dotSizeSlider = document.getElementById('dotSize');
+      const amountSlider = document.getElementById('amount');
+      const originalColorsCheckbox = document.getElementById('originalColors');
+      const colorPicker = document.getElementById('colorPicker');
+      const stippleColorContainer = document.getElementById('stippleColorContainer');
+      const invertEffectCheckbox = document.getElementById('invertEffect');
 
-    const exportFormatSelect = document.getElementById('exportFormat');
-    const transparentCheckbox = document.getElementById('transparentBg');
-    const bgColorPicker = document.getElementById('bgColor');
-    const transparentBgContainer = document.getElementById('transparentBgContainer');
-    const bgColorContainer = document.getElementById('bgColorContainer');
-    const qualityContainer = document.getElementById('qualityContainer');
-    const qualitySlider = document.getElementById('qualitySlider');
-    const scaleContainer = document.getElementById('scaleContainer');
-    const scaleSlider = document.getElementById('scaleSlider');
-    const downloadBtn = document.getElementById('downloadBtn');
+      const densityValue = document.getElementById('density-value');
+      const dotSizeValue = document.getElementById('dotSize-value');
+      const amountValue = document.getElementById('amount-value');
 
-    const canvasColorPicker = document.getElementById('canvasColor');
-    const canvasContainer = document.getElementById('canvas-container');
+      const exportFormatSelect = document.getElementById('exportFormat');
+      const transparentCheckbox = document.getElementById('transparentBg');
+      const bgColorPicker = document.getElementById('bgColor');
+      const transparentBgContainer = document.getElementById('transparentBgContainer');
+      const bgColorContainer = document.getElementById('bgColorContainer');
+      const qualityContainer = document.getElementById('qualityContainer');
+      const qualitySlider = document.getElementById('qualitySlider');
+      const qualityValue = document.getElementById('quality-value');
+      const scaleContainer = document.getElementById('scaleContainer');
+      const scaleSlider = document.getElementById('scaleSlider');
+      const scaleValue = document.getElementById('scale-value');
+      const downloadBtn = document.getElementById('downloadBtn');
 
-    // File input: click on label triggers hidden input
-    const uploadLabel = document.querySelector('#upload-container label');
-    uploadLabel.addEventListener('click', () => { imageLoader.click(); });
-    
-    // Drag-and-Drop for file upload
-    const uploadContainer = document.getElementById('upload-container');
-    uploadContainer.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadLabel.classList.add('dragover');
-    });
-    uploadContainer.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      uploadLabel.classList.remove('dragover');
-    });
-    uploadContainer.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadLabel.classList.remove('dragover');
-      if(e.dataTransfer.files.length) {
-        imageLoader.files = e.dataTransfer.files;
-        const event = new Event('change');
-        imageLoader.dispatchEvent(event);
-      }
-    });
+      const canvasColorPicker = document.getElementById('canvasColor');
+      const canvasContainer = document.getElementById('canvas-container');
 
-    // Off-screen canvas for processing
-    const offCanvas = document.createElement('canvas');
-    const offCtx = offCanvas.getContext('2d');
+      // --- State ---
+      let img = new Image();
+      const offCanvas = document.createElement('canvas');
+      const offCtx = offCanvas.getContext('2d');
 
-    // The image to process
-    let img = new Image();
-
-    // Load image and update preview
-    imageLoader.addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        img = new Image();
-        img.onload = applyStipple;
-        img.src = event.target.result;
+      // --- Initial Setup ---
+      const setupInitialCanvas = () => {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        ctx.font = "16px Poppins";
+        ctx.fillStyle = "#9ca3af";
+        ctx.textAlign = "center";
+        ctx.fillText("Upload an image to begin", canvas.width / (2*dpr), canvas.height / (2*dpr));
+        downloadBtn.disabled = true;
       };
-      reader.readAsDataURL(file);
-    });
+      setupInitialCanvas();
 
-    // Update preview canvas background based on canvasColor input (does not affect export)
-    canvasColorPicker.addEventListener('input', () => {
-      canvasContainer.style.backgroundColor = canvasColorPicker.value;
-    });
-    // Set initial canvas background
-    canvasContainer.style.backgroundColor = canvasColorPicker.value;
+      // --- Event Listeners ---
 
-    // Toggle visibility of custom stipple color input based on "Use Original Colors" setting
-    originalColorsCheckbox.addEventListener('change', () => {
-      stippleColorContainer.style.display = originalColorsCheckbox.checked ? 'none' : 'block';
-      applyStipple();
-    });
-
-    // Update export controls based on format selection
-    exportFormatSelect.addEventListener('change', () => {
-      if (exportFormatSelect.value === 'png') {
-        transparentBgContainer.style.display = 'block';
-        bgColorContainer.style.display = transparentCheckbox.checked ? 'none' : 'block';
-        qualityContainer.style.display = 'none';
-        scaleContainer.style.display = 'block';
-      } else if (exportFormatSelect.value === 'jpeg') {
-        transparentBgContainer.style.display = 'none';
-        bgColorContainer.style.display = 'block';
-        qualityContainer.style.display = 'block';
-        scaleContainer.style.display = 'block';
-      } else { // svg
-        transparentBgContainer.style.display = 'none';
-        bgColorContainer.style.display = 'block';
-        qualityContainer.style.display = 'none';
-        scaleContainer.style.display = 'none';
-      }
-      applyStipple();
-    });
-    transparentCheckbox.addEventListener('change', () => {
-      bgColorContainer.style.display = transparentCheckbox.checked ? 'none' : 'block';
-      applyStipple();
-    });
-    bgColorPicker.addEventListener('input', applyStipple);
-
-    // Update preview on slider and color changes
-    densitySlider.addEventListener('input', applyStipple);
-    dotSizeSlider.addEventListener('input', applyStipple);
-    amountSlider.addEventListener('input', applyStipple);
-    colorPicker.addEventListener('input', applyStipple);
-    invertEffectCheckbox.addEventListener('change', applyStipple);
-
-    // --------------------------
-    // Draw the stipple effect on a provided canvas.
-    // isPreview: if true, adjust preview background if needed.
-    // scale: if provided (other than 1), render at that resolution.
-    function drawStipple(targetCanvas, isPreview, scale = 1) {
-      const ctx = targetCanvas.getContext('2d');
-      targetCanvas.width = img.width * scale;
-      targetCanvas.height = img.height * scale;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      if (scale !== 1) { ctx.scale(scale, scale); }
-      
-      // Determine background for export (ignore canvasColor for export)
-      let useTransparent = false;
-      if (exportFormatSelect.value === 'png' && transparentCheckbox.checked) {
-        useTransparent = true;
-      }
-      if (!useTransparent) {
-        let fillBg = bgColorPicker.value;
-        if (isPreview && !originalColorsCheckbox.checked &&
-            colorPicker.value.toLowerCase() === "#ffffff" &&
-            bgColorPicker.value.toLowerCase() === "#ffffff") {
-          fillBg = "#ddd";
+      // File Upload
+      uploadContainer.addEventListener('click', () => imageLoader.click());
+      uploadContainer.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadContainer.classList.add('border-primary', 'bg-surface');
+      });
+      uploadContainer.addEventListener('dragleave', () => {
+        uploadContainer.classList.remove('border-primary', 'bg-surface');
+      });
+      uploadContainer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadContainer.classList.remove('border-primary', 'bg-surface');
+        if (e.dataTransfer.files.length) {
+          imageLoader.files = e.dataTransfer.files;
+          imageLoader.dispatchEvent(new Event('change'));
         }
-        ctx.fillStyle = fillBg;
-        ctx.fillRect(0, 0, img.width, img.height);
-      } else {
-        ctx.clearRect(0, 0, img.width, img.height);
+      });
+      imageLoader.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          img = new Image();
+          img.onload = () => {
+            downloadBtn.disabled = false;
+            applyStipple();
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // Control Listeners
+      const controls = [densitySlider, dotSizeSlider, amountSlider, colorPicker, bgColorPicker, canvasColorPicker];
+      controls.forEach(control => control.addEventListener('input', applyStipple));
+      
+      const checkboxes = [originalColorsCheckbox, invertEffectCheckbox, transparentCheckbox];
+      checkboxes.forEach(checkbox => checkbox.addEventListener('change', applyStipple));
+
+      // Update UI based on control changes
+      densitySlider.addEventListener('input', () => densityValue.textContent = densitySlider.value);
+      dotSizeSlider.addEventListener('input', () => dotSizeValue.textContent = dotSizeSlider.value);
+      amountSlider.addEventListener('input', () => amountValue.textContent = parseFloat(amountSlider.value).toFixed(1));
+      qualitySlider.addEventListener('input', () => qualityValue.textContent = parseFloat(qualitySlider.value).toFixed(2));
+      scaleSlider.addEventListener('input', () => scaleValue.textContent = `${parseFloat(scaleSlider.value).toFixed(1)}x`);
+
+      originalColorsCheckbox.addEventListener('change', () => {
+        stippleColorContainer.style.display = originalColorsCheckbox.checked ? 'none' : 'flex';
+      });
+
+      exportFormatSelect.addEventListener('change', () => {
+        const format = exportFormatSelect.value;
+        transparentBgContainer.style.display = format === 'png' ? 'flex' : 'none';
+        bgColorContainer.style.display = (format === 'png' && transparentCheckbox.checked) ? 'none' : 'flex';
+        qualityContainer.style.display = format === 'jpeg' ? 'block' : 'none';
+        scaleContainer.style.display = format === 'svg' ? 'none' : 'block';
+      });
+
+      transparentCheckbox.addEventListener('change', () => {
+        bgColorContainer.style.display = transparentCheckbox.checked ? 'none' : 'flex';
+      });
+
+      canvasColorPicker.addEventListener('input', () => {
+        canvasContainer.style.backgroundColor = canvasColorPicker.value;
+      });
+
+      // Download Handler
+      downloadBtn.addEventListener('click', handleDownload);
+
+      // --- Core Functions ---
+
+      function applyStipple() {
+        if (!img.src) return;
+        drawStipple(canvas, true, 1);
       }
-      
-      // Draw the image onto off-screen canvas to get pixel data.
-      offCanvas.width = img.width;
-      offCanvas.height = img.height;
-      offCtx.drawImage(img, 0, 0, img.width, img.height);
-      const imageData = offCtx.getImageData(0, 0, img.width, img.height).data;
-      
-      const density = parseInt(densitySlider.value, 10);
-      const dotSize = parseFloat(dotSizeSlider.value);
-      const amount = parseFloat(amountSlider.value);
-      const useOriginalColors = originalColorsCheckbox.checked;
-      const customColor = colorPicker.value;
-      const invert = invertEffectCheckbox.checked;
-      
-      for (let y = 0; y < img.height; y += density) {
-        for (let x = 0; x < img.width; x += density) {
-          const index = (y * img.width + x) * 4;
-          const r = imageData[index];
-          const g = imageData[index + 1];
-          const b = imageData[index + 2];
-          const brightness = (r + g + b) / 3;
-          const radius = dotSize * amount * (invert ? (brightness / 255) : (1 - brightness / 255));
-          if (radius > 0.5) {
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fillStyle = useOriginalColors ? `rgb(${r},${g},${b})` : customColor;
-            ctx.fill();
+
+      function drawStipple(targetCanvas, isPreview, scale = 1) {
+        const ctx = targetCanvas.getContext('2d');
+        const w = img.width * scale;
+        const h = img.height * scale;
+        targetCanvas.width = w;
+        targetCanvas.height = h;
+
+        // Set background
+        const useTransparent = exportFormatSelect.value === 'png' && transparentCheckbox.checked;
+        if (!isPreview && !useTransparent) {
+          ctx.fillStyle = bgColorPicker.value;
+          ctx.fillRect(0, 0, w, h);
+        } else {
+          ctx.clearRect(0, 0, w, h);
+        }
+
+        // Get pixel data
+        offCanvas.width = img.width;
+        offCanvas.height = img.height;
+        offCtx.drawImage(img, 0, 0);
+        const imageData = offCtx.getImageData(0, 0, img.width, img.height).data;
+
+        // Get settings
+        const density = parseInt(densitySlider.value, 10);
+        const dotSize = parseFloat(dotSizeSlider.value);
+        const amount = parseFloat(amountSlider.value);
+        const useOriginalColors = originalColorsCheckbox.checked;
+        const customColor = colorPicker.value;
+        const invert = invertEffectCheckbox.checked;
+
+        for (let y = 0; y < img.height; y += density) {
+          for (let x = 0; x < img.width; x += density) {
+            const i = (y * img.width + x) * 4;
+            const r = imageData[i], g = imageData[i + 1], b = imageData[i + 2];
+            const brightness = (r + g + b) / 3 / 255; // Normalized 0-1
+            const radius = dotSize * amount * (invert ? brightness : 1 - brightness);
+
+            if (radius > 0.5) {
+              ctx.beginPath();
+              ctx.fillStyle = useOriginalColors ? `rgb(${r},${g},${b})` : customColor;
+              ctx.arc(x * scale, y * scale, radius * scale, 0, Math.PI * 2);
+              ctx.fill();
+            }
           }
         }
       }
-    }
-    
-    // Update the preview canvas (scale = 1)
-    function applyStipple() {
-      if (!img.src) return;
-      drawStipple(canvas, true, 1);
-    }
-    
-    // --------------------------
-    // Generate an SVG string representing the stipple effect.
-    function generateSVG() {
-      const density = parseInt(densitySlider.value, 10);
-      const dotSize = parseFloat(dotSizeSlider.value);
-      const amount = parseFloat(amountSlider.value);
-      const useOriginalColors = originalColorsCheckbox.checked;
-      const customColor = colorPicker.value;
-      const invert = invertEffectCheckbox.checked;
-      
-      let svgStr = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-      svgStr += `<svg xmlns="http://www.w3.org/2000/svg" width="${img.width}" height="${img.height}" viewBox="0 0 ${img.width} ${img.height}">\n`;
-      
-      if (!(exportFormatSelect.value === 'png' && transparentCheckbox.checked)) {
-        svgStr += `<rect width="100%" height="100%" fill="${bgColorPicker.value}" />\n`;
-      }
-      
-      offCanvas.width = img.width;
-      offCanvas.height = img.height;
-      offCtx.drawImage(img, 0, 0, img.width, img.height);
-      const imageData = offCtx.getImageData(0, 0, img.width, img.height).data;
-      
-      for (let y = 0; y < img.height; y += density) {
-        for (let x = 0; x < img.width; x += density) {
-          const index = (y * img.width + x) * 4;
-          const r = imageData[index];
-          const g = imageData[index + 1];
-          const b = imageData[index + 2];
-          const brightness = (r + g + b) / 3;
-          const radius = dotSize * amount * (invert ? (brightness / 255) : (1 - brightness / 255));
-          if (radius > 0.5) {
-            const fill = useOriginalColors ? `rgb(${r},${g},${b})` : customColor;
-            svgStr += `<circle cx="${x}" cy="${y}" r="${radius}" fill="${fill}" />\n`;
+
+      function generateSVG() {
+        const density = parseInt(densitySlider.value, 10);
+        const dotSize = parseFloat(dotSizeSlider.value);
+        const amount = parseFloat(amountSlider.value);
+        const useOriginalColors = originalColorsCheckbox.checked;
+        const customColor = colorPicker.value;
+        const invert = invertEffectCheckbox.checked;
+
+        let svgCircles = '';
+        offCanvas.width = img.width;
+        offCanvas.height = img.height;
+        offCtx.drawImage(img, 0, 0);
+        const imageData = offCtx.getImageData(0, 0, img.width, img.height).data;
+
+        for (let y = 0; y < img.height; y += density) {
+          for (let x = 0; x < img.width; x += density) {
+            const i = (y * img.width + x) * 4;
+            const r = imageData[i], g = imageData[i + 1], b = imageData[i + 2];
+            const brightness = (r + g + b) / 3 / 255;
+            const radius = dotSize * amount * (invert ? brightness : 1 - brightness);
+            if (radius > 0.5) {
+              const fill = useOriginalColors ? `rgb(${r},${g},${b})` : customColor;
+              svgCircles += `<circle cx="${x}" cy="${y}" r="${radius.toFixed(3)}" fill="${fill}" />\n`;
+            }
           }
         }
+
+        const bgRect = (exportFormatSelect.value === 'png' && transparentCheckbox.checked) ? '' : `<rect width="100%" height="100%" fill="${bgColorPicker.value}" />\n`;
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${img.width}" height="${img.height}" viewBox="0 0 ${img.width} ${img.height}">\n${bgRect}${svgCircles}</svg>`;
       }
-      
-      svgStr += `</svg>`;
-      return svgStr;
-    }
-    
-    // Generate a random 8-character alphanumeric file name.
-    function generateRandomName(length = 8) {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      let name = '';
-      for (let i = 0; i < length; i++) {
-        name += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return name;
-    }
-    
-    // Download button handler – export based on selected format.
-    downloadBtn.addEventListener('click', () => {
-      if (!img.src) return;
-      const format = exportFormatSelect.value;
-      let dataURL;
-      
-      if (format === 'jpeg') {
-        const quality = parseFloat(qualitySlider.value);
-        const scale = parseFloat(scaleSlider.value);
-        const exportCanvas = document.createElement('canvas');
-        drawStipple(exportCanvas, false, scale);
-        dataURL = exportCanvas.toDataURL("image/jpeg", quality);
-      } else if (format === 'png') {
-        const scale = parseFloat(scaleSlider.value);
-        const exportCanvas = document.createElement('canvas');
-        drawStipple(exportCanvas, false, scale);
-        dataURL = exportCanvas.toDataURL("image/png");
-      } else if (format === 'svg') {
-        const svgString = generateSVG();
-        const blob = new Blob([svgString], {type: "image/svg+xml;charset=utf-8"});
-        dataURL = URL.createObjectURL(blob);
-      }
-      
-      const randomName = generateRandomName(8);
-      const fileName = `${randomName}.${format}`;
-      const link = document.createElement('a');
-      link.href = dataURL;
-      link.download = fileName;
-      link.click();
-      
-      if (format === 'svg') {
-        setTimeout(() => URL.revokeObjectURL(dataURL), 100);
+
+      function handleDownload() {
+        if (!img.src) return;
+        const format = exportFormatSelect.value;
+        const fileName = `stipple-art-${Date.now()}.${format}`;
+        let dataURL;
+
+        if (format === 'svg') {
+          const svgString = generateSVG();
+          const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+          dataURL = URL.createObjectURL(blob);
+        } else {
+          const scale = parseFloat(scaleSlider.value);
+          const exportCanvas = document.createElement('canvas');
+          drawStipple(exportCanvas, false, scale);
+          const quality = format === 'jpeg' ? parseFloat(qualitySlider.value) : undefined;
+          dataURL = exportCanvas.toDataURL(`image/${format}`, quality);
+        }
+
+        const link = document.createElement('a');
+        link.href = dataURL;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        if (format === 'svg') {
+          URL.revokeObjectURL(dataURL);
+        }
       }
     });
   </script>

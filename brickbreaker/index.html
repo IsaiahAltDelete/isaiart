@@ -1,448 +1,576 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Space Brick Breaker - Retro Edition</title>
-  <!-- Google Material Icons & Retro Font -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <style>
-    /* Basic reset and centering the content using flex */
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      background: #000;
-      font-family: 'Press Start 2P', cursive;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    /* Main container that holds only the game */
-    #mainContainer {
-      position: relative;
-      display: inline-block;
-    }
-    /* Game container with retro border and shadow */
-    #gameContainer {
-      position: relative;
-      border: 5px solid #fff;
-      box-shadow: 0 0 20px #0ff;
-      background: #111;
-    }
-    /* Scoreboard on top of the game */
-    #scoreboard {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      color: #0ff;
-      font-size: 14px;
-      z-index: 3;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    /* Canvas styling */
-    canvas {
-      display: block;
-    }
-    /* Retro scanline overlay (covers entire screen) */
-    #scanlines {
-      position: fixed;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      background: repeating-linear-gradient(
-          to bottom,
-          rgba(0,0,0,0) 0px,
-          rgba(0,0,0,0) 2px,
-          rgba(0,0,0,0.15) 3px,
-          rgba(0,0,0,0.15) 4px
-      );
-      z-index: 2;
-      top: 0;
-      left: 0;
-    }
-    /* Particle background (full screen) */
-    #particles-js {
-      position: fixed;
-      width: 100%;
-      height: 100%;
-      z-index: -2;
-      top: 0;
-      left: 0;
-    }
-    /* Overlay for game over and leaderboard */
-    .overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.85);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 4;
-      text-align: center;
-      visibility: hidden;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-    .overlay.visible {
-      visibility: visible;
-      opacity: 1;
-    }
-    .overlay button {
-      margin: 10px;
-      padding: 10px 20px;
-      background: #0ff;
-      border: none;
-      cursor: pointer;
-      font-family: 'Press Start 2P', cursive;
-      font-size: 12px;
-    }
-    /* Leaderboard list styling */
-    #leaderboardContent {
-      max-height: 300px;
-      overflow-y: auto;
-      text-align: left;
-      font-size: 10px;
-      margin-bottom: 20px;
-    }
-    #leaderboardContent li {
-      margin-bottom: 5px;
-      border-bottom: 1px solid #444;
-      padding: 5px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Brick Breaker - Retro Edition</title>
+    
+    <!-- Google Material Icons & Retro Font -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Basic reset and centering the content using flex */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: #000;
+            font-family: 'Press Start 2P', cursive;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        /* Main container that holds only the game */
+        #mainContainer {
+            position: relative;
+            display: inline-block;
+        }
+        /* Game container with retro border and shadow */
+        #gameContainer {
+            position: relative;
+            border: 5px solid #fff;
+            box-shadow: 0 0 20px #0ff;
+            background: #111;
+        }
+        /* HUD container */
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            color: #0ff;
+            font-size: 14px;
+            z-index: 3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #hud .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #livesContainer .material-icons {
+            font-size: 18px;
+            color: #ff4444;
+        }
+        /* Canvas styling */
+        canvas {
+            display: block;
+        }
+        /* Retro scanline overlay */
+        #scanlines {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 4px);
+            z-index: 2;
+            top: 0;
+            left: 0;
+        }
+        /* Particle background */
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            top: 0;
+            left: 0;
+        }
+        /* Overlay for all menus */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 4;
+            text-align: center;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .overlay.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+        .overlay h1 { font-size: 28px; margin-bottom: 10px; color: #0ff; }
+        .overlay h2 { font-size: 22px; margin-bottom: 20px; }
+        .overlay p { font-size: 12px; line-height: 1.5; max-width: 450px; margin-bottom: 20px; color: #ccc; }
+        .overlay button {
+            margin: 10px;
+            padding: 10px 20px;
+            background: #0ff;
+            border: 2px solid #fff;
+            color: #000;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        .overlay button:hover {
+            background: #fff;
+            color: #000;
+        }
+        /* Leaderboard list styling */
+        #leaderboardContent {
+            max-height: 250px;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 10px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+        #leaderboardContent li {
+            list-style-type: none;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #444;
+            padding: 8px 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        #leaderboardContent .difficulty {
+            text-transform: uppercase;
+            background: #444;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 8px;
+        }
+    </style>
 </head>
 <body>
-  <!-- Particle Background -->
-  <div id="particles-js"></div>
-  <!-- Retro Scanlines -->
-  <div id="scanlines"></div>
-  
-  <!-- Main Game Container (centered on page) -->
-  <div id="mainContainer">
-    <div id="gameContainer">
-      <!-- Scoreboard with a Google icon -->
-      <div id="scoreboard">
-        <i class="material-icons">sports_esports</i>
-        Score: <span id="score">0</span>
-      </div>
-      <!-- Game Canvas -->
-      <canvas id="gameCanvas" width="800" height="600"></canvas>
-      <!-- Game Over Overlay -->
-      <div id="gameOverOverlay" class="overlay">
-        <div id="gameOverText">GAME OVER<br>Your Score: 0</div>
-        <div style="margin-top:20px;">
-          <button onclick="newGame()">NEW GAME</button>
-          <button onclick="showLeaderboard()">LEADERBOARD</button>
+    <!-- Particle Background -->
+    <div id="particles-js"></div>
+    <!-- Retro Scanlines -->
+    <div id="scanlines"></div>
+    
+    <!-- Main Game Container -->
+    <div id="mainContainer">
+        <div id="gameContainer">
+            <!-- Heads-Up Display -->
+            <div id="hud">
+                <div class="hud-item">
+                    <i class="material-icons">sports_esports</i>
+                    <span>Score: <span id="scoreDisplay">0</span></span>
+                </div>
+                <div class="hud-item">
+                    <span>Level: <span id="levelDisplay">1</span></span>
+                </div>
+                <div id="livesContainer" class="hud-item">
+                    <!-- Lives icons go here -->
+                </div>
+            </div>
+            
+            <!-- Game Canvas -->
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+            
+            <!-- Overlays -->
+            <div id="menuOverlay" class="overlay visible">
+                <h1>BRICK BREAKER</h1>
+                <p>SELECT YOUR CHALLENGE</p>
+                <div>
+                    <button onclick="startGame('easy')">EASY</button>
+                    <button onclick="startGame('medium')">MEDIUM</button>
+                    <button onclick="startGame('hard')">HARD</button>
+                </div>
+                <div style="margin-top: 30px; border-top: 2px solid #0ff; padding-top: 20px;">
+                    <button onclick="startGame('hard', 'honor')">HONOR MODE</button>
+                    <p style="font-size: 10px; margin-top: 5px; max-width: 300px;">Hard difficulty, no heart resets between levels.</p>
+                </div>
+            </div>
+
+            <div id="pauseOverlay" class="overlay">
+                <h2>PAUSED</h2>
+                <p>PRESS 'SPACE' OR 'ESCAPE' TO RESUME</p>
+                <div>
+                    <button onclick="togglePause()">RESUME</button>
+                    <button onclick="restartGame()">MAIN MENU</button>
+                </div>
+            </div>
+
+            <div id="levelCompleteOverlay" class="overlay">
+                <h2>LEVEL COMPLETE!</h2>
+                <p>SCORE: <span id="levelCompleteScore">0</span></p>
+                <button onclick="nextLevel()">NEXT LEVEL</button>
+            </div>
+
+            <div id="gameOverOverlay" class="overlay">
+                <h2>GAME OVER</h2>
+                <p>FINAL SCORE: <span id="gameOverScore">0</span></p>
+                <div>
+                    <button onclick="restartGame()">MAIN MENU</button>
+                    <button onclick="showLeaderboard()">LEADERBOARD</button>
+                </div>
+            </div>
+
+            <div id="leaderboardOverlay" class="overlay">
+                <h2>LEADERBOARD</h2>
+                <ul id="leaderboardContent"></ul>
+                <button onclick="hideLeaderboard()">BACK</button>
+            </div>
         </div>
-      </div>
-      <!-- Leaderboard Overlay -->
-      <div id="leaderboardOverlay" class="overlay">
-        <h2>Leaderboard</h2>
-        <ul id="leaderboardContent"></ul>
-        <button onclick="hideLeaderboard()">BACK</button>
-      </div>
     </div>
-  </div>
   
-  <!-- Particles.js Library -->
-  <script src="https://cdn.jsdelivr.net/npm/particles.js"></script>
-  <script>
-    // --- Global Variables and Setup ---
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    const scoreDisplay = document.getElementById("score");
-    const gameOverOverlay = document.getElementById("gameOverOverlay");
-    const gameOverText = document.getElementById("gameOverText");
-    const leaderboardOverlay = document.getElementById("leaderboardOverlay");
-    const leaderboardContent = document.getElementById("leaderboardContent");
-    const GAME_WIDTH = canvas.width; // 800
-    const GAME_HEIGHT = canvas.height; // 600
+    <!-- Particles.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/particles.js"></script>
+    <script>
+    // --- DOM ELEMENTS ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlays = {
+        menu: document.getElementById('menuOverlay'),
+        pause: document.getElementById('pauseOverlay'),
+        levelComplete: document.getElementById('levelCompleteOverlay'),
+        gameOver: document.getElementById('gameOverOverlay'),
+        leaderboard: document.getElementById('leaderboardOverlay'),
+    };
+    const displays = {
+        score: document.getElementById('scoreDisplay'),
+        level: document.getElementById('levelDisplay'),
+        lives: document.getElementById('livesContainer'),
+        levelCompleteScore: document.getElementById('levelCompleteScore'),
+        gameOverScore: document.getElementById('gameOverScore'),
+        leaderboardContent: document.getElementById('leaderboardContent'),
+    };
 
-    let score = 0;
+    // --- GAME CONFIG & STATE ---
+    const GAME_WIDTH = canvas.width;
+    const GAME_HEIGHT = canvas.height;
+    let gameState = 'menu';
+    let gameMode = 'standard'; // 'standard' or 'honor'
     let animationId;
-    
-    // Retrieve leaderboard from localStorage (an array of attempts)
-    let leaderboard = JSON.parse(localStorage.getItem("brickBreakerLeaderboard")) || [];
+    let score = 0;
+    let lives = 3;
+    let currentLevel = 0;
+    let currentDifficulty = 'medium';
 
-    // --- Ball Properties ---
-    const ballRadius = 10;
-    let x = GAME_WIDTH / 2;
-    let y = GAME_HEIGHT - 50;
-    let dx = 4;
-    let dy = -4;
+    const difficulties = {
+        easy:   { lives: 5, paddleWidth: 120, ballSpeed: 4 },
+        medium: { lives: 3, paddleWidth: 100, ballSpeed: 5 },
+        hard:   { lives: 2, paddleWidth: 80,  ballSpeed: 6 },
+    };
 
-    // --- Paddle Properties ---
-    const paddleHeight = 10;
-    const paddleWidth = 100;
-    let paddleX = (GAME_WIDTH - paddleWidth) / 2;
-    let rightPressed = false;
-    let leftPressed = false;
-    
-    // Listen for paddle movement
-    document.addEventListener("keydown", keyDownHandler, false);
-    document.addEventListener("keyup", keyUpHandler, false);
-    
-    function keyDownHandler(e) {
-      if (e.key === "Right" || e.key === "ArrowRight") {
-        rightPressed = true;
-      } else if (e.key === "Left" || e.key === "ArrowLeft") {
-        leftPressed = true;
-      }
-    }
-    function keyUpHandler(e) {
-      if (e.key === "Right" || e.key === "ArrowRight") {
-        rightPressed = false;
-      } else if (e.key === "Left" || e.key === "ArrowLeft") {
-        leftPressed = false;
-      }
-    }
-
-    // --- Brick Properties ---
-    const brickRowCount = 5;
-    const brickColumnCount = 9;
-    const brickWidth = 70;
-    const brickHeight = 30;
-    const brickPadding = 10;
-    const brickOffsetTop = 60;
-    const brickOffsetLeft = 35;
-    
-    // Colors and icons for bricks (varying choices)
-    const brickColors = ['#3333FF', '#FF5733', '#33FF57', '#FF33A8', '#FFD700'];
-    const brickIcons = ['star', 'favorite', 'face', 'android', 'eco'];
+    // --- GAME OBJECTS ---
+    const ball = { radius: 10, x: 0, y: 0, dx: 0, dy: 0, speed: 5 };
+    const paddle = { height: 10, width: 100, x: 0, speed: 8 };
 
     let bricks = [];
-    function createBricks() {
-      bricks = [];
-      for (let c = 0; c < brickColumnCount; c++) {
-        bricks[c] = [];
-        for (let r = 0; r < brickRowCount; r++) {
-          // Assign a random color and icon to each brick
-          const color = brickColors[Math.floor(Math.random() * brickColors.length)];
-          const icon = brickIcons[Math.floor(Math.random() * brickIcons.length)];
-          bricks[c][r] = { x: 0, y: 0, status: 1, color, icon };
+    const brickInfo = {
+        width: 70, height: 25, padding: 10, offsetTop: 60, offsetLeft: 35,
+        colors: {
+            1: '#33FF57', // Easiest (Green)
+            2: '#FF5733', // Toughest / 2 hits left (Red)
+            'hardened_hit': '#FFD700', // Medium / 1 hit left (Yellow)
+            9: '#888888', // Indestructible (Gray)
         }
-      }
-    }
-    createBricks();
+    };
 
-    // --- Collision Detection ---
-    function collisionDetection() {
-      for (let c = 0; c < brickColumnCount; c++) {
-        for (let r = 0; r < brickRowCount; r++) {
-          const b = bricks[c][r];
-          if (b.status === 1) {
-            if (x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
-              dy = -dy;
-              b.status = 0;
-              score++;
-              scoreDisplay.textContent = score;
-              // Reset bricks when all are broken so game never ends
-              if (bricks.every(col => col.every(brick => brick.status === 0))) {
-                createBricks();
-              }
-            }
-          }
-        }
-      }
-    }
+    // --- LEVEL DESIGNS ---
+    const levelDesigns = [
+        [
+            [0,1,1,1,1,1,1,1,0],[1,1,2,2,2,2,2,1,1],[1,1,1,0,0,0,1,1,1],
+            [1,1,0,0,0,0,0,1,1],[0,1,1,1,1,1,1,1,0],
+        ],
+        [
+            [9,2,2,2,2,2,2,2,9],[9,1,1,1,1,1,1,1,9],[0,9,1,1,1,1,1,9,0],
+            [0,0,9,1,1,1,9,0,0],[0,0,0,9,9,9,0,0,0],
+        ],
+        [
+            [0,0,0,0,1,0,0,0,0],[0,0,0,2,1,2,0,0,0],[0,0,9,1,2,1,9,0,0],
+            [0,2,1,9,1,9,1,2,0],[9,1,2,1,9,1,2,1,9],[0,2,1,9,1,9,1,2,0],
+            [0,0,9,1,2,1,9,0,0],[0,0,0,2,1,2,0,0,0],
+        ],
+    ];
 
-    // --- Drawing Functions ---
-    function drawBall() {
-      ctx.beginPath();
-      ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
-      ctx.fillStyle = "#fff";
-      ctx.fill();
-      ctx.closePath();
-    }
-    
-    function drawPaddle() {
-      ctx.beginPath();
-      ctx.rect(paddleX, GAME_HEIGHT - paddleHeight - 10, paddleWidth, paddleHeight);
-      ctx.fillStyle = "#0ff";
-      ctx.fill();
-      ctx.closePath();
-    }
-    
-    function drawBricks() {
-      // Use the Material Icons font for the icons in the bricks.
-      ctx.font = "20px 'Material Icons'";
-      for (let c = 0; c < brickColumnCount; c++) {
-        for (let r = 0; r < brickRowCount; r++) {
-          const b = bricks[c][r];
-          if (b.status === 1) {
-            const brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
-            const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
-            b.x = brickX;
-            b.y = brickY;
-            // Draw brick background using its assigned color
-            ctx.fillStyle = b.color;
-            ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
-            // Draw the assigned Material Icon centered in the brick
-            ctx.fillStyle = "#fff";
-            const textMetrics = ctx.measureText(b.icon);
-            const textX = brickX + (brickWidth - textMetrics.width) / 2;
-            const textY = brickY + brickHeight / 2 + 7;
-            ctx.fillText(b.icon, textX, textY);
-          }
+    // --- EVENT LISTENERS ---
+    let rightPressed = false;
+    let leftPressed = false;
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Right' || e.key === 'ArrowRight') rightPressed = true;
+        else if (e.key === 'Left' || e.key === 'ArrowLeft') leftPressed = true;
+        // *** FIX: Added Spacebar to pause ***
+        else if (e.key === 'Escape' || e.code === 'Space' || e.key === ' ') {
+            e.preventDefault(); // Prevent spacebar from scrolling the page
+            togglePause();
         }
-      }
-    }
-
-    // --- Game Loop ---
-    function draw() {
-      ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-      drawBricks();
-      drawBall();
-      drawPaddle();
-      collisionDetection();
-      
-      // Bounce off left/right walls
-      if (x + dx > GAME_WIDTH - ballRadius || x + dx < ballRadius) {
-        dx = -dx;
-      }
-      // Bounce off the top wall
-      if (y + dy < ballRadius) {
-        dy = -dy;
-      }
-      
-      // Paddle collision with some forgiveness
-      if (y + dy > GAME_HEIGHT - paddleHeight - 10 - ballRadius) {
-        if (x > paddleX - ballRadius && x < paddleX + paddleWidth + ballRadius) {
-          dy = -dy;
-          // Optional: Add retro spin based on where the ball hit the paddle
-          const hitPos = x - (paddleX + paddleWidth / 2);
-          dx = hitPos * 0.15;
-        } else {
-          gameOver();
-          return; // Stop the game loop
-        }
-      }
-      
-      x += dx;
-      y += dy;
-      
-      // Move the paddle
-      if (rightPressed && paddleX < GAME_WIDTH - paddleWidth) {
-        paddleX += 7;
-      } else if (leftPressed && paddleX > 0) {
-        paddleX -= 7;
-      }
-      
-      animationId = requestAnimationFrame(draw);
-    }
-
-    // --- Game Over and Leaderboard ---
-    function gameOver() {
-      cancelAnimationFrame(animationId);
-      // Record this attempt in the leaderboard
-      const attempt = { score, date: new Date().toLocaleString() };
-      leaderboard.push(attempt);
-      // Sort descending by score
-      leaderboard.sort((a, b) => b.score - a.score);
-      // Keep only the top 10
-      leaderboard = leaderboard.slice(0, 10);
-      localStorage.setItem("brickBreakerLeaderboard", JSON.stringify(leaderboard));
-      
-      gameOverText.innerHTML = `GAME OVER<br>Your Score: ${score}`;
-      // Show the game over overlay (with its two buttons)
-      gameOverOverlay.classList.add("visible");
-    }
-    
-    // Populate the leaderboard overlay content
-    function updateLeaderboardDisplay() {
-      leaderboardContent.innerHTML = "";
-      leaderboard.forEach((entry, index) => {
-        const li = document.createElement("li");
-        li.innerHTML = `<strong>${index + 1}.</strong> Score: ${entry.score}<br><small>${entry.date}</small>`;
-        leaderboardContent.appendChild(li);
-      });
-    }
-    
-    function newGame() {
-      // Reset game variables
-      score = 0;
-      scoreDisplay.textContent = score;
-      x = GAME_WIDTH / 2;
-      y = GAME_HEIGHT - 50;
-      dx = 4;
-      dy = -4;
-      paddleX = (GAME_WIDTH - paddleWidth) / 2;
-      createBricks();
-      // Hide both overlays and restart
-      gameOverOverlay.classList.remove("visible");
-      leaderboardOverlay.classList.remove("visible");
-      draw();
-    }
-    
-    // Show the leaderboard overlay from the game-over overlay
-    function showLeaderboard() {
-      updateLeaderboardDisplay();
-      gameOverOverlay.classList.remove("visible");
-      leaderboardOverlay.classList.add("visible");
-    }
-    
-    // Hide leaderboard overlay and return to game-over overlay
-    function hideLeaderboard() {
-      leaderboardOverlay.classList.remove("visible");
-      gameOverOverlay.classList.add("visible");
-    }
-    
-    // Start the game loop initially
-    draw();
-
-    // --- Initialize Particles.js for a starry background ---
-    particlesJS("particles-js", {
-      "particles": {
-        "number": {
-          "value": 120,
-          "density": { "enable": true, "value_area": 800 }
-        },
-        "color": { "value": "#ffffff" },
-        "shape": {
-          "type": "circle",
-          "stroke": { "width": 0, "color": "#000000" }
-        },
-        "opacity": {
-          "value": 0.8,
-          "random": false
-        },
-        "size": {
-          "value": 2,
-          "random": true
-        },
-        "line_linked": {
-          "enable": false  // Disable connecting lines for individual stars
-        },
-        "move": {
-          "enable": true,
-          "speed": 0.5,
-          "direction": "none",
-          "random": true,
-          "straight": false,
-          "out_mode": "out",
-          "bounce": false
-        }
-      },
-      "interactivity": {
-        "detect_on": "canvas",
-        "events": {
-          "onhover": { "enable": false },
-          "onclick": { "enable": false },
-          "resize": true
-        }
-      },
-      "retina_detect": true
     });
-  </script>
+    document.addEventListener('keyup', (e) => {
+        if (e.key === 'Right' || e.key === 'ArrowRight') rightPressed = false;
+        else if (e.key === 'Left' || e.key === 'ArrowLeft') leftPressed = false;
+    });
+
+    // --- UI & GAME FLOW ---
+    function showOverlay(overlayId) {
+        Object.values(overlays).forEach(o => o.classList.remove('visible'));
+        if (overlays[overlayId]) {
+            overlays[overlayId].classList.add('visible');
+        }
+    }
+
+    function updateHUD() {
+        displays.score.textContent = score;
+        displays.level.textContent = currentLevel + 1;
+        displays.lives.innerHTML = '';
+        for (let i = 0; i < lives; i++) {
+            const heartIcon = document.createElement('i');
+            heartIcon.className = 'material-icons';
+            heartIcon.textContent = 'favorite';
+            displays.lives.appendChild(heartIcon);
+        }
+    }
+
+    function startGame(difficulty, mode = 'standard') {
+        gameMode = mode;
+        currentDifficulty = difficulty;
+        score = 0;
+        currentLevel = 0;
+        const settings = difficulties[difficulty];
+        lives = settings.lives;
+        paddle.width = settings.paddleWidth;
+        ball.speed = settings.ballSpeed;
+        setupLevel(currentLevel);
+        gameState = 'playing';
+        showOverlay(null);
+        gameLoop();
+    }
+
+    function restartGame() {
+        gameState = 'menu';
+        showOverlay('menu');
+        cancelAnimationFrame(animationId);
+    }
+
+    function setupLevel(levelIndex) {
+        createBricks(levelDesigns[levelIndex]);
+        resetBallAndPaddle();
+        updateHUD();
+    }
+
+    function nextLevel() {
+        currentLevel++;
+        if (currentLevel >= levelDesigns.length) {
+            gameOver(true);
+            return;
+        }
+        
+        if (gameMode === 'standard') {
+            lives = difficulties[currentDifficulty].lives;
+        }
+
+        setupLevel(currentLevel);
+        gameState = 'playing';
+        showOverlay(null);
+        gameLoop();
+    }
+
+    function resetBallAndPaddle() {
+        ball.x = GAME_WIDTH / 2;
+        ball.y = GAME_HEIGHT - 60;
+        ball.dx = ball.speed * (Math.random() > 0.5 ? 1 : -1);
+        ball.dy = -ball.speed;
+        paddle.x = (GAME_WIDTH - paddle.width) / 2;
+    }
+
+    function createBricks(layout) {
+        bricks = [];
+        if (!layout) return;
+        for (let r = 0; r < layout.length; r++) {
+            for (let c = 0; c < layout[r].length; c++) {
+                const type = layout[r][c];
+                if (type > 0) {
+                    bricks.push({
+                        x: c * (brickInfo.width + brickInfo.padding) + brickInfo.offsetLeft,
+                        y: r * (brickInfo.height + brickInfo.padding) + brickInfo.offsetTop,
+                        type: type,
+                        health: type === 2 ? 2 : 1,
+                        status: 1,
+                    });
+                }
+            }
+        }
+    }
+
+    function togglePause() {
+        // Can only pause if currently playing
+        if (gameState === 'playing') {
+            gameState = 'paused';
+            showOverlay('pause');
+            cancelAnimationFrame(animationId);
+        } else if (gameState === 'paused') {
+            gameState = 'playing';
+            showOverlay(null);
+            gameLoop();
+        }
+    }
+
+    function gameOver(isWin = false) {
+        gameState = 'gameOver';
+        cancelAnimationFrame(animationId);
+        saveScore();
+        if (isWin) {
+            overlays.gameOver.querySelector('h2').textContent = "YOU WIN!";
+        } else {
+            overlays.gameOver.querySelector('h2').textContent = "GAME OVER";
+        }
+        displays.gameOverScore.textContent = score;
+        showOverlay('gameOver');
+    }
+
+    // --- DRAWING FUNCTIONS ---
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawPaddle() {
+        ctx.beginPath();
+        ctx.rect(paddle.x, GAME_HEIGHT - paddle.height - 10, paddle.width, paddle.height);
+        ctx.fillStyle = "#0ff";
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawBricks() {
+        bricks.forEach(b => {
+            if (b.status === 1) {
+                if (b.type === 2 && b.health === 1) {
+                    ctx.fillStyle = brickInfo.colors.hardened_hit;
+                } else {
+                    ctx.fillStyle = brickInfo.colors[b.type];
+                }
+                ctx.fillRect(b.x, b.y, brickInfo.width, brickInfo.height);
+            }
+        });
+    }
+
+    // --- PHYSICS & COLLISION ---
+    function movePaddle() {
+        if (rightPressed && paddle.x < GAME_WIDTH - paddle.width) paddle.x += paddle.speed;
+        else if (leftPressed && paddle.x > 0) paddle.x -= paddle.speed;
+    }
+
+    function moveBall() {
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+        if (ball.x + ball.radius > GAME_WIDTH || ball.x - ball.radius < 0) ball.dx = -ball.dx;
+        if (ball.y - ball.radius < 0) ball.dy = -ball.dy;
+        
+        if (ball.y + ball.radius > GAME_HEIGHT) {
+            lives--;
+            updateHUD();
+            if (lives <= 0) {
+                gameOver();
+            } else {
+                resetBallAndPaddle();
+            }
+        }
+    }
+
+    function collisionDetection() {
+        const paddleTop = GAME_HEIGHT - paddle.height - 10;
+        if (
+            ball.dy > 0 &&
+            ball.y + ball.radius >= paddleTop &&
+            ball.y - ball.radius < paddleTop + paddle.height &&
+            ball.x > paddle.x &&
+            ball.x < paddle.x + paddle.width
+        ) {
+            ball.dy = -ball.dy;
+            ball.y = paddleTop - ball.radius;
+            const hitPos = ball.x - (paddle.x + paddle.width / 2);
+            ball.dx = hitPos * 0.15;
+        }
+
+        let breakableBricksLeft = 0;
+        bricks.forEach(b => {
+            if (b.status === 1) {
+                if (b.type !== 9) breakableBricksLeft++;
+                if (ball.x > b.x && ball.x < b.x + brickInfo.width && ball.y > b.y && ball.y < b.y + brickInfo.height) {
+                    ball.dy = -ball.dy;
+                    if (b.type !== 9) {
+                        b.health--;
+                        if (b.health <= 0) {
+                            b.status = 0;
+                            score += 10;
+                            updateHUD();
+                        }
+                    }
+                }
+            }
+        });
+        if (breakableBricksLeft === 0 && bricks.length > 0) {
+            gameState = 'levelComplete';
+            cancelAnimationFrame(animationId);
+            displays.levelCompleteScore.textContent = score;
+            showOverlay('levelComplete');
+        }
+    }
+
+    // --- MAIN GAME LOOP ---
+    function gameLoop() {
+        if (gameState !== 'playing') return;
+        ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        drawBricks();
+        drawPaddle();
+        drawBall();
+        movePaddle();
+        moveBall();
+        collisionDetection();
+        animationId = requestAnimationFrame(gameLoop);
+    }
+
+    // --- LEADERBOARD ---
+    function saveScore() {
+        let leaderboard = JSON.parse(localStorage.getItem('retroBrickBreakerScores')) || [];
+        leaderboard.push({ score, difficulty: currentDifficulty, mode: gameMode, date: new Date().toLocaleDateString() });
+        leaderboard.sort((a, b) => b.score - a.score);
+        localStorage.setItem('retroBrickBreakerScores', JSON.stringify(leaderboard.slice(0, 10)));
+    }
+
+    function showLeaderboard() {
+        let leaderboard = JSON.parse(localStorage.getItem('retroBrickBreakerScores')) || [];
+        displays.leaderboardContent.innerHTML = '';
+        if (leaderboard.length === 0) {
+            displays.leaderboardContent.innerHTML = '<li>NO SCORES YET</li>';
+        } else {
+            leaderboard.forEach((entry, index) => {
+                const li = document.createElement('li');
+                const modeTag = entry.mode === 'honor' ? `<span class="difficulty">HONOR</span>` : '';
+                li.innerHTML = `
+                    <span>${index + 1}. ${entry.score} PTS</span>
+                    <span>${modeTag} <span class="difficulty">${entry.difficulty}</span> ${entry.date}</span>
+                `;
+                displays.leaderboardContent.appendChild(li);
+            });
+        }
+        showOverlay('leaderboard');
+    }
+
+    function hideLeaderboard() {
+        if (gameState === 'gameOver') showOverlay('gameOver');
+        else showOverlay('menu');
+    }
+
+    // --- INITIALIZE PARTICLES.JS ---
+    particlesJS("particles-js", {
+        particles: { number: { value: 120, density: { enable: true, value_area: 800 } }, color: { value: "#ffffff" }, shape: { type: "circle" }, opacity: { value: 0.8, random: false }, size: { value: 2, random: true }, line_linked: { enable: false }, move: { enable: true, speed: 0.5, direction: "none", random: true, straight: false, out_mode: "out", bounce: false } },
+        interactivity: { detect_on: "canvas", events: { onhover: { enable: false }, onclick: { enable: false }, resize: true } },
+        retina_detect: true
+    });
+    </script>
 </body>
 </html>
