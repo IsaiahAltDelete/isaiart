@@ -79,11 +79,11 @@
         .track-slider:hover::-moz-range-thumb { @apply bg-gray-100; }
 
 
-        /* Scrollbar for sequencer grid */
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { @apply bg-gray-900/50; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-gray-700 rounded-full; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { @apply bg-gray-600; }
+        /* Scrollbar for smaller screens */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { @apply bg-gray-900; }
+        ::-webkit-scrollbar-thumb { @apply bg-gray-700 rounded-full; }
+        ::-webkit-scrollbar-thumb:hover { @apply bg-gray-600; }
 
         /* Sequencer Step Styles */
         .step-btn {
@@ -113,10 +113,10 @@
 <body class="bg-gray-950 text-gray-200 flex justify-center items-center min-h-screen p-4 selection:bg-accent selection:text-white overflow-hidden">
 
     <!-- Main Interface Container -->
-    <main class="relative w-full max-w-6xl bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden h-[95vh] max-h-[900px]">
+    <main class="relative w-full max-w-6xl bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden" style="height: 95vh;">
         
         <!-- Top Control Bar -->
-        <header class="px-6 py-5 border-b border-gray-800 bg-gray-850/50 flex flex-col md:flex-row justify-between items-center gap-4 z-20 flex-shrink-0">
+        <header class="px-6 py-5 border-b border-gray-800 bg-gray-850/50 flex flex-col md:flex-row justify-between items-center gap-4 z-20">
             
             <!-- Title & Transport -->
             <div class="flex items-center gap-6 w-full md:w-auto justify-between md:justify-start">
@@ -224,44 +224,34 @@
 
     <script>
         /**
-         * EAR-DRUMS - Groovebox Edition
-         * Now with a melodic synthesizer section.
+         * EAR-DRUMS - Modernized
+         * Uses Web Audio API with precise scheduling and offline rendering.
          */
 
         // --- Configuration & State ---
         const STEPS = 16;
-        const DRUM_INSTRUMENTS = [
-            { name: 'Kick', type: 'drum', icon: 'circle', iconColorClass: 'text-red-400', stepColor: '#f87171' },
-            { name: 'Snare', type: 'drum', icon: 'square', iconColorClass: 'text-blue-400', stepColor: '#60a5fa' },
-            { name: 'Clap', type: 'drum', icon: 'front_hand', iconColorClass: 'text-pink-400', stepColor: '#f472b6' },
-            { name: 'Hi-Hat Cl', type: 'drum', icon: 'remove', iconColorClass: 'text-yellow-400', stepColor: '#facc15' },
-            { name: 'Hi-Hat Op', type: 'drum', icon: 'radio_button_unchecked', iconColorClass: 'text-yellow-200', stepColor: '#fef08a' },
-            { name: 'Tom Low', type: 'drum', icon: 'expand_more', iconColorClass: 'text-purple-400', stepColor: '#c084fc' },
-            { name: 'Tom Hi', type: 'drum', icon: 'expand_less', iconColorClass: 'text-purple-300', stepColor: '#d8b4fe' },
-            { name: 'Perc', type: 'drum', icon: 'change_history', iconColorClass: 'text-green-400', stepColor: '#4ade80' }
+        const INSTRUMENTS = [
+            // Drums
+            { type: 'drum', name: 'Kick', icon: 'circle', iconColorClass: 'text-red-400', stepColor: '#f87171' },
+            { type: 'drum', name: 'Snare', icon: 'square', iconColorClass: 'text-blue-400', stepColor: '#60a5fa' },
+            { type: 'drum', name: 'Clap', icon: 'front_hand', iconColorClass: 'text-pink-400', stepColor: '#f472b6' },
+            { type: 'drum', name: 'Hi-Hat Cl', icon: 'remove', iconColorClass: 'text-yellow-400', stepColor: '#facc15' },
+            { type: 'drum', name: 'Hi-Hat Op', icon: 'radio_button_unchecked', iconColorClass: 'text-yellow-200', stepColor: '#fef08a' },
+            { type: 'drum', name: 'Tom Low', icon: 'expand_more', iconColorClass: 'text-purple-400', stepColor: '#c084fc' },
+            { type: 'drum', name: 'Tom Hi', icon: 'expand_less', iconColorClass: 'text-purple-300', stepColor: '#d8b4fe' },
+            { type: 'drum', name: 'Perc', icon: 'change_history', iconColorClass: 'text-green-400', stepColor: '#4ade80' },
+            // Melodic
+            { type: 'melodic', name: 'Piano C4', icon: 'music_note', iconColorClass: 'text-teal-300', stepColor: '#5eead4', freq: 261.63 },
+            { type: 'melodic', name: 'Piano E4', icon: 'music_note', iconColorClass: 'text-teal-300', stepColor: '#5eead4', freq: 329.63 },
+            { type: 'melodic', name: 'Piano G4', icon: 'music_note', iconColorClass: 'text-teal-300', stepColor: '#5eead4', freq: 392.00 },
+            { type: 'melodic', name: 'Piano A4', icon: 'music_note', iconColorClass: 'text-teal-300', stepColor: '#5eead4', freq: 440.00 },
         ];
 
-        const NOTE_FREQUENCIES = {
-            'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63, 'F4': 349.23,
-            'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88
-        };
-
-        const SYNTH_INSTRUMENTS = Object.entries(NOTE_FREQUENCIES).map(([noteName, freq], i) => ({
-            name: `Synth ${noteName}`,
-            type: 'synth',
-            icon: 'music_note',
-            iconColorClass: 'text-cyan-300',
-            stepColor: `linear-gradient(45deg, #22d3ee, #06b6d4)`, // Cyan gradient
-            noteFrequency: freq
-        }));
-
-        const ALL_INSTRUMENTS = [...DRUM_INSTRUMENTS, ...SYNTH_INSTRUMENTS];
-
         // State Arrays
-        let gridData = Array(ALL_INSTRUMENTS.length).fill(0).map(() => Array(STEPS).fill(false));
-        let mutedTracks = Array(ALL_INSTRUMENTS.length).fill(false);
-        let trackVolumes = Array(ALL_INSTRUMENTS.length).fill(1.0);
-        let trackPitches = Array(ALL_INSTRUMENTS.length).fill(1.0);
+        let gridData = Array(INSTRUMENTS.length).fill(0).map(() => Array(STEPS).fill(false));
+        let mutedTracks = Array(INSTRUMENTS.length).fill(false);
+        let trackVolumes = Array(INSTRUMENTS.length).fill(1.0);
+        let trackParams = Array(INSTRUMENTS.length).fill(1.0); // Pitch for drums, Decay for melodic
 
         let audioCtx;
         let masterGain;
@@ -334,16 +324,16 @@
                 ui.stepNums.appendChild(num);
             }
 
-            let synthSectionStarted = false;
-            ALL_INSTRUMENTS.forEach((inst, rowIdx) => {
-                // Add a separator for the synth section
-                if (inst.type === 'synth' && !synthSectionStarted) {
+            let lastInstType = null;
+            INSTRUMENTS.forEach((inst, rowIdx) => {
+                // Add separator
+                if (inst.type !== lastInstType && lastInstType !== null) {
                     const separator = document.createElement('div');
-                    separator.className = 'col-span-full grid grid-cols-sequencer gap-3 items-center mt-4';
-                    separator.innerHTML = `<div class="text-xs font-medium text-gray-600 uppercase tracking-wider pl-2">Melody</div>`;
+                    separator.className = 'grid grid-cols-sequencer gap-3 items-center my-2';
+                    separator.innerHTML = `<div class="text-xs font-medium text-gray-600 uppercase tracking-wider pl-2">${inst.type}s</div><div class="h-px bg-gray-700"></div>`;
                     ui.grid.appendChild(separator);
-                    synthSectionStarted = true;
                 }
+                lastInstType = inst.type;
 
                 const row = document.createElement('div');
                 row.className = 'grid grid-cols-sequencer gap-3 items-center group';
@@ -358,15 +348,27 @@
 
                 const sliders = document.createElement('div');
                 sliders.className = 'flex items-center gap-3 ml-2';
+                
+                let paramSlider;
+                if (inst.type === 'drum') {
+                    paramSlider = `<div class="flex items-center gap-1" title="Track Pitch">
+                        <span class="material-symbols-rounded text-[16px] text-gray-500">piano</span>
+                        <input type="range" min="0.5" max="2" step="0.01" value="1" class="track-slider" data-row="${rowIdx}" data-type="param">
+                    </div>`;
+                } else { // melodic
+                    paramSlider = `<div class="flex items-center gap-1" title="Note Decay">
+                        <span class="material-symbols-rounded text-[16px] text-gray-500">hourglass_empty</span>
+                        <input type="range" min="0.1" max="1.5" step="0.01" value="0.5" class="track-slider" data-row="${rowIdx}" data-type="param">
+                    </div>`;
+                    trackParams[rowIdx] = 0.5; // Default decay
+                }
+
                 sliders.innerHTML = `
                     <div class="flex items-center gap-1" title="Track Volume">
                         <span class="material-symbols-rounded text-[16px] text-gray-500">volume_up</span>
                         <input type="range" min="0" max="1" step="0.01" value="1" class="track-slider" data-row="${rowIdx}" data-type="volume">
                     </div>
-                    <div class="flex items-center gap-1" title="Track Pitch/Tune">
-                        <span class="material-symbols-rounded text-[16px] text-gray-500">piano</span>
-                        <input type="range" min="0.5" max="2" step="0.01" value="1" class="track-slider" data-row="${rowIdx}" data-type="pitch">
-                    </div>
+                    ${paramSlider}
                 `;
 
                 const mute = document.createElement('button');
@@ -404,10 +406,10 @@
             const isActive = gridData[row][col];
             btn.classList.toggle('active', isActive);
             if (isActive) {
-                const color = ALL_INSTRUMENTS[row].stepColor;
-                btn.style.background = color;
-                btn.style.borderColor = color.startsWith('linear-gradient') ? '#06b6d4' : color;
-                btn.style.setProperty('--step-glow-color', (color.startsWith('linear-gradient') ? '#22d3ee' : color) + '80');
+                const color = INSTRUMENTS[row].stepColor;
+                btn.style.backgroundColor = color;
+                btn.style.borderColor = color;
+                btn.style.setProperty('--step-glow-color', color + '80');
             } else {
                 btn.removeAttribute('style');
             }
@@ -432,42 +434,43 @@
         function playSound(index, time, context, destinationNode) {
             if (mutedTracks[index] && context === audioCtx) return;
 
-            const instrument = ALL_INSTRUMENTS[index];
+            const instrument = INSTRUMENTS[index];
             const volume = trackVolumes[index];
-            const pitch = trackPitches[index];
+            const param = trackParams[index]; // Pitch for drums, Decay for melodic
 
             const soundGain = context.createGain();
             soundGain.gain.setValueAtTime(volume, time);
             soundGain.connect(destinationNode);
 
-            if (instrument.type === 'synth') {
-                const osc = context.createOscillator();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(instrument.noteFrequency * pitch, time);
-
+            if (instrument.type === 'melodic') {
+                // Piano Synthesis
+                const decay = param;
+                const fundamental = context.createOscillator();
+                const harmonic = context.createOscillator();
                 const envelope = context.createGain();
-                osc.connect(envelope);
-                envelope.connect(soundGain);
 
-                // ADSR envelope
-                const attackTime = 0.01;
-                const decayTime = 0.1;
-                const sustainLevel = 0.7;
-                const releaseTime = 0.2;
-                const noteDuration = 15.0 / bpm; // 16th note duration
+                fundamental.type = 'sine';
+                fundamental.frequency.setValueAtTime(instrument.freq, time);
+                harmonic.type = 'triangle';
+                harmonic.frequency.setValueAtTime(instrument.freq * 2, time);
 
                 envelope.gain.setValueAtTime(0, time);
-                envelope.gain.linearRampToValueAtTime(1, time + attackTime);
-                envelope.gain.linearRampToValueAtTime(sustainLevel, time + attackTime + decayTime);
-                envelope.gain.setValueAtTime(sustainLevel, time + noteDuration - releaseTime);
-                envelope.gain.linearRampToValueAtTime(0, time + noteDuration);
+                envelope.gain.linearRampToValueAtTime(0.8, time + 0.01); // Fast attack
+                envelope.gain.exponentialRampToValueAtTime(0.001, time + decay);
 
-                osc.start(time);
-                osc.stop(time + noteDuration);
+                fundamental.connect(envelope);
+                harmonic.connect(envelope).gain.value = 0.2; // Quieter harmonic
+                envelope.connect(soundGain);
+
+                fundamental.start(time);
+                harmonic.start(time);
+                fundamental.stop(time + decay + 0.1);
+                harmonic.stop(time + decay + 0.1);
                 return;
             }
 
-            // Drum sounds
+            // Drum Synthesis (param is pitch)
+            const pitch = param;
             switch (instrument.name) {
                 case 'Kick':
                     const osc = context.createOscillator();
@@ -589,7 +592,7 @@
         }
 
         function scheduleNote(stepNumber, time) {
-            for (let i = 0; i < ALL_INSTRUMENTS.length; i++) {
+            for (let i = 0; i < INSTRUMENTS.length; i++) {
                 if (gridData[i][stepNumber]) {
                     playSound(i, time, audioCtx, masterGain);
                 }
@@ -663,15 +666,15 @@
             document.querySelectorAll('.step-btn').forEach(btn => {
                 const r = parseInt(btn.dataset.row);
                 const c = parseInt(btn.dataset.col);
-                const instrumentType = ALL_INSTRUMENTS[r].type;
+                const inst = INSTRUMENTS[r];
                 
                 let chance = 0;
-                if (instrumentType === 'drum') {
+                if (inst.type === 'drum') {
                     chance = 0.2; // Base density for drums
-                    if (r === 0 && c % 4 === 0) chance = 0.8; // Kick on the beat
-                    if (r === 1 && (c === 4 || c === 12)) chance = 0.8; // Snare on 2 and 4
-                } else {
-                    chance = 0.08; // Lower density for melody to avoid chaos
+                    if (inst.name === 'Kick' && c % 4 === 0) chance = 0.8;
+                    if (inst.name === 'Snare' && (c === 4 || c === 12)) chance = 0.8;
+                } else { // melodic
+                    chance = 0.08; // Lower density for melodic parts
                 }
 
                 gridData[r][c] = Math.random() < chance;
@@ -712,7 +715,7 @@
                 const type = e.target.dataset.type;
                 const value = parseFloat(e.target.value);
                 if (type === 'volume') trackVolumes[row] = value;
-                else if (type === 'pitch') trackPitches[row] = value;
+                else if (type === 'param') trackParams[row] = value;
             }
         });
 
@@ -768,7 +771,7 @@
                 for (let loop = 0; loop < numLoops; loop++) {
                     for (let step = 0; step < STEPS; step++) {
                         const time = (loop * STEPS + step) * secondsPerStep;
-                        for (let inst = 0; inst < ALL_INSTRUMENTS.length; inst++) {
+                        for (let inst = 0; inst < INSTRUMENTS.length; inst++) {
                             if (gridData[inst][step]) {
                                 playSound(inst, time, offlineCtx, offlineMasterGain);
                             }
@@ -813,7 +816,6 @@
             setUint32(0x61746164); setUint32(length - pos - 4);
 
             for (i = 0; i < abuffer.numberOfChannels; i++) channels.push(abuffer.getChannelData(i));
-
             while (pos < length) {
                 for (i = 0; i < numOfChan; i++) {
                     sample = Math.max(-1, Math.min(1, channels[i][offset]));
