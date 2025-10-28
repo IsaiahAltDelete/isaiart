@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CueCanvas | Your Modern Teleprompter</title>
+    <title>CueCanvas Pro | True Smooth Scroll Teleprompter</title>
 
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,145 +17,160 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <style>
-        /* 
-        ------------------------------------------
-        CUSTOM CSS & TAILWIND CONFIG
-        ------------------------------------------
-        While Tailwind is used for most of the layout and styling, 
-        some custom CSS is needed for specific effects like the 
-        animated underline, custom scrollbars, and the glassmorphism UI.
-        */
-
         body {
             font-family: 'Poppins', sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             background-color: #000000;
             color: #FFFFFF;
-            overflow: hidden; /* Prevents the main page from scrolling */
+            overflow: hidden;
         }
 
-        /* Main script container styling */
         #script-container {
-            /* Hides the scrollbar for a cleaner look across browsers */
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
+            height: 100vh;
+            overflow-y: scroll;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
 
         #script-container::-webkit-scrollbar {
-            display: none; /* Safari and Chrome */
+            display: none;
         }
 
-        /* Styling for each line of the script */
+        #script-content {
+            padding-top: 50vh;
+            padding-bottom: 50vh;
+        }
+
         .script-line {
-            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
-            opacity: 0.3; /* Non-active lines are faded */
-            position: relative;
-            padding-bottom: 1rem; /* Space for the underline */
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0.4;
         }
 
-        /* The active line stands out */
         .script-line.active {
             opacity: 1;
-            transform: scale(1.02); /* A very subtle zoom to draw focus */
-        }
-
-        /* 
-        The orange underline for the active line.
-        It uses a ::after pseudo-element for animation.
-        The animation works by scaling the element horizontally from 0 to 100%.
-        */
-        .script-line.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background-color: #FF6600; /* Vibrant orange accent */
-            transform: scaleX(1);
-            transform-origin: left;
-            transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-
-        .script-line::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background-color: #FF6600;
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform 0.3s ease-out;
         }
         
-        /* Glassmorphism effect for UI controls */
-        .glass-ui {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+        #reading-indicator {
+            position: fixed;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background-color: #FF6600;
+            transform: translateY(-50%);
+            z-index: 10;
+            pointer-events: none;
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.7);
         }
 
-        /* Initial fade-in animation for the whole app */
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        #vignette-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            background: 
+                linear-gradient(to bottom, #000000 0%, rgba(0,0,0,0) 30%),
+                linear-gradient(to top, #000000 0%, rgba(0,0,0,0) 30%);
         }
 
-        .fade-in {
-            animation: fadeIn 0.8s ease-in-out;
+        #controls-toolbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 70px;
+            background-color: #111111;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 20;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+            cursor: pointer;
+            width: 12rem;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            background: rgba(255, 255, 255, 0.3);
+            height: 4px;
+            border-radius: 4px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            margin-top: -6px;
+            width: 16px;
+            height: 16px;
+            background: #FF6600;
+            border-radius: 50%;
+            border: 2px solid #FFFFFF;
+        }
+        input[type=range]::-moz-range-track {
+            background: rgba(255, 255, 255, 0.3);
+            height: 4px;
+            border-radius: 4px;
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #FF6600;
+            border-radius: 50%;
+            border: 2px solid #FFFFFF;
         }
     </style>
 </head>
 <body class="bg-black text-white uppercase select-none">
 
-    <div id="teleprompter-app" class="fade-in h-screen w-screen flex flex-col items-center justify-center p-4 md:p-8 relative">
+    <div id="teleprompter-app" class="h-screen w-screen relative">
         
-        <!-- Header Title -->
-        <header class="absolute top-0 left-0 p-6">
-            <h1 class="text-xl font-bold tracking-widest text-white/50">CUECANVAS</h1>
-        </header>
-
-        <!-- 
-        The main container for the script.
-        It's designed to take up the full height and allow internal scrolling,
-        which is controlled by our JavaScript.
-        -->
-        <main id="script-container" class="h-full w-full max-w-5xl overflow-y-scroll flex flex-col justify-start items-center pt-[50vh] pb-[50vh]">
-            <!-- Script lines will be dynamically inserted here by JavaScript -->
+        <main id="script-container">
+            <div id="script-content">
+                <!-- Script lines will be dynamically inserted here -->
+            </div>
         </main>
 
-        <!-- 
-        On-screen navigation controls.
-        These are useful for touch devices or presentations where a mouse is used.
-        The glass-ui class provides a modern, blurred background effect.
-        -->
-        <div class="fixed bottom-8 flex items-center space-x-4">
-            <button id="prev-btn" aria-label="Previous Line" class="glass-ui rounded-full w-16 h-16 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all duration-300">
-                <span class="material-icons text-4xl">arrow_upward</span>
-            </button>
-            <button id="next-btn" aria-label="Next Line" class="glass-ui rounded-full w-16 h-16 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all duration-300">
-                <span class="material-icons text-4xl">arrow_downward</span>
-            </button>
-        </div>
+        <div id="reading-indicator"></div>
+        <div id="vignette-overlay"></div>
 
+        <div id="controls-toolbar" class="flex items-center justify-center px-4">
+            <div class="w-full max-w-3xl flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <button id="prev-btn" aria-label="Previous Line" class="rounded-full w-12 h-12 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all duration-300">
+                        <span class="material-icons text-3xl">arrow_upward</span>
+                    </button>
+                    <button id="next-btn" aria-label="Next Line" class="rounded-full w-12 h-12 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all duration-300">
+                        <span class="material-icons text-3xl">arrow_downward</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <button id="reset-btn" aria-label="Reset to Start" class="rounded-full w-12 h-12 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all duration-300">
+                        <span class="material-icons text-3xl">replay</span>
+                    </button>
+                    <button id="play-pause-btn" aria-label="Play/Pause Autoscroll" class="bg-orange-600 rounded-full w-14 h-14 flex items-center justify-center text-white hover:bg-orange-500 transition-all duration-300">
+                        <span id="play-pause-icon" class="material-icons text-4xl">play_arrow</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <span class="material-icons text-white/50">speed</span>
+                    <input type="range" id="speed-slider" min="1" max="100" value="25">
+                    <span id="speed-display" class="text-sm font-semibold text-white/70 w-20 text-center">SPEED: 25</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             
-            // ------------------------------------------
-            // SCRIPT DATA
-            // ------------------------------------------
-            // The user's script, simplified for oral delivery and broken into an array of strings.
-            // Each string represents a single "cue" or line on the teleprompter.
             const script = [
                 "GOOD AFTERNOON EVERYONE. TODAY I WANT TO TALK ABOUT SOMETHING AFFECTING MILLIONS OF ARTISTS: THE ETHICS AND FUTURE OF AI-GENERATED IMAGES.",
-                "WE'LL EXPLORE HOW TOOLS LIKE DALL-E AND MIDJOURNEY ARE IMPACTING ARTISTS, CAREERS, AND EVEN HOW WE DEFINE ART ITSELF.",
-                "AI IMAGE GENERATION HAS COMPLETELY EXPLODED. TOOLS LIKE DALL-E, STABLE DIFFUSION, AND SORA ARE NOW AVAILABLE TO PRETTY MUCH ANYONE.",
+                "WE'LL EXPLORE HOW TOOLS LIKE CHATGPT AND MIDJOURNEY ARE IMPACTING ARTISTS, CAREERS, AND EVEN HOW WE DEFINE ART ITSELF.",
+                "AI IMAGE GENERATION HAS COMPLETELY EXPLODED. TOOLS LIKE CHATGPT, STABLE DIFFUSION, AND SORA ARE NOW AVAILABLE TO PRETTY MUCH ANYONE.",
                 "THESE SYSTEMS WERE TRAINED ON BILLIONS OF IMAGES SCRAPED FROM THE INTERNET. AND THAT'S WHERE THE PROBLEMS START.",
                 "ARTISTS ARE RAISING SERIOUS CONCERNS ABOUT COPYRIGHT, JOB SECURITY, AND WHAT WE EVEN CONSIDER ART ANYMORE.",
                 "FAN ART COMMUNITIES HAVE LAUNCHED MAJOR PROTESTS AGAINST THESE PLATFORMS. SO TODAY, WE NEED TO UNDERSTAND WHAT'S REALLY AT STAKE.",
@@ -186,109 +201,144 @@
                 "THAT'S WHY THESE QUESTIONS MATTER SO MUCH RIGHT NOW. WE'RE AT A TURNING POINT, AND THE DECISIONS WE MAKE TODAY WILL SHAPE THE FUTURE OF ART FOR GENERATIONS. THANK YOU."
             ];
 
-            // ------------------------------------------
-            // DOM ELEMENT REFERENCES
-            // ------------------------------------------
             const scriptContainer = document.getElementById('script-container');
+            const scriptContent = document.getElementById('script-content');
+            const readingIndicator = document.getElementById('reading-indicator');
             const prevBtn = document.getElementById('prev-btn');
             const nextBtn = document.getElementById('next-btn');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const playPauseIcon = document.getElementById('play-pause-icon');
+            const resetBtn = document.getElementById('reset-btn');
+            const speedSlider = document.getElementById('speed-slider');
+            const speedDisplay = document.getElementById('speed-display');
 
-            // ------------------------------------------
-            // STATE MANAGEMENT
-            // ------------------------------------------
-            let currentIndex = 0;
-            let scriptLines = []; // To hold references to the created DOM elements
+            let scriptLines = [];
+            let isAutoscrolling = false;
+            let animationFrameId = null;
+            let lastTimestamp = null;
+            let pixelsPerSecond = 50;
 
-            // ------------------------------------------
-            // INITIALIZATION
-            // ------------------------------------------
             function initialize() {
-                // Create a paragraph element for each line in the script array
                 script.forEach(line => {
                     const p = document.createElement('p');
                     p.textContent = line;
-                    // TailwindCSS classes for styling the text
-                    p.className = 'script-line text-4xl md:text-6xl font-bold text-center leading-tight md:leading-tight py-12';
-                    scriptContainer.appendChild(p);
+                    p.className = 'script-line text-4xl md:text-6xl font-bold text-center leading-tight md:leading-tight py-16 px-4';
+                    scriptContent.appendChild(p);
                     scriptLines.push(p);
                 });
-
-                // Set the first line as active
-                updateActiveLine();
+                updateSpeed();
+                updateHighlight();
             }
 
-            // ------------------------------------------
-            // CORE FUNCTIONALITY
-            // ------------------------------------------
-            
-            /**
-             * Updates the view by highlighting the current line and scrolling it into the center.
-             * This is the central function for navigation.
-             */
-            function updateActiveLine() {
-                scriptLines.forEach((line, index) => {
-                    if (index === currentIndex) {
+            function updateHighlight() {
+                const indicatorY = readingIndicator.getBoundingClientRect().top;
+                let currentActiveFound = false;
+                scriptLines.forEach(line => {
+                    const lineRect = line.getBoundingClientRect();
+                    if (!currentActiveFound && indicatorY >= lineRect.top && indicatorY <= lineRect.bottom) {
                         line.classList.add('active');
-                        // The 'scrollIntoView' method is key. It smoothly moves the
-                        // active element to the center of the viewport, minimizing eye movement.
-                        line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        currentActiveFound = true;
                     } else {
                         line.classList.remove('active');
                     }
                 });
             }
 
-            function showNextLine() {
-                if (currentIndex < scriptLines.length - 1) {
-                    currentIndex++;
-                    updateActiveLine();
+            function scrollStep(timestamp) {
+                if (!lastTimestamp) {
+                    lastTimestamp = timestamp;
+                }
+                const deltaTime = timestamp - lastTimestamp;
+                lastTimestamp = timestamp;
+
+                const scrollAmount = (pixelsPerSecond / 1000) * deltaTime;
+                scriptContainer.scrollTop += scrollAmount;
+
+                if (scriptContainer.scrollTop >= scriptContainer.scrollHeight - scriptContainer.clientHeight) {
+                    stopAutoscroll();
+                } else {
+                    animationFrameId = requestAnimationFrame(scrollStep);
                 }
             }
 
-            function showPrevLine() {
-                if (currentIndex > 0) {
-                    currentIndex--;
-                    updateActiveLine();
-                }
+            function startAutoscroll() {
+                if (isAutoscrolling) return;
+                isAutoscrolling = true;
+                playPauseIcon.textContent = 'pause';
+                lastTimestamp = null; // Reset timestamp for smooth start
+                animationFrameId = requestAnimationFrame(scrollStep);
             }
 
-            // ------------------------------------------
-            // EVENT LISTENERS
-            // ------------------------------------------
-            
-            // Keyboard navigation
-            window.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault(); // Prevent default page scroll
-                    showNextLine();
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault(); // Prevent default page scroll
-                    showPrevLine();
-                }
-            });
+            function stopAutoscroll() {
+                if (!isAutoscrolling) return;
+                isAutoscrolling = false;
+                playPauseIcon.textContent = 'play_arrow';
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
 
-            // Mouse wheel/scroll navigation
-            let scrollTimeout;
-            scriptContainer.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                
-                // This is a simple debounce. It prevents the scroll event from firing
-                // too rapidly and skipping multiple lines at once.
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(() => {
-                    if (e.deltaY > 0) { // Scrolling down
-                        showNextLine();
-                    } else { // Scrolling up
-                        showPrevLine();
+            function toggleAutoscroll() {
+                isAutoscrolling ? stopAutoscroll() : startAutoscroll();
+            }
+
+            function resetPrompter() {
+                stopAutoscroll();
+                scriptContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function mapSpeed(value) {
+                // Maps slider value (1-100) to a pixel-per-second range (e.g., 10-200)
+                const minPixels = 10;
+                const maxPixels = 200;
+                return minPixels + ((value - 1) / 99) * (maxPixels - minPixels);
+            }
+
+            function updateSpeed() {
+                const sliderValue = speedSlider.value;
+                pixelsPerSecond = mapSpeed(sliderValue);
+                speedDisplay.textContent = `SPEED: ${sliderValue}`;
+            }
+
+            function jumpToLine(direction) {
+                stopAutoscroll();
+                const indicatorY = readingIndicator.getBoundingClientRect().top;
+                let currentActiveIndex = -1;
+
+                scriptLines.forEach((line, index) => {
+                    const lineRect = line.getBoundingClientRect();
+                    if (indicatorY >= lineRect.top && indicatorY <= lineRect.bottom) {
+                        currentActiveIndex = index;
                     }
-                }, 50); // 50ms delay
+                });
+
+                let targetIndex = currentActiveIndex + direction;
+                if (targetIndex < 0) targetIndex = 0;
+                if (targetIndex >= scriptLines.length) targetIndex = scriptLines.length - 1;
+
+                const targetLine = scriptLines[targetIndex];
+                const containerHeight = scriptContainer.clientHeight;
+                const lineTop = targetLine.offsetTop;
+                const lineHeight = targetLine.offsetHeight;
+                const newScrollTop = lineTop - (containerHeight / 2) + (lineHeight / 2);
+
+                scriptContainer.scrollTo({ top: newScrollTop, behavior: 'smooth' });
+            }
+
+            // EVENT LISTENERS
+            scriptContainer.addEventListener('scroll', updateHighlight);
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown') { e.preventDefault(); jumpToLine(1); }
+                if (e.key === 'ArrowUp') { e.preventDefault(); jumpToLine(-1); }
+                if (e.code === 'Space') { e.preventDefault(); toggleAutoscroll(); }
             });
 
-            // On-screen button navigation
-            nextBtn.addEventListener('click', showNextLine);
-            prevBtn.addEventListener('click', showPrevLine);
+            scriptContainer.addEventListener('wheel', () => stopAutoscroll());
+            nextBtn.addEventListener('click', () => jumpToLine(1));
+            prevBtn.addEventListener('click', () => jumpToLine(-1));
+            playPauseBtn.addEventListener('click', toggleAutoscroll);
+            resetBtn.addEventListener('click', resetPrompter);
+            speedSlider.addEventListener('input', updateSpeed);
 
-            // Start the application
             initialize();
         });
     </script>
