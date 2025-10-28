@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CueCanvas Pro | Presentation Teleprompter</title>
+    <title>CueCanvas Pro | Paced Teleprompter</title>
 
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -42,24 +42,22 @@
             padding-bottom: 50vh;
         }
 
-        /* Reduced padding for a continuous text flow */
         .script-line {
             transition: opacity 0.3s ease-in-out;
             opacity: 0.4;
-            padding: 0.5rem 1rem; /* 8px top/bottom, 16px left/right */
+            padding: 0.5rem 1rem;
         }
 
         .script-line.active {
             opacity: 1;
         }
         
-        /* Styling for the "TURN PAGE" cue */
         .cue-line {
-            color: #FF1744; /* Bright, vibrant red */
-            font-weight: 700; /* Bold */
+            color: #FF1744;
+            font-weight: 700;
             text-align: center;
-            padding: 3rem 1rem; /* Generous vertical spacing to stand out */
-            opacity: 1 !important; /* Cues are always fully visible */
+            padding: 3rem 1rem;
+            opacity: 1 !important;
         }
 
         #reading-indicator {
@@ -178,55 +176,132 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             
-            // New data structure: array of objects with type and content
+            // The script is now re-structured into smaller, evenly-paced lines
+            // to promote a natural speaking rhythm.
             const script = [
                 // Slide 1
-                { type: 'text', content: "GOOD AFTERNOON EVERYONE. TODAY I WANT TO TALK ABOUT SOMETHING AFFECTING MILLIONS OF ARTISTS: THE ETHICS AND FUTURE OF AI-GENERATED IMAGERY." },
-                { type: 'text', content: "WE'LL EXPLORE HOW TOOLS LIKE CHATGPT AND MIDJOURNEY ARE IMPACTING ARTISTS, CAREERS, AND EVEN HOW WE DEFINE ART ITSELF." },
+                { type: 'text', content: "GOOD AFTERNOON EVERYONE." },
+                { type: 'text', content: "TODAY I WANT TO TALK ABOUT SOMETHING" },
+                { type: 'text', content: "AFFECTING MILLIONS OF ARTISTS RIGHT NOW..." },
+                { type: 'text', content: "THE ETHICS AND FUTURE OF AI-GENERATED IMAGERY." },
+                { type: 'text', content: "WE'RE GOING TO EXPLORE HOW TOOLS LIKE CHATGPT" },
+                { type: 'text', content: "AND MIDJOURNEY ARE IMPACTING ARTISTS, CAREERS," },
+                { type: 'text', content: "AND EVEN HOW WE DEFINE ART ITSELF." },
                 { type: 'cue', content: "--- TURN PAGE (SLIDE 2) ---" },
                 // Slide 2
-                { type: 'text', content: "AI IMAGE GENERATION HAS COMPLETELY EXPLODED. TOOLS LIKE CHATGPT, STABLE DIFFUSION, AND SORA ARE NOW AVAILABLE TO PRETTY MUCH ANYONE." },
-                { type: 'text', content: "THESE SYSTEMS WERE TRAINED ON BILLIONS OF IMAGES SCRAPED FROM THE INTERNET. AND THAT'S WHERE THE PROBLEMS START." },
-                { type: 'text', content: "ARTISTS ARE RAISING SERIOUS CONCERNS ABOUT COPYRIGHT, JOB SECURITY, AND WHAT WE EVEN CONSIDER ART ANYMORE." },
-                { type: 'text', content: "FAN ART COMMUNITIES HAVE LAUNCHED MAJOR PROTESTS AGAINST THESE PLATFORMS. SO TODAY, WE NEED TO UNDERSTAND WHAT'S REALLY AT STAKE." },
+                { type: 'text', content: "SO, AI IMAGE GENERATION HAS COMPLETELY EXPLODED." },
+                { type: 'text', content: "TOOLS LIKE CHATGPT, STABLE DIFFUSION, AND SORA" },
+                { type: 'text', content: "ARE NOW AVAILABLE TO PRETTY MUCH ANYONE." },
+                { type: 'text', content: "THESE SYSTEMS WERE TRAINED ON BILLIONS OF IMAGES" },
+                { type: 'text', content: "SCRAPED FROM THE INTERNET." },
+                { type: 'text', content: "AND THAT'S WHERE THE PROBLEMS START." },
+                { type: 'text', content: "ARTISTS ARE RAISING SERIOUS CONCERNS" },
+                { type: 'text', content: "ABOUT COPYRIGHT, JOB SECURITY," },
+                { type: 'text', content: "AND WHAT WE EVEN CONSIDER ART ANYMORE." },
+                { type: 'text', content: "FAN ART COMMUNITIES HAVE LAUNCHED MAJOR PROTESTS" },
+                { type: 'text', content: "AGAINST THESE PLATFORMS." },
+                { type: 'text', content: "SO TODAY, WE NEED TO UNDERSTAND" },
+                { type: 'text', content: "WHAT'S REALLY AT STAKE HERE." },
                 { type: 'cue', content: "--- TURN PAGE (SLIDE 3) ---" },
                 // Slide 3
-                { type: 'text', content: "I'M GOING TO COVER THREE MAIN CONCERNS. FIRST, HOW AI IS THREATENING ARTIST RIGHTS AND INTELLECTUAL PROPERTY." },
-                { type: 'text', content: "SECOND, HOW IT'S AFFECTING PEOPLE'S VIEWS ON ART CAREERS." },
-                { type: 'text', content: "AND THIRD, HOW IT'S CHALLENGING WHAT WE ACTUALLY MEAN WHEN WE SAY SOMETHING IS 'ART.'" },
+                { type: 'text', content: "I'M GOING TO COVER THREE MAIN CONCERNS." },
+                { type: 'text', content: "FIRST, HOW AI IS THREATENING ARTIST RIGHTS" },
+                { type: 'text', content: "AND INTELLECTUAL PROPERTY." },
+                { type: 'text', content: "SECOND, HOW IT'S AFFECTING PEOPLE'S VIEWS" },
+                { type: 'text', content: "ON ART CAREERS." },
+                { type: 'text', content: "AND THIRD, HOW IT'S CHALLENGING WHAT WE MEAN" },
+                { type: 'text', content: "WHEN WE SAY SOMETHING IS 'ART.'" },
                 { type: 'cue', content: "--- TURN PAGE (SLIDE 4) ---" },
                 // Slide 4
-                { type: 'text', content: "LET'S START WITH INTELLECTUAL PROPERTY. ACCORDING TO RESEARCHERS TANG AND LIU, FAN ART CREATORS ACTIVELY RESISTED WHEN A PLATFORM ADDED AI DRAWING TOOLS." },
-                { type: 'text', content: "HERE'S WHY THEY WERE UPSET. THESE AI SYSTEMS TRAIN ON BILLIONS OF IMAGES FROM CREATORS WITHOUT EVER ASKING PERMISSION OR PAYING THEM A SINGLE CENT." },
-                { type: 'text', content: "ARTISTS ARE WATCHING THEIR UNIQUE STYLES, THINGS THEY SPENT YEARS DEVELOPING, BEING USED AS TRAINING DATA. NO CREDIT, NO COMPENSATION, NOTHING." },
-                { type: 'text', content: "TANG AND LIU CALL THIS A PERFECT EXAMPLE OF BIG COMPANIES PROFITING, WHILE THE ORIGINAL CREATORS WHO MADE IT ALL POSSIBLE GET ABSOLUTELY NOTHING." },
-                { type: 'text', content: "AND IT'S NOT JUST A CREATIVE ISSUE, IT'S A LEGAL ONE. LAW PROFESSOR MARK LEMLEY EXPLAINS THAT GENERATIVE AI CHALLENGES TRADITIONAL COPYRIGHT RULES." },
-                { type: 'text', content: "THE CREATIVE EFFORT IS NOW IN WRITING THE PROMPTS, NOT MAKING THE ART. THIS FORCES LAWMAKERS TO RETHINK WHAT ORIGINALITY AND AUTHORSHIP EVEN MEAN. THAT'S THE FIRST MAJOR PROBLEM." },
+                { type: 'text', content: "LET'S START WITH INTELLECTUAL PROPERTY." },
+                { type: 'text', content: "ACCORDING TO RESEARCHERS TANG AND LIU," },
+                { type: 'text', content: "FAN ART CREATORS ACTIVELY RESISTED" },
+                { type: 'text', content: "WHEN A PLATFORM ADDED AI DRAWING TOOLS." },
+                { type: 'text', content: "HERE'S WHY THEY WERE UPSET." },
+                { type: 'text', content: "THESE AI SYSTEMS TRAIN ON BILLIONS OF IMAGES" },
+                { type: 'text', content: "FROM CREATORS WITHOUT EVER ASKING PERMISSION" },
+                { type: 'text', content: "OR PAYING THEM A SINGLE CENT." },
+                { type: 'text', content: "ARTISTS ARE WATCHING THEIR UNIQUE STYLES," },
+                { type: 'text', content: "THINGS THEY SPENT YEARS DEVELOPING," },
+                { type: 'text', content: "BEING USED AS TRAINING DATA." },
+                { type: 'text', content: "NO CREDIT, NO COMPENSATION, NOTHING." },
+                { type: 'text', content: "TANG AND LIU CALL THIS A PERFECT EXAMPLE" },
+                { type: 'text', content: "OF BIG COMPANIES PROFITING," },
+                { type: 'text', content: "WHILE THE ORIGINAL CREATORS GET NOTHING." },
+                { type: 'text', content: "AND IT'S NOT JUST A CREATIVE ISSUE," },
+                { type: 'text', content: "IT'S A LEGAL ONE." },
+                { type: 'text', content: "LAW PROFESSOR MARK LEMLEY EXPLAINS" },
+                { type: 'text', content: "THAT GENERATIVE AI CHALLENGES COPYRIGHT RULES." },
+                { type: 'text', content: "THE CREATIVE EFFORT IS NOW IN WRITING PROMPTS," },
+                { type: 'text', content: "NOT MAKING THE ART." },
+                { type: 'text', content: "THIS FORCES LAWMAKERS TO RETHINK" },
+                { type: 'text', content: "WHAT ORIGINALITY AND AUTHORSHIP EVEN MEAN." },
+                { type: 'text', content: "THAT'S THE FIRST MAJOR PROBLEM." },
                 { type: 'cue', content: "--- TURN PAGE (SLIDE 5) ---" },
                 // Slide 5
-                { type: 'text', content: "THE SECOND CONCERN IS HOW AI IS CHANGING SOCIETY'S VIEW OF ARTISTIC CAREERS. A RECENT STUDY FOUND SOMETHING INTERESTING." },
-                { type: 'text', content: "WHEN PEOPLE SEE AI CREATE IMPRESSIVE ARTWORK, THEY START TO UNDERESTIMATE THE SKILL AND VALUE OF HUMAN ARTISTS." },
-                { type: 'text', content: "IF AI CAN MAKE SOMETHING BEAUTIFUL IN SECONDS, WHY WOULD SOMEONE SPEND YEARS LEARNING TO PAINT OR DRAW? THIS COULD DISCOURAGE PEOPLE FROM PURSUING ART." },
-                { type: 'text', content: "THE STUDY SHOWS THAT JUST BEING EXPOSED TO AI ART SHAPES PEOPLE'S OPINIONS ABOUT WHETHER ART CAREERS ARE EVEN WORTH IT ANYMORE. THAT'S A HUGE CULTURAL SHIFT WE'RE WITNESSING RIGHT NOW." },
+                { type: 'text', content: "THE SECOND CONCERN IS HOW AI IS CHANGING" },
+                { type: 'text', content: "SOCIETY'S VIEW OF ARTISTIC CAREERS." },
+                { type: 'text', content: "A RECENT STUDY FOUND SOMETHING INTERESTING." },
+                { type: 'text', content: "WHEN PEOPLE SEE AI CREATE IMPRESSIVE ARTWORK," },
+                { type: 'text', content: "THEY START TO UNDERESTIMATE THE SKILL" },
+                { type: 'text', content: "AND VALUE OF HUMAN ARTISTS." },
+                { type: 'text', content: "IF AI CAN MAKE SOMETHING BEAUTIFUL IN SECONDS," },
+                { type: 'text', content: "WHY SPEND YEARS LEARNING TO PAINT OR DRAW?" },
+                { type: 'text', content: "THIS COULD DISCOURAGE PEOPLE FROM PURSUING ART." },
+                { type: 'text', content: "THE STUDY SHOWS THAT EXPOSURE TO AI ART" },
+                { type: 'text', content: "SHAPES OPINIONS ABOUT WHETHER ART CAREERS" },
+                { type: 'text', content: "ARE EVEN WORTH IT ANYMORE." },
+                { type: 'text', content: "THAT'S A HUGE CULTURAL SHIFT." },
                 { type: 'cue', content: "--- TURN PAGE (SLIDE 6) ---" },
                 // Slide 6
-                { type: 'text', content: "BUT ALL OF THIS RAISES AN EVEN BIGGER QUESTION: WHAT EXACTLY IS ART ANYMORE? CAN AI OUTPUTS ACTUALLY QUALIFY AS ART?" },
-                { type: 'text', content: "ACCORDING TO RESEARCHER SIMONA CHIODO, TRADITIONAL DEFINITIONS OF ART REQUIRE MORE THAN JUST LOOKING PRETTY. THEY REQUIRE HUMAN INTENTION." },
-                { type: 'text', content: "CHIODO ARGUES THAT AI LACKS WHAT SHE CALLS 'META-SENSEMAKING.' BASICALLY, AI CAN'T TAP INTO THE SHARED HUMAN EXPERIENCE THAT'S NEEDED TO CREATE TRULY MEANINGFUL ART." },
-                { type: 'text', content: "ART COMES FROM HUMAN AUTONOMY, FROM PEOPLE MAKING CONSCIOUS CHOICES. AI IS FUNDAMENTALLY JUST AUTOMATED AND RANDOM." },
-                { type: 'text', content: "BUT THERE'S ANOTHER PERSPECTIVE. PHILOSOPHER MARIA IVANOVA ASKS IF AI-MADE ART TRULY THREATENS CREATIVITY, OR IF IT ACTUALLY EXPANDS WHAT COUNTS AS ART." },
-                { type: 'text', content: "WHILE SHE DISCUSSES MORAL CONCERNS LIKE USING DATA WITHOUT PERMISSION AND UNFAIR BIASES IN THE AI'S CODE, SHE ALSO SEES THAT AI SYSTEMS CAN HAVE ARTISTIC VALUE. SO THIS DEBATE IS FAR FROM SETTLED." },
+                { type: 'text', content: "BUT THIS RAISES AN EVEN BIGGER QUESTION:" },
+                { type: 'text', content: "WHAT EXACTLY IS ART ANYMORE?" },
+                { type: 'text', content: "CAN AI OUTPUTS ACTUALLY QUALIFY AS ART?" },
+                { type: 'text', content: "ACCORDING TO RESEARCHER SIMONA CHIODO," },
+                { type: 'text', content: "TRADITIONAL ART REQUIRES MORE THAN LOOKING PRETTY." },
+                { type: 'text', content: "IT REQUIRES HUMAN INTENTION." },
+                { type: 'text', content: "CHIODO ARGUES THAT AI LACKS 'META-SENSEMAKING.'" },
+                { type: 'text', content: "BASICALLY, AI CAN'T TAP INTO THE HUMAN EXPERIENCE" },
+                { type: 'text', content: "NEEDED TO CREATE TRULY MEANINGFUL ART." },
+                { type: 'text', content: "ART COMES FROM HUMAN AUTONOMY," },
+                { type: 'text', content: "FROM PEOPLE MAKING CONSCIOUS CHOICES." },
+                { type: 'text', content: "AI IS FUNDAMENTALLY JUST AUTOMATED AND RANDOM." },
+                { type: 'text', content: "BUT THERE'S ANOTHER PERSPECTIVE." },
+                { type: 'text', content: "PHILOSOPHER MARIA IVANOVA ASKS IF AI ART" },
+                { type: 'text', content: "TRULY THREATENS CREATIVITY," },
+                { type: 'text', content: "OR IF IT ACTUALLY EXPANDS WHAT COUNTS AS ART." },
+                { type: 'text', content: "WHILE SHE DISCUSSES MORAL CONCERNS," },
+                { type: 'text', content: "SHE ALSO SEES THAT AI SYSTEMS" },
+                { type: 'text', content: "CAN HAVE ARTISTIC VALUE." },
+                { type: 'text', content: "SO THIS DEBATE IS FAR FROM SETTLED." },
                 { type: 'cue', content: "--- TURN PAGE (SLIDE 7) ---" },
                 // Slide 7
-                { type: 'text', content: "SO WHAT DO WE NEED TO DO ABOUT ALL THIS? FIRST, WE NEED TO PROTECT ARTISTS BY ESTABLISHING CLEAR RULES ABOUT CONSENT AND COMPENSATION." },
-                { type: 'text', content: "SECOND, WE HAVE TO THINK SERIOUSLY ABOUT HOW WIDESPREAD AI ART MIGHT DISCOURAGE PEOPLE FROM CHOOSING CREATIVE CAREERS. WE DON'T WANT TO LOSE HUMAN CREATIVITY." },
-                { type: 'text', content: "AND THIRD, WE NEED TO DECIDE AS A SOCIETY WHETHER AI OUTPUTS CAN ACTUALLY BE CALLED ART, OR IF THAT TERM SHOULD STAY RESERVED FOR HUMAN CREATION." },
-                { type: 'text', content: "THERE'S ALSO THE ISSUE OF MISINFORMATION. RESEARCH FROM MIT AND STANFORD SHOWS THAT LABELING IMAGES AS AI-GENERATED REDUCES HOW MUCH PEOPLE BELIEVE FAKE CONTENT." },
-                { type: 'text', content: "THIS MEANS WE ALSO NEED CLEAR STANDARDS FOR LABELING AI CONTENT ONLINE." },
+                { type: 'text', content: "SO WHAT DO WE NEED TO DO ABOUT ALL THIS?" },
+                { type: 'text', content: "FIRST, WE NEED TO PROTECT ARTISTS" },
+                { type: 'text', content: "BY ESTABLISHING CLEAR RULES" },
+                { type: 'text', content: "ABOUT CONSENT AND COMPENSATION." },
+                { type: 'text', content: "SECOND, WE HAVE TO THINK SERIOUSLY" },
+                { type: 'text', content: "ABOUT HOW AI ART MIGHT DISCOURAGE" },
+                { type: 'text', content: "PEOPLE FROM CHOOSING CREATIVE CAREERS." },
+                { type: 'text', content: "AND THIRD, WE NEED TO DECIDE AS A SOCIETY" },
+                { type: 'text', content: "WHETHER AI OUTPUTS CAN BE CALLED ART," },
+                { type: 'text', content: "OR IF THAT TERM IS RESERVED FOR HUMANS." },
+                { type: 'text', content: "THERE'S ALSO THE ISSUE OF MISINFORMATION." },
+                { type: 'text', content: "RESEARCH SHOWS THAT LABELING IMAGES AS AI" },
+                { type: 'text', content: "REDUCES HOW MUCH PEOPLE BELIEVE FAKE CONTENT." },
+                { type: 'text', content: "THIS MEANS WE ALSO NEED CLEAR STANDARDS" },
+                { type: 'text', content: "FOR LABELING AI CONTENT ONLINE." },
                 { type: 'cue', content: "--- TURN PAGE (SLIDE 8) ---" },
                 // Slide 8
-                { type: 'text', content: "HERE'S THE BOTTOM LINE. HOW WE HANDLE AI IMAGERY IN THE NEXT FEW YEARS WILL DETERMINE WHETHER IT ENHANCES HUMAN CREATIVITY OR REPLACES IT ENTIRELY." },
-                { type: 'text', content: "THAT'S WHY THESE QUESTIONS MATTER SO MUCH RIGHT NOW. WE'RE AT A TURNING POINT, AND THE DECISIONS WE MAKE TODAY WILL SHAPE THE FUTURE OF ART FOR GENERATIONS. THANK YOU." }
+                { type: 'text', content: "HERE'S THE BOTTOM LINE." },
+                { type: 'text', content: "HOW WE HANDLE AI IMAGERY IN THE NEXT FEW YEARS" },
+                { type: 'text', content: "WILL DETERMINE IF IT ENHANCES HUMAN CREATIVITY" },
+                { type: 'text', content: "OR REPLACES IT ENTIRELY." },
+                { type: 'text', content: "THAT'S WHY THESE QUESTIONS MATTER SO MUCH." },
+                { type: 'text', content: "WE'RE AT A TURNING POINT," },
+                { type: 'text', content: "AND THE DECISIONS WE MAKE TODAY" },
+                { type: 'text', content: "WILL SHAPE THE FUTURE OF ART FOR GENERATIONS." },
+                { type: 'text', content: "THANK YOU." }
             ];
 
             const scriptContainer = document.getElementById('script-container');
@@ -266,7 +341,6 @@
                 const indicatorY = readingIndicator.getBoundingClientRect().top;
                 let currentActiveFound = false;
                 scriptLines.forEach(line => {
-                    // Cues should not be highlighted as "active"
                     if (line.classList.contains('cue-line')) return;
 
                     const lineRect = line.getBoundingClientRect();
@@ -333,7 +407,6 @@
 
             function jumpToLine(direction) {
                 stopAutoscroll();
-                const indicatorY = readingIndicator.getBoundingClientRect().top;
                 let currentActiveIndex = -1;
 
                 scriptLines.forEach((line, index) => {
@@ -342,8 +415,8 @@
                     }
                 });
                 
-                // If no line is active, find the closest one above the indicator
                 if (currentActiveIndex === -1) {
+                    const indicatorY = readingIndicator.getBoundingClientRect().top;
                     for(let i = scriptLines.length - 1; i >= 0; i--) {
                         if (scriptLines[i].getBoundingClientRect().top < indicatorY) {
                             currentActiveIndex = i;
@@ -353,6 +426,12 @@
                 }
 
                 let targetIndex = currentActiveIndex + direction;
+                
+                // Skip over cue lines when jumping
+                while(targetIndex > 0 && targetIndex < scriptLines.length -1 && scriptLines[targetIndex].classList.contains('cue-line')) {
+                    targetIndex += direction;
+                }
+
                 if (targetIndex < 0) targetIndex = 0;
                 if (targetIndex >= scriptLines.length) targetIndex = scriptLines.length - 1;
 
