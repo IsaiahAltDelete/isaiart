@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CueCanvas | Your Modern Teleprompter</title>
+
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <style>
+        /* 
+        ------------------------------------------
+        CUSTOM CSS & TAILWIND CONFIG
+        ------------------------------------------
+        While Tailwind is used for most of the layout and styling, 
+        some custom CSS is needed for specific effects like the 
+        animated underline, custom scrollbars, and the glassmorphism UI.
+        */
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #000000;
+            color: #FFFFFF;
+            overflow: hidden; /* Prevents the main page from scrolling */
+        }
+
+        /* Main script container styling */
+        #script-container {
+            /* Hides the scrollbar for a cleaner look across browsers */
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        #script-container::-webkit-scrollbar {
+            display: none; /* Safari and Chrome */
+        }
+
+        /* Styling for each line of the script */
+        .script-line {
+            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+            opacity: 0.3; /* Non-active lines are faded */
+            position: relative;
+            padding-bottom: 1rem; /* Space for the underline */
+        }
+
+        /* The active line stands out */
+        .script-line.active {
+            opacity: 1;
+            transform: scale(1.02); /* A very subtle zoom to draw focus */
+        }
+
+        /* 
+        The orange underline for the active line.
+        It uses a ::after pseudo-element for animation.
+        The animation works by scaling the element horizontally from 0 to 100%.
+        */
+        .script-line.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background-color: #FF6600; /* Vibrant orange accent */
+            transform: scaleX(1);
+            transform-origin: left;
+            transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .script-line::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background-color: #FF6600;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease-out;
+        }
+        
+        /* Glassmorphism effect for UI controls */
+        .glass-ui {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* Initial fade-in animation for the whole app */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-black text-white uppercase select-none">
+
+    <div id="teleprompter-app" class="fade-in h-screen w-screen flex flex-col items-center justify-center p-4 md:p-8 relative">
+        
+        <!-- Header Title -->
+        <header class="absolute top-0 left-0 p-6">
+            <h1 class="text-xl font-bold tracking-widest text-white/50">CUECANVAS</h1>
+        </header>
+
+        <!-- 
+        The main container for the script.
+        It's designed to take up the full height and allow internal scrolling,
+        which is controlled by our JavaScript.
+        -->
+        <main id="script-container" class="h-full w-full max-w-5xl overflow-y-scroll flex flex-col justify-start items-center pt-[50vh] pb-[50vh]">
+            <!-- Script lines will be dynamically inserted here by JavaScript -->
+        </main>
+
+        <!-- 
+        On-screen navigation controls.
+        These are useful for touch devices or presentations where a mouse is used.
+        The glass-ui class provides a modern, blurred background effect.
+        -->
+        <div class="fixed bottom-8 flex items-center space-x-4">
+            <button id="prev-btn" aria-label="Previous Line" class="glass-ui rounded-full w-16 h-16 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all duration-300">
+                <span class="material-icons text-4xl">arrow_upward</span>
+            </button>
+            <button id="next-btn" aria-label="Next Line" class="glass-ui rounded-full w-16 h-16 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all duration-300">
+                <span class="material-icons text-4xl">arrow_downward</span>
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // ------------------------------------------
+            // SCRIPT DATA
+            // ------------------------------------------
+            // The user's script, simplified for oral delivery and broken into an array of strings.
+            // Each string represents a single "cue" or line on the teleprompter.
+            const script = [
+                "GOOD AFTERNOON EVERYONE. TODAY I WANT TO TALK ABOUT SOMETHING AFFECTING MILLIONS OF ARTISTS: THE ETHICS AND FUTURE OF AI-GENERATED IMAGES.",
+                "WE'LL EXPLORE HOW TOOLS LIKE DALL-E AND MIDJOURNEY ARE IMPACTING ARTISTS, CAREERS, AND EVEN HOW WE DEFINE ART ITSELF.",
+                "AI IMAGE GENERATION HAS COMPLETELY EXPLODED. TOOLS LIKE DALL-E, STABLE DIFFUSION, AND SORA ARE NOW AVAILABLE TO PRETTY MUCH ANYONE.",
+                "THESE SYSTEMS WERE TRAINED ON BILLIONS OF IMAGES SCRAPED FROM THE INTERNET. AND THAT'S WHERE THE PROBLEMS START.",
+                "ARTISTS ARE RAISING SERIOUS CONCERNS ABOUT COPYRIGHT, JOB SECURITY, AND WHAT WE EVEN CONSIDER ART ANYMORE.",
+                "FAN ART COMMUNITIES HAVE LAUNCHED MAJOR PROTESTS AGAINST THESE PLATFORMS. SO TODAY, WE NEED TO UNDERSTAND WHAT'S REALLY AT STAKE.",
+                "I'M GOING TO COVER THREE MAIN CONCERNS. FIRST, HOW AI IS THREATENING ARTIST RIGHTS AND INTELLECTUAL PROPERTY.",
+                "SECOND, HOW IT'S AFFECTING PEOPLE'S VIEWS ON ART CAREERS. AND THIRD, HOW IT'S CHALLENGING WHAT WE ACTUALLY MEAN WHEN WE SAY SOMETHING IS 'ART.'",
+                "LET'S START WITH INTELLECTUAL PROPERTY. ACCORDING TO RESEARCHERS TANG AND LIU, FAN ART CREATORS ACTIVELY RESISTED WHEN A PLATFORM ADDED AI DRAWING TOOLS.",
+                "HERE'S WHY THEY WERE UPSET. THESE AI SYSTEMS TRAIN ON BILLIONS OF IMAGES FROM CREATORS WITHOUT EVER ASKING PERMISSION OR PAYING THEM A SINGLE CENT.",
+                "ARTISTS ARE WATCHING THEIR UNIQUE STYLES, THINGS THEY SPENT YEARS DEVELOPING, BEING USED AS TRAINING DATA. NO CREDIT, NO COMPENSATION, NOTHING.",
+                "TANG AND LIU CALL THIS A PERFECT EXAMPLE OF BIG COMPANIES PROFITING, WHILE THE ORIGINAL CREATORS WHO MADE IT ALL POSSIBLE GET ABSOLUTELY NOTHING.",
+                "AND IT'S NOT JUST A CREATIVE ISSUE, IT'S A LEGAL ONE. LAW PROFESSOR MARK LEMLEY EXPLAINS THAT GENERATIVE AI CHALLENGES TRADITIONAL COPYRIGHT RULES.",
+                "THE CREATIVE EFFORT IS NOW IN WRITING THE PROMPTS, NOT MAKING THE ART. THIS FORCES LAWMAKERS TO RETHINK WHAT ORIGINALITY AND AUTHORSHIP EVEN MEAN.",
+                "THE SECOND CONCERN IS HOW AI IS CHANGING SOCIETY'S VIEW OF ARTISTIC CAREERS. A RECENT STUDY FOUND SOMETHING INTERESTING.",
+                "WHEN PEOPLE SEE AI CREATE IMPRESSIVE ARTWORK, THEY START TO UNDERESTIMATE THE SKILL AND VALUE OF HUMAN ARTISTS.",
+                "IF AI CAN MAKE SOMETHING BEAUTIFUL IN SECONDS, WHY WOULD SOMEONE SPEND YEARS LEARNING TO PAINT OR DRAW? THIS COULD DISCOURAGE PEOPLE FROM PURSUING ART.",
+                "THE STUDY SHOWS THAT JUST BEING EXPOSED TO AI ART SHAPES PEOPLE'S OPINIONS ABOUT WHETHER ART CAREERS ARE EVEN WORTH IT ANYMORE. THAT'S A HUGE CULTURAL SHIFT.",
+                "BUT ALL OF THIS RAISES AN EVEN BIGGER QUESTION: WHAT EXACTLY IS ART ANYMORE? CAN AI OUTPUTS ACTUALLY QUALIFY AS ART?",
+                "ACCORDING TO RESEARCHER SIMONA CHIODO, TRADITIONAL DEFINITIONS OF ART REQUIRE MORE THAN JUST LOOKING PRETTY. THEY REQUIRE HUMAN INTENTION.",
+                "CHIODO ARGUES THAT AI LACKS WHAT SHE CALLS 'META-SENSEMAKING.' BASICALLY, AI CAN'T TAP INTO THE SHARED HUMAN EXPERIENCE THAT'S NEEDED TO CREATE TRULY MEANINGFUL ART.",
+                "ART COMES FROM HUMAN AUTONOMY, FROM PEOPLE MAKING CONSCIOUS CHOICES. AI IS FUNDAMENTALLY JUST AUTOMATED AND RANDOM.",
+                "BUT THERE'S ANOTHER PERSPECTIVE. PHILOSOPHER MARIA IVANOVA ASKS IF AI-MADE ART TRULY THREATENS CREATIVITY, OR IF IT ACTUALLY EXPANDS WHAT COUNTS AS ART.",
+                "WHILE SHE DISCUSSES MORAL CONCERNS LIKE USING DATA WITHOUT PERMISSION AND UNFAIR BIASES IN THE AI'S CODE, SHE ALSO SEES THAT AI SYSTEMS CAN HAVE ARTISTIC VALUE.",
+                "SO, WHAT DO WE NEED TO DO ABOUT ALL THIS? FIRST, WE NEED TO PROTECT ARTISTS BY ESTABLISHING CLEAR RULES ABOUT CONSENT AND COMPENSATION.",
+                "SECOND, WE HAVE TO THINK SERIOUSLY ABOUT HOW WIDESPREAD AI ART MIGHT DISCOURAGE PEOPLE FROM CHOOSING CREATIVE CAREERS. WE DON'T WANT TO LOSE HUMAN CREATIVITY.",
+                "AND THIRD, WE NEED TO DECIDE AS A SOCIETY WHETHER AI OUTPUTS CAN ACTUALLY BE CALLED ART, OR IF THAT TERM SHOULD STAY RESERVED FOR HUMAN CREATION.",
+                "THERE'S ALSO THE ISSUE OF MISINFORMATION. RESEARCH FROM MIT AND STANFORD SHOWS THAT LABELING IMAGES AS AI-GENERATED REDUCES HOW MUCH PEOPLE BELIEVE FAKE CONTENT.",
+                "THIS MEANS WE ALSO NEED CLEAR STANDARDS FOR LABELING AI CONTENT ONLINE.",
+                "HERE'S THE BOTTOM LINE. HOW WE HANDLE AI IMAGERY IN THE NEXT FEW YEARS WILL DETERMINE WHETHER IT ENHANCES HUMAN CREATIVITY OR REPLACES IT ENTIRELY.",
+                "THAT'S WHY THESE QUESTIONS MATTER SO MUCH RIGHT NOW. WE'RE AT A TURNING POINT, AND THE DECISIONS WE MAKE TODAY WILL SHAPE THE FUTURE OF ART FOR GENERATIONS. THANK YOU."
+            ];
+
+            // ------------------------------------------
+            // DOM ELEMENT REFERENCES
+            // ------------------------------------------
+            const scriptContainer = document.getElementById('script-container');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+
+            // ------------------------------------------
+            // STATE MANAGEMENT
+            // ------------------------------------------
+            let currentIndex = 0;
+            let scriptLines = []; // To hold references to the created DOM elements
+
+            // ------------------------------------------
+            // INITIALIZATION
+            // ------------------------------------------
+            function initialize() {
+                // Create a paragraph element for each line in the script array
+                script.forEach(line => {
+                    const p = document.createElement('p');
+                    p.textContent = line;
+                    // TailwindCSS classes for styling the text
+                    p.className = 'script-line text-4xl md:text-6xl font-bold text-center leading-tight md:leading-tight py-12';
+                    scriptContainer.appendChild(p);
+                    scriptLines.push(p);
+                });
+
+                // Set the first line as active
+                updateActiveLine();
+            }
+
+            // ------------------------------------------
+            // CORE FUNCTIONALITY
+            // ------------------------------------------
+            
+            /**
+             * Updates the view by highlighting the current line and scrolling it into the center.
+             * This is the central function for navigation.
+             */
+            function updateActiveLine() {
+                scriptLines.forEach((line, index) => {
+                    if (index === currentIndex) {
+                        line.classList.add('active');
+                        // The 'scrollIntoView' method is key. It smoothly moves the
+                        // active element to the center of the viewport, minimizing eye movement.
+                        line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else {
+                        line.classList.remove('active');
+                    }
+                });
+            }
+
+            function showNextLine() {
+                if (currentIndex < scriptLines.length - 1) {
+                    currentIndex++;
+                    updateActiveLine();
+                }
+            }
+
+            function showPrevLine() {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    updateActiveLine();
+                }
+            }
+
+            // ------------------------------------------
+            // EVENT LISTENERS
+            // ------------------------------------------
+            
+            // Keyboard navigation
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault(); // Prevent default page scroll
+                    showNextLine();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault(); // Prevent default page scroll
+                    showPrevLine();
+                }
+            });
+
+            // Mouse wheel/scroll navigation
+            let scrollTimeout;
+            scriptContainer.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                
+                // This is a simple debounce. It prevents the scroll event from firing
+                // too rapidly and skipping multiple lines at once.
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    if (e.deltaY > 0) { // Scrolling down
+                        showNextLine();
+                    } else { // Scrolling up
+                        showPrevLine();
+                    }
+                }, 50); // 50ms delay
+            });
+
+            // On-screen button navigation
+            nextBtn.addEventListener('click', showNextLine);
+            prevBtn.addEventListener('click', showPrevLine);
+
+            // Start the application
+            initialize();
+        });
+    </script>
+
+</body>
+</html>
