@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Canvas: AI, Art, and a Crisis of Creation</title>
+
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Symbols -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Custom CSS for elements and animations Tailwind doesn't handle as elegantly */
+
+        /* Base styling */
+        body {
+            font-family: 'Poppins', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Icon styling from Google Symbols */
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 300,
+            'GRAD' 0,
+            'opsz' 48;
+        }
+
+        /*
+         * SLIDE TRANSITION ANIMATION
+         * This creates a smooth fade-and-slide-up effect.
+         * The old slide fades out and moves up.
+         * The new slide fades in from a slightly lower position.
+        */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+            pointer-events: none; /* Prevents interaction with hidden slides */
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto; /* Allows interaction with the active slide */
+        }
+
+        .slide.exiting {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        /*
+         * PROGRESS BAR
+         * A visual indicator of the user's position in the presentation.
+        */
+        .progress-bar-fill {
+            transition: width 0.4s ease-out;
+        }
+
+        /*
+         * NAVIGATION ZONES
+         * These invisible overlays handle touch/click events.
+         * A subtle visual feedback is provided on hover/active states.
+        */
+        .nav-zone {
+            transition: background-color 0.3s ease;
+        }
+        .nav-zone:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+        .nav-zone:active {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-zinc-900 flex items-center justify-center h-screen overflow-hidden">
+
+    <main class="presentation-container w-full h-full md:w-[95vw] md:h-[90vh] md:max-w-6xl md:rounded-2xl bg-white shadow-2xl shadow-black/20 relative overflow-hidden flex flex-col">
+        
+        <!-- Slide Content Area -->
+        <div class="slide-viewport flex-grow relative">
+            <!-- Slide 1: Title -->
+            <section class="slide active flex flex-col items-center justify-center text-center p-8 md:p-16">
+                <h1 class="text-4xl md:text-6xl font-bold text-zinc-900 tracking-tight">Digital Canvas: AI, Art, and a Crisis of Creation</h1>
+                <p class="mt-4 text-lg md:text-xl text-zinc-600 max-w-3xl">Understanding the Impact on Artists, Careers, and the Nature of Art Itself</p>
+                <p class="mt-12 text-sm text-zinc-400">Isaiah Souffront • 2025</p>
+            </section>
+
+            <!-- Slide 2: Introduction -->
+            <section class="slide flex flex-col justify-center p-8 md:p-20">
+                <div class="flex items-center gap-4 mb-6">
+                    <span class="material-symbols-outlined text-5xl text-zinc-800">smart_toy</span>
+                    <h2 class="text-3xl md:text-4xl font-semibold text-zinc-800">The New Digital Easel</h2>
+                </div>
+                <ul class="space-y-4 text-lg text-zinc-700">
+                    <li class="flex items-start gap-4"><span class="material-symbols-outlined text-zinc-500 mt-1">arrow_forward</span><span>Tools like DALL-E, Midjourney, and Sora have entered the mainstream.</span></li>
+                    <li class="flex items-start gap-4"><span class="material-symbols-outlined text-zinc-500 mt-1">arrow_forward</span><span>Models are trained on vast, often uncredited, internet datasets.</span></li>
+                    <li class="flex items-start gap-4"><span class="material-symbols-outlined text-zinc-500 mt-1">arrow_forward</span><span>Widespread access has democratized creation but sparked major debate.</span></li>
+                    <li class="flex items-start gap-4"><span class="material-symbols-outlined text-zinc-500 mt-1">arrow_forward</span><span>Artists and creative communities are raising critical ethical concerns.</span></li>
+                </ul>
+            </section>
+
+            <!-- Slide 3: Preview -->
+            <section class="slide flex flex-col justify-center p-8 md:p-20">
+                <h2 class="text-3xl md:text-4xl font-semibold text-zinc-800 mb-8">Three Pillars of Concern</h2>
+                <ol class="space-y-6">
+                    <li class="flex items-center gap-6 text-xl">
+                        <div class="flex items-center justify-center w-12 h-12 bg-zinc-800 text-white rounded-full font-semibold text-2xl flex-shrink-0">1</div>
+                        <span class="text-zinc-700">Artist Rights & Intellectual Property</span>
+                    </li>
+                    <li class="flex items-center gap-6 text-xl">
+                        <div class="flex items-center justify-center w-12 h-12 bg-zinc-800 text-white rounded-full font-semibold text-2xl flex-shrink-0">2</div>
+                        <span class="text-zinc-700">The Devaluation of Creative Careers</span>
+                    </li>
+                    <li class="flex items-center gap-6 text-xl">
+                        <div class="flex items-center justify-center w-12 h-12 bg-zinc-800 text-white rounded-full font-semibold text-2xl flex-shrink-0">3</div>
+                        <span class="text-zinc-700">Redefining the Essence of Art</span>
+                    </li>
+                </ol>
+            </section>
+
+            <!-- Slide 4: Artist Rights -->
+            <section class="slide flex flex-col justify-center p-8 md:p-20">
+                <div class="flex items-center gap-4 mb-6">
+                    <span class="material-symbols-outlined text-5xl text-zinc-800">copyright</span>
+                    <h2 class="text-3xl md:text-4xl font-semibold text-zinc-800">Concern 1: Intellectual Property</h2>
+                </div>
+                <ul class="space-y-3 text-lg text-zinc-700">
+                    <li><strong class="font-semibold text-zinc-900">The Problem:</strong> AI models trained on billions of images without artist consent, credit, or compensation.</li>
+                    <li><strong class="font-semibold text-zinc-900">Artist Fears:</strong> Unique, hard-won artistic styles are being replicated and automated in seconds.</li>
+                    <li><strong class="font-semibold text-zinc-900">Real Example:</strong> Fan artists on Lofter organized mass protests against AI integration on the platform.</li>
+                    <li><strong class="font-semibold text-zinc-900">The Core Issue:</strong> Platform capitalism profits from creator data while the creators themselves are sidelined.</li>
+                </ul>
+                <p class="mt-8 text-sm text-zinc-400 italic">Source: Tang & Liu (2025)</p>
+            </section>
+
+            <!-- Slide 5: Career Perception -->
+            <section class="slide flex flex-col justify-center p-8 md:p-20">
+                <div class="flex items-center gap-4 mb-6">
+                    <span class="material-symbols-outlined text-5xl text-zinc-800">work</span>
+                    <h2 class="text-3xl md:text-4xl font-semibold text-zinc-800">Concern 2: Career Devaluation</h2>
+                </div>
+                <ul class="space-y-3 text-lg text-zinc-700">
+                    <li><strong class="font-semibold text-zinc-900">The Study:</strong> 470 participants were exposed to high-quality AI-generated art.</li>
+                    <li><strong class="font-semibold text-zinc-900">The Effect:</strong> This exposure led to a significant underestimation of the skill and effort required by human artists.</li>
+                    <li><strong class="font-semibold text-zinc-900">The Risk:</strong> Discourages aspiring artists from pursuing creative fields as viable professions.</li>
+                    <li><strong class="font-semibold text-zinc-900">The Reality:</strong> Public perception directly shapes the economic and cultural value placed on artistic careers.</li>
+                </ul>
+                <p class="mt-8 text-sm text-zinc-400 italic">Source: Malecki, Messingschlager, & Appel (2025)</p>
+            </section>
+
+            <!-- Slide 6: Redefining Art -->
+            <section class="slide flex flex-col justify-center p-8 md:p-20">
+                <div class="flex items-center gap-4 mb-6">
+                    <span class="material-symbols-outlined text-5xl text-zinc-800">palette</span>
+                    <h2 class="text-3xl md:text-4xl font-semibold text-zinc-800">Concern 3: The Nature of Art</h2>
+                </div>
+                <ul class="space-y-3 text-lg text-zinc-700">
+                    <li><strong class="font-semibold text-zinc-900">The Question:</strong> Can a machine's output, devoid of intent or experience, truly be considered "art"?</li>
+                    <li><strong class="font-semibold text-zinc-900">Traditional View:</strong> Art is a medium for expressing human intentionality, emotion, and lived experience.</li>
+                    <li><strong class="font-semibold text-zinc-900">AI's Limitation:</strong> It lacks "meta-sensemaking"—the ability to understand and share the human condition.</li>
+                    <li><strong class="font-semibold text-zinc-900">The Distinction:</strong> Human art stems from autonomy and purpose; AI output is a sophisticated form of automated pattern-matching.</li>
+                </ul>
+                <p class="mt-8 text-sm text-zinc-400 italic">Source: Chiodo (2024)</p>
+            </section>
+
+            <!-- Slide 7: Summary -->
+            <section class="slide flex flex-col justify-center p-8 md:p-20">
+                <h2 class="text-3xl md:text-4xl font-semibold text-zinc-800 mb-8">The Path Forward</h2>
+                <div class="space-y-6">
+                    <div class="p-6 border-l-4 border-zinc-800 bg-zinc-50 rounded-r-lg">
+                        <h3 class="font-semibold text-xl text-zinc-900">Protect Artists</h3>
+                        <p class="text-zinc-600">Establish clear, enforceable regulations for consent, credit, and compensation in AI training data.</p>
+                    </div>
+                    <div class="p-6 border-l-4 border-zinc-800 bg-zinc-50 rounded-r-lg">
+                        <h3 class="font-semibold text-xl text-zinc-900">Preserve Value</h3>
+                        <p class="text-zinc-600">Educate the public on the distinction between human skill and automated generation to protect creative career viability.</p>
+                    </div>
+                    <div class="p-6 border-l-4 border-zinc-800 bg-zinc-50 rounded-r-lg">
+                        <h3 class="font-semibold text-xl text-zinc-900">Define Boundaries</h3>
+                        <p class="text-zinc-600">Foster a cultural dialogue to decide how we classify and value AI-generated media versus human-created art.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 8: Conclusion -->
+            <section class="slide flex flex-col justify-center items-center text-center p-8 md:p-20 bg-zinc-800">
+                <h2 class="text-3xl md:text-4xl font-semibold text-white">The Stakes Are High</h2>
+                <div class="my-8 p-8 border border-zinc-600 rounded-lg max-w-3xl">
+                    <p class="text-xl md:text-2xl text-zinc-200 italic leading-relaxed">"How we navigate the integration of AI in the coming years will determine whether it becomes a tool that enhances human creativity or a force that supplants it."</p>
+                </div>
+                <p class="text-lg text-zinc-300">Thank you.</p>
+            </section>
+
+            <!-- Slide 9: Works Cited -->
+            <section class="slide flex flex-col justify-center p-8 md:p-20">
+                <h2 class="text-2xl md:text-3xl font-semibold text-zinc-800 mb-8 border-b border-zinc-300 pb-4">Works Cited</h2>
+                <div class="space-y-6 text-zinc-600 text-sm md:text-base leading-relaxed">
+                    <p>
+                        <strong class="text-zinc-800 font-medium">Chiodo, Simona.</strong> "What AI 'Art' Can Teach Us about Art." 
+                        <em class="italic">Journal of Aesthetics and Culture</em>, vol. 16, no. 1, 2024.
+                    </p>
+                    <p>
+                        <strong class="text-zinc-800 font-medium">Malecki, W. P., et al.</strong> "The Impact of Exposure to Generative AI Art on the Perception of Human Artists' Skills." 
+                        <em class="italic">New Media and Society</em>, vol. 27, no. 9, 2025, pp. 5410-5432.
+                    </p>
+                    <p>
+                        <strong class="text-zinc-800 font-medium">Tang, Jiaru, and Xiyao Liu.</strong> "'NO TO AI GENERATED IMAGES': Fan Art Creators Contesting AI Integration on a Chinese Social Media Platform." 
+                        <em class="italic">Media International Australia</em>, 2025.
+                    </p>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Navigation and Progress Bar -->
+        <footer class="w-full p-4 flex-shrink-0">
+            <div class="w-full bg-zinc-200 rounded-full h-2.5">
+                <div id="progressBar" class="bg-zinc-800 h-2.5 rounded-full progress-bar-fill" style="width: 0%"></div>
+            </div>
+        </footer>
+
+        <!-- Invisible Navigation Zones -->
+        <div id="navPrev" class="nav-zone absolute top-0 left-0 h-full w-1/3 cursor-pointer z-10"></div>
+        <div id="navNext" class="nav-zone absolute top-0 right-0 h-full w-1/3 cursor-pointer z-10"></div>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element Selection ---
+            const slides = document.querySelectorAll('.slide');
+            const progressBar = document.getElementById('progressBar');
+            const navPrev = document.getElementById('navPrev');
+            const navNext = document.getElementById('navNext');
+            
+            // --- State Management ---
+            let currentSlide = 0;
+            const totalSlides = slides.length;
+
+            /**
+             * Core function to display a specific slide.
+             * @param {number} index - The index of the slide to show.
+             */
+            function showSlide(index) {
+                // Boundary checks to prevent going out of range
+                if (index >= totalSlides || index < 0) {
+                    return;
+                }
+
+                // Get the current active slide before changing the index
+                const oldSlide = slides[currentSlide];
+                if (oldSlide) {
+                    // Add an 'exiting' class to trigger the fade-out animation
+                    oldSlide.classList.add('exiting');
+                    oldSlide.classList.remove('active');
+                    
+                    // Remove the 'exiting' class after the animation completes
+                    // to reset its state for the next time it appears.
+                    setTimeout(() => {
+                        oldSlide.classList.remove('exiting');
+                    }, 600); // Matches the CSS transition duration
+                }
+
+                // Update the current slide index
+                currentSlide = index;
+                
+                // Activate the new slide
+                const newSlide = slides[currentSlide];
+                if (newSlide) {
+                    newSlide.classList.add('active');
+                }
+
+                // Update the UI elements
+                updateProgressBar();
+            }
+
+            /**
+             * Updates the width of the progress bar based on the current slide.
+             */
+            function updateProgressBar() {
+                const progressPercentage = ((currentSlide + 1) / totalSlides) * 100;
+                progressBar.style.width = `${progressPercentage}%`;
+            }
+
+            // --- Event Listeners ---
+
+            // Touch/Click Navigation
+            navPrev.addEventListener('click', () => showSlide(currentSlide - 1));
+            navNext.addEventListener('click', () => showSlide(currentSlide + 1));
+
+            // Keyboard Navigation for accessibility and desktop users
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                    showSlide(currentSlide - 1);
+                } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+                    showSlide(currentSlide + 1);
+                }
+            });
+
+            // --- Initialization ---
+            // Show the first slide and set the initial progress bar state on load.
+            showSlide(0);
+        });
+    </script>
+
+</body>
+</html>
