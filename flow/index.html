@@ -1,3 +1,5 @@
+<!-- --- START OF FILE index.html --- -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,8 +31,10 @@
             --panel-shadow-color: rgba(0,0,0,0.3);
             --border-color: rgba(255, 255, 255, 0.1);
             --hover-bg-color: #374151;
+            --input-bg-color: #1F2937;
             --danger-color: #EF4444;
             --danger-hover-color: #DC2626;
+            --dropdown-bg-color: #1F2937;
         }
 
         html.light-mode {
@@ -41,10 +45,12 @@
             --panel-shadow-color: rgba(0,0,0,0.1);
             --border-color: rgba(0, 0, 0, 0.1);
             --hover-bg-color: #E5E7EB;
+            --input-bg-color: #FFFFFF;
             --success-color: #16A34A;
             --danger-color: #EF4444;
             --danger-hover-color: #DC2626;
             --accent-color-translucent: rgba(59, 130, 246, 0.15);
+            --dropdown-bg-color: #FFFFFF;
         }
 
         body {
@@ -134,17 +140,20 @@
             position: absolute;
             bottom: 100%;
             left: 0;
-            width: 250px;
+            width: 280px;
             background: var(--card-bg-color);
             border: 1px solid var(--border-color);
             border-radius: 0.75rem;
-            padding: 0.75rem;
+            padding: 1rem;
             margin-bottom: 0.5rem;
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
             opacity: 0;
             transform: translateY(10px);
             pointer-events: none;
             transition: opacity 0.3s ease, transform 0.3s ease;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 50;
         }
         #reminderControls.visible {
             opacity: 1;
@@ -155,6 +164,81 @@
         input[type=range]:focus { outline: none; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--hover-bg-color); border-radius: 4px; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent-color); cursor: pointer; margin-top: -6px; }
+
+        /* --- Custom Dropdown Styles --- */
+        .custom-select-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .custom-select-trigger {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            background-color: var(--input-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-color);
+        }
+        
+        .custom-select-trigger:hover {
+            border-color: var(--subtle-text-color);
+        }
+        
+        .custom-select-trigger.active {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px var(--accent-color-translucent);
+        }
+
+        .custom-select-trigger.active #selectArrow {
+            transform: rotate(180deg);
+        }
+
+        .custom-select-options {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            left: 0;
+            right: 0;
+            background-color: var(--dropdown-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        .custom-select-options.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .custom-option {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            color: var(--text-color);
+        }
+
+        .custom-option:hover {
+            background-color: var(--hover-bg-color);
+        }
+
+        .custom-option.selected {
+            background-color: var(--accent-color-translucent);
+            color: var(--accent-color);
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -209,13 +293,42 @@
                         <button id="reminderToggleBtn" class="flex items-center gap-2 subtle-text p-2 rounded-full custom-hover">
                             <span class="material-symbols-outlined text-base">notifications</span>
                         </button>
+                        
+                        <!-- Reminder Controls Popup -->
                         <div id="reminderControls">
-                            <label class="text-xs subtle-text mb-2 block">Reminder Interval</label>
-                            <div class="flex items-center gap-3">
-                                <input type="range" id="reminderSlider" min="0" max="30" step="1" value="0" class="flex-grow">
-                                <span id="reminderTimeLabel" class="text-sm font-medium w-16 text-right">Off</span>
+                            <!-- Time Slider -->
+                            <div class="mb-4">
+                                <label class="text-xs subtle-text mb-2 block font-medium">Reminder Interval</label>
+                                <div class="flex items-center gap-3">
+                                    <input type="range" id="reminderSlider" min="0" max="30" step="1" value="0" class="flex-grow">
+                                    <span id="reminderTimeLabel" class="text-sm font-medium w-16 text-right">Off</span>
+                                </div>
                             </div>
-                            <button id="setReminderBtn" class="w-full mt-3 accent-bg text-white text-sm font-semibold py-1.5 rounded-md">Set Reminder</button>
+
+                            <!-- Sound Selection (Custom Dropdown) -->
+                            <div class="mb-4">
+                                <label class="text-xs subtle-text mb-2 block font-medium">Notification Sound</label>
+                                <div class="flex items-center gap-2">
+                                    <div class="custom-select-container">
+                                        <div class="custom-select-trigger" id="customSelectTrigger">
+                                            <span id="selectedSoundText">Glass (Default)</span>
+                                            <span class="material-symbols-outlined text-sm" id="selectArrow">expand_more</span>
+                                        </div>
+                                        <div class="custom-select-options" id="customSelectOptions">
+                                            <div class="custom-option selected" data-value="glass">Glass (Default)</div>
+                                            <div class="custom-option" data-value="digital">Digital Blip</div>
+                                            <div class="custom-option" data-value="chime">Soft Chime</div>
+                                            <div class="custom-option" data-value="sonar">Sonar Ping</div>
+                                            <div class="custom-option" data-value="arcade">Arcade Up</div>
+                                        </div>
+                                    </div>
+                                    <button id="previewSoundBtn" class="flex-shrink-0 p-2 rounded-md bg-[var(--hover-bg-color)] hover:bg-[var(--accent-color)] hover:text-white transition-colors border border-[var(--border-color)]" title="Preview Sound">
+                                        <span class="material-symbols-outlined text-sm">play_arrow</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button id="setReminderBtn" class="w-full accent-bg text-white text-sm font-semibold py-2 rounded-md shadow-sm hover:shadow-md transition-all">Set Reminder</button>
                         </div>
                     </div>
                     <div id="lastUpdatedContainer" class="hidden md:flex items-center gap-1.5 subtle-text text-xs ml-2">
@@ -237,11 +350,11 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- 3D Panel & Theme Management (Unchanged) ---
+        // --- 3D Panel & Theme Management ---
         const panel = document.getElementById('trackerPanel');
         let isDragging = false, previousMouseX, previousMouseY, currentRotationX = 0, currentRotationY = 0;
         const SENSITIVITY = 0.25, MAX_ROTATION_X = 15;
-        panel.addEventListener('mousedown', (e) => { if (e.target.closest('button, input, a, .slider')) return; isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY; panel.style.transition = 'transform 0.05s linear'; });
+        panel.addEventListener('mousedown', (e) => { if (e.target.closest('button, input, a, .slider, .custom-select-trigger, .custom-option')) return; isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY; panel.style.transition = 'transform 0.05s linear'; });
         document.addEventListener('mousemove', (e) => { if (!isDragging) return; const dx = e.clientX - previousMouseX, dy = e.clientY - previousMouseY; currentRotationY += dx * SENSITIVITY; currentRotationX -= dy * SENSITIVITY; currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX)); panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`; previousMouseX = e.clientX; previousMouseY = e.clientY; });
         document.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; panel.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; panel.style.transform = `rotateX(0deg) rotateY(0deg)`; currentRotationX = 0; currentRotationY = 0; } });
         panel.ondragstart = () => false;
@@ -250,7 +363,121 @@
         themeToggle.addEventListener('click', () => { const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
         applyTheme(localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
 
-        // --- APPLICATION LOGIC (Unchanged) ---
+        // --- AUDIO ENGINE (Web Audio API) ---
+        const AudioEngine = {
+            ctx: null,
+            init: function() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            play: function(type) {
+                this.init();
+                const t = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                switch (type) {
+                    case 'digital':
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(600, t);
+                        osc.frequency.exponentialRampToValueAtTime(100, t + 0.15);
+                        gain.gain.setValueAtTime(0.1, t);
+                        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+                        osc.start(t);
+                        osc.stop(t + 0.15);
+                        break;
+                    case 'chime':
+                        this.playTone(523.25, 'sine', 0.5); // C5
+                        setTimeout(() => this.playTone(659.25, 'sine', 0.5), 50); // E5
+                        setTimeout(() => this.playTone(783.99, 'sine', 0.5), 100); // G5
+                        break;
+                    case 'sonar':
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(800, t);
+                        gain.gain.setValueAtTime(0.2, t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+                        osc.start(t);
+                        osc.stop(t + 1.0);
+                        setTimeout(() => {
+                            const osc2 = this.ctx.createOscillator();
+                            const gain2 = this.ctx.createGain();
+                            osc2.connect(gain2);
+                            gain2.connect(this.ctx.destination);
+                            osc2.frequency.setValueAtTime(800, this.ctx.currentTime);
+                            gain2.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                            gain2.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.8);
+                            osc2.start();
+                            osc2.stop(this.ctx.currentTime + 0.8);
+                        }, 300);
+                        break;
+                    case 'arcade':
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(220, t);
+                        osc.frequency.linearRampToValueAtTime(880, t + 0.2);
+                        gain.gain.setValueAtTime(0.05, t);
+                        gain.gain.linearRampToValueAtTime(0, t + 0.2);
+                        osc.start(t);
+                        osc.stop(t + 0.2);
+                        break;
+                    case 'glass':
+                    default:
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(1200, t);
+                        gain.gain.setValueAtTime(0.1, t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+                        osc.start(t);
+                        osc.stop(t + 0.5);
+                        break;
+                }
+            },
+            playTone: function(freq, type, duration) {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            }
+        };
+
+        // --- NOTIFICATION MESSAGES ---
+        const NOTIFICATION_MESSAGES = [
+            // Funny / Casual
+            { text: "Feed the log monster! 🦖", emoji: "🦖" },
+            { text: "Ring ring! Log that thing! ☎️", emoji: "☎️" },
+            { text: "Ghosting your tracker? 👻", emoji: "👻" },
+            { text: "Stats or it didn't happen. 📉", emoji: "📉" },
+            { text: "Your logs are getting lonely. 🥺", emoji: "🥺" },
+            { text: "I see you... not logging. 🕵️", emoji: "🕵️" },
+            { text: "Donut forget to log! 🍩", emoji: "🍩" },
+            { text: "Stay cool, log calls. 🧊", emoji: "🧊" },
+            { text: "Paint the chart green. 🎨", emoji: "🎨" },
+            { text: "Time is ticking! ⏳", emoji: "⏳" },
+            { text: "Light up the board! 💡", emoji: "💡" },
+            { text: "You're on fire! 🔥", emoji: "🔥" },
+            { text: "Level up! 🆙", emoji: "🆙" },
+            // Professional
+            { text: "Time to update your records. 📋", emoji: "📋" },
+            { text: "Please log your recent calls. 📞", emoji: "📞" },
+            { text: "Reminder: Track your activity. ⏰", emoji: "⏰" },
+            { text: "Keep your metrics up to date. 📊", emoji: "📊" },
+            { text: "Consistency is key. 🗝️", emoji: "🗝️" },
+            { text: "Track your progress. 🚀", emoji: "🚀" },
+            { text: "Ready to log the next one? 💭", emoji: "💭" },
+            { text: "Keep the momentum going. ⏩", emoji: "⏩" }
+        ];
+
+        // --- APPLICATION LOGIC ---
         const callListContainer = document.getElementById('callListContainer');
         const emptyState = document.getElementById('emptyState');
         const progressText = document.getElementById('progressText');
@@ -264,17 +491,25 @@
         const reminderSlider = document.getElementById('reminderSlider');
         const reminderTimeLabel = document.getElementById('reminderTimeLabel');
         const setReminderBtn = document.getElementById('setReminderBtn');
+        const previewSoundBtn = document.getElementById('previewSoundBtn');
+        
+        // Custom Select Elements
+        const customSelectTrigger = document.getElementById('customSelectTrigger');
+        const customSelectOptions = document.getElementById('customSelectOptions');
+        const selectedSoundText = document.getElementById('selectedSoundText');
+        const customOptions = document.querySelectorAll('.custom-option');
 
         const getInitialState = () => ({
             calls: [],
             lastUpdated: null,
-            reminderInterval: 0, // in minutes
+            reminderInterval: 0,
             reminderTimerId: null,
+            soundPreference: 'glass'
         });
         let state = getInitialState();
 
         function loadState() {
-            const savedState = localStorage.getItem('callFlowStateV4');
+            const savedState = localStorage.getItem('callFlowStateV5');
             if (savedState) {
                 const parsedState = JSON.parse(savedState);
                 state = { ...getInitialState(), ...parsedState, reminderTimerId: null };
@@ -284,7 +519,7 @@
         function saveState() {
             state.lastUpdated = new Date().toISOString();
             const { reminderTimerId, ...stateToSave } = state;
-            localStorage.setItem('callFlowStateV4', JSON.stringify(stateToSave));
+            localStorage.setItem('callFlowStateV5', JSON.stringify(stateToSave));
         }
 
         function formatRelativeTime(dateString) {
@@ -353,6 +588,18 @@
             reminderSlider.value = state.reminderInterval;
             reminderTimeLabel.textContent = state.reminderInterval > 0 ? `${state.reminderInterval} min` : 'Off';
             reminderToggleBtn.style.color = state.reminderInterval > 0 ? 'var(--accent-color)' : 'var(--subtle-text-color)';
+            
+            // Update Custom Select UI
+            if(state.soundPreference) {
+                customOptions.forEach(opt => {
+                    if(opt.dataset.value === state.soundPreference) {
+                        opt.classList.add('selected');
+                        selectedSoundText.textContent = opt.textContent;
+                    } else {
+                        opt.classList.remove('selected');
+                    }
+                });
+            }
 
             renderChart();
             saveState();
@@ -384,10 +631,17 @@
         function showNotification() {
             panel.classList.add('is-reminding');
             panel.addEventListener('animationend', () => panel.classList.remove('is-reminding'), { once: true });
+            
+            AudioEngine.play(state.soundPreference || 'glass');
+            
+            // Pick a random message
+            const msg = NOTIFICATION_MESSAGES[Math.floor(Math.random() * NOTIFICATION_MESSAGES.length)];
+
             if (Notification.permission === 'granted') {
                 new Notification('Call Flow Reminder', {
-                    body: 'Time to log your calls!',
-                    icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔔</text></svg>'
+                    body: msg.text,
+                    // Dynamically generate SVG icon with the specific emoji
+                    icon: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>${msg.emoji}</text></svg>`
                 });
             }
             setReminder(state.reminderInterval);
@@ -410,6 +664,8 @@
             }
         }
 
+        // --- Event Listeners ---
+
         callListContainer.addEventListener('click', (e) => {
             const deleteBtn = e.target.closest('.delete-btn');
             if (deleteBtn) openDeleteConfirmModal(deleteBtn.dataset.id, deleteBtn.dataset.number);
@@ -421,12 +677,53 @@
         resetDataBtn.addEventListener('click', () => openResetConfirmModal());
 
         reminderToggleBtn.addEventListener('click', () => reminderControls.classList.toggle('visible'));
+        
         reminderSlider.addEventListener('input', (e) => {
             const minutes = e.target.value;
             reminderTimeLabel.textContent = minutes > 0 ? `${minutes} min` : 'Off';
         });
+
+        // Custom Select Logic
+        customSelectTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            customSelectOptions.classList.toggle('open');
+            customSelectTrigger.classList.toggle('active');
+        });
+
+        customOptions.forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const value = option.dataset.value;
+                state.soundPreference = value;
+                
+                // Update UI immediately
+                customOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                selectedSoundText.textContent = option.textContent;
+                
+                // Close dropdown
+                customSelectOptions.classList.remove('open');
+                customSelectTrigger.classList.remove('active');
+                
+                saveState();
+            });
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!customSelectTrigger.contains(e.target) && !customSelectOptions.contains(e.target)) {
+                customSelectOptions.classList.remove('open');
+                customSelectTrigger.classList.remove('active');
+            }
+        });
+
+        previewSoundBtn.addEventListener('click', () => {
+            AudioEngine.play(state.soundPreference || 'glass');
+        });
+
         setReminderBtn.addEventListener('click', () => {
             const minutes = parseInt(reminderSlider.value, 10);
+            AudioEngine.init();
             if (minutes > 0 && Notification.permission === 'default') {
                 Notification.requestPermission().then(permission => {
                     if (permission === 'granted') {
