@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transfer Rate</title>
+    <title>Transfer Rate Tracker</title>
 
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -155,15 +154,20 @@
         .danger-bg { background-color: var(--danger-color); }
         .danger-bg:hover { background-color: var(--danger-hover-color); }
 
-        .fixed-modal { z-index: 50; }
-        #themeToggle { z-index: 60; }
+        .fixed-modal { z-index: 70; }
     </style>
 </head>
 <body>
-    <button id="themeToggle" class="fixed top-6 right-6 p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Toggle theme">
-        <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
-        <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
-    </button>
+    <!-- Top Right Controls -->
+    <div class="fixed top-6 right-6 flex items-center gap-2 z-[60]">
+        <a href="https://isaiart.com/smt" class="p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Back to Hub">
+            <span class="material-symbols-outlined">home</span>
+        </a>
+        <button id="themeToggle" class="p-3 rounded-full custom-hover transition-colors shadow-lg" aria-label="Toggle theme">
+            <span id="theme-icon-light" class="material-symbols-outlined">light_mode</span>
+            <span id="theme-icon-dark" class="material-symbols-outlined">dark_mode</span>
+        </button>
+    </div>
 
     <div id="scene">
         <main id="trackerPanel" class="space-y-6">
@@ -334,7 +338,7 @@
         const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
         applyTheme(savedTheme);
 
-        // --- APPLICATION LOGIC ---
+        // --- APPLICATION LOGIC (Unchanged) ---
         const totalCallsEl = document.getElementById('totalCalls');
         const totalTransfersEl = document.getElementById('totalTransfers');
         const keptRateEl = document.getElementById('keptRate');
@@ -399,7 +403,6 @@
                 const rate = (keptCalls / state.totalCalls) * 100;
                 const rateToShow = Math.max(0, rate);
                 const oldRateText = keptRateEl.textContent;
-                // UPDATED: Display percentage with one decimal place
                 const newRateText = `${rateToShow.toFixed(1)}%`; 
                 
                 keptRateEl.textContent = newRateText;
@@ -407,4 +410,135 @@
                 
                 if (rateToShow >= 90) keptRateEl.style.color = rateGreen;
                 else if (rateToShow >= 75) keptRateEl.style.color = accentColor;
-                else 
+                else keptRateEl.style.color = rateRed;
+            } else {
+                keptRateEl.textContent = `0.0%`; 
+                keptRateEl.style.color = subtleTextColor;
+            }
+
+            transferListContainer.innerHTML = ''; 
+
+            if (state.transfers.length === 0) {
+                transferListContainer.appendChild(emptyStateEl);
+                emptyStateEl.classList.remove('hidden');
+            } else {
+                [...state.transfers].reverse().forEach(transfer => {
+                    const transferEl = document.createElement('div');
+                    transferEl.className = 'flex items-center justify-between p-3 list-item-bg rounded-lg list-item-base list-item-enter-from shadow';
+                    transferEl.dataset.id = transfer.id;
+                    transferEl.innerHTML = `
+                        <div class="flex-grow pr-4 overflow-hidden">
+                            <p class="text-inherit truncate">${escapeHTML(transfer.note)}</p>
+                            <p class="text-xs subtle-text">${new Date(transfer.timestamp).toLocaleString()}</p>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            <button class="edit-btn p-2 rounded-full custom-hover transition-colors" aria-label="Edit note"><span class="material-symbols-outlined text-sm">edit</span></button>
+                            <button class="delete-btn p-2 rounded-full custom-hover transition-colors" aria-label="Delete note"><span class="material-symbols-outlined text-sm">delete</span></button>
+                        </div>`;
+                    transferListContainer.appendChild(transferEl);
+                    
+                    requestAnimationFrame(() => {
+                        transferEl.classList.remove('list-item-enter-from');
+                        transferEl.classList.add('list-item-enter-active');
+                        transferEl.addEventListener('animationend', () => {
+                            transferEl.classList.remove('list-item-enter-active');
+                        }, { once: true });
+                    });
+                });
+            }
+            
+            if (state.lastUpdated) lastUpdatedEl.textContent = `Last updated ${formatRelativeTime(new Date(state.lastUpdated))}`;
+            else lastUpdatedEl.textContent = 'No updates yet.';
+            
+            saveState();
+        }
+        
+        function handleAddTransfer() {
+            const note = transferNoteInput.value.trim();
+            if (note) {
+                state.transfers.push({ id: Date.now(), note, timestamp: new Date().toISOString() });
+                transferNoteInput.value = '';
+                render();
+            }
+        }
+
+        function handleListClick(e) {
+            const target = e.target.closest('button');
+            if (!target) return;
+            const transferEl = target.closest('[data-id]');
+            if (!transferEl) return;
+            const transferId = Number(transferEl.dataset.id);
+
+            if (target.classList.contains('delete-btn')) {
+                transferEl.classList.add('list-item-exit-active');
+                transferEl.addEventListener('transitionend', () => {
+                    state.transfers = state.transfers.filter(t => t.id !== transferId);
+                    render();
+                }, { once: true });
+            } else if (target.classList.contains('edit-btn')) {
+                const transferToEdit = state.transfers.find(t => t.id === transferId);
+                if (transferToEdit) {
+                    state.editingTransferId = transferId;
+                    editNoteInput.value = transferToEdit.note;
+                    editModal.classList.remove('hidden');
+                    editNoteInput.focus();
+                }
+            }
+        }
+
+        function handleSaveEdit() {
+            const newNote = editNoteInput.value.trim();
+            if (newNote && state.editingTransferId !== null) {
+                const transferIndex = state.transfers.findIndex(t => t.id === state.editingTransferId);
+                if (transferIndex > -1) state.transfers[transferIndex].note = newNote;
+                closeEditModal();
+                render();
+            }
+        }
+
+        function handleResetData() {
+            state = getInitialState();
+            localStorage.removeItem('transferTrackerState'); 
+            state.lastUpdated = null;
+            closeResetModal();
+            render();
+        }
+
+        function closeEditModal() { state.editingTransferId = null; editModal.classList.add('hidden'); }
+        function openResetModal() { resetConfirmModal.classList.remove('hidden'); }
+        function closeResetModal() { resetConfirmModal.classList.add('hidden'); }
+
+        function escapeHTML(str) { const div = document.createElement('div'); div.appendChild(document.createTextNode(str)); return div.innerHTML; }
+
+        function formatRelativeTime(date) {
+            const now = new Date(); const seconds = Math.round((now - date) / 1000);
+            const minutes = Math.round(seconds / 60); const hours = Math.round(minutes / 60);
+            const days = Math.round(hours / 24);
+            if (seconds < 10) return `a few seconds ago`; if (seconds < 60) return `${seconds}s ago`;
+            if (minutes < 2) return `1m ago`; if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 2) return `1h ago`; if (hours < 24) return `${hours}h ago`;
+            if (days < 2) return `yesterday`; return `${days}d ago`;
+        }
+
+        incrementCallsBtn.addEventListener('click', () => { state.totalCalls++; render(); });
+        decrementCallsBtn.addEventListener('click', () => { if (state.totalCalls > 0) { state.totalCalls--; render(); } });
+        addTransferBtn.addEventListener('click', handleAddTransfer);
+        transferNoteInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleAddTransfer(); });
+        transferListContainer.addEventListener('click', handleListClick);
+        
+        saveEditBtn.addEventListener('click', handleSaveEdit);
+        cancelEditBtn.addEventListener('click', closeEditModal);
+        editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEditModal(); });
+        editNoteInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSaveEdit(); });
+
+        resetDataBtn.addEventListener('click', openResetModal);
+        confirmResetBtn.addEventListener('click', handleResetData);
+        cancelResetBtn.addEventListener('click', closeResetModal);
+        resetConfirmModal.addEventListener('click', (e) => { if (e.target === resetConfirmModal) closeResetModal(); });
+
+        loadState();
+        render();
+    });
+    </script>
+</body>
+</html>
