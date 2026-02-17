@@ -3,292 +3,424 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebP Converter</title>
+    <title>WebP Tool</title>
+    
+    <!-- Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Icons: Google Material Symbols -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- JSZip & FileSaver for Bulk Handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        black: '#000000',
+                        white: '#ffffff',
+                        offwhite: '#f0f0f0'
+                    },
+                    boxShadow: {
+                        'hard': '4px 4px 0px 0px rgba(0,0,0,1)',
+                        'hard-sm': '2px 2px 0px 0px rgba(0,0,0,1)',
+                        'hard-hover': '1px 1px 0px 0px rgba(0,0,0,1)',
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #000; 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #333; 
         }
 
-        body {
-            background: #fff;
-            color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 2.5rem;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 800px;
-            text-align: center;
-        }
-
-        h1 {
-            font-weight: 800;
-            font-size: 2.5rem;
-            margin-bottom: 2rem;
-            letter-spacing: -0.03em;
-        }
-
-        .drop-zone {
-            border: 2px solid #000;
-            border-radius: 20px;
-            padding: 2.5rem;
-            margin: 2rem 0;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: #fff;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        .drop-zone:hover {
-            background: #000;
-            color: #fff;
-            transform: translateY(-2px);
-        }
-
-        .drop-zone p {
-            font-weight: 600;
-            font-size: 1.2rem;
-        }
-
-        .files-list {
-            margin: 2rem 0;
-            display: grid;
-            gap: 1.5rem;
-        }
-
-        .file-item {
-            background: #fff;
-            border: 2px solid #000;
-            border-radius: 12px;
-            padding: 1.5rem;
-            display: grid;
-            gap: 1rem;
-            text-align: left;
-        }
-
-        .file-preview {
-            max-height: 200px;
-            object-fit: contain;
-            margin: 0 auto;
-            display: block;
-            border-radius: 8px;
-        }
-
-        .file-name {
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .options {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin: 2rem 0;
-        }
-
-        select {
-            padding: 0.8rem 1.5rem;
-            border: 2px solid #000;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1rem;
-            background: #fff;
-            cursor: pointer;
-            text-align: center;
-            appearance: none;
+        /* Range Slider Styling */
+        input[type=range] {
             -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
         }
-
-        select:hover {
-            background: #000;
-            color: #fff;
-        }
-
-        button {
-            padding: 0.8rem 1.5rem;
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
             border: 2px solid #000;
-            border-radius: 12px;
-            font-weight: 800;
-            font-size: 1rem;
-            background: #000;
-            color: #fff;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            transition: all 0.3s ease;
-        }
-
-        button:hover {
             background: #fff;
-            color: #000;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 2px 2px 0 #000;
         }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #000;
         }
-
-        .error {
-            color: #000;
-            font-weight: 600;
-            margin: 1.5rem 0;
-            padding: 1rem;
-            border: 2px solid #000;
-            border-radius: 12px;
-            display: none;
+        
+        /* Loader Animation */
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #FFF;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
         }
-
-        @media (max-width: 600px) {
-            body {
-                padding: 1.5rem;
-            }
-
-            h1 {
-                font-size: 2rem;
-            }
-
-            .drop-zone {
-                padding: 1.5rem;
-            }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>WebP Converter</h1>
+<body class="bg-offwhite text-black h-screen w-full overflow-hidden flex flex-col lg:flex-row p-4 gap-4 selection:bg-black selection:text-white">
+
+    <!-- Left Panel: Controls (Fixed on Desktop) -->
+    <aside class="w-full lg:w-[400px] flex flex-col gap-4 h-auto lg:h-full flex-shrink-0 overflow-y-auto no-scrollbar">
         
-        <div class="drop-zone" id="dropZone">
-            <p>Drop WebP images or click to browse</p>
-            <input type="file" id="fileInput" accept="image/webp" multiple style="display: none">
+        <!-- Upload Zone -->
+        <div id="dropZone" class="group relative border-4 border-black bg-white p-8 text-center cursor-pointer transition-all duration-200 hover:bg-black hover:text-white shadow-hard hover:shadow-hard-hover hover:translate-x-[2px] hover:translate-y-[2px] flex flex-col items-center justify-center min-h-[200px]">
+            <input type="file" id="fileInput" accept="image/webp" multiple class="hidden">
+            <span class="material-symbols-outlined text-5xl mb-3 group-hover:scale-110 transition-transform">add_photo_alternate</span>
+            <h2 class="text-lg font-black uppercase tracking-tight">Drop WebP Files</h2>
+            <p class="text-xs font-bold opacity-60 uppercase tracking-widest mt-1">Click to Browse</p>
         </div>
 
-        <div class="error" id="error"></div>
+        <!-- Settings Panel -->
+        <div class="border-4 border-black p-5 bg-white shadow-hard flex-grow flex flex-col justify-between">
+            <div>
+                <div class="flex items-center gap-2 mb-6 border-b-2 border-black pb-2">
+                    <span class="material-symbols-outlined">tune</span> 
+                    <span class="font-black uppercase tracking-wider text-sm">Settings</span>
+                </div>
 
-        <div class="files-list" id="filesList"></div>
+                <!-- Format Selection -->
+                <div class="mb-5">
+                    <label class="block font-bold text-xs uppercase mb-2 tracking-wide">Output Format</label>
+                    <div class="relative">
+                        <select id="formatSelect" class="w-full appearance-none bg-white border-2 border-black p-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-black cursor-pointer shadow-hard-sm">
+                            <option value="image/jpeg">JPG (Joint Photographic Experts Group)</option>
+                            <option value="image/png">PNG (Portable Network Graphics)</option>
+                        </select>
+                        <span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-sm">expand_more</span>
+                    </div>
+                </div>
 
-        <div class="options">
-            <select id="formatSelect">
-                <option value="image/jpeg">JPG</option>
-                <option value="image/png">PNG</option>
-            </select>
-            <button id="convertBtn" disabled>Convert All</button>
+                <!-- Quality Slider -->
+                <div id="qualityControl" class="mb-6">
+                    <div class="flex justify-between mb-2 items-end">
+                        <label class="font-bold text-xs uppercase tracking-wide">Quality</label>
+                        <span id="qualityValue" class="font-mono font-bold text-sm bg-black text-white px-1">90%</span>
+                    </div>
+                    <input type="range" id="qualitySlider" min="1" max="100" value="90">
+                </div>
+            </div>
+
+            <!-- Stats & Actions -->
+            <div class="mt-auto pt-4 border-t-2 border-black border-dashed">
+                <div class="flex justify-between mb-4 text-xs font-mono font-bold">
+                    <span>FILES: <span id="fileCount">0</span></span>
+                    <span>SIZE: <span id="totalSize">0 MB</span></span>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <button id="convertBtn" disabled class="w-full bg-black text-white border-2 border-black p-4 font-black uppercase tracking-widest text-sm flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white hover:text-black transition-colors shadow-hard hover:shadow-hard-hover hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none">
+                        <span class="btn-text">Convert All</span>
+                        <span class="material-symbols-outlined icon-arrow text-lg">arrow_forward</span>
+                        <span class="loader hidden"></span>
+                    </button>
+                    
+                    <button id="clearBtn" class="w-full bg-white text-black border-2 border-black p-2 font-bold uppercase text-xs hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors">
+                        Clear Queue
+                    </button>
+                </div>
+            </div>
         </div>
-    </div>
+    </aside>
+
+    <!-- Right Panel: Queue (Scrollable) -->
+    <main class="flex-grow border-4 border-black bg-white shadow-hard flex flex-col overflow-hidden h-full relative">
+        <!-- Queue Header -->
+        <div class="p-4 border-b-4 border-black flex justify-between items-center bg-white z-10">
+            <h2 class="font-black uppercase tracking-tighter text-xl flex items-center gap-2">
+                <span class="material-symbols-outlined">layers</span> Queue
+            </h2>
+            <div class="flex gap-2">
+                <span class="w-3 h-3 bg-black rounded-full"></span>
+                <span class="w-3 h-3 border-2 border-black rounded-full"></span>
+            </div>
+        </div>
+
+        <!-- Scrollable Content Area -->
+        <div class="flex-grow overflow-y-auto p-4 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiMwMDAiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==')]">
+            
+            <!-- Empty State -->
+            <div id="emptyState" class="h-full flex flex-col items-center justify-center text-black/30 select-none">
+                <span class="material-symbols-outlined text-7xl mb-2">grid_off</span>
+                <p class="font-bold text-xl uppercase tracking-widest">No Files</p>
+            </div>
+
+            <!-- Grid -->
+            <div id="filesGrid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 hidden pb-20">
+                <!-- Items injected here -->
+            </div>
+        </div>
+    </main>
 
     <script>
+        // DOM Elements
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
-        const filesList = document.getElementById('filesList');
+        const filesGrid = document.getElementById('filesGrid');
+        const emptyState = document.getElementById('emptyState');
         const convertBtn = document.getElementById('convertBtn');
+        const clearBtn = document.getElementById('clearBtn');
         const formatSelect = document.getElementById('formatSelect');
-        const errorDiv = document.getElementById('error');
+        const qualitySlider = document.getElementById('qualitySlider');
+        const qualityValue = document.getElementById('qualityValue');
+        const qualityControl = document.getElementById('qualityControl');
+        const fileCountDisplay = document.getElementById('fileCount');
+        const totalSizeDisplay = document.getElementById('totalSize');
+
         let files = [];
 
+        // Format Selection Logic
+        formatSelect.addEventListener('change', () => {
+            if (formatSelect.value === 'image/png') {
+                qualityControl.style.opacity = '0.3';
+                qualityControl.style.pointerEvents = 'none';
+            } else {
+                qualityControl.style.opacity = '1';
+                qualityControl.style.pointerEvents = 'auto';
+            }
+        });
+
+        // Quality Slider Logic
+        qualitySlider.addEventListener('input', (e) => {
+            qualityValue.textContent = `${e.target.value}%`;
+        });
+
+        // Drag & Drop Handlers
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            dropZone.style.background = '#000';
-            dropZone.style.color = '#fff';
+            dropZone.classList.add('bg-black', 'text-white', 'scale-[1.02]');
         });
 
         dropZone.addEventListener('dragleave', (e) => {
             e.preventDefault();
-            dropZone.style.background = '#fff';
-            dropZone.style.color = '#000';
+            dropZone.classList.remove('bg-black', 'text-white', 'scale-[1.02]');
         });
 
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            dropZone.style.background = '#fff';
-            dropZone.style.color = '#000';
+            dropZone.classList.remove('bg-black', 'text-white', 'scale-[1.02]');
             handleFiles(Array.from(e.dataTransfer.files));
         });
 
-        dropZone.addEventListener('click', () => {
-            fileInput.click();
-        });
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFiles(Array.from(e.target.files)));
 
-        fileInput.addEventListener('change', (e) => {
-            handleFiles(Array.from(e.target.files));
-        });
-
+        // File Handling
         function handleFiles(newFiles) {
-            errorDiv.style.display = 'none';
-            
             const validFiles = newFiles.filter(file => file.type === 'image/webp');
             
-            if (validFiles.length === 0) {
-                errorDiv.textContent = 'Please select WebP image files only.';
-                errorDiv.style.display = 'block';
+            if (validFiles.length === 0 && newFiles.length > 0) {
+                alert('Only WebP files are allowed.');
                 return;
             }
 
-            files = [...files, ...validFiles];
-            updateFilesList();
-            convertBtn.disabled = files.length === 0;
-        }
-
-        function updateFilesList() {
-            filesList.innerHTML = '';
-            
-            files.forEach((file, index) => {
-                const reader = new FileReader();
-                const fileItem = document.createElement('div');
-                fileItem.className = 'file-item';
-                
-                reader.onload = (e) => {
-                    fileItem.innerHTML = `
-                        <img src="${e.target.result}" class="file-preview" alt="${file.name}">
-                        <div class="file-name">${file.name}</div>
-                        <button onclick="removeFile(${index})" style="width: 100%">Remove</button>
-                    `;
-                };
-                
-                reader.readAsDataURL(file);
-                filesList.appendChild(fileItem);
+            validFiles.forEach(file => {
+                if (!files.some(f => f.name === file.name && f.size === file.size)) {
+                    files.push(file);
+                }
             });
+
+            updateUI();
         }
 
         function removeFile(index) {
             files.splice(index, 1);
-            updateFilesList();
-            convertBtn.disabled = files.length === 0;
+            updateUI();
         }
 
+        function clearAll() {
+            files = [];
+            updateUI();
+        }
+
+        clearBtn.addEventListener('click', clearAll);
+
+        function formatBytes(bytes, decimals = 1) {
+            if (!+bytes) return '0 B';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        function updateUI() {
+            if (files.length === 0) {
+                emptyState.style.display = 'flex';
+                filesGrid.classList.add('hidden');
+                convertBtn.disabled = true;
+                fileCountDisplay.textContent = '0';
+                totalSizeDisplay.textContent = '0 MB';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            filesGrid.classList.remove('hidden');
+            convertBtn.disabled = false;
+
+            fileCountDisplay.textContent = files.length;
+            const totalSize = files.reduce((acc, file) => acc + file.size, 0);
+            totalSizeDisplay.textContent = formatBytes(totalSize);
+
+            filesGrid.innerHTML = '';
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                
+                const card = document.createElement('div');
+                card.className = 'border-2 border-black bg-white p-2 flex flex-col gap-2 relative group hover:shadow-hard-sm transition-all';
+                
+                card.innerHTML = `
+                    <div class="aspect-square bg-gray-100 border border-black overflow-hidden relative">
+                        <div class="absolute inset-0 flex items-center justify-center text-gray-300">
+                            <span class="material-symbols-outlined animate-spin">refresh</span>
+                        </div>
+                        <img class="w-full h-full object-contain relative z-10 opacity-0 transition-opacity duration-300" onload="this.style.opacity=1">
+                    </div>
+                    <div class="flex justify-between items-center px-1">
+                        <div class="overflow-hidden">
+                            <h4 class="font-bold truncate text-xs uppercase">${file.name.split('.')[0]}</h4>
+                            <p class="text-[10px] font-mono text-gray-500">${formatBytes(file.size)}</p>
+                        </div>
+                        <button onclick="removeFile(${index})" class="text-black hover:text-red-600 transition-colors">
+                            <span class="material-symbols-outlined text-lg">close</span>
+                        </button>
+                    </div>
+                `;
+
+                reader.onload = (e) => {
+                    const img = card.querySelector('img');
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+
+                filesGrid.appendChild(card);
+            });
+        }
+
+        // Conversion Logic
         convertBtn.addEventListener('click', async () => {
-            const format = formatSelect.value;
-            const quality = format === 'image/jpeg' ? 0.9 : undefined;
+            const btnText = convertBtn.querySelector('.btn-text');
+            const btnIcon = convertBtn.querySelector('.icon-arrow');
+            const loader = convertBtn.querySelector('.loader');
             
-            for (const file of files) {
+            convertBtn.disabled = true;
+            btnText.textContent = 'Processing...';
+            btnIcon.classList.add('hidden');
+            loader.classList.remove('hidden');
+
+            const format = formatSelect.value;
+            const quality = parseInt(qualitySlider.value) / 100;
+            const extension = format === 'image/jpeg' ? 'jpg' : 'png';
+            
+            const zip = new JSZip();
+            const folder = zip.folder("converted_images");
+
+            try {
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const blob = await convertSingleFile(file, format, quality);
+                    const newName = file.name.replace(/\.[^/.]+$/, "") + "." + extension;
+                    
+                    if (files.length === 1) {
+                        saveAs(blob, newName);
+                    } else {
+                        folder.file(newName, blob);
+                    }
+                    
+                    btnText.textContent = `${i + 1}/${files.length}`;
+                }
+
+                if (files.length > 1) {
+                    btnText.textContent = 'Zipping...';
+                    const content = await zip.generateAsync({type: "blob"});
+                    saveAs(content, "neo_converted_images.zip");
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert('An error occurred during conversion.');
+            } finally {
+                convertBtn.disabled = false;
+                btnText.textContent = 'Convert All';
+                btnIcon.classList.remove('hidden');
+                loader.classList.add('hidden');
+            }
+        });
+
+        function convertSingleFile(file, format, quality) {
+            return new Promise((resolve, reject) => {
                 const img = new Image();
+                const url = URL.createObjectURL(file);
                 
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     canvas.width = img.width;
                     canvas.height = img.height;
-                    
                     const ctx = canvas.getContext('2d');
+                    
+                    if (format === 'image/jpeg') {
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    }
+                    
                     ctx.drawImage(img, 0, 0);
                     
                     canvas.toBlob((blob) => {
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `${file.name.replace('.webp', '')}.${format === 'image/jpeg' ? 'jpg' : 'png'}`;
-                        a.click();
                         URL.revokeObjectURL(url);
+                        if (blob) resolve(blob);
+                        else reject(new Error('Conversion failed'));
                     }, format, quality);
                 };
                 
-                img.src = URL.createObjectURL(file);
-            }
-        });
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Image load failed'));
+                };
+                
+                img.src = url;
+            });
+        }
     </script>
 </body>
 </html>

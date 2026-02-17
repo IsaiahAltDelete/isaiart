@@ -5,13 +5,77 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>THE SPELLBOOK</title>
     
-    <!-- Google Fonts for improved typography -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=MedievalSharp&display=swap" rel="stylesheet">
 
     <style>
-        /* =======================
-           Reset and Base Styles
-        ======================= */
+        :root {
+            /* Parchment palette */
+            --parchment-light: #f4e8c1;
+            --parchment: #e8d5a3;
+            --parchment-dark: #d4bc82;
+            --parchment-shadow: #c4a96a;
+            --ink: #2c1810;
+            --ink-light: #4a3728;
+            --ink-faded: #6b5744;
+            --gold: #c8a415;
+            --gold-bright: #e8c830;
+            --gold-dim: #a08010;
+            --leather: #3d2b1f;
+            --leather-light: #5c3d2e;
+            --leather-dark: #2a1a10;
+            --blood-red: #8b1a1a;
+
+            /* School colors - richer, more saturated */
+            --abjuration: #3aa5a0;
+            --conjuration: #4a8fcc;
+            --divination: #9b6db7;
+            --enchantment: #d4a017;
+            --evocation: #cc3333;
+            --illusion: #8090a0;
+            --necromancy: #50b860;
+            --transmutation: #d4782a;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes flickerGlow {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes parchmentUnfurl {
+            from { opacity: 0; transform: scale(0.95) translateY(15px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 5px rgba(200, 164, 21, 0.2); }
+            50% { box-shadow: 0 0 15px rgba(200, 164, 21, 0.4); }
+        }
+
+        @keyframes floatIn {
+            from { opacity: 0; transform: translateY(40px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -19,13 +83,17 @@
         }
 
         body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
+            font-family: 'Cormorant Garamond', serif;
+            background-color: var(--leather-dark);
+            color: var(--ink);
             line-height: 1.6;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, rgba(60, 35, 20, 0.3) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(60, 35, 20, 0.3) 0%, transparent 50%),
+                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
 
         a {
@@ -33,116 +101,341 @@
             text-decoration: none;
         }
 
-        /* =======================
-               Header
-        ======================= */
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 12px; }
+        ::-webkit-scrollbar-track { background: var(--leather-dark); }
+        ::-webkit-scrollbar-thumb {
+            background: var(--leather-light);
+            border-radius: 6px;
+            border: 2px solid var(--leather-dark);
+        }
+        ::-webkit-scrollbar-thumb:hover { background: var(--parchment-shadow); }
+
+        /* ===================== HEADER ===================== */
         header {
-            background-color: #1e1e1e;
-            color: #ffffff;
-            padding: 20px 0;
+            background: linear-gradient(180deg, var(--leather-dark) 0%, var(--leather) 50%, var(--leather-dark) 100%);
+            color: var(--parchment-light);
+            padding: 30px 20px 25px;
             text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
             position: sticky;
             top: 0;
             z-index: 1000;
+            border-bottom: 3px solid var(--gold-dim);
+            box-shadow:
+                0 4px 20px rgba(0,0,0,0.6),
+                inset 0 -1px 0 rgba(200, 164, 21, 0.3);
+            animation: slideDown 0.6s ease-out;
+        }
+
+        header::before {
+            content: '⚔';
+            display: block;
+            font-size: 1.2em;
+            color: var(--gold);
+            margin-bottom: 5px;
+            letter-spacing: 20px;
+            text-indent: 20px;
+            opacity: 0.7;
         }
 
         header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            letter-spacing: 2px;
+            font-family: 'Cinzel Decorative', serif;
+            font-size: 2.8em;
+            font-weight: 900;
+            letter-spacing: 6px;
+            background: linear-gradient(135deg, var(--gold-bright), var(--gold), var(--gold-dim), var(--gold-bright));
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 4s linear infinite;
+            text-shadow: none;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
         }
 
         header p {
-            font-size: 1.2em;
-            color: #b0b0b0;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.15em;
+            color: var(--parchment-shadow);
+            font-style: italic;
+            margin-top: 6px;
+            letter-spacing: 1px;
         }
 
-        /* =======================
-               Main Content
-        ======================= */
+        header .ornament {
+            display: block;
+            color: var(--gold-dim);
+            font-size: 0.9em;
+            margin-top: 8px;
+            opacity: 0.5;
+            letter-spacing: 4px;
+        }
+
+        /* ===================== MAIN ===================== */
         main {
             flex: 1;
-            padding: 20px;
-            max-width: 1200px;
+            padding: 25px 20px;
+            max-width: 1250px;
             margin: 0 auto;
             width: 100%;
         }
 
-        /* =======================
-            Search and Filters
-        ======================= */
+        /* ===================== SEARCH & FILTERS ===================== */
         #search-filter {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 12px;
+            margin-bottom: 25px;
             justify-content: center;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--parchment-dark), var(--parchment), var(--parchment-dark));
+            border-radius: 4px;
+            border: 2px solid var(--parchment-shadow);
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+            position: relative;
+            animation: parchmentUnfurl 0.5s ease-out 0.2s both;
         }
+
+        #search-filter::before,
+        #search-filter::after {
+            content: '✦';
+            position: absolute;
+            top: -8px;
+            color: var(--gold);
+            font-size: 1em;
+            background: var(--parchment-dark);
+            padding: 0 8px;
+        }
+        #search-filter::before { left: 20px; }
+        #search-filter::after { right: 20px; }
 
         #search-filter input,
         #search-filter select,
         #favorites-toggle {
-            padding: 10px 15px;
+            padding: 10px 16px;
             font-size: 1em;
-            border: 1px solid #444;
-            border-radius: 5px;
-            background-color: #1e1e1e;
-            color: #e0e0e0;
-            transition: border-color 0.3s, background-color 0.3s, color 0.3s;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 600;
+            border: 2px solid var(--parchment-shadow);
+            border-radius: 3px;
+            background: var(--parchment-light);
+            color: var(--ink);
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #search-filter input { min-width: 240px; }
+
+        #search-filter input::placeholder {
+            color: var(--ink-faded);
+            font-style: italic;
         }
 
         #search-filter input:focus,
-        #search-filter select:focus,
-        #favorites-toggle:focus {
-            border-color: #ffffff;
+        #search-filter select:focus {
+            border-color: var(--gold);
             outline: none;
+            box-shadow:
+                inset 0 2px 4px rgba(0,0,0,0.1),
+                0 0 8px rgba(200, 164, 21, 0.3);
+        }
+
+        #search-filter select {
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234a3728' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
         }
 
         #favorites-toggle {
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
+            border: 2px solid var(--parchment-shadow);
+            user-select: none;
         }
 
-        /* =======================
-               Spells Container
-        ======================= */
+        #favorites-toggle:hover {
+            border-color: var(--gold);
+            background: var(--parchment);
+        }
+
+        #favorites-toggle input { cursor: pointer; accent-color: var(--blood-red); }
+
+        /* ===================== SCHOOL LEGEND ===================== */
+        #school-legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px 18px;
+            margin-bottom: 20px;
+            padding: 12px 20px;
+            animation: fadeIn 0.6s ease-out 0.4s both;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Cinzel', serif;
+            font-size: 0.75em;
+            font-weight: 600;
+            color: var(--parchment);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0.85;
+            transition: opacity 0.2s;
+        }
+
+        .legend-item:hover { opacity: 1; }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 0 6px currentColor;
+        }
+
+        /* ===================== SPELLS GRID ===================== */
         #spells-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 18px;
         }
 
         .spell-card {
-            background-color: #1e1e1e;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            background: linear-gradient(145deg, var(--parchment-light), var(--parchment), var(--parchment-dark));
+            padding: 18px 18px 15px;
+            border-radius: 4px;
+            border: 2px solid var(--parchment-shadow);
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             position: relative;
+            overflow: hidden;
+            transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow:
+                0 3px 10px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.4);
+            animation: parchmentUnfurl 0.4s ease-out both;
+        }
+
+        /* Staggered animation delays for cards */
+        .spell-card:nth-child(1) { animation-delay: 0.05s; }
+        .spell-card:nth-child(2) { animation-delay: 0.08s; }
+        .spell-card:nth-child(3) { animation-delay: 0.11s; }
+        .spell-card:nth-child(4) { animation-delay: 0.14s; }
+        .spell-card:nth-child(5) { animation-delay: 0.17s; }
+        .spell-card:nth-child(6) { animation-delay: 0.20s; }
+        .spell-card:nth-child(7) { animation-delay: 0.23s; }
+        .spell-card:nth-child(8) { animation-delay: 0.26s; }
+        .spell-card:nth-child(9) { animation-delay: 0.29s; }
+        .spell-card:nth-child(10) { animation-delay: 0.32s; }
+        .spell-card:nth-child(11) { animation-delay: 0.35s; }
+        .spell-card:nth-child(12) { animation-delay: 0.38s; }
+        .spell-card:nth-child(13) { animation-delay: 0.41s; }
+        .spell-card:nth-child(14) { animation-delay: 0.44s; }
+        .spell-card:nth-child(15) { animation-delay: 0.47s; }
+        .spell-card:nth-child(16) { animation-delay: 0.50s; }
+        .spell-card:nth-child(17) { animation-delay: 0.53s; }
+        .spell-card:nth-child(18) { animation-delay: 0.56s; }
+        .spell-card:nth-child(19) { animation-delay: 0.59s; }
+        .spell-card:nth-child(20) { animation-delay: 0.62s; }
+
+        /* Parchment texture overlay */
+        .spell-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            border-radius: 4px;
+        }
+
+        /* School accent stripe on left edge */
+        .spell-card::after {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 5px;
+            background: var(--school-color, var(--gold));
+            border-radius: 4px 0 0 4px;
+            transition: width 0.3s ease;
         }
 
         .spell-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+            transform: translateY(-6px) scale(1.01);
+            box-shadow:
+                0 8px 25px rgba(0,0,0,0.4),
+                0 0 15px rgba(200, 164, 21, 0.15),
+                inset 0 1px 0 rgba(255,255,255,0.5);
+            border-color: var(--gold);
+        }
+
+        .spell-card:hover::after {
+            width: 7px;
         }
 
         .spell-card h3 {
-            margin-bottom: 10px;
-            font-size: 1.2em;
+            font-family: 'Cinzel', serif;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+            font-weight: 700;
             text-transform: capitalize;
+            padding-left: 10px;
+            line-height: 1.3;
         }
 
-        .spell-card p {
-            margin-bottom: 5px;
-            font-size: 0.95em;
-            color: #c0c0c0;
+        .spell-card .spell-meta {
+            padding-left: 10px;
+            font-size: 0.92em;
+            color: var(--ink-light);
+        }
+
+        .spell-card .spell-meta p {
+            margin-bottom: 3px;
+        }
+
+        .spell-card .spell-meta strong {
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .spell-level-badge {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: var(--ink);
+            color: var(--parchment-light);
+            font-family: 'Cinzel', serif;
+            font-size: 0.7em;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 3px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+
+        .spell-school-icon {
+            position: absolute;
+            top: 12px;
+            right: 40px;
+            font-size: 1.3em;
+            opacity: 0.3;
+            transition: opacity 0.3s;
+        }
+
+        .spell-card:hover .spell-school-icon {
+            opacity: 0.6;
         }
 
         .favorite-btn {
@@ -152,220 +445,404 @@
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 1.2em;
-            color: #555;
-            transition: color 0.3s;
+            font-size: 1.3em;
+            color: var(--parchment-shadow);
+            transition: all 0.3s ease;
+            z-index: 2;
         }
 
         .favorite-btn.favorited {
-            color: #ff4757;
+            color: var(--blood-red);
+            text-shadow: 0 0 6px rgba(139, 26, 26, 0.4);
         }
 
         .favorite-btn:hover {
-            color: #ff4757;
+            color: var(--blood-red);
+            transform: scale(1.2);
         }
 
-        /* =======================
-               Spell Details Modal
-        ======================= */
+        /* ===================== SPELL DETAILS MODAL ===================== */
         #spell-details {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0,0,0,0.95);
-            color: #e0e0e0;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 8, 3, 0.92);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
             overflow-y: auto;
-            padding: 40px;
+            padding: 40px 20px;
             z-index: 1001;
             display: none;
+            opacity: 0;
+            transition: opacity 0.35s ease;
         }
 
-        #spell-details #close-details {
-            background-color: #ff5c5c;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-            font-size: 1em;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            transition: background-color 0.3s;
-        }
-
-        #spell-details #close-details:hover {
-            background-color: #e04848;
+        #spell-details.visible {
+            opacity: 1;
         }
 
         #spell-details #details-content {
-            background-color: #2c2c2c;
-            padding: 20px;
-            border-radius: 8px;
+            max-width: 720px;
+            margin: 0 auto;
+            background: linear-gradient(160deg, var(--parchment-light), var(--parchment), var(--parchment-dark), var(--parchment));
+            padding: 35px 40px;
+            border-radius: 4px;
+            border: 3px solid var(--gold-dim);
+            box-shadow:
+                0 10px 50px rgba(0,0,0,0.6),
+                0 0 30px rgba(200, 164, 21, 0.1),
+                inset 0 1px 0 rgba(255,255,255,0.4);
+            position: relative;
+            overflow: hidden;
+            transform: translateY(30px) scale(0.97);
+            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        #spell-details.visible #details-content {
+            transform: translateY(0) scale(1);
+        }
+
+        /* Decorative corner flourishes */
+        #details-content::before,
+        #details-content::after {
+            content: '❧';
+            position: absolute;
+            font-size: 1.5em;
+            color: var(--gold-dim);
+            opacity: 0.4;
+        }
+        #details-content::before { top: 8px; left: 14px; }
+        #details-content::after { bottom: 8px; right: 14px; transform: rotate(180deg); }
+
+        #spell-details #close-details {
+            display: block;
+            max-width: 720px;
+            margin: 0 auto 15px;
+            background: var(--leather);
+            border: 2px solid var(--gold-dim);
+            padding: 9px 24px;
+            cursor: pointer;
+            font-family: 'Cinzel', serif;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: var(--parchment);
+            border-radius: 3px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        #spell-details #close-details:hover {
+            background: var(--leather-light);
+            border-color: var(--gold-bright);
+            box-shadow: 0 0 10px rgba(200, 164, 21, 0.2);
         }
 
         #spell-details h2 {
-            margin-bottom: 15px;
-            font-size: 2em;
+            font-family: 'Cinzel Decorative', serif;
+            margin-bottom: 5px;
+            font-size: 1.9em;
+            font-weight: 700;
             text-transform: capitalize;
+            line-height: 1.2;
         }
 
-        #spell-details p {
+        .detail-school-tag {
+            display: inline-block;
+            font-family: 'Cinzel', serif;
+            font-size: 0.75em;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 3px 12px;
+            border-radius: 3px;
+            margin-bottom: 18px;
+            border: 1px solid;
+        }
+
+        .detail-divider {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+            margin: 18px 0;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 20px;
             margin-bottom: 10px;
-            line-height: 1.6;
         }
 
-        #spell-details strong {
-            color: #ffcc00;
+        .detail-field {
+            font-size: 1.05em;
+        }
+
+        .detail-field strong {
+            font-family: 'Cinzel', serif;
+            font-size: 0.8em;
+            font-weight: 700;
+            color: var(--ink);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .detail-field span {
+            color: var(--ink-light);
+        }
+
+        .detail-description {
+            font-size: 1.1em;
+            line-height: 1.7;
+            color: var(--ink-light);
+            text-align: justify;
+        }
+
+        .detail-description strong {
+            font-family: 'Cinzel', serif;
+            font-size: 0.8em;
+            font-weight: 700;
+            color: var(--ink);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .higher-level-box {
+            background: rgba(139, 26, 26, 0.06);
+            border-left: 3px solid var(--blood-red);
+            padding: 12px 16px;
+            margin-top: 15px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .higher-level-box strong {
+            font-family: 'Cinzel', serif;
+            font-size: 0.8em;
+            font-weight: 700;
+            color: var(--blood-red);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 4px;
         }
 
         #spell-details #favorite-detail-btn {
             background: none;
-            border: none;
+            border: 2px solid var(--parchment-shadow);
             cursor: pointer;
-            font-size: 1.5em;
-            color: #555;
-            transition: color 0.3s;
-            margin-top: 15px;
+            font-family: 'Cinzel', serif;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: var(--ink-faded);
+            transition: all 0.3s ease;
+            margin-top: 18px;
+            padding: 8px 20px;
+            border-radius: 3px;
+            letter-spacing: 1px;
         }
 
         #spell-details #favorite-detail-btn.favorited {
-            color: #ff4757;
+            color: var(--blood-red);
+            border-color: var(--blood-red);
+            background: rgba(139, 26, 26, 0.06);
         }
 
         #spell-details #favorite-detail-btn:hover {
-            color: #ff4757;
+            color: var(--blood-red);
+            border-color: var(--blood-red);
+            transform: scale(1.02);
         }
 
-        /* =======================
-               Footer
-        ======================= */
+        /* ===================== FOOTER ===================== */
         footer {
-            background-color: #1e1e1e;
-            color: #b0b0b0;
+            background: linear-gradient(180deg, var(--leather-dark) 0%, var(--leather) 50%, var(--leather-dark) 100%);
+            color: var(--parchment-shadow);
             text-align: center;
-            padding: 15px 0;
-            font-size: 0.9em;
+            padding: 20px 0;
+            font-family: 'Cinzel', serif;
+            font-size: 0.85em;
+            letter-spacing: 2px;
+            border-top: 3px solid var(--gold-dim);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
         }
 
-        /* =======================
-               Loading Indicator
-        ======================= */
+        footer .footer-ornament {
+            color: var(--gold-dim);
+            opacity: 0.5;
+            margin-bottom: 5px;
+            letter-spacing: 8px;
+        }
+
+        /* ===================== LOADING ===================== */
         #loading {
             text-align: center;
-            font-size: 1.5em;
-            margin-top: 50px;
-            color: #ffffff;
+            margin-top: 60px;
+            animation: fadeIn 0.5s ease;
         }
 
-        /* =======================
-               Pagination
-        ======================= */
+        #loading .loading-text {
+            font-family: 'Cinzel', serif;
+            font-size: 1.5em;
+            color: var(--parchment);
+            letter-spacing: 3px;
+            animation: flickerGlow 2s ease-in-out infinite;
+        }
+
+        #loading .loading-sub {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1em;
+            color: var(--parchment-shadow);
+            font-style: italic;
+            margin-top: 8px;
+        }
+
+        .loading-rune {
+            display: inline-block;
+            font-size: 2em;
+            color: var(--gold);
+            margin: 15px 8px 0;
+            animation: flickerGlow 1.5s ease-in-out infinite;
+        }
+
+        .loading-rune:nth-child(2) { animation-delay: 0.3s; }
+        .loading-rune:nth-child(3) { animation-delay: 0.6s; }
+
+        /* ===================== PAGINATION ===================== */
         #pagination {
             display: flex;
             justify-content: center;
             align-items: center;
             margin-top: 30px;
-            gap: 10px;
+            gap: 12px;
+            animation: fadeInUp 0.4s ease-out;
         }
 
         #pagination button {
-            padding: 8px 16px;
-            font-size: 1em;
-            border: none;
-            border-radius: 5px;
-            background-color: #4a4a4a;
-            color: #e0e0e0;
+            padding: 9px 22px;
+            font-family: 'Cinzel', serif;
+            font-size: 0.85em;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: 2px solid var(--gold-dim);
+            border-radius: 3px;
+            background: var(--leather);
+            color: var(--parchment);
             cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        #pagination button:disabled {
-            background-color: #777;
-            cursor: not-allowed;
+            transition: all 0.3s ease;
         }
 
         #pagination button:hover:not(:disabled) {
-            background-color: #5a5a5a;
+            background: var(--leather-light);
+            border-color: var(--gold-bright);
+            box-shadow: 0 0 10px rgba(200, 164, 21, 0.2);
+        }
+
+        #pagination button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
         }
 
         #pagination span {
-            font-size: 1em;
-            color: #c0c0c0;
+            font-family: 'Cinzel', serif;
+            font-size: 0.9em;
+            color: var(--parchment-shadow);
+            letter-spacing: 1px;
         }
 
-        /* =======================
-               Favorites Toggle
-        ======================= */
+        /* ===================== SPELL COUNT ===================== */
+        #spell-count {
+            text-align: center;
+            font-family: 'Cinzel', serif;
+            font-size: 0.8em;
+            color: var(--parchment-shadow);
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            animation: fadeIn 0.5s ease-out 0.6s both;
+        }
+
+        /* ===================== NO RESULTS ===================== */
+        .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 50px 20px;
+            font-family: 'Cinzel', serif;
+            font-size: 1.2em;
+            color: var(--parchment-shadow);
+            letter-spacing: 2px;
+        }
+
+        .no-results::before {
+            content: '🔮';
+            display: block;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        /* ===================== FAVORITES TOGGLE ===================== */
         #favorites-toggle {
             display: flex;
             align-items: center;
-            gap: 5px;
-            background-color: #1e1e1e;
-            color: #e0e0e0;
+            gap: 6px;
+            background: var(--parchment-light);
+            color: var(--ink);
+            font-weight: 600;
         }
 
         #favorites-toggle input {
             cursor: pointer;
         }
 
-        /* =======================
-               Responsive Design
-        ======================= */
-        @media (max-width: 600px) {
+        /* ===================== RESPONSIVE ===================== */
+        @media (max-width: 768px) {
+            header h1 { font-size: 2em; letter-spacing: 3px; }
+            header p { font-size: 1em; }
+
             #search-filter {
                 flex-direction: column;
-                align-items: center;
+                align-items: stretch;
             }
 
-            #search-filter input,
-            #search-filter select,
-            #favorites-toggle {
-                flex: 1 1 100%;
-                max-width: none;
+            #search-filter input { min-width: auto; }
+
+            #spells-container {
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 14px;
             }
 
-            .spell-card {
-                padding: 10px;
+            .detail-grid {
+                grid-template-columns: 1fr;
             }
 
-            .spell-card h3 {
-                font-size: 1.1em;
+            #spell-details #details-content {
+                padding: 25px 20px;
             }
 
-            .spell-card p {
-                font-size: 0.9em;
-            }
+            #spell-details h2 { font-size: 1.5em; }
+        }
 
-            #spell-details {
-                padding: 20px;
-            }
-
-            #spell-details h2 {
-                font-size: 1.5em;
-            }
+        @media (max-width: 480px) {
+            header h1 { font-size: 1.6em; }
+            main { padding: 15px 12px; }
+            .spell-card { padding: 14px 14px 12px; }
+            #search-filter { padding: 14px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- =======================
-             Header
-    ======================= -->
     <header>
         <h1>THE SPELLBOOK</h1>
-        <p>Your comprehensive guide to Dungeons & Dragons spells.</p>
+        <p>A Compendium of Arcane Knowledge for the Discerning Adventurer</p>
+        <span class="ornament">— ◆ ◇ ◆ —</span>
     </header>
 
-    <!-- =======================
-            Main Content
-    ======================= -->
     <main>
-        <!-- Search and Filters -->
         <section id="search-filter">
-            <input type="text" id="search" placeholder="Search spells by name...">
+            <input type="text" id="search" placeholder="Search the arcane archives...">
             <select id="class-filter">
                 <option value="">All Classes</option>
-                <!-- Dynamic options will be populated here -->
             </select>
             <select id="level-filter">
                 <option value="">All Levels</option>
@@ -382,50 +859,46 @@
             </select>
             <select id="school-filter">
                 <option value="">All Schools</option>
-                <!-- Dynamic options will be populated here -->
             </select>
             <label id="favorites-toggle">
                 <input type="checkbox" id="show-favorites">
-                Show Favorites
+                ★ Favourites
             </label>
         </section>
 
-        <!-- Loading Indicator -->
-        <div id="loading">Loading spells...</div>
+        <div id="school-legend"></div>
 
-        <!-- Spells Container -->
-        <section id="spells-container" style="display: none;">
-            <!-- Spells will be displayed here -->
-        </section>
+        <div id="spell-count"></div>
 
-        <!-- Pagination Controls -->
+        <div id="loading">
+            <div class="loading-text">Consulting the Archives...</div>
+            <div class="loading-sub">The ancient tomes reveal their secrets slowly</div>
+            <div>
+                <span class="loading-rune">᛭</span>
+                <span class="loading-rune">ᛟ</span>
+                <span class="loading-rune">᛭</span>
+            </div>
+        </div>
+
+        <section id="spells-container" style="display: none;"></section>
+
         <div id="pagination" style="display: none;">
-            <button id="prev-page">Previous</button>
+            <button id="prev-page">◄ Previous</button>
             <span id="page-info">Page 1 of 1</span>
-            <button id="next-page">Next</button>
+            <button id="next-page">Next ►</button>
         </div>
     </main>
 
-    <!-- =======================
-          Spell Details Modal
-    ======================= -->
     <section id="spell-details">
-        <button id="close-details">Close</button>
-        <div id="details-content">
-            <!-- Detailed spell info -->
-        </div>
+        <button id="close-details">✕ Close Tome</button>
+        <div id="details-content"></div>
     </section>
 
-    <!-- =======================
-               Footer
-    ======================= -->
     <footer>
-        <p>Isaiart &copy; 2024</p>
+        <div class="footer-ornament">⚜ ⚜ ⚜</div>
+        <p>Isaiart &copy; 2024 — Forged in Arcane Fire</p>
     </footer>
 
-    <!-- =======================
-            JavaScript Section
-    ======================= -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const API_BASE_URL = 'https://www.dnd5eapi.co';
@@ -450,8 +923,32 @@
             const prevPageBtn = document.getElementById('prev-page');
             const nextPageBtn = document.getElementById('next-page');
             const pageInfo = document.getElementById('page-info');
+            const spellCount = document.getElementById('spell-count');
 
-            // Debounce function to limit the rate of function calls
+            // School colors & icons
+            const schoolData = {
+                'abjuration':     { color: '#3aa5a0', icon: '🛡️', label: 'Abjuration' },
+                'conjuration':    { color: '#4a8fcc', icon: '🌀', label: 'Conjuration' },
+                'divination':     { color: '#9b6db7', icon: '🔮', label: 'Divination' },
+                'enchantment':    { color: '#d4a017', icon: '✨', label: 'Enchantment' },
+                'evocation':      { color: '#cc3333', icon: '🔥', label: 'Evocation' },
+                'illusion':       { color: '#8090a0', icon: '👁️', label: 'Illusion' },
+                'necromancy':     { color: '#50b860', icon: '💀', label: 'Necromancy' },
+                'transmutation':  { color: '#d4782a', icon: '⚗️', label: 'Transmutation' },
+            };
+
+            // Build school legend
+            function buildLegend() {
+                const legend = document.getElementById('school-legend');
+                Object.entries(schoolData).forEach(([key, data]) => {
+                    const item = document.createElement('div');
+                    item.className = 'legend-item';
+                    item.innerHTML = `<span class="legend-dot" style="background:${data.color}; color:${data.color};"></span>${data.icon} ${data.label}`;
+                    legend.appendChild(item);
+                });
+            }
+            buildLegend();
+
             function debounce(func, delay) {
                 let debounceTimer;
                 return function() {
@@ -462,24 +959,18 @@
                 }
             }
 
-            // Fetch data from API
             async function fetchData(endpoint) {
                 try {
                     const response = await fetch(`${API_BASE_URL}${endpoint}`);
-                    if (!response.ok) {
-                        throw new Error(`Error fetching ${endpoint}: ${response.statusText}`);
-                    }
-                    const data = await response.json();
-                    return data;
+                    if (!response.ok) throw new Error(`Error fetching ${endpoint}: ${response.statusText}`);
+                    return await response.json();
                 } catch (error) {
                     console.error(error);
                     return null;
                 }
             }
 
-            // Load Classes and Schools for Filters
             async function loadFilters() {
-                // Load Classes
                 const classesData = await fetchData('/api/classes');
                 if (classesData) {
                     classesData.results.forEach(cls => {
@@ -489,8 +980,6 @@
                         classFilter.appendChild(option);
                     });
                 }
-
-                // Load Schools
                 const schoolsData = await fetchData('/api/magic-schools');
                 if (schoolsData) {
                     schoolsData.results.forEach(school => {
@@ -502,38 +991,28 @@
                 }
             }
 
-            // Load All Spells
             async function loadSpells() {
-                // Check if spells are in localStorage
                 const storedSpells = localStorage.getItem('allSpells');
                 if (storedSpells) {
                     allSpells = JSON.parse(storedSpells);
-                    console.log('Loaded spells from localStorage.');
                     initializeApp();
                 } else {
                     const data = await fetchData('/api/spells');
                     if (data) {
                         allSpells = data.results;
-                        // Fetch detailed info for each spell
-                        // To improve performance, we'll fetch in batches
                         const batchSize = 20;
                         for (let i = 0; i < allSpells.length; i += batchSize) {
                             const batch = allSpells.slice(i, i + batchSize);
                             const spellPromises = batch.map(spell => fetchData(spell.url));
                             const spellDetails = await Promise.all(spellPromises);
                             allSpells.splice(i, batchSize, ...spellDetails.filter(spell => spell !== null));
-                            // Update progress (optional)
-                            console.log(`Fetched spells ${i + 1} to ${i + batch.length}`);
                         }
-                        // Save spells to localStorage
                         localStorage.setItem('allSpells', JSON.stringify(allSpells));
-                        console.log('Fetched and saved spells to localStorage.');
                         initializeApp();
                     }
                 }
             }
 
-            // Initialize the Application
             function initializeApp() {
                 filteredSpells = allSpells;
                 setupPagination();
@@ -543,54 +1022,66 @@
                 pagination.style.display = 'flex';
             }
 
-            // Display Spells based on current page and filters
+            function getSchoolColor(schoolIndex) {
+                return schoolData[schoolIndex]?.color || '#c8a415';
+            }
+
+            function getSchoolIcon(schoolIndex) {
+                return schoolData[schoolIndex]?.icon || '✦';
+            }
+
+            function getLevelLabel(level) {
+                if (level === 0) return 'Cantrip';
+                const suffixes = { 1: 'st', 2: 'nd', 3: 'rd' };
+                return `${level}${suffixes[level] || 'th'} Level`;
+            }
+
             function displaySpells() {
                 spellsContainer.innerHTML = '';
 
+                // Update spell count
+                spellCount.textContent = `${filteredSpells.length} spell${filteredSpells.length !== 1 ? 's' : ''} found in the archives`;
+
                 if (filteredSpells.length === 0) {
-                    spellsContainer.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;">No spells found.</p>';
+                    spellsContainer.innerHTML = '<div class="no-results">No spells match thy query.<br><span style="font-size:0.7em;opacity:0.6;">Perhaps try a different incantation...</span></div>';
                     pagination.style.display = 'none';
                     return;
                 }
 
                 totalPages = Math.ceil(filteredSpells.length / spellsPerPage);
-                if (totalPages > 1) {
-                    pagination.style.display = 'flex';
-                } else {
-                    pagination.style.display = 'none';
-                }
+                pagination.style.display = totalPages > 1 ? 'flex' : 'none';
 
                 const start = (currentPage - 1) * spellsPerPage;
                 const end = start + spellsPerPage;
                 const spellsToDisplay = filteredSpells.slice(start, end);
-
-                // Retrieve favorites from localStorage
                 const favoriteSpells = JSON.parse(localStorage.getItem('favoriteSpells')) || [];
 
                 spellsToDisplay.forEach(spell => {
                     const card = document.createElement('div');
                     card.classList.add('spell-card');
 
-                    // Assign color based on spell school
                     const schoolColor = getSchoolColor(spell.school.index);
+                    const schoolIcon = getSchoolIcon(spell.school.index);
+                    card.style.setProperty('--school-color', schoolColor);
 
                     card.innerHTML = `
+                        <span class="spell-school-icon">${schoolIcon}</span>
                         <h3 style="color: ${schoolColor};">${spell.name}</h3>
-                        <p><strong>Level:</strong> ${spell.level === 0 ? 'Cantrip' : spell.level}</p>
-                        <p><strong>School:</strong> ${spell.school.name}</p>
+                        <div class="spell-meta">
+                            <p><strong>School:</strong> ${spell.school.name}</p>
+                            <p><strong>Classes:</strong> ${spell.classes ? spell.classes.map(c => c.name).join(', ') : '—'}</p>
+                        </div>
+                        <span class="spell-level-badge">${getLevelLabel(spell.level)}</span>
                         <button class="favorite-btn ${favoriteSpells.includes(spell.index) ? 'favorited' : ''}" data-index="${spell.index}" title="Toggle Favorite">&#9733;</button>
                     `;
                     card.addEventListener('click', (e) => {
-                        // Prevent triggering when clicking the favorite button
                         if (e.target.classList.contains('favorite-btn')) return;
                         showSpellDetails(spell);
                     });
                     spellsContainer.appendChild(card);
                 });
 
-                // Attach event listeners to favorite buttons
-                const favoriteButtons = document.querySelectorAll('.favorite-btn');
-                favoriteButtons.forEach(button => {
+                document.querySelectorAll('.favorite-btn').forEach(button => {
                     button.addEventListener('click', (e) => {
                         e.stopPropagation();
                         toggleFavorite(button.dataset.index);
@@ -598,67 +1089,118 @@
                     });
                 });
 
-                // Update Pagination Info
                 pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-
-                // Enable/Disable Pagination Buttons
                 prevPageBtn.disabled = currentPage === 1;
                 nextPageBtn.disabled = currentPage === totalPages;
+
+                // Scroll to top of spells on page change
+                spellsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
 
-            // Setup Pagination Controls
             function setupPagination() {
                 currentPage = 1;
                 displaySpells();
             }
 
-            // Show Spell Details in Modal
             function showSpellDetails(spell) {
-                // Retrieve favorites from localStorage
                 const favoriteSpells = JSON.parse(localStorage.getItem('favoriteSpells')) || [];
                 const isFavorited = favoriteSpells.includes(spell.index);
-
-                // Assign color based on spell school
                 const schoolColor = getSchoolColor(spell.school.index);
+                const schoolIcon = getSchoolIcon(spell.school.index);
 
                 detailsContent.innerHTML = `
                     <h2 style="color: ${schoolColor};">${spell.name}</h2>
-                    <p><strong>Level:</strong> ${spell.level === 0 ? 'Cantrip' : spell.level}</p>
-                    <p><strong>School:</strong> ${spell.school.name}</p>
-                    <p><strong>Classes:</strong> ${spell.classes.map(cls => cls.name).join(', ')}</p>
-                    <p><strong>Casting Time:</strong> ${spell.casting_time}</p>
-                    <p><strong>Range:</strong> ${spell.range}</p>
-                    <p><strong>Components:</strong> ${spell.components.join(', ')}${spell.material ? ` (${spell.material})` : ''}</p>
-                    <p><strong>Duration:</strong> ${spell.duration}</p>
-                    <p><strong>Description:</strong></p>
-                    <p>${spell.desc.join('<br><br>')}</p>
-                    ${spell.higher_level ? `<p><strong>At Higher Levels:</strong></p><p>${spell.higher_level.join('<br><br>')}</p>` : ''}
-                    <button id="favorite-detail-btn" class="favorite-btn ${isFavorited ? 'favorited' : ''}" data-index="${spell.index}" title="Toggle Favorite">&#9733; ${isFavorited ? 'Unfavorite' : 'Favorite'}</button>
-                `;
-                spellDetailsModal.style.display = 'block';
+                    <span class="detail-school-tag" style="color: ${schoolColor}; border-color: ${schoolColor}; background: ${schoolColor}15;">
+                        ${schoolIcon} ${spell.school.name}
+                    </span>
 
-                // Attach event listener to the favorite button in the modal
+                    <hr class="detail-divider">
+
+                    <div class="detail-grid">
+                        <div class="detail-field">
+                            <strong>Level</strong>
+                            <span>${getLevelLabel(spell.level)}</span>
+                        </div>
+                        <div class="detail-field">
+                            <strong>Casting Time</strong>
+                            <span>${spell.casting_time}</span>
+                        </div>
+                        <div class="detail-field">
+                            <strong>Range</strong>
+                            <span>${spell.range}</span>
+                        </div>
+                        <div class="detail-field">
+                            <strong>Duration</strong>
+                            <span>${spell.duration}</span>
+                        </div>
+                        <div class="detail-field">
+                            <strong>Components</strong>
+                            <span>${spell.components.join(', ')}${spell.material ? ` (${spell.material})` : ''}</span>
+                        </div>
+                        <div class="detail-field">
+                            <strong>Classes</strong>
+                            <span>${spell.classes.map(cls => cls.name).join(', ')}</span>
+                        </div>
+                    </div>
+
+                    <hr class="detail-divider">
+
+                    <div class="detail-description">
+                        <strong>Description</strong>
+                        <p style="margin-top:6px;">${spell.desc.join('<br><br>')}</p>
+                    </div>
+
+                    ${spell.higher_level ? `
+                        <div class="higher-level-box">
+                            <strong>At Higher Levels</strong>
+                            <p>${spell.higher_level.join('<br><br>')}</p>
+                        </div>
+                    ` : ''}
+
+                    <button id="favorite-detail-btn" class="favorite-btn ${isFavorited ? 'favorited' : ''}" data-index="${spell.index}" title="Toggle Favorite" style="position:static; font-size:1em; padding:8px 20px; border:2px solid ${isFavorited ? '#8b1a1a' : '#c4a96a'}; border-radius:3px; margin-top:18px; font-family:'Cinzel',serif; letter-spacing:1px; ${isFavorited ? 'background:rgba(139,26,26,0.06);' : ''}">
+                        ${isFavorited ? '★ Unfavourite' : '☆ Favourite'}
+                    </button>
+                `;
+
+                // Show modal with animation
+                spellDetailsModal.style.display = 'block';
+                // Force reflow before adding class
+                spellDetailsModal.offsetHeight;
+                spellDetailsModal.classList.add('visible');
+                document.body.style.overflow = 'hidden';
+
                 const favoriteDetailBtn = document.getElementById('favorite-detail-btn');
                 favoriteDetailBtn.addEventListener('click', () => {
                     toggleFavorite(favoriteDetailBtn.dataset.index);
                     favoriteDetailBtn.classList.toggle('favorited');
-                    favoriteDetailBtn.innerHTML = favoriteDetailBtn.classList.contains('favorited') ? '★ Unfavorite' : '☆ Favorite';
+                    const nowFav = favoriteDetailBtn.classList.contains('favorited');
+                    favoriteDetailBtn.innerHTML = nowFav ? '★ Unfavourite' : '☆ Favourite';
+                    favoriteDetailBtn.style.borderColor = nowFav ? '#8b1a1a' : '#c4a96a';
+                    favoriteDetailBtn.style.background = nowFav ? 'rgba(139,26,26,0.06)' : 'none';
                 });
             }
 
-            // Close Spell Details Modal
-            closeDetailsBtn.addEventListener('click', () => {
-                spellDetailsModal.style.display = 'none';
+            function closeModal() {
+                spellDetailsModal.classList.remove('visible');
+                document.body.style.overflow = '';
+                setTimeout(() => {
+                    spellDetailsModal.style.display = 'none';
+                }, 350);
+            }
+
+            closeDetailsBtn.addEventListener('click', closeModal);
+
+            spellDetailsModal.addEventListener('click', (e) => {
+                if (e.target === spellDetailsModal) closeModal();
             });
 
-            // Close Modal when clicking outside the content
-            spellDetailsModal.addEventListener('click', (e) => {
-                if (e.target === spellDetailsModal) {
-                    spellDetailsModal.style.display = 'none';
+            // Close on Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && spellDetailsModal.style.display === 'block') {
+                    closeModal();
                 }
             });
 
-            // Toggle Favorite Status
             function toggleFavorite(spellIndex) {
                 let favoriteSpells = JSON.parse(localStorage.getItem('favoriteSpells')) || [];
                 if (favoriteSpells.includes(spellIndex)) {
@@ -667,13 +1209,9 @@
                     favoriteSpells.push(spellIndex);
                 }
                 localStorage.setItem('favoriteSpells', JSON.stringify(favoriteSpells));
-                // If showing favorites only, update the display
-                if (showFavoritesOnly) {
-                    applyFilters();
-                }
+                if (showFavoritesOnly) applyFilters();
             }
 
-            // Apply Filters based on user input
             function applyFilters() {
                 const searchTerm = searchInput.value.toLowerCase();
                 const selectedClass = classFilter.value;
@@ -696,44 +1234,20 @@
                 displaySpells();
             }
 
-            // Event Listeners for Search and Filters
             searchInput.addEventListener('input', debounce(applyFilters, 300));
             classFilter.addEventListener('change', applyFilters);
             levelFilter.addEventListener('change', applyFilters);
             schoolFilter.addEventListener('change', applyFilters);
             showFavoritesCheckbox.addEventListener('change', applyFilters);
 
-            // Pagination Button Event Listeners
             prevPageBtn.addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage--;
-                    displaySpells();
-                }
+                if (currentPage > 1) { currentPage--; displaySpells(); }
             });
 
             nextPageBtn.addEventListener('click', () => {
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    displaySpells();
-                }
+                if (currentPage < totalPages) { currentPage++; displaySpells(); }
             });
 
-            // Assign Colors to Spell Schools
-            function getSchoolColor(schoolIndex) {
-                const schoolColors = {
-                    'abjuration': '#1abc9c',     // Turquoise
-                    'conjuration': '#3498db',    // Blue
-                    'divination': '#9b59b6',     // Purple
-                    'enchantment': '#f1c40f',    // Yellow
-                    'evocation': '#e74c3c',      // Red
-                    'illusion': '#95a5a6',       // Gray
-                    'necromancy': '#2ecc71',     // Green
-                    'transmutation': '#e67e22',  // Orange
-                };
-                return schoolColors[schoolIndex] || '#ffffff'; // Default to white if not found
-            }
-
-            // Initialize the Application
             async function init() {
                 await loadFilters();
                 await loadSpells();

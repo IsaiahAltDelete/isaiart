@@ -3,1732 +3,659 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess AI vs AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Roboto:wght@300;400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <title>ENGINE vs ENGINE — Infinite Chess</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* Color Palette */
-            --primary: #1a237e;
-            --primary-light: #534bae;
-            --primary-dark: #000051;
-            --secondary: #009688;
-            --accent: #ffc107;
-            --bg-color: #f5f5f5;
-            --container-bg: #ffffff;
-            --text-color: #212121;
-            --text-secondary: #757575;
-            --square-light: #d2b48c;
-            --square-dark: #8b4513;
-            --highlight-color: rgba(255, 193, 7, 0.5);
-            --card-bg: #ffffff;
-            --card-active-bg: #f1f1f1;
-            --border-color: #e0e0e0;
-            --button-bg: var(--primary);
-            --button-text: white;
-            --button-hover: var(--primary-light);
-            --button-disabled: #bdbdbd;
-            --draw-button: #546e7a;
-            --resign-button: #d32f2f;
-            --theme-button: #37474f;
-            --infinite-button: #388e3c;
-            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-            --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12);
-            --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15);
-            --transition-fast: all 0.2s ease;
-            --transition-medium: all 0.3s ease;
-            --radius-sm: 4px;
-            --radius-md: 8px;
-            --radius-lg: 12px;
+            --bg: #0a0a0c;
+            --surface: #111114;
+            --surface-2: #19191e;
+            --surface-3: #222228;
+            --border: #2a2a32;
+            --border-glow: #3a3a45;
+            --text: #e8e6e3;
+            --text-dim: #8a8894;
+            --text-muted: #55535e;
+            --white-accent: #f0c94d;
+            --white-accent-dim: rgba(240, 201, 77, 0.15);
+            --black-accent: #7c6cf0;
+            --black-accent-dim: rgba(124, 108, 240, 0.15);
+            --danger: #e05555;
+            --success: #4ecb71;
+            --sq-light: #c8b898;
+            --sq-dark: #8b7355;
+            --sq-highlight: rgba(240, 201, 77, 0.45);
+            --sq-highlight-dark: rgba(240, 201, 77, 0.35);
+            --radius: 10px;
+            --radius-sm: 6px;
         }
-        
-        .dark-theme {
-            --primary: #5c6bc0;
-            --primary-light: #8e99f3;
-            --primary-dark: #26418f;
-            --bg-color: #121212;
-            --container-bg: #1e1e1e;
-            --text-color: #e0e0e0;
-            --text-secondary: #b0b0b0;
-            --square-light: #8d795b;
-            --square-dark: #5d3726;
-            --highlight-color: rgba(255, 193, 7, 0.3);
-            --card-bg: #2d2d2d;
-            --card-active-bg: #3d3d3d;
-            --border-color: #444444;
-            --button-bg: var(--primary);
-            --button-disabled: #444444;
-            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
-            --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.25);
-            --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.3);
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Roboto', sans-serif;
-            background-color: var(--bg-color);
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
-            margin: 0;
-            color: var(--text-color);
-            transition: var(--transition-medium);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            overflow-x: hidden;
         }
-        
-        .container {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            grid-template-rows: auto auto 1fr auto;
-            gap: 24px;
-            max-width: 1300px;
-            width: 95%;
-            padding: 32px;
-            background-color: var(--container-bg);
-            box-shadow: var(--shadow-lg);
-            border-radius: var(--radius-lg);
-            transition: var(--transition-medium);
-        }
-        
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Montserrat', sans-serif;
-            color: var(--text-color);
-            transition: var(--transition-medium);
-        }
-        
-        h1 {
-            grid-column: 1 / -1;
-            text-align: center;
-            font-weight: 600;
-            margin-bottom: 10px;
-            font-size: 28px;
-            letter-spacing: -0.5px;
-            position: relative;
-            padding-bottom: 10px;
-            transition: var(--transition-medium);
-        }
-        
-        h1::after {
+        body::before {
             content: '';
-            position: absolute;
-            left: 50%;
-            bottom: 0;
-            transform: translateX(-50%);
-            width: 60px;
-            height: 3px;
-            background-color: var(--accent);
-            border-radius: 3px;
-        }
-        
-        .game-area {
-            grid-column: 1;
-            grid-row: 2 / 4;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .thinking-area {
-            grid-column: 2;
-            grid-row: 2 / 4;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            gap: 16px;
-        }
-        
-        .card {
-            background-color: var(--card-bg);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-            transition: var(--transition-medium);
-        }
-        
-        .player-card {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            grid-template-rows: auto auto auto;
-            gap: 8px;
-            padding: 16px;
-            border-radius: var(--radius-md);
-            width: 100%;
-            margin-bottom: 8px;
-            transition: var(--transition-medium);
-            background-color: var(--card-bg);
-            box-shadow: var(--shadow-sm);
-            border-left: 4px solid transparent;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .player-card.active {
-            background-color: var(--card-active-bg);
-            box-shadow: var(--shadow-md);
-            border-left-color: var(--accent);
-        }
-        
-        .player-card.active::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background-color: var(--accent);
-        }
-        
-        .player-avatar {
-            grid-row: 1 / 4;
-            grid-column: 1;
-            font-size: 32px;
-            width: 56px;
-            height: 56px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: var(--card-active-bg);
-            border-radius: 50%;
-            box-shadow: var(--shadow-sm);
-            margin-right: 16px;
-            transition: var(--transition-medium);
-            border: 2px solid transparent;
-        }
-        
-        .player-card.active .player-avatar {
-            background-color: var(--accent);
-            color: #000;
-            border-color: #fff;
-            transform: scale(1.05);
-        }
-        
-        .player-name {
-            grid-row: 1;
-            grid-column: 2;
-            font-size: 18px;
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 600;
-            color: var(--text-color);
-            transition: var(--transition-medium);
-        }
-        
-        .player-timer {
-            grid-row: 2;
-            grid-column: 2;
-            font-size: 26px;
-            font-family: 'Roboto Mono', monospace;
-            font-weight: 400;
-            color: var(--secondary);
-            transition: var(--transition-medium);
-            letter-spacing: 1px;
-        }
-        
-        .win-count {
-            grid-row: 3;
-            grid-column: 2;
-            font-size: 14px;
-            color: var(--text-secondary);
-            transition: var(--transition-medium);
-        }
-        
-        .thinking-box {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 20px;
-            background-color: var(--card-bg);
-            border-radius: var(--radius-md);
-            border-left: 4px solid transparent;
-            opacity: 0.85;
-            transition: var(--transition-medium);
-            color: var(--text-color);
-            box-shadow: var(--shadow-sm);
-            position: relative;
-        }
-        
-        .thinking-box.active {
-            opacity: 1;
-            border-left-color: var(--accent);
-            box-shadow: var(--shadow-md);
-        }
-        
-        .thinking-title {
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 600;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            color: var(--text-color);
-            font-size: 16px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .thinking-title span {
-            margin-left: 12px;
-            font-size: 13px;
-            font-weight: normal;
-            animation: thinking 1.2s infinite;
-            color: var(--accent);
-        }
-        
-        @keyframes thinking {
-            0% { opacity: 0.4; }
-            50% { opacity: 1; }
-            100% { opacity: 0.4; }
-        }
-        
-        .thinking-content {
-            font-size: 14px;
-            line-height: 1.6;
-            color: var(--text-color);
-        }
-        
-        .move-consideration {
-            margin-bottom: 14px;
-            padding-left: 16px;
-            border-left: 2px solid var(--border-color);
-            transition: var(--transition-medium);
-        }
-        
-        .move-consideration strong {
-            color: var(--secondary);
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 600;
-            font-size: 14px;
-            display: block;
-            margin-bottom: 4px;
-        }
-        
-        .chessboard {
-            width: 100%;
-            max-width: 500px;
-            aspect-ratio: 1 / 1;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(8, 1fr);
-            border: 3px solid var(--primary-dark);
-            border-radius: var(--radius-sm);
-            box-shadow: var(--shadow-lg);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .coordinates {
-            position: absolute;
-            color: var(--text-secondary);
-            font-size: 12px;
-            font-family: 'Roboto Mono', monospace;
-            font-weight: 500;
-            transition: var(--transition-medium);
-        }
-        
-        .coordinate-file {
-            bottom: 2px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        
-        .coordinate-rank {
-            right: 2px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        
-        .square {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 40px;
-            cursor: default;
-            transition: background-color 0.2s;
-            position: relative;
-        }
-        
-        .square.white {
-            background-color: var(--square-light);
-        }
-        
-        .square.black {
-            background-color: var(--square-dark);
-        }
-        
-        .square.highlight {
-            position: relative;
-        }
-        
-        .square.highlight::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: var(--highlight-color);
-            z-index: 1;
-        }
-        
-        .piece {
-            width: 90%;
-            height: 90%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-            position: relative;
-            z-index: 2;
-            filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.5));
-            font-size: 0.9em;
-        }
-        
-        .piece-moving {
-            animation: piece-move 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-            z-index: 10;
-        }
-        
-        @keyframes piece-move {
-            0% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-20px) scale(1.25); }
-            100% { transform: translateY(0) scale(1); }
-        }
-        
-        .piece-white {
-            color: #ffffff;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-        }
-        
-        .piece-black {
-            color: #000000;
-            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
-        }
-        
-        .piece-tooltip {
-            position: absolute;
-            background-color: rgba(0, 0, 0, 0.85);
-            color: white;
-            padding: 6px 10px;
-            border-radius: var(--radius-sm);
-            font-size: 12px;
-            font-family: 'Montserrat', sans-serif;
-            bottom: 110%;
-            left: 50%;
-            transform: translateX(-50%);
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s, visibility 0.2s;
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 800px 600px at 20% 30%, rgba(240, 201, 77, 0.04), transparent),
+                radial-gradient(ellipse 600px 800px at 80% 70%, rgba(124, 108, 240, 0.04), transparent);
             pointer-events: none;
-            z-index: 20;
+            z-index: 0;
         }
-        
-        .piece:hover .piece-tooltip {
-            opacity: 1;
-            visibility: visible;
+        .header { text-align: center; padding: 28px 20px 20px; position: relative; z-index: 1; }
+        .header h1 { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
+        .header .subtitle { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-muted); }
+        .scoreboard { display: flex; justify-content: center; align-items: center; gap: 32px; padding: 0 20px 20px; position: relative; z-index: 1; }
+        .score-side { display: flex; align-items: center; gap: 12px; }
+        .score-side .engine-name { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+        .score-side.white-side .engine-name { color: var(--white-accent); }
+        .score-side.black-side .engine-name { color: var(--black-accent); }
+        .score-num { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 600; min-width: 36px; text-align: center; }
+        .score-side.white-side .score-num { color: var(--white-accent); }
+        .score-side.black-side .score-num { color: var(--black-accent); }
+        .score-divider { font-family: 'JetBrains Mono', monospace; font-size: 20px; color: var(--text-muted); }
+        .main { display: grid; grid-template-columns: 280px 1fr 320px; gap: 24px; max-width: 1200px; margin: 0 auto; padding: 0 24px 24px; position: relative; z-index: 1; }
+        .panel { display: flex; flex-direction: column; gap: 12px; }
+        .engine-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .engine-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: transparent; transition: background 0.3s ease; }
+        .engine-card.active-white::before { background: var(--white-accent); }
+        .engine-card.active-black::before { background: var(--black-accent); }
+        .engine-card.active-white { border-color: rgba(240, 201, 77, 0.25); background: linear-gradient(180deg, rgba(240, 201, 77, 0.05), var(--surface)); }
+        .engine-card.active-black { border-color: rgba(124, 108, 240, 0.25); background: linear-gradient(180deg, rgba(124, 108, 240, 0.05), var(--surface)); }
+        .engine-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .engine-identity { display: flex; align-items: center; gap: 10px; }
+        .engine-piece { font-size: 22px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--surface-2); }
+        .engine-card.active-white .engine-piece { background: var(--white-accent-dim); }
+        .engine-card.active-black .engine-piece { background: var(--black-accent-dim); }
+        .engine-label { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+        .engine-card.white-engine .engine-label { color: var(--white-accent); }
+        .engine-card.black-engine .engine-label { color: var(--black-accent); }
+        .engine-timer { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 500; color: var(--text-dim); letter-spacing: 2px; transition: color 0.3s; }
+        .engine-card.active-white .engine-timer { color: var(--white-accent); }
+        .engine-card.active-black .engine-timer { color: var(--black-accent); }
+        .engine-timer.low-time { color: var(--danger) !important; animation: pulse-time 1s infinite; }
+        @keyframes pulse-time { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .engine-thinking { font-size: 12px; color: var(--text-muted); min-height: 18px; margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
+        .thinking-dots::after { content: ''; animation: dots 1.4s steps(4, end) infinite; }
+        @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+        .captured-row { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 8px; min-height: 24px; }
+        .captured-row .cap-piece { font-size: 16px; opacity: 0.6; filter: grayscale(0.3); }
+        .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+        .settings-card h3 { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; }
+        .setting-group { margin-bottom: 14px; }
+        .setting-group:last-child { margin-bottom: 0; }
+        .setting-label { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .setting-value { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text); }
+        input[type="range"] { -webkit-appearance: none; width: 100%; height: 4px; background: var(--surface-3); border-radius: 2px; outline: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--text); cursor: pointer; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--border); }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); background: var(--white-accent); }
+        .board-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        .chessboard { width: 100%; max-width: 520px; aspect-ratio: 1; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); border-radius: var(--radius); overflow: hidden; box-shadow: 0 0 0 2px var(--border), 0 20px 60px rgba(0,0,0,0.5), 0 0 120px rgba(240,201,77,0.03); }
+        .sq { display: flex; justify-content: center; align-items: center; position: relative; }
+        .sq.light { background: var(--sq-light); }
+        .sq.dark { background: var(--sq-dark); }
+        .sq.hl.light { background: linear-gradient(135deg, var(--sq-light), var(--sq-highlight)); }
+        .sq.hl.dark { background: linear-gradient(135deg, var(--sq-dark), var(--sq-highlight-dark)); }
+        .sq .coord { position: absolute; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; pointer-events: none; opacity: 0.45; }
+        .sq.light .coord { color: var(--sq-dark); }
+        .sq.dark .coord { color: var(--sq-light); }
+        .coord-file { bottom: 2px; right: 3px; }
+        .coord-rank { top: 2px; left: 3px; }
+        .pc { font-size: clamp(28px, 5.5vw, 48px); z-index: 2; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); line-height: 1; user-select: none; }
+        .pc.moved { animation: land 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes land { 0% { transform: scale(0.7) translateY(-8px); opacity: 0.5; } 60% { transform: scale(1.12); } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+        .pc-w { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+        .pc-b { color: #1a1a1a; text-shadow: 0 1px 2px rgba(255,255,255,0.15); }
+        .status-bar { width: 100%; max-width: 520px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 16px; display: flex; align-items: center; gap: 10px; min-height: 44px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+        .status-dot.live { background: var(--success); animation: glow-dot 2s infinite; }
+        .status-dot.ended { background: var(--danger); }
+        @keyframes glow-dot { 0%, 100% { box-shadow: 0 0 4px rgba(78,203,113,0.4); } 50% { box-shadow: 0 0 10px rgba(78,203,113,0.7); } }
+        .status-text { font-size: 13px; color: var(--text-dim); flex: 1; }
+        .status-text strong { color: var(--text); font-weight: 600; }
+        .move-counter { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); }
+        .controls-row { display: flex; gap: 8px; width: 100%; max-width: 520px; }
+        .btn { flex: 1; padding: 10px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-dim); font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-glow); }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+        .btn.primary { background: var(--white-accent); color: #0a0a0c; border-color: var(--white-accent); }
+        .btn.primary:hover { background: #f5d565; }
+        .btn.active-toggle { border-color: var(--success); color: var(--success); }
+        .btn.active-toggle:hover { background: rgba(78,203,113,0.1); }
+        .btn svg { width: 14px; height: 14px; }
+        .analysis-panel { display: flex; flex-direction: column; gap: 12px; }
+        .analysis-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.3s; }
+        .analysis-box.active-w { border-color: rgba(240,201,77,0.3); }
+        .analysis-box.active-b { border-color: rgba(124,108,240,0.3); }
+        .analysis-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .analysis-header .ah-title { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); }
+        .analysis-box.active-w .ah-title { color: var(--white-accent); }
+        .analysis-box.active-b .ah-title { color: var(--black-accent); }
+        .eval-badge { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: var(--surface-3); color: var(--text-dim); }
+        .analysis-body { padding: 14px 16px; font-size: 13px; line-height: 1.65; color: var(--text-dim); max-height: 160px; overflow-y: auto; }
+        .analysis-body::-webkit-scrollbar { width: 4px; }
+        .analysis-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .analysis-line { margin-bottom: 8px; padding-left: 12px; border-left: 2px solid var(--border); }
+        .analysis-line:last-child { margin-bottom: 0; }
+        .analysis-line .al-label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 2px; }
+        .analysis-box.active-w .analysis-line { border-left-color: rgba(240,201,77,0.25); }
+        .analysis-box.active-b .analysis-line { border-left-color: rgba(124,108,240,0.25); }
+        .move-log { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; flex: 1; }
+        .move-log-header { padding: 10px 16px; border-bottom: 1px solid var(--border); font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); }
+        .move-log-body { padding: 10px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.8; color: var(--text-dim); max-height: 200px; overflow-y: auto; }
+        .move-log-body::-webkit-scrollbar { width: 4px; }
+        .move-log-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .move-num { color: var(--text-muted); }
+        .move-w { color: var(--white-accent); }
+        .move-b { color: var(--black-accent); }
+        .eval-bar-wrap { width: 100%; max-width: 520px; height: 6px; background: var(--black-accent-dim); border-radius: 3px; overflow: hidden; }
+        .eval-bar-fill { height: 100%; background: var(--white-accent); border-radius: 3px; width: 50%; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+        @media (max-width: 1100px) {
+            .main { grid-template-columns: 1fr; max-width: 560px; }
+            .panel { order: 2; flex-direction: row; gap: 12px; }
+            .panel > * { flex: 1; }
+            .board-wrap { order: 1; }
+            .analysis-panel { order: 3; }
         }
-        
-        .captured-pieces {
-            display: flex;
-            justify-content: space-between;
-            margin: 20px 0;
-            width: 100%;
-            gap: 16px;
-        }
-        
-        .captured-display {
-            position: relative;
-            padding: 12px 16px;
-            background-color: var(--card-bg);
-            border-radius: var(--radius-md);
-            min-height: 46px;
-            width: 48%;
-            cursor: pointer;
-            text-align: center;
-            transition: var(--transition-medium);
-            box-shadow: var(--shadow-sm);
-        }
-        
-        .captured-display:hover {
-            background-color: var(--card-active-bg);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
-        }
-        
-        .captured-title {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Montserrat', sans-serif;
-        }
-        
-        .captured-title:after {
-            content: '▼';
-            font-size: 10px;
-            margin-left: 5px;
-            opacity: 0.7;
-            transition: var(--transition-fast);
-        }
-        
-        .captured-display:hover .captured-title:after {
-            transform: rotate(180deg);
-        }
-        
-        .captured-count {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background-color: var(--accent);
-            color: #000;
-            font-size: 12px;
-            font-weight: 600;
-            border-radius: 12px;
-            min-width: 24px;
-            height: 24px;
-            text-align: center;
-            padding: 0 8px;
-            margin-left: 8px;
-            transition: var(--transition-medium);
-        }
-        
-        .captured-popup {
-            position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
-            width: 100%;
-            background-color: var(--container-bg);
-            border-radius: var(--radius-md);
-            padding: 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            z-index: 100;
-            box-shadow: var(--shadow-md);
-            opacity: 0;
-            visibility: hidden;
-            transition: var(--transition-medium);
-            max-height: 0;
-            overflow: hidden;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .captured-display:hover .captured-popup {
-            opacity: 1;
-            visibility: visible;
-            max-height: 200px;
-            padding: 12px;
-        }
-        
-        .captured-piece {
-            margin: 0 4px;
-            font-size: 28px;
-            line-height: 1;
-            filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.3));
-        }
-        
-        .no-pieces {
-            font-style: italic;
-            opacity: 0.7;
-            font-size: 13px;
-            padding: 8px;
-            color: var(--text-secondary);
-        }
-        
-        .controls {
-            grid-column: 1 / -1;
-            grid-row: 4;
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 10px;
-        }
-        
-        button {
-            padding: 10px 18px;
-            background-color: var(--button-bg);
-            color: var(--button-text);
-            border: none;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            font-size: 14px;
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 500;
-            transition: var(--transition-medium);
-            box-shadow: var(--shadow-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            letter-spacing: 0.3px;
-            min-width: 110px;
-        }
-        
-        button:hover {
-            background-color: var(--button-hover);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
-        }
-        
-        button:active {
-            transform: translateY(0);
-            box-shadow: var(--shadow-sm);
-        }
-        
-        button:disabled {
-            background-color: var(--button-disabled);
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-            opacity: 0.7;
-        }
-        
-        button.draw-btn {
-            background-color: var(--draw-button);
-        }
-        
-        button.resign-btn {
-            background-color: var(--resign-button);
-        }
-        
-        button.theme-btn {
-            background-color: var(--theme-button);
-        }
-        
-        button.infinite-btn {
-            background-color: var(--infinite-button);
-        }
-        
-        button.active {
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5) inset;
-            font-weight: 600;
-        }
-        
-        button svg {
-            margin-right: 6px;
-            width: 16px;
-            height: 16px;
-        }
-        
-        .move-history {
-            width: 100%;
-            max-height: 140px;
-            overflow-y: auto;
-            margin-top: 20px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 12px;
-            font-family: 'Roboto Mono', monospace;
-            font-size: 13px;
-            line-height: 1.6;
-            color: var(--text-color);
-            background-color: var(--card-bg);
-            transition: var(--transition-medium);
-        }
-        
-        .dialogue-box {
-            padding: 12px 16px;
-            background-color: var(--card-bg);
-            border-radius: var(--radius-md);
-            width: 100%;
-            min-height: 46px;
-            text-align: center;
-            font-style: italic;
-            font-size: 14px;
-            margin-top: 20px;
-            color: var(--text-color);
-            box-shadow: var(--shadow-sm);
-            transition: var(--transition-medium);
-            border-left: 4px solid var(--secondary);
-        }
-        
-        .typing-animation {
-            overflow: hidden;
-            border-right: .15em solid var(--accent);
-            white-space: nowrap;
-            margin: 0;
-            animation: typing 3.5s steps(40, end), blink-caret .75s step-end infinite;
-        }
-        
-        @keyframes typing {
-            from { width: 0 }
-            to { width: 100% }
-        }
-        
-        @keyframes blink-caret {
-            from, to { border-color: transparent }
-            50% { border-color: var(--accent); }
-        }
-        
-        /* Responsive Design */
-        @media (max-width: 1000px) {
-            .container {
-                grid-template-columns: 1fr;
-                grid-template-rows: auto auto auto auto auto;
-                width: 98%;
-                padding: 20px;
-                gap: 16px;
-            }
-            
-            .game-area {
-                grid-column: 1;
-                grid-row: 2;
-            }
-            
-            .thinking-area {
-                grid-column: 1;
-                grid-row: 3;
-                max-height: 400px;
-                overflow-y: auto;
-            }
-            
-            .controls {
-                grid-row: 4;
-            }
-            
-            .chessboard {
-                max-width: 400px;
-            }
-            
-            button {
-                padding: 8px 12px;
-                font-size: 13px;
-                min-width: auto;
-            }
-        }
-        
         @media (max-width: 600px) {
-            .container {
-                padding: 15px;
-                gap: 12px;
-            }
-            
-            h1 {
-                font-size: 22px;
-            }
-            
-            .thinking-area {
-                max-height: 300px;
-            }
-            
-            .chessboard {
-                max-width: 100%;
-            }
-            
-            .controls {
-                gap: 8px;
-            }
-            
-            button {
-                padding: 8px 10px;
-                font-size: 12px;
-            }
-            
-            .player-card {
-                padding: 12px;
-            }
-            
-            .player-avatar {
-                width: 46px;
-                height: 46px;
-                font-size: 24px;
-            }
-            
-            .player-name {
-                font-size: 16px;
-            }
-            
-            .player-timer {
-                font-size: 22px;
-            }
+            .main { padding: 0 12px 12px; gap: 12px; }
+            .panel { flex-direction: column; }
+            .scoreboard { gap: 16px; }
+            .score-num { font-size: 22px; }
+            .controls-row { flex-wrap: wrap; }
+            .btn { font-size: 9px; padding: 8px 4px; min-width: 0; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Chess AI Battle</h1>
-        
-        <div class="game-area">
-            <div class="chessboard" id="board"></div>
-            
-            <div class="captured-pieces">
-                <div class="captured-display" id="captured-black-display">
-                    <div class="captured-title">Black pieces captured <span class="captured-count" id="black-captured-count">0</span></div>
-                    <div class="captured-popup" id="captured-black">
-                        <div class="no-pieces">No pieces captured yet</div>
-                    </div>
+<div class="header">
+    <h1>Engine vs Engine</h1>
+    <div class="subtitle">Infinite Chess Battle</div>
+</div>
+<div class="scoreboard">
+    <div class="score-side white-side">
+        <span class="engine-name">Nexus</span>
+        <span class="score-num" id="score-w">0</span>
+    </div>
+    <span class="score-divider">:</span>
+    <div class="score-side black-side">
+        <span class="score-num" id="score-b">0</span>
+        <span class="engine-name">Hydra</span>
+    </div>
+</div>
+<div class="main">
+    <div class="panel">
+        <div class="engine-card white-engine" id="card-w">
+            <div class="engine-header">
+                <div class="engine-identity">
+                    <div class="engine-piece">♔</div>
+                    <span class="engine-label">Nexus</span>
                 </div>
-                <div class="captured-display" id="captured-white-display">
-                    <div class="captured-title">White pieces captured <span class="captured-count" id="white-captured-count">0</span></div>
-                    <div class="captured-popup" id="captured-white">
-                        <div class="no-pieces">No pieces captured yet</div>
-                    </div>
+                <div class="engine-timer" id="timer-w">05:00</div>
+            </div>
+            <div class="captured-row" id="cap-w"></div>
+            <div class="engine-thinking" id="think-w"></div>
+        </div>
+        <div class="engine-card black-engine" id="card-b">
+            <div class="engine-header">
+                <div class="engine-identity">
+                    <div class="engine-piece">♚</div>
+                    <span class="engine-label">Hydra</span>
                 </div>
+                <div class="engine-timer" id="timer-b">05:00</div>
             </div>
-            
-            <div class="dialogue-box" id="dialogue">Game ready to start. Press "New Game" to begin.</div>
-            
-            <div class="move-history" id="move-history"></div>
+            <div class="captured-row" id="cap-b"></div>
+            <div class="engine-thinking" id="think-b"></div>
         </div>
-        
-        <div class="thinking-area">
-            <div class="player-card" id="white-player">
-                <div class="player-avatar">♔</div>
-                <div class="player-name">Stockfish</div>
-                <div class="player-timer" id="white-timer">05:00</div>
-                <div class="win-count" id="white-wins">Wins: 0</div>
+        <div class="settings-card">
+            <h3>Parameters</h3>
+            <div class="setting-group">
+                <div class="setting-label"><span>Entropy</span><span class="setting-value" id="entropy-val">0.20</span></div>
+                <input type="range" id="entropy-slider" min="0" max="100" value="20">
             </div>
-            
-            <div class="thinking-box" id="white-thinking-box">
-                <div class="thinking-title">Stockfish Analysis <span id="white-thinking-indicator"></span></div>
-                <div class="thinking-content" id="white-thinking-content"></div>
+            <div class="setting-group">
+                <div class="setting-label"><span>Knowledge Depth</span><span class="setting-value" id="depth-val">3</span></div>
+                <input type="range" id="depth-slider" min="1" max="5" value="3">
             </div>
-            
-            <div class="player-card" id="black-player">
-                <div class="player-avatar">♚</div>
-                <div class="player-name">DeepChess</div>
-                <div class="player-timer" id="black-timer">05:00</div>
-                <div class="win-count" id="black-wins">Wins: 0</div>
+            <div class="setting-group">
+                <div class="setting-label"><span>Speed</span><span class="setting-value" id="speed-val">Normal</span></div>
+                <input type="range" id="speed-slider" min="0" max="2" value="1">
             </div>
-            
-            <div class="thinking-box" id="black-thinking-box">
-                <div class="thinking-title">DeepChess Analysis <span id="black-thinking-indicator"></span></div>
-                <div class="thinking-content" id="black-thinking-content"></div>
-            </div>
-        </div>
-        
-        <div class="controls">
-            <button id="start-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                New Game
-            </button>
-            <button id="pause-btn" disabled>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-                Pause
-            </button>
-            <button id="draw-btn" class="draw-btn" disabled>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                Offer Draw
-            </button>
-            <button id="resign-btn" class="resign-btn" disabled>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2.1l4 4-4 4"/><path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4"/><path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"/></svg>
-                Resign
-            </button>
-            <button id="speed-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                Normal
-            </button>
-            <button id="theme-btn" class="theme-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                Dark Theme
-            </button>
-            <button id="infinite-btn" class="infinite-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.178 8c5.076 0 5.076 8 0 8h-6.351"></path><path d="M13.65 16c-5.075 0-5.075-8 0-8h6.351"></path></svg>
-                Infinite Mode
-            </button>
         </div>
     </div>
+    <div class="board-wrap">
+        <div class="eval-bar-wrap"><div class="eval-bar-fill" id="eval-bar"></div></div>
+        <div class="chessboard" id="board"></div>
+        <div class="status-bar">
+            <div class="status-dot" id="status-dot"></div>
+            <div class="status-text" id="status-text">Press <strong>Start</strong> to begin the battle.</div>
+            <div class="move-counter" id="move-counter"></div>
+        </div>
+        <div class="controls-row">
+            <button class="btn primary" id="btn-start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>Start</button>
+            <button class="btn" id="btn-pause" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>Pause</button>
+            <button class="btn" id="btn-infinite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18.2 8c5 0 5 8 0 8H12m-6.2 0c-5 0-5-8 0-8H12"/></svg>Loop</button>
+        </div>
+    </div>
+    <div class="analysis-panel">
+        <div class="analysis-box" id="analysis-w">
+            <div class="analysis-header"><span class="ah-title">Nexus Analysis</span><span class="eval-badge" id="eval-w">0.0</span></div>
+            <div class="analysis-body" id="analysis-body-w"><div style="color:var(--text-muted);font-style:italic">Waiting for game…</div></div>
+        </div>
+        <div class="analysis-box" id="analysis-b">
+            <div class="analysis-header"><span class="ah-title">Hydra Analysis</span><span class="eval-badge" id="eval-b">0.0</span></div>
+            <div class="analysis-body" id="analysis-body-b"><div style="color:var(--text-muted);font-style:italic">Waiting for game…</div></div>
+        </div>
+        <div class="move-log">
+            <div class="move-log-header">Move Log</div>
+            <div class="move-log-body" id="move-log"></div>
+        </div>
+    </div>
+</div>
 
-    <script>
-        // Chess piece representations using Unicode chess symbols
-        const PIECES = {
-            'wP': '♙', 'wR': '♖', 'wN': '♘', 'wB': '♗', 'wQ': '♕', 'wK': '♔',
-            'bP': '♟', 'bR': '♜', 'bN': '♞', 'bB': '♝', 'bQ': '♛', 'bK': '♚'
-        };
-        
-        // Game configuration
-        let gameConfig = {
-            speed: 'normal', // slow, normal, fast
-            whiteThinkingTime: { min: 1000, max: 3000 },
-            blackThinkingTime: { min: 1000, max: 3000 },
-            gameInProgress: false,
-            gamePaused: false,
-            wins: { white: 0, black: 0 },
-            timers: { white: 300, black: 300 }, // 5 minutes per player
-            activeTimer: null,
-            lastMoveTime: null,
-            moveDelay: 500, // ms before showing the move after "thinking"
-            highlightSquares: [],
-            capturedPieces: { white: [], black: [] },
-            lastPosition: null, // To track piece movements
-            entropyFactor: 0.2, // 0-1 scale, higher means more random play
-            darkTheme: false,
-            infiniteMode: false,
-            openingVariations: [
-                ["e4", "e5", "Nf3", "Nc6"], // King's Pawn Opening
-                ["d4", "d5", "c4", "e6"],    // Queen's Gambit
-                ["e4", "c5", "Nf3", "d6"],   // Sicilian Defense
-                ["d4", "Nf6", "c4", "g6"],   // King's Indian Defense
-                ["Nf3", "Nf6", "c4", "e6"],  // English Opening
-                ["e4", "e6", "d4", "d5"]     // French Defense
-            ]
-        };
-        
-        // Speed presets
-        const SPEED_PRESETS = {
-            slow: { 
-                white: { min: 2000, max: 5000 },
-                black: { min: 2000, max: 5000 },
-                moveDelay: 1000
-            },
-            normal: { 
-                white: { min: 1000, max: 3000 },
-                black: { min: 1000, max: 3000 },
-                moveDelay: 500
-            },
-            fast: { 
-                white: { min: 300, max: 1000 },
-                black: { min: 300, max: 1000 },
-                moveDelay: 200
-            }
-        };
-        
-        // Chess notation helper
-        const FILE_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-        const RANK_NAMES = ['1', '2', '3', '4', '5', '6', '7', '8'];
-        const PIECE_NAMES = {
-            p: 'pawn', r: 'rook', n: 'knight', b: 'bishop', q: 'queen', k: 'king'
-        };
-        
-        // AI "personalities" and dialogue options
-        const AI_DIALOGUE = {
-            white: {
-                thinking: ["Analyzing position...", "Calculating variations...", "Evaluating position..."],
-                positions: [
-                    "Control of the center is key here.",
-                    "The pawn structure suggests a strategic advantage.",
-                    "Knight outpost on {square} looks promising.",
-                    "Pressure on the {file} file is building.",
-                    "The {color} bishop pair provides long-term advantage.",
-                    "Rook activity on the 7th rank is decisive.",
-                    "Queen side majority can be exploited."
-                ],
-                tactics: [
-                    "Looking for tactical shots against the {piece} on {square}.",
-                    "Double attack on {square1} and {square2} possible.",
-                    "Pin against the {piece} on {square} can be exploited.",
-                    "Sacrifice on {square} might open lines to the king.",
-                    "Knight fork opportunity after {move}.",
-                    "Discovered attack after moving the {piece}."
-                ],
-                moves: [
-                    "Considering {move1}, {move2}, and {move3}...",
-                    "{move1} improves piece activity.",
-                    "{move1} controls critical squares.",
-                    "{move1} threatens {threat}.",
-                    "{move1} creates weaknesses around the enemy king.",
-                    "{move1} improves pawn structure.",
-                    "After {move1}, planning to follow with {move2}."
-                ]
-            },
-            black: {
-                thinking: ["Processing board state...", "Computing optimal move...", "Searching for tactics..."],
-                positions: [
-                    "Knight maneuver to {square} controls key central squares.",
-                    "Pawn break at {square} disrupts white's structure.",
-                    "Fianchetto development provides long-term advantage.",
-                    "Exchange of dark-squared bishops favors our position.",
-                    "Pressure along the {file} file creates tactical opportunities.",
-                    "King safety is priority with the open center.",
-                    "Minority attack on queenside underway."
-                ],
-                tactics: [
-                    "Tactical motif: deflection of the defender at {square}.",
-                    "Zwischenzug opportunity before capturing on {square}.",
-                    "Preparing a discovered check by moving the {piece}.",
-                    "Back rank weakness can be exploited with {move}.",
-                    "The {piece} on {square} is overloaded defending multiple threats.",
-                    "Potential sacrifice on {square} to open attacking lines."
-                ],
-                moves: [
-                    "Main candidates: {move1}, {move2}, and {move3}.",
-                    "{move1} improves my piece coordination.",
-                    "{move1} prevents white's plan of {threat}.",
-                    "After {move1}, the position becomes tactically sharp.",
-                    "{move1} followed by {move2} creates counterplay.",
-                    "{move1} neutralizes white's initiative.",
-                    "Prophylactic {move1} prevents white's ideas."
-                ]
-            }
-        };
-        
-        // Initialize elements
-        const board = document.getElementById('board');
-        const moveHistory = document.getElementById('move-history');
-        const dialogueBox = document.getElementById('dialogue');
-        const startBtn = document.getElementById('start-btn');
-        const pauseBtn = document.getElementById('pause-btn');
-        const drawBtn = document.getElementById('draw-btn');
-        const resignBtn = document.getElementById('resign-btn');
-        const speedBtn = document.getElementById('speed-btn');
-        const themeBtn = document.getElementById('theme-btn');
-        const infiniteBtn = document.getElementById('infinite-btn');
-        const whiteTimer = document.getElementById('white-timer');
-        const blackTimer = document.getElementById('black-timer');
-        const whiteThinkingBox = document.getElementById('white-thinking-box');
-        const blackThinkingBox = document.getElementById('black-thinking-box');
-        const whiteThinkingContent = document.getElementById('white-thinking-content');
-        const blackThinkingContent = document.getElementById('black-thinking-content');
-        const whiteThinkingIndicator = document.getElementById('white-thinking-indicator');
-        const blackThinkingIndicator = document.getElementById('black-thinking-indicator');
-        const whitePlayer = document.getElementById('white-player');
-        const blackPlayer = document.getElementById('black-player');
-        const whiteWins = document.getElementById('white-wins');
-        const blackWins = document.getElementById('black-wins');
-        const capturedBlack = document.getElementById('captured-black');
-        const capturedWhite = document.getElementById('captured-white');
-        const blackCapturedCount = document.getElementById('black-captured-count');
-        const whiteCapturedCount = document.getElementById('white-captured-count');
-        
-        // Initialize chess.js
-        let chess = new Chess();
-        
-        // Function to create the chessboard
-        function createBoard() {
-            board.innerHTML = '';
-            for (let row = 0; row < 8; row++) {
-                for (let col = 0; col < 8; col++) {
-                    const square = document.createElement('div');
-                    const squareColor = (row + col) % 2 === 0 ? 'white' : 'black';
-                    square.className = `square ${squareColor}`;
-                    square.dataset.row = 7 - row; // Flipped to match chess.js coordinates
-                    square.dataset.col = col;
-                    
-                    // Add coordinates to edge squares
-                    if (row === 7) {
-                        const fileLabel = document.createElement('div');
-                        fileLabel.className = 'coordinates coordinate-file';
-                        fileLabel.textContent = FILE_NAMES[col];
-                        square.appendChild(fileLabel);
-                    }
-                    if (col === 7) {
-                        const rankLabel = document.createElement('div');
-                        rankLabel.className = 'coordinates coordinate-rank';
-                        rankLabel.textContent = RANK_NAMES[7 - row];
-                        square.appendChild(rankLabel);
-                    }
-                    
-                    board.appendChild(square);
-                }
-            }
-            updateBoard();
+<!-- ========== WEB WORKER — runs AI off main thread ========== -->
+<script id="worker-src" type="text/js-worker">
+importScripts('https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js');
+
+const PST = {
+    p:[[0,0,0,0,0,0,0,0],[50,50,50,50,50,50,50,50],[10,10,20,30,30,20,10,10],[5,5,10,25,25,10,5,5],[0,0,0,20,20,0,0,0],[5,-5,-10,0,0,-10,-5,5],[5,10,10,-20,-20,10,10,5],[0,0,0,0,0,0,0,0]],
+    n:[[-50,-40,-30,-30,-30,-30,-40,-50],[-40,-20,0,0,0,0,-20,-40],[-30,0,10,15,15,10,0,-30],[-30,5,15,20,20,15,5,-30],[-30,0,15,20,20,15,0,-30],[-30,5,10,15,15,10,5,-30],[-40,-20,0,5,5,0,-20,-40],[-50,-40,-30,-30,-30,-30,-40,-50]],
+    b:[[-20,-10,-10,-10,-10,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,10,10,10,10,0,-10],[-10,5,5,10,10,5,5,-10],[-10,0,10,10,10,10,0,-10],[-10,10,10,10,10,10,10,-10],[-10,5,0,0,0,0,5,-10],[-20,-10,-10,-10,-10,-10,-10,-20]],
+    r:[[0,0,0,0,0,0,0,0],[5,10,10,10,10,10,10,5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[0,0,0,5,5,0,0,0]],
+    q:[[-20,-10,-10,-5,-5,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,5,5,5,5,0,-10],[-5,0,5,5,5,5,0,-5],[0,0,5,5,5,5,0,-5],[-10,5,5,5,5,5,0,-10],[-10,0,5,0,0,0,0,-10],[-20,-10,-10,-5,-5,-10,-10,-20]],
+    k:[[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-20,-30,-30,-40,-40,-30,-30,-20],[-10,-20,-20,-20,-20,-20,-20,-10],[20,20,0,0,0,0,20,20],[20,30,10,0,0,10,30,20]],
+    k_end:[[-50,-40,-30,-20,-20,-30,-40,-50],[-30,-20,-10,0,0,-10,-20,-30],[-30,-10,20,30,30,20,-10,-30],[-30,-10,30,40,40,30,-10,-30],[-30,-10,30,40,40,30,-10,-30],[-30,-10,20,30,30,20,-10,-30],[-30,-30,0,0,0,0,-30,-30],[-50,-30,-30,-30,-30,-30,-30,-50]]
+};
+const V={p:100,n:320,b:330,r:500,q:900,k:20000};
+const CO={p:1,n:3,b:3,r:5,q:9,k:0};
+
+function evaluate(ch){
+    let s=0,tm=0;const bd=ch.board();
+    for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const p=bd[r][c];if(!p)continue;
+        const v=V[p.type];if(p.type!=='k')tm+=v;
+        let t=PST[p.type];if(p.type==='k'&&tm<2600)t=PST.k_end;
+        const row=p.color==='w'?r:7-r;
+        const pv=t?t[row][c]:0;
+        s+=(p.color==='w'?1:-1)*(v+pv);
+    }
+    s+=(ch.turn()==='w'?1:-1)*ch.moves().length*1.5;
+    return s;
+}
+
+function orderMoves(moves){
+    return moves.sort((a,b)=>{
+        let sa=0,sb=0;
+        if(a.san.includes('#'))sa+=200;if(b.san.includes('#'))sb+=200;
+        if(a.captured)sa+=10*(CO[a.captured]||0)-(CO[a.piece]||0);
+        if(b.captured)sb+=10*(CO[b.captured]||0)-(CO[b.piece]||0);
+        if(a.san.includes('+'))sa+=5;if(b.san.includes('+'))sb+=5;
+        return sb-sa;
+    });
+}
+
+function quiesce(ch,a,b,isMax){
+    const sp=evaluate(ch);
+    if(isMax){if(sp>=b)return b;if(sp>a)a=sp;}
+    else{if(sp<=a)return a;if(sp<b)b=sp;}
+    const caps=ch.moves({verbose:true}).filter(m=>m.captured);
+    if(!caps.length)return sp;
+    orderMoves(caps);
+    const lim=caps.slice(0,5);
+    for(const m of lim){
+        ch.move(m);const sc=quiesce(ch,a,b,!isMax);ch.undo();
+        if(isMax){if(sc>a)a=sc;if(a>=b)return b;}
+        else{if(sc<b)b=sc;if(a>=b)return a;}
+    }
+    return isMax?a:b;
+}
+
+let nodeCount=0;
+const NODE_LIMIT=30000;
+
+function minimax(ch,depth,a,b,isMax,entropy){
+    nodeCount++;
+    if(nodeCount>NODE_LIMIT)return evaluate(ch);
+    if(depth<=0||ch.game_over())return quiesce(ch,a,b,isMax);
+    let moves=ch.moves({verbose:true});
+    if(!moves.length)return evaluate(ch);
+    orderMoves(moves);
+    if(depth>=2&&moves.length>12)moves=moves.slice(0,12);
+
+    if(isMax){
+        let best=-Infinity;
+        for(const m of moves){
+            ch.move(m);
+            let ev=minimax(ch,depth-1,a,b,false,entropy);
+            ch.undo();
+            if(depth<=1)ev+=(Math.random()-0.5)*entropy*60;
+            if(ev>best)best=ev;if(ev>a)a=ev;if(a>=b)break;
         }
-        
-        // Function to update the board with current game state
-        function updateBoard() {
-            // Save current position for animation
-            gameConfig.lastPosition = captureCurrentPosition();
-            
-            // Clear all pieces
-            document.querySelectorAll('.piece').forEach(piece => piece.remove());
-            
-            // Clear highlights
-            document.querySelectorAll('.square').forEach(square => {
-                square.classList.remove('highlight');
-            });
-            
-            // Add highlights for the last move
-            gameConfig.highlightSquares.forEach(squareId => {
-                const [col, row] = squareId.split('');
-                const square = document.querySelector(`.square[data-col="${col.charCodeAt(0) - 97}"][data-row="${row - 1}"]`);
-                if (square) square.classList.add('highlight');
-            });
-            
-            // Add pieces based on current position
-            for (let row = 0; row < 8; row++) {
-                for (let col = 0; col < 8; col++) {
-                    const square = chess.board()[row][col];
-                    if (square) {
-                        const piece = document.createElement('div');
-                        piece.className = `piece piece-${square.color === 'w' ? 'white' : 'black'}`;
-                        const pieceType = square.color + square.type.toUpperCase();
-                        piece.textContent = PIECES[pieceType];
-                        
-                        // Add tooltip with piece name
-                        const tooltip = document.createElement('div');
-                        tooltip.className = 'piece-tooltip';
-                        tooltip.textContent = `${square.color === 'w' ? 'White' : 'Black'} ${PIECE_NAMES[square.type]}`;
-                        piece.appendChild(tooltip);
-                        
-                        const squareElement = document.querySelector(`.square[data-col="${col}"][data-row="${7 - row}"]`);
-                        if (squareElement) {
-                            // Check if this is the piece that moved
-                            if (gameConfig.highlightSquares.length === 2 && 
-                                getSquareNotation(col, 7-row) === gameConfig.highlightSquares[1]) {
-                                piece.classList.add('piece-moving');
-                            }
-                            squareElement.appendChild(piece);
-                        }
-                    }
-                }
-            }
-            
-            // Update captured pieces display
-            updateCapturedPieces();
+        return best;
+    }else{
+        let best=Infinity;
+        for(const m of moves){
+            ch.move(m);
+            let ev=minimax(ch,depth-1,a,b,true,entropy);
+            ch.undo();
+            if(depth<=1)ev+=(Math.random()-0.5)*entropy*60;
+            if(ev<best)best=ev;if(ev<b)b=ev;if(a>=b)break;
         }
-        
-        // Function to update captured pieces display
-        function updateCapturedPieces() {
-            // Clear displays
-            capturedWhite.innerHTML = '';
-            capturedBlack.innerHTML = '';
-            
-            // Update counters
-            whiteCapturedCount.textContent = gameConfig.capturedPieces.white.length;
-            blackCapturedCount.textContent = gameConfig.capturedPieces.black.length;
-            
-            // If no pieces captured, show message
-            if (gameConfig.capturedPieces.white.length === 0) {
-                capturedWhite.innerHTML = '<div class="no-pieces">No pieces captured yet</div>';
-            } else {
-                // Group pieces by type for more organized display
-                const whitePieces = groupPiecesByType(gameConfig.capturedPieces.white);
-                
-                // Add pieces to display
-                Object.entries(whitePieces).forEach(([piece, count]) => {
-                    for (let i = 0; i < count; i++) {
-                        const capturedPiece = document.createElement('div');
-                        capturedPiece.className = 'captured-piece piece-white';
-                        capturedPiece.textContent = PIECES['w' + piece.toUpperCase()];
-                        capturedWhite.appendChild(capturedPiece);
-                    }
-                });
-            }
-            
-            // Same for black pieces
-            if (gameConfig.capturedPieces.black.length === 0) {
-                capturedBlack.innerHTML = '<div class="no-pieces">No pieces captured yet</div>';
-            } else {
-                const blackPieces = groupPiecesByType(gameConfig.capturedPieces.black);
-                
-                Object.entries(blackPieces).forEach(([piece, count]) => {
-                    for (let i = 0; i < count; i++) {
-                        const capturedPiece = document.createElement('div');
-                        capturedPiece.className = 'captured-piece piece-black';
-                        capturedPiece.textContent = PIECES['b' + piece.toUpperCase()];
-                        capturedBlack.appendChild(capturedPiece);
-                    }
-                });
-            }
+        return best;
+    }
+}
+
+const BOOK={
+    start:['e4','d4','Nf3','c4'],
+    e4:{e5:['Nf3','Bc4','Nc3'],c5:['Nf3','Nc3','c3'],e6:['d4','Nf3'],c6:['d4','Nc3'],Nf6:['e5','Nc3']},
+    d4:{d5:['c4','Nf3','Bf4'],Nf6:['c4','Nf3','Bf4'],f5:['c4','Nf3'],e6:['c4','Nf3']},
+    Nf3:{Nf6:['c4','d4','g3'],d5:['d4','c4','g3']},
+    c4:{e5:['Nc3','g3'],Nf6:['Nc3','Nf3']}
+};
+
+function getBookMove(ch){
+    const h=ch.history(),leg=ch.moves({verbose:true});let choices=null;
+    if(!h.length)choices=BOOK.start;
+    else if(h.length===1){const r=BOOK[h[0]];if(r)choices=Object.keys(r);}
+    else if(h.length<=5){const r=BOOK[h[0]];if(r&&r[h[1]])choices=r[h[1]];}
+    if(choices){
+        const shuf=choices.sort(()=>Math.random()-0.5);
+        for(const san of shuf){const f=leg.find(m=>m.san===san);if(f)return f;}
+    }
+    return null;
+}
+
+self.onmessage=function(e){
+    const{fen,depth,entropy,id}=e.data;
+    const ch=new Chess(fen);
+    const moves=ch.moves({verbose:true});
+    if(!moves.length){self.postMessage({id,result:null});return;}
+
+    // Opening book
+    if(ch.history().length<10&&Math.random()>entropy*0.5){
+        const bm=getBookMove(ch);
+        if(bm){self.postMessage({id,result:{move:bm,eval:0}});return;}
+    }
+
+    // Adaptive depth based on move count
+    let d=depth;
+    if(moves.length>35&&d>2)d=2;
+    else if(moves.length>25&&d>3)d=3;
+
+    const isW=ch.turn()==='w';
+    orderMoves(moves);
+    nodeCount=0;
+    let bestMove=moves[0],bestEval=isW?-Infinity:Infinity;
+
+    for(const m of moves){
+        ch.move(m);
+        const ev=minimax(ch,d-1,-Infinity,Infinity,!isW,entropy);
+        ch.undo();
+        if(isW?(ev>bestEval):(ev<bestEval)){bestEval=ev;bestMove=m;}
+        if(nodeCount>NODE_LIMIT)break;
+    }
+    self.postMessage({id,result:{move:bestMove,eval:bestEval}});
+};
+</script>
+
+<script>
+// ==================== MAIN THREAD — UI ONLY, ZERO AI WORK ====================
+const PM={wP:'♙',wR:'♖',wN:'♘',wB:'♗',wQ:'♕',wK:'♔',bP:'♟',bR:'♜',bN:'♞',bB:'♝',bQ:'♛',bK:'♚'};
+const PN={p:'Pawn',r:'Rook',n:'Knight',b:'Bishop',q:'Queen',k:'King'};
+const FILES='abcdefgh'.split('');
+const $=id=>document.getElementById(id);
+
+// Create worker from inline blob
+const worker=new Worker(URL.createObjectURL(new Blob([document.getElementById('worker-src').textContent],{type:'application/javascript'})));
+let pendingResolve=null, searchId=0;
+worker.onmessage=e=>{if(pendingResolve&&e.data.id===searchId){pendingResolve(e.data.result);pendingResolve=null;}};
+
+function requestAI(fen,depth,entropy){
+    return new Promise(resolve=>{searchId++;pendingResolve=resolve;worker.postMessage({fen,depth,entropy,id:searchId});});
+}
+
+// Load chess.js for the main thread (board state only)
+const chessScript=document.createElement('script');
+chessScript.src='https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js';
+chessScript.onload=init;
+document.head.appendChild(chessScript);
+
+const G={
+    chess:null,running:false,paused:false,infinite:false,
+    wins:{w:0,b:0},timers:{w:300,b:300},timerInterval:null,
+    entropy:0.2,depth:3,speed:1,highlights:[],
+    captured:{w:[],b:[]},moveTimeout:null,gameNum:0,lastEval:0
+};
+const SPEED_CFG=[
+    {think:[1200,3000],delay:600},
+    {think:[500,1400],delay:300},
+    {think:[100,400],delay:80}
+];
+
+// Pre-built board squares — never recreated
+let sqEls=[];
+
+function buildBoard(){
+    const b=$('board');b.innerHTML='';sqEls=[];
+    for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const s=document.createElement('div');
+        s.className=`sq ${(r+c)%2===0?'light':'dark'}`;
+        s.dataset.r=r;s.dataset.c=c;
+        if(r===7){const f=document.createElement('span');f.className='coord coord-file';f.textContent=FILES[c];s.appendChild(f);}
+        if(c===0){const rk=document.createElement('span');rk.className='coord coord-rank';rk.textContent=8-r;s.appendChild(rk);}
+        b.appendChild(s);sqEls.push(s);
+    }
+}
+
+function updateBoard(){
+    const bd=G.chess.board();
+    for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const idx=r*8+c,s=sqEls[idx],nota=FILES[c]+(8-r);
+        const isHL=G.highlights.includes(nota);
+        const base=(r+c)%2===0?'light':'dark';
+        s.className=`sq ${base}${isHL?' hl':''}`;
+        const old=s.querySelector('.pc');if(old)old.remove();
+        const p=bd[r][c];
+        if(p){
+            const e=document.createElement('span');
+            e.className=`pc pc-${p.color==='w'?'w':'b'}`;
+            e.textContent=PM[p.color+p.type.toUpperCase()];
+            if(G.highlights[1]===nota)e.classList.add('moved');
+            s.appendChild(e);
         }
-        
-        // Helper function to group pieces by type
-        function groupPiecesByType(pieces) {
-            const result = {};
-            pieces.forEach(piece => {
-                if (!result[piece]) {
-                    result[piece] = 0;
-                }
-                result[piece]++;
-            });
-            return result;
+    }
+}
+
+function fmt(s){return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;}
+function updateTimers(){
+    $('timer-w').textContent=fmt(G.timers.w);$('timer-b').textContent=fmt(G.timers.b);
+    $('timer-w').classList.toggle('low-time',G.timers.w<=30);
+    $('timer-b').classList.toggle('low-time',G.timers.b<=30);
+}
+
+function startTimer(c){
+    stopTimer();if(G.paused)return;
+    $('card-w').classList.toggle('active-white',c==='w');
+    $('card-b').classList.toggle('active-black',c==='b');
+    $('analysis-w').classList.toggle('active-w',c==='w');$('analysis-w').classList.remove('active-b');
+    $('analysis-b').classList.toggle('active-b',c==='b');$('analysis-b').classList.remove('active-w');
+    G.timerInterval=setInterval(()=>{G.timers[c]--;updateTimers();if(G.timers[c]<=0)endGame(c==='w'?'b':'w','timeout');},1000);
+}
+function stopTimer(){if(G.timerInterval){clearInterval(G.timerInterval);G.timerInterval=null;}}
+
+function updateCaptured(){
+    const ord={q:0,r:1,b:2,n:3,p:4};
+    ['w','b'].forEach(c=>{
+        $(`cap-${c}`).innerHTML=[...G.captured[c]].sort((a,b)=>ord[a]-ord[b]).map(t=>`<span class="cap-piece">${PM[c+t.toUpperCase()]}</span>`).join('');
+    });
+}
+
+function updateMoveLog(){
+    const h=G.chess.history();let html='';
+    for(let i=0;i<h.length;i+=2){
+        html+=`<span class="move-num">${Math.floor(i/2)+1}.</span> <span class="move-w">${h[i]}</span>`;
+        if(h[i+1])html+=` <span class="move-b">${h[i+1]}</span>`;
+        html+=' ';
+    }
+    const el=$('move-log');el.innerHTML=html;el.scrollTop=el.scrollHeight;
+}
+
+function updateEvalBar(cp){$('eval-bar').style.width=(50+Math.max(-5,Math.min(5,cp))/5*50)+'%';}
+
+function genAnalysis(color,move,ev){
+    const el=$(color==='w'?'analysis-body-w':'analysis-body-b');
+    const eel=$(color==='w'?'eval-w':'eval-b');
+    const cp=ev/100;
+    eel.textContent=(cp>=0?'+':'')+cp.toFixed(1);
+    updateEvalBar(cp);
+    const lines=[{label:'Move',text:descMove(move)}];
+    const pos=posNote();if(pos)lines.push({label:'Position',text:pos});
+    lines.push({label:'Plan',text:planNote()});
+    el.innerHTML=lines.map(l=>`<div class="analysis-line"><span class="al-label">${l.label}</span>${l.text}</div>`).join('');
+}
+
+function descMove(m){
+    if(m.san.includes('#'))return 'Checkmate!';
+    if(m.san.includes('+')&&m.captured)return `Captures the ${PN[m.captured].toLowerCase()} with check.`;
+    if(m.san.includes('+'))return 'Delivers check, forcing a response.';
+    if(m.captured){
+        const v={p:1,n:3,b:3,r:5,q:9,k:0},vict=PN[m.captured].toLowerCase();
+        if(v[m.captured]>v[m.piece])return `Wins the ${vict} — favorable exchange.`;
+        if(v[m.captured]===v[m.piece])return `Trades ${PN[m.piece].toLowerCase()} for ${vict}.`;
+        return `Captures the ${vict}.`;
+    }
+    if(m.flags&&(m.flags.includes('k')||m.flags.includes('q')))return 'Castles to secure king safety.';
+    return ['Improving piece coordination.','Prophylactic — preventing counterplay.','Preparing a strategic breakthrough.','Maintaining pressure.','Subtle positional improvement.','Consolidating the position.'][Math.floor(Math.random()*6)];
+}
+
+function posNote(){
+    return [
+        'Piece activity is the priority here.','Pawn structure remains balanced.',
+        'Control of key central squares is strong.','Rook connectivity will matter soon.',
+        'Bishop pair could prove decisive.',null,null
+    ][Math.floor(Math.random()*7)];
+}
+
+function planNote(){
+    return ['Aiming to improve pawn structure.','Looking to open files for the rooks.','Planning a kingside expansion.','Building pressure on the queenside.','Preparing a central break.','Optimizing piece placement.','Seeking tactical complications.','Consolidating before pressing.'][Math.floor(Math.random()*8)];
+}
+
+// ==================== GAME LOOP ====================
+async function makeMove(){
+    if(!G.running||G.paused)return;
+    const turn=G.chess.turn();
+    const thEl=$(turn==='w'?'think-w':'think-b');
+    thEl.innerHTML='<span class="thinking-dots">Calculating</span>';
+
+    const cfg=SPEED_CFG[G.speed];
+    const delay=cfg.think[0]+Math.random()*(cfg.think[1]-cfg.think[0]);
+
+    // Run AI in worker + visual delay in parallel
+    const[result]=await Promise.all([requestAI(G.chess.fen(),G.depth,G.entropy),new Promise(r=>setTimeout(r,delay))]);
+    if(!G.running||G.paused)return;
+    if(!result||!result.move)return;
+
+    const move=result.move;
+    thEl.textContent=`Played ${move.san}`;
+    G.lastEval=result.eval;
+
+    if(move.captured)G.captured[turn==='w'?'b':'w'].push(move.captured);
+
+    // Apply move (try SAN first, fallback to from/to)
+    if(!G.chess.move(move.san)){
+        if(!G.chess.move({from:move.from,to:move.to,promotion:move.promotion||'q'})){
+            console.error('Move failed:',move);return;
         }
-        
-        // Helper function to capture current board position
-        function captureCurrentPosition() {
-            const position = [];
-            for (let row = 0; row < 8; row++) {
-                position[row] = [];
-                for (let col = 0; col < 8; col++) {
-                    position[row][col] = chess.board()[row][col];
-                }
-            }
-            return position;
-        }
-        
-        // Helper function to get square notation (e.g., "e4") from coordinates
-        function getSquareNotation(col, row) {
-            return FILE_NAMES[col] + (row + 1);
-        }
-        
-        // Function to update the move history display
-        function updateMoveHistory() {
-            const history = chess.history({ verbose: true });
-            let historyText = '';
-            
-            for (let i = 0; i < history.length; i += 2) {
-                const moveNum = Math.floor(i / 2) + 1;
-                const whiteMove = history[i] ? `${history[i].san}` : '';
-                const blackMove = history[i + 1] ? `${history[i + 1].san}` : '';
-                
-                historyText += `${moveNum}. ${whiteMove.padEnd(7)} ${blackMove}\n`;
-            }
-            
-            moveHistory.textContent = historyText;
-            moveHistory.scrollTop = moveHistory.scrollHeight;
-        }
-        
-        // Function to update timer display
-        function updateTimerDisplay() {
-            const formatTime = (seconds) => {
-                const mins = Math.floor(seconds / 60);
-                const secs = seconds % 60;
-                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            };
-            
-            whiteTimer.textContent = formatTime(gameConfig.timers.white);
-            blackTimer.textContent = formatTime(gameConfig.timers.black);
-        }
-        
-        // Timer logic
-        function startTimer(color) {
-            stopTimer();
-            
-            if (gameConfig.gamePaused) return;
-            
-            // Update active player highlight
-            whitePlayer.classList.toggle('active', color === 'w');
-            blackPlayer.classList.toggle('active', color === 'b');
-            whiteThinkingBox.classList.toggle('active', color === 'w');
-            blackThinkingBox.classList.toggle('active', color === 'b');
-            
-            gameConfig.activeTimer = setInterval(() => {
-                if (color === 'w') {
-                    gameConfig.timers.white--;
-                    if (gameConfig.timers.white <= 0) {
-                        endGame('black', 'timeout');
-                    }
-                } else {
-                    gameConfig.timers.black--;
-                    if (gameConfig.timers.black <= 0) {
-                        endGame('white', 'timeout');
-                    }
-                }
-                updateTimerDisplay();
-            }, 1000);
-        }
-        
-        function stopTimer() {
-            if (gameConfig.activeTimer) {
-                clearInterval(gameConfig.activeTimer);
-                gameConfig.activeTimer = null;
-            }
-        }
-        
-        // Function to simulate typing animation
-        function typeText(element, text, speed = 20) {
-            element.innerHTML = '';
-            
-            return new Promise(resolve => {
-                let i = 0;
-                const timer = setInterval(() => {
-                    if (i < text.length) {
-                        element.innerHTML += text.charAt(i);
-                        i++;
-                    } else {
-                        clearInterval(timer);
-                        resolve();
-                    }
-                }, speed);
-            });
-        }
-        
-        // Function to generate thinking content for AI with typing animation
-        async function generateThinkingContent(color) {
-            const dialogueOptions = color === 'w' ? AI_DIALOGUE.white : AI_DIALOGUE.black;
-            const legalMoves = chess.moves({ verbose: true });
-            
-            if (legalMoves.length === 0) return '';
-            
-            // Apply entropy to move selection
-            const entropy = gameConfig.entropyFactor;
-            
-            // Sort moves by piece value for "best moves" consideration
-            // with some randomness based on entropy factor
-            const sortedMoves = [...legalMoves].sort((a, b) => {
-                const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9 };
-                const aValue = a.captured ? pieceValues[a.captured] : 0;
-                const bValue = b.captured ? pieceValues[b.captured] : 0;
-                
-                // Add randomness based on entropy factor
-                const randomFactor = entropy * (Math.random() * 2 - 1);
-                return (bValue - aValue) + randomFactor;
-            });
-            
-            // Pick top 3 "candidate" moves for the thinking
-            const candidateMoves = sortedMoves.slice(0, Math.min(3, sortedMoves.length));
-            
-            // Generate the thinking content
-            let content = '';
-            const thinkingContent = color === 'w' ? whiteThinkingContent : blackThinkingContent;
-            
-            // Position assessment
-            const positionTemplate = dialogueOptions.positions[Math.floor(Math.random() * dialogueOptions.positions.length)];
-            let positionText = positionTemplate;
-            
-            // Replace tokens in position text
-            positionText = positionText.replace('{square}', getRandomSquare());
-            positionText = positionText.replace('{file}', FILE_NAMES[Math.floor(Math.random() * 8)]);
-            positionText = positionText.replace('{color}', color === 'w' ? 'white' : 'black');
-            
-            thinkingContent.innerHTML = '<div class="move-consideration"><strong>Position assessment:</strong> <span class="typing-text"></span></div>';
-            let typingElement = thinkingContent.querySelector('.typing-text');
-            await typeText(typingElement, positionText, 10);
-            
-            // Tactical opportunities
-            const tacticTemplate = dialogueOptions.tactics[Math.floor(Math.random() * dialogueOptions.tactics.length)];
-            let tacticText = tacticTemplate;
-            
-            // Replace tokens in tactic text
-            tacticText = tacticText.replace('{square}', getRandomSquare());
-            tacticText = tacticText.replace('{square1}', getRandomSquare());
-            tacticText = tacticText.replace('{square2}', getRandomSquare());
-            tacticText = tacticText.replace('{piece}', getRandomPieceName());
-            
-            thinkingContent.innerHTML += '<div class="move-consideration"><strong>Tactical opportunities:</strong> <span class="typing-text"></span></div>';
-            typingElement = thinkingContent.querySelectorAll('.typing-text')[1];
-            await typeText(typingElement, tacticText, 10);
-            
-            // Move considerations
-            const moveTemplate = dialogueOptions.moves[Math.floor(Math.random() * dialogueOptions.moves.length)];
-            let moveText = moveTemplate;
-            
-            // Replace move tokens
-            const moveNotations = candidateMoves.map(m => m.san);
-            moveText = moveText.replace('{move1}', moveNotations[0] || 'e4');
-            moveText = moveText.replace('{move2}', moveNotations[1] || 'd4');
-            moveText = moveText.replace('{move3}', moveNotations[2] || 'Nf3');
-            moveText = moveText.replace('{threat}', getRandomThreat());
-            
-            thinkingContent.innerHTML += '<div class="move-consideration"><strong>Move analysis:</strong> <span class="typing-text"></span></div>';
-            typingElement = thinkingContent.querySelectorAll('.typing-text')[2];
-            await typeText(typingElement, moveText, 10);
-            
-            // If in check, add special consideration
-            if (chess.in_check()) {
-                thinkingContent.innerHTML += '<div class="move-consideration"><strong>Alert:</strong> <span class="typing-text"></span></div>';
-                typingElement = thinkingContent.querySelectorAll('.typing-text')[3];
-                await typeText(typingElement, "King is in check! Prioritizing defensive moves.", 10);
-            }
-            
-            // Add evaluation
-            const evaluation = Math.random() * 2 - 1; // Random value between -1 and 1
-            const evalText = evaluation > 0 ? 
-                `Evaluation: +${evaluation.toFixed(2)} (${color === 'w' ? 'White' : 'Black'} is better)` :
-                `Evaluation: ${evaluation.toFixed(2)} (${color === 'w' ? 'Black' : 'White'} is better)`;
-            
-            thinkingContent.innerHTML += '<div class="move-consideration"><strong>Engine evaluation:</strong> <span class="typing-text"></span></div>';
-            typingElement = thinkingContent.querySelectorAll('.typing-text')[thinkingContent.querySelectorAll('.typing-text').length - 1];
-            await typeText(typingElement, evalText, 10);
-            
-            return content; // Return is not used but we keep it for consistency
-        }
-        
-        // Helper functions for thinking content
-        function getRandomSquare() {
-            const file = FILE_NAMES[Math.floor(Math.random() * 8)];
-            const rank = RANK_NAMES[Math.floor(Math.random() * 8)];
-            return file + rank;
-        }
-        
-        function getRandomPieceName() {
-            const pieces = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
-            return pieces[Math.floor(Math.random() * pieces.length)];
-        }
-        
-        function getRandomThreat() {
-            const threats = [
-                'discovered check', 'fork', 'pin', 'skewer',
-                'back rank mate', 'queen capture', 'pawn promotion',
-                'piece infiltration', 'king attack'
-            ];
-            return threats[Math.floor(Math.random() * threats.length)];
-        }
-        
-        // AI move generation with entropy factor
-        function findAiMove(color) {
-            const legalMoves = chess.moves({ verbose: true });
-            
-            if (legalMoves.length === 0) return null;
-            
-            // Check if we're in the opening and should use an opening book
-            if (chess.history().length < 8) { // First 4 moves from each side
-                // Random chance to follow opening book based on entropy
-                if (Math.random() > gameConfig.entropyFactor) {
-                    // Select a random opening variation
-                    const variation = gameConfig.openingVariations[Math.floor(Math.random() * gameConfig.openingVariations.length)];
-                    const moveIndex = chess.history().length;
-                    
-                    // If we have a book move for this position
-                    if (moveIndex < variation.length) {
-                        const bookMove = variation[moveIndex];
-                        
-                        // Try to find this move in legal moves
-                        const foundMove = legalMoves.find(m => m.san === bookMove);
-                        if (foundMove) {
-                            return foundMove;
-                        }
-                    }
-                }
-            }
-            
-            // Weight moves based on piece captured and check, plus entropy factor
-            const weightedMoves = legalMoves.map(move => {
-                let weight = 1;
-                
-                // Prioritize captures based on piece value
-                if (move.captured) {
-                    const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9 };
-                    weight += pieceValues[move.captured] * 2;
-                }
-                
-                // Prioritize checks and checkmate
-                if (move.san.includes('+')) weight += 3;
-                if (move.san.includes('#')) weight += 100;
-                
-                // Slightly prioritize center control for pawns in the opening
-                if (move.piece === 'p' && chess.history().length < 10) {
-                    const targetFile = move.to.charAt(0);
-                    const targetRank = parseInt(move.to.charAt(1));
-                    if ('cdef'.includes(targetFile) && (targetRank === 4 || targetRank === 5)) {
-                        weight += 0.5;
-                    }
-                }
-                
-                // Add random entropy factor
-                weight += (Math.random() * 2 - 1) * gameConfig.entropyFactor * 3;
-                
-                return { move, weight };
-            });
-            
-            // Calculate total weight
-            const totalWeight = weightedMoves.reduce((sum, move) => sum + move.weight, 0);
-            
-            // Choose a move based on weights
-            let randomValue = Math.random() * totalWeight;
-            for (const weightedMove of weightedMoves) {
-                randomValue -= weightedMove.weight;
-                if (randomValue <= 0) {
-                    return weightedMove.move;
-                }
-            }
-            
-            // Fallback to a random move
-            return legalMoves[Math.floor(Math.random() * legalMoves.length)];
-        }
-        
-        // Function to make an AI move with "thinking" animation
-        async function makeAiMove() {
-            if (!gameConfig.gameInProgress || gameConfig.gamePaused) return;
-            
-            const currentPlayer = chess.turn();
-            const thinkingIndicator = currentPlayer === 'w' ? whiteThinkingIndicator : blackThinkingIndicator;
-            const thinkingContent = currentPlayer === 'w' ? whiteThinkingContent : blackThinkingContent;
-            const dialogueOptions = currentPlayer === 'w' ? AI_DIALOGUE.white : AI_DIALOGUE.black;
-            
-            // Clear previous thinking content
-            thinkingContent.innerHTML = '';
-            
-            // Set thinking indicator
-            thinkingIndicator.textContent = dialogueOptions.thinking[Math.floor(Math.random() * dialogueOptions.thinking.length)];
-            
-            // Calculate thinking time based on game speed
-            const thinkingTimeConfig = currentPlayer === 'w' ? gameConfig.whiteThinkingTime : gameConfig.blackThinkingTime;
-            const thinkingTime = Math.floor(Math.random() * (thinkingTimeConfig.max - thinkingTimeConfig.min)) + thinkingTimeConfig.min;
-            
-            // Simulate "thinking" - generate and display thinking content
-            await generateThinkingContent(currentPlayer);
-            
-            setTimeout(async () => {
-                if (!gameConfig.gameInProgress || gameConfig.gamePaused) return;
-                
-                const aiMove = findAiMove(currentPlayer);
-                if (!aiMove) return;
-                
-                // Update thinking indicator to show decision
-                thinkingIndicator.textContent = "Move decided!";
-                
-                // Process the move after a short delay
-                setTimeout(() => {
-                    if (!gameConfig.gameInProgress || gameConfig.gamePaused) return;
-                    
-                    // Check if this move captures a piece
-                    if (aiMove.captured) {
-                        // Add to captured pieces
-                        if (currentPlayer === 'w') {
-                            gameConfig.capturedPieces.black.push(aiMove.captured);
-                        } else {
-                            gameConfig.capturedPieces.white.push(aiMove.captured);
-                        }
-                    }
-                
-                    // Make the move
-                    chess.move(aiMove);
-                    
-                    // Highlight the move
-                    gameConfig.highlightSquares = [aiMove.from, aiMove.to];
-                    
-                    // Update displays
-                    updateBoard();
-                    updateMoveHistory();
-                    
-                    // Clear thinking indicator
-                    thinkingIndicator.textContent = "";
-                    
-                    // Add dialogue based on game state
-                    let dialogue = '';
-                    if (chess.in_check()) {
-                        dialogue = `${currentPlayer === 'w' ? 'Stockfish' : 'DeepChess'}: "Check! The ${currentPlayer === 'w' ? 'black' : 'white'} king is under attack."`;
-                    } else if (chess.history().length > 10) {
-                        // Simplified position evaluation - in a real chess engine this would be much more sophisticated
-                        const material = calculateMaterialBalance();
-                        if (currentPlayer === 'w' && material > 3) {
-                            dialogue = `Stockfish: "I have a material advantage of +${(material/10).toFixed(1)}. Position is clearly winning."`;
-                        } else if (currentPlayer === 'w' && material < -3) {
-                            dialogue = `Stockfish: "Despite being down material (${(material/10).toFixed(1)}), I have compensation in piece activity."`;
-                        } else if (currentPlayer === 'b' && material < -3) {
-                            dialogue = `DeepChess: "Material advantage of +${(Math.abs(material)/10).toFixed(1)}. The position is strategically winning."`;
-                        } else if (currentPlayer === 'b' && material > 3) {
-                            dialogue = `DeepChess: "Although down in material (${(Math.abs(material)/10).toFixed(1)}), my pieces have greater mobility."`;
-                        } else {
-                            dialogue = `${currentPlayer === 'w' ? 'Stockfish' : 'DeepChess'}: "${aiMove.san} improves my position. Planning the next phase of the game."`;
-                        }
-                    } else {
-                        dialogue = `${currentPlayer === 'w' ? 'Stockfish' : 'DeepChess'}: "${aiMove.san} follows opening principles. Developing pieces and controlling the center."`;
-                    }
-                    
-                    dialogueBox.textContent = dialogue;
-                    
-                    // Check for game end conditions
-                    if (chess.game_over()) {
-                        if (chess.in_checkmate()) {
-                            const winner = currentPlayer === 'w' ? 'white' : 'black';
-                            endGame(winner, 'checkmate');
-                        } else if (chess.in_draw()) {
-                            endGame(null, 'draw');
-                        }
-                    } else {
-                        // Switch active player timer
-                        startTimer(chess.turn());
-                        
-                        // Schedule next AI move
-                        setTimeout(makeAiMove, 100);
-                    }
-                }, gameConfig.moveDelay);
-                
-            }, thinkingTime);
-        }
-        
-        // Helper function to calculate material balance (positive favors white, negative favors black)
-        function calculateMaterialBalance() {
-            const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
-            let balance = 0;
-            
-            // Count all pieces on the board
-            for (let row = 0; row < 8; row++) {
-                for (let col = 0; col < 8; col++) {
-                    const square = chess.board()[row][col];
-                    if (square) {
-                        const value = pieceValues[square.type];
-                        balance += square.color === 'w' ? value : -value;
-                    }
-                }
-            }
-            
-            return balance;
-        }
-        
-        // Function to start a new game
-        function startNewGame() {
-            // Reset game state
-            chess.reset();
-            gameConfig.gameInProgress = true;
-            gameConfig.gamePaused = false;
-            gameConfig.timers = { white: 300, black: 300 };
-            gameConfig.highlightSquares = [];
-            gameConfig.capturedPieces = { white: [], black: [] };
-            
-            // Update UI
-            createBoard();
-            updateTimerDisplay();
-            whiteThinkingContent.innerHTML = '';
-            blackThinkingContent.innerHTML = '';
-            whiteThinkingIndicator.textContent = '';
-            blackThinkingIndicator.textContent = '';
-            dialogueBox.textContent = 'Game started. White to move.';
-            moveHistory.textContent = '';
-            
-            // Update buttons
-            startBtn.textContent = 'Restart';
-            startBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"></path><path d="M3 13a9 9 0 1 0 3-7.7L3 8"></path></svg>Restart';
-            pauseBtn.disabled = false;
-            pauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>Pause';
-            drawBtn.disabled = false;
-            resignBtn.disabled = false;
-            
-            // Adjust entropy for this game to add variety
-            gameConfig.entropyFactor = Math.random() * 0.3 + 0.1; // Between 0.1 and 0.4
-            
-            // Start the game with white
-            startTimer('w');
-            makeAiMove();
-        }
-        
-        // Function to pause/resume the game
-        function togglePause() {
-            gameConfig.gamePaused = !gameConfig.gamePaused;
-            
-            if (gameConfig.gamePaused) {
-                stopTimer();
-                pauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>Resume';
-                dialogueBox.textContent = 'Game paused';
-            } else {
-                pauseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>Pause';
-                dialogueBox.textContent = `Game resumed. ${chess.turn() === 'w' ? 'White' : 'Black'} to move.`;
-                startTimer(chess.turn());
-                makeAiMove();
-            }
-        }
-        
-        // Function to offer a draw
-        function offerDraw() {
-            if (!gameConfig.gameInProgress || gameConfig.gamePaused) return;
-            
-            // Random chance for opponent to accept draw based on material balance
-            const materialBalance = calculateMaterialBalance();
-            const currentPlayer = chess.turn();
-            
-            // If the player offering the draw is in a worse position, higher chance of acceptance
-            let acceptChance;
-            if (currentPlayer === 'w') {
-                // White is offering draw
-                acceptChance = materialBalance < 0 ? 0.8 : 0.3;
-            } else {
-                // Black is offering draw
-                acceptChance = materialBalance > 0 ? 0.8 : 0.3;
-            }
-            
-            // Random decide if draw is accepted
-            if (Math.random() < acceptChance) {
-                dialogueBox.textContent = `${currentPlayer === 'w' ? 'DeepChess' : 'Stockfish'} accepts the draw offer. Game ends in a draw.`;
-                endGame(null, 'draw-agreement');
-            } else {
-                dialogueBox.textContent = `${currentPlayer === 'w' ? 'DeepChess' : 'Stockfish'} declines the draw offer. Game continues.`;
-            }
-        }
-        
-        // Function to resign the game
-        function resign() {
-            if (!gameConfig.gameInProgress || gameConfig.gamePaused) return;
-            
-            const currentPlayer = chess.turn();
-            const winner = currentPlayer === 'w' ? 'black' : 'white';
-            
-            endGame(winner, 'resignation');
-        }
-        
-        // Function to toggle theme
-        function toggleTheme() {
-            gameConfig.darkTheme = !gameConfig.darkTheme;
-            
-            if (gameConfig.darkTheme) {
-                document.body.classList.add('dark-theme');
-                themeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>Light Theme';
-                themeBtn.classList.add('active');
-            } else {
-                document.body.classList.remove('dark-theme');
-                themeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>Dark Theme';
-                themeBtn.classList.remove('active');
-            }
-        }
-        
-        // Function to toggle infinite mode
-        function toggleInfiniteMode() {
-            gameConfig.infiniteMode = !gameConfig.infiniteMode;
-            
-            if (gameConfig.infiniteMode) {
-                infiniteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.178 8c5.076 0 5.076 8 0 8h-6.351"></path><path d="M13.65 16c-5.075 0-5.075-8 0-8h6.351"></path></svg>Infinite: ON';
-                infiniteBtn.classList.add('active');
-            } else {
-                infiniteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.178 8c5.076 0 5.076 8 0 8h-6.351"></path><path d="M13.65 16c-5.075 0-5.075-8 0-8h6.351"></path></svg>Infinite: OFF';
-                infiniteBtn.classList.remove('active');
-            }
-        }
-        
-        // Function to end the game
-        function endGame(winner, reason) {
-            gameConfig.gameInProgress = false;
-            stopTimer();
-            
-            // Update win counter
-            if (winner) {
-                gameConfig.wins[winner]++;
-                whiteWins.textContent = `Wins: ${gameConfig.wins.white}`;
-                blackWins.textContent = `Wins: ${gameConfig.wins.black}`;
-            }
-            
-            // Show game end message
-            let endMessage = '';
-            if (reason === 'checkmate') {
-                endMessage = `Checkmate! ${winner === 'white' ? 'Stockfish' : 'DeepChess'} wins the game.`;
-            } else if (reason === 'timeout') {
-                endMessage = `Time's up! ${winner === 'white' ? 'Stockfish' : 'DeepChess'} wins on time.`;
-            } else if (reason === 'draw') {
-                endMessage = 'Game drawn. The position is a stalemate or repetition.';
-            } else if (reason === 'draw-agreement') {
-                endMessage = 'Game drawn by agreement.';
-            } else if (reason === 'resignation') {
-                endMessage = `${winner === 'white' ? 'Stockfish' : 'DeepChess'} wins by resignation.`;
-            }
-            
-            dialogueBox.textContent = endMessage;
-            whiteThinkingIndicator.textContent = '';
-            blackThinkingIndicator.textContent = '';
-            
-            // Update buttons
-            pauseBtn.disabled = true;
-            drawBtn.disabled = true;
-            resignBtn.disabled = true;
-            
-            // Start a new game automatically if in infinite mode
-            if (gameConfig.infiniteMode) {
-                setTimeout(() => {
-                    startNewGame();
-                }, 3000); // Wait 3 seconds before starting a new game
-            }
-        }
-        
-        // Function to change game speed
-        function cycleGameSpeed() {
-            const speeds = ['slow', 'normal', 'fast'];
-            const speedLabels = {
-                'slow': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>Slow',
-                'normal': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>Normal',
-                'fast': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>Fast'
-            };
-            
-            const currentIndex = speeds.indexOf(gameConfig.speed);
-            const nextIndex = (currentIndex + 1) % speeds.length;
-            gameConfig.speed = speeds[nextIndex];
-            
-            // Update speed config
-            const speedPreset = SPEED_PRESETS[gameConfig.speed];
-            gameConfig.whiteThinkingTime = speedPreset.white;
-            gameConfig.blackThinkingTime = speedPreset.black;
-            gameConfig.moveDelay = speedPreset.moveDelay;
-            
-            // Update button text
-            speedBtn.innerHTML = speedLabels[gameConfig.speed];
-        }
-        
-        // Event listeners
-        startBtn.addEventListener('click', startNewGame);
-        pauseBtn.addEventListener('click', togglePause);
-        speedBtn.addEventListener('click', cycleGameSpeed);
-        drawBtn.addEventListener('click', offerDraw);
-        resignBtn.addEventListener('click', resign);
-        themeBtn.addEventListener('click', toggleTheme);
-        infiniteBtn.addEventListener('click', toggleInfiniteMode);
-        
-        // Initialize the board
-        createBoard();
-    </script>
+    }
+
+    G.highlights=[move.from,move.to];
+    updateBoard();updateMoveLog();updateCaptured();
+    genAnalysis(turn,move,result.eval);
+
+    $('move-counter').textContent=`Move ${Math.ceil(G.chess.history().length/2)}`;
+    $('status-text').innerHTML=`<strong>${turn==='w'?'Nexus':'Hydra'}</strong> plays ${move.san}`;
+
+    if(G.chess.game_over()){
+        if(G.chess.in_checkmate())endGame(turn,'checkmate');
+        else endGame(null,'draw');
+        return;
+    }
+    startTimer(G.chess.turn());
+    G.moveTimeout=setTimeout(makeMove,cfg.delay);
+}
+
+function startGame(){
+    if(G.moveTimeout)clearTimeout(G.moveTimeout);
+    stopTimer();searchId++;pendingResolve=null;
+
+    G.chess=new Chess();G.running=true;G.paused=false;
+    G.timers={w:300,b:300};G.highlights=[];G.captured={w:[],b:[]};G.lastEval=0;G.gameNum++;
+
+    updateBoard();updateTimers();updateCaptured();
+    $('move-log').innerHTML='';
+    $('analysis-body-w').innerHTML='<div style="color:var(--text-muted);font-style:italic">Thinking…</div>';
+    $('analysis-body-b').innerHTML='<div style="color:var(--text-muted);font-style:italic">Waiting…</div>';
+    $('eval-w').textContent='0.0';$('eval-b').textContent='0.0';$('eval-bar').style.width='50%';
+    $('status-dot').className='status-dot live';
+    $('status-text').innerHTML=`Game #${G.gameNum} — <strong>Nexus</strong> to move.`;
+    $('move-counter').textContent='';
+    $('btn-start').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg> Reset`;
+    $('btn-pause').disabled=false;
+    startTimer('w');makeMove();
+}
+
+function endGame(winner,reason){
+    G.running=false;stopTimer();
+    if(G.moveTimeout)clearTimeout(G.moveTimeout);
+    searchId++;pendingResolve=null;
+    $('status-dot').className='status-dot ended';
+    if(winner){G.wins[winner]++;$('score-w').textContent=G.wins.w;$('score-b').textContent=G.wins.b;}
+    let msg='';
+    if(reason==='checkmate')msg=`Checkmate! <strong>${winner==='w'?'Nexus':'Hydra'}</strong> wins.`;
+    else if(reason==='timeout')msg=`Time out — <strong>${winner==='w'?'Nexus':'Hydra'}</strong> wins.`;
+    else msg='Game drawn.';
+    $('status-text').innerHTML=msg;$('btn-pause').disabled=true;
+    $('think-w').textContent='';$('think-b').textContent='';
+    $('card-w').className='engine-card white-engine';$('card-b').className='engine-card black-engine';
+    $('analysis-w').className='analysis-box';$('analysis-b').className='analysis-box';
+    if(G.infinite)setTimeout(startGame,2500);
+}
+
+function togglePause(){
+    if(!G.running)return;G.paused=!G.paused;
+    const btn=$('btn-pause');
+    if(G.paused){
+        stopTimer();if(G.moveTimeout)clearTimeout(G.moveTimeout);searchId++;pendingResolve=null;
+        btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Resume`;
+        $('status-text').innerHTML='<strong>Paused</strong>';
+    }else{
+        btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause`;
+        startTimer(G.chess.turn());makeMove();
+    }
+}
+
+function toggleInfinite(){
+    G.infinite=!G.infinite;const btn=$('btn-infinite');
+    btn.classList.toggle('active-toggle',G.infinite);
+    btn.innerHTML=G.infinite
+        ?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18.2 8c5 0 5 8 0 8H12m-6.2 0c-5 0-5-8 0-8H12"/></svg> Loop: ON`
+        :`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18.2 8c5 0 5 8 0 8H12m-6.2 0c-5 0-5-8 0-8H12"/></svg> Loop`;
+}
+
+$('entropy-slider').addEventListener('input',e=>{G.entropy=e.target.value/100;$('entropy-val').textContent=G.entropy.toFixed(2);});
+$('depth-slider').addEventListener('input',e=>{G.depth=parseInt(e.target.value);$('depth-val').textContent=G.depth;});
+$('speed-slider').addEventListener('input',e=>{G.speed=parseInt(e.target.value);$('speed-val').textContent=['Slow','Normal','Fast'][G.speed];});
+$('btn-start').addEventListener('click',startGame);
+$('btn-pause').addEventListener('click',togglePause);
+$('btn-infinite').addEventListener('click',toggleInfinite);
+
+function init(){G.chess=new Chess();buildBoard();}
+</script>
 </body>
 </html>
