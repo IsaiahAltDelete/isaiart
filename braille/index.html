@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neo-Swiss Braille Converter</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Google Material Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+    <style>
+        /* Custom Base Styles */
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+            /* Subtle Grid Background */
+            background-image: linear-gradient(#e5e5e5 1px, transparent 1px),
+            linear-gradient(90deg, #e5e5e5 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* Neo-Brutalism / Swiss Hard Shadows */
+        .neo-box {
+            border: 3px solid black;
+            box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+            transition: all 0.2s ease-in-out;
+        }
+
+        .neo-box:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0px 0px rgba(0,0,0,1);
+        }
+
+        .neo-box:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+        }
+
+        .neo-input {
+            border: 3px solid black;
+            transition: all 0.3s ease;
+        }
+        
+        .neo-input:focus {
+            outline: none;
+            background-color: #000;
+            color: #fff;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fff;
+            border-left: 2px solid black;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #000;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #333;
+        }
+
+        /* Braille Text Size */
+        .braille-font {
+            font-size: 2.5rem;
+            line-height: 1.4;
+            letter-spacing: 0.1em;
+        }
+
+        /* Animation classes */
+        .fade-in-up {
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-black selection:text-white">
+
+    <!-- Navigation / Header -->
+    <nav class="w-full border-b-4 border-black bg-white sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-4xl">apps</span>
+                <h1 class="text-2xl font-black tracking-tighter uppercase">Braille<span class="font-light">Converter</span></h1>
+            </div>
+            <!-- Navigation links removed -->
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex items-center justify-center p-6 md:p-12">
+        <div class="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-12">
+            
+            <!-- Left Column: Input -->
+            <div class="flex flex-col gap-6 fade-in-up" style="animation-delay: 0.1s;">
+                <div class="flex justify-between items-end">
+                    <h2 class="text-6xl font-black tracking-tighter leading-none">INPUT<br>TEXT.</h2>
+                    <span class="material-symbols-outlined text-5xl animate-bounce">arrow_downward</span>
+                </div>
+                
+                <div class="relative group">
+                    <div class="absolute -top-3 left-4 bg-black text-white px-2 py-0.5 text-xs font-bold uppercase tracking-widest z-10">
+                        Type Here
+                    </div>
+                    <textarea 
+                        id="inputText" 
+                        placeholder="Start typing to translate..." 
+                        class="w-full h-64 p-6 text-xl font-medium bg-white neo-input resize-none placeholder-gray-400"
+                        spellcheck="false"
+                    ></textarea>
+                    
+                    <!-- Controls -->
+                    <div class="flex gap-4 mt-4">
+                        <button onclick="clearText()" class="neo-box bg-white text-black px-6 py-3 font-bold uppercase tracking-wider flex items-center gap-2 w-full justify-center group">
+                            <span class="material-symbols-outlined group-hover:rotate-180 transition-transform duration-300">refresh</span>
+                            Clear
+                        </button>
+                        <button onclick="pasteText()" class="neo-box bg-black text-white px-6 py-3 font-bold uppercase tracking-wider flex items-center gap-2 w-full justify-center hover:bg-neutral-800 border-black">
+                            <span class="material-symbols-outlined">content_paste</span>
+                            Paste
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Output -->
+            <div class="flex flex-col gap-6 fade-in-up" style="animation-delay: 0.3s;">
+                <div class="flex justify-between items-end lg:flex-row-reverse">
+                    <h2 class="text-6xl font-black tracking-tighter leading-none text-right">BRAILLE<br>OUTPUT.</h2>
+                    <span class="material-symbols-outlined text-5xl lg:rotate-180">grid_on</span>
+                </div>
+
+                <div class="relative h-full">
+                    <div class="absolute -top-3 right-4 bg-black text-white px-2 py-0.5 text-xs font-bold uppercase tracking-widest z-10">
+                        Translation
+                    </div>
+                    
+                    <!-- Output Display -->
+                    <div class="w-full h-64 lg:h-[calc(100%-4rem)] border-[3px] border-black bg-white p-6 overflow-y-auto relative shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]">
+                        <p id="outputText" class="braille-font break-words text-neutral-800 min-h-full">
+                            <span class="opacity-20 font-sans text-lg tracking-normal">Waiting for input...</span>
+                        </p>
+                    </div>
+
+                    <!-- Copy Button (Floating) -->
+                    <button onclick="copyToClipboard()" id="copyBtn" class="absolute bottom-6 right-6 neo-box bg-black text-white p-4 rounded-full flex items-center justify-center hover:bg-neutral-800 z-20">
+                        <span class="material-symbols-outlined">content_copy</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-black text-white px-8 py-4 font-bold uppercase tracking-widest border-2 border-white shadow-xl translate-y-24 transition-transform duration-300 z-50 flex items-center gap-3">
+        <span class="material-symbols-outlined">check_circle</span>
+        Copied to Clipboard
+    </div>
+
+    <script>
+        // Braille Mapping (Grade 1 - Letter for Letter)
+        const brailleMap = {
+            'a': '⠁', 'b': '⠃', 'c': '⠉', 'd': '⠙', 'e': '⠑',
+            'f': '⠋', 'g': '⠛', 'h': '⠓', 'i': '⠊', 'j': '⠚',
+            'k': '⠅', 'l': '⠇', 'm': '⠍', 'n': '⠝', 'o': '⠕',
+            'p': '⠏', 'q': '⠟', 'r': '⠗', 's': '⠎', 't': '⠞',
+            'u': '⠥', 'v': '⠧', 'w': '⠺', 'x': '⠭', 'y': '⠽',
+            'z': '⠵',
+            '1': '⠼⠁', '2': '⠼⠃', '3': '⠼⠉', '4': '⠼⠙', '5': '⠼⠑',
+            '6': '⠼⠋', '7': '⠼⠛', '8': '⠼⠓', '9': '⠼⠊', '0': '⠼⠚',
+            ',': '⠂', ';': '⠆', ':': '⠒', '.': '⠲', '!': '⠖',
+            '(': '⠶', ')': '⠶', '?': '⠦', '"': '⠦', "'": '⠄',
+            '-': '⠤', ' ': ' '
+        };
+
+        const inputArea = document.getElementById('inputText');
+        const outputArea = document.getElementById('outputText');
+        const toast = document.getElementById('toast');
+
+        // Main Conversion Logic
+        function convertToBraille(text) {
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const lowerChar = char.toLowerCase();
+
+                // Handle Capital Letters (Add Capital Sign ⠠)
+                if (char !== lowerChar && /[a-z]/.test(lowerChar)) {
+                    result += '⠠';
+                }
+
+                // Map character
+                if (brailleMap[lowerChar]) {
+                    result += brailleMap[lowerChar];
+                } else {
+                    // Fallback for unknown chars (keep as is or ignore)
+                    result += char;
+                }
+            }
+            return result;
+        }
+
+        // Event Listener for Typing
+        inputArea.addEventListener('input', (e) => {
+            const text = e.target.value;
+            if (text.length === 0) {
+                outputArea.innerHTML = '<span class="opacity-20 font-sans text-lg tracking-normal">Waiting for input...</span>';
+            } else {
+                outputArea.textContent = convertToBraille(text);
+            }
+        });
+
+        // Clear Function
+        function clearText() {
+            inputArea.value = '';
+            outputArea.innerHTML = '<span class="opacity-20 font-sans text-lg tracking-normal">Waiting for input...</span>';
+            inputArea.focus();
+        }
+
+        // Paste Function
+        async function pasteText() {
+            try {
+                const text = await navigator.clipboard.readText();
+                inputArea.value += text;
+                // Trigger input event manually to update braille
+                inputArea.dispatchEvent(new Event('input'));
+            } catch (err) {
+                console.error('Failed to read clipboard contents: ', err);
+                alert('Please allow clipboard permissions or use Ctrl+V');
+            }
+        }
+
+        // Copy Function
+        function copyToClipboard() {
+            const textToCopy = outputArea.textContent;
+            if (!textToCopy || textToCopy === "Waiting for input...") return;
+
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast();
+            });
+        }
+
+        // Toast Notification Logic
+        function showToast() {
+            toast.classList.remove('translate-y-24');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24');
+            }, 2000);
+        }
+
+        // Initial Focus
+        window.onload = () => {
+            inputArea.focus();
+        };
+
+    </script>
+</body>
+</html>
