@@ -231,7 +231,8 @@
 
     .input-group input[type="text"],
     .input-group input[type="number"],
-    .input-group input[type="date"] {
+    .input-group input[type="date"],
+    .input-group select {
       width: 100%;
       padding: 12px 0;
       border: none;
@@ -241,11 +242,23 @@
       font-size: 0.95rem;
     }
 
-    .input-group input:focus {
+    .input-group select {
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .input-group input:focus,
+    .input-group select:focus {
       outline: none;
     }
 
-    .dark-mode .input-group input {
+    .dark-mode .input-group input,
+    .dark-mode .input-group select {
+      color: var(--text-dark);
+    }
+
+    .dark-mode .input-group select option {
+      background: var(--gray-200);
       color: var(--text-dark);
     }
 
@@ -558,10 +571,15 @@
           </div>
         </div>
         <div class="form-group">
-          <label for="anyOfTheseWords">Any of These Words</label>
+          <label for="anyOfTheseWords">Any of These Words
+            <div class="tooltip">
+              <span class="material-icons-round">help_outline</span>
+              <span class="tooltip-text">Separate words with commas. Will be grouped with (OR) logic.</span>
+            </div>
+          </label>
           <div class="input-group">
             <span class="material-icons-round">filter_list</span>
-            <input type="text" id="anyOfTheseWords" placeholder="e.g., machine learning, deep learning">
+            <input type="text" id="anyOfTheseWords" placeholder="e.g., horse, orange, cow">
           </div>
         </div>
         <div class="form-group">
@@ -576,6 +594,25 @@
           <div class="input-group">
             <span class="material-icons-round">tag</span>
             <input type="text" id="hashtags" placeholder="e.g., #AI, #ML">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="language">Language</label>
+          <div class="input-group">
+            <span class="material-icons-round">language</span>
+            <select id="language">
+              <option value="">Any Language</option>
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="it">Italian</option>
+              <option value="pt">Portuguese</option>
+              <option value="ja">Japanese</option>
+              <option value="ko">Korean</option>
+              <option value="ar">Arabic</option>
+              <option value="hi">Hindi</option>
+            </select>
           </div>
         </div>
       </div>
@@ -640,6 +677,14 @@
             <span class="material-icons-round">reply</span>
             <input type="number" id="minReplies" placeholder="e.g., 10">
           </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-wrapper">
+            <input type="checkbox" id="excludeRetweets">
+            <span class="custom-checkbox"></span>
+            <span>Exclude Retweets (-is:retweet)</span>
+          </label>
         </div>
         
         <div class="separator"></div>
@@ -819,14 +864,23 @@
     // Build query string from all fields
     function buildQuery() {
       let query = '';
+      
       const exactPhrase = document.getElementById('exactPhrase').value;
       if (exactPhrase) {
         query += `"${exactPhrase}" `;
       }
+      
+      // Updated: Properly group OR statements with parentheses
       const anyWords = document.getElementById('anyOfTheseWords').value;
       if (anyWords) {
-        query += `${anyWords.split(',').join(' OR ')} `;
+        const wordsArr = anyWords.split(',').map(w => w.trim()).filter(w => w.length > 0);
+        if (wordsArr.length > 1) {
+          query += `(${wordsArr.join(' OR ')}) `;
+        } else if (wordsArr.length === 1) {
+          query += `${wordsArr[0]} `;
+        }
       }
+      
       const noneWords = document.getElementById('noneOfTheseWords').value;
       if (noneWords) {
         const arr = noneWords.split(',')
@@ -834,6 +888,7 @@
           .filter(word => word !== '-');
         query += arr.join(' ') + ' ';
       }
+      
       const hashtags = document.getElementById('hashtags').value;
       if (hashtags) {
         query += `${hashtags.split(',').map(tag => {
@@ -841,45 +896,67 @@
           return tag.startsWith('#') ? tag : '#' + tag;
         }).join(' ')} `;
       }
+
+      // New: Language Filter
+      const language = document.getElementById('language').value;
+      if (language) {
+        query += `lang:${language} `;
+      }
+      
       const fromAccount = document.getElementById('fromAccount').value;
       if (fromAccount) {
         query += `from:${fromAccount.replace('@', '')} `;
       }
+      
       const toAccount = document.getElementById('toAccount').value;
       if (toAccount) {
         query += `to:${toAccount.replace('@', '')} `;
       }
+      
       const mentioningAccount = document.getElementById('mentioningAccount').value;
       if (mentioningAccount) {
         const mention = mentioningAccount.trim();
         query += `${mention.startsWith('@') ? mention : '@' + mention} `;
       }
+      
       const minLikes = document.getElementById('minLikes').value;
       if (minLikes) {
         query += `min_faves:${minLikes} `;
       }
+      
       const minRetweets = document.getElementById('minRetweets').value;
       if (minRetweets) {
         query += `min_retweets:${minRetweets} `;
       }
+      
       const minReplies = document.getElementById('minReplies').value;
       if (minReplies) {
         query += `min_replies:${minReplies} `;
       }
+
+      // New: Exclude Retweets
+      if (document.getElementById('excludeRetweets').checked) {
+        query += `-is:retweet `;
+      }
+      
       const beforeDate = document.getElementById('beforeDate').value;
       if (beforeDate) {
         query += `until:${beforeDate} `;
       }
+      
       const sinceDate = document.getElementById('sinceDate').value;
       if (sinceDate) {
         query += `since:${sinceDate} `;
       }
+      
       if (document.getElementById('includeImages').checked) {
         query += `filter:images `;
       }
+      
       if (document.getElementById('includeVideos').checked) {
         query += `filter:videos `;
       }
+      
       if (document.getElementById('enableLocation').checked) {
         const manualLocation = document.getElementById('manualLocation').value;
         const searchRadius = document.getElementById('searchRadius').value;
@@ -889,12 +966,14 @@
           query += `geocode:${latitude},${longitude},${searchRadius}mi `;
         }
       }
+      
       const linkOption = document.querySelector('input[name="linkOption"]:checked').value;
       if (linkOption === 'exclude') {
         query += '-filter:links ';
       } else if (linkOption === 'only') {
         query += 'filter:links ';
       }
+      
       return query.trim();
     }
 
@@ -904,7 +983,7 @@
     }
 
     // Add subtle animations to inputs on focus
-    const allInputs = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"]');
+    const allInputs = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select');
     allInputs.forEach(input => {
       input.addEventListener('focus', function() {
         this.closest('.input-group').style.borderColor = 'var(--primary)';
