@@ -1,10 +1,1103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta http-equiv="refresh" content="0; url=https://isaiart.com/pixelate" />
-    <title>Redirecting...</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PIXELIZER</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f5f5f3;
+    --surface: #ffffff;
+    --text: #111111;
+    --text-secondary: #666666;
+    --accent: #e63222;
+    --accent-hover: #ff4736;
+    --border: #e0e0e0;
+    --track: #d4d4d4;
+    --radius: 6px;
+    /* Snappy spring animation curve */
+    --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --fast: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    /* Prevent text selection and text cursor */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* HEADER */
+  header {
+    padding: 20px 24px 16px;
+    border-bottom: 2px solid var(--text);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--bg);
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1;
+    cursor: default;
+    transition: transform 0.3s var(--spring);
+  }
+  header h1:hover {
+    transform: scale(1.05) rotate(-1deg);
+  }
+  header h1 span { 
+    color: var(--accent); 
+    transition: color 0.3s;
+  }
+  header h1:hover span {
+    color: var(--text);
+  }
+  header small {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: default;
+  }
+
+  /* LAYOUT */
+  .app {
+    display: flex;
+    flex-direction: column;
+    max-width: 960px;
+    margin: 0 auto;
+    width: 100%;
+    flex: 1;
+  }
+
+  /* CANVAS AREA */
+  .canvas-wrap {
+    position: relative;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s var(--spring);
+    /* Checkerboard for transparency */
+    background-image: 
+      linear-gradient(45deg, #f0f0f0 25%, transparent 25%, transparent 75%, #f0f0f0 75%, #f0f0f0),
+      linear-gradient(45deg, #f0f0f0 25%, transparent 25%, transparent 75%, #f0f0f0 75%, #f0f0f0);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+  }
+  .canvas-wrap.empty { 
+    min-height: 260px; 
+    background-image: none; 
+    background-color: var(--surface); 
+  }
+  
+  /* Canvas Pop-in Animation */
+  @keyframes popIn {
+    0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .canvas-wrap canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 60vh;
+    image-rendering: pixelated;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    animation: popIn 0.5s var(--spring) forwards;
+  }
+
+  /* Drag & Drop Interactions */
+  .drop-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    pointer-events: none;
+    transition: all 0.3s var(--spring);
+  }
+  .drop-prompt svg { 
+    opacity: 0.3; 
+    transition: all 0.3s var(--spring);
+  }
+  .drop-prompt p { font-size: 13px; font-weight: 500; }
+  .drop-prompt span { font-size: 11px; color: var(--track); }
+  
+  .canvas-wrap.dragover { 
+    background-color: #fff5f5; 
+    outline: 3px dashed var(--accent); 
+    outline-offset: -12px; 
+    transform: scale(0.98);
+  }
+  .canvas-wrap.dragover .drop-prompt {
+    transform: scale(1.1);
+  }
+  .canvas-wrap.dragover .drop-prompt svg {
+    opacity: 1;
+    color: var(--accent);
+    transform: translateY(-10px);
+  }
+
+  /* CONTROLS */
+  .controls {
+    padding: 20px 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* TOOLS ROW (Undo, Redo, Compare) */
+  .tools-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: -10px; /* Pull closer to the first group */
+    padding-top: 6px; /* Prevents buttons from clipping at the top on hover */
+    padding-right: 2px; /* Prevents shadow clipping on the right */
+  }
+  .icon-btn {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s var(--fast);
+  }
+  .icon-btn svg {
+    width: 16px; height: 16px;
+    stroke-width: 2.5;
+  }
+  .icon-btn:hover:not(:disabled) {
+    border-color: var(--text);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  .icon-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.92);
+  }
+  .icon-btn.active {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+  }
+  .icon-btn:disabled {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  .tools-divider {
+    width: 2px; height: 18px;
+    background: var(--border);
+    margin: 0 4px;
+    border-radius: 1px;
+  }
+
+  .ctrl-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .ctrl-group-title {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    cursor: default;
+  }
+
+  /* SLIDERS & LABELS */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .slider-row label {
+    font-size: 12px;
+    font-weight: 500;
+    min-width: 90px;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.2s var(--fast);
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .slider-row label:hover {
+    color: var(--accent);
+    transform: translateX(2px);
+  }
+  .slider-row label::after {
+    content: '↺';
+    position: absolute;
+    right: 0;
+    font-size: 12px;
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.5);
+    transition: all 0.3s var(--spring);
+  }
+  .slider-row label:hover::after {
+    opacity: 0.7;
+    transform: rotate(0deg) scale(1);
+  }
+  
+  /* Label Click Animation */
+  @keyframes tick {
+    0% { transform: scale(1); color: var(--accent); }
+    50% { transform: scale(0.9) translateX(-2px); color: var(--accent); }
+    100% { transform: scale(1); }
+  }
+  .slider-row label.resetting {
+    animation: tick 0.3s var(--fast);
+  }
+  .slider-row label.resetting::after {
+    transform: rotate(-360deg) scale(1.2);
+    opacity: 1;
+    color: var(--accent);
+  }
+
+  /* Custom Range Input */
+  .slider-row input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: var(--track);
+    border-radius: 3px;
+    outline: none;
+    cursor: ew-resize;
+    transition: height 0.2s var(--fast);
+  }
+  .slider-row input[type=range]:hover {
+    height: 8px;
+  }
+  .slider-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--surface);
+    cursor: ew-resize;
+    border: 4px solid var(--text);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: all 0.3s var(--spring);
+  }
+  .slider-row input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.3);
+    border-color: var(--accent);
+    background: var(--surface);
+  }
+  .slider-row input[type=range]::-webkit-slider-thumb:active {
+    transform: scale(0.9);
+    border-width: 6px;
+    border-color: var(--accent);
+  }
+  .slider-row .val {
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 40px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.2s;
+    cursor: default;
+  }
+
+  /* TOGGLE ROW */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .toggle-row label { font-size: 12px; font-weight: 500; min-width: 90px; cursor: default; }
+  .toggle {
+    width: 44px; height: 24px;
+    background: var(--track);
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s var(--fast);
+    flex-shrink: 0;
+  }
+  .toggle:hover {
+    background: #c0c0c0;
+  }
+  .toggle.on { 
+    background: var(--text); 
+  }
+  .toggle.on:hover {
+    background: #333;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: all 0.4s var(--spring);
+  }
+  .toggle:active::after {
+    width: 24px; /* Squish effect */
+  }
+  .toggle.on::after { 
+    transform: translateX(20px); 
+  }
+  .toggle.on:active::after {
+    transform: translateX(14px); /* Adjust squish position */
+  }
+
+  /* COLOR PICKER */
+  .color-pick {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 0;
+    background: none;
+    transition: all 0.3s var(--spring);
+  }
+  .color-pick:hover {
+    transform: scale(1.15) rotate(5deg);
+    border-color: var(--text);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+  .color-pick:active {
+    transform: scale(0.9) rotate(-5deg);
+  }
+  .color-pick::-webkit-color-swatch-wrapper { padding: 2px; }
+  .color-pick::-webkit-color-swatch { border: none; border-radius: 3px; }
+
+  /* BUTTONS */
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 12px 20px;
+    border: 2px solid var(--text);
+    border-radius: var(--radius);
+    cursor: pointer;
+    background: var(--surface);
+    color: var(--text);
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s var(--fast);
+  }
+  .btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+  }
+  .btn:active:not(:disabled) { 
+    transform: translateY(1px) scale(0.96); 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  .btn.primary { background: var(--text); color: #fff; }
+  .btn.primary:hover:not(:disabled) { background: #333; border-color: #333; }
+  
+  .btn.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.accent:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); box-shadow: 0 6px 15px rgba(230, 50, 34, 0.25); }
+  
+  .btn:disabled { 
+    opacity: 0.4; 
+    pointer-events: none; 
+    filter: grayscale(100%);
+  }
+
+  .status {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: center;
+    min-height: 16px;
+    transition: opacity 0.3s;
+    cursor: default;
+  }
+
+  input[type=file] { display: none; }
+
+  /* RESPONSIVE PC LAYOUT */
+  @media (min-width: 860px) {
+    .app {
+      flex-direction: row;
+      max-width: 1200px;
+      padding: 24px;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    .canvas-wrap { 
+      flex: 1; 
+      min-height: 600px; 
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .canvas-wrap canvas { max-height: 75vh; }
+    .controls { 
+      width: 360px; 
+      flex-shrink: 0; 
+      padding: 4px 10px 24px 0; /* Added top padding to prevent hover clipping */
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+    .controls::-webkit-scrollbar { width: 6px; }
+    .controls::-webkit-scrollbar-track { background: transparent; }
+    .controls::-webkit-scrollbar-thumb { background: var(--track); border-radius: 10px; }
+    .controls::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+    header { padding: 24px 32px 18px; }
+  }
+</style>
 </head>
 <body>
-    <p>If you are not redirected, <a href="https://isaiart.com/pixelate">click here</a>.</p>
+
+<header>
+  <h1>PIXEL<span>IZER</span></h1>
+  <small>Pixel Art Cleanup</small>
+</header>
+
+<div class="app">
+  <div class="canvas-wrap empty" id="canvasWrap">
+    <div class="drop-prompt" id="dropPrompt">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p>Drop image or tap to upload</p>
+      <span>PNG · JPG · WEBP</span>
+    </div>
+    <canvas id="canvas" style="display:none"></canvas>
+  </div>
+
+  <div class="controls">
+    
+    <!-- TOOLS ROW -->
+    <div class="tools-row">
+      <button class="icon-btn" id="btnUndo" disabled title="Undo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l4-4m-4 4l4 4M3 9h11a4 4 0 010 8h-1"/></svg>
+      </button>
+      <button class="icon-btn" id="btnRedo" disabled title="Redo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9l-4-4m4 4l-4 4M21 9H10a4 4 0 000 8h1"/></svg>
+      </button>
+      <div class="tools-divider"></div>
+      <button class="icon-btn" id="btnCompare" disabled title="Show Original">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-group-title">Color & Light</div>
+      <div class="slider-row">
+        <label title="Click to reset">Brightness</label>
+        <input type="range" id="brightness" data-default="100" min="0" max="200" value="100">
+        <span class="val" id="brightnessVal">100%</span>
+      </div>
+      <div class="slider-row">
+        <label title="Click to reset">Contrast</label>
+        <input type="range" id="contrast" data-default="100" min="0" max="200" value="100">
+        <span class="val" id="contrastVal">100%</span>
+      </div>
+      <div class="slider-row">
+        <label title="Click to reset">Saturation</label>
+        <input type="range" id="saturation" data-default="100" min="0" max="200" value="100">
+        <span class="val" id="saturationVal">100%</span>
+      </div>
+      <div class="slider-row">
+        <label title="Click to reset">Hue</label>
+        <input type="range" id="hue" data-default="0" min="-180" max="180" value="0">
+        <span class="val" id="hueVal">0°</span>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-group-title">Pixelization</div>
+      <div class="slider-row">
+        <label title="Click to reset">Pixel Size</label>
+        <input type="range" id="pixelSize" data-default="8" min="2" max="64" value="8">
+        <span class="val" id="pixelSizeVal">8px</span>
+      </div>
+      <div class="slider-row">
+        <label title="Click to reset">Tolerance</label>
+        <input type="range" id="tolerance" data-default="0" min="0" max="100" value="0">
+        <span class="val" id="toleranceVal">0</span>
+      </div>
+      <div class="slider-row">
+        <label title="Click to reset">Color Depth</label>
+        <input type="range" id="colorDepth" data-default="256" min="2" max="256" value="256">
+        <span class="val" id="colorDepthVal">256</span>
+      </div>
+      <div class="slider-row">
+        <label title="Click to reset">Sharpness</label>
+        <input type="range" id="sharpness" data-default="0" min="0" max="100" value="0">
+        <span class="val" id="sharpnessVal">0</span>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-group-title">Grid Overlay</div>
+      <div class="toggle-row">
+        <label>Show Grid</label>
+        <div class="toggle" id="gridToggle"></div>
+      </div>
+      <div class="slider-row">
+        <label title="Click to reset">Grid Opacity</label>
+        <input type="range" id="gridOpacity" data-default="30" min="5" max="100" value="30">
+        <span class="val" id="gridOpacityVal">30%</span>
+      </div>
+      <div class="slider-row">
+        <label title="Click to reset">Thickness</label>
+        <input type="range" id="gridThickness" data-default="1" min="1" max="10" value="1">
+        <span class="val" id="gridThicknessVal">1px</span>
+      </div>
+      <div class="toggle-row">
+        <label>Grid Color</label>
+        <input type="color" id="gridColor" value="#000000" class="color-pick">
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-group-title">Output</div>
+      <div class="slider-row">
+        <label title="Click to reset">Scale</label>
+        <input type="range" id="outputScale" data-default="4" min="1" max="7" value="4">
+        <span class="val" id="outputScaleVal">4×</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" id="btnExport" disabled>Export PNG</button>
+        <button class="btn" id="btnExportGrid" disabled>Export w/ Grid</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn accent" id="btnUpload">Upload Image</button>
+        <button class="btn" id="btnReset" disabled>Reset</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*">
+
+<script>
+const $ = id => document.getElementById(id);
+const canvas = $('canvas');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+let srcImg = null;
+let showGrid = false;
+let isComparing = false;
+
+// History State Management
+let history = [];
+let historyIndex = -1;
+
+function getState() {
+  return {
+    brightness: $('brightness').value,
+    contrast: $('contrast').value,
+    saturation: $('saturation').value,
+    hue: $('hue').value,
+    pixelSize: $('pixelSize').value,
+    tolerance: $('tolerance').value,
+    colorDepth: $('colorDepth').value,
+    sharpness: $('sharpness').value,
+    showGrid: showGrid,
+    gridOpacity: $('gridOpacity').value,
+    gridThickness: $('gridThickness').value,
+    gridColor: $('gridColor').value,
+    outputScale: $('outputScale').value
+  };
+}
+
+function saveState() {
+  if (!srcImg) return;
+  const state = getState();
+  
+  // Don't save if identical to current state
+  if (historyIndex >= 0 && JSON.stringify(history[historyIndex]) === JSON.stringify(state)) return;
+  
+  // If we are not at the end of history, truncate the future
+  history = history.slice(0, historyIndex + 1);
+  history.push(state);
+  historyIndex++;
+  updateHistoryButtons();
+}
+
+function applyState(state) {
+  $('brightness').value = state.brightness;
+  $('contrast').value = state.contrast;
+  $('saturation').value = state.saturation;
+  $('hue').value = state.hue;
+  $('pixelSize').value = state.pixelSize;
+  $('tolerance').value = state.tolerance;
+  $('colorDepth').value = state.colorDepth;
+  $('sharpness').value = state.sharpness;
+  
+  showGrid = state.showGrid;
+  if(showGrid) $('gridToggle').classList.add('on');
+  else $('gridToggle').classList.remove('on');
+  
+  $('gridOpacity').value = state.gridOpacity;
+  $('gridThickness').value = state.gridThickness;
+  $('gridColor').value = state.gridColor;
+  $('outputScale').value = state.outputScale;
+
+  updateVals();
+  sliders.forEach(s => updateSliderFill($(s.id)));
+  render();
+  updateHistoryButtons();
+}
+
+function updateHistoryButtons() {
+  $('btnUndo').disabled = historyIndex <= 0;
+  $('btnRedo').disabled = historyIndex >= history.length - 1;
+}
+
+$('btnUndo').addEventListener('click', () => {
+  if (historyIndex > 0) {
+    historyIndex--;
+    if(isComparing) toggleCompare(); // Turn off compare to see the change
+    applyState(history[historyIndex]);
+  }
+});
+
+$('btnRedo').addEventListener('click', () => {
+  if (historyIndex < history.length - 1) {
+    historyIndex++;
+    if(isComparing) toggleCompare();
+    applyState(history[historyIndex]);
+  }
+});
+
+// Random 8-char name
+function randName() {
+  const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let s = '';
+  for (let i = 0; i < 8; i++) s += c[Math.floor(Math.random() * c.length)];
+  return s;
+}
+
+// Compare Button Toggle
+function toggleCompare() {
+  isComparing = !isComparing;
+  if (isComparing) {
+    $('btnCompare').classList.add('active');
+  } else {
+    $('btnCompare').classList.remove('active');
+  }
+  render();
+}
+
+$('btnCompare').addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleCompare();
+});
+
+// Toggles
+$('gridToggle').addEventListener('click', function() {
+  showGrid = !showGrid;
+  this.classList.toggle('on', showGrid);
+  render();
+  saveState();
+});
+
+// File input
+$('btnUpload').addEventListener('click', () => $('fileInput').click());
+$('canvasWrap').addEventListener('click', e => {
+  if (!srcImg) $('fileInput').click();
+});
+
+$('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) loadImage(e.target.files[0]);
+});
+
+// Drag and drop
+const wrap = $('canvasWrap');
+['dragenter','dragover'].forEach(ev => wrap.addEventListener(ev, e => { 
+  e.preventDefault(); 
+  wrap.classList.add('dragover'); 
+}));
+['dragleave','drop'].forEach(ev => wrap.addEventListener(ev, e => { 
+  e.preventDefault(); 
+  wrap.classList.remove('dragover'); 
+}));
+wrap.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) loadImage(f);
+});
+
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      srcImg = img;
+      canvas.style.display = 'block';
+      
+      // Re-trigger pop-in animation
+      canvas.style.animation = 'none';
+      canvas.offsetHeight; /* trigger reflow */
+      canvas.style.animation = null; 
+
+      $('dropPrompt').style.display = 'none';
+      $('canvasWrap').classList.remove('empty');
+      
+      // Enable buttons
+      $('btnExport').disabled = false;
+      $('btnExportGrid').disabled = false;
+      $('btnReset').disabled = false;
+      $('btnCompare').disabled = false;
+      
+      // Reset compare state
+      isComparing = false;
+      $('btnCompare').classList.remove('active');
+
+      // Initialize History
+      history = [];
+      historyIndex = -1;
+      saveState();
+
+      render();
+      setStatus('Image loaded — ' + img.width + '×' + img.height);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Sliders Configuration
+const sliders = [
+  { id: 'brightness', suffix: '%' },
+  { id: 'contrast', suffix: '%' },
+  { id: 'saturation', suffix: '%' },
+  { id: 'hue', suffix: '°' },
+  { id: 'pixelSize', suffix: 'px' },
+  { id: 'tolerance', suffix: '' },
+  { id: 'colorDepth', suffix: '' },
+  { id: 'sharpness', suffix: '' },
+  { id: 'gridOpacity', suffix: '%' },
+  { id: 'gridThickness', suffix: 'px' },
+  { id: 'outputScale', suffix: '×' }
+];
+
+// Dynamic Slider Track Fill
+function updateSliderFill(el) {
+  const min = parseFloat(el.min) || 0;
+  const max = parseFloat(el.max) || 100;
+  const val = parseFloat(el.value);
+  const percent = ((val - min) / (max - min)) * 100;
+  el.style.background = `linear-gradient(to right, var(--text) ${percent}%, var(--track) ${percent}%)`;
+}
+
+// Setup Sliders (Input, Scroll-to-Nudge, Click-to-Reset)
+sliders.forEach(s => {
+  const el = $(s.id);
+  
+  updateSliderFill(el);
+
+  // Real-time render on drag
+  el.addEventListener('input', () => {
+    updateVals();
+    updateSliderFill(el);
+    render();
+  });
+
+  // Save state only when user finishes dragging
+  el.addEventListener('change', () => {
+    saveState();
+  });
+
+  // Scroll to nudge
+  let wheelTimeout;
+  el.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const step = parseFloat(el.step) || 1;
+    const direction = e.deltaY < 0 ? 1 : -1;
+    let newVal = parseFloat(el.value) + (step * direction);
+    newVal = Math.max(el.min, Math.min(el.max, newVal));
+    el.value = newVal;
+    updateVals();
+    updateSliderFill(el);
+    render();
+    
+    // Debounce save state for scrolling
+    clearTimeout(wheelTimeout);
+    wheelTimeout = setTimeout(saveState, 400);
+  }, { passive: false });
+});
+
+// Click label to reset with animation
+document.querySelectorAll('.slider-row label').forEach(lbl => {
+  lbl.addEventListener('click', () => {
+    const input = lbl.nextElementSibling;
+    if (input && input.type === 'range') {
+      input.value = input.getAttribute('data-default');
+      
+      // Trigger animation
+      lbl.classList.remove('resetting');
+      void lbl.offsetWidth; // trigger reflow
+      lbl.classList.add('resetting');
+      
+      // Flash value text color
+      const valSpan = input.nextElementSibling;
+      valSpan.style.color = 'var(--accent)';
+      
+      setTimeout(() => {
+        valSpan.style.color = '';
+        lbl.classList.remove('resetting');
+      }, 300);
+
+      updateVals();
+      updateSliderFill(input);
+      render();
+      saveState();
+    }
+  });
+});
+
+$('gridColor').addEventListener('change', () => {
+  render();
+  saveState();
+});
+$('gridColor').addEventListener('input', () => render()); // Real-time preview
+
+function updateVals() {
+  sliders.forEach(s => {
+    $(`${s.id}Val`).textContent = $(s.id).value + s.suffix;
+  });
+}
+updateVals();
+
+function render() {
+  if (!srcImg) return;
+  const ps = +$('pixelSize').value;
+  const w = srcImg.width, h = srcImg.height;
+  canvas.width = w;
+  canvas.height = h;
+
+  // If comparing, just draw the original image and exit
+  if (isComparing) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(srcImg, 0, 0);
+    return;
+  }
+
+  // Apply CSS Filters (Brightness, Contrast, Saturation, Hue)
+  const br = +$('brightness').value;
+  const ct = +$('contrast').value;
+  const sa = +$('saturation').value;
+  const hu = +$('hue').value;
+  
+  ctx.filter = `brightness(${br}%) contrast(${ct}%) saturate(${sa}%) hue-rotate(${hu}deg)`;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(srcImg, 0, 0);
+  ctx.filter = 'none'; // Reset filter for subsequent drawing
+
+  // Get pixel data
+  let imgData = ctx.getImageData(0, 0, w, h);
+  let d = imgData.data;
+
+  // Sharpness (simple unsharp-mask-like)
+  const sharp = +$('sharpness').value;
+  if (sharp > 0) {
+    const orig = new Uint8ClampedArray(d);
+    const amt = sharp / 100 * 2;
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = (y * w + x) * 4;
+        for (let c = 0; c < 3; c++) {
+          const neighbors = (
+            orig[((y-1)*w+x)*4+c] + orig[((y+1)*w+x)*4+c] +
+            orig[(y*w+x-1)*4+c] + orig[(y*w+x+1)*4+c]
+          ) / 4;
+          d[idx+c] = clamp(orig[idx+c] + (orig[idx+c] - neighbors) * amt);
+        }
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  // Pixelize
+  const colDepth = +$('colorDepth').value;
+  const tol = +$('tolerance').value;
+  const tw = Math.ceil(w / ps), th = Math.ceil(h / ps);
+
+  // Downscale
+  const small = document.createElement('canvas');
+  small.width = tw; small.height = th;
+  const sctx = small.getContext('2d');
+  sctx.imageSmoothingEnabled = true;
+  sctx.imageSmoothingQuality = 'medium';
+  sctx.drawImage(canvas, 0, 0, tw, th);
+  let sd = sctx.getImageData(0, 0, tw, th);
+
+  // Quantize colors
+  if (colDepth < 256) {
+    const step = 256 / colDepth;
+    for (let i = 0; i < sd.data.length; i += 4) {
+      sd.data[i]   = Math.round(sd.data[i] / step) * step;
+      sd.data[i+1] = Math.round(sd.data[i+1] / step) * step;
+      sd.data[i+2] = Math.round(sd.data[i+2] / step) * step;
+    }
+  }
+
+  // Tolerance: merge similar neighboring pixels
+  if (tol > 0) {
+    const threshold = tol * 2.55;
+    const sdd = sd.data;
+    for (let y = 0; y < th; y++) {
+      for (let x = 1; x < tw; x++) {
+        const idx = (y * tw + x) * 4;
+        const pidx = (y * tw + x - 1) * 4;
+        const diff = Math.abs(sdd[idx]-sdd[pidx]) + Math.abs(sdd[idx+1]-sdd[pidx+1]) + Math.abs(sdd[idx+2]-sdd[pidx+2]);
+        if (diff < threshold) {
+          sdd[idx] = sdd[pidx]; sdd[idx+1] = sdd[pidx+1]; sdd[idx+2] = sdd[pidx+2];
+        }
+      }
+    }
+    for (let x = 0; x < tw; x++) {
+      for (let y = 1; y < th; y++) {
+        const idx = (y * tw + x) * 4;
+        const pidx = ((y-1) * tw + x) * 4;
+        const diff = Math.abs(sdd[idx]-sdd[pidx]) + Math.abs(sdd[idx+1]-sdd[pidx+1]) + Math.abs(sdd[idx+2]-sdd[pidx+2]);
+        if (diff < threshold) {
+          sdd[idx] = sdd[pidx]; sdd[idx+1] = sdd[pidx+1]; sdd[idx+2] = sdd[pidx+2];
+        }
+      }
+    }
+  }
+
+  sctx.putImageData(sd, 0, 0);
+
+  // Upscale back (nearest neighbor)
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, w, h);
+  ctx.drawImage(small, 0, 0, tw, th, 0, 0, tw * ps, th * ps);
+
+  // Grid
+  if (showGrid) drawGrid(ctx, w, h, ps, 1);
+}
+
+function drawGrid(context, w, h, ps, scale = 1) {
+  const opacity = +$('gridOpacity').value / 100;
+  const thickness = +$('gridThickness').value * scale;
+  const color = $('gridColor').value;
+  
+  const r = parseInt(color.slice(1,3),16);
+  const g = parseInt(color.slice(3,5),16);
+  const b = parseInt(color.slice(5,7),16);
+  
+  context.strokeStyle = `rgba(${r},${g},${b},${opacity})`;
+  context.lineWidth = thickness;
+  context.beginPath();
+  
+  // Offset by 0.5 for crisp lines if thickness is odd
+  const offset = (thickness % 2 === 0) ? 0 : 0.5;
+  const step = ps * scale;
+
+  for (let x = step; x < w; x += step) { 
+    context.moveTo(x + offset, 0); 
+    context.lineTo(x + offset, h); 
+  }
+  for (let y = step; y < h; y += step) { 
+    context.moveTo(0, y + offset); 
+    context.lineTo(w, y + offset); 
+  }
+  context.stroke();
+}
+
+function clamp(v) { return Math.max(0, Math.min(255, Math.round(v))); }
+
+function exportImage(withGrid) {
+  if (!srcImg) return;
+  const scale = +$('outputScale').value;
+  const ps = +$('pixelSize').value;
+  const w = srcImg.width, h = srcImg.height;
+
+  // Re-render at scale
+  const out = document.createElement('canvas');
+  out.width = w * scale;
+  out.height = h * scale;
+  const octx = out.getContext('2d');
+  octx.imageSmoothingEnabled = false;
+
+  // Temporarily render without grid and without compare mode
+  const prevGrid = showGrid;
+  const prevCompare = isComparing;
+  showGrid = false;
+  isComparing = false;
+  render();
+  
+  octx.drawImage(canvas, 0, 0, w * scale, h * scale);
+  
+  // Restore grid and compare mode
+  showGrid = prevGrid;
+  isComparing = prevCompare;
+  render();
+
+  if (withGrid) {
+    drawGrid(octx, w * scale, h * scale, ps, scale);
+  }
+
+  const name = randName();
+  const link = document.createElement('a');
+  link.download = name + '.png';
+  link.href = out.toDataURL('image/png');
+  link.click();
+  setStatus('Saved as ' + name + '.png — ' + out.width + '×' + out.height);
+}
+
+$('btnExport').addEventListener('click', () => exportImage(false));
+$('btnExportGrid').addEventListener('click', () => exportImage(true));
+
+$('btnReset').addEventListener('click', () => {
+  // Reset all sliders
+  sliders.forEach(s => {
+    const el = $(s.id);
+    el.value = el.getAttribute('data-default');
+    updateSliderFill(el);
+  });
+  
+  $('gridToggle').classList.remove('on');
+  showGrid = false;
+  $('gridColor').value = '#000000';
+  
+  isComparing = false;
+  $('btnCompare').classList.remove('active');
+
+  updateVals();
+  render();
+  saveState(); // Save the reset state to history
+  setStatus('Reset to defaults');
+});
+
+function setStatus(t) { 
+  const statusEl = $('status');
+  statusEl.textContent = t; 
+  statusEl.style.opacity = '1';
+  clearTimeout(window.statusTimeout);
+  window.statusTimeout = setTimeout(() => { statusEl.style.opacity = '0'; }, 3000);
+}
+</script>
 </body>
 </html>
