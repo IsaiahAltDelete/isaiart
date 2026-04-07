@@ -3,337 +3,388 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ISAIART</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <title>ISAIART | Project Directory</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+    
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Google Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        glass: {
+                            100: 'rgba(255, 255, 255, 0.05)',
+                            200: 'rgba(255, 255, 255, 0.1)',
+                            300: 'rgba(255, 255, 255, 0.2)',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
     <style>
-        /* Reset and Base Styles */
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        /* Base Reset & Scrollbar */
         body {
-            font-family: 'Roboto Mono', monospace;
-            background: #000000;
+            background-color: #030305;
             color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            width: 100vw;
-            margin: 0;
             overflow-x: hidden;
-            position: relative;
-            padding: 2rem;
+            margin: 0;
         }
 
-        /* Three.js Particle Canvas Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.4);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Three.js Canvas */
         #particle-canvas {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             z-index: -1;
-            background: #000000;
+            pointer-events: none;
         }
 
-        /* Container Styling */
-        .container {
-            width: 100%;
-            max-width: 1200px;
-            display: flex;
-            flex-direction: column;
-            gap: 3rem;
+        /* Custom Animations */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Title Styling */
-        h1 {
-            font-weight: 700;
-            font-size: 3rem;
-            text-transform: uppercase;
-            letter-spacing: 0.2rem;
-            color: #ffffff;
-            text-align: center;
-            margin-bottom: 1rem;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        .animate-fade-up {
+            animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
         }
 
-        h1 a {
-            color: #ffffff;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-        h1 a:hover {
-            color: #ff4757;
-        }
-
-        /* Section Styling */
-        .section {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .section-header {
-            font-size: 2rem;
-            text-transform: uppercase;
-            border-bottom: 2px solid #ffffff;
-            padding-bottom: 0.5rem;
-            color: #ffffff;
-            text-align: left;
-            margin-left: 0.5rem;
-        }
-
-        /* Grid Layout for Links */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 1rem;
-        }
-
-        /* Interactive Links Styling */
-        .link {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 1rem;
-            border: 2px solid #fff;
-            border-radius: 15px;
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            font-size: 1rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            text-decoration: none;
-            transition: background-color 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+        /* Glassmorphism Card Hover Effects */
+        .glass-card {
             position: relative;
             overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        .link::before {
+        .glass-card::before {
             content: '';
             position: absolute;
             top: 0;
             left: -100%;
-            width: 100%;
+            width: 50%;
             height: 100%;
             background: linear-gradient(
-                90deg,
-                transparent 0%,
-                rgba(255, 255, 255, 0.2) 50%,
-                transparent 100%
+                to right,
+                transparent,
+                rgba(255, 255, 255, 0.1),
+                transparent
             );
-            transition: left 0.5s;
-            pointer-events: none;
+            transform: skewX(-25deg);
+            transition: left 0.7s ease;
         }
 
-        .link:hover::before {
-            left: 100%;
+        .glass-card:hover::before {
+            left: 200%;
         }
 
-        .link:hover {
-            transform: translateY(-5px);
-            background-color: #ffffff;
-            color: #000000;
-            box-shadow: rgba(255, 255, 255, 0.4) 0px 4px 12px;
-            border-width: 3px;
+        .glass-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.12);
         }
 
-        /* Scrollbar Styling for Container */
-        .container::-webkit-scrollbar {
-            width: 8px;
+        /* Icon Glow Effect on Hover */
+        .glass-card:hover .project-icon {
+            filter: drop-shadow(0 0 12px currentColor);
+            transform: scale(1.1);
+        }
+        
+        .project-icon {
+            transition: all 0.3s ease;
         }
 
-        .container::-webkit-scrollbar-track {
+        /* Search Input Focus Glow */
+        .search-wrapper:focus-within {
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-        }
-
-        .container::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-        }
-
-        /* Responsive Adjustments */
-        @media (max-width: 1200px) {
-            h1 {
-                font-size: 2.5rem;
-            }
-
-            .section-header {
-                font-size: 1.8rem;
-            }
-
-            .link {
-                font-size: 0.9rem;
-                padding: 0.8rem;
-            }
-        }
-
-        @media (max-width: 900px) {
-            h1 {
-                font-size: 2.3rem;
-            }
-
-            .section-header {
-                font-size: 1.6rem;
-            }
-
-            .link {
-                font-size: 0.8rem;
-                padding: 0.7rem;
-            }
-        }
-
-        @media (max-width: 600px) {
-            h1 {
-                font-size: 2rem;
-            }
-
-            .section-header {
-                font-size: 1.4rem;
-            }
-
-            .link {
-                font-size: 0.7rem;
-                padding: 0.6rem;
-            }
         }
     </style>
 </head>
-<body>
-    <!-- Three.js Particle Canvas -->
+<body class="antialiased min-h-screen flex flex-col items-center selection:bg-white selection:text-black">
+
+    <!-- Interactive Background -->
     <canvas id="particle-canvas"></canvas>
 
-    <!-- Main Content Container -->
-    <div class="container">
-        <h1><a href="https://isaiart.com" target="_blank">ISAIART</a></h1>
-
-        <!-- Main Section -->
-        <div class="section">
-            <div class="section-header">Main</div>
-            <div class="grid">
-                <a href="https://code.isaiart.com/" class="link">CODING</a>
-                <a href="https://isaiart.com/react/" class="link" target="_blank">React Projects</a>
-                <a href="https://svg.isaiart.com" class="link" target="_blank">SVG Editor</a>
+    <!-- Main Content -->
+    <main class="w-full max-w-7xl px-6 py-16 md:py-24 z-10 flex flex-col items-center">
+        
+        <!-- Header Section -->
+        <header class="text-center mb-16 w-full max-w-2xl animate-fade-up" style="animation-delay: 0.1s;">
+            <a href="https://isaiart.com" target="_blank" class="inline-block group mb-10">
+                <h1 class="font-bold text-6xl md:text-7xl tracking-widest text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-200 to-gray-500 group-hover:to-white transition-all duration-500 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+                    ISAIART
+                </h1>
+            </a>
+            
+            <!-- Search Bar -->
+            <div class="search-wrapper relative flex items-center w-full bg-glass-100 border border-glass-200 rounded-full backdrop-blur-md transition-all duration-300">
+                <span class="material-symbols-outlined absolute left-6 text-gray-400">search</span>
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    placeholder="Search projects, keywords, or categories..." 
+                    class="w-full bg-transparent text-white placeholder-gray-500 px-14 py-4 rounded-full outline-none font-medium tracking-wide"
+                    autocomplete="off"
+                >
             </div>
+        </header>
+
+        <!-- Dynamic Projects Container -->
+        <div id="projects-container" class="w-full flex flex-col gap-12">
+            <!-- Content injected via JavaScript -->
         </div>
 
-        <!-- Fun Section -->
-        <div class="section">
-            <div class="section-header">Fun</div>
-            <div class="grid">
-                <a href="https://isaiart.com/aichess" class="link" target="_blank">AI CHESS BATTLE</a>
-                <a href="https://isaiart.com/brickbreaker" class="link" target="_blank">Brick Breaker</a>
-                <a href="https://isaiart.com/character/" class="link" target="_blank">Character</a>
-                <a href="https://isaiart.com/chess" class="link" target="_blank">CHESS</a>
-                <a href="https://isaiart.com/coinflip" class="link" target="_blank">COIN FLIP</a>
-                <a href="https://isaiart.com/connect" class="link" target="_blank">CONNECT 4</a>
-                <a href="https://isaiart.com/dice/" class="link" target="_blank">Dice</a>
-                <a href="https://dnd.isaiart.com/" class="link" target="_blank">DND</a>
-                <a href="https://pokedex.isaiart.com" class="link" target="_blank">Pokedex</a>
-                <a href="https://isaiart.com/spellbook" class="link" target="_blank">Spell Directory</a>
-                <a href="https://dnd.isaiart.com/spellbook/" class="link">WIZARD SHEET</a>
-                <a href="https://thg.isaiart.com" class="link" target="_blank">THG</a>
-            </div>
-        </div>
+    </main>
 
-        <!-- Creative Section -->
-        <div class="section">
-            <div class="section-header">Creative</div>
-            <div class="grid">
-                <a href="https://isaiart.com/8beat" class="link" target="_blank">8 Beat</a>
-                <a href="https://isaiart.com/bw" class="link" target="_blank">BW IMAGE EDITOR</a>
-                <a href="https://isaiart.com/collage/" class="link" target="_blank">Collage</a>
-                <a href="https://isaiart.com/drumpad" class="link" target="_blank">Drum Pad</a>
-                <a href="https://isaiart.com/piano" class="link" target="_blank">Piano</a>
-                <a href="https://isaiart.com/pixel" class="link" target="_blank">Pixel</a>
-                <a href="https://isaiart.com/pixelate/" class="link" target="_blank">Pixelate</a>
-                <a href="https://isaiart.com/scrambler" class="link" target="_blank">Scrambler</a>
-                <a href="https://isaiart.com/stipple" class="link" target="_blank">STIPPLE IMAGE EDITOR</a>
-                <a href="https://isaiart.com/tile/" class="link" target="_blank">Tile Tester</a>
-                <a href="https://isaiart.com/ui" class="link" target="_blank">UI</a>
-            </div>
-        </div>
-
-        <!-- Utilities Section -->
-        <div class="section">
-            <div class="section-header">Utilities</div>
-            <div class="grid">
-                <a href="https://isaiart.com/cue" class="link" target="_blank">CUE CLOCK</a>
-                <a href="https://isaiart.com/json" class="link" target="_blank">JSON</a>
-                <a href="https://isaiart.com/linked" class="link" target="_blank">Linked</a>
-                <a href="https://isaiart.com/rain" class="link" target="_blank">Rain</a>
-                <a href="https://reboot.isaiart.com" class="link" target="_blank">Reboot</a>
-                <a href="https://isaiart.com/resized/" class="link" target="_blank">Resized</a>
-                <a href="https://isaiart.com/search/x" class="link" target="_blank">Search/x</a>
-                <a href="https://isaiart.com/spacetimer/" class="link" target="_blank">Space Timer</a>
-                <a href="https://isaiart.com/style" class="link" target="_blank">Style</a>
-                <a href="https://isaiart.com/text/" class="link" target="_blank">Text</a>
-                <a href="https://isaiart.com/timer" class="link" target="_blank">Timer</a>
-                <a href="https://isaiart.com/video/" class="link" target="_blank">Video Compressor</a>
-                <a href="https://code.isaiart.com" class="link" target="_blank">Web Coding</a>
-                <a href="https://isaiart.com/webp" class="link" target="_blank">Webp</a>
-                <a href="https://isaiart.com/webP-to-Png" class="link" target="_blank">WebP to PNG</a>
-                <a href="https://isaiart.com/translate" class="link" target="_blank">Zalgo Translator</a>
-            </div>
-        </div>
-
-        <!-- Information Section -->
-        <div class="section">
-            <div class="section-header">Information</div>
-            <div class="grid">
-                <a href="https://isaiart.com/money" class="link" target="_blank">Money</a>
-                <a href="https://isaiart.com/nato" class="link" target="_blank">NATO</a>
-            </div>
-        </div>
-
-        <!-- Media Section -->
-        <div class="section">
-            <div class="section-header">Media</div>
-            <div class="grid">
-                <a href="https://music.isaiart.com/" class="link" target="_blank">Music</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Three.js Particle Effect Script -->
+    <!-- Application Logic -->
     <script>
-        // Three.js setup
+        // --- 1. Project Data Configuration ---
+        const projectsData = [
+            {
+                category: "Games & Entertainment",
+                icon: "sports_esports",
+                items: [
+                    { title: "Chess Battle", url: "https://isaiart.com/aichess", icon: "smart_toy", color: "text-blue-400", keywords: ["ai", "bot", "board", "strategy", "computer"] },
+                    { title: "Player vs Computer Chess", url: "https://isaiart.com/chess", icon: "psychology", color: "text-indigo-400", keywords: ["pve", "board", "strategy", "bot", "singleplayer"] },
+                    { title: "Connect 4", url: "https://isaiart.com/connect", icon: "grid_view", color: "text-red-400", keywords: ["board", "multiplayer", "four", "row", "puzzle"] },
+                    { title: "Brick Breaker", url: "https://isaiart.com/brickbreaker", icon: "videogame_asset", color: "text-orange-400", keywords: ["arcade", "retro", "breakout", "ball", "paddle"] },
+                    { title: "The Hunger Games Simulator", url: "https://isaiart.com/thg", icon: "sports_kabaddi", color: "text-green-400", keywords: ["simulation", "battle royale", "survival", "text"] },
+                    { title: "Coin Flip", url: "https://isaiart.com/coinflip", icon: "toll", color: "text-yellow-400", keywords: ["rng", "random", "heads", "tails", "chance", "probability"] },
+                    { title: "DND Tools & Resources", url: "https://dnd.isaiart.com", icon: "menu_book", color: "text-purple-400", keywords: ["dungeons", "dragons", "rpg", "tabletop", "dice", "generator", "fantasy"] }
+                ]
+            },
+            {
+                category: "Creative & Media",
+                icon: "palette",
+                items: [
+                    { title: "Pixel Art Editor", url: "https://isaiart.com/pixelart", icon: "draw", color: "text-pink-400", keywords: ["draw", "paint", "sprite", "creator", "image", "8bit"] },
+                    { title: "Collage Maker", url: "https://isaiart.com/collage", icon: "auto_awesome_mosaic", color: "text-teal-400", keywords: ["photo", "image", "editor", "grid", "pictures", "stitch"] },
+                    { title: "Image to ICO File", url: "https://isaiart.com/img2ico", icon: "image", color: "text-cyan-400", keywords: ["converter", "icon", "favicon", "picture", "format"] },
+                    { title: "Image Tile Checker", url: "https://isaiart.com/tile", icon: "grid_on", color: "text-emerald-400", keywords: ["pattern", "seamless", "texture", "background", "repeat"] },
+                    { title: "8 Beat Music Mixer", url: "https://isaiart.com/8beat", icon: "graphic_eq", color: "text-fuchsia-400", keywords: ["audio", "sound", "dj", "maker", "loop", "synthesizer"] },
+                    { title: "Music Drumpad", url: "https://isaiart.com/drumpad", icon: "apps", color: "text-rose-400", keywords: ["audio", "sound", "instrument", "beat", "maker", "percussion"] },
+                    { title: "Virtual Piano", url: "https://isaiart.com/piano", icon: "piano", color: "text-sky-400", keywords: ["audio", "sound", "instrument", "keyboard", "play", "music"] },
+                    { title: "Music", url: "https://music.isaiart.com", icon: "music_note", color: "text-violet-400", keywords: ["audio", "sound", "listen", "player", "songs", "playlist"] }
+                ]
+            },
+            {
+                category: "Tools & Utilities",
+                icon: "build",
+                items: [
+                    { title: "English to Braille Translator", url: "https://isaiart.com/braille", icon: "translate", color: "text-amber-400", keywords: ["text", "convert", "accessibility", "blind", "language"] },
+                    { title: "Self Management Tools", url: "https://isaiart.com/svg", icon: "dashboard_customize", color: "text-lime-400", keywords: ["organize", "todo", "planner", "productivity", "schedule"] },
+                    { title: "Metadata Reviewer", url: "https://isaiart.com/metadata", icon: "info", color: "text-blue-500", keywords: ["exif", "data", "image", "photo", "details", "hidden"] },
+                    { title: "Modular Notepad", url: "https://isaiart.com/notes", icon: "edit_note", color: "text-yellow-500", keywords: ["text", "write", "editor", "document", "save", "type"] },
+                    { title: "Cue Clock / Countdown", url: "https://isaiart.com/cue", icon: "alarm", color: "text-red-500", keywords: ["time", "timer", "stopwatch", "alarm", "schedule"] },
+                    { title: "Countdown Timer", url: "https://isaiart.com/timer", icon: "timer", color: "text-orange-500", keywords: ["time", "clock", "stopwatch", "alarm", "minutes", "seconds"] },
+                    { title: "Twitter Search", url: "https://isaiart.com/search/x", icon: "search", color: "text-sky-500", keywords: ["x", "social", "media", "find", "query", "tweets"] }
+                ]
+            }
+        ];
+
+        // --- 2. DOM Generation ---
+        const container = document.getElementById('projects-container');
+        let animationDelay = 0.2;
+
+        projectsData.forEach((section) => {
+            const sectionEl = document.createElement('div');
+            sectionEl.className = 'category-section w-full animate-fade-up';
+            sectionEl.style.animationDelay = `${animationDelay}s`;
+            animationDelay += 0.1;
+
+            const headerEl = document.createElement('div');
+            headerEl.className = 'flex items-center gap-3 mb-6 border-b border-glass-200 pb-3';
+            headerEl.innerHTML = `
+                <span class="material-symbols-outlined text-3xl text-gray-400">${section.icon}</span>
+                <h2 class="text-2xl font-semibold tracking-wide text-gray-200">${section.category}</h2>
+            `;
+            sectionEl.appendChild(headerEl);
+
+            // Changed from CSS Grid to Flexbox to allow centering of orphaned items
+            const gridEl = document.createElement('div');
+            gridEl.className = 'flex flex-wrap justify-center gap-5';
+
+            section.items.forEach(project => {
+                const card = document.createElement('a');
+                card.href = project.url;
+                card.target = "_blank";
+                
+                // Added specific width calculations to mimic grid columns while using flexbox
+                card.className = 'project-card glass-card flex flex-col items-center justify-center p-8 rounded-2xl bg-glass-100 border border-glass-100 backdrop-blur-sm text-center no-underline group w-full sm:w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(25%-15px)] flex-grow-0 flex-shrink-0';
+                
+                // Store data for search
+                card.dataset.title = project.title.toLowerCase();
+                card.dataset.keywords = project.keywords.join(' ').toLowerCase();
+
+                card.innerHTML = `
+                    <span class="material-symbols-outlined project-icon text-5xl mb-4 ${project.color}">${project.icon}</span>
+                    <h3 class="text-sm font-medium text-gray-300 group-hover:text-white tracking-wide transition-colors duration-300">${project.title}</h3>
+                `;
+                gridEl.appendChild(card);
+            });
+
+            sectionEl.appendChild(gridEl);
+            container.appendChild(sectionEl);
+        });
+
+        // --- 3. Search Functionality ---
+        const searchInput = document.getElementById('search-input');
+        
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            const sections = document.querySelectorAll('.category-section');
+
+            sections.forEach(section => {
+                const cards = section.querySelectorAll('.project-card');
+                let hasVisibleCards = false;
+
+                cards.forEach(card => {
+                    const titleMatch = card.dataset.title.includes(searchTerm);
+                    const keywordMatch = card.dataset.keywords.includes(searchTerm);
+                    
+                    if (titleMatch || keywordMatch) {
+                        card.style.display = 'flex';
+                        hasVisibleCards = true;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                // Hide entire section if no cards match the search
+                section.style.display = hasVisibleCards ? 'block' : 'none';
+            });
+        });
+
+        // --- 4. Three.js Interactive Space Background (Stars, Planets, Meteors) ---
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(
-            75,
-            window.innerWidth / window.innerHeight,
-            0.1,
-            1000
-        );
+        scene.fog = new THREE.FogExp2(0x030305, 0.0015);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({
             canvas: document.getElementById('particle-canvas'),
             antialias: true,
             alpha: true
         });
+        
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-        // Create multiple particle systems with white color
+        // --- Lighting for Planets ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.15); // Dim ambient
+        scene.add(ambientLight);
+        
+        const pointLight = new THREE.PointLight(0xffffff, 1.5, 200); // Distant sun
+        pointLight.position.set(50, 30, 20);
+        scene.add(pointLight);
+
+        // --- Planets ---
+        const planets = [];
+
+        // Planet 1: Gas Giant with Rings
+        const p1Group = new THREE.Group();
+        const p1Geo = new THREE.SphereGeometry(4, 32, 32);
+        const p1Mat = new THREE.MeshStandardMaterial({ 
+            color: 0x4a235a, 
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const planet1 = new THREE.Mesh(p1Geo, p1Mat);
+        p1Group.add(planet1);
+
+        const ringGeo = new THREE.RingGeometry(5.5, 8, 64);
+        const ringMat = new THREE.MeshStandardMaterial({ 
+            color: 0x8e44ad, 
+            side: THREE.DoubleSide, 
+            transparent: true, 
+            opacity: 0.6,
+            roughness: 0.5
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2.2;
+        ring.rotation.y = Math.PI / 8;
+        p1Group.add(ring);
+        
+        p1Group.position.set(-25, 15, -40);
+        scene.add(p1Group);
+        planets.push({ mesh: p1Group, speed: 0.001, orbitRadius: 45, angle: Math.PI });
+
+        // Planet 2: Small Rocky/Ice Planet
+        const p2Geo = new THREE.SphereGeometry(1.8, 32, 32);
+        const p2Mat = new THREE.MeshStandardMaterial({ 
+            color: 0x1abc9c, 
+            roughness: 0.9,
+            metalness: 0.1
+        });
+        const planet2 = new THREE.Mesh(p2Geo, p2Mat);
+        planet2.position.set(30, -10, -50);
+        scene.add(planet2);
+        planets.push({ mesh: planet2, speed: 0.002, orbitRadius: 55, angle: 0 });
+
+        // --- Stars (Particles) ---
         const particleGroups = [
-            { color: 0xffffff, size: 0.005, count: 10000 },
-            { color: 0xffffff, size: 0.003, count: 5000 },
-            { color: 0xffffff, size: 0.002, count: 3000 }
+            { color: 0xffffff, size: 0.03, count: 4000, opacity: 0.8 },
+            { color: 0xaaaaaa, size: 0.02, count: 3000, opacity: 0.5 },
+            { color: 0x666666, size: 0.015, count: 2000, opacity: 0.3 }
         ];
+
+        // Create circular texture for stars
+        const canvas = document.createElement('canvas');
+        canvas.width = 16;
+        canvas.height = 16;
+        const context = canvas.getContext('2d');
+        context.beginPath();
+        context.arc(8, 8, 8, 0, Math.PI * 2);
+        context.fillStyle = '#ffffff';
+        context.fill();
+        const starTexture = new THREE.CanvasTexture(canvas);
 
         const particleMeshes = particleGroups.map(group => {
             const geometry = new THREE.BufferGeometry();
             const positions = new Float32Array(group.count * 3);
 
             for (let i = 0; i < group.count * 3; i++) {
-                positions[i] = (Math.random() - 0.5) * 50; // Spread particles out
+                const r = 60 * Math.cbrt(Math.random());
+                const theta = Math.random() * 2 * Math.PI;
+                const phi = Math.acos(2 * Math.random() - 1);
+                
+                positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                positions[i * 3 + 2] = r * Math.cos(phi);
             }
 
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -342,35 +393,117 @@
                 size: group.size,
                 color: group.color,
                 transparent: true,
-                opacity: 0.8,
-                depthWrite: false
+                opacity: group.opacity,
+                map: starTexture,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
             });
 
             return new THREE.Points(geometry, material);
         });
 
         particleMeshes.forEach(mesh => scene.add(mesh));
+        camera.position.z = 20;
 
-        camera.position.z = 10;
+        // --- Meteors (Shooting Stars) ---
+        const meteors = [];
+        const meteorGeo = new THREE.CylinderGeometry(0.01, 0.05, 3, 8); // Slightly thinner
+        meteorGeo.rotateX(Math.PI / 2);
+        const meteorMat = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff, 
+            transparent: true, 
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
 
-        // Animation Variables
+        for(let i = 0; i < 3; i++) { // Reduced count
+            const meteor = new THREE.Mesh(meteorGeo, meteorMat);
+            resetMeteor(meteor);
+            scene.add(meteor);
+            meteors.push(meteor);
+        }
+
+        function resetMeteor(m) {
+            // Start off-screen top right/left
+            const startX = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 30 + 20);
+            const startY = Math.random() * 20 + 20;
+            const startZ = -10 - Math.random() * 30;
+            
+            m.position.set(startX, startY, startZ);
+            
+            // Move diagonally down - SLOWED DOWN SIGNIFICANTLY
+            const velX = (startX > 0 ? -1 : 1) * (Math.random() * 0.1 + 0.05); 
+            const velY = -(Math.random() * 0.1 + 0.05);
+            m.userData.velocity = new THREE.Vector3(velX, velY, 0);
+            
+            // Align cylinder to velocity vector
+            m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), m.userData.velocity.clone().normalize());
+            
+            // Random delay before showing - INCREASED DELAY
+            m.userData.active = false;
+            m.visible = false;
+            setTimeout(() => {
+                m.userData.active = true;
+                m.visible = true;
+            }, Math.random() * 10000 + 4000); // 4 to 14 seconds delay
+        }
+
+        // --- Animation & Interaction ---
         let mouseX = 0;
         let mouseY = 0;
         let targetRotationX = 0;
         let targetRotationY = 0;
+        const windowHalfX = window.innerWidth / 2;
+        const windowHalfY = window.innerHeight / 2;
 
-        // Animation Loop
+        document.addEventListener('mousemove', (event) => {
+            // SLOWED DOWN MOUSE SENSITIVITY
+            mouseX = (event.clientX - windowHalfX) * 0.0002;
+            mouseY = (event.clientY - windowHalfY) * 0.0002;
+        });
+
+        const clock = new THREE.Clock();
+
         function animate() {
             requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
 
-            // Rotate particles for a dynamic effect
+            // Smooth mouse follow for camera/scene - SLOWED DOWN EASING
+            targetRotationX += (mouseY - targetRotationX) * 0.02;
+            targetRotationY += (mouseX - targetRotationY) * 0.02;
+
+            // Animate Stars
             particleMeshes.forEach((mesh, index) => {
-                mesh.rotation.x += 0.0003 * (index + 1);
-                mesh.rotation.y += 0.0005 * (index + 1);
+                // SLOWED DOWN STAR ROTATION
+                mesh.rotation.y += 0.00005 * (index + 1);
+                mesh.rotation.x += targetRotationX * 0.05;
+                mesh.rotation.y += targetRotationY * 0.05;
+            });
 
-                // Add slight movement based on mouse interaction
-                mesh.rotation.x += (targetRotationX - mesh.rotation.x) * 0.05;
-                mesh.rotation.y += (targetRotationY - mesh.rotation.y) * 0.05;
+            // Animate Planets
+            planets.forEach(p => {
+                // SLOWED DOWN ORBIT
+                p.angle += p.speed * 0.05; 
+                p.mesh.position.x = Math.cos(p.angle) * p.orbitRadius;
+                p.mesh.position.z = Math.sin(p.angle) * p.orbitRadius - 30;
+                
+                // SLOWED DOWN SELF ROTATION
+                p.mesh.rotation.y += 0.0005;
+                
+                // REDUCED PARALLAX EFFECT
+                p.mesh.position.x += targetRotationY * 5;
+                p.mesh.position.y += -targetRotationX * 5;
+            });
+
+            // Animate Meteors
+            meteors.forEach(m => {
+                if(m.userData.active) {
+                    m.position.add(m.userData.velocity);
+                    // Reset if it goes too far down or off screen
+                    if(m.position.y < -30 || Math.abs(m.position.x) > 60) {
+                        resetMeteor(m);
+                    }
+                }
             });
 
             renderer.render(scene, camera);
@@ -383,15 +516,6 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // Mouse Movement Interaction
-        document.addEventListener('mousemove', (event) => {
-            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            targetRotationX = mouseY * 0.2;
-            targetRotationY = mouseX * 0.2;
         });
     </script>
 </body>
