@@ -1,522 +1,790 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ISAIART | Project Directory</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
-    
-    <!-- Google Fonts: Poppins -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Google Material Symbols -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ISAIART | Project Directory</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500&family=Barlow+Condensed:wght@300;400;700;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Poppins', 'sans-serif'],
-                    },
-                    colors: {
-                        glass: {
-                            100: 'rgba(255, 255, 255, 0.05)',
-                            200: 'rgba(255, 255, 255, 0.1)',
-                            300: 'rgba(255, 255, 255, 0.2)',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <!-- Three.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    :root {
+      --bg:      #07070a;
+      --rule:    rgba(255,255,255,0.08);
+      --rule-hi: rgba(255,255,255,0.18);
+      --white:   #f2f2f0;
+      --off:     #888882;
+      --dim:     #3a3a38;
+    }
 
-    <style>
-        /* Base Reset & Scrollbar */
-        body {
-            background-color: #030305;
-            color: #ffffff;
-            overflow-x: hidden;
-            margin: 0;
-        }
+    html { scroll-behavior: smooth; }
 
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.4);
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.4);
-        }
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: 'Barlow', sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: crosshair;
+    }
 
-        /* Three.js Canvas */
-        #particle-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -1;
-            pointer-events: none;
-        }
+    /* subtle grid overlay over space bg */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(var(--rule) 1px, transparent 1px),
+        linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+      background-size: 72px 72px;
+      opacity: 0.22;
+    }
 
-        /* Custom Animations */
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--dim); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--off); }
 
-        .animate-fade-up {
-            animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            opacity: 0;
-        }
+    /* THREE.JS CANVAS */
+    #bg-canvas {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: -1; pointer-events: none;
+      opacity: 0.35;
+    }
 
-        /* Glassmorphism Card Hover Effects */
-        .glass-card {
-            position: relative;
-            overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
+    /* dark vignette over the space bg so text stays readable */
+    #bg-vignette {
+      position: fixed; inset: 0;
+      z-index: -1; pointer-events: none;
+      background:
+        radial-gradient(ellipse at center, transparent 20%, rgba(7,7,10,0.72) 100%),
+        linear-gradient(to bottom, rgba(7,7,10,0.45) 0%, transparent 30%, transparent 70%, rgba(7,7,10,0.6) 100%);
+    }
 
-        .glass-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(
-                to right,
-                transparent,
-                rgba(255, 255, 255, 0.1),
-                transparent
-            );
-            transform: skewX(-25deg);
-            transition: left 0.7s ease;
-        }
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: stretch;
+      height: 52px;
+      border-bottom: 1px solid var(--rule-hi);
+      background: rgba(7,7,10,0.88);
+      backdrop-filter: blur(12px);
+    }
 
-        .glass-card:hover::before {
-            left: 200%;
-        }
+    .nav-brand {
+      display: flex; align-items: center; gap: 18px;
+      padding: 0 28px;
+      border-right: 1px solid var(--rule-hi);
+    }
 
-        .glass-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.12);
-        }
+    .brand-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.05rem; font-weight: 900;
+      letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--white); text-decoration: none;
+    }
+    .brand-name:hover { color: var(--off); }
 
-        /* Icon Glow Effect on Hover */
-        .glass-card:hover .project-icon {
-            filter: drop-shadow(0 0 12px currentColor);
-            transform: scale(1.1);
-        }
-        
-        .project-icon {
-            transition: all 0.3s ease;
-        }
+    .brand-tag {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.56rem; font-weight: 400;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--dim);
+      border-left: 1px solid var(--rule); padding-left: 18px;
+    }
 
-        /* Search Input Focus Glow */
-        .search-wrapper:focus-within {
-            box-shadow: 0 0 25px rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.4);
-            background: rgba(255, 255, 255, 0.1);
-        }
-    </style>
+    /* TICKER */
+    .nav-ticker {
+      display: flex; align-items: center;
+      overflow: hidden; padding: 0 24px;
+    }
+    .ticker-scroll {
+      display: flex; white-space: nowrap;
+      animation: tick 30s linear infinite;
+    }
+    @keyframes tick { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+    .t-seg {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.58rem; font-weight: 400;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--dim); padding: 0 32px;
+      border-right: 1px solid var(--rule);
+      display: inline-flex; align-items: center; gap: 12px;
+    }
+    .t-dot { width: 3px; height: 3px; background: var(--dim); border-radius: 50%; }
+
+    .nav-actions {
+      display: flex; align-items: center;
+      border-left: 1px solid var(--rule-hi); padding: 0 14px; gap: 2px;
+    }
+    .icon-btn {
+      width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+      background: none; border: 1px solid transparent; cursor: crosshair;
+      color: var(--off); transition: color .15s, border-color .15s;
+    }
+    .icon-btn:hover { color: var(--white); border-color: var(--rule-hi); }
+    .icon-btn .material-symbols-outlined { font-size: 16px; }
+
+    /* MAIN */
+    main {
+      position: relative; z-index: 10;
+      margin-top: 52px;
+      max-width: 1440px;
+      margin-left: auto; margin-right: auto;
+      padding: 0 0 80px;
+    }
+
+    /* HERO HEADER */
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--rule-hi);
+      min-height: 260px;
+    }
+
+    .hero-left {
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: 52px 56px;
+      border-right: 1px solid var(--rule-hi);
+      position: relative;
+    }
+
+    .hero-num {
+      position: absolute; top: 32px; left: 56px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.56rem; font-weight: 400;
+      letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--dim);
+    }
+
+    .hero-eyebrow {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.62rem; font-weight: 400;
+      letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--off); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .hero-eyebrow::before { content:''; display:block; width:20px; height:1px; background:var(--off); }
+
+    .hero-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(4rem, 8vw, 7rem);
+      font-weight: 900; line-height: 0.9;
+      letter-spacing: -0.02em; text-transform: uppercase;
+      color: var(--white);
+      animation: fadeUp .7s cubic-bezier(.16,1,.3,1) both;
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(24px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    .hero-right {
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: 52px 56px; gap: 12px;
+    }
+
+    .hero-stat {
+      display: flex; align-items: baseline; gap: 14px;
+      border-bottom: 1px solid var(--rule); padding-bottom: 12px;
+    }
+    .hero-stat:last-child { border-bottom: none; padding-bottom: 0; }
+    .stat-num {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 2.2rem; font-weight: 900; color: var(--white);
+      line-height: 1; letter-spacing: -0.02em;
+    }
+    .stat-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.6rem; font-weight: 400;
+      letter-spacing: 0.24em; text-transform: uppercase; color: var(--off);
+    }
+
+    /* SEARCH BAR */
+    .search-row {
+      display: grid;
+      grid-template-columns: 52px 1fr 52px;
+      align-items: stretch;
+      border-bottom: 1px solid var(--rule-hi);
+      height: 52px;
+    }
+
+    .search-icon-cell {
+      display: flex; align-items: center; justify-content: center;
+      border-right: 1px solid var(--rule-hi);
+      color: var(--off);
+    }
+    .search-icon-cell .material-symbols-outlined { font-size: 17px; }
+
+    #search-input {
+      background: transparent; border: none; outline: none;
+      width: 100%; padding: 0 24px;
+      font-family: 'Barlow', sans-serif;
+      font-size: 0.78rem; font-weight: 300;
+      letter-spacing: 0.1em;
+      color: var(--white);
+    }
+    #search-input::placeholder { color: var(--dim); }
+    #search-input:focus { background: rgba(255,255,255,0.02); }
+
+    .search-clear {
+      display: flex; align-items: center; justify-content: center;
+      border-left: 1px solid var(--rule-hi);
+      color: var(--dim); cursor: crosshair;
+      transition: color .15s;
+    }
+    .search-clear:hover { color: var(--white); }
+    .search-clear .material-symbols-outlined { font-size: 15px; }
+
+    /* SECTION HEADER */
+    .cat-header {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      align-items: stretch;
+      height: 44px;
+      border-bottom: 1px solid var(--rule);
+      border-top: 1px solid var(--rule-hi);
+      margin-top: 32px;
+    }
+    .cat-header:first-child { margin-top: 0; }
+
+    .cat-icon-cell {
+      display: flex; align-items: center; justify-content: center;
+      border-right: 1px solid var(--rule);
+      color: var(--off);
+    }
+    .cat-icon-cell .material-symbols-outlined { font-size: 16px; }
+
+    .cat-title-cell {
+      display: flex; align-items: center;
+      padding: 0 24px;
+    }
+    .cat-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--off);
+    }
+
+    .cat-count-cell {
+      display: flex; align-items: center;
+      padding: 0 20px;
+      border-left: 1px solid var(--rule);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.58rem; font-weight: 400;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--dim);
+    }
+
+    /* PROJECT GRID */
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-left: 1px solid var(--rule);
+    }
+
+    @media (max-width: 1100px) { .project-grid { grid-template-columns: repeat(3,1fr); } }
+    @media (max-width: 760px)  { .project-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 480px)  { .project-grid { grid-template-columns: 1fr; } }
+
+    .p-card {
+      display: flex; flex-direction: column;
+      align-items: flex-start; justify-content: flex-end;
+      padding: 20px 22px;
+      border-right: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+      text-decoration: none;
+      position: relative; overflow: hidden;
+      cursor: crosshair;
+      transition: background .2s;
+      min-height: 110px;
+    }
+    .p-card:hover { background: rgba(255,255,255,0.03); }
+
+    /* corner marks on hover */
+    .p-card::before, .p-card::after {
+      content: '';
+      position: absolute;
+      width: 10px; height: 10px;
+      border-color: var(--rule-hi); border-style: solid;
+      opacity: 0; transition: opacity .2s;
+    }
+    .p-card::before { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
+    .p-card::after  { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+    .p-card:hover::before, .p-card:hover::after { opacity: 1; }
+
+    .p-card-icon {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.52rem; font-weight: 400;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--dim); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .p-card-icon .material-symbols-outlined {
+      font-size: 14px;
+      transition: color .2s;
+    }
+
+    .p-card-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1rem; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--white); line-height: 1.15;
+      transition: color .15s;
+    }
+    .p-card:hover .p-card-name { color: var(--white); }
+
+    .p-card-arrow {
+      position: absolute; top: 16px; right: 16px;
+      color: var(--dim); opacity: 0;
+      transition: opacity .2s, transform .2s;
+      font-size: 0.6rem; letter-spacing: 0.18em;
+      font-family: 'Barlow Condensed', sans-serif;
+      text-transform: uppercase;
+    }
+    .p-card:hover .p-card-arrow { opacity: 1; transform: translate(2px,-2px); }
+
+    /* EMPTY STATE */
+    .no-results {
+      grid-column: 1 / -1;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 72px;
+      border-right: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+    }
+    .no-results-num {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 6rem; font-weight: 900;
+      color: var(--dim); line-height: 1; margin-bottom: 12px;
+    }
+    .no-results-txt {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.65rem; font-weight: 400;
+      letter-spacing: 0.28em; text-transform: uppercase; color: var(--dim);
+    }
+
+    /* FOOTER */
+    footer {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: stretch;
+      height: 48px;
+      border-top: 1px solid var(--rule-hi);
+      margin-top: 48px;
+    }
+    .foot-brand {
+      display: flex; align-items: center;
+      padding: 0 24px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.7rem; font-weight: 900;
+      letter-spacing: 0.24em; text-transform: uppercase; color: var(--dim);
+      border-right: 1px solid var(--rule);
+    }
+    .foot-links {
+      display: flex; list-style: none;
+    }
+    .foot-links li { border-right: 1px solid var(--rule); }
+    .foot-links a {
+      display: flex; align-items: center; height: 100%; padding: 0 16px;
+      text-decoration: none;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.58rem; font-weight: 400;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim);
+      transition: color .15s;
+    }
+    .foot-links a:hover { color: var(--white); }
+    .foot-copy {
+      display: flex; align-items: center;
+      padding: 0 24px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.56rem; font-weight: 400;
+      letter-spacing: 0.14em; color: var(--dim);
+      border-left: 1px solid var(--rule);
+    }
+
+    /* CATEGORY SECTION VISIBILITY */
+    .cat-block { display: block; }
+    .cat-block.hidden { display: none; }
+
+    @media (max-width: 768px) {
+      nav { grid-template-columns: auto 1fr auto; }
+      .nav-ticker { display: none; }
+      .hero { grid-template-columns: 1fr; min-height: auto; }
+      .hero-right { display: none; }
+      .hero-left { padding: 40px 28px; }
+      .hero-num { left: 28px; }
+      main { padding: 0 0 60px; }
+      footer { grid-template-columns: auto auto; }
+      .foot-copy { display: none; }
+    }
+  </style>
 </head>
-<body class="antialiased min-h-screen flex flex-col items-center selection:bg-white selection:text-black">
+<body>
 
-    <!-- Interactive Background -->
-    <canvas id="particle-canvas"></canvas>
+<canvas id="bg-canvas"></canvas>
+<div id="bg-vignette" aria-hidden="true"></div>
 
-    <!-- Main Content -->
-    <main class="w-full max-w-7xl px-6 py-16 md:py-24 z-10 flex flex-col items-center">
-        
-        <!-- Header Section -->
-        <header class="text-center mb-16 w-full max-w-2xl animate-fade-up" style="animation-delay: 0.1s;">
-            <a href="https://isaiart.com" target="_blank" class="inline-block group mb-10">
-                <h1 class="font-bold text-6xl md:text-7xl tracking-widest text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-200 to-gray-500 group-hover:to-white transition-all duration-500 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
-                    ISAIART
-                </h1>
-            </a>
-            
-            <!-- Search Bar -->
-            <div class="search-wrapper relative flex items-center w-full bg-glass-100 border border-glass-200 rounded-full backdrop-blur-md transition-all duration-300">
-                <span class="material-symbols-outlined absolute left-6 text-gray-400">search</span>
-                <input 
-                    type="text" 
-                    id="search-input" 
-                    placeholder="Search projects, keywords, or categories..." 
-                    class="w-full bg-transparent text-white placeholder-gray-500 px-14 py-4 rounded-full outline-none font-medium tracking-wide"
-                    autocomplete="off"
-                >
-            </div>
-        </header>
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <a href="https://isaiart.com" target="_blank" class="brand-name">ISAIART</a>
+    <span class="brand-tag">Project Directory</span>
+  </div>
+  <div class="nav-ticker" aria-hidden="true">
+    <div class="ticker-scroll">
+      <span class="t-seg">Games &amp; Entertainment <span class="t-dot"></span></span>
+      <span class="t-seg">Creative &amp; Media <span class="t-dot"></span></span>
+      <span class="t-seg">Tools &amp; Utilities <span class="t-dot"></span></span>
+      <span class="t-seg">isaiart.com <span class="t-dot"></span></span>
+      <span class="t-seg">Games &amp; Entertainment <span class="t-dot"></span></span>
+      <span class="t-seg">Creative &amp; Media <span class="t-dot"></span></span>
+      <span class="t-seg">Tools &amp; Utilities <span class="t-dot"></span></span>
+      <span class="t-seg">isaiart.com <span class="t-dot"></span></span>
+    </div>
+  </div>
+  <div class="nav-actions">
+    <button class="icon-btn" aria-label="GitHub" onclick="window.open('https://isaiart.com','_blank')">
+      <span class="material-symbols-outlined">open_in_new</span>
+    </button>
+  </div>
+</nav>
 
-        <!-- Dynamic Projects Container -->
-        <div id="projects-container" class="w-full flex flex-col gap-12">
-            <!-- Content injected via JavaScript -->
-        </div>
+<main>
 
-    </main>
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-left">
+      <span class="hero-num">ISAIART · 2025</span>
+      <p class="hero-eyebrow">Project Directory</p>
+      <h1 class="hero-title">All<br>Projects</h1>
+    </div>
+    <div class="hero-right">
+      <div class="hero-stat">
+        <span class="stat-num" id="total-count">21</span>
+        <span class="stat-label">Total Projects</span>
+      </div>
+      <div class="hero-stat">
+        <span class="stat-num">03</span>
+        <span class="stat-label">Categories</span>
+      </div>
+      <div class="hero-stat">
+        <span class="stat-num">∞</span>
+        <span class="stat-label">More Coming</span>
+      </div>
+    </div>
+  </div>
 
-    <!-- Application Logic -->
-    <script>
-        // --- 1. Project Data Configuration ---
-        const projectsData = [
-            {
-                category: "Games & Entertainment",
-                icon: "sports_esports",
-                items: [
-                    { title: "Chess Battle", url: "https://isaiart.com/aichess", icon: "smart_toy", color: "text-blue-400", keywords: ["ai", "bot", "board", "strategy", "computer"] },
-                    { title: "Player vs Computer Chess", url: "https://isaiart.com/chess", icon: "psychology", color: "text-indigo-400", keywords: ["pve", "board", "strategy", "bot", "singleplayer"] },
-                    { title: "Connect 4", url: "https://isaiart.com/connect", icon: "grid_view", color: "text-red-400", keywords: ["board", "multiplayer", "four", "row", "puzzle"] },
-                    { title: "Brick Breaker", url: "https://isaiart.com/brickbreaker", icon: "videogame_asset", color: "text-orange-400", keywords: ["arcade", "retro", "breakout", "ball", "paddle"] },
-                    { title: "The Hunger Games Simulator", url: "https://isaiart.com/thg", icon: "sports_kabaddi", color: "text-green-400", keywords: ["simulation", "battle royale", "survival", "text"] },
-                    { title: "Coin Flip", url: "https://isaiart.com/coinflip", icon: "toll", color: "text-yellow-400", keywords: ["rng", "random", "heads", "tails", "chance", "probability"] },
-                    { title: "DND Tools & Resources", url: "https://dnd.isaiart.com", icon: "menu_book", color: "text-purple-400", keywords: ["dungeons", "dragons", "rpg", "tabletop", "dice", "generator", "fantasy"] }
-                ]
-            },
-            {
-                category: "Creative & Media",
-                icon: "palette",
-                items: [
-                    { title: "Pixel Art Editor", url: "https://isaiart.com/pixelart", icon: "draw", color: "text-pink-400", keywords: ["draw", "paint", "sprite", "creator", "image", "8bit"] },
-                    { title: "Collage Maker", url: "https://isaiart.com/collage", icon: "auto_awesome_mosaic", color: "text-teal-400", keywords: ["photo", "image", "editor", "grid", "pictures", "stitch"] },
-                    { title: "Image to ICO File", url: "https://isaiart.com/img2ico", icon: "image", color: "text-cyan-400", keywords: ["converter", "icon", "favicon", "picture", "format"] },
-                    { title: "Image Tile Checker", url: "https://isaiart.com/tile", icon: "grid_on", color: "text-emerald-400", keywords: ["pattern", "seamless", "texture", "background", "repeat"] },
-                    { title: "8 Beat Music Mixer", url: "https://isaiart.com/8beat", icon: "graphic_eq", color: "text-fuchsia-400", keywords: ["audio", "sound", "dj", "maker", "loop", "synthesizer"] },
-                    { title: "Music Drumpad", url: "https://isaiart.com/drumpad", icon: "apps", color: "text-rose-400", keywords: ["audio", "sound", "instrument", "beat", "maker", "percussion"] },
-                    { title: "Virtual Piano", url: "https://isaiart.com/piano", icon: "piano", color: "text-sky-400", keywords: ["audio", "sound", "instrument", "keyboard", "play", "music"] },
-                    { title: "Music", url: "https://music.isaiart.com", icon: "music_note", color: "text-violet-400", keywords: ["audio", "sound", "listen", "player", "songs", "playlist"] }
-                ]
-            },
-            {
-                category: "Tools & Utilities",
-                icon: "build",
-                items: [
-                    { title: "English to Braille Translator", url: "https://isaiart.com/braille", icon: "translate", color: "text-amber-400", keywords: ["text", "convert", "accessibility", "blind", "language"] },
-                    { title: "Self Management Tools", url: "https://isaiart.com/svg", icon: "dashboard_customize", color: "text-lime-400", keywords: ["organize", "todo", "planner", "productivity", "schedule"] },
-                    { title: "Metadata Reviewer", url: "https://isaiart.com/metadata", icon: "info", color: "text-blue-500", keywords: ["exif", "data", "image", "photo", "details", "hidden"] },
-                    { title: "Modular Notepad", url: "https://isaiart.com/notes", icon: "edit_note", color: "text-yellow-500", keywords: ["text", "write", "editor", "document", "save", "type"] },
-                    { title: "Cue Clock / Countdown", url: "https://isaiart.com/cue", icon: "alarm", color: "text-red-500", keywords: ["time", "timer", "stopwatch", "alarm", "schedule"] },
-                    { title: "Countdown Timer", url: "https://isaiart.com/timer", icon: "timer", color: "text-orange-500", keywords: ["time", "clock", "stopwatch", "alarm", "minutes", "seconds"] },
-                    { title: "Twitter Search", url: "https://isaiart.com/search/x", icon: "search", color: "text-sky-500", keywords: ["x", "social", "media", "find", "query", "tweets"] }
-                ]
-            }
-        ];
+  <!-- SEARCH -->
+  <div class="search-row">
+    <div class="search-icon-cell">
+      <span class="material-symbols-outlined">search</span>
+    </div>
+    <input
+      type="text"
+      id="search-input"
+      placeholder="Search projects, keywords, or categories..."
+      autocomplete="off"
+    />
+    <div class="search-clear" id="search-clear">
+      <span class="material-symbols-outlined">close</span>
+    </div>
+  </div>
 
-        // --- 2. DOM Generation ---
-        const container = document.getElementById('projects-container');
-        let animationDelay = 0.2;
+  <!-- PROJECTS (rendered by JS) -->
+  <div id="projects-container"></div>
 
-        projectsData.forEach((section) => {
-            const sectionEl = document.createElement('div');
-            sectionEl.className = 'category-section w-full animate-fade-up';
-            sectionEl.style.animationDelay = `${animationDelay}s`;
-            animationDelay += 0.1;
+  <!-- FOOTER -->
+  <footer>
+    <div class="foot-brand">ISAIART</div>
+    <ul class="foot-links">
+      <li><a href="https://isaiart.com" target="_blank">Home</a></li>
+      <li><a href="https://dnd.isaiart.com" target="_blank">D&amp;D Tools</a></li>
+      <li><a href="https://music.isaiart.com" target="_blank">Music</a></li>
+    </ul>
+    <div class="foot-copy">© 2026</div>
+  </footer>
 
-            const headerEl = document.createElement('div');
-            headerEl.className = 'flex items-center gap-3 mb-6 border-b border-glass-200 pb-3';
-            headerEl.innerHTML = `
-                <span class="material-symbols-outlined text-3xl text-gray-400">${section.icon}</span>
-                <h2 class="text-2xl font-semibold tracking-wide text-gray-200">${section.category}</h2>
-            `;
-            sectionEl.appendChild(headerEl);
+</main>
 
-            // Changed from CSS Grid to Flexbox to allow centering of orphaned items
-            const gridEl = document.createElement('div');
-            gridEl.className = 'flex flex-wrap justify-center gap-5';
+<script>
+// ─── PROJECT DATA ───────────────────────────────────────────────────────────
+const projects = [
+  {
+    category: "Games & Entertainment",
+    icon: "sports_esports",
+    items: [
+      { title: "Chess Battle",              url: "https://isaiart.com/aichess",      icon: "smart_toy",       color: "#60a5fa", keywords: ["ai","bot","board","strategy","computer"] },
+      { title: "Player vs Computer Chess",  url: "https://isaiart.com/chess",        icon: "psychology",      color: "#818cf8", keywords: ["pve","board","strategy","bot","singleplayer"] },
+      { title: "Connect 4",                 url: "https://isaiart.com/connect",      icon: "grid_view",       color: "#f87171", keywords: ["board","multiplayer","four","row","puzzle"] },
+      { title: "Brick Breaker",             url: "https://isaiart.com/brickbreaker", icon: "videogame_asset", color: "#fb923c", keywords: ["arcade","retro","breakout","ball","paddle"] },
+      { title: "Hunger Games Simulator",    url: "https://isaiart.com/thg",          icon: "sports_kabaddi",  color: "#4ade80", keywords: ["simulation","battle royale","survival","text"] },
+      { title: "Coin Flip",                 url: "https://isaiart.com/coinflip",     icon: "toll",            color: "#facc15", keywords: ["rng","random","heads","tails","chance","probability"] },
+      { title: "DND Tools & Resources",     url: "https://dnd.isaiart.com",          icon: "menu_book",       color: "#c084fc", keywords: ["dungeons","dragons","rpg","tabletop","dice","generator","fantasy"] }
+    ]
+  },
+  {
+    category: "Creative & Media",
+    icon: "palette",
+    items: [
+      { title: "Pixel Art Editor",      url: "https://isaiart.com/pixelart", icon: "draw",                  color: "#f472b6", keywords: ["draw","paint","sprite","creator","image","8bit"] },
+      { title: "Collage Maker",         url: "https://isaiart.com/collage",  icon: "auto_awesome_mosaic",   color: "#2dd4bf", keywords: ["photo","image","editor","grid","pictures","stitch"] },
+      { title: "Image to ICO File",     url: "https://isaiart.com/img2ico", icon: "image",                  color: "#22d3ee", keywords: ["converter","icon","favicon","picture","format"] },
+      { title: "Image Tile Checker",    url: "https://isaiart.com/tile",    icon: "grid_on",                color: "#34d399", keywords: ["pattern","seamless","texture","background","repeat"] },
+      { title: "8 Beat Music Mixer",    url: "https://isaiart.com/8beat",   icon: "graphic_eq",             color: "#e879f9", keywords: ["audio","sound","dj","maker","loop","synthesizer"] },
+      { title: "Music Drumpad",         url: "https://isaiart.com/drumpad", icon: "apps",                   color: "#fb7185", keywords: ["audio","sound","instrument","beat","maker","percussion"] },
+      { title: "Virtual Piano",         url: "https://isaiart.com/piano",   icon: "piano",                  color: "#38bdf8", keywords: ["audio","sound","instrument","keyboard","play","music"] },
+      { title: "Music",                 url: "https://music.isaiart.com",   icon: "music_note",             color: "#a78bfa", keywords: ["audio","sound","listen","player","songs","playlist"] }
+    ]
+  },
+  {
+    category: "Tools & Utilities",
+    icon: "build",
+    items: [
+      { title: "English to Braille",    url: "https://isaiart.com/braille",  icon: "translate",           color: "#fbbf24", keywords: ["text","convert","accessibility","blind","language"] },
+      { title: "Self Management Tools", url: "https://isaiart.com/smt",      icon: "dashboard_customize", color: "#a3e635", keywords: ["organize","todo","planner","productivity","schedule"] },
+      { title: "Metadata Reviewer",     url: "https://isaiart.com/metadata", icon: "info",                color: "#60a5fa", keywords: ["exif","data","image","photo","details","hidden"] },
+      { title: "Modular Notepad",       url: "https://isaiart.com/notes",    icon: "edit_note",           color: "#eab308", keywords: ["text","write","editor","document","save","type"] },
+      { title: "Cue Clock / Countdown", url: "https://isaiart.com/cue",      icon: "alarm",               color: "#f87171", keywords: ["time","timer","stopwatch","alarm","schedule"] },
+      { title: "Countdown Timer",       url: "https://isaiart.com/timer",    icon: "timer",               color: "#fb923c", keywords: ["time","clock","stopwatch","alarm","minutes","seconds"] },
+      { title: "Twitter Search",        url: "https://isaiart.com/search/x", icon: "search",              color: "#38bdf8", keywords: ["x","social","media","find","query","tweets"] }
+    ]
+  }
+];
 
-            section.items.forEach(project => {
-                const card = document.createElement('a');
-                card.href = project.url;
-                card.target = "_blank";
-                
-                // Added specific width calculations to mimic grid columns while using flexbox
-                card.className = 'project-card glass-card flex flex-col items-center justify-center p-8 rounded-2xl bg-glass-100 border border-glass-100 backdrop-blur-sm text-center no-underline group w-full sm:w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(25%-15px)] flex-grow-0 flex-shrink-0';
-                
-                // Store data for search
-                card.dataset.title = project.title.toLowerCase();
-                card.dataset.keywords = project.keywords.join(' ').toLowerCase();
+// ─── RENDER ─────────────────────────────────────────────────────────────────
+const container = document.getElementById('projects-container');
+let totalCount = 0;
 
-                card.innerHTML = `
-                    <span class="material-symbols-outlined project-icon text-5xl mb-4 ${project.color}">${project.icon}</span>
-                    <h3 class="text-sm font-medium text-gray-300 group-hover:text-white tracking-wide transition-colors duration-300">${project.title}</h3>
-                `;
-                gridEl.appendChild(card);
-            });
+projects.forEach(section => {
+  totalCount += section.items.length;
 
-            sectionEl.appendChild(gridEl);
-            container.appendChild(sectionEl);
-        });
+  const block = document.createElement('div');
+  block.className = 'cat-block';
+  block.dataset.cat = section.category.toLowerCase();
 
-        // --- 3. Search Functionality ---
-        const searchInput = document.getElementById('search-input');
-        
-        searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase().trim();
-            const sections = document.querySelectorAll('.category-section');
+  // Category header
+  block.innerHTML = `
+    <div class="cat-header">
+      <div class="cat-icon-cell">
+        <span class="material-symbols-outlined">${section.icon}</span>
+      </div>
+      <div class="cat-title-cell">
+        <span class="cat-title">${section.category}</span>
+      </div>
+      <div class="cat-count-cell">${section.items.length} Projects</div>
+    </div>
+    <div class="project-grid" id="grid-${section.category.replace(/\W/g,'_')}"></div>
+  `;
+  container.appendChild(block);
 
-            sections.forEach(section => {
-                const cards = section.querySelectorAll('.project-card');
-                let hasVisibleCards = false;
+  const grid = block.querySelector('.project-grid');
 
-                cards.forEach(card => {
-                    const titleMatch = card.dataset.title.includes(searchTerm);
-                    const keywordMatch = card.dataset.keywords.includes(searchTerm);
-                    
-                    if (titleMatch || keywordMatch) {
-                        card.style.display = 'flex';
-                        hasVisibleCards = true;
-                    } else {
-                        card.style.display = 'none';
-                    }
-                });
+  section.items.forEach(item => {
+    const a = document.createElement('a');
+    a.href = item.url;
+    a.target = '_blank';
+    a.className = 'p-card';
+    a.dataset.title = item.title.toLowerCase();
+    a.dataset.keywords = item.keywords.join(' ');
+    a.innerHTML = `
+      <div class="p-card-icon">
+        <span class="material-symbols-outlined" style="color:${item.color}">${item.icon}</span>
+        ${item.keywords.slice(0,2).join(' · ')}
+      </div>
+      <div class="p-card-name">${item.title}</div>
+      <div class="p-card-arrow">↗</div>
+    `;
+    grid.appendChild(a);
+  });
+});
 
-                // Hide entire section if no cards match the search
-                section.style.display = hasVisibleCards ? 'block' : 'none';
-            });
-        });
+document.getElementById('total-count').textContent = totalCount;
 
-        // --- 4. Three.js Interactive Space Background (Stars, Planets, Meteors) ---
-        const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x030305, 0.0015);
+// ─── SEARCH ─────────────────────────────────────────────────────────────────
+const searchInput = document.getElementById('search-input');
+const searchClear = document.getElementById('search-clear');
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({
-            canvas: document.getElementById('particle-canvas'),
-            antialias: true,
-            alpha: true
-        });
-        
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase().trim();
 
-        // --- Lighting for Planets ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.15); // Dim ambient
-        scene.add(ambientLight);
-        
-        const pointLight = new THREE.PointLight(0xffffff, 1.5, 200); // Distant sun
-        pointLight.position.set(50, 30, 20);
-        scene.add(pointLight);
+  document.querySelectorAll('.cat-block').forEach(block => {
+    const cards = block.querySelectorAll('.p-card');
+    let visible = 0;
 
-        // --- Planets ---
-        const planets = [];
+    cards.forEach(card => {
+      const match = !q
+        || card.dataset.title.includes(q)
+        || card.dataset.keywords.includes(q)
+        || block.dataset.cat.includes(q);
 
-        // Planet 1: Gas Giant with Rings
-        const p1Group = new THREE.Group();
-        const p1Geo = new THREE.SphereGeometry(4, 32, 32);
-        const p1Mat = new THREE.MeshStandardMaterial({ 
-            color: 0x4a235a, 
-            roughness: 0.8,
-            metalness: 0.2
-        });
-        const planet1 = new THREE.Mesh(p1Geo, p1Mat);
-        p1Group.add(planet1);
+      card.style.display = match ? 'flex' : 'none';
+      if (match) visible++;
+    });
 
-        const ringGeo = new THREE.RingGeometry(5.5, 8, 64);
-        const ringMat = new THREE.MeshStandardMaterial({ 
-            color: 0x8e44ad, 
-            side: THREE.DoubleSide, 
-            transparent: true, 
-            opacity: 0.6,
-            roughness: 0.5
-        });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.rotation.x = Math.PI / 2.2;
-        ring.rotation.y = Math.PI / 8;
-        p1Group.add(ring);
-        
-        p1Group.position.set(-25, 15, -40);
-        scene.add(p1Group);
-        planets.push({ mesh: p1Group, speed: 0.001, orbitRadius: 45, angle: Math.PI });
+    // Show/hide empty state
+    const grid = block.querySelector('.project-grid');
+    let empty = grid.querySelector('.no-results');
+    if (visible === 0) {
+      if (!empty) {
+        empty = document.createElement('div');
+        empty.className = 'no-results';
+        empty.innerHTML = `<div class="no-results-num">00</div><div class="no-results-txt">No matches found</div>`;
+        grid.appendChild(empty);
+      }
+      empty.style.display = 'flex';
+    } else if (empty) {
+      empty.style.display = 'none';
+    }
 
-        // Planet 2: Small Rocky/Ice Planet
-        const p2Geo = new THREE.SphereGeometry(1.8, 32, 32);
-        const p2Mat = new THREE.MeshStandardMaterial({ 
-            color: 0x1abc9c, 
-            roughness: 0.9,
-            metalness: 0.1
-        });
-        const planet2 = new THREE.Mesh(p2Geo, p2Mat);
-        planet2.position.set(30, -10, -50);
-        scene.add(planet2);
-        planets.push({ mesh: planet2, speed: 0.002, orbitRadius: 55, angle: 0 });
+    block.classList.toggle('hidden', visible === 0 && q !== '');
+  });
+});
 
-        // --- Stars (Particles) ---
-        const particleGroups = [
-            { color: 0xffffff, size: 0.03, count: 4000, opacity: 0.8 },
-            { color: 0xaaaaaa, size: 0.02, count: 3000, opacity: 0.5 },
-            { color: 0x666666, size: 0.015, count: 2000, opacity: 0.3 }
-        ];
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchInput.dispatchEvent(new Event('input'));
+  searchInput.focus();
+});
 
-        // Create circular texture for stars
-        const canvas = document.createElement('canvas');
-        canvas.width = 16;
-        canvas.height = 16;
-        const context = canvas.getContext('2d');
-        context.beginPath();
-        context.arc(8, 8, 8, 0, Math.PI * 2);
-        context.fillStyle = '#ffffff';
-        context.fill();
-        const starTexture = new THREE.CanvasTexture(canvas);
+// ─── THREE.JS SPACE BACKGROUND ──────────────────────────────────────────────
+(function() {
+  const scene    = new THREE.Scene();
+  scene.fog      = new THREE.FogExp2(0x07070a, 0.0015);
 
-        const particleMeshes = particleGroups.map(group => {
-            const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(group.count * 3);
+  const camera   = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+  camera.position.z = 20;
 
-            for (let i = 0; i < group.count * 3; i++) {
-                const r = 60 * Math.cbrt(Math.random());
-                const theta = Math.random() * 2 * Math.PI;
-                const phi = Math.acos(2 * Math.random() - 1);
-                
-                positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-                positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-                positions[i * 3 + 2] = r * Math.cos(phi);
-            }
+  const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), antialias: true, alpha: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 
-            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xffffff, 0.15));
+  const sun = new THREE.PointLight(0xffffff, 1.5, 200);
+  sun.position.set(50, 30, 20);
+  scene.add(sun);
 
-            const material = new THREE.PointsMaterial({
-                size: group.size,
-                color: group.color,
-                transparent: true,
-                opacity: group.opacity,
-                map: starTexture,
-                depthWrite: false,
-                blending: THREE.AdditiveBlending
-            });
+  // Star texture
+  const sc = document.createElement('canvas');
+  sc.width = sc.height = 16;
+  const sx = sc.getContext('2d');
+  sx.beginPath(); sx.arc(8,8,8,0,Math.PI*2);
+  sx.fillStyle = '#fff'; sx.fill();
+  const starTex = new THREE.CanvasTexture(sc);
 
-            return new THREE.Points(geometry, material);
-        });
+  // Stars
+  const starGroups = [
+    { color:0xffffff, size:0.025, count:3500, opacity:0.5 },
+    { color:0xaaaaaa, size:0.018, count:2500, opacity:0.3 },
+    { color:0x666666, size:0.012, count:1500, opacity:0.18 }
+  ];
+  const starMeshes = starGroups.map(g => {
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(g.count * 3);
+    for (let i = 0; i < g.count; i++) {
+      const r = 60 * Math.cbrt(Math.random());
+      const t = Math.random() * 2 * Math.PI;
+      const p = Math.acos(2 * Math.random() - 1);
+      pos[i*3]   = r * Math.sin(p) * Math.cos(t);
+      pos[i*3+1] = r * Math.sin(p) * Math.sin(t);
+      pos[i*3+2] = r * Math.cos(p);
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({ size:g.size, color:g.color, transparent:true, opacity:g.opacity, map:starTex, depthWrite:false, blending:THREE.AdditiveBlending });
+    const mesh = new THREE.Points(geo, mat);
+    scene.add(mesh);
+    return mesh;
+  });
 
-        particleMeshes.forEach(mesh => scene.add(mesh));
-        camera.position.z = 20;
+  // Planets — single small distant one, no rings
+  const planets = [];
 
-        // --- Meteors (Shooting Stars) ---
-        const meteors = [];
-        const meteorGeo = new THREE.CylinderGeometry(0.01, 0.05, 3, 8); // Slightly thinner
-        meteorGeo.rotateX(Math.PI / 2);
-        const meteorMat = new THREE.MeshBasicMaterial({ 
-            color: 0xffffff, 
-            transparent: true, 
-            opacity: 0.6,
-            blending: THREE.AdditiveBlending
-        });
+  const p2 = new THREE.Mesh(
+    new THREE.SphereGeometry(1.4, 32, 32),
+    new THREE.MeshStandardMaterial({ color:0x1a5a4a, roughness:0.9, metalness:0.1 })
+  );
+  p2.position.set(30, -10, -60);
+  scene.add(p2);
+  planets.push({ mesh:p2, speed:0.002, orbitRadius:55, angle:0 });
 
-        for(let i = 0; i < 3; i++) { // Reduced count
-            const meteor = new THREE.Mesh(meteorGeo, meteorMat);
-            resetMeteor(meteor);
-            scene.add(meteor);
-            meteors.push(meteor);
-        }
+  // Meteors
+  const meteors = [];
+  const mGeo = new THREE.CylinderGeometry(0.01, 0.05, 3, 8);
+  mGeo.rotateX(Math.PI / 2);
+  const mMat = new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:0.6, blending:THREE.AdditiveBlending });
 
-        function resetMeteor(m) {
-            // Start off-screen top right/left
-            const startX = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 30 + 20);
-            const startY = Math.random() * 20 + 20;
-            const startZ = -10 - Math.random() * 30;
-            
-            m.position.set(startX, startY, startZ);
-            
-            // Move diagonally down - SLOWED DOWN SIGNIFICANTLY
-            const velX = (startX > 0 ? -1 : 1) * (Math.random() * 0.1 + 0.05); 
-            const velY = -(Math.random() * 0.1 + 0.05);
-            m.userData.velocity = new THREE.Vector3(velX, velY, 0);
-            
-            // Align cylinder to velocity vector
-            m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), m.userData.velocity.clone().normalize());
-            
-            // Random delay before showing - INCREASED DELAY
-            m.userData.active = false;
-            m.visible = false;
-            setTimeout(() => {
-                m.userData.active = true;
-                m.visible = true;
-            }, Math.random() * 10000 + 4000); // 4 to 14 seconds delay
-        }
+  function resetMeteor(m) {
+    const sx = (Math.random() > .5 ? 1 : -1) * (Math.random() * 30 + 20);
+    const sy = Math.random() * 20 + 20;
+    m.position.set(sx, sy, -10 - Math.random() * 30);
+    const vel = new THREE.Vector3((sx > 0 ? -1 : 1) * (Math.random() * 0.1 + 0.05), -(Math.random() * 0.1 + 0.05), 0);
+    m.userData.velocity = vel;
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), vel.clone().normalize());
+    m.userData.active = false; m.visible = false;
+    setTimeout(() => { m.userData.active = true; m.visible = true; }, Math.random() * 10000 + 4000);
+  }
 
-        // --- Animation & Interaction ---
-        let mouseX = 0;
-        let mouseY = 0;
-        let targetRotationX = 0;
-        let targetRotationY = 0;
-        const windowHalfX = window.innerWidth / 2;
-        const windowHalfY = window.innerHeight / 2;
+  for (let i = 0; i < 3; i++) {
+    const m = new THREE.Mesh(mGeo, mMat);
+    resetMeteor(m);
+    scene.add(m);
+    meteors.push(m);
+  }
 
-        document.addEventListener('mousemove', (event) => {
-            // SLOWED DOWN MOUSE SENSITIVITY
-            mouseX = (event.clientX - windowHalfX) * 0.0002;
-            mouseY = (event.clientY - windowHalfY) * 0.0002;
-        });
+  // Mouse
+  let tX = 0, tY = 0;
+  document.addEventListener('mousemove', e => {
+    tX = (e.clientX - innerWidth/2) * 0.0002;
+    tY = (e.clientY - innerHeight/2) * 0.0002;
+  });
 
-        const clock = new THREE.Clock();
+  let rX = 0, rY = 0;
 
-        function animate() {
-            requestAnimationFrame(animate);
-            const elapsedTime = clock.getElapsedTime();
+  function animate() {
+    requestAnimationFrame(animate);
+    rX += (tY - rX) * 0.02;
+    rY += (tX - rY) * 0.02;
 
-            // Smooth mouse follow for camera/scene - SLOWED DOWN EASING
-            targetRotationX += (mouseY - targetRotationX) * 0.02;
-            targetRotationY += (mouseX - targetRotationY) * 0.02;
+    starMeshes.forEach((m, i) => {
+      m.rotation.y += 0.00005 * (i + 1);
+      m.rotation.x += rX * 0.05;
+      m.rotation.y += rY * 0.05;
+    });
 
-            // Animate Stars
-            particleMeshes.forEach((mesh, index) => {
-                // SLOWED DOWN STAR ROTATION
-                mesh.rotation.y += 0.00005 * (index + 1);
-                mesh.rotation.x += targetRotationX * 0.05;
-                mesh.rotation.y += targetRotationY * 0.05;
-            });
+    planets.forEach(p => {
+      p.angle += p.speed * 0.05;
+      p.mesh.position.x = Math.cos(p.angle) * p.orbitRadius + rY * 5;
+      p.mesh.position.z = Math.sin(p.angle) * p.orbitRadius - 30;
+      p.mesh.position.y += -rX * 5 * 0.016;
+      p.mesh.rotation.y += 0.0005;
+    });
 
-            // Animate Planets
-            planets.forEach(p => {
-                // SLOWED DOWN ORBIT
-                p.angle += p.speed * 0.05; 
-                p.mesh.position.x = Math.cos(p.angle) * p.orbitRadius;
-                p.mesh.position.z = Math.sin(p.angle) * p.orbitRadius - 30;
-                
-                // SLOWED DOWN SELF ROTATION
-                p.mesh.rotation.y += 0.0005;
-                
-                // REDUCED PARALLAX EFFECT
-                p.mesh.position.x += targetRotationY * 5;
-                p.mesh.position.y += -targetRotationX * 5;
-            });
+    meteors.forEach(m => {
+      if (m.userData.active) {
+        m.position.add(m.userData.velocity);
+        if (m.position.y < -30 || Math.abs(m.position.x) > 60) resetMeteor(m);
+      }
+    });
 
-            // Animate Meteors
-            meteors.forEach(m => {
-                if(m.userData.active) {
-                    m.position.add(m.userData.velocity);
-                    // Reset if it goes too far down or off screen
-                    if(m.position.y < -30 || Math.abs(m.position.x) > 60) {
-                        resetMeteor(m);
-                    }
-                }
-            });
+    renderer.render(scene, camera);
+  }
+  animate();
 
-            renderer.render(scene, camera);
-        }
-
-        animate();
-
-        // Handle Window Resize
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+})();
+</script>
 </body>
 </html>
