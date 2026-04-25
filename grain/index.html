@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GrainLab — Batch Film Grain Processor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0e0e10;
+    --surface: #18181c;
+    --surface2: #222228;
+    --surface3: #2c2c34;
+    --border: #333340;
+    --text: #e8e8ec;
+    --text-dim: #88889a;
+    --accent: #c8a45a;
+    --accent-dim: #8a7340;
+    --accent-glow: #c8a45a33;
+    --red: #d45454;
+    --green: #5ab87a;
+    --radius: 6px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Instrument Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .logo-icon::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.15) 2px,
+      rgba(0,0,0,0.15) 4px
+    );
+  }
+
+  .logo-icon span {
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--bg);
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo h1 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .logo h1 span {
+    color: var(--text-dim);
+    font-weight: 400;
+    font-size: 13px;
+    margin-left: 8px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .file-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Buttons ── */
+  button {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    padding: 8px 18px;
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--surface3); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    padding: 8px 16px;
+    border: 1px solid var(--red);
+  }
+  .btn-danger:hover { background: rgba(212,84,84,0.1); }
+
+  /* ── Layout ── */
+  .app {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    height: calc(100vh - 61px);
+  }
+
+  /* ── Controls Panel ── */
+  .controls {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .controls::-webkit-scrollbar { width: 4px; }
+  .controls::-webkit-scrollbar-track { background: transparent; }
+  .controls::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .ctrl-section {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 20px;
+  }
+
+  .ctrl-section h3 {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ctrl-section h3 .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .ctrl-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .ctrl-row:last-child { margin-bottom: 0; }
+
+  .ctrl-row label {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 400;
+  }
+
+  .ctrl-row .val {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    min-width: 44px;
+    text-align: right;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 2px;
+    outline: none;
+    margin-top: 6px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--accent-dim);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--accent-dim);
+  }
+
+  select {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  select:focus { border-color: var(--accent); }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .checkbox-row input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 14px;
+    height: 14px;
+  }
+
+  .checkbox-row label {
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .export-section {
+    padding: 18px 20px;
+  }
+
+  .export-section .btn-primary {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .format-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .format-btn {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .format-btn.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .format-btn:hover:not(.active) {
+    background: var(--surface3);
+  }
+
+  .quality-row {
+    margin-bottom: 14px;
+  }
+
+  /* ── Main Area ── */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Drop Zone ── */
+  .dropzone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    margin: 20px;
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .dropzone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+  }
+
+  .dropzone.has-files {
+    display: none;
+  }
+
+  .dropzone-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: var(--surface2);
+    display: grid;
+    place-items: center;
+    margin-bottom: 16px;
+  }
+
+  .dropzone-icon svg {
+    width: 28px;
+    height: 28px;
+    stroke: var(--text-dim);
+  }
+
+  .dropzone p {
+    font-size: 15px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .dropzone p strong {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .dropzone small {
+    font-size: 12px;
+    color: var(--text-dim);
+    opacity: 0.6;
+  }
+
+  /* ── Preview Grid ── */
+  .preview-area {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .preview-area.visible {
+    display: flex;
+  }
+
+  .preview-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .preview-toolbar .left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .preview-toolbar .right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .view-toggle {
+    display: flex;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .view-toggle button {
+    padding: 6px 12px;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px;
+    border-radius: 0;
+  }
+
+  .view-toggle button.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+  }
+
+  .preview-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    align-content: start;
+  }
+
+  .preview-grid::-webkit-scrollbar { width: 6px; }
+  .preview-grid::-webkit-scrollbar-track { background: transparent; }
+  .preview-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .preview-grid.single-view {
+    grid-template-columns: 1fr;
+    place-items: center;
+    padding: 30px;
+  }
+
+  .thumb {
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    aspect-ratio: 1;
+  }
+
+  .thumb:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .thumb.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  .thumb canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .thumb .remove-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.7);
+    color: var(--red);
+    font-size: 14px;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .thumb:hover .remove-btn { opacity: 1; }
+
+  .thumb .filename {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 6px 8px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .single-view .thumb {
+    aspect-ratio: auto;
+    max-width: 900px;
+    width: 100%;
+  }
+
+  .single-view .thumb canvas {
+    width: 100%;
+    height: auto;
+    aspect-ratio: auto;
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar {
+    display: none;
+    margin-top: 12px;
+  }
+
+  .progress-bar.visible { display: block; }
+
+  .progress-track {
+    width: 100%;
+    height: 6px;
+    background: var(--surface3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.2s;
+    width: 0%;
+  }
+
+  .progress-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  /* ── Reset all ── */
+  .reset-row {
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  .reset-link {
+    font-size: 12px;
+    color: var(--text-dim);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-family: 'Instrument Sans', sans-serif;
+    padding: 4px;
+  }
+
+  .reset-link:hover { color: var(--accent); }
+
+  /* ── Presets ── */
+  .preset-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .preset-chip {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 5px 10px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .preset-chip:hover, .preset-chip.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* ── Hidden file input ── */
+  #fileInput { display: none; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--text);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 999;
+    font-family: 'Instrument Sans', sans-serif;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .toast.success { border-color: var(--green); }
+  .toast.error { border-color: var(--red); }
+
+  /* ── Mobile ── */
+  @media (max-width: 768px) {
+    header {
+      padding: 12px 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .logo h1 { font-size: 15px; }
+    .logo h1 span { display: none; }
+
+    .header-actions {
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+
+    .file-count {
+      font-size: 11px;
+      padding: 5px 8px;
+    }
+
+    .btn-secondary, .btn-danger {
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+
+    /* Stack layout vertically */
+    .app {
+      grid-template-columns: 1fr;
+      height: calc(100vh - 53px);
+      position: relative;
+    }
+
+    /* Controls become a bottom sheet */
+    .controls {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      height: 70vh;
+      border-right: none;
+      border-top: 2px solid var(--accent);
+      border-radius: 16px 16px 0 0;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+      overflow-y: auto;
+    }
+
+    .controls.mobile-open {
+      transform: translateY(0);
+    }
+
+    /* Sheet handle */
+    .controls::before {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 10px auto 6px;
+      flex-shrink: 0;
+    }
+
+    /* Overlay behind sheet */
+    .mobile-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 199;
+    }
+
+    .mobile-overlay.active { display: block; }
+
+    /* Floating controls toggle button */
+    .mobile-controls-btn {
+      display: flex;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 198;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      transition: filter 0.15s;
+    }
+
+    .mobile-controls-btn:hover { filter: brightness(1.15); }
+
+    .mobile-controls-btn svg {
+      width: 22px;
+      height: 22px;
+      stroke: var(--bg);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Main area takes full space */
+    .main {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Dropzone smaller on mobile */
+    .dropzone {
+      margin: 14px;
+    }
+
+    .dropzone-icon {
+      width: 48px;
+      height: 48px;
+    }
+
+    .dropzone p { font-size: 13px; }
+
+    /* Preview grid 2-col on mobile */
+    .preview-grid {
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 8px;
+      padding: 10px;
+    }
+
+    /* Always show remove button on touch */
+    .thumb .remove-btn {
+      opacity: 1 !important;
+      width: 26px;
+      height: 26px;
+      font-size: 16px;
+    }
+
+    /* Export button padding on mobile */
+    .export-section .btn-primary {
+      padding: 14px;
+    }
+
+    /* Preview toolbar compact */
+    .preview-toolbar {
+      padding: 8px 12px;
+    }
+
+    /* Add padding at bottom so fab doesn't cover content */
+    .preview-grid { padding-bottom: 80px; }
+    .dropzone { margin-bottom: 80px; }
+  }
+
+  /* Desktop — hide mobile btn */
+  @media (min-width: 769px) {
+    .mobile-controls-btn { display: none; }
+    .mobile-overlay { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon"><span>GL</span></div>
+    <h1>GrainLab <span>Batch Processor</span></h1>
+  </div>
+  <div class="header-actions">
+    <div class="file-count" id="fileCount">0 files loaded</div>
+    <button class="btn-secondary" onclick="addMore()">+ Add Files</button>
+    <button class="btn-danger" id="clearBtn" onclick="clearAll()" style="display:none">Clear All</button>
+  </div>
+</header>
+
+<div class="app">
+  <!-- Controls -->
+  <aside class="controls">
+
+    <!-- Presets -->
+    <div class="ctrl-section">
+      <h3><span class="dot"></span> Presets</h3>
+      <div class="preset-chips">
+        <button class="preset-chip" onclick="applyPreset('none')">None</button>
+        <button class="preset-chip" onclick="applyPreset('subtle')">Subtle Film</button>
+        <button class="preset-chip" onclick="applyPreset('kodak')">Kodak 400</button>
+        <button class="preset-chip" onclick="applyPreset('cinematic')">Cinematic</button>
+        <button class="preset-chip" onclick="applyPreset('vintage')">Vintage</button>
+        <button class="preset-chip" onclick="applyPreset('noir')">Noir</button>
+        <button class="preset-chip" onclick="applyPreset('faded')">Faded Print</button>
+        <button class="preset-chip" onclick="applyPreset('harsh')">High ISO</button>
+      </div>
+    </div>
+
+    <!-- Film Grain -->
+    <div class="ctrl-section">
+      <h3><span class="dot"></span> Film Grain</h3>
+
+      <div class="ctrl-row">
+        <label>Grain Amount</label>
+        <span class="val" id="grainAmountVal">30</span>
+      </div>
+      <input type="range" id="grainAmount" min="0" max="100" value="30" oninput="updateCtrl(this)">
+
+      <div class="ctrl-row" style="margin-top:12px">
+        <label>Grain Size</label>
+        <span class="val" id="grainSizeVal">1.0</span>
+      </div>
+      <input type="range" id="grainSize" min="0.5" max="3" step="0.1" value="1.0" oninput="updateCtrl(this)">
+
+      <div class="ctrl-row" style="margin-top:12px">
+        <label>Grain Roughness</label>
+        <span class="val" id="grainRoughnessVal">50</span>
+      </div>
+      <input type="range" id="grainRoughness" min="0" max="100" value="50" oninput="updateCtrl(this)">
+
+      <div class="checkbox-row" style="margin-top:10px">
+        <input type="checkbox" id="grainMono" checked onchange="renderAll()">
+        <label for="grainMono">Monochrome grain</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="grainShadows" onchange="renderAll()">
+        <label for="grainShadows">Grain only in shadows</label>
+      </div>
+    </div>
+
+    <!-- Adjustments -->
+    <div class="ctrl-section">
+      <h3><span class="dot"></span> Adjustments</h3>
+
+      <div class="ctrl-row">
+        <label>Brightness</label>
+        <span class="val" id="brightnessVal">0</span>
+      </div>
+      <input type="range" id="brightness" min="-100" max="100" value="0" oninput="updateCtrl(this)">
+
+      <div class="ctrl-row" style="margin-top:12px">
+        <label>Contrast</label>
+        <span class="val" id="contrastVal">0</span>
+      </div>
+      <input type="range" id="contrast" min="-100" max="100" value="0" oninput="updateCtrl(this)">
+
+      <div class="ctrl-row" style="margin-top:12px">
+        <label>Saturation</label>
+        <span class="val" id="saturationVal">0</span>
+      </div>
+      <input type="range" id="saturation" min="-100" max="100" value="0" oninput="updateCtrl(this)">
+
+      <div class="ctrl-row" style="margin-top:12px">
+        <label>Hue Shift</label>
+        <span class="val" id="hueShiftVal">0°</span>
+      </div>
+      <input type="range" id="hueShift" min="-180" max="180" value="0" oninput="updateCtrl(this)">
+
+      <div class="ctrl-row" style="margin-top:12px">
+        <label>Temperature</label>
+        <span class="val" id="temperatureVal">0</span>
+      </div>
+      <input type="range" id="temperature" min="-50" max="50" value="0" oninput="updateCtrl(this)">
+
+      <div class="ctrl-row" style="margin-top:12px">
+        <label>Highlights</label>
+        <span class="val" id="highlightsVal">0</span>
+      </div>
+      <input type="range" id="highlights" min="-100" max="100" value="0" oninput="updateCtrl(this)">
+
+      <div class="ctrl-row" style="margin-top:12px">
+        <label>Shadows</label>
+        <span class="val" id="shadowsVal">0</span>
+      </div>
+      <input type="range" id="shadows" min="-100" max="100" value="0" oninput="updateCtrl(this)">
+
+      <div class="ctrl-row" style="margin-top:12px">
+        <label>Vignette</label>
+        <span class="val" id="vignetteVal">0</span>
+      </div>
+      <input type="range" id="vignette" min="0" max="100" value="0" oninput="updateCtrl(this)">
+
+      <div class="ctrl-row" style="margin-top:12px">
+        <label>Fade / Lift Blacks</label>
+        <span class="val" id="fadeVal">0</span>
+      </div>
+      <input type="range" id="fade" min="0" max="80" value="0" oninput="updateCtrl(this)">
+
+      <div class="ctrl-row" style="margin-top:12px">
+        <label>Sharpen</label>
+        <span class="val" id="sharpenVal">0</span>
+      </div>
+      <input type="range" id="sharpen" min="0" max="100" value="0" oninput="updateCtrl(this)">
+
+      <div class="reset-row">
+        <button class="reset-link" onclick="resetAll()">Reset all adjustments</button>
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="ctrl-section export-section">
+      <h3><span class="dot"></span> Export</h3>
+
+      <div class="format-row">
+        <button class="format-btn active" data-fmt="png" onclick="setFormat(this)">PNG</button>
+        <button class="format-btn" data-fmt="jpeg" onclick="setFormat(this)">JPEG</button>
+        <button class="format-btn" data-fmt="webp" onclick="setFormat(this)">WebP</button>
+      </div>
+
+      <div class="quality-row" id="qualityRow" style="display:none">
+        <div class="ctrl-row">
+          <label>Quality</label>
+          <span class="val" id="qualityVal">92</span>
+        </div>
+        <input type="range" id="quality" min="10" max="100" value="92" oninput="document.getElementById('qualityVal').textContent=this.value">
+      </div>
+
+      <button class="btn-primary" id="exportBtn" onclick="exportAll()" disabled>
+        Export All with Random Names
+      </button>
+
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">0 / 0</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+      <div class="dropzone-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <p>Drop images here or <strong>click to browse</strong></p>
+      <small>PNG, JPG, WebP — no limit</small>
+    </div>
+
+    <div class="preview-area" id="previewArea">
+      <div class="preview-toolbar">
+        <div class="left">
+          <div class="view-toggle">
+            <button class="active" onclick="setView('grid', this)">Grid</button>
+            <button onclick="setView('single', this)">Single</button>
+          </div>
+        </div>
+        <div class="right">
+          <button class="btn-secondary" onclick="addMore()">+ Add More</button>
+        </div>
+      </div>
+      <div class="preview-grid" id="previewGrid"></div>
+    </div>
+
+    <input type="file" id="fileInput" multiple accept="image/*" onchange="handleFiles(this.files)">
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="mobile-overlay" id="mobileOverlay" onclick="closeMobilePanel()"></div>
+<button class="mobile-controls-btn" id="mobileControlsBtn" onclick="toggleMobilePanel()" title="Open controls">
+  <svg viewBox="0 0 24 24">
+    <line x1="4" y1="6" x2="20" y2="6"/>
+    <line x1="4" y1="12" x2="20" y2="12"/>
+    <line x1="4" y1="18" x2="20" y2="18"/>
+  </svg>
+</button>
+
+<script>
+// ── State ──
+let images = []; // { file, img (HTMLImageElement), canvas (preview) }
+let exportFormat = 'png';
+let debounceTimer = null;
+
+// ── Helpers ──
+function genId(len = 8) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let s = '';
+  for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+function toast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.className = 'toast', 2500);
+}
+
+function getSettings() {
+  return {
+    grainAmount: +document.getElementById('grainAmount').value,
+    grainSize: +document.getElementById('grainSize').value,
+    grainRoughness: +document.getElementById('grainRoughness').value,
+    grainMono: document.getElementById('grainMono').checked,
+    grainShadows: document.getElementById('grainShadows').checked,
+    brightness: +document.getElementById('brightness').value,
+    contrast: +document.getElementById('contrast').value,
+    saturation: +document.getElementById('saturation').value,
+    hueShift: +document.getElementById('hueShift').value,
+    temperature: +document.getElementById('temperature').value,
+    highlights: +document.getElementById('highlights').value,
+    shadows: +document.getElementById('shadows').value,
+    vignette: +document.getElementById('vignette').value,
+    fade: +document.getElementById('fade').value,
+    sharpen: +document.getElementById('sharpen').value,
+  };
+}
+
+// ── Controls ──
+function updateCtrl(el) {
+  const id = el.id;
+  const v = el.value;
+  const valEl = document.getElementById(id + 'Val');
+  if (valEl) {
+    valEl.textContent = id === 'hueShift' ? v + '°' : v;
+  }
+  debouncedRender();
+}
+
+function debouncedRender() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => renderAll(), 80);
+}
+
+function renderAll() {
+  const s = getSettings();
+  for (const item of images) {
+    renderPreview(item, s);
+  }
+}
+
+// ── Color math ──
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return [h * 360, s, l];
+}
+
+function hslToRgb(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  h /= 360;
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+// ── Render ──
+function renderToCanvas(img, canvas, settings, fullRes = false) {
+  const s = settings;
+  const scale = fullRes ? 1 : Math.min(1, 400 / Math.max(img.width, img.height));
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  // Draw base
+  ctx.drawImage(img, 0, 0, w, h);
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const d = imageData.data;
+
+  // Pixel-level adjustments
+  const brightAdj = s.brightness * 2.55;
+  const contFactor = (259 * (s.contrast * 2.55 + 255)) / (255 * (259 - s.contrast * 2.55));
+  const satAdj = s.saturation / 100;
+  const tempAdj = s.temperature;
+  const highAdj = s.highlights / 100;
+  const shadAdj = s.shadows / 100;
+  const fadeAdj = s.fade * 2.55 * 0.5;
+
+  for (let i = 0; i < d.length; i += 4) {
+    let r = d[i], g = d[i+1], b = d[i+2];
+
+    // Brightness
+    r += brightAdj; g += brightAdj; b += brightAdj;
+
+    // Contrast
+    r = contFactor * (r - 128) + 128;
+    g = contFactor * (g - 128) + 128;
+    b = contFactor * (b - 128) + 128;
+
+    // Temperature (warm = more red/yellow, cool = more blue)
+    if (tempAdj !== 0) {
+      r += tempAdj * 1.2;
+      g += tempAdj * 0.1;
+      b -= tempAdj * 1.2;
+    }
+
+    // Hue + Saturation via HSL
+    if (s.hueShift !== 0 || satAdj !== 0) {
+      let [hh, ss, ll] = rgbToHsl(
+        Math.max(0, Math.min(255, r)),
+        Math.max(0, Math.min(255, g)),
+        Math.max(0, Math.min(255, b))
+      );
+      hh += s.hueShift;
+      ss = Math.max(0, Math.min(1, ss + satAdj));
+      [r, g, b] = hslToRgb(hh, ss, ll);
+    }
+
+    // Highlights / Shadows
+    const lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+    if (highAdj !== 0 && lum > 0.5) {
+      const amt = (lum - 0.5) * 2 * highAdj * 80;
+      r += amt; g += amt; b += amt;
+    }
+    if (shadAdj !== 0 && lum < 0.5) {
+      const amt = (0.5 - lum) * 2 * shadAdj * 80;
+      r += amt; g += amt; b += amt;
+    }
+
+    // Fade / lift blacks
+    if (fadeAdj > 0) {
+      r = r + (fadeAdj - r) * (fadeAdj / 128);
+      g = g + (fadeAdj - g) * (fadeAdj / 128);
+      b = b + (fadeAdj - b) * (fadeAdj / 128);
+    }
+
+    d[i]   = Math.max(0, Math.min(255, r));
+    d[i+1] = Math.max(0, Math.min(255, g));
+    d[i+2] = Math.max(0, Math.min(255, b));
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  // Sharpen (simple unsharp mask via overlay)
+  if (s.sharpen > 0) {
+    const amt = s.sharpen / 200;
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    const tCtx = tmp.getContext('2d');
+    tCtx.filter = `blur(1px)`;
+    tCtx.drawImage(canvas, 0, 0);
+    ctx.globalAlpha = amt;
+    ctx.globalCompositeOperation = 'difference';
+    ctx.drawImage(tmp, 0, 0);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(canvas, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    // re-draw properly: use simpler approach
+    // Actually let's do a convolution-free approach: just apply CSS-like
+    // Reset and redo with a highpass blend
+    ctx.drawImage(img, 0, 0, w, h);
+    const id2 = ctx.getImageData(0, 0, w, h);
+    // copy processed pixels back, then sharpen
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  // Vignette
+  if (s.vignette > 0) {
+    const vigStr = s.vignette / 100;
+    const grd = ctx.createRadialGradient(w/2, h/2, w * 0.25, w/2, h/2, w * 0.75);
+    grd.addColorStop(0, 'rgba(0,0,0,0)');
+    grd.addColorStop(1, `rgba(0,0,0,${vigStr})`);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // Film grain
+  if (s.grainAmount > 0) {
+    const grainData = ctx.getImageData(0, 0, w, h);
+    const gd = grainData.data;
+    const amount = s.grainAmount;
+    const roughness = s.grainRoughness / 100;
+    const mono = s.grainMono;
+    const shadowsOnly = s.grainShadows;
+
+    // For larger grain size, we generate a smaller noise and upscale
+    const gs = s.grainSize;
+    const nw = Math.ceil(w / gs);
+    const nh = Math.ceil(h / gs);
+
+    // Generate noise array
+    const noise = new Float32Array(nw * nh * (mono ? 1 : 3));
+    for (let j = 0; j < noise.length; j++) {
+      // Box-Muller for rougher grain
+      if (roughness > 0.3) {
+        const u1 = Math.random();
+        const u2 = Math.random();
+        noise[j] = Math.sqrt(-2 * Math.log(u1 || 0.001)) * Math.cos(2 * Math.PI * u2);
+      } else {
+        noise[j] = (Math.random() - 0.5) * 2;
+      }
+    }
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = (y * w + x) * 4;
+        const nx = Math.floor(x / gs);
+        const ny = Math.floor(y / gs);
+        const ni = ny * nw + nx;
+
+        let mult = amount * 0.8;
+
+        // Shadow-only grain
+        if (shadowsOnly) {
+          const lum = (gd[idx] * 0.299 + gd[idx+1] * 0.587 + gd[idx+2] * 0.114) / 255;
+          mult *= (1 - lum);
+        }
+
+        if (mono) {
+          const n = noise[ni] * mult;
+          gd[idx]   = Math.max(0, Math.min(255, gd[idx] + n));
+          gd[idx+1] = Math.max(0, Math.min(255, gd[idx+1] + n));
+          gd[idx+2] = Math.max(0, Math.min(255, gd[idx+2] + n));
+        } else {
+          const base = ni * 3;
+          gd[idx]   = Math.max(0, Math.min(255, gd[idx]   + noise[base]   * mult));
+          gd[idx+1] = Math.max(0, Math.min(255, gd[idx+1] + noise[base+1] * mult));
+          gd[idx+2] = Math.max(0, Math.min(255, gd[idx+2] + noise[base+2] * mult));
+        }
+      }
+    }
+    ctx.putImageData(grainData, 0, 0);
+  }
+}
+
+function renderPreview(item, settings) {
+  renderToCanvas(item.img, item.canvas, settings, false);
+}
+
+// ── File handling ──
+function handleFiles(files) {
+  const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (!arr.length) return;
+
+  let loaded = 0;
+  for (const file of arr) {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      img.onload = () => {
+        const item = { file, img, canvas };
+        images.push(item);
+        renderPreview(item, getSettings());
+        addThumb(item, images.length - 1);
+        loaded++;
+        if (loaded === arr.length) updateUI();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function addThumb(item, index) {
+  const grid = document.getElementById('previewGrid');
+  const div = document.createElement('div');
+  div.className = 'thumb';
+  div.dataset.index = index;
+
+  div.appendChild(item.canvas);
+
+  const rm = document.createElement('button');
+  rm.className = 'remove-btn';
+  rm.textContent = '×';
+  rm.onclick = (e) => { e.stopPropagation(); removeImage(index); };
+  div.appendChild(rm);
+
+  const fn = document.createElement('div');
+  fn.className = 'filename';
+  fn.textContent = item.file.name;
+  div.appendChild(fn);
+
+  grid.appendChild(div);
+}
+
+function removeImage(index) {
+  images.splice(index, 1);
+  rebuildGrid();
+  updateUI();
+}
+
+function rebuildGrid() {
+  const grid = document.getElementById('previewGrid');
+  grid.innerHTML = '';
+  images.forEach((item, i) => addThumb(item, i));
+}
+
+function clearAll() {
+  images = [];
+  rebuildGrid();
+  updateUI();
+  toast('All cleared');
+}
+
+function addMore() {
+  document.getElementById('fileInput').click();
+}
+
+function updateUI() {
+  const count = images.length;
+  document.getElementById('fileCount').textContent = count + ' file' + (count !== 1 ? 's' : '') + ' loaded';
+  document.getElementById('clearBtn').style.display = count > 0 ? '' : 'none';
+  document.getElementById('exportBtn').disabled = count === 0;
+
+  const dz = document.getElementById('dropzone');
+  const pa = document.getElementById('previewArea');
+  if (count > 0) {
+    dz.classList.add('has-files');
+    pa.classList.add('visible');
+  } else {
+    dz.classList.remove('has-files');
+    pa.classList.remove('visible');
+  }
+}
+
+// ── Drag & Drop ──
+const dz = document.getElementById('dropzone');
+const main = document.querySelector('.main');
+
+['dragenter', 'dragover'].forEach(evt => {
+  main.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dz.classList.add('drag-over');
+  });
+});
+
+['dragleave', 'drop'].forEach(evt => {
+  main.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+  });
+});
+
+main.addEventListener('drop', (e) => {
+  const files = e.dataTransfer.files;
+  if (files.length) handleFiles(files);
+});
+
+// ── View toggle ──
+function setView(mode, btn) {
+  const grid = document.getElementById('previewGrid');
+  grid.className = mode === 'single' ? 'preview-grid single-view' : 'preview-grid';
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Format ──
+function setFormat(btn) {
+  document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  exportFormat = btn.dataset.fmt;
+  document.getElementById('qualityRow').style.display = exportFormat === 'png' ? 'none' : '';
+}
+
+// ── Presets ──
+const presets = {
+  none: { grainAmount:0, grainSize:1, grainRoughness:50, brightness:0, contrast:0, saturation:0, hueShift:0, temperature:0, highlights:0, shadows:0, vignette:0, fade:0, sharpen:0 },
+  subtle: { grainAmount:15, grainSize:1, grainRoughness:30, brightness:0, contrast:5, saturation:-5, hueShift:0, temperature:3, highlights:0, shadows:0, vignette:10, fade:5, sharpen:0 },
+  kodak: { grainAmount:30, grainSize:1.2, grainRoughness:50, brightness:5, contrast:10, saturation:10, hueShift:0, temperature:8, highlights:-10, shadows:10, vignette:15, fade:8, sharpen:10 },
+  cinematic: { grainAmount:20, grainSize:1.0, grainRoughness:40, brightness:-5, contrast:20, saturation:-10, hueShift:0, temperature:-5, highlights:-15, shadows:-10, vignette:30, fade:10, sharpen:15 },
+  vintage: { grainAmount:40, grainSize:1.5, grainRoughness:60, brightness:5, contrast:-10, saturation:-30, hueShift:10, temperature:15, highlights:-20, shadows:15, vignette:25, fade:25, sharpen:0 },
+  noir: { grainAmount:35, grainSize:1.3, grainRoughness:70, brightness:-10, contrast:30, saturation:-100, hueShift:0, temperature:0, highlights:-10, shadows:-20, vignette:40, fade:5, sharpen:20 },
+  faded: { grainAmount:25, grainSize:1.0, grainRoughness:45, brightness:10, contrast:-15, saturation:-25, hueShift:5, temperature:5, highlights:10, shadows:20, vignette:15, fade:40, sharpen:0 },
+  harsh: { grainAmount:70, grainSize:1.8, grainRoughness:80, brightness:0, contrast:15, saturation:-5, hueShift:0, temperature:0, highlights:0, shadows:0, vignette:10, fade:0, sharpen:10 },
+};
+
+function applyPreset(name) {
+  const p = presets[name];
+  if (!p) return;
+
+  document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+
+  for (const [key, val] of Object.entries(p)) {
+    const el = document.getElementById(key);
+    if (el && el.type === 'range') {
+      el.value = val;
+      const valEl = document.getElementById(key + 'Val');
+      if (valEl) valEl.textContent = key === 'hueShift' ? val + '°' : val;
+    }
+  }
+  renderAll();
+}
+
+function resetAll() {
+  applyPreset('none');
+  document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
+  toast('Adjustments reset');
+}
+
+// ── Export ──
+async function exportAll() {
+  if (!images.length) return;
+
+  const btn = document.getElementById('exportBtn');
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+
+  const bar = document.getElementById('progressBar');
+  const fill = document.getElementById('progressFill');
+  const text = document.getElementById('progressText');
+  bar.classList.add('visible');
+
+  const s = getSettings();
+  const fmt = exportFormat;
+  const qual = +document.getElementById('quality').value / 100;
+  const mime = fmt === 'jpeg' ? 'image/jpeg' : fmt === 'webp' ? 'image/webp' : 'image/png';
+
+  for (let i = 0; i < images.length; i++) {
+    const item = images[i];
+    const expCanvas = document.createElement('canvas');
+
+    // Render full resolution
+    renderToCanvas(item.img, expCanvas, s, true);
+
+    const pct = Math.round(((i + 1) / images.length) * 100);
+    fill.style.width = pct + '%';
+    text.textContent = `${i + 1} / ${images.length}`;
+
+    // Export
+    const blob = await new Promise(res => {
+      expCanvas.toBlob(res, mime, fmt === 'png' ? undefined : qual);
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = genId(8) + '.' + fmt;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Small delay between downloads so browser doesn't choke
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  bar.classList.remove('visible');
+  fill.style.width = '0%';
+  btn.disabled = false;
+  btn.textContent = 'Export All with Random Names';
+  toast(`Exported ${images.length} image${images.length > 1 ? 's' : ''}`, 'success');
+}
+
+// ── Mobile panel ──
+function toggleMobilePanel() {
+  const panel = document.querySelector('.controls');
+  const overlay = document.getElementById('mobileOverlay');
+  const btn = document.getElementById('mobileControlsBtn');
+  const isOpen = panel.classList.contains('mobile-open');
+
+  if (isOpen) {
+    closeMobilePanel();
+  } else {
+    panel.classList.add('mobile-open');
+    overlay.classList.add('active');
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  }
+}
+
+function closeMobilePanel() {
+  const panel = document.querySelector('.controls');
+  const overlay = document.getElementById('mobileOverlay');
+  const btn = document.getElementById('mobileControlsBtn');
+  panel.classList.remove('mobile-open');
+  overlay.classList.remove('active');
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>`;
+}
+</script>
+</body>
+</html>
