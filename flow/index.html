@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-style="default" data-color="dark">
+<html lang="en" data-style="default" data-color="dark" data-mode="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,659 +7,378 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=VT323&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=VT323&family=Press+Start+2P&family=Cinzel:wght@400;600&family=Cinzel+Decorative:wght@700&family=Bebas+Neue&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-
     <style>
-        /* ════════════════════════════════════════
-           BASE VARIABLES (dark / default)
-        ════════════════════════════════════════ */
+        /* ════ BASE DARK ════ */
         :root {
-            --accent:         #3B82F6;
-            --accent-hover:   #2563EB;
-            --accent-trans:   rgba(59,130,246,0.12);
-            --success:        #22C55E;
-            --danger:         #EF4444;
-            --danger-hover:   #DC2626;
-            --bg:             #0C0D13;
-            --text:           #E2E8F0;
-            --subtle:         #52586A;
-            --card-bg:        rgba(18,22,38,0.72);
-            --border:         rgba(255,255,255,0.07);
-            --hover-bg:       rgba(255,255,255,0.05);
-            --input-bg:       rgba(255,255,255,0.04);
-            --dropdown-bg:    #151929;
-            --shadow:         rgba(0,0,0,0.55);
-            --panel-radius:   1.5rem;
-            --btn-radius:     0.5rem;
-            --font-main:      'Poppins', sans-serif;
+            --accent:#3B82F6;--accent-hover:#2563EB;--accent-trans:rgba(59,130,246,0.12);
+            --success:#22C55E;--danger:#EF4444;--danger-hover:#DC2626;
+            --bg:#0C0D13;--text:#E2E8F0;--subtle:#52586A;
+            --card-bg:rgba(18,22,38,0.72);--border:rgba(255,255,255,0.07);
+            --hover-bg:rgba(255,255,255,0.05);--input-bg:rgba(255,255,255,0.04);
+            --dropdown-bg:#151929;--shadow:rgba(0,0,0,0.55);
+            --panel-radius:1.5rem;--btn-radius:0.5rem;--font-main:'Poppins',sans-serif;
         }
+        /* ════ LIGHT BASE ════ */
+        html[data-mode="light"] {
+            --bg:#F1F4F9;--text:#1A2035;--subtle:#7284A0;
+            --card-bg:rgba(255,255,255,0.82);--border:rgba(0,0,0,0.07);
+            --hover-bg:rgba(0,0,0,0.04);--input-bg:rgba(255,255,255,0.9);
+            --dropdown-bg:#FFFFFF;--shadow:rgba(0,0,0,0.10);
+            --accent:#4F46E5;--accent-hover:#4338CA;--accent-trans:rgba(79,70,229,0.10);--success:#16A34A;
+        }
+        /* ════ COLOR THEMES DARK ════ */
+        html[data-mode="dark"][data-color="white"] { --bg:#0E1018;--text:#C8D0E4;--subtle:#454F68;--card-bg:rgba(22,26,42,0.72);--border:rgba(255,255,255,0.07);--hover-bg:rgba(255,255,255,0.05);--input-bg:rgba(255,255,255,0.04);--dropdown-bg:#161A2A;--shadow:rgba(0,0,0,0.55);--accent:#818CF8;--accent-hover:#6366F1;--accent-trans:rgba(129,140,248,0.12); }
+        html[data-mode="dark"][data-color="blue"]  { --bg:#04090F;--text:#BAD6F5;--subtle:#3B5978;--card-bg:rgba(6,20,45,0.74);--border:rgba(56,189,248,0.09);--hover-bg:rgba(56,189,248,0.06);--input-bg:rgba(56,189,248,0.04);--dropdown-bg:#071628;--shadow:rgba(0,10,40,0.6);--accent:#38BDF8;--accent-hover:#0EA5E9;--accent-trans:rgba(56,189,248,0.12); }
+        html[data-mode="dark"][data-color="green"] { --bg:#030A05;--text:#AEEEC7;--subtle:#2D6644;--card-bg:rgba(5,18,10,0.74);--border:rgba(34,197,94,0.09);--hover-bg:rgba(34,197,94,0.06);--input-bg:rgba(34,197,94,0.04);--dropdown-bg:#06150C;--shadow:rgba(0,20,5,0.65);--accent:#22C55E;--accent-hover:#16A34A;--accent-trans:rgba(34,197,94,0.12); }
+        html[data-mode="dark"][data-color="pink"]  { --bg:#0D0308;--text:#FAC8E8;--subtle:#7A3060;--card-bg:rgba(28,6,22,0.74);--border:rgba(244,114,182,0.09);--hover-bg:rgba(244,114,182,0.06);--input-bg:rgba(244,114,182,0.04);--dropdown-bg:#1A0515;--shadow:rgba(40,0,25,0.65);--accent:#F472B6;--accent-hover:#EC4899;--accent-trans:rgba(244,114,182,0.12); }
+        html[data-mode="dark"][data-color="orange"]{ --bg:#0C0500;--text:#FDDCB5;--subtle:#7A4A1A;--card-bg:rgba(25,12,0,0.74);--border:rgba(251,146,60,0.09);--hover-bg:rgba(251,146,60,0.06);--input-bg:rgba(251,146,60,0.04);--dropdown-bg:#1C0E00;--shadow:rgba(40,12,0,0.65);--accent:#FB923C;--accent-hover:#EA580C;--accent-trans:rgba(251,146,60,0.12); }
+        /* ════ COLOR THEMES LIGHT ════ */
+        html[data-mode="light"][data-color="white"] { --bg:#FAFBFC;--text:#111827;--subtle:#9CA3AF;--card-bg:rgba(255,255,255,0.88);--border:rgba(0,0,0,0.06);--hover-bg:rgba(0,0,0,0.04);--input-bg:#FFFFFF;--dropdown-bg:#FFFFFF;--shadow:rgba(0,0,0,0.08);--accent:#374151;--accent-hover:#1F2937;--accent-trans:rgba(55,65,81,0.10);--success:#16A34A; }
+        html[data-mode="light"][data-color="blue"]  { --bg:#EFF6FF;--text:#1E3A5F;--subtle:#60A5FA;--card-bg:rgba(219,234,254,0.80);--border:rgba(37,99,235,0.12);--hover-bg:rgba(37,99,235,0.06);--input-bg:rgba(255,255,255,0.9);--dropdown-bg:#FFFFFF;--shadow:rgba(30,60,120,0.12);--accent:#2563EB;--accent-hover:#1D4ED8;--accent-trans:rgba(37,99,235,0.12);--success:#16A34A; }
+        html[data-mode="light"][data-color="green"] { --bg:#F0FDF4;--text:#14532D;--subtle:#4ADE80;--card-bg:rgba(220,252,231,0.80);--border:rgba(22,163,74,0.12);--hover-bg:rgba(22,163,74,0.06);--input-bg:rgba(255,255,255,0.9);--dropdown-bg:#FFFFFF;--shadow:rgba(20,83,45,0.10);--accent:#16A34A;--accent-hover:#15803D;--accent-trans:rgba(22,163,74,0.12);--success:#16A34A; }
+        html[data-mode="light"][data-color="pink"]  { --bg:#FDF2F8;--text:#6B1050;--subtle:#F9A8D4;--card-bg:rgba(252,231,243,0.80);--border:rgba(219,39,119,0.12);--hover-bg:rgba(219,39,119,0.06);--input-bg:rgba(255,255,255,0.9);--dropdown-bg:#FFFFFF;--shadow:rgba(107,16,80,0.10);--accent:#DB2777;--accent-hover:#BE185D;--accent-trans:rgba(219,39,119,0.12);--success:#16A34A; }
+        html[data-mode="light"][data-color="orange"]{ --bg:#FFF7ED;--text:#7C2D12;--subtle:#FDBA74;--card-bg:rgba(255,237,213,0.80);--border:rgba(234,88,12,0.12);--hover-bg:rgba(234,88,12,0.06);--input-bg:rgba(255,255,255,0.9);--dropdown-bg:#FFFFFF;--shadow:rgba(124,45,18,0.10);--accent:#EA580C;--accent-hover:#C2410C;--accent-trans:rgba(234,88,12,0.12);--success:#16A34A; }
 
-        /* ════════════════════════════════════════
-           COLOR THEMES
-        ════════════════════════════════════════ */
-        html[data-color="white"] {
-            --bg:          #F0F3F8;
-            --text:        #1E2433;
-            --subtle:      #788099;
-            --card-bg:     rgba(255,255,255,0.78);
-            --border:      rgba(0,0,0,0.07);
-            --hover-bg:    rgba(0,0,0,0.04);
-            --input-bg:    #FFFFFF;
-            --dropdown-bg: #FFFFFF;
-            --shadow:      rgba(0,0,0,0.10);
-            --accent:      #4F46E5;
-            --accent-hover:#4338CA;
-            --accent-trans:rgba(79,70,229,0.10);
-            --success:     #16A34A;
-        }
-        html[data-color="blue"] {
-            --bg:          #04090F;
-            --text:        #BAD6F5;
-            --subtle:      #3B5978;
-            --card-bg:     rgba(6,20,45,0.74);
-            --border:      rgba(56,189,248,0.09);
-            --hover-bg:    rgba(56,189,248,0.06);
-            --input-bg:    rgba(56,189,248,0.04);
-            --dropdown-bg: #071628;
-            --shadow:      rgba(0,10,40,0.6);
-            --accent:      #38BDF8;
-            --accent-hover:#0EA5E9;
-            --accent-trans:rgba(56,189,248,0.12);
-        }
-        html[data-color="green"] {
-            --bg:          #030A05;
-            --text:        #AEEEC7;
-            --subtle:      #2D6644;
-            --card-bg:     rgba(5,18,10,0.74);
-            --border:      rgba(34,197,94,0.09);
-            --hover-bg:    rgba(34,197,94,0.06);
-            --input-bg:    rgba(34,197,94,0.04);
-            --dropdown-bg: #06150C;
-            --shadow:      rgba(0,20,5,0.65);
-            --accent:      #22C55E;
-            --accent-hover:#16A34A;
-            --accent-trans:rgba(34,197,94,0.12);
-        }
-        html[data-color="pink"] {
-            --bg:          #0D0308;
-            --text:        #FAC8E8;
-            --subtle:      #7A3060;
-            --card-bg:     rgba(28,6,22,0.74);
-            --border:      rgba(244,114,182,0.09);
-            --hover-bg:    rgba(244,114,182,0.06);
-            --input-bg:    rgba(244,114,182,0.04);
-            --dropdown-bg: #1A0515;
-            --shadow:      rgba(40,0,25,0.65);
-            --accent:      #F472B6;
-            --accent-hover:#EC4899;
-            --accent-trans:rgba(244,114,182,0.12);
-        }
-        html[data-color="orange"] {
-            --bg:          #0C0500;
-            --text:        #FDDCB5;
-            --subtle:      #7A4A1A;
-            --card-bg:     rgba(25,12,0,0.74);
-            --border:      rgba(251,146,60,0.09);
-            --hover-bg:    rgba(251,146,60,0.06);
-            --input-bg:    rgba(251,146,60,0.04);
-            --dropdown-bg: #1C0E00;
-            --shadow:      rgba(40,12,0,0.65);
-            --accent:      #FB923C;
-            --accent-hover:#EA580C;
-            --accent-trans:rgba(251,146,60,0.12);
-        }
+        /* ══════════════════════════ STYLE THEMES ══════════════════════════ */
 
-        /* ════════════════════════════════════════
-           STYLE THEMES
-        ════════════════════════════════════════ */
+        /* ── GLASS ── */
+        html[data-style="glass"] #gradientBg { display:block !important; }
+        html[data-style="glass"] #trackerPanel { background:rgba(255,255,255,0.05) !important; border-color:rgba(255,255,255,0.14) !important; backdrop-filter:blur(32px) saturate(200%) !important; -webkit-backdrop-filter:blur(32px) saturate(200%) !important; }
+        html[data-mode="light"][data-style="glass"] #trackerPanel { background:rgba(255,255,255,0.35) !important; border-color:rgba(255,255,255,0.5) !important; }
 
-        /* — GLASSMORPHIC (animated gradient background) — */
-        html[data-style="glass"] #gradientBg { display: block !important; }
-        html[data-style="glass"] #trackerPanel {
-            background: rgba(255,255,255,0.05) !important;
-            border-color: rgba(255,255,255,0.14) !important;
-            backdrop-filter: blur(32px) saturate(200%) !important;
-            -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
-        }
+        /* ── NEUMORPHIC DARK ── */
+        html[data-mode="dark"][data-style="neumorphic"] { --bg:#1C2130;--text:#C8D0E8;--subtle:#4A5470;--card-bg:#1C2130;--border:transparent;--hover-bg:#18202E;--input-bg:#1C2130;--dropdown-bg:#1C2130;--panel-radius:1.75rem; }
+        html[data-mode="dark"][data-style="neumorphic"][data-color="blue"]   { --bg:#101828;--card-bg:#101828;--input-bg:#101828;--dropdown-bg:#101828; }
+        html[data-mode="dark"][data-style="neumorphic"][data-color="green"]  { --bg:#0E1A12;--card-bg:#0E1A12;--input-bg:#0E1A12;--dropdown-bg:#0E1A12; }
+        html[data-mode="dark"][data-style="neumorphic"][data-color="pink"]   { --bg:#1A1020;--card-bg:#1A1020;--input-bg:#1A1020;--dropdown-bg:#1A1020; }
+        html[data-mode="dark"][data-style="neumorphic"][data-color="orange"] { --bg:#1A1208;--card-bg:#1A1208;--input-bg:#1A1208;--dropdown-bg:#1A1208; }
+        html[data-mode="dark"][data-style="neumorphic"][data-color="white"]  { --bg:#181C2C;--card-bg:#181C2C;--input-bg:#181C2C;--dropdown-bg:#181C2C; }
+        html[data-mode="dark"][data-style="neumorphic"] #trackerPanel { background:var(--bg) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; border:none !important; box-shadow:10px 10px 22px rgba(8,10,18,0.7),-10px -10px 22px rgba(45,52,75,0.35) !important; }
+        html[data-mode="dark"][data-style="neumorphic"] #reminderControls { background:var(--bg) !important; border:none !important; box-shadow:8px 8px 16px rgba(8,10,18,0.65),-8px -8px 16px rgba(45,52,75,0.3) !important; }
+        html[data-mode="dark"][data-style="neumorphic"] #themePanel { background:var(--bg) !important; border:none !important; box-shadow:8px 8px 16px rgba(8,10,18,0.65),-8px -8px 16px rgba(45,52,75,0.3) !important; }
+        html[data-mode="dark"][data-style="neumorphic"] .sound-card { box-shadow:4px 4px 8px rgba(8,10,18,0.65),-4px -4px 8px rgba(45,52,75,0.3); border:none !important; }
+        html[data-mode="dark"][data-style="neumorphic"] .sound-card.selected { box-shadow:inset 3px 3px 7px rgba(8,10,18,0.65),inset -3px -3px 7px rgba(45,52,75,0.3) !important; }
+        /* ── NEUMORPHIC LIGHT ── */
+        html[data-mode="light"][data-style="neumorphic"] { --bg:#DDE5EF;--text:#2C3650;--subtle:#7A8BA5;--card-bg:#DDE5EF;--border:transparent;--hover-bg:#D0D9E5;--input-bg:#DDE5EF;--dropdown-bg:#DDE5EF;--panel-radius:1.75rem; }
+        html[data-mode="light"][data-style="neumorphic"][data-color="blue"]   { --bg:#CEDEF0;--card-bg:#CEDEF0;--input-bg:#CEDEF0;--dropdown-bg:#CEDEF0; }
+        html[data-mode="light"][data-style="neumorphic"][data-color="green"]  { --bg:#CEEADE;--card-bg:#CEEADE;--input-bg:#CEEADE;--dropdown-bg:#CEEADE; }
+        html[data-mode="light"][data-style="neumorphic"][data-color="pink"]   { --bg:#EDD4E9;--card-bg:#EDD4E9;--input-bg:#EDD4E9;--dropdown-bg:#EDD4E9; }
+        html[data-mode="light"][data-style="neumorphic"][data-color="orange"] { --bg:#EFE0D0;--card-bg:#EFE0D0;--input-bg:#EFE0D0;--dropdown-bg:#EFE0D0; }
+        html[data-mode="light"][data-style="neumorphic"][data-color="white"]  { --bg:#E8EEF6;--card-bg:#E8EEF6;--input-bg:#E8EEF6;--dropdown-bg:#E8EEF6; }
+        html[data-mode="light"][data-style="neumorphic"] #trackerPanel { background:var(--bg) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; border:none !important; box-shadow:14px 14px 28px rgba(163,177,198,0.65),-14px -14px 28px rgba(255,255,255,0.85) !important; }
+        html[data-mode="light"][data-style="neumorphic"] #reminderControls { background:var(--bg) !important; border:none !important; box-shadow:10px 10px 20px rgba(163,177,198,0.55),-10px -10px 20px rgba(255,255,255,0.75) !important; }
+        html[data-mode="light"][data-style="neumorphic"] #themePanel { background:var(--bg) !important; border:none !important; box-shadow:10px 10px 20px rgba(163,177,198,0.55),-10px -10px 20px rgba(255,255,255,0.75) !important; }
+        html[data-mode="light"][data-style="neumorphic"] .sound-card { box-shadow:4px 4px 8px rgba(163,177,198,0.5),-4px -4px 8px rgba(255,255,255,0.7); border:none !important; }
+        html[data-mode="light"][data-style="neumorphic"] .sound-card.selected { box-shadow:inset 3px 3px 7px rgba(163,177,198,0.5),inset -3px -3px 7px rgba(255,255,255,0.7) !important; }
 
-        /* — NEUMORPHIC — */
-        html[data-style="neumorphic"] {
-            --bg:          #DDE5EF;
-            --text:        #2C3650;
-            --subtle:      #7A8BA5;
-            --card-bg:     #DDE5EF;
-            --border:      transparent;
-            --hover-bg:    #D0D9E5;
-            --input-bg:    #DDE5EF;
-            --dropdown-bg: #DDE5EF;
-            --shadow:      rgba(0,0,0,0.1);
-            --panel-radius:1.75rem;
-        }
-        html[data-style="neumorphic"][data-color="blue"] {
-            --bg:#CEDEF0; --card-bg:#CEDEF0; --input-bg:#CEDEF0; --dropdown-bg:#CEDEF0; --hover-bg:#C0D2E8;
-        }
-        html[data-style="neumorphic"][data-color="green"] {
-            --bg:#CEEADE; --card-bg:#CEEADE; --input-bg:#CEEADE; --dropdown-bg:#CEEADE; --hover-bg:#C0DDD2;
-        }
-        html[data-style="neumorphic"][data-color="pink"] {
-            --bg:#EDD4E9; --card-bg:#EDD4E9; --input-bg:#EDD4E9; --dropdown-bg:#EDD4E9; --hover-bg:#E0C6DC;
-        }
-        html[data-style="neumorphic"][data-color="orange"] {
-            --bg:#EFE0D0; --card-bg:#EFE0D0; --input-bg:#EFE0D0; --dropdown-bg:#EFE0D0; --hover-bg:#E2D2C0;
-        }
-        html[data-style="neumorphic"][data-color="white"] {
-            --bg:#E8EEF6; --card-bg:#E8EEF6; --input-bg:#E8EEF6; --dropdown-bg:#E8EEF6; --hover-bg:#DDE4EE;
-        }
-        html[data-style="neumorphic"] #trackerPanel {
-            background: var(--bg) !important;
-            backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
-            border: none !important;
-            box-shadow: 14px 14px 28px rgba(163,177,198,0.65), -14px -14px 28px rgba(255,255,255,0.85) !important;
-        }
-        html[data-style="neumorphic"] #reminderControls {
-            background: var(--bg) !important;
-            border: none !important;
-            box-shadow: 10px 10px 20px rgba(163,177,198,0.55), -10px -10px 20px rgba(255,255,255,0.75) !important;
-        }
-        html[data-style="neumorphic"] .sound-card {
-            box-shadow: 4px 4px 8px rgba(163,177,198,0.5), -4px -4px 8px rgba(255,255,255,0.7);
-            border: none !important;
-        }
-        html[data-style="neumorphic"] .sound-card.selected {
-            box-shadow: inset 3px 3px 7px rgba(163,177,198,0.5), inset -3px -3px 7px rgba(255,255,255,0.7) !important;
-        }
+        /* ── MINIMAL ── */
+        html[data-style="minimal"] { --panel-radius:0.375rem;--btn-radius:0.125rem; }
+        html[data-style="minimal"] #trackerPanel { background:var(--bg) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; border:1px solid var(--border) !important; border-radius:var(--panel-radius) !important; box-shadow:none !important; }
+        html[data-style="minimal"] #reminderControls { border-radius:0.25rem !important; box-shadow:0 4px 12px var(--shadow) !important; }
+        html[data-style="minimal"] .sound-card { border-radius:0.125rem !important; }
 
-        /* — MINIMAL — */
-        html[data-style="minimal"] {
-            --panel-radius: 0.375rem;
-            --btn-radius:   0.125rem;
-        }
-        html[data-style="minimal"] #trackerPanel {
-            background: var(--bg) !important;
-            backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--panel-radius) !important;
-            box-shadow: none !important;
-        }
-        html[data-style="minimal"] #reminderControls {
-            border-radius: 0.25rem !important;
-            box-shadow: 0 4px 12px var(--shadow) !important;
-        }
-        html[data-style="minimal"] .sound-card { border-radius: 0.125rem !important; }
-        html[data-style="minimal"] button { border-radius: var(--btn-radius) !important; }
+        /* ── CYBERPUNK ── */
+        html[data-style="cyberpunk"] { --font-main:'VT323',monospace;--panel-radius:0px;--btn-radius:0px; }
+        html[data-mode="dark"][data-style="cyberpunk"],html[data-mode="dark"][data-style="cyberpunk"][data-color="dark"],html[data-mode="dark"][data-style="cyberpunk"][data-color="green"] { --bg:#080808;--text:#33FF66;--subtle:#195E30;--card-bg:#080808;--border:#33FF66;--hover-bg:rgba(51,255,102,0.08);--input-bg:#000;--dropdown-bg:#080808;--accent:#33FF66;--accent-hover:#00CC44;--accent-trans:rgba(51,255,102,0.12);--success:#33FF66; }
+        html[data-mode="dark"][data-style="cyberpunk"][data-color="white"]  { --text:#C8C8FF;--subtle:#4040AA;--border:#C8C8FF;--accent:#C8C8FF;--accent-hover:#9090DD;--hover-bg:rgba(200,200,255,0.08);--accent-trans:rgba(200,200,255,0.12); }
+        html[data-mode="dark"][data-style="cyberpunk"][data-color="blue"]   { --text:#33CCFF;--subtle:#114466;--border:#33CCFF;--accent:#33CCFF;--accent-hover:#0099CC;--hover-bg:rgba(51,204,255,0.08);--accent-trans:rgba(51,204,255,0.12);--success:#33CCFF; }
+        html[data-mode="dark"][data-style="cyberpunk"][data-color="pink"]   { --text:#FF66CC;--subtle:#661144;--border:#FF66CC;--accent:#FF66CC;--accent-hover:#CC3399;--hover-bg:rgba(255,102,204,0.08);--accent-trans:rgba(255,102,204,0.12);--success:#FF66CC; }
+        html[data-mode="dark"][data-style="cyberpunk"][data-color="orange"] { --text:#FF9933;--subtle:#663300;--border:#FF9933;--accent:#FF9933;--accent-hover:#CC6600;--hover-bg:rgba(255,153,51,0.08);--accent-trans:rgba(255,153,51,0.12);--success:#FF9933; }
+        html[data-mode="light"][data-style="cyberpunk"],html[data-mode="light"][data-style="cyberpunk"][data-color="dark"] { --bg:#EEEEEE;--text:#111111;--subtle:#555555;--card-bg:#DDDDDD;--border:#111111;--hover-bg:rgba(0,0,0,0.07);--input-bg:#FFFFFF;--dropdown-bg:#DDDDDD;--accent:#111111;--accent-hover:#000000;--accent-trans:rgba(0,0,0,0.10);--success:#111111; }
+        html[data-mode="light"][data-style="cyberpunk"][data-color="blue"]   { --bg:#E0F0FF;--text:#003366;--subtle:#5588AA;--card-bg:#C8DFFF;--border:#003366;--accent:#003366;--accent-hover:#001F44;--hover-bg:rgba(0,51,102,0.08); }
+        html[data-mode="light"][data-style="cyberpunk"][data-color="green"]  { --bg:#E0FFE8;--text:#003322;--subtle:#337755;--card-bg:#C8FFDA;--border:#003322;--accent:#003322;--accent-hover:#001A11;--hover-bg:rgba(0,51,34,0.08); }
+        html[data-mode="light"][data-style="cyberpunk"][data-color="pink"]   { --bg:#FFE0F5;--text:#660033;--subtle:#AA4477;--card-bg:#FFC8ED;--border:#660033;--accent:#660033;--accent-hover:#440022;--hover-bg:rgba(102,0,51,0.08); }
+        html[data-mode="light"][data-style="cyberpunk"][data-color="orange"] { --bg:#FFF0E0;--text:#663300;--subtle:#AA6633;--card-bg:#FFE0C0;--border:#663300;--accent:#663300;--accent-hover:#441F00;--hover-bg:rgba(102,51,0,0.08); }
+        html[data-mode="light"][data-style="cyberpunk"][data-color="white"]  { --bg:#F5F5FF;--text:#111133;--card-bg:#E5E5FF;--border:#4040AA;--accent:#4040AA;--accent-hover:#202088; }
+        html[data-style="cyberpunk"] #matrixCanvas { display:block !important; }
+        html[data-style="cyberpunk"] #trackerPanel { background:var(--bg) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; border:3px solid var(--border) !important; border-radius:0 !important; box-shadow:6px 6px 0 var(--accent) !important; }
+        html[data-style="cyberpunk"] #reminderControls { border:3px solid var(--border) !important; border-radius:0 !important; box-shadow:6px 6px 0 var(--accent) !important; }
+        html[data-style="cyberpunk"] #themePanel { border:3px solid var(--border) !important; border-radius:0 !important; box-shadow:6px 6px 0 var(--accent) !important; }
+        html[data-style="cyberpunk"] .sound-card { border:2px solid var(--border) !important; border-radius:0 !important; }
+        html[data-style="cyberpunk"] .sound-card.selected { box-shadow:3px 3px 0 var(--accent); }
+        html[data-style="cyberpunk"] h1 { font-size:1.8rem !important; letter-spacing:3px; }
+        html[data-style="cyberpunk"] #addCallBtn { border-radius:0 !important; }
 
-        /* — PIXEL — */
-        html[data-style="pixel"] {
-            --font-main:   'VT323', monospace;
-            --panel-radius:0px;
-            --btn-radius:  0px;
-            --bg:          #080808;
-            --text:        #33FF66;
-            --subtle:      #195E30;
-            --card-bg:     #080808;
-            --border:      #33FF66;
-            --hover-bg:    rgba(51,255,102,0.08);
-            --input-bg:    #000000;
-            --dropdown-bg: #080808;
-            --accent:      #33FF66;
-            --accent-hover:#00CC44;
-            --accent-trans:rgba(51,255,102,0.12);
-            --success:     #33FF66;
-        }
-        html[data-style="pixel"][data-color="blue"]   { --text:#33CCFF; --subtle:#114466; --border:#33CCFF; --accent:#33CCFF; --accent-hover:#0099CC; --accent-trans:rgba(51,204,255,0.12); --success:#33CCFF; --hover-bg:rgba(51,204,255,0.08); }
-        html[data-style="pixel"][data-color="pink"]   { --text:#FF66CC; --subtle:#661144; --border:#FF66CC; --accent:#FF66CC; --accent-hover:#CC3399; --accent-trans:rgba(255,102,204,0.12); --success:#FF66CC; --hover-bg:rgba(255,102,204,0.08); }
-        html[data-style="pixel"][data-color="orange"] { --text:#FF9933; --subtle:#663300; --border:#FF9933; --accent:#FF9933; --accent-hover:#CC6600; --accent-trans:rgba(255,153,51,0.12); --success:#FF9933; --hover-bg:rgba(255,153,51,0.08); }
-        html[data-style="pixel"][data-color="white"]  { --bg:#EEEEEE; --text:#111111; --subtle:#444444; --border:#111111; --card-bg:#DDDDDD; --input-bg:#FFFFFF; --dropdown-bg:#DDDDDD; --hover-bg:rgba(0,0,0,0.07); --accent:#111111; --accent-hover:#000000; --accent-trans:rgba(0,0,0,0.1); }
-        html[data-style="pixel"][data-color="dark"]   { --text:#33FF66; --subtle:#195E30; --border:#33FF66; --accent:#33FF66; }
-        html[data-style="pixel"] #pixelBg { display: block !important; }
-        html[data-style="pixel"] #trackerPanel {
-            background: var(--bg) !important;
-            backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
-            border: 3px solid var(--border) !important;
-            border-radius: 0 !important;
-            box-shadow: 6px 6px 0 var(--accent) !important;
-        }
-        html[data-style="pixel"] #reminderControls {
-            border: 3px solid var(--border) !important;
-            border-radius: 0 !important;
-            box-shadow: 6px 6px 0 var(--accent) !important;
-        }
-        html[data-style="pixel"] .sound-card { border: 2px solid var(--border) !important; border-radius: 0 !important; }
-        html[data-style="pixel"] .sound-card.selected { box-shadow: 3px 3px 0 var(--accent); }
-        html[data-style="pixel"] h1 { font-size: 1.8rem !important; letter-spacing: 3px; }
-        html[data-style="pixel"] #addCallBtn { border-radius: 0 !important; }
+        /* ── PIXEL ART ── */
+        html[data-style="pixelart"] { --font-main:'Press Start 2P',monospace;--panel-radius:0px;--btn-radius:0px; }
+        html[data-mode="dark"][data-style="pixelart"],html[data-mode="dark"][data-style="pixelart"][data-color="dark"] { --bg:#1a1c2c;--text:#f4f4f4;--subtle:#5f5f7e;--card-bg:#2d2b55;--border:#6b6bae;--hover-bg:rgba(107,107,174,0.2);--input-bg:#1a1c2c;--dropdown-bg:#2d2b55;--shadow:rgba(0,0,0,0.7);--accent:#ff004d;--accent-hover:#cc0033;--accent-trans:rgba(255,0,77,0.15);--success:#00e436; }
+        html[data-mode="dark"][data-style="pixelart"][data-color="white"]  { --accent:#fff1e8;--accent-hover:#d4c8bc;--accent-trans:rgba(255,241,232,0.15); }
+        html[data-mode="dark"][data-style="pixelart"][data-color="blue"]   { --accent:#29adff;--accent-hover:#1a8ecc;--accent-trans:rgba(41,173,255,0.15);--success:#29adff; }
+        html[data-mode="dark"][data-style="pixelart"][data-color="green"]  { --accent:#00e436;--accent-hover:#00b82c;--accent-trans:rgba(0,228,54,0.15); }
+        html[data-mode="dark"][data-style="pixelart"][data-color="pink"]   { --accent:#ff77a8;--accent-hover:#cc4477;--accent-trans:rgba(255,119,168,0.15);--success:#ff77a8; }
+        html[data-mode="dark"][data-style="pixelart"][data-color="orange"] { --accent:#ffa300;--accent-hover:#cc8200;--accent-trans:rgba(255,163,0,0.15);--success:#ffa300; }
+        html[data-mode="light"][data-style="pixelart"],html[data-mode="light"][data-style="pixelart"][data-color="dark"],html[data-mode="light"][data-style="pixelart"][data-color="green"] { --bg:#e8f8e8;--text:#1a2c0a;--subtle:#4a6a3a;--card-bg:#c8e0c0;--border:#4a6a3a;--hover-bg:rgba(74,106,58,0.15);--input-bg:#e8f8e8;--dropdown-bg:#c8e0c0;--shadow:rgba(26,44,10,0.3);--accent:#2c6a10;--accent-hover:#1a4a08;--accent-trans:rgba(44,106,16,0.15);--success:#2c6a10; }
+        html[data-mode="light"][data-style="pixelart"][data-color="blue"]   { --bg:#e0e8ff;--text:#0a1a3a;--card-bg:#c0ccee;--border:#2a3a8a;--accent:#2a3a8a;--accent-hover:#1a2870;--hover-bg:rgba(42,58,138,0.1); }
+        html[data-mode="light"][data-style="pixelart"][data-color="pink"]   { --bg:#ffe0f0;--text:#3a0a1a;--card-bg:#eec0d0;--border:#8a2a4a;--accent:#8a2a4a;--accent-hover:#6a1a38;--hover-bg:rgba(138,42,74,0.1); }
+        html[data-mode="light"][data-style="pixelart"][data-color="orange"] { --bg:#fff0d0;--text:#3a1a00;--card-bg:#eecca0;--border:#8a4a00;--accent:#8a4a00;--accent-hover:#6a3800;--hover-bg:rgba(138,74,0,0.1); }
+        html[data-mode="light"][data-style="pixelart"][data-color="white"]  { --bg:#f4f4f4;--text:#111;--card-bg:#e4e4e4;--border:#444;--accent:#222;--accent-hover:#000; }
+        html[data-style="pixelart"] #pixelArtBg { display:block !important; }
+        html[data-style="pixelart"] #crtOverlay { display:block !important; }
+        html[data-style="pixelart"] #trackerPanel { background:var(--card-bg) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; border:4px solid var(--border) !important; border-radius:0 !important; box-shadow:4px 4px 0 var(--border),8px 8px 0 rgba(0,0,0,0.4) !important; }
+        html[data-style="pixelart"] #reminderControls { border:4px solid var(--border) !important; border-radius:0 !important; box-shadow:4px 4px 0 var(--border) !important; background:var(--card-bg) !important; }
+        html[data-style="pixelart"] #themePanel { border:3px solid var(--border) !important; border-radius:0 !important; box-shadow:none !important; outline:3px solid var(--border); outline-offset:-3px; background:var(--card-bg) !important; right:1.5rem !important; overflow:hidden !important; font-family:'Poppins',sans-serif !important; }
+        html[data-style="pixelart"] #themePanel * { font-family:'Poppins',sans-serif !important; }
+        html[data-style="pixelart"] #reminderControls { font-family:'Poppins',sans-serif !important; }
+        html[data-style="pixelart"] #reminderControls * { font-family:'Poppins',sans-serif !important; }
+        html[data-style="pixelart"] .sound-card { border:2px solid var(--border) !important; border-radius:0 !important; }
+        html[data-style="pixelart"] .sound-card.selected { box-shadow:3px 3px 0 var(--accent); }
+        html[data-style="pixelart"] #addCallBtn { border-radius:0 !important; box-shadow:3px 3px 0 rgba(0,0,0,0.5) !important; }
+        html[data-style="pixelart"] #addCallBtn:active { transform:translate(2px,2px) !important; box-shadow:1px 1px 0 rgba(0,0,0,0.5) !important; }
+        html[data-style="pixelart"] h1 { font-size:0.8rem !important; letter-spacing:2px; line-height:1.6; }
+        html[data-style="pixelart"] .text-2xl { font-size:0.8rem !important; }
+        html[data-style="pixelart"] .text-sm { font-size:0.55rem !important; line-height:1.6; }
+        html[data-style="pixelart"] .text-xs { font-size:0.45rem !important; line-height:1.6; }
+        html[data-style="pixelart"] .toggle-switch .slider { border-radius:0; }
+        html[data-style="pixelart"] .toggle-switch .slider:before { border-radius:0; }
 
-        /* — RETRO WINDOWS — */
-        html[data-style="retro"] {
-            --bg:          #008080;
-            --text:        #000000;
-            --subtle:      #333333;
-            --card-bg:     #C0C0C0;
-            --border:      #C0C0C0;
-            --hover-bg:    #A8A8A8;
-            --input-bg:    #FFFFFF;
-            --dropdown-bg: #FFFFFF;
-            --accent:      #000080;
-            --accent-hover:#000060;
-            --accent-trans:rgba(0,0,128,0.12);
-            --success:     #008000;
-            --shadow:      rgba(0,0,0,0.55);
-            --panel-radius:0px;
-            --btn-radius:  0px;
-            --font-main:   'Courier New', monospace;
-        }
-        html[data-style="retro"][data-color="green"]  { --accent:#005000; --accent-hover:#003800; --bg:#007060; }
-        html[data-style="retro"][data-color="pink"]   { --accent:#800060; --accent-hover:#600048; --bg:#807080; }
-        html[data-style="retro"][data-color="orange"] { --accent:#804000; --accent-hover:#602800; --bg:#807040; }
-        html[data-style="retro"][data-color="blue"]   { --accent:#000090; --accent-hover:#000070; }
-        html[data-style="retro"][data-color="white"]  { --bg:#D0D0D0; }
-        html[data-style="retro"][data-color="dark"]   { --bg:#004848; }
-        html[data-style="retro"] #trackerPanel {
-            background: #C0C0C0 !important;
-            backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: inset -2px -2px 0 #000, inset 2px 2px 0 #fff, inset -4px -4px 0 #808080, inset 4px 4px 0 #DFDFDF !important;
-        }
-        html[data-style="retro"] #retroTitleBar { display: flex !important; }
-        html[data-style="retro"] #reminderControls {
-            background: #C0C0C0 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: inset -2px -2px 0 #000, inset 2px 2px 0 #fff, inset -4px -4px 0 #808080, inset 4px 4px 0 #DFDFDF !important;
-        }
-        html[data-style="retro"] .sound-card {
-            background: #C0C0C0 !important;
-            color: #000 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: inset -2px -2px 0 #000, inset 2px 2px 0 #fff, inset -4px -4px 0 #808080, inset 4px 4px 0 #DFDFDF !important;
-        }
-        html[data-style="retro"] .sound-card:hover { background: #C0C0C0 !important; }
-        html[data-style="retro"] .sound-card.selected {
-            box-shadow: inset 2px 2px 0 #000, inset -2px -2px 0 #fff, inset 4px 4px 0 #808080, inset -4px -4px 0 #DFDFDF !important;
-        }
-        html[data-style="retro"] #addCallBtn {
-            background: #C0C0C0 !important;
-            color: #000 !important;
-            border-radius: 0 !important;
-            box-shadow: inset -2px -2px 0 #000, inset 2px 2px 0 #fff, inset -4px -4px 0 #808080, inset 4px 4px 0 #DFDFDF !important;
-        }
-        html[data-style="retro"] #addCallBtn:active {
-            box-shadow: inset 2px 2px 0 #000, inset -2px -2px 0 #fff, inset 4px 4px 0 #808080, inset -4px -4px 0 #DFDFDF !important;
-        }
+        /* ── RETRO WINDOWS ── */
+        html[data-style="retro"] { --bg:#008080;--text:#000000;--subtle:#333333;--card-bg:#C0C0C0;--border:#C0C0C0;--hover-bg:#A8A8A8;--input-bg:#FFFFFF;--dropdown-bg:#FFFFFF;--accent:#000080;--accent-hover:#000060;--accent-trans:rgba(0,0,128,0.12);--success:#008000;--shadow:rgba(0,0,0,0.55);--panel-radius:0px;--btn-radius:0px;--font-main:'Courier New',monospace; }
+        html[data-mode="light"][data-style="retro"] { --bg:#C0C0C0; }
+        html[data-style="retro"][data-color="blue"]   { --accent:#000090;--accent-hover:#000070; }
+        html[data-style="retro"][data-color="green"]  { --accent:#005000;--accent-hover:#003800;--bg:#007060; }
+        html[data-style="retro"][data-color="pink"]   { --accent:#800060;--accent-hover:#600048;--bg:#807080; }
+        html[data-style="retro"][data-color="orange"] { --accent:#804000;--accent-hover:#602800;--bg:#807040; }
+        html[data-style="retro"][data-color="white"]  { --bg:#808080; }
+        html[data-mode="light"][data-style="retro"][data-color="blue"]   { --bg:#A0A0C0; }
+        html[data-mode="light"][data-style="retro"][data-color="green"]  { --bg:#90A890; }
+        html[data-mode="light"][data-style="retro"][data-color="pink"]   { --bg:#C0A0B8; }
+        html[data-mode="light"][data-style="retro"][data-color="orange"] { --bg:#C0A880; }
+        html[data-mode="light"][data-style="retro"][data-color="dark"]   { --bg:#D8D8D8; }
+        html[data-style="retro"] #trackerPanel { background:#C0C0C0 !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; border:none !important; border-radius:0 !important; box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff,inset -4px -4px 0 #808080,inset 4px 4px 0 #DFDFDF !important; }
+        html[data-style="retro"] #retroTitleBar { display:flex !important; }
+        html[data-style="retro"] #reminderControls { background:#C0C0C0 !important; border:none !important; border-radius:0 !important; box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff,inset -4px -4px 0 #808080,inset 4px 4px 0 #DFDFDF !important; }
+        html[data-style="retro"] #themePanel { background:#C0C0C0 !important; border:none !important; border-radius:0 !important; box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff,inset -4px -4px 0 #808080,inset 4px 4px 0 #DFDFDF !important; }
+        html[data-style="retro"] .sound-card { background:#C0C0C0 !important; color:#000 !important; border:none !important; border-radius:0 !important; box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff,inset -4px -4px 0 #808080,inset 4px 4px 0 #DFDFDF !important; }
+        html[data-style="retro"] .sound-card:hover { background:#C0C0C0 !important; }
+        html[data-style="retro"] .sound-card.selected { box-shadow:inset 2px 2px 0 #000,inset -2px -2px 0 #fff,inset 4px 4px 0 #808080,inset -4px -4px 0 #DFDFDF !important; }
+        html[data-style="retro"] #addCallBtn { background:#C0C0C0 !important; color:#000 !important; border-radius:0 !important; box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff,inset -4px -4px 0 #808080,inset 4px 4px 0 #DFDFDF !important; }
+        html[data-style="retro"] #addCallBtn:active { box-shadow:inset 2px 2px 0 #000,inset -2px -2px 0 #fff,inset 4px 4px 0 #808080,inset -4px -4px 0 #DFDFDF !important; }
         html[data-style="retro"] input[type=range]::-webkit-slider-runnable-track { background:#fff; border:1px inset #888; }
         html[data-style="retro"] input[type=range]::-webkit-slider-thumb { background:#C0C0C0; box-shadow:inset -1px -1px 0 #000,inset 1px 1px 0 #fff; border-radius:0; }
-        html[data-style="retro"] h1 { font-size: 1rem !important; letter-spacing:0; }
-        html[data-style="retro"] .toggle-switch .slider { border-radius: 0; }
-        html[data-style="retro"] .toggle-switch .slider:before { border-radius: 0; }
+        html[data-style="retro"] h1 { font-size:1rem !important; letter-spacing:0; }
+        html[data-style="retro"] .toggle-switch .slider { border-radius:0; }
+        html[data-style="retro"] .toggle-switch .slider:before { border-radius:0; }
 
-        /* ════════════════════════════════════════
-           GLOBAL BASE STYLES
-        ════════════════════════════════════════ */
-        body {
-            font-family: var(--font-main);
-            background-color: var(--bg);
-            color: var(--text);
-            transition: background-color 0.4s ease, color 0.3s ease;
-            -webkit-font-smoothing: antialiased;
-            overflow: hidden;
-        }
+        /* ── MEDIEVAL ── */
+        html[data-style="medieval"] { --font-main:'Cinzel',serif;--panel-radius:0.25rem;--btn-radius:0.125rem; }
+        html[data-mode="dark"][data-style="medieval"],html[data-mode="dark"][data-style="medieval"][data-color="dark"] { --bg:#0e0b08;--text:#d4af72;--subtle:#7a5c3a;--card-bg:rgba(28,20,12,0.92);--border:#8b6914;--hover-bg:rgba(212,175,114,0.08);--input-bg:rgba(20,14,8,0.8);--dropdown-bg:#1c140c;--shadow:rgba(0,0,0,0.7);--accent:#c8962a;--accent-hover:#a07820;--accent-trans:rgba(200,150,42,0.15);--success:#5a8a30; }
+        html[data-mode="dark"][data-style="medieval"][data-color="white"]  { --text:#d0d0e0;--accent:#8890cc;--accent-hover:#6870aa; }
+        html[data-mode="dark"][data-style="medieval"][data-color="blue"]   { --accent:#4a6aa8;--accent-hover:#3a5a98;--accent-trans:rgba(74,106,168,0.15);--text:#aac0e0; }
+        html[data-mode="dark"][data-style="medieval"][data-color="green"]  { --accent:#4a8a30;--accent-hover:#3a7020;--accent-trans:rgba(74,138,48,0.15);--text:#9aca80; }
+        html[data-mode="dark"][data-style="medieval"][data-color="pink"]   { --accent:#a84060;--accent-hover:#883050;--accent-trans:rgba(168,64,96,0.15);--text:#e0a0b0; }
+        html[data-mode="dark"][data-style="medieval"][data-color="orange"] { --accent:#d07020;--accent-hover:#b05810;--accent-trans:rgba(208,112,32,0.15);--text:#e8b880; }
+        html[data-mode="light"][data-style="medieval"],html[data-mode="light"][data-style="medieval"][data-color="dark"] { --bg:#6b4c24;--text:#2c1810;--subtle:#8b6040;--card-bg:rgba(244,228,183,0.96);--border:#8b5e3c;--hover-bg:rgba(139,94,60,0.08);--input-bg:rgba(255,248,220,0.9);--dropdown-bg:#f4e4b7;--shadow:rgba(0,0,0,0.4);--accent:#8b1a1a;--accent-hover:#6a1010;--accent-trans:rgba(139,26,26,0.12);--success:#2d6a10; }
+        html[data-mode="light"][data-style="medieval"][data-color="white"]  { --accent:#333366;--accent-hover:#222244; }
+        html[data-mode="light"][data-style="medieval"][data-color="blue"]   { --accent:#1a3a8b;--accent-hover:#102a6a;--text:#1a2c4a; }
+        html[data-mode="light"][data-style="medieval"][data-color="green"]  { --accent:#1a5a20;--accent-hover:#104010;--text:#1a2c10; }
+        html[data-mode="light"][data-style="medieval"][data-color="pink"]   { --accent:#8b1a4a;--accent-hover:#6a1038;--text:#3a1020; }
+        html[data-mode="light"][data-style="medieval"][data-color="orange"] { --accent:#8b4a10;--accent-hover:#6a3208;--text:#3a1a08; }
+        html[data-style="medieval"] #medievalBg { display:block !important; }
+        html[data-mode="dark"][data-style="medieval"] #trackerPanel { background:var(--card-bg) !important; backdrop-filter:blur(4px) !important; -webkit-backdrop-filter:blur(4px) !important; border:2px solid var(--border) !important; box-shadow:0 0 0 1px rgba(212,175,114,0.3),0 0 0 5px var(--border),inset 0 0 30px rgba(0,0,0,0.15),0 20px 60px var(--shadow) !important; }
+        html[data-mode="light"][data-style="medieval"] #trackerPanel { background:var(--card-bg) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; border:2px solid var(--border) !important; box-shadow:0 0 0 1px rgba(212,175,114,0.6),0 0 0 5px var(--border),inset 0 0 20px rgba(139,94,60,0.08),0 20px 60px var(--shadow) !important; }
+        html[data-style="medieval"] #reminderControls { border:2px solid var(--border) !important; border-radius:0.25rem !important; }
+        html[data-mode="light"][data-style="medieval"] #reminderControls { background:var(--card-bg) !important; }
+        html[data-style="medieval"] #themePanel { border:2px solid var(--border) !important; border-radius:0.25rem !important; }
+        html[data-mode="light"][data-style="medieval"] #themePanel { background:var(--card-bg) !important; }
+        html[data-style="medieval"] h1 { font-family:'Cinzel Decorative',serif !important; font-size:1.3rem !important; letter-spacing:1px; }
+        html[data-style="medieval"] .sound-card { border-radius:0.125rem !important; }
+        html[data-style="medieval"] #addCallBtn { border-radius:0.125rem !important; }
+        html[data-style="medieval"] .toggle-switch .slider { border-radius:3px; }
+        html[data-style="medieval"] .toggle-switch .slider:before { border-radius:2px; }
 
-        /* ── Animated gradient background (glassmorphic) ── */
-        #gradientBg {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            overflow: hidden;
-            background: #060818;
-        }
-        #gradientBg::before {
-            content: '';
-            position: absolute;
-            width: 180%; height: 180%;
-            top: -40%; left: -40%;
-            background: conic-gradient(
-                from 0deg at 45% 55%,
-                var(--accent) 0deg,
-                transparent 80deg,
-                var(--success) 150deg,
-                transparent 200deg,
-                color-mix(in srgb, var(--accent) 50%, purple) 270deg,
-                transparent 310deg,
-                var(--accent) 360deg
-            );
-            filter: blur(70px);
-            opacity: 0.45;
-            animation: rotateBg 20s linear infinite;
-        }
-        #gradientBg::after {
-            content: '';
-            position: absolute;
-            width: 60%; height: 60%;
-            top: 10%; left: 20%;
-            background: radial-gradient(ellipse, var(--accent-trans) 0%, transparent 70%);
-            filter: blur(40px);
-            animation: floatBg 10s ease-in-out infinite alternate;
-        }
-        @keyframes rotateBg { to { transform: rotate(360deg); } }
-        @keyframes floatBg  { from { transform: translate(0,0) scale(1); } to { transform: translate(8%, 5%) scale(1.15); } }
+        /* ── BRUTALIST ── */
+        html[data-style="brutalist"] { --font-main:'Bebas Neue',sans-serif;--panel-radius:0px;--btn-radius:0px; }
+        html[data-mode="dark"][data-style="brutalist"],html[data-mode="dark"][data-style="brutalist"][data-color="dark"] { --bg:#111111;--text:#f0f0f0;--subtle:#666666;--card-bg:#1a1a1a;--border:#f0f0f0;--hover-bg:rgba(240,240,240,0.08);--input-bg:#111111;--dropdown-bg:#1a1a1a;--shadow:rgba(0,0,0,0.8);--accent:#ff0000;--accent-hover:#cc0000;--accent-trans:rgba(255,0,0,0.12);--success:#00ff00; }
+        html[data-mode="dark"][data-style="brutalist"][data-color="white"]  { --accent:#ffe600;--accent-hover:#ccb800;--accent-trans:rgba(255,230,0,0.12); }
+        html[data-mode="dark"][data-style="brutalist"][data-color="blue"]   { --accent:#0066ff;--accent-hover:#0044cc;--accent-trans:rgba(0,102,255,0.12); }
+        html[data-mode="dark"][data-style="brutalist"][data-color="green"]  { --accent:#00ff00;--accent-hover:#00cc00;--accent-trans:rgba(0,255,0,0.12); }
+        html[data-mode="dark"][data-style="brutalist"][data-color="pink"]   { --accent:#ff0099;--accent-hover:#cc0077;--accent-trans:rgba(255,0,153,0.12); }
+        html[data-mode="dark"][data-style="brutalist"][data-color="orange"] { --accent:#ff6600;--accent-hover:#cc4400;--accent-trans:rgba(255,102,0,0.12); }
+        html[data-mode="light"][data-style="brutalist"],html[data-mode="light"][data-style="brutalist"][data-color="dark"] { --bg:#f0f0e8;--text:#0a0a0a;--subtle:#444444;--card-bg:#e8e8e0;--border:#0a0a0a;--hover-bg:rgba(10,10,10,0.06);--input-bg:#ffffff;--dropdown-bg:#ffffff;--shadow:rgba(0,0,0,0.5);--accent:#ff0000;--accent-hover:#cc0000;--accent-trans:rgba(255,0,0,0.10);--success:#007700; }
+        html[data-mode="light"][data-style="brutalist"][data-color="white"]  { --accent:#222200;--accent-hover:#111100; }
+        html[data-mode="light"][data-style="brutalist"][data-color="blue"]   { --accent:#0000ff;--accent-hover:#0000cc; }
+        html[data-mode="light"][data-style="brutalist"][data-color="green"]  { --accent:#006600;--accent-hover:#004400; }
+        html[data-mode="light"][data-style="brutalist"][data-color="pink"]   { --accent:#cc0066;--accent-hover:#990044; }
+        html[data-mode="light"][data-style="brutalist"][data-color="orange"] { --accent:#cc5500;--accent-hover:#aa3300; }
+        html[data-style="brutalist"] #brutalistBg { display:block !important; }
+        html[data-style="brutalist"] #trackerPanel { background:var(--card-bg) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; border:3px solid var(--border) !important; border-radius:0 !important; box-shadow:8px 8px 0 var(--border) !important; }
+        html[data-style="brutalist"] #reminderControls { background:var(--card-bg) !important; border:3px solid var(--border) !important; border-radius:0 !important; box-shadow:6px 6px 0 var(--border) !important; }
+        html[data-style="brutalist"] #themePanel { background:var(--card-bg) !important; border:3px solid var(--border) !important; border-radius:0 !important; box-shadow:6px 6px 0 var(--border) !important; }
+        html[data-style="brutalist"] .sound-card { border:2px solid var(--border) !important; border-radius:0 !important; }
+        html[data-style="brutalist"] .sound-card:hover { transform:none !important; box-shadow:3px 3px 0 var(--accent) !important; }
+        html[data-style="brutalist"] .sound-card.selected { box-shadow:3px 3px 0 var(--accent) !important; }
+        html[data-style="brutalist"] #addCallBtn { border-radius:0 !important; box-shadow:4px 4px 0 rgba(0,0,0,0.6) !important; transition:box-shadow 0.1s,transform 0.1s !important; }
+        html[data-style="brutalist"] #addCallBtn:hover { box-shadow:6px 6px 0 rgba(0,0,0,0.6) !important; transform:translate(-2px,-2px) !important; }
+        html[data-style="brutalist"] #addCallBtn:active { box-shadow:2px 2px 0 rgba(0,0,0,0.6) !important; transform:translate(2px,2px) !important; }
+        html[data-style="brutalist"] h1 { font-size:2.2rem !important; letter-spacing:5px; text-transform:uppercase; line-height:1.1; }
+        html[data-style="brutalist"] .toggle-switch .slider { border-radius:0; }
+        html[data-style="brutalist"] .toggle-switch .slider:before { border-radius:0; }
+        html[data-style="brutalist"] p,.subtle-text { letter-spacing:1px; }
 
-        /* ── Pixel grid background ── */
-        #pixelBg {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            background: var(--bg);
-            background-image:
-                linear-gradient(var(--border) 1px, transparent 1px),
-                linear-gradient(90deg, var(--border) 1px, transparent 1px);
-            background-size: 16px 16px;
-        }
+        /* ════ GLOBAL ════ */
+        body { font-family:var(--font-main); background-color:var(--bg); color:var(--text); transition:background-color 0.35s,color 0.25s; -webkit-font-smoothing:antialiased; overflow:hidden; }
 
-        /* ── Retro Windows title bar ── */
-        #retroTitleBar {
-            display: none;
-            background: linear-gradient(90deg, var(--accent), var(--accent-hover));
-            color: #fff;
-            font-size: 0.8rem;
-            font-weight: bold;
-            padding: 3px 5px;
-            align-items: center;
-            justify-content: space-between;
-            margin: -1.5rem -0.5rem 1.25rem -1.5rem;
-            font-family: 'Courier New', monospace;
-            user-select: none;
-        }
-        .retro-win-btn {
-            width: 16px; height: 14px;
-            background: #C0C0C0;
-            color: #000;
-            font-size: 9px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 #fff;
-            cursor: pointer;
-            font-weight: bold;
-            margin-left: 2px;
-        }
+        /* ── Background layers ── */
+        #gradientBg { display:none; position:fixed; inset:0; z-index:-1; overflow:hidden; background:#060818; }
+        html[data-mode="light"] #gradientBg { background:#d0e4f8; }
+        #gradientBg::before { content:''; position:absolute; width:180%; height:180%; top:-40%; left:-40%; background:conic-gradient(from 0deg at 45% 55%,var(--accent) 0deg,transparent 80deg,var(--success) 150deg,transparent 200deg,color-mix(in srgb,var(--accent) 50%,purple) 270deg,transparent 310deg,var(--accent) 360deg); filter:blur(70px); opacity:0.45; animation:rotateBg 20s linear infinite; }
+        html[data-mode="light"] #gradientBg::before { opacity:0.22; }
+        #gradientBg::after { content:''; position:absolute; width:60%; height:60%; top:10%; left:20%; background:radial-gradient(ellipse,var(--accent-trans) 0%,transparent 70%); filter:blur(40px); animation:floatBg 10s ease-in-out infinite alternate; }
+        @keyframes rotateBg { to{transform:rotate(360deg)} }
+        @keyframes floatBg { from{transform:translate(0,0) scale(1)} to{transform:translate(8%,5%) scale(1.15)} }
 
-        /* ── Main Scene / Panel ── */
-        #scene {
-            perspective: 1500px;
-            width: 100vw; height: 100vh;
-            display: flex; align-items: center; justify-content: center;
-            overflow: hidden;
-            padding: 1rem;
-        }
-        #trackerPanel {
-            width: 100%;
-            max-width: 550px;
-            height: 80vh;
-            max-height: 750px;
-            padding: 1.5rem 0.5rem 1.5rem 1.5rem;
-            transform-style: preserve-3d;
-            transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0);
-            cursor: grab;
-            user-select: none;
-            border-radius: var(--panel-radius);
-            box-shadow: 0 25px 60px -10px var(--shadow);
-            background: var(--card-bg);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-        }
-        #trackerPanel:active { cursor: grabbing; }
+        #matrixCanvas { display:none; position:fixed; inset:0; z-index:-1; }
 
-        /* ── Utilities ── */
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; transition: color 0.2s; }
-        .custom-hover:hover { background-color: var(--hover-bg) !important; }
-        .subtle-text { color: var(--subtle); }
-        .accent-bg { background-color: var(--accent) !important; color: #fff !important; }
-        .accent-bg:hover { background-color: var(--accent-hover) !important; }
+        #pixelArtBg { display:none; position:fixed; inset:0; z-index:-1; background:var(--bg); }
+        #crtOverlay { display:none; position:fixed; inset:0; z-index:9998; pointer-events:none; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.09) 2px,rgba(0,0,0,0.09) 4px); animation:crtFlicker 8s infinite; }
+        @keyframes crtFlicker { 0%,99%{opacity:1} 99.5%{opacity:0.96} 100%{opacity:1} }
 
-        /* ── Scrollbar ── */
-        #callListContainer::-webkit-scrollbar { width: 5px; }
-        #callListContainer::-webkit-scrollbar-track { background: transparent; }
-        #callListContainer::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+        #medievalBg { display:none; position:fixed; inset:0; z-index:-1; }
+        html[data-mode="dark"] #medievalBg { background:radial-gradient(ellipse at 30% 40%,#2a1a08 0%,#0e0b08 70%); }
+        html[data-mode="light"] #medievalBg { background:radial-gradient(ellipse at 50% 30%,#b8914a 0%,#7a5228 60%,#3a2810 100%); }
 
-        /* ── Toggle Switch ── */
-        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; inset: 0; background: var(--hover-bg); transition: .4s; border-radius: 24px; border: 1px solid var(--border); }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #fff; transition: .4s cubic-bezier(0.68,-0.55,0.27,1.55); border-radius: 50%; }
-        input:checked + .slider { background-color: var(--success); border-color: var(--success); }
-        input:checked + .slider:before { transform: translateX(20px); }
+        #brutalistBg { display:none; position:fixed; inset:0; z-index:-1; background:var(--bg); background-image:repeating-linear-gradient(45deg,transparent,transparent 25px,rgba(128,128,128,0.04) 25px,rgba(128,128,128,0.04) 26px); }
 
-        /* ── Animations ── */
-        .call-item { animation: fadeIn 0.4s ease-out forwards; }
-        @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-        .is-reminding { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shake {
-            10%,90% { transform: translate3d(-1px,0,0); }
-            20%,80%  { transform: translate3d(2px,0,0); }
-            30%,50%,70% { transform: translate3d(-4px,0,0); }
-            40%,60% { transform: translate3d(4px,0,0); }
-        }
+        #retroTitleBar { display:none; background:linear-gradient(90deg,var(--accent),var(--accent-hover)); color:#fff; font-size:0.8rem; font-weight:bold; padding:3px 5px; align-items:center; justify-content:space-between; margin:-1.5rem -0.5rem 1.25rem -1.5rem; font-family:'Courier New',monospace; user-select:none; }
+        .retro-win-btn { width:16px; height:14px; background:#C0C0C0; color:#000; font-size:9px; display:inline-flex; align-items:center; justify-content:center; box-shadow:inset -1px -1px 0 #000,inset 1px 1px 0 #fff; cursor:pointer; font-weight:bold; margin-left:2px; }
 
-        /* ── Chart ── */
-        #chartContainer { padding: 0.75rem 0; height: 120px; }
-        #rateChart .grid-line { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2,4; }
-        #rateChart .chart-line { stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: url(#chartGradient); }
-        #rateChart .chart-point { fill: var(--accent); stroke: var(--card-bg); stroke-width: 2; transition: r 0.2s; }
-        #rateChart .chart-point:hover { r: 6; }
+        #scene { perspective:1500px; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:1rem; }
+        #trackerPanel { width:100%; max-width:550px; height:80vh; max-height:750px; padding:1.5rem 0.5rem 1.5rem 1.5rem; transform-style:preserve-3d; transition:transform 0.6s cubic-bezier(0.25,0.1,0.25,1); cursor:grab; user-select:none; border-radius:var(--panel-radius); box-shadow:0 25px 60px -10px var(--shadow); background:var(--card-bg); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border:1px solid var(--border); display:flex; flex-direction:column; }
+        #trackerPanel:active { cursor:grabbing; }
 
-        /* ── Range input ── */
+        .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; vertical-align:middle; transition:color 0.2s; }
+        .custom-hover:hover { background-color:var(--hover-bg) !important; }
+        .subtle-text { color:var(--subtle); }
+        .accent-bg { background-color:var(--accent) !important; color:#fff !important; }
+        .accent-bg:hover { background-color:var(--accent-hover) !important; }
+
+        #callListContainer::-webkit-scrollbar { width:5px; }
+        #callListContainer::-webkit-scrollbar-track { background:transparent; }
+        #callListContainer::-webkit-scrollbar-thumb { background:var(--accent); border-radius:10px; }
+
+        .toggle-switch { position:relative; display:inline-block; width:44px; height:24px; }
+        .toggle-switch input { opacity:0; width:0; height:0; }
+        .slider { position:absolute; cursor:pointer; inset:0; background:var(--hover-bg); transition:.4s; border-radius:24px; border:1px solid var(--border); }
+        .slider:before { position:absolute; content:""; height:16px; width:16px; left:3px; bottom:3px; background:#fff; transition:.4s cubic-bezier(0.68,-0.55,0.27,1.55); border-radius:50%; }
+        input:checked + .slider { background-color:var(--success); border-color:var(--success); }
+        input:checked + .slider:before { transform:translateX(20px); }
+
+        .call-item { animation:fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        .is-reminding { animation:shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake { 10%,90%{transform:translate3d(-1px,0,0)} 20%,80%{transform:translate3d(2px,0,0)} 30%,50%,70%{transform:translate3d(-4px,0,0)} 40%,60%{transform:translate3d(4px,0,0)} }
+
+        #chartContainer { padding:0.75rem 0; height:120px; }
+        #rateChart .grid-line { stroke:var(--border); stroke-width:1; stroke-dasharray:2,4; }
+        #rateChart .chart-line { stroke:var(--accent); stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; fill:url(#chartGradient); }
+        #rateChart .chart-point { fill:var(--accent); stroke:var(--card-bg); stroke-width:2; transition:r 0.2s; }
+        #rateChart .chart-point:hover { r:6; }
+
         input[type=range] { -webkit-appearance:none; width:100%; background:transparent; }
         input[type=range]:focus { outline:none; }
         input[type=range]::-webkit-slider-runnable-track { height:4px; cursor:pointer; background:var(--hover-bg); border-radius:4px; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; height:16px; width:16px; border-radius:50%; background:var(--accent); cursor:pointer; margin-top:-6px; border:2px solid var(--bg); }
 
-        /* ════════════════════════════════════════
-           REMINDER POPUP
-        ════════════════════════════════════════ */
-        #reminderControls {
-            position: absolute;
-            bottom: 100%; left: 0;
-            width: 340px;
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 0.875rem;
-            padding: 1.1rem;
-            margin-bottom: 0.5rem;
-            box-shadow: 0 12px 32px var(--shadow);
-            opacity: 0;
-            transform: translateY(8px);
-            pointer-events: none;
-            transition: opacity 0.25s ease, transform 0.25s ease;
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            z-index: 50;
-        }
+        #reminderControls { position:absolute; bottom:100%; left:0; width:340px; background:var(--card-bg); border:1px solid var(--border); border-radius:0.875rem; padding:1.1rem; margin-bottom:0.5rem; box-shadow:0 12px 32px var(--shadow); opacity:0; transform:translateY(8px); pointer-events:none; transition:opacity 0.25s,transform 0.25s; backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); z-index:50; }
         #reminderControls.visible { opacity:1; transform:translateY(0); pointer-events:auto; }
 
-        /* ════════════════════════════════════════
-           SOUND PICKER GRID
-        ════════════════════════════════════════ */
-        .sound-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 5px;
-            margin-top: 6px;
-        }
-        .sound-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 2px;
-            padding: 6px 3px;
-            background: var(--input-bg);
-            border: 1px solid var(--border);
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: all 0.18s ease;
-            font-family: var(--font-main);
-        }
-        .sound-card:hover {
-            background: var(--hover-bg);
-            border-color: var(--accent);
-            transform: translateY(-1px);
-        }
-        .sound-card.selected {
-            background: var(--accent-trans);
-            border-color: var(--accent);
-        }
-        .sound-card .s-emoji { font-size: 1.15rem; line-height: 1; }
-        .sound-card .s-name { font-size: 0.55rem; color: var(--subtle); text-align: center; line-height: 1.2; }
-        .sound-card.selected .s-name { color: var(--accent); font-weight: 600; }
+        .sound-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:6px; }
+        .sound-card { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:6px 3px; background:var(--input-bg); border:1px solid var(--border); border-radius:0.5rem; cursor:pointer; transition:all 0.18s; font-family:var(--font-main); }
+        .sound-card:hover { background:var(--hover-bg); border-color:var(--accent); transform:translateY(-1px); }
+        .sound-card.selected { background:var(--accent-trans); border-color:var(--accent); }
+        .sound-card .s-emoji { font-size:1.15rem; line-height:1; }
+        .sound-card .s-name { font-size:0.55rem; color:var(--subtle); text-align:center; line-height:1.2; }
+        .sound-card.selected .s-name { color:var(--accent); font-weight:600; }
 
-        /* ════════════════════════════════════════
-           THEME PICKER PANEL
-        ════════════════════════════════════════ */
-        #themePanel {
-            position: fixed;
-            top: 72px; right: 1.5rem;
-            width: 290px;
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 1rem;
-            padding: 1rem;
-            box-shadow: 0 16px 40px var(--shadow);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            z-index: 65;
-            opacity: 0;
-            transform: translateY(-8px) scale(0.96);
-            pointer-events: none;
-            transition: opacity 0.22s ease, transform 0.22s ease;
-        }
+        #themePanel { position:fixed; top:72px; right:1.5rem; width:296px; background:var(--card-bg); border:1px solid var(--border); border-radius:1rem; padding:1rem; box-shadow:0 16px 40px var(--shadow); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); z-index:65; opacity:0; transform:translateY(-8px) scale(0.96); pointer-events:none; transition:opacity 0.22s,transform 0.22s; }
         #themePanel.visible { opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
 
-        .tp-label {
-            font-size: 0.6rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--subtle);
-            margin-bottom: 7px;
-            display: block;
-        }
-        .style-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 6px;
-            margin-bottom: 1rem;
-        }
-        .style-btn {
-            display: flex; flex-direction: column; align-items: center; gap: 5px;
-            padding: 8px 4px;
-            background: var(--input-bg);
-            border: 1.5px solid var(--border);
-            border-radius: 0.625rem;
-            cursor: pointer;
-            transition: all 0.18s ease;
-            font-size: 0.6rem;
-            color: var(--subtle);
-            font-family: var(--font-main);
-        }
-        .style-btn:hover { border-color: var(--accent); color: var(--text); }
-        .style-btn.selected { border-color: var(--accent); background: var(--accent-trans); color: var(--accent); font-weight: 600; }
-        .style-preview { width: 52px; height: 34px; border-radius: 4px; overflow: hidden; position: relative; flex-shrink: 0; }
+        .mode-pill { display:flex; background:var(--hover-bg); border-radius:9999px; border:1px solid var(--border); padding:3px; gap:2px; margin-bottom:0.9rem; }
+        .mode-pill-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:5px; padding:5px 10px; border-radius:9999px; font-size:0.7rem; font-weight:600; cursor:pointer; transition:all 0.2s; color:var(--subtle); font-family:var(--font-main); border:none; background:transparent; }
+        .mode-pill-btn.active { background:var(--card-bg); color:var(--text); box-shadow:0 2px 8px var(--shadow); }
+        html[data-mode="light"] .mode-pill-btn.active { background:#fff; }
 
-        .color-row { display: flex; gap: 7px; flex-wrap: wrap; }
-        .color-dot {
-            width: 30px; height: 30px; border-radius: 50%;
-            cursor: pointer;
-            border: 2.5px solid transparent;
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
-            position: relative;
-        }
-        .color-dot:hover { transform: scale(1.18); }
-        .color-dot.selected {
-            box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text);
-        }
+        .tp-label { font-size:0.6rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--subtle); margin-bottom:7px; display:block; }
+        .style-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:1rem; }
+        .style-btn { display:flex; flex-direction:column; align-items:center; gap:5px; padding:8px 4px; background:var(--input-bg); border:1.5px solid var(--border); border-radius:0.625rem; cursor:pointer; transition:all 0.18s; font-size:0.6rem; color:var(--subtle); font-family:var(--font-main); }
+        .style-btn:hover { border-color:var(--accent); color:var(--text); }
+        .style-btn.selected { border-color:var(--accent); background:var(--accent-trans); color:var(--accent); font-weight:600; }
+        .style-preview { width:52px; height:34px; border-radius:4px; overflow:hidden; position:relative; flex-shrink:0; }
+
+        .color-row { display:flex; gap:7px; flex-wrap:wrap; }
+        .color-dot { width:30px; height:30px; border-radius:50%; cursor:pointer; border:2.5px solid transparent; transition:transform 0.18s,box-shadow 0.18s; }
+        .color-dot:hover { transform:scale(1.18); }
+        .color-dot.selected { box-shadow:0 0 0 2px var(--bg),0 0 0 4.5px var(--text); }
     </style>
 </head>
 <body>
-    <!-- ══ Dynamic Backgrounds ══ -->
-    <div id="gradientBg"></div>
-    <div id="pixelBg"></div>
 
-    <!-- ══ Top Controls ══ -->
+    <canvas id="matrixCanvas"></canvas>
+    <div id="gradientBg"></div>
+    <div id="pixelArtBg"></div>
+    <div id="medievalBg"></div>
+    <div id="brutalistBg"></div>
+    <div id="crtOverlay"></div>
+
     <div class="fixed top-5 right-5 flex items-center gap-2 z-[70]">
-        <a href="https://isaiart.com/smt" class="p-2.5 rounded-full custom-hover transition-colors shadow-md" aria-label="Back to Hub" style="background:var(--card-bg); border:1px solid var(--border); color:var(--text);">
-            <span class="material-symbols-outlined" style="font-size:20px">home</span>
-        </a>
-        <button id="themePickerBtn" class="p-2.5 rounded-full transition-colors shadow-md" aria-label="Theme picker" style="background:var(--card-bg); border:1px solid var(--border); color:var(--text);">
-            <span class="material-symbols-outlined" style="font-size:20px">palette</span>
-        </button>
-        <button id="lightDarkToggle" class="p-2.5 rounded-full transition-colors shadow-md" aria-label="Dark/Light" style="background:var(--card-bg); border:1px solid var(--border); color:var(--text);">
-            <span id="ico-light" class="material-symbols-outlined" style="font-size:20px">light_mode</span>
-            <span id="ico-dark"  class="material-symbols-outlined" style="font-size:20px;display:none">dark_mode</span>
-        </button>
+        <a href="https://isaiart.com/smt" class="p-2.5 rounded-full custom-hover transition-colors shadow-md" style="background:var(--card-bg);border:1px solid var(--border);color:var(--text);" aria-label="Hub"><span class="material-symbols-outlined" style="font-size:20px">home</span></a>
+        <button id="themePickerBtn" class="p-2.5 rounded-full transition-colors shadow-md" style="background:var(--card-bg);border:1px solid var(--border);color:var(--text);" aria-label="Themes"><span class="material-symbols-outlined" style="font-size:20px">palette</span></button>
     </div>
 
-    <!-- ══ Theme Picker Panel ══ -->
     <div id="themePanel">
         <div class="flex items-center justify-between mb-3">
             <span class="font-semibold text-sm">Themes</span>
-            <button id="closePanelBtn" style="padding:2px; border-radius:50%; color:var(--subtle)" class="custom-hover"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+            <button id="closePanelBtn" class="custom-hover" style="padding:2px;border-radius:50%;color:var(--subtle)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
         </div>
-
+        <div class="mode-pill">
+            <button class="mode-pill-btn active" id="modeDark"><span class="material-symbols-outlined" style="font-size:14px">dark_mode</span> Dark</button>
+            <button class="mode-pill-btn" id="modeLight"><span class="material-symbols-outlined" style="font-size:14px">light_mode</span> Light</button>
+        </div>
         <span class="tp-label">UI Style</span>
         <div class="style-grid" id="styleGrid">
             <button class="style-btn selected" data-style="default">
-                <div class="style-preview" style="background:linear-gradient(135deg,#0c0d13,#151929); border:1px solid rgba(255,255,255,0.08);">
-                    <div style="position:absolute;bottom:5px;left:5px;right:5px;height:5px;background:rgba(59,130,246,0.45);border-radius:2px;"></div>
-                </div>
+                <div class="style-preview" style="background:linear-gradient(135deg,#0c0d13,#151929);border:1px solid rgba(255,255,255,0.08);"><div style="position:absolute;bottom:5px;left:5px;right:5px;height:5px;background:rgba(59,130,246,0.45);border-radius:2px;"></div></div>
                 <span>Default</span>
             </button>
             <button class="style-btn" data-style="glass">
-                <div class="style-preview" style="background:linear-gradient(135deg,#6366f1,#06b6d4,#8b5cf6);">
-                    <div style="position:absolute;inset:5px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);border-radius:3px;backdrop-filter:blur(4px);"></div>
-                </div>
+                <div class="style-preview" style="background:linear-gradient(135deg,#6366f1,#06b6d4,#8b5cf6);"><div style="position:absolute;inset:5px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);border-radius:3px;"></div></div>
                 <span>Glassmorphic</span>
             </button>
             <button class="style-btn" data-style="neumorphic">
-                <div class="style-preview" style="background:#DDE5EF;border-radius:4px;box-shadow:5px 5px 10px rgba(163,177,198,0.7),-5px -5px 10px rgba(255,255,255,0.9);">
-                    <div style="position:absolute;bottom:6px;left:8px;right:8px;height:5px;background:#DDE5EF;border-radius:2px;box-shadow:2px 2px 4px rgba(163,177,198,0.5),-2px -2px 4px rgba(255,255,255,0.7);"></div>
-                </div>
+                <div class="style-preview" style="background:#DDE5EF;border-radius:4px;box-shadow:5px 5px 10px rgba(163,177,198,0.7),-5px -5px 10px rgba(255,255,255,0.9);"><div style="position:absolute;bottom:6px;left:8px;right:8px;height:5px;background:#DDE5EF;border-radius:2px;box-shadow:2px 2px 4px rgba(163,177,198,0.5),-2px -2px 4px rgba(255,255,255,0.7);"></div></div>
                 <span>Neumorphic</span>
             </button>
             <button class="style-btn" data-style="minimal">
-                <div class="style-preview" style="background:#fff;border:1px solid #ddd;border-radius:2px;">
-                    <div style="position:absolute;top:7px;left:6px;right:16px;height:1px;background:#ccc;"></div>
-                    <div style="position:absolute;bottom:6px;left:6px;right:6px;height:1px;background:#eee;"></div>
-                </div>
+                <div class="style-preview" style="background:#fff;border:1px solid #ddd;border-radius:2px;"><div style="position:absolute;top:7px;left:6px;right:16px;height:1px;background:#ccc;"></div><div style="position:absolute;bottom:6px;left:6px;right:6px;height:1px;background:#eee;"></div></div>
                 <span>Minimal</span>
             </button>
-            <button class="style-btn" data-style="pixel">
-                <div class="style-preview" style="background:#080808;border:2px solid #33FF66;border-radius:0;image-rendering:pixelated;background-image:linear-gradient(rgba(51,255,102,0.15) 1px,transparent 1px),linear-gradient(90deg,rgba(51,255,102,0.15) 1px,transparent 1px);background-size:8px 8px;">
-                    <div style="position:absolute;bottom:4px;left:4px;right:4px;height:3px;background:#33FF66;border-radius:0;"></div>
-                </div>
-                <span>Pixel</span>
+            <button class="style-btn" data-style="cyberpunk">
+                <div class="style-preview" style="background:#080808;border:2px solid #33FF66;border-radius:0;background-image:linear-gradient(rgba(51,255,102,0.15) 1px,transparent 1px),linear-gradient(90deg,rgba(51,255,102,0.15) 1px,transparent 1px);background-size:8px 8px;"><div style="position:absolute;bottom:4px;left:4px;right:4px;height:3px;background:#33FF66;border-radius:0;"></div></div>
+                <span>Cyberpunk</span>
+            </button>
+            <button class="style-btn" data-style="pixelart">
+                <div class="style-preview" style="background:#1a1c2c;border:3px solid #6b6bae;border-radius:0;image-rendering:pixelated;"><div style="position:absolute;top:4px;left:4px;right:4px;height:4px;background:#ff004d;border-radius:0;"></div><div style="position:absolute;bottom:4px;left:4px;width:8px;height:8px;background:#00e436;"></div><div style="position:absolute;bottom:4px;left:16px;width:8px;height:8px;background:#29adff;"></div></div>
+                <span>Pixel Art</span>
             </button>
             <button class="style-btn" data-style="retro">
-                <div class="style-preview" style="background:#C0C0C0;border-radius:0;box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff;">
-                    <div style="position:absolute;top:0;left:0;right:0;height:10px;background:#000080;display:flex;align-items:center;justify-content:flex-end;padding-right:3px;gap:2px;">
-                        <div style="width:7px;height:6px;background:#C0C0C0;box-shadow:inset -1px -1px 0 #000,inset 1px 1px 0 #fff;font-size:6px;"></div>
-                    </div>
-                </div>
+                <div class="style-preview" style="background:#C0C0C0;border-radius:0;box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff;"><div style="position:absolute;top:0;left:0;right:0;height:10px;background:#000080;display:flex;align-items:center;justify-content:flex-end;padding-right:3px;"><div style="width:7px;height:6px;background:#C0C0C0;box-shadow:inset -1px -1px 0 #000,inset 1px 1px 0 #fff;"></div></div></div>
                 <span>Retro Win</span>
             </button>
+            <button class="style-btn" data-style="medieval">
+                <div class="style-preview" style="background:linear-gradient(135deg,#8b5e3c,#5a3a18);border:0;"><div style="position:absolute;inset:3px;background:rgba(244,228,183,0.85);border:1px solid #8b6914;display:flex;align-items:center;justify-content:center;font-size:14px;">&#9876;</div></div>
+                <span>Medieval</span>
+            </button>
+            <button class="style-btn" data-style="brutalist">
+                <div class="style-preview" style="background:#e8e8e0;border:3px solid #0a0a0a;border-radius:0;box-shadow:4px 4px 0 #0a0a0a;"><div style="position:absolute;top:4px;left:4px;right:4px;height:6px;background:#ff0000;"></div><div style="position:absolute;bottom:4px;left:4px;right:4px;height:3px;background:#0a0a0a;"></div></div>
+                <span>Brutalist</span>
+            </button>
         </div>
-
         <span class="tp-label">Color</span>
-        <div class="color-row" id="colorRow">
+        <div class="color-row">
             <button class="color-dot selected" data-color="dark"   style="background:linear-gradient(135deg,#1a1a2e,#0c0d13);" title="Dark"></button>
-            <button class="color-dot"          data-color="white"  style="background:linear-gradient(135deg,#F0F3F8,#D8DFE8);" title="White"></button>
+            <button class="color-dot"          data-color="white"  style="background:linear-gradient(135deg,#6366f1,#818CF8);" title="Indigo"></button>
             <button class="color-dot"          data-color="blue"   style="background:linear-gradient(135deg,#0284C7,#38BDF8);" title="Blue"></button>
             <button class="color-dot"          data-color="green"  style="background:linear-gradient(135deg,#15803D,#22C55E);" title="Green"></button>
             <button class="color-dot"          data-color="pink"   style="background:linear-gradient(135deg,#9D174D,#F472B6);" title="Pink"></button>
@@ -667,100 +386,52 @@
         </div>
     </div>
 
-    <!-- ══ Main Scene ══ -->
     <div id="scene">
         <main id="trackerPanel">
-
-            <!-- Retro Windows Title Bar (hidden unless retro style) -->
             <div id="retroTitleBar">
-                <span>📞 Call Flow Tracker</span>
-                <div style="display:flex;">
-                    <span class="retro-win-btn">_</span>
-                    <span class="retro-win-btn">□</span>
-                    <span class="retro-win-btn">✕</span>
-                </div>
+                <span>&#128222; Call Flow Tracker</span>
+                <div style="display:flex;"><span class="retro-win-btn">_</span><span class="retro-win-btn">&#9633;</span><span class="retro-win-btn">&#10005;</span></div>
             </div>
-
-            <!-- Header -->
-            <header class="px-4 pb-4 space-y-3" style="border-bottom:1px solid var(--border); transform:translateZ(20px);">
-                <h1 class="text-2xl font-bold" style="color:var(--text)">Call Flow Tracker</h1>
+            <header class="px-4 pb-4 space-y-3" style="border-bottom:1px solid var(--border);transform:translateZ(20px)">
+                <h1 class="text-2xl font-bold">Call Flow Tracker</h1>
                 <div class="space-y-2">
-                    <div class="flex justify-between items-center text-sm">
-                        <p class="subtle-text">Overall Completion</p>
-                        <p id="progressText" class="font-medium">0%</p>
-                    </div>
-                    <div class="w-full h-2 rounded-full" style="background:var(--hover-bg);">
-                        <div id="progressBar" class="h-2 rounded-full transition-all duration-500" style="width:0%; background:var(--success);"></div>
-                    </div>
+                    <div class="flex justify-between items-center text-sm"><p class="subtle-text">Overall Completion</p><p id="progressText" class="font-medium">0%</p></div>
+                    <div class="w-full h-2 rounded-full" style="background:var(--hover-bg)"><div id="progressBar" class="h-2 rounded-full transition-all duration-500" style="width:0%;background:var(--success)"></div></div>
                 </div>
             </header>
-
-            <!-- Chart -->
-            <div id="chartContainer" class="px-4" style="transform:translateZ(30px);">
-                <svg id="rateChart" width="100%" height="100%" viewBox="0 0 500 100" preserveAspectRatio="none"></svg>
-            </div>
-
-            <!-- Call List -->
-            <div id="callListContainer" class="flex-grow overflow-y-auto pr-4 py-2" style="border-top:1px solid var(--border); transform:translateZ(10px);">
+            <div id="chartContainer" class="px-4" style="transform:translateZ(30px)"><svg id="rateChart" width="100%" height="100%" viewBox="0 0 500 100" preserveAspectRatio="none"></svg></div>
+            <div id="callListContainer" class="flex-grow overflow-y-auto pr-4 py-2" style="border-top:1px solid var(--border);transform:translateZ(10px)">
                 <div id="emptyState" class="flex flex-col items-center justify-center h-full text-center p-4 subtle-text">
                     <span class="material-symbols-outlined mb-2" style="font-size:3rem">phone_in_talk</span>
                     <p class="font-medium">Ready for calls!</p>
                     <p class="text-sm">Add a new call to get started.</p>
                 </div>
             </div>
-
-            <!-- Footer -->
-            <footer class="px-4 pt-4 flex items-center justify-between" style="border-top:1px solid var(--border); transform:translateZ(20px);">
+            <footer class="px-4 pt-4 flex items-center justify-between" style="border-top:1px solid var(--border);transform:translateZ(20px)">
                 <div class="flex items-center gap-2">
-                    <!-- Reset -->
-                    <button id="resetDataBtn" class="p-2 rounded-full custom-hover transition-colors" style="color:var(--subtle)">
-                        <span class="material-symbols-outlined" style="font-size:18px">restart_alt</span>
-                    </button>
-
-                    <!-- Reminder + Popup -->
+                    <button id="resetDataBtn" class="p-2 rounded-full custom-hover transition-colors" style="color:var(--subtle)"><span class="material-symbols-outlined" style="font-size:18px">restart_alt</span></button>
                     <div class="relative">
-                        <button id="reminderToggleBtn" class="p-2 rounded-full custom-hover transition-colors" style="color:var(--subtle)">
-                            <span class="material-symbols-outlined" style="font-size:18px">notifications</span>
-                        </button>
-
+                        <button id="reminderToggleBtn" class="p-2 rounded-full custom-hover transition-colors" style="color:var(--subtle)"><span class="material-symbols-outlined" style="font-size:18px">notifications</span></button>
                         <div id="reminderControls">
-                            <!-- Slider -->
                             <div class="mb-3">
                                 <label class="tp-label">Reminder Interval</label>
-                                <div class="flex items-center gap-3">
-                                    <input type="range" id="reminderSlider" min="0" max="30" step="1" value="0" class="flex-grow">
-                                    <span id="reminderTimeLabel" class="text-sm font-medium" style="width:48px; text-align:right;">Off</span>
-                                </div>
+                                <div class="flex items-center gap-3"><input type="range" id="reminderSlider" min="0" max="30" step="1" value="0" class="flex-grow"><span id="reminderTimeLabel" class="text-sm font-medium" style="width:48px;text-align:right">Off</span></div>
                             </div>
-
-                            <!-- Sound Picker -->
                             <div class="mb-3">
                                 <div class="flex items-center justify-between mb-1">
                                     <label class="tp-label" style="margin-bottom:0">Notification Sound</label>
                                     <div class="flex items-center gap-1">
-                                        <button id="randomizeSoundBtn" class="flex items-center gap-1 transition-colors" style="font-size:0.62rem; padding:3px 7px; border-radius:0.375rem; background:var(--hover-bg); color:var(--subtle); border:1px solid var(--border);" title="Randomize">
-                                            <span class="material-symbols-outlined" style="font-size:13px">shuffle</span>
-                                            <span>Random</span>
-                                        </button>
-                                        <button id="previewSoundBtn" class="transition-colors" style="padding:3px 6px; border-radius:0.375rem; background:var(--hover-bg); color:var(--subtle); border:1px solid var(--border);" title="Preview">
-                                            <span class="material-symbols-outlined" style="font-size:13px">play_arrow</span>
-                                        </button>
+                                        <button id="randomizeSoundBtn" class="flex items-center gap-1" style="font-size:0.62rem;padding:3px 7px;border-radius:0.375rem;background:var(--hover-bg);color:var(--subtle);border:1px solid var(--border)" title="Randomize"><span class="material-symbols-outlined" style="font-size:13px">shuffle</span><span>Random</span></button>
+                                        <button id="previewSoundBtn" style="padding:3px 6px;border-radius:0.375rem;background:var(--hover-bg);color:var(--subtle);border:1px solid var(--border)" title="Preview"><span class="material-symbols-outlined" style="font-size:13px">play_arrow</span></button>
                                     </div>
                                 </div>
                                 <div class="sound-grid" id="soundGrid"></div>
                             </div>
-
-                            <button id="setReminderBtn" class="w-full accent-bg text-sm font-semibold py-2 transition-all" style="border-radius:0.375rem;">Set Reminder</button>
+                            <button id="setReminderBtn" class="w-full accent-bg text-sm font-semibold py-2" style="border-radius:0.375rem">Set Reminder</button>
                         </div>
                     </div>
-
-                    <!-- Last updated -->
-                    <div class="hidden md:flex items-center gap-1 subtle-text text-xs ml-1">
-                        <span class="material-symbols-outlined" style="font-size:14px">history</span>
-                        <span id="lastUpdatedText"></span>
-                    </div>
+                    <div class="hidden md:flex items-center gap-1 subtle-text text-xs ml-1"><span class="material-symbols-outlined" style="font-size:14px">history</span><span id="lastUpdatedText"></span></div>
                 </div>
-
                 <button id="addCallBtn" class="accent-bg font-bold px-4 py-2 transition-all flex items-center gap-2 shadow-md hover:shadow-lg hover:scale-105 active:scale-100" style="border-radius:var(--btn-radius)">
                     <span class="material-symbols-outlined" style="font-size:18px">add_call</span>
                     <span class="hidden sm:inline text-sm">Add New Call</span>
@@ -768,516 +439,136 @@
             </footer>
         </main>
     </div>
-
-    <!-- Modals -->
-    <div id="resetConfirmModal" class="fixed inset-0 z-[80] flex items-center justify-center p-4 hidden" style="background:rgba(0,0,0,0.55); backdrop-filter:blur(6px);"></div>
-    <div id="deleteConfirmModal" class="fixed inset-0 z-[80] flex items-center justify-center p-4 hidden" style="background:rgba(0,0,0,0.55); backdrop-filter:blur(6px);"></div>
-
+    <div id="resetConfirmModal"  class="fixed inset-0 z-[80] flex items-center justify-center p-4 hidden" style="background:rgba(0,0,0,0.55);backdrop-filter:blur(6px)"></div>
+    <div id="deleteConfirmModal" class="fixed inset-0 z-[80] flex items-center justify-center p-4 hidden" style="background:rgba(0,0,0,0.55);backdrop-filter:blur(6px)"></div>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const html = document.documentElement;
-        const panel = document.getElementById('trackerPanel');
+        const html=document.documentElement, panel=document.getElementById('trackerPanel');
 
-        /* ══════════════════════════════════════
-           3-D DRAG
-        ══════════════════════════════════════ */
-        let isDragging = false, prevX, prevY, rotX = 0, rotY = 0;
-        panel.addEventListener('mousedown', e => {
-            if (e.target.closest('button,input,a,.sound-card,.slider')) return;
-            isDragging = true; prevX = e.clientX; prevY = e.clientY;
-            panel.style.transition = 'transform 0.05s linear';
-        });
-        document.addEventListener('mousemove', e => {
-            if (!isDragging) return;
-            rotY += (e.clientX - prevX) * 0.25;
-            rotX -= (e.clientY - prevY) * 0.25;
-            rotX = Math.max(-15, Math.min(15, rotX));
-            panel.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
-            prevX = e.clientX; prevY = e.clientY;
-        });
-        document.addEventListener('mouseup', () => {
-            if (!isDragging) return; isDragging = false;
-            panel.style.transition = 'transform 0.6s cubic-bezier(0.25,0.1,0.25,1)';
-            panel.style.transform = 'rotateX(0deg) rotateY(0deg)';
-            rotX = 0; rotY = 0;
-        });
-        panel.ondragstart = () => false;
+        // 3D DRAG
+        let isDragging=false,prevX,prevY,rotX=0,rotY=0;
+        panel.addEventListener('mousedown',e=>{if(e.target.closest('button,input,a,.sound-card,.slider'))return;isDragging=true;prevX=e.clientX;prevY=e.clientY;panel.style.transition='transform 0.05s linear';});
+        document.addEventListener('mousemove',e=>{if(!isDragging)return;rotY+=(e.clientX-prevX)*0.25;rotX-=(e.clientY-prevY)*0.25;rotX=Math.max(-15,Math.min(15,rotX));panel.style.transform=`rotateX(${rotX}deg) rotateY(${rotY}deg)`;prevX=e.clientX;prevY=e.clientY;});
+        document.addEventListener('mouseup',()=>{if(!isDragging)return;isDragging=false;panel.style.transition='transform 0.6s cubic-bezier(0.25,0.1,0.25,1)';panel.style.transform='rotateX(0deg) rotateY(0deg)';rotX=0;rotY=0;});
+        panel.ondragstart=()=>false;
 
-        /* ══════════════════════════════════════
-           THEME SYSTEM
-        ══════════════════════════════════════ */
-        let currentStyle = localStorage.getItem('cft-style') || 'default';
-        let currentColor = localStorage.getItem('cft-color') || 'dark';
-
-        function applyStyle(style) {
-            html.setAttribute('data-style', style);
-            currentStyle = style;
-            localStorage.setItem('cft-style', style);
-            document.querySelectorAll('.style-btn').forEach(b => b.classList.toggle('selected', b.dataset.style === style));
+        // MATRIX RAIN
+        const matrixCanvas=document.getElementById('matrixCanvas');
+        const mCtx=matrixCanvas.getContext('2d');
+        const MCHARS='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*!?+-=><アイウエオカキクケコサシスセソタチツテトナニヌネノ';
+        let matrixAnimId=null, mDrops=[];
+        function mResize(){matrixCanvas.width=window.innerWidth;matrixCanvas.height=window.innerHeight;const cols=Math.floor(matrixCanvas.width/14);mDrops=Array.from({length:cols},()=>Math.random()*-matrixCanvas.height);}
+        function mTick(){
+            const accent=getComputedStyle(html).getPropertyValue('--accent').trim()||'#33FF66';
+            mCtx.fillStyle='rgba(0,0,0,0.045)';
+            mCtx.fillRect(0,0,matrixCanvas.width,matrixCanvas.height);
+            mCtx.font='14px VT323,monospace';
+            mDrops.forEach((y,i)=>{
+                const ch=MCHARS[Math.floor(Math.random()*MCHARS.length)];
+                mCtx.fillStyle=Math.random()>0.92?'#ffffff':accent;
+                mCtx.fillText(ch,i*14,y);
+                if(y>matrixCanvas.height&&Math.random()>0.975)mDrops[i]=0;
+                mDrops[i]+=14;
+            });
+            matrixAnimId=requestAnimationFrame(mTick);
         }
-        function applyColor(color) {
-            html.setAttribute('data-color', color);
-            currentColor = color;
-            localStorage.setItem('cft-color', color);
-            document.querySelectorAll('.color-dot').forEach(d => d.classList.toggle('selected', d.dataset.color === color));
-            // Sync light/dark toggle icon
-            const isLight = (color === 'white');
-            document.getElementById('ico-light').style.display = isLight ? 'none' : 'inline-block';
-            document.getElementById('ico-dark').style.display  = isLight ? 'inline-block' : 'none';
+        function startMatrix(){if(matrixAnimId)return;mResize();mTick();}
+        function stopMatrix(){if(matrixAnimId){cancelAnimationFrame(matrixAnimId);matrixAnimId=null;}mCtx.clearRect(0,0,matrixCanvas.width,matrixCanvas.height);}
+        window.addEventListener('resize',()=>{if(currentStyle==='cyberpunk')mResize();});
+
+        // THEME SYSTEM
+        let currentStyle=localStorage.getItem('cft-style')||'default';
+        let currentColor=localStorage.getItem('cft-color')||'dark';
+        let currentMode =localStorage.getItem('cft-mode') ||'dark';
+
+        function applyMode(mode){currentMode=mode;html.setAttribute('data-mode',mode);localStorage.setItem('cft-mode',mode);document.getElementById('modeDark').classList.toggle('active',mode==='dark');document.getElementById('modeLight').classList.toggle('active',mode==='light');}
+        function applyStyle(style){
+            currentStyle=style;html.setAttribute('data-style',style);localStorage.setItem('cft-style',style);
+            document.querySelectorAll('.style-btn').forEach(b=>b.classList.toggle('selected',b.dataset.style===style));
+            if(style==='cyberpunk')startMatrix(); else stopMatrix();
         }
+        function applyColor(color){currentColor=color;html.setAttribute('data-color',color);localStorage.setItem('cft-color',color);document.querySelectorAll('.color-dot').forEach(d=>d.classList.toggle('selected',d.dataset.color===color));}
 
-        applyStyle(currentStyle);
-        applyColor(currentColor);
+        applyMode(currentMode);applyStyle(currentStyle);applyColor(currentColor);
 
-        // Theme panel open/close
-        const themePanel = document.getElementById('themePanel');
-        document.getElementById('themePickerBtn').addEventListener('click', e => { e.stopPropagation(); themePanel.classList.toggle('visible'); });
-        document.getElementById('closePanelBtn').addEventListener('click', () => themePanel.classList.remove('visible'));
-        document.querySelectorAll('.style-btn').forEach(b => b.addEventListener('click', () => applyStyle(b.dataset.style)));
-        document.querySelectorAll('.color-dot').forEach(d => d.addEventListener('click', () => applyColor(d.dataset.color)));
+        const themePanel=document.getElementById('themePanel');
+        document.getElementById('themePickerBtn').addEventListener('click',e=>{e.stopPropagation();themePanel.classList.toggle('visible');});
+        document.getElementById('closePanelBtn').addEventListener('click',()=>themePanel.classList.remove('visible'));
+        document.getElementById('modeDark').addEventListener('click',()=>applyMode('dark'));
+        document.getElementById('modeLight').addEventListener('click',()=>applyMode('light'));
+        document.querySelectorAll('.style-btn').forEach(b=>b.addEventListener('click',()=>applyStyle(b.dataset.style)));
+        document.querySelectorAll('.color-dot').forEach(d=>d.addEventListener('click',()=>applyColor(d.dataset.color)));
+        document.addEventListener('click',e=>{if(!themePanel.contains(e.target)&&!document.getElementById('themePickerBtn').contains(e.target))themePanel.classList.remove('visible');});
 
-        // Dark/light quick toggle (swaps between dark and white)
-        document.getElementById('lightDarkToggle').addEventListener('click', () => {
-            applyColor(currentColor === 'white' ? 'dark' : 'white');
-        });
-
-        document.addEventListener('click', e => {
-            if (!themePanel.contains(e.target) && !document.getElementById('themePickerBtn').contains(e.target))
-                themePanel.classList.remove('visible');
-        });
-
-        /* ══════════════════════════════════════
-           AUDIO ENGINE (12 sounds)
-        ══════════════════════════════════════ */
-        const Audio = {
-            ctx: null,
-            init() {
-                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                if (this.ctx.state === 'suspended') this.ctx.resume();
-            },
-            _osc(freq, type, dur, vol = 0.1, startAt = null) {
-                const t = startAt ?? this.ctx.currentTime;
-                const o = this.ctx.createOscillator(), g = this.ctx.createGain();
-                o.connect(g); g.connect(this.ctx.destination);
-                o.type = type; o.frequency.setValueAtTime(freq, t);
-                g.gain.setValueAtTime(vol, t);
-                g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-                o.start(t); o.stop(t + dur);
-                return { o, g, t };
-            },
-            play(type) {
-                this.init();
-                const ctx = this.ctx, now = ctx.currentTime;
-
-                switch (type) {
-                    /* ── Existing ── */
-                    case 'glass':
-                        this._osc(1200,'sine',0.55,0.12);
-                        break;
-
-                    case 'digital': {
-                        const o = ctx.createOscillator(), g = ctx.createGain();
-                        o.connect(g); g.connect(ctx.destination);
-                        o.type = 'square';
-                        o.frequency.setValueAtTime(700, now);
-                        o.frequency.exponentialRampToValueAtTime(120, now + 0.15);
-                        g.gain.setValueAtTime(0.08, now);
-                        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
-                        o.start(now); o.stop(now + 0.15);
-                        break;
-                    }
-                    case 'chime':
-                        this._osc(523.25,'sine',0.55,0.1, now);
-                        this._osc(659.25,'sine',0.55,0.09, now+0.06);
-                        this._osc(783.99,'sine',0.55,0.08, now+0.12);
-                        break;
-
-                    case 'sonar': {
-                        const o = ctx.createOscillator(), g = ctx.createGain();
-                        o.connect(g); g.connect(ctx.destination);
-                        o.type = 'sine'; o.frequency.setValueAtTime(820, now);
-                        g.gain.setValueAtTime(0.18, now);
-                        g.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
-                        o.start(now); o.stop(now + 1.2);
-                        setTimeout(() => {
-                            const o2=ctx.createOscillator(),g2=ctx.createGain();
-                            o2.connect(g2);g2.connect(ctx.destination);
-                            o2.frequency.setValueAtTime(820,ctx.currentTime);
-                            g2.gain.setValueAtTime(0.06,ctx.currentTime);
-                            g2.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.9);
-                            o2.start();o2.stop(ctx.currentTime+0.9);
-                        }, 320);
-                        break;
-                    }
-                    case 'arcade': {
-                        const o = ctx.createOscillator(), g = ctx.createGain();
-                        o.connect(g); g.connect(ctx.destination);
-                        o.type = 'sawtooth';
-                        o.frequency.setValueAtTime(220, now);
-                        o.frequency.linearRampToValueAtTime(880, now + 0.22);
-                        g.gain.setValueAtTime(0.05, now);
-                        g.gain.linearRampToValueAtTime(0.0001, now + 0.22);
-                        o.start(now); o.stop(now + 0.22);
-                        break;
-                    }
-
-                    /* ── NEW Sounds ── */
-                    case 'cash': {
-                        // Ca-ching: two bright tones
-                        this._osc(1568,'sine',0.07,0.15,now);
-                        this._osc(1976,'sine',0.15,0.2,now+0.06);
-                        // mechanical click noise
-                        const buf=ctx.createBuffer(1,ctx.sampleRate*0.04,ctx.sampleRate);
-                        const d=buf.getChannelData(0);
-                        for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.25));
-                        const src=ctx.createBufferSource(),gn=ctx.createGain();
-                        src.buffer=buf; src.connect(gn); gn.connect(ctx.destination);
-                        gn.gain.setValueAtTime(0.35,now+0.16); src.start(now+0.16);
-                        break;
-                    }
-                    case 'zen': {
-                        // Tibetan bowl: fundamental + 3 harmonics, long fade
-                        [220, 440, 660, 880].forEach((f,i) => {
-                            const o=ctx.createOscillator(),g=ctx.createGain();
-                            o.connect(g);g.connect(ctx.destination);
-                            o.type='sine'; o.frequency.setValueAtTime(f,now);
-                            const v=0.12/(i+1);
-                            g.gain.setValueAtTime(0,now);
-                            g.gain.linearRampToValueAtTime(v,now+0.05);
-                            g.gain.exponentialRampToValueAtTime(0.0001,now+3.0);
-                            o.start(now);o.stop(now+3.0);
-                        });
-                        break;
-                    }
-                    case 'laser': {
-                        const o=ctx.createOscillator(),g=ctx.createGain();
-                        o.connect(g);g.connect(ctx.destination);
-                        o.type='sawtooth';
-                        o.frequency.setValueAtTime(2200,now);
-                        o.frequency.exponentialRampToValueAtTime(150,now+0.28);
-                        g.gain.setValueAtTime(0.09,now);
-                        g.gain.exponentialRampToValueAtTime(0.0001,now+0.28);
-                        o.start(now);o.stop(now+0.28);
-                        break;
-                    }
-                    case 'retro8': {
-                        // 8-bit ascending arpeggio
-                        [330,392,523,659].forEach((n,i) => {
-                            const o=ctx.createOscillator(),g=ctx.createGain();
-                            o.connect(g);g.connect(ctx.destination);
-                            o.type='square'; o.frequency.setValueAtTime(n,now+i*0.075);
-                            g.gain.setValueAtTime(0.06,now+i*0.075);
-                            g.gain.exponentialRampToValueAtTime(0.0001,now+i*0.075+0.065);
-                            o.start(now+i*0.075);o.stop(now+i*0.075+0.065);
-                        });
-                        break;
-                    }
-                    case 'wood': {
-                        // Woodblock: short pitched knock
-                        const o=ctx.createOscillator(),g=ctx.createGain();
-                        o.connect(g);g.connect(ctx.destination);
-                        o.type='sine';
-                        o.frequency.setValueAtTime(420,now);
-                        o.frequency.exponentialRampToValueAtTime(180,now+0.09);
-                        g.gain.setValueAtTime(0.25,now);
-                        g.gain.exponentialRampToValueAtTime(0.0001,now+0.1);
-                        o.start(now);o.stop(now+0.1);
-                        break;
-                    }
-                    case 'alarm': {
-                        // Two-tone alternating alarm
-                        for(let i=0;i<4;i++){
-                            const f=i%2===0?880:660;
-                            const o=ctx.createOscillator(),g=ctx.createGain();
-                            o.connect(g);g.connect(ctx.destination);
-                            o.type='square'; o.frequency.setValueAtTime(f,now+i*0.13);
-                            g.gain.setValueAtTime(0.045,now+i*0.13);
-                            g.gain.setValueAtTime(0.045,now+i*0.13+0.11);
-                            g.gain.exponentialRampToValueAtTime(0.0001,now+i*0.13+0.13);
-                            o.start(now+i*0.13);o.stop(now+i*0.13+0.13);
-                        }
-                        break;
-                    }
-                    case 'pop': {
-                        // Friendly notification pop
-                        const o=ctx.createOscillator(),g=ctx.createGain();
-                        o.connect(g);g.connect(ctx.destination);
-                        o.type='sine';
-                        o.frequency.setValueAtTime(350,now);
-                        o.frequency.linearRampToValueAtTime(600,now+0.04);
-                        o.frequency.linearRampToValueAtTime(280,now+0.11);
-                        g.gain.setValueAtTime(0.22,now);
-                        g.gain.exponentialRampToValueAtTime(0.0001,now+0.12);
-                        o.start(now);o.stop(now+0.12);
-                        break;
-                    }
-                    case 'wind': {
-                        // Ethereal wind chime (3 random tones)
-                        const base=[523,659,784,1047,1319];
-                        [0,0.1,0.22].forEach((delay,i) => {
-                            const f=base[Math.floor(Math.random()*base.length)];
-                            const o=ctx.createOscillator(),g=ctx.createGain();
-                            o.connect(g);g.connect(ctx.destination);
-                            o.type='sine'; o.frequency.setValueAtTime(f,now+delay);
-                            g.gain.setValueAtTime(0,now+delay);
-                            g.gain.linearRampToValueAtTime(0.09,now+delay+0.02);
-                            g.gain.exponentialRampToValueAtTime(0.0001,now+delay+0.8);
-                            o.start(now+delay);o.stop(now+delay+0.8);
-                        });
-                        break;
-                    }
-                    case 'blip': {
-                        // Short punchy UI blip
-                        const o=ctx.createOscillator(),g=ctx.createGain();
-                        o.connect(g);g.connect(ctx.destination);
-                        o.type='triangle';
-                        o.frequency.setValueAtTime(900,now);
-                        o.frequency.setValueAtTime(700,now+0.03);
-                        g.gain.setValueAtTime(0.15,now);
-                        g.gain.exponentialRampToValueAtTime(0.0001,now+0.07);
-                        o.start(now);o.stop(now+0.07);
-                        break;
-                    }
-                    default:
-                        this._osc(1200,'sine',0.55,0.12);
+        // AUDIO ENGINE
+        const Audio={
+            ctx:null,init(){if(!this.ctx)this.ctx=new(window.AudioContext||window.webkitAudioContext)();if(this.ctx.state==='suspended')this.ctx.resume();},
+            _osc(freq,type,dur,vol=0.1,at=null){const t=at??this.ctx.currentTime,o=this.ctx.createOscillator(),g=this.ctx.createGain();o.connect(g);g.connect(this.ctx.destination);o.type=type;o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.start(t);o.stop(t+dur);},
+            play(type){
+                this.init();const ctx=this.ctx,now=ctx.currentTime;
+                switch(type){
+                    case 'glass':this._osc(1200,'sine',0.55,0.12);break;
+                    case 'digital':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='square';o.frequency.setValueAtTime(700,now);o.frequency.exponentialRampToValueAtTime(120,now+0.15);g.gain.setValueAtTime(0.08,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.15);o.start(now);o.stop(now+0.15);break;}
+                    case 'chime':this._osc(523.25,'sine',0.55,0.1,now);this._osc(659.25,'sine',0.55,0.09,now+0.06);this._osc(783.99,'sine',0.55,0.08,now+0.12);break;
+                    case 'sonar':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(820,now);g.gain.setValueAtTime(0.18,now);g.gain.exponentialRampToValueAtTime(0.0001,now+1.2);o.start(now);o.stop(now+1.2);setTimeout(()=>{const o2=ctx.createOscillator(),g2=ctx.createGain();o2.connect(g2);g2.connect(ctx.destination);o2.frequency.setValueAtTime(820,ctx.currentTime);g2.gain.setValueAtTime(0.06,ctx.currentTime);g2.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.9);o2.start();o2.stop(ctx.currentTime+0.9);},320);break;}
+                    case 'arcade':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sawtooth';o.frequency.setValueAtTime(220,now);o.frequency.linearRampToValueAtTime(880,now+0.22);g.gain.setValueAtTime(0.05,now);g.gain.linearRampToValueAtTime(0.0001,now+0.22);o.start(now);o.stop(now+0.22);break;}
+                    case 'cash':{this._osc(1568,'sine',0.07,0.15,now);this._osc(1976,'sine',0.15,0.2,now+0.06);const buf=ctx.createBuffer(1,ctx.sampleRate*0.04,ctx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.25));const src=ctx.createBufferSource(),gn=ctx.createGain();src.buffer=buf;src.connect(gn);gn.connect(ctx.destination);gn.gain.setValueAtTime(0.35,now+0.16);src.start(now+0.16);break;}
+                    case 'zen':[220,440,660,880].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(f,now);const v=0.12/(i+1);g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(v,now+0.05);g.gain.exponentialRampToValueAtTime(0.0001,now+3.0);o.start(now);o.stop(now+3.0);});break;
+                    case 'laser':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sawtooth';o.frequency.setValueAtTime(2200,now);o.frequency.exponentialRampToValueAtTime(150,now+0.28);g.gain.setValueAtTime(0.09,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.28);o.start(now);o.stop(now+0.28);break;}
+                    case 'retro8':[330,392,523,659].forEach((n,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='square';o.frequency.setValueAtTime(n,now+i*0.075);g.gain.setValueAtTime(0.06,now+i*0.075);g.gain.exponentialRampToValueAtTime(0.0001,now+i*0.075+0.065);o.start(now+i*0.075);o.stop(now+i*0.075+0.065);});break;
+                    case 'wood':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(420,now);o.frequency.exponentialRampToValueAtTime(180,now+0.09);g.gain.setValueAtTime(0.25,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.1);o.start(now);o.stop(now+0.1);break;}
+                    case 'alarm':for(let i=0;i<4;i++){const f=i%2===0?880:660,o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='square';o.frequency.setValueAtTime(f,now+i*0.13);g.gain.setValueAtTime(0.045,now+i*0.13);g.gain.setValueAtTime(0.045,now+i*0.13+0.11);g.gain.exponentialRampToValueAtTime(0.0001,now+i*0.13+0.13);o.start(now+i*0.13);o.stop(now+i*0.13+0.13);}break;
+                    case 'pop':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(350,now);o.frequency.linearRampToValueAtTime(600,now+0.04);o.frequency.linearRampToValueAtTime(280,now+0.11);g.gain.setValueAtTime(0.22,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.12);o.start(now);o.stop(now+0.12);break;}
+                    case 'wind':[0,0.1,0.22].forEach(delay=>{const base=[523,659,784,1047,1319],f=base[Math.floor(Math.random()*base.length)],o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(f,now+delay);g.gain.setValueAtTime(0,now+delay);g.gain.linearRampToValueAtTime(0.09,now+delay+0.02);g.gain.exponentialRampToValueAtTime(0.0001,now+delay+0.8);o.start(now+delay);o.stop(now+delay+0.8);});break;
+                    case 'blip':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='triangle';o.frequency.setValueAtTime(900,now);o.frequency.setValueAtTime(700,now+0.03);g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.07);o.start(now);o.stop(now+0.07);break;}
+                    default:this._osc(1200,'sine',0.55,0.12);
                 }
             }
         };
 
-        /* ══════════════════════════════════════
-           SOUNDS CONFIG
-        ══════════════════════════════════════ */
-        const SOUNDS = [
-            { value:'glass',  emoji:'🔔', name:'Glass'     },
-            { value:'digital',emoji:'💻', name:'Digital'   },
-            { value:'chime',  emoji:'🎵', name:'Chime'     },
-            { value:'sonar',  emoji:'📡', name:'Sonar'     },
-            { value:'arcade', emoji:'🕹️', name:'Arcade'    },
-            { value:'cash',   emoji:'💰', name:'Ca-Ching'  },
-            { value:'zen',    emoji:'🪔', name:'Zen Bowl'  },
-            { value:'laser',  emoji:'⚡', name:'Laser'     },
-            { value:'retro8', emoji:'👾', name:'8-Bit'     },
-            { value:'wood',   emoji:'🪵', name:'Wood Block'},
-            { value:'alarm',  emoji:'⏰', name:'Old Alarm' },
-            { value:'pop',    emoji:'💬', name:'Pop'       },
-            { value:'wind',   emoji:'🌬️', name:'Wind Chime'},
-            { value:'blip',   emoji:'🔵', name:'UI Blip'   },
-        ];
+        const SOUNDS=[{value:'glass',emoji:'\uD83D\uDD14',name:'Glass'},{value:'digital',emoji:'\uD83D\uDCBB',name:'Digital'},{value:'chime',emoji:'\uD83C\uDFB5',name:'Chime'},{value:'sonar',emoji:'\uD83D\uDCE1',name:'Sonar'},{value:'arcade',emoji:'\uD83D\uDFB9',name:'Arcade'},{value:'cash',emoji:'\uD83D\uDCB0',name:'Ca-Ching'},{value:'zen',emoji:'\uD83E\uDED4',name:'Zen Bowl'},{value:'laser',emoji:'\u26A1',name:'Laser'},{value:'retro8',emoji:'\uD83D\uDC7E',name:'8-Bit'},{value:'wood',emoji:'\uD83E\uDEB5',name:'Wood Block'},{value:'alarm',emoji:'\u23F0',name:'Old Alarm'},{value:'pop',emoji:'\uD83D\uDCAC',name:'Pop'},{value:'wind',emoji:'\uD83C\uDF2C',name:'Wind'},{value:'blip',emoji:'\uD83D\uDD35',name:'UI Blip'}];
 
-        function buildSoundGrid() {
-            const grid = document.getElementById('soundGrid');
-            grid.innerHTML = '';
-            SOUNDS.forEach(s => {
-                const card = document.createElement('div');
-                card.className = 'sound-card' + (state.soundPreference === s.value ? ' selected' : '');
-                card.dataset.value = s.value;
-                card.innerHTML = `<span class="s-emoji">${s.emoji}</span><span class="s-name">${s.name}</span>`;
-                card.addEventListener('click', () => {
-                    Audio.init();
-                    state.soundPreference = s.value;
-                    document.querySelectorAll('.sound-card').forEach(c => c.classList.toggle('selected', c.dataset.value === s.value));
-                    Audio.play(s.value);
-                    saveState();
-                });
-                grid.appendChild(card);
-            });
-        }
+        function buildSoundGrid(){const g=document.getElementById('soundGrid');g.innerHTML='';SOUNDS.forEach(s=>{const c=document.createElement('div');c.className='sound-card'+(state.soundPreference===s.value?' selected':'');c.dataset.value=s.value;c.innerHTML='<span class="s-emoji">'+s.emoji+'</span><span class="s-name">'+s.name+'</span>';c.addEventListener('click',()=>{Audio.init();state.soundPreference=s.value;document.querySelectorAll('.sound-card').forEach(x=>x.classList.toggle('selected',x.dataset.value===s.value));Audio.play(s.value);saveState();});g.appendChild(c);});}
 
-        /* ══════════════════════════════════════
-           NOTIFICATION MESSAGES
-        ══════════════════════════════════════ */
-        const MSGS = [
-            {text:"Feed the log monster! 🦖",emoji:"🦖"},
-            {text:"Ring ring! Log that thing! ☎️",emoji:"☎️"},
-            {text:"Ghosting your tracker? 👻",emoji:"👻"},
-            {text:"Stats or it didn't happen. 📉",emoji:"📉"},
-            {text:"Your logs are getting lonely. 🥺",emoji:"🥺"},
-            {text:"I see you... not logging. 🕵️",emoji:"🕵️"},
-            {text:"Donut forget to log! 🍩",emoji:"🍩"},
-            {text:"Stay cool, log calls. 🧊",emoji:"🧊"},
-            {text:"Paint the chart green. 🎨",emoji:"🎨"},
-            {text:"Time is ticking! ⏳",emoji:"⏳"},
-            {text:"You're on fire! 🔥",emoji:"🔥"},
-            {text:"Level up! 🆙",emoji:"🆙"},
-            {text:"Time to update your records. 📋",emoji:"📋"},
-            {text:"Please log your recent calls. 📞",emoji:"📞"},
-            {text:"Keep your metrics up to date. 📊",emoji:"📊"},
-            {text:"Consistency is key. 🗝️",emoji:"🗝️"},
-            {text:"Track your progress. 🚀",emoji:"🚀"},
-        ];
+        const MSGS=[{text:"Feed the log monster!",emoji:"\uD83E\uDD96"},{text:"Ring ring! Log that thing!",emoji:"\u260E"},{text:"Ghosting your tracker?",emoji:"\uD83D\uDC7B"},{text:"Stats or it didn't happen.",emoji:"\uD83D\uDCC9"},{text:"Your logs are lonely.",emoji:"\uD83D\uDE22"},{text:"Donut forget to log!",emoji:"\uD83C\uDF69"},{text:"You're on fire!",emoji:"\uD83D\uDD25"},{text:"Level up!",emoji:"\uD83C\uDD99"},{text:"Keep metrics updated.",emoji:"\uD83D\uDCCA"},{text:"Consistency is key.",emoji:"\uD83D\uDD11"},{text:"Track your progress.",emoji:"\uD83D\uDE80"}];
 
-        /* ══════════════════════════════════════
-           APP STATE & LOGIC
-        ══════════════════════════════════════ */
-        const callList     = document.getElementById('callListContainer');
-        const emptyState   = document.getElementById('emptyState');
-        const progressText = document.getElementById('progressText');
-        const progressBar  = document.getElementById('progressBar');
-        const addCallBtn   = document.getElementById('addCallBtn');
-        const resetDataBtn = document.getElementById('resetDataBtn');
-        const lastUpdTxt   = document.getElementById('lastUpdatedText');
-        const rateChart    = document.getElementById('rateChart');
-        const reminderBtn  = document.getElementById('reminderToggleBtn');
-        const reminderCtrl = document.getElementById('reminderControls');
-        const reminderSldr = document.getElementById('reminderSlider');
-        const reminderLbl  = document.getElementById('reminderTimeLabel');
-        const setReminderB = document.getElementById('setReminderBtn');
-        const previewBtn   = document.getElementById('previewSoundBtn');
-        const randomBtn    = document.getElementById('randomizeSoundBtn');
+        const callList=document.getElementById('callListContainer'),emptyState=document.getElementById('emptyState'),progressText=document.getElementById('progressText'),progressBar=document.getElementById('progressBar'),addCallBtn=document.getElementById('addCallBtn'),resetDataBtn=document.getElementById('resetDataBtn'),lastUpdTxt=document.getElementById('lastUpdatedText'),rateChart=document.getElementById('rateChart'),reminderBtn=document.getElementById('reminderToggleBtn'),reminderCtrl=document.getElementById('reminderControls'),reminderSldr=document.getElementById('reminderSlider'),reminderLbl=document.getElementById('reminderTimeLabel'),setReminderB=document.getElementById('setReminderBtn'),previewBtn=document.getElementById('previewSoundBtn'),randomBtn=document.getElementById('randomizeSoundBtn');
 
-        const initState = () => ({ calls:[], lastUpdated:null, reminderInterval:0, reminderTimerId:null, soundPreference:'glass' });
-        let state = initState();
+        const initState=()=>({calls:[],lastUpdated:null,reminderInterval:0,reminderTimerId:null,soundPreference:'glass'});
+        let state=initState();
+        function loadState(){const s=localStorage.getItem('callFlowV8');if(s)state={...initState(),...JSON.parse(s),reminderTimerId:null};}
+        function saveState(){state.lastUpdated=new Date().toISOString();const{reminderTimerId,...save}=state;localStorage.setItem('callFlowV8',JSON.stringify(save));}
+        function relTime(d){if(!d)return'No updates yet.';const sc=Math.round((Date.now()-new Date(d))/1000),mn=Math.round(sc/60);if(sc<10)return'just now';if(sc<60)return sc+'s ago';if(mn<60)return mn+'m ago';return new Date(d).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
 
-        function loadState() {
-            const s = localStorage.getItem('callFlowV7');
-            if (s) state = { ...initState(), ...JSON.parse(s), reminderTimerId:null };
-        }
-        function saveState() {
-            state.lastUpdated = new Date().toISOString();
-            const {reminderTimerId,...save} = state;
-            localStorage.setItem('callFlowV7', JSON.stringify(save));
-        }
-        function relativeTime(d) {
-            if (!d) return 'No updates yet.';
-            const secs = Math.round((Date.now()-new Date(d))/1000);
-            const mins = Math.round(secs/60);
-            if (secs<10) return 'just now';
-            if (secs<60) return `${secs}s ago`;
-            if (mins<60) return `${mins}m ago`;
-            return new Date(d).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-        }
+        function renderChart(){const dp=[];let done=0;const sorted=[...state.calls].sort((a,b)=>a.number-b.number);sorted.forEach((c,i)=>{if(c.completed)done++;dp.push((done/(i+1))*100);});const W=500,H=100,P=5;rateChart.innerHTML='<defs><linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:var(--accent);stop-opacity:0.3"/><stop offset="100%" style="stop-color:var(--accent);stop-opacity:0"/></linearGradient></defs><line class="grid-line" x1="0" y1="'+(H/2)+'" x2="'+W+'" y2="'+(H/2)+'"/>';if(dp.length<2)return;const pts=dp.map((r,i)=>((i/(dp.length-1))*W)+','+(((H-P*2)-(r/100)*(H-P*2)+P))).join(' ');const poly=document.createElementNS('http://www.w3.org/2000/svg','polyline');poly.setAttribute('class','chart-line');poly.setAttribute('points',pts);rateChart.appendChild(poly);dp.forEach((r,i)=>{const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('class','chart-point');c.setAttribute('cx',(i/(dp.length-1))*W);c.setAttribute('cy',(H-P*2)-(r/100)*(H-P*2)+P);c.setAttribute('r',4);rateChart.appendChild(c);});}
 
-        function renderChart() {
-            const dp=[]; let done=0;
-            const sorted=[...state.calls].sort((a,b)=>a.number-b.number);
-            sorted.forEach((c,i)=>{ if(c.completed)done++; dp.push((done/(i+1))*100); });
-            const W=500,H=100,P=5;
-            rateChart.innerHTML=`<defs><linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:var(--accent);stop-opacity:0.3"/><stop offset="100%" style="stop-color:var(--accent);stop-opacity:0"/></linearGradient></defs><line class="grid-line" x1="0" y1="${H/2}" x2="${W}" y2="${H/2}"/>`;
-            if(dp.length<2)return;
-            const pts=dp.map((r,i)=>`${(i/(dp.length-1))*W},${(H-P*2)-(r/100)*(H-P*2)+P}`).join(' ');
-            const poly=document.createElementNS('http://www.w3.org/2000/svg','polyline');
-            poly.setAttribute('class','chart-line'); poly.setAttribute('points',pts);
-            rateChart.appendChild(poly);
-            dp.forEach((r,i)=>{
-                const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
-                c.setAttribute('class','chart-point');
-                c.setAttribute('cx',(i/(dp.length-1))*W);
-                c.setAttribute('cy',(H-P*2)-(r/100)*(H-P*2)+P);
-                c.setAttribute('r',4);
-                rateChart.appendChild(c);
-            });
-        }
+        function render(){const total=state.calls.length,done=state.calls.filter(c=>c.completed).length,pct=total>0?(done/total)*100:0;progressText.textContent=pct.toFixed(0)+'%';progressBar.style.width=pct+'%';lastUpdTxt.textContent='Updated '+relTime(state.lastUpdated);callList.innerHTML='';if(total===0){callList.appendChild(emptyState);emptyState.style.display='flex';}else{emptyState.style.display='none';[...state.calls].reverse().forEach(call=>{const el=document.createElement('div');el.className='call-item flex items-center justify-between p-3 rounded-lg transition-all duration-300 '+(call.completed?'opacity-50':'opacity-100');el.dataset.id=call.id;const time=new Date(call.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});el.innerHTML='<div class="flex-grow pr-2"><p class="'+(call.completed?'line-through subtle-text':'')+'">Call #'+call.number+'</p><p class="text-xs subtle-text">'+time+'</p></div><div class="flex items-center gap-2"><button class="delete-btn p-2 rounded-full transition-colors" style="color:var(--subtle)" onmouseover="this.style.background=\'var(--danger)\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'\';this.style.color=\'var(--subtle)\'" data-id="'+call.id+'" data-number="'+call.number+'"><span class="material-symbols-outlined" style="font-size:16px">delete</span></button><label class="toggle-switch"><input type="checkbox" '+(call.completed?'checked':'')+'><span class="slider"></span></label></div>';callList.appendChild(el);});}reminderSldr.value=state.reminderInterval;reminderLbl.textContent=state.reminderInterval>0?state.reminderInterval+' min':'Off';reminderBtn.style.color=state.reminderInterval>0?'var(--accent)':'var(--subtle)';buildSoundGrid();renderChart();saveState();}
 
-        function render() {
-            const total=state.calls.length, done=state.calls.filter(c=>c.completed).length;
-            const pct=total>0?(done/total)*100:0;
-            progressText.textContent=`${pct.toFixed(0)}%`;
-            progressBar.style.width=`${pct}%`;
-            lastUpdTxt.textContent=`Updated ${relativeTime(state.lastUpdated)}`;
+        function nextNum(){return state.calls.length===0?1:Math.max(...state.calls.map(c=>c.number))+1;}
+        function addCall(){state.calls.push({id:Date.now(),number:nextNum(),completed:false,createdAt:new Date().toISOString()});render();callList.scrollTop=0;}
+        function toggleCall(id){const c=state.calls.find(c=>c.id==id);if(c){c.completed=!c.completed;render();}}
+        function deleteCall(id){state.calls=state.calls.filter(c=>c.id!=id);render();}
+        function resetAll(){cancelReminder();state=initState();render();}
+        function notify(){panel.classList.add('is-reminding');panel.addEventListener('animationend',()=>panel.classList.remove('is-reminding'),{once:true});Audio.play(state.soundPreference||'glass');const msg=MSGS[Math.floor(Math.random()*MSGS.length)];if(Notification.permission==='granted')new Notification('Call Flow Reminder',{body:msg.text});setReminder(state.reminderInterval);}
+        function setReminder(mins){cancelReminder();state.reminderInterval=mins;if(mins>0)state.reminderTimerId=setTimeout(notify,mins*60*1000);render();}
+        function cancelReminder(){if(state.reminderTimerId){clearTimeout(state.reminderTimerId);state.reminderTimerId=null;}}
 
-            callList.innerHTML='';
-            if(total===0){
-                callList.appendChild(emptyState); emptyState.style.display='flex';
-            } else {
-                emptyState.style.display='none';
-                [...state.calls].reverse().forEach(call=>{
-                    const el=document.createElement('div');
-                    el.className=`call-item flex items-center justify-between p-3 rounded-lg transition-all duration-300 ${call.completed?'opacity-50':'opacity-100'}`;
-                    el.dataset.id=call.id;
-                    const time=new Date(call.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-                    el.innerHTML=`<div class="flex-grow pr-2"><p class="${call.completed?'line-through subtle-text':''}">Call #${call.number}</p><p class="text-xs subtle-text">${time}</p></div><div class="flex items-center gap-2"><button class="delete-btn p-2 rounded-full transition-colors" style="color:var(--subtle)" onmouseover="this.style.background='var(--danger)';this.style.color='#fff'" onmouseout="this.style.background='';this.style.color='var(--subtle)'" data-id="${call.id}" data-number="${call.number}"><span class="material-symbols-outlined" style="font-size:16px">delete</span></button><label class="toggle-switch"><input type="checkbox" ${call.completed?'checked':''}><span class="slider"></span></label></div>`;
-                    callList.appendChild(el);
-                });
-            }
+        callList.addEventListener('click',e=>{const d=e.target.closest('.delete-btn');if(d)openDeleteModal(d.dataset.id,d.dataset.number);});
+        callList.addEventListener('change',e=>{if(e.target.matches('input[type="checkbox"]'))toggleCall(e.target.closest('.call-item').dataset.id);});
+        addCallBtn.addEventListener('click',addCall);resetDataBtn.addEventListener('click',openResetModal);
+        reminderBtn.addEventListener('click',()=>reminderCtrl.classList.toggle('visible'));
+        reminderSldr.addEventListener('input',e=>{reminderLbl.textContent=e.target.value>0?e.target.value+' min':'Off';});
+        previewBtn.addEventListener('click',()=>{Audio.init();Audio.play(state.soundPreference||'glass');});
+        randomBtn.addEventListener('click',()=>{Audio.init();const s=SOUNDS[Math.floor(Math.random()*SOUNDS.length)];state.soundPreference=s.value;buildSoundGrid();Audio.play(s.value);saveState();});
+        setReminderB.addEventListener('click',()=>{const m=parseInt(reminderSldr.value,10);Audio.init();if(m>0&&Notification.permission==='default'){Notification.requestPermission().then(p=>{if(p==='granted')setReminder(m);});}else setReminder(m);reminderCtrl.classList.remove('visible');});
+        document.addEventListener('click',e=>{if(!reminderBtn.contains(e.target)&&!reminderCtrl.contains(e.target))reminderCtrl.classList.remove('visible');});
 
-            reminderSldr.value=state.reminderInterval;
-            reminderLbl.textContent=state.reminderInterval>0?`${state.reminderInterval} min`:'Off';
-            reminderBtn.style.color=state.reminderInterval>0?'var(--accent)':'var(--subtle)';
+        const resetModal=document.getElementById('resetConfirmModal'),deleteModal=document.getElementById('deleteConfirmModal');
+        function mHTML(title,icon,body,cid,clabel){return '<div style="background:var(--card-bg);border:1px solid var(--danger);backdrop-filter:blur(20px)" class="rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl"><h3 class="text-base font-semibold flex items-center gap-2" style="color:var(--danger)"><span class="material-symbols-outlined">'+icon+'</span>'+title+'</h3><p class="subtle-text text-sm">'+body+'</p><div class="flex justify-end gap-3"><button class="cancel-btn px-4 py-2 rounded-lg text-sm custom-hover" style="color:var(--text)">Cancel</button><button id="'+cid+'" class="text-white font-bold px-4 py-2 rounded-lg text-sm" style="background:var(--danger)">'+clabel+'</button></div></div>';}
+        function openResetModal(){resetModal.innerHTML=mHTML('Reset All','warning','Are you sure? All calls will be permanently deleted.','confirmReset','Yes, Reset');resetModal.classList.remove('hidden');resetModal.querySelector('.cancel-btn').addEventListener('click',()=>resetModal.classList.add('hidden'));resetModal.querySelector('#confirmReset').addEventListener('click',()=>{resetAll();resetModal.classList.add('hidden');});}
+        function openDeleteModal(id,num){deleteModal.innerHTML=mHTML('Delete Call','delete','Delete <strong>Call #'+num+'</strong>? This cannot be undone.','confirmDelete','Yes, Delete');deleteModal.classList.remove('hidden');deleteModal.querySelector('.cancel-btn').addEventListener('click',()=>deleteModal.classList.add('hidden'));deleteModal.querySelector('#confirmDelete').addEventListener('click',()=>{deleteCall(id);deleteModal.classList.add('hidden');});}
 
-            buildSoundGrid();
-            renderChart();
-            saveState();
-        }
-
-        function nextCallNum() { return state.calls.length===0?1:Math.max(...state.calls.map(c=>c.number))+1; }
-        function addCall()      { state.calls.push({id:Date.now(),number:nextCallNum(),completed:false,createdAt:new Date().toISOString()}); render(); callList.scrollTop=0; }
-        function toggleCall(id) { const c=state.calls.find(c=>c.id==id); if(c){c.completed=!c.completed;render();} }
-        function deleteCall(id) { state.calls=state.calls.filter(c=>c.id!=id); render(); }
-        function resetAll()     { cancelReminder(); state=initState(); render(); }
-
-        function notify() {
-            panel.classList.add('is-reminding');
-            panel.addEventListener('animationend',()=>panel.classList.remove('is-reminding'),{once:true});
-            Audio.play(state.soundPreference||'glass');
-            const msg=MSGS[Math.floor(Math.random()*MSGS.length)];
-            if(Notification.permission==='granted') new Notification('Call Flow Reminder',{body:msg.text,icon:`data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>${msg.emoji}</text></svg>`});
-            setReminder(state.reminderInterval);
-        }
-        function setReminder(mins) {
-            cancelReminder(); state.reminderInterval=mins;
-            if(mins>0) state.reminderTimerId=setTimeout(notify,mins*60*1000);
-            render();
-        }
-        function cancelReminder() { if(state.reminderTimerId){clearTimeout(state.reminderTimerId);state.reminderTimerId=null;} }
-
-        /* ── Event Listeners ── */
-        callList.addEventListener('click', e=>{
-            const del=e.target.closest('.delete-btn');
-            if(del) openDeleteModal(del.dataset.id,del.dataset.number);
-        });
-        callList.addEventListener('change', e=>{
-            if(e.target.matches('input[type="checkbox"]')) toggleCall(e.target.closest('.call-item').dataset.id);
-        });
-        addCallBtn.addEventListener('click', addCall);
-        resetDataBtn.addEventListener('click', openResetModal);
-        reminderBtn.addEventListener('click', ()=>reminderCtrl.classList.toggle('visible'));
-        reminderSldr.addEventListener('input', e=>{
-            reminderLbl.textContent=e.target.value>0?`${e.target.value} min`:'Off';
-        });
-        previewBtn.addEventListener('click', ()=>{ Audio.init(); Audio.play(state.soundPreference||'glass'); });
-        randomBtn.addEventListener('click', ()=>{
-            Audio.init();
-            const s=SOUNDS[Math.floor(Math.random()*SOUNDS.length)];
-            state.soundPreference=s.value;
-            buildSoundGrid();
-            Audio.play(s.value);
-            saveState();
-        });
-        setReminderB.addEventListener('click', ()=>{
-            const mins=parseInt(reminderSldr.value,10);
-            Audio.init();
-            if(mins>0&&Notification.permission==='default'){
-                Notification.requestPermission().then(p=>{ if(p==='granted')setReminder(mins); });
-            } else setReminder(mins);
-            reminderCtrl.classList.remove('visible');
-        });
-        document.addEventListener('click', e=>{
-            if(!reminderBtn.contains(e.target)&&!reminderCtrl.contains(e.target))
-                reminderCtrl.classList.remove('visible');
-        });
-
-        /* ── Modals ── */
-        const resetModal  = document.getElementById('resetConfirmModal');
-        const deleteModal = document.getElementById('deleteConfirmModal');
-        function modalHTML(title,icon,body,confirmId,confirmLabel) {
-            return `<div style="background:var(--card-bg);border:1px solid var(--danger);backdrop-filter:blur(20px)" class="rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl"><h3 class="text-base font-semibold flex items-center gap-2" style="color:var(--danger)"><span class="material-symbols-outlined">${icon}</span>${title}</h3><p class="subtle-text text-sm">${body}</p><div class="flex justify-end gap-3"><button class="cancel-btn px-4 py-2 rounded-lg text-sm custom-hover transition-colors" style="color:var(--text)">Cancel</button><button id="${confirmId}" class="text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors" style="background:var(--danger)">${confirmLabel}</button></div></div>`;
-        }
-        function openResetModal() {
-            resetModal.innerHTML=modalHTML('Reset All Data','warning','Are you sure? All calls will be permanently deleted.','confirmReset','Yes, Reset');
-            resetModal.classList.remove('hidden');
-            resetModal.querySelector('.cancel-btn').addEventListener('click',()=>resetModal.classList.add('hidden'));
-            resetModal.querySelector('#confirmReset').addEventListener('click',()=>{resetAll();resetModal.classList.add('hidden');});
-        }
-        function openDeleteModal(id,num) {
-            deleteModal.innerHTML=modalHTML('Delete Call','delete',`Delete <strong>Call #${num}</strong>? This cannot be undone.`,'confirmDelete','Yes, Delete');
-            deleteModal.classList.remove('hidden');
-            deleteModal.querySelector('.cancel-btn').addEventListener('click',()=>deleteModal.classList.add('hidden'));
-            deleteModal.querySelector('#confirmDelete').addEventListener('click',()=>{deleteCall(id);deleteModal.classList.add('hidden');});
-        }
-
-        loadState();
-        setReminder(state.reminderInterval);
-        render();
+        loadState();setReminder(state.reminderInterval);render();
     });
     </script>
 </body>
