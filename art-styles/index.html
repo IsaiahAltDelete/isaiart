@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Art Styles & Mediums: A Complete Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141418;
+    --surface2: #1c1c22;
+    --border: #2a2a35;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --gold-dim: #7a6030;
+    --text: #e8e4d8;
+    --text-dim: #9a9488;
+    --text-muted: #5a5650;
+    --accent: #8b4a6e;
+    --accent2: #4a6e8b;
+    --red: #8b3a3a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 16px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* BG texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(201,168,76,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(74,110,139,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page-wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    padding: 64px 0 48px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+
+  .header-eyebrow {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.4rem, 5vw, 4rem);
+    font-weight: 900;
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  h1 em {
+    color: var(--gold);
+    font-style: italic;
+  }
+
+  .header-sub {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 1.05rem;
+    max-width: 580px;
+    margin: 0 auto;
+  }
+
+  .header-ornament {
+    font-size: 1.4rem;
+    color: var(--gold-dim);
+    margin: 20px 0 0;
+    letter-spacing: 0.5em;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 48px;
+    width: fit-content;
+  }
+
+  .tab-btn {
+    background: var(--surface);
+    border: none;
+    color: var(--text-dim);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 13px 32px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-right: 1px solid var(--border);
+  }
+  .tab-btn:last-child { border-right: none; }
+  .tab-btn:hover { color: var(--gold); background: var(--surface2); }
+  .tab-btn.active {
+    background: var(--surface2);
+    color: var(--gold);
+    box-shadow: inset 0 -2px 0 var(--gold);
+  }
+
+  /* SECTION VIEWS */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ALPHA INDEX */
+  .alpha-index {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .alpha-index a {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gold-dim);
+    text-decoration: none;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+  .alpha-index a:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+  /* ALPHA GROUP */
+  .alpha-group { margin-bottom: 48px; }
+  .alpha-letter {
+    font-family: 'Playfair Display', serif;
+    font-size: 3rem;
+    font-weight: 900;
+    color: var(--gold-dim);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    margin-bottom: 24px;
+    line-height: 1;
+  }
+
+  /* POPULARITY TIERS */
+  .tier-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tier-badge {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .tier-1 .tier-badge { background: var(--gold); color: #0d0d0f; }
+  .tier-2 .tier-badge { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--gold-dim); }
+  .tier-3 .tier-badge { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
+
+  .tier-label {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 1rem;
+  }
+
+  .tier-section { margin-bottom: 56px; }
+
+  /* STYLE CARD */
+  .style-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .style-card:hover { border-color: var(--gold-dim); }
+
+  .card-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 24px 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .card-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .style-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .style-period {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    background: rgba(201,168,76,0.08);
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  .card-toggle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    transition: transform 0.25s;
+    flex-shrink: 0;
+  }
+  .style-card.open .card-toggle { transform: rotate(180deg); color: var(--gold); }
+
+  .card-tagline {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    padding: 0 24px 14px;
+  }
+
+  .card-body {
+    display: none;
+    padding: 0 24px 24px;
+    border-top: 1px solid var(--border);
+  }
+  .style-card.open .card-body { display: block; }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .detail-block h4 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    margin-bottom: 8px;
+  }
+
+  .detail-block ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .detail-block ul li {
+    font-size: 0.92rem;
+    color: var(--text-dim);
+    padding: 2px 0 2px 14px;
+    position: relative;
+    line-height: 1.5;
+  }
+  .detail-block ul li::before {
+    content: '·';
+    position: absolute;
+    left: 2px;
+    color: var(--gold-dim);
+  }
+
+  .detail-desc {
+    margin-top: 20px;
+    font-size: 0.97rem;
+    color: var(--text-dim);
+    line-height: 1.75;
+    border-left: 2px solid var(--gold-dim);
+    padding-left: 16px;
+  }
+
+  .notable-tag {
+    display: inline-block;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 3px 7px;
+    border-radius: 2px;
+    margin: 3px 3px 0 0;
+  }
+  .notable-wrap { margin-top: 12px; }
+
+  /* SEARCH */
+  .search-bar {
+    display: flex;
+    gap: 0;
+    margin-bottom: 32px;
+  }
+  .search-bar input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-right: none;
+    border-radius: 4px 0 0 4px;
+    color: var(--text);
+    font-family: 'EB Garamond', serif;
+    font-size: 1rem;
+    padding: 11px 16px;
+    outline: none;
+  }
+  .search-bar input:focus { border-color: var(--gold-dim); }
+  .search-bar input::placeholder { color: var(--text-muted); }
+  .search-bar button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 0 4px 4px 0;
+    color: var(--gold);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 11px 20px;
+    cursor: pointer;
+  }
+
+  .count-label {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+  .count-label span { color: var(--gold); font-weight: 600; }
+
+  footer {
+    text-align: center;
+    padding: 40px 0 20px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 600px) {
+    .detail-grid { grid-template-columns: 1fr 1fr; }
+    .card-header { padding: 14px 16px 12px; }
+    .card-tagline { padding: 0 16px 10px; }
+    .card-body { padding: 0 16px 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<header>
+  <div class="header-eyebrow">Complete Reference Guide</div>
+  <h1>Art Styles &amp; <em>Mediums</em></h1>
+  <p class="header-sub">A comprehensive survey of artistic movements, techniques, materials, and aesthetics across history and culture.</p>
+  <div class="header-ornament">✦ ✦ ✦</div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('alpha')">Alphabetical</button>
+  <button class="tab-btn" onclick="switchTab('pop')">By Popularity</button>
+</div>
+
+<!-- ===================== ALPHABETICAL VIEW ===================== -->
+<div class="view active" id="view-alpha">
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Search styles, mediums, periods…" oninput="filterStyles()">
+    <button onclick="filterStyles()">Search</button>
+  </div>
+  <div class="count-label">Showing <span id="countDisplay">50</span> styles</div>
+  <div id="alphaContent"></div>
+</div>
+
+<!-- ===================== POPULARITY VIEW ===================== -->
+<div class="view" id="view-pop">
+  <div id="popContent"></div>
+</div>
+
+<footer>A Reference of Art Styles &amp; Mediums &nbsp;·&nbsp; 50 Entries &nbsp;·&nbsp; Spanning 4,000+ Years of Art History</footer>
+
+</div>
+
+<script>
+const styles = [
+  {
+    name: "Abstract Expressionism",
+    period: "1940s–1960s",
+    tagline: "Raw emotion on massive canvases — gesture and accident elevated to philosophy.",
+    desc: "Emerging in post-WWII New York, Abstract Expressionism prioritized emotional spontaneity over representation. Split between gestural painters (Action Painting) and contemplative color-field artists, it placed the act of painting itself as the subject.",
+    mediums: ["Oil on canvas", "Enamel paint", "House paint", "Acrylic (late period)"],
+    materials: ["Raw, unprimed canvas", "Large-format stretched linen", "Masonite boards", "Drip pans & sticks"],
+    strokes: ["Dripped & poured paint (Pollock)", "Broad sweeping gestures", "Palette knife slabs", "Staining into raw canvas", "Action-painting splatter"],
+    textures: ["Heavy impasto", "Layered paint skins", "Raw canvas showing through", "Poured pools & webs"],
+    notable: ["Jackson Pollock", "Mark Rothko", "Willem de Kooning", "Franz Kline", "Lee Krasner"],
+    popularity: 1
+  },
+  {
+    name: "Academic / Salon Painting",
+    period: "17th–19th Century",
+    tagline: "Technical perfection in service of classical ideals — the art of institutions.",
+    desc: "Produced under the authority of European academies (especially the French École des Beaux-Arts), Academic painting prized rigorous draftsmanship, classical subject matter, and highly polished surfaces with invisible brushwork.",
+    mediums: ["Oil on canvas", "Oil on panel", "Fresco (for murals)"],
+    materials: ["Fine-grain linen", "Lead white grounds", "Glazing mediums (linseed, mastic)", "Ivory black & vermilion pigments"],
+    strokes: ["Invisible blended strokes", "Wet-on-wet glazing layers", "Tight hatched underdrawing", "Smooth tonal transitions"],
+    textures: ["Glass-smooth surfaces", "No visible brushwork", "High-gloss varnish finish"],
+    notable: ["William-Adolphe Bouguereau", "Jean-Léon Gérôme", "Lawrence Alma-Tadema", "Jacques-Louis David"],
+    popularity: 3
+  },
+  {
+    name: "Art Brut / Outsider Art",
+    period: "1940s–Present",
+    tagline: "Unfiltered vision from outside the art world — raw, obsessive, and visionary.",
+    desc: "Coined by Jean Dubuffet, Art Brut ('raw art') describes work created outside formal artistic training — by self-taught artists, those with mental illness, prisoners, or spiritual visionaries. Characterized by obsessive detail, unconventional materials, and deeply personal symbolism.",
+    mediums: ["Ballpoint pen", "Crayon", "House paint", "Found objects", "Assemblage"],
+    materials: ["Cardboard", "Newspaper", "Tin cans", "Fabric scraps", "Dirt & organic matter"],
+    strokes: ["Dense obsessive mark-making", "Repetitive patterning", "Childlike yet complex linework"],
+    textures: ["Layered mixed media", "Collaged surfaces", "Rough and unfinished edges"],
+    notable: ["Henry Darger", "Adolf Wölfli", "Grandma Moses", "Jean Dubuffet", "Howard Finster"],
+    popularity: 3
+  },
+  {
+    name: "Art Deco",
+    period: "1910s–1940s",
+    tagline: "Geometric luxury — modernity wrapped in gold and symmetry.",
+    desc: "Art Deco synthesized the glamour of the Jazz Age with industrial modernism. Characterized by bold geometric forms, symmetry, metallic colors, and lavish ornamentation. Permeated architecture, fashion, jewelry, graphic design, and fine art.",
+    mediums: ["Gouache", "Oil on canvas", "Lithography", "Lacquerwork", "Metalwork & enameling"],
+    materials: ["Gold & silver leaf", "Chrome & steel", "Lacquer", "Ivory", "Ebony & exotic woods", "Bakelite"],
+    strokes: ["Crisp geometric lines", "Stylized curves & chevrons", "Flat color fields with hard edges"],
+    textures: ["Polished mirror-smooth", "Hammered metal", "Lacquered gloss", "Sunburst patterns"],
+    notable: ["Tamara de Lempicka", "Erté", "Cassandre", "Fortunato Depero"],
+    popularity: 2
+  },
+  {
+    name: "Art Nouveau",
+    period: "1890–1910",
+    tagline: "Nature reborn as ornament — sinuous lines and organic architecture.",
+    desc: "Art Nouveau rejected historicism in favor of a new style derived from natural forms. Whiplash curves, botanical motifs, female figures with flowing hair, and the integration of fine and decorative arts defined this international movement.",
+    mediums: ["Oil on canvas", "Watercolor", "Stained glass", "Ceramics", "Jewelry enamel", "Lithographic posters"],
+    materials: ["Stained leaded glass", "Bronze & copper", "Majolica tile", "Silk", "Gold & gemstones"],
+    strokes: ["Undulating whiplash curves", "Continuous flowing contour lines", "Organic asymmetry"],
+    textures: ["Iridescent enamel surfaces", "Flowing drapery patterns", "Botanical relief ornament"],
+    notable: ["Alphonse Mucha", "Gustav Klimt", "Aubrey Beardsley", "Louis Comfort Tiffany", "Hector Guimard"],
+    popularity: 2
+  },
+  {
+    name: "Baroque",
+    period: "1600–1750",
+    tagline: "Drama in shadow and light — grandeur, movement, and divine spectacle.",
+    desc: "The Baroque style emerged as the Catholic Church's visual answer to the Protestant Reformation: overwhelming, emotionally intense, and theatrical. Characterized by dramatic chiaroscuro, dynamic composition, and an emphasis on movement and emotional immediacy.",
+    mediums: ["Oil on canvas", "Oil on copper", "Fresco", "Engraving", "Chalk drawing"],
+    materials: ["Lapis lazuli (ultramarine)", "Lead white", "Vermilion", "Fine-grain canvas", "Copper plates"],
+    strokes: ["Loose, expressive impasto highlights", "Smooth shadow glazes", "Vigorous underdrawing"],
+    textures: ["Contrasting rough impasto vs. smooth glazed shadows", "Rich fabric textures", "Chiaroscuro depth"],
+    notable: ["Caravaggio", "Rembrandt van Rijn", "Peter Paul Rubens", "Johannes Vermeer", "Artemisia Gentileschi"],
+    popularity: 1
+  },
+  {
+    name: "Bauhaus",
+    period: "1919–1933",
+    tagline: "Art and industry unified — form follows function, beautifully.",
+    desc: "The Bauhaus school in Germany revolutionized modern design by dissolving barriers between fine art and craft. Characterized by geometric abstraction, primary colors, and the principle that good design should be reproducible and functional.",
+    mediums: ["Gouache", "Oil on canvas", "Photography", "Printmaking", "Weaving & textile"],
+    materials: ["Primary pigments (red, yellow, blue)", "Steel & chrome", "Woven textiles", "Photographic film"],
+    strokes: ["Geometric hard edges", "Flat color planes", "Compass & ruler construction"],
+    textures: ["Smooth flat color", "Woven textile pattern", "Industrial material finish"],
+    notable: ["Paul Klee", "Wassily Kandinsky", "László Moholy-Nagy", "Herbert Bayer", "Anni Albers"],
+    popularity: 2
+  },
+  {
+    name: "Byzantine Art",
+    period: "4th–15th Century",
+    tagline: "Heaven made visible — gold ground, elongated saints, and sacred geometry.",
+    desc: "Byzantine art served the Eastern Orthodox Church across a millennium. Icons, mosaics, and illuminated manuscripts depicted sacred figures in frontal, hieratic poses against gold backgrounds, using symbolic color and proportion over naturalistic space.",
+    mediums: ["Egg tempera on panel", "Gold & glass mosaic", "Fresco", "Illuminated manuscript (gold leaf & pigment)"],
+    materials: ["Egg yolk binder", "Gold leaf", "Lapis lazuli", "Malachite", "Tesserae (glass & stone)"],
+    strokes: ["Fine hatch modeling with tempera", "Flat decorative gold lines (chrysography)", "No atmospheric perspective"],
+    textures: ["Glittering mosaic surface", "Smooth gilded backgrounds", "Layered egg tempera"],
+    notable: ["Andrei Rublev", "Anonymous icon painters", "Duccio di Buoninsegna (transitional)"],
+    popularity: 3
+  },
+  {
+    name: "Cave Art / Prehistoric",
+    period: "40,000–10,000 BCE",
+    tagline: "Humanity's first mark — ochre and charcoal on stone, still breathing.",
+    desc: "The oldest known artistic tradition. Using hands, sticks, and crude brushes, prehistoric artists depicted animals, human handprints, and abstract symbols on cave walls and rock faces with remarkable skill and lifelike movement.",
+    mediums: ["Ground mineral pigment applied by hand, stick, or bone tube", "Charcoal", "Incised line (engraving)"],
+    materials: ["Red & yellow ochre (iron oxide)", "Manganese dioxide (black)", "Charcoal", "Animal fat binder", "Cave limestone substrate"],
+    strokes: ["Broad smeared hand applications", "Scratched engraved outline", "Blown pigment silhouettes"],
+    textures: ["Rock surface incorporated as form", "Layered pigment washes", "Raised rock contour used as volume"],
+    notable: ["Lascaux (France)", "Altamira (Spain)", "Chauvet Cave", "Sulawesi cave art (Indonesia)"],
+    popularity: 3
+  },
+  {
+    name: "Chiaroscuro / Tenebrism",
+    period: "1590s–1650s (peak)",
+    tagline: "Light as revelation — figures emerging from absolute darkness.",
+    desc: "Not a movement but a defining technique: chiaroscuro (light-dark contrast) and its extreme form tenebrism (near-total darkness pierced by a single light source) were revolutionary tools for creating dramatic volume, depth, and emotional urgency.",
+    mediums: ["Oil on canvas", "Oil on copper", "Chalk & ink drawing", "Woodcut & etching"],
+    materials: ["Lead white for highlights", "Bone black & ivory black", "Bitumen (warm dark glazes)", "Brown paper for drawing"],
+    strokes: ["Direct single-layer wet-on-wet lights", "Deep transparent shadow glazes", "Hard light terminator lines"],
+    textures: ["Sharp highlight vs. pure shadow", "No midtone gradation (tenebrism)", "Velvety deep blacks"],
+    notable: ["Caravaggio", "Rembrandt", "Georges de La Tour", "Francisco de Zurbarán"],
+    popularity: 2
+  },
+  {
+    name: "Color Field Painting",
+    period: "1950s–1970s",
+    tagline: "Color as experience — vast fields that breathe and pulse.",
+    desc: "A branch of Abstract Expressionism, Color Field reduced painting to pure color relationships on large, often stained canvases. It sought to create a direct, enveloping emotional and optical experience without gestural brushwork.",
+    mediums: ["Diluted acrylic stain", "Oil on raw canvas", "Spray paint"],
+    materials: ["Unprimed raw canvas (absorbs paint)", "Diluted polymer medium", "Very large format canvas"],
+    strokes: ["Poured & stained (no brushwork)", "Color washes applied with rags", "Spray or roller edges"],
+    textures: ["Paint absorbed into canvas weave", "Soft luminous edges", "No impasto — flat or slightly matte"],
+    notable: ["Mark Rothko", "Helen Frankenthaler", "Morris Louis", "Kenneth Noland", "Clyfford Still"],
+    popularity: 3
+  },
+  {
+    name: "Conceptual Art",
+    period: "1960s–Present",
+    tagline: "The idea is the art — medium is irrelevant, concept is everything.",
+    desc: "Conceptual art declared that the idea behind a work is more important than its physical form. Works might be instructions on paper, institutional critique, language-based, or invisible entirely. Challenged definitions of art and the role of the artist.",
+    mediums: ["Text / instruction", "Photography", "Video", "Performance", "Found objects", "None (idea only)"],
+    materials: ["Language itself", "Bureaucratic documents", "Any available material", "Neon lighting", "Blank canvas"],
+    strokes: ["None — or deliberate anti-aesthetic mark"],
+    textures: ["Institutional & sterile", "Ironic or anti-aesthetic"],
+    notable: ["Sol LeWitt", "Joseph Kosuth", "Lawrence Weiner", "Yoko Ono", "Marcel Duchamp (proto-Conceptual)"],
+    popularity: 2
+  },
+  {
+    name: "Constructivism",
+    period: "1913–1940",
+    tagline: "Art built like engineering — geometry in service of revolution.",
+    desc: "Russian Constructivism rejected pure art in favor of socially useful design. Geometric abstraction, bold typography, primary colors, and photomontage were deployed in propaganda, architecture, textile, and typographic design after the Russian Revolution.",
+    mediums: ["Oil on canvas", "Gouache", "Photomontage", "Linocut & letterpress"],
+    materials: ["Primary pigments", "Photographic materials", "Industrial paper stock", "Metal & glass (sculpture)"],
+    strokes: ["Hard geometric edges", "Diagonal dynamic lines", "Flat color with no modulation"],
+    textures: ["Smooth flat surfaces", "High-contrast graphic texture", "Industrial printed finish"],
+    notable: ["Alexander Rodchenko", "El Lissitzky", "Varvara Stepanova", "Lyubov Popova", "Naum Gabo"],
+    popularity: 3
+  },
+  {
+    name: "Cubism",
+    period: "1907–1930s",
+    tagline: "Multiple perspectives at once — reality shattered and reassembled.",
+    desc: "Pioneered by Picasso and Braque, Cubism broke from centuries of single-point perspective by depicting subjects from multiple simultaneous viewpoints. Analytic Cubism used muted tones and fragmented planes; Synthetic Cubism incorporated collage and bolder color.",
+    mediums: ["Oil on canvas", "Collage & papier collé", "Charcoal & ink drawing", "Etching"],
+    materials: ["Newsprint & wallpaper collage", "Sand mixed with paint", "Ochres, grays, blacks", "Gesso ground"],
+    strokes: ["Broken angular planes", "Faceted geometric forms", "Overlapping transparent planes"],
+    textures: ["Collaged paper textures", "Sandy gritty paint surfaces", "Fragmented overlapping planes"],
+    notable: ["Pablo Picasso", "Georges Braque", "Juan Gris", "Fernand Léger", "Robert Delaunay"],
+    popularity: 1
+  },
+  {
+    name: "Dadaism",
+    period: "1916–1924",
+    tagline: "Anti-art as protest — absurdity, chance, and the destruction of meaning.",
+    desc: "Born in wartime Zurich as a rejection of bourgeois culture and the logic that had led to WWI, Dada embraced nonsense, chance operations, readymades, and provocation. It was the direct ancestor of Surrealism, Conceptual Art, and Punk.",
+    mediums: ["Collage & photomontage", "Readymades", "Performance & sound poetry", "Typography experiments", "Oil on canvas"],
+    materials: ["Found printed ephemera", "Newspaper cuttings", "Industrial objects", "Chance operations (dice, torn paper)"],
+    strokes: ["Cut and random collage placement", "Anti-compositional chaos", "Deliberate ugliness"],
+    textures: ["Printed ink textures", "Paper and photographic collage", "Industrial surface"],
+    notable: ["Marcel Duchamp", "Hannah Höch", "Man Ray", "Kurt Schwitters", "Tristan Tzara"],
+    popularity: 2
+  },
+  {
+    name: "Digital Art",
+    period: "1960s–Present",
+    tagline: "The infinite canvas — pixels, algorithms, and the art of the screen.",
+    desc: "Digital art encompasses work made with or mediated by digital technology: digital painting, generative algorithms, 3D rendering, video art, AI-generated imagery, NFTs, and interactive installations. The medium is electricity and code.",
+    mediums: ["Digital painting (stylus on tablet)", "3D rendering", "Generative/algorithmic art", "Video & animation", "AI image synthesis"],
+    materials: ["Graphics tablets (Wacom, iPad)", "GPU-rendered pixels", "Photoshop / Procreate / Blender", "AI diffusion models (Stable Diffusion, Midjourney)"],
+    strokes: ["Pressure-sensitive brush strokes (simulated)", "Vector bezier curves", "Noise & gradient algorithms", "Diffusion sampling"],
+    textures: ["Simulated oil/watercolor/charcoal", "Pixel art (hard pixel grid)", "3D PBR material surfaces", "Latent-space blended textures"],
+    notable: ["Refik Anadol", "Beeple", "David Hockney", "XCOPY", "Vera Molnár (generative pioneer)"],
+    popularity: 1
+  },
+  {
+    name: "Expressionism",
+    period: "1905–1930s",
+    tagline: "Emotion distorted into form — anguish, ecstasy, and the soul made visible.",
+    desc: "German Expressionism prioritized subjective emotional experience over objective reality. Colors became lurid, lines jagged, proportions distorted — the world shown not as it is but as it feels from within. Groups included Die Brücke and Der Blaue Reiter.",
+    mediums: ["Oil on canvas", "Woodcut (especially)", "Etching & drypoint", "Watercolor"],
+    materials: ["Raw, unblended pigments", "Woodblock (bold grain)", "Acid-bitten etching plates", "Coarse canvas"],
+    strokes: ["Slashing angular marks", "Rough woodcut grain lines", "Jagged hatching", "Emotionally charged distortion"],
+    textures: ["Rough carved woodcut grain", "Heavy impasto oil", "Unblended harsh color transitions"],
+    notable: ["Ernst Ludwig Kirchner", "Egon Schiele", "Edvard Munch", "Emil Nolde", "Wassily Kandinsky (early)"],
+    popularity: 1
+  },
+  {
+    name: "Fauvism",
+    period: "1904–1908",
+    tagline: "Colour freed from nature — wild, joyful, and absolutely unnatural.",
+    desc: "The Fauves ('wild beasts') used non-representational, unmixed color applied directly from the tube with aggressive brushwork. Color conveyed emotion and structure rather than describing local reality — a direct precursor to Expressionism.",
+    mediums: ["Oil on canvas", "Watercolor"],
+    materials: ["Pre-mixed tube paints used directly", "Cadmium red, viridian, cobalt blue, chrome yellow", "White-primed canvas"],
+    strokes: ["Short thick loaded brushstrokes", "Unblended adjacent color patches", "Dynamic directional marks"],
+    textures: ["Visible separated brushstrokes", "Jewel-like color mosaic surface", "Medium-weight impasto"],
+    notable: ["Henri Matisse", "André Derain", "Maurice de Vlaminck", "Raoul Dufy"],
+    popularity: 2
+  },
+  {
+    name: "Folk Art",
+    period: "Ancient–Present",
+    tagline: "The art of everyday people — tradition, community, and handmade memory.",
+    desc: "Folk art encompasses the artistic traditions of non-academic, non-elite communities worldwide. Passed down through generations, it prioritizes cultural continuity, function, and communal identity over individual expression or formal training.",
+    mediums: ["Watercolor", "Tempera", "Embroidery & textile", "Woodcarving", "Ceramics & pottery"],
+    materials: ["Handspun & dyed yarn", "Local clays", "Wood", "Natural dyes (indigo, madder)", "Beeswax"],
+    strokes: ["Repeated geometric or floral patterns", "Bold outline-heavy illustration", "Symmetric or mirrored composition"],
+    textures: ["Woven textile pattern", "Hand-carved wood grain", "Hand-painted flat areas", "Stitched embroidery"],
+    notable: ["Grandma Moses", "Kehinde Wiley (influenced by)", "Maud Lewis", "Various regional traditions (Ukrainian pysanky, Mexican Huichol)"],
+    popularity: 2
+  },
+  {
+    name: "Futurism",
+    period: "1909–1944",
+    tagline: "Speed, violence, and modernity — the machine as aesthetic ideal.",
+    desc: "Italian Futurism glorified technology, speed, and industrial violence. Artists depicted motion through repeated overlapping forms, diagonal dynamism, and fractured simultaneity. Closely linked to Fascist politics and eventually consumed by it.",
+    mediums: ["Oil on canvas", "Pastel", "Sculpture (various)"],
+    materials: ["Vibrant synthetic pigments", "Steel & bronze (sculpture)", "Enamel paints"],
+    strokes: ["Lines of force (dynamism)", "Repeated ghost forms showing motion", "Radiating diagonal speed lines"],
+    textures: ["Flickering striated surfaces", "Fractured multiple-exposure effect", "Hard metallic sheen"],
+    notable: ["Umberto Boccioni", "Carlo Carrà", "Giacomo Balla", "Gino Severini", "Luigi Russolo"],
+    popularity: 2
+  },
+  {
+    name: "Gothic Art",
+    period: "1140–1400",
+    tagline: "Heaven reaching upward — elongated grace, gold, and stained light.",
+    desc: "Gothic art emerged from Romanesque in northern France as cathedrals soared skyward. Characterized by pointed arches, brilliant stained glass, elongated figures in International Gothic manuscript illumination, and hierarchical composition.",
+    mediums: ["Stained glass", "Egg tempera on panel", "Fresco", "Manuscript illumination (gold leaf & pigment)", "Stone sculpture"],
+    materials: ["Colored pot-metal glass", "Gold leaf", "Ultramarine lapis lazuli", "Egg tempera", "Parchment"],
+    strokes: ["Fine tempera hatching for flesh", "Flat gold-ground surfaces", "Sinuous Gothic S-curve postures"],
+    textures: ["Jewel-like transparent stained glass", "Gold leaf sheen on panels", "Flat decorative patterned backgrounds"],
+    notable: ["Cimabue", "Duccio", "Jean Fouquet", "The Limbourg Brothers", "Lorenzo Ghiberti"],
+    popularity: 3
+  },
+  {
+    name: "Graffiti / Street Art",
+    period: "1970s–Present",
+    tagline: "The city as canvas — public, illegal, and undeniably alive.",
+    desc: "Emerging from New York subway culture in the early 1970s, graffiti evolved through wildstyle lettering, throw-ups, and character pieces. Street art broadened the form to include stencil, paste-up, and mural-scale work on public surfaces globally.",
+    mediums: ["Aerosol spray paint", "Markers", "Stencil & spray", "Paste-up (wheatpaste)", "Tile mosaic (Space Invader)"],
+    materials: ["Montana/Molotow spray cans", "Krink markers", "Newsprint paste-up prints", "Exterior latex paint"],
+    strokes: ["Fat cap fills", "Thin cap outline & detail lines", "Drip effects (intentional or not)", "Stencil hard-edge shapes"],
+    textures: ["Spray fade gradients", "Rough wall/brick/concrete texture beneath", "Drips and runs", "Layered paste-up paper"],
+    notable: ["Banksy", "Jean-Michel Basquiat", "Keith Haring", "TAKI 183", "Shepard Fairey", "Os Gemeos"],
+    popularity: 1
+  },
+  {
+    name: "Hyperrealism",
+    period: "1970s–Present",
+    tagline: "More real than reality — paintings that fool the eye and trouble the mind.",
+    desc: "Hyperrealism (evolved from Photorealism) creates paintings so detailed they surpass photographic fidelity. Works often feature dramatic lighting, dew drops, skin pores, and reflective surfaces rendered with meticulous airbrush or glazing techniques.",
+    mediums: ["Oil on canvas", "Airbrush", "Color pencil (extreme detail)"],
+    materials: ["Very smooth gesso grounds", "Fine sable brushes (0–000 sizes)", "Glazing mediums", "Airbrush inks"],
+    strokes: ["Micro-detail stippling", "Airbrush mist gradients", "Transparent glaze over glaze", "No visible brushwork"],
+    textures: ["Illusionistic texture (simulated — pores, fabric, chrome)", "Smooth painted surface itself", "Photographic-grade tonal gradation"],
+    notable: ["Chuck Close", "Ron Mueck", "Tjalf Sparnaay", "Denis Peterson", "Roberto Bernardi"],
+    popularity: 2
+  },
+  {
+    name: "Illuminated Manuscript",
+    period: "400–1600 CE",
+    tagline: "Books as sacred objects — text wrapped in gold and living colour.",
+    desc: "Illuminated manuscripts were handwritten books decorated with gold, silver, and vivid pigments. Produced by monks and later secular workshops, they combined intricate borders, narrative miniatures, and devotional imagery into unified visual programs.",
+    mediums: ["Egg tempera & gum arabic on vellum", "Gold & silver leaf", "Ink on parchment"],
+    materials: ["Vellum (calf/sheep skin)", "Ultramarine lapis lazuli", "Vermilion (cinnabar)", "Gold leaf & shell gold", "Carbon ink quill-applied"],
+    strokes: ["Fine quill line drawing", "Tiny tempera stippling", "Burnished gold ground", "Interlaced knotwork patterns"],
+    textures: ["Vellum surface slightly rough", "Raised gilded areas (burnished smooth)", "Tiny intricate pigment build-up"],
+    notable: ["Book of Kells", "Très Riches Heures (Limbourg Brothers)", "Book of Hours", "Lindisfarne Gospels"],
+    popularity: 3
+  },
+  {
+    name: "Impressionism",
+    period: "1860s–1890s",
+    tagline: "The shimmer of a moment — light captured in broken colour before it vanishes.",
+    desc: "The Impressionists abandoned the studio for the open air, painting rapidly to capture the transient effects of light and atmosphere. Broken brushwork, rejection of black, and interest in simultaneous color contrast defined their radical approach.",
+    mediums: ["Oil on canvas", "Pastel", "Watercolor"],
+    materials: ["Pre-mixed tube paints", "Portable pochade boxes", "Small canvas panels", "Cadmium & cobalt pigments"],
+    strokes: ["Short broken comma-strokes", "Side-loaded flat brushwork", "Visible separate touches of color", "No blending of adjacent strokes"],
+    textures: ["Vibrant mosaic of broken color", "Medium impasto", "Canvas weave visible", "No smooth finish or varnish"],
+    notable: ["Claude Monet", "Pierre-Auguste Renoir", "Edgar Degas", "Berthe Morisot", "Camille Pissarro"],
+    popularity: 1
+  },
+  {
+    name: "Ink Wash / Sumi-e",
+    period: "7th Century–Present",
+    tagline: "Suggestion over description — a single brushstroke contains the universe.",
+    desc: "Rooted in Chinese ink painting and developed into the Japanese art of sumi-e, ink wash painting values emptiness, spontaneity, and the expressive potential of a single loaded brush. Tonal variation is achieved by diluting ink with water.",
+    mediums: ["Sumi ink on washi paper", "Sumi ink on silk", "Brush & ink on rice paper"],
+    materials: ["Sumi ink stick (ground on inkstone)", "Washi (Japanese paper)", "Shuan paper (Chinese)", "Bamboo & wolf-hair brushes", "Mineral pigments (in color variants)"],
+    strokes: ["Single expressive loaded brush stroke", "Dry brush on rough paper (for texture)", "Bone-dry & ink-pooled extremes", "Gradated ink washes", "Flying white (speed-dragged bristle)"],
+    textures: ["Paper grain showing through ink", "Pooled ink bleeds at wet edges", "Dry bristle texture", "Intentional empty space (Ma)"],
+    notable: ["Sesshū Tōyō", "Qi Baishi", "Ike no Taiga", "Zhao Mengfu", "Hakuin Ekaku"],
+    popularity: 2
+  },
+  {
+    name: "Installation Art",
+    period: "1960s–Present",
+    tagline: "Art that fills a room — space itself becomes the work.",
+    desc: "Installation art creates immersive, site-specific environments that transform architectural space. The viewer becomes part of the work. Installations may use light, sound, text, objects, video projection, or all simultaneously.",
+    mediums: ["Mixed media / environment", "Video projection", "Sound", "Found objects", "Neon & LED lighting"],
+    materials: ["Any material — fabric, steel, water, mirrors, plants, soil", "Projection screens / mapping surfaces", "Speakers & sound systems"],
+    strokes: ["Not applicable — spatial & atmospheric"],
+    textures: ["Immersive environment textures (light, sound, physical surface)", "Scale as a texture element"],
+    notable: ["Bruce Nauman", "Olafur Eliasson", "Yayoi Kusama", "Ilya Kabakov", "James Turrell"],
+    popularity: 2
+  },
+  {
+    name: "Japonisme",
+    period: "1860s–1900s",
+    tagline: "The West discovering flatness — Japanese aesthetics remixing European painting.",
+    desc: "Japonisme describes the influence of Japanese art (especially ukiyo-e woodblock prints) on European Impressionism and Post-Impressionism. Its key contributions were flat color planes, asymmetric composition, cropped frames, and patterned decorative surfaces.",
+    mediums: ["Oil on canvas", "Pastel", "Etching (using Japanese print techniques)"],
+    materials: ["Flat unmodulated color areas (departing from academic oil convention)"],
+    strokes: ["Flat outline-defined areas", "Patterned decorative marks", "No chiaroscuro modeling"],
+    textures: ["Flat two-dimensional color planes", "Patterned fabric textures elevated as composition"],
+    notable: ["Mary Cassatt", "Edgar Degas", "James McNeill Whistler", "Vincent van Gogh (influenced)"],
+    popularity: 3
+  },
+  {
+    name: "Land Art / Earth Art",
+    period: "1960s–Present",
+    tagline: "The landscape as sculpture — art that weathers, shifts, and disappears.",
+    desc: "Land Art rejected the gallery system by making the earth itself the medium and site. Massive earthworks, spiral jetties, and running fences engaged time, landscape, and entropy as creative forces. Documentation (photography, film) became the art object.",
+    mediums: ["Earth, rock, soil", "Water", "Ice & snow", "Vegetation", "Photography & film (documentation)"],
+    materials: ["Local geological materials", "Bulldozers & excavation equipment", "Stones, salt, mud", "Weathering processes"],
+    strokes: ["Large-scale earth-moving", "Elemental geometric forms in landscape", "Erosion & natural change over time"],
+    textures: ["Geological rock and soil", "Weathered natural patina", "Scale that dwarfs the viewer"],
+    notable: ["Robert Smithson", "Walter De Maria", "Michael Heizer", "Andy Goldsworthy", "Christo & Jeanne-Claude"],
+    popularity: 3
+  },
+  {
+    name: "Mannerism",
+    period: "1520–1600",
+    tagline: "Elegance strained to breaking point — refinement as anxiety.",
+    desc: "Mannerism was the self-conscious stylistic successor to the High Renaissance. Figures were elongated, poses artificially complex (the figura serpentinata), colors acid and iridescent, and space deliberately ambiguous — an art of artificial grace.",
+    mediums: ["Oil on panel and canvas", "Fresco", "Drawing (chalk & pen)"],
+    materials: ["Acid greens, lavenders, pinks (unusual pigment combinations)", "Lead white", "Very fine linen"],
+    strokes: ["Smooth blended sfumato", "Tight draftsmanly contours", "Elegant small-brush detail"],
+    textures: ["Jewel-like surface finish", "Silky fabric textures", "Smooth flesh with iridescent highlights"],
+    notable: ["Pontormo", "Parmigianino", "Bronzino", "El Greco", "Rosso Fiorentino"],
+    popularity: 3
+  },
+  {
+    name: "Minimalism",
+    period: "1960s–Present",
+    tagline: "The object as itself — stripped of symbol, narrative, and illusion.",
+    desc: "Minimalism reduced art to its most essential formal elements: simple geometric forms, industrial materials, no personal expression. Sculptures were conceived as objects occupying real space rather than illusions. It opposed Abstract Expressionism's emotionalism.",
+    mediums: ["Steel, aluminum, Plexiglas", "Oil or acrylic on canvas", "Fluorescent light tubes"],
+    materials: ["Industrial fabricated metal (steel, aluminum)", "Plywood", "Fluorescent lamps", "Monochrome acrylic"],
+    strokes: ["No visible hand — factory fabricated or roller-applied", "Flat hard edges"],
+    textures: ["Industrial fabricated surface — brushed steel, powder coat", "Raw plywood", "Monochrome flat matte or gloss"],
+    notable: ["Donald Judd", "Dan Flavin", "Carl Andre", "Frank Stella", "Agnes Martin"],
+    popularity: 2
+  },
+  {
+    name: "Naive Art / Primitivism",
+    period: "Late 19th Century–Present",
+    tagline: "Unschooled vision — bright, flat, and wonderfully unafraid of proportion.",
+    desc: "Naïve art refers to work by self-taught artists who paint with childlike directness, flat perspective, vivid color, and decorative patterning. Distinguished from Outsider Art by its more joyful, accessible aesthetic rather than obsessive or visionary character.",
+    mediums: ["Oil on canvas", "Acrylic", "Tempera"],
+    materials: ["Commercially prepared canvas", "House paint", "Common craft pigments"],
+    strokes: ["Flat color with outlined forms", "Simple repetitive mark patterns", "No atmospheric perspective"],
+    textures: ["Flat decorative color planes", "Pattern as surface texture", "Simple uniform brushwork"],
+    notable: ["Henri Rousseau", "Grandma Moses", "Niko Pirosmani", "Louis Vivin"],
+    popularity: 3
+  },
+  {
+    name: "Neo-Expressionism",
+    period: "1970s–1990s",
+    tagline: "The return of the body, the figure, and the mess — painting fights back.",
+    desc: "Neo-Expressionism revived figurative, emotionally charged painting in reaction to Minimalism and Conceptual Art. Works were large, gestural, often raw and graffiti-influenced, reclaiming the canvas as a site of primal energy.",
+    mediums: ["Oil on canvas (large format)", "Acrylic", "Mixed media on canvas"],
+    materials: ["Industrial paints", "Sand, tar, straw mixed into paint", "Enamel"],
+    strokes: ["Crude aggressive brushwork", "Scratched and scraped surfaces", "Spray paint combined with brushwork"],
+    textures: ["Heavy encrusted impasto", "Rough mixed-media surfaces", "Deliberately unfinished raw edges"],
+    notable: ["Jean-Michel Basquiat", "Julian Schnabel", "Georg Baselitz", "A.R. Penck", "Sandro Chia"],
+    popularity: 2
+  },
+  {
+    name: "Neoclassicism",
+    period: "1750–1830",
+    tagline: "Reason made visible — Greek and Roman virtue returned in paint and marble.",
+    desc: "A reaction to Baroque excess and Rococo frivolity, Neoclassicism looked to ancient Greece and Rome for ideals of moral clarity, heroic subject matter, and formal restraint. Cool color, severe composition, and hard contour lines defined the style.",
+    mediums: ["Oil on canvas", "Marble sculpture", "Engraving", "Fresco"],
+    materials: ["Lead white", "Cool palette (grays, ochres, blue-greens)", "Smooth fine-grain canvas", "White marble"],
+    strokes: ["Tight smooth blending", "Invisible brushwork", "Hard outline emphasis", "Classical drapery pattern"],
+    textures: ["Polished marble surface", "Smooth painted surface", "No gestural texture — reason over feeling"],
+    notable: ["Jacques-Louis David", "Antonio Canova", "Jean-Auguste-Dominique Ingres", "John Flaxman"],
+    popularity: 2
+  },
+  {
+    name: "Op Art",
+    period: "1960s–1970s",
+    tagline: "Paintings that move — optical illusion as aesthetic experience.",
+    desc: "Optical art exploits the mechanics of human visual perception to create illusions of movement, depth, and vibration through geometric abstraction. Works use precise hard-edged patterns in black and white or vibrating color contrasts.",
+    mediums: ["Acrylic on canvas", "Screenprint", "Gouache"],
+    materials: ["Primary & contrasting pigments", "Perfectly flat acrylic ground", "Ruled & measured construction"],
+    strokes: ["Ruler-precise hard edges", "No visible brushwork", "Mathematical geometry"],
+    textures: ["Optically vibrating flat surface", "No physical texture — illusion of depth only"],
+    notable: ["Bridget Riley", "Victor Vasarely", "Richard Anuszkiewicz", "Julian Stanczak"],
+    popularity: 2
+  },
+  {
+    name: "Photorealism",
+    period: "1960s–Present",
+    tagline: "The photograph transcribed by hand — technical mastery as conceptual act.",
+    desc: "Photorealism paints from photographic sources with the intention of matching photographic appearance. Unlike Hyperrealism, Photorealism is less interested in surpassing the photo than in examining what it means to copy it.",
+    mediums: ["Airbrush", "Oil on canvas", "Acrylic on canvas"],
+    materials: ["Very smooth gesso ground", "Fine-mist airbrush inks", "Transparent glazing oils"],
+    strokes: ["Airbrush gradients (zero visible stroke)", "Fine detail glazing", "Indirect painting method"],
+    textures: ["Photographic smoothness", "Reflective surface simulation", "No gestural texture"],
+    notable: ["Richard Estes", "Chuck Close (early)", "Audrey Flack", "Robert Cottingham"],
+    popularity: 2
+  },
+  {
+    name: "Pointillism",
+    period: "1880s–1910s",
+    tagline: "Colour assembled from tiny dots — science as brushstroke.",
+    desc: "Developed by Georges Seurat as 'Chromoluminarism,' Pointillism applied color theory to painting. Pure color dots placed adjacently were meant to blend optically in the viewer's eye, creating more luminous color than physical mixing.",
+    mediums: ["Oil on canvas"],
+    materials: ["Pure unmixed pigment dots", "Regular bristle round brushes", "White-primed ground"],
+    strokes: ["Tiny uniform colored dots or dashes", "No blending — purely adjacent pure color", "Methodical all-over application"],
+    textures: ["Dimpled dot-matrix surface", "Medium impasto dots", "Consistent mechanical rhythm"],
+    notable: ["Georges Seurat", "Paul Signac", "Theo van Rysselberghe", "Henri-Edmond Cross"],
+    popularity: 2
+  },
+  {
+    name: "Pop Art",
+    period: "1950s–1970s",
+    tagline: "Consumer culture turned into canvas — irony, silk screens, and soup cans.",
+    desc: "Pop Art dissolved boundaries between fine art and commercial culture, appropriating advertising imagery, comic strips, and consumer products. In Britain it emerged as cultural observation; in America (especially Warhol and Lichtenstein) as both celebration and critique.",
+    mediums: ["Silkscreen print on canvas", "Oil on canvas", "Acrylic", "Lithography", "Mixed media assemblage"],
+    materials: ["Commercial printing ink", "Fluorescent acrylic paint", "Ben-Day dot screens", "Found commercial objects"],
+    strokes: ["Mechanical hard edges (no visible stroke)", "Flat color fields", "Ben-Day dot screen patterns"],
+    textures: ["Flat printed surface", "Commercial graphic smoothness", "Silkscreen ink texture"],
+    notable: ["Andy Warhol", "Roy Lichtenstein", "Jasper Johns", "Richard Hamilton", "Claes Oldenburg"],
+    popularity: 1
+  },
+  {
+    name: "Post-Impressionism",
+    period: "1880s–1910s",
+    tagline: "Impressionism's heir — but more personal, more structured, more intense.",
+    desc: "Post-Impressionism was not a unified movement but a generation of artists who built on Impressionism while pursuing divergent personal directions: Cézanne toward structure and form, Van Gogh toward emotional intensity, Gauguin toward symbolic color and primitivism.",
+    mediums: ["Oil on canvas", "Watercolor", "Gouache"],
+    materials: ["Thick tube paint used directly", "Canvas & board", "Synthetic pigments"],
+    strokes: ["Van Gogh: rhythmic directional swirling strokes", "Cézanne: parallel constructive hatching", "Gauguin: flat cloisonné outline fills"],
+    textures: ["Van Gogh: thick impasto furrows", "Cézanne: flat constructive planes", "Seurat: all-over dot matrix"],
+    notable: ["Vincent van Gogh", "Paul Cézanne", "Paul Gauguin", "Henri de Toulouse-Lautrec", "Georges Seurat"],
+    popularity: 1
+  },
+  {
+    name: "Realism",
+    period: "1840s–Present",
+    tagline: "The world as it actually is — peasants, factories, and unidealized truth.",
+    desc: "Realism rejected Romantic idealization to depict contemporary life with unsentimental accuracy. Laborers, rural poverty, and bourgeois life were painted without heroicizing. It was inherently political — to show what Academic art deliberately ignored.",
+    mediums: ["Oil on canvas", "Watercolor", "Etching & lithography"],
+    materials: ["Earthy ochre tones", "Raw umber, Van Dyke brown", "Coarse canvas texture often visible"],
+    strokes: ["Direct alla prima brushwork", "Broad loaded brushstrokes for flesh", "Tonal value-based rendering"],
+    textures: ["Visible brushwork", "Rough canvas showing through", "Honest material presence"],
+    notable: ["Gustave Courbet", "Jean-François Millet", "Honoré Daumier", "Winslow Homer", "Thomas Eakins"],
+    popularity: 1
+  },
+  {
+    name: "Renaissance",
+    period: "1400–1600",
+    tagline: "The rebirth of antiquity — perspective, humanism, and the glory of the visible world.",
+    desc: "The Renaissance rediscovered classical antiquity and developed revolutionary tools: linear perspective, oil glazing technique, anatomical study, and chiaroscuro. Split into Early, High, and Late phases, it produced some of history's most technically accomplished work.",
+    mediums: ["Egg tempera on panel (Early)", "Oil on panel & canvas (High/Late)", "Fresco", "Drawing (chalk, silverpoint, pen)"],
+    materials: ["Egg yolk binder", "Ultramarine, vermilion, lead white", "Linseed & walnut oil", "Poplar & walnut panel"],
+    strokes: ["Fine tempera hatching (early)", "Oil glazing layers building luminosity", "Sfumato (Leonardo's smoky blending)", "Precise silverpoint drawing"],
+    textures: ["Smooth high-gloss glazed oil surface", "Gesso preparation (chalk ground)", "Smooth gradated flesh tones"],
+    notable: ["Leonardo da Vinci", "Michelangelo", "Raphael", "Sandro Botticelli", "Titian", "Jan van Eyck"],
+    popularity: 1
+  },
+  {
+    name: "Rococo",
+    period: "1720–1780",
+    tagline: "Gilded pleasure — lightness, pastel, and aristocratic delight.",
+    desc: "Rococo was the French aristocracy's art of pleasure: delicate, asymmetric, pastel-colored, and devoted to themes of love, music, and leisure. An intimate, decorative reaction to the pomposity of Louis XIV Baroque.",
+    mediums: ["Oil on canvas", "Pastel", "Fresco (ceiling decor)", "Porcelain painting"],
+    materials: ["Pastel pigments (pale pink, soft blue, cream)", "Gold leaf decoration", "Porcelain glazes"],
+    strokes: ["Feathery delicate brushwork", "Light swift touches for fabrics", "Soft blending for flesh"],
+    textures: ["Delicate frothy fabric textures", "Gilded frame integration", "Soft luminous skin", "Frivolous ornamental curves"],
+    notable: ["Jean-Honoré Fragonard", "Antoine Watteau", "François Boucher", "Giovanni Battista Tiepolo"],
+    popularity: 2
+  },
+  {
+    name: "Romanticism",
+    period: "1780–1850",
+    tagline: "Sublime nature and fierce emotion — the world vast and the self adrift within it.",
+    desc: "Romanticism rejected Neoclassical rationalism in favor of individual emotion, sublime nature, nationalism, and the exotic. Stormy seascapes, heroic failures, and the terrifying sublime characterized its imagery.",
+    mediums: ["Oil on canvas", "Watercolor", "Engraving"],
+    materials: ["Asphaltum/bitumen (dark warm glazes)", "Vermilion & cobalt blue", "Large-format canvas"],
+    strokes: ["Loose expressive brushwork in foliage & atmosphere", "Tight academic finish on figures", "Dramatic impasto highlights"],
+    textures: ["Churning atmospheric texture in storms & seas", "Smooth idealized flesh", "Dramatic contrast of rough & smooth"],
+    notable: ["Caspar David Friedrich", "Eugène Delacroix", "J.M.W. Turner", "Théodore Géricault", "Francisco Goya"],
+    popularity: 1
+  },
+  {
+    name: "Stencil Art",
+    period: "1970s–Present",
+    tagline: "The cut edge as line — mass-reproducible image-making as subversion.",
+    desc: "Stencil art uses cut templates and spray paint or brush to produce repeatable, precise images rapidly on public or gallery surfaces. Adopted by street artists for its speed and reproducibility, it also produces highly graphic, icon-like imagery.",
+    mediums: ["Aerosol spray over cut stencil", "Brush over stencil", "Screen printing"],
+    materials: ["Mylar, cardboard, or acetate stencil", "Spray cans", "Wall, paper, or canvas substrate"],
+    strokes: ["Hard laser-cut or hand-cut edge", "Overspray soft halo effect", "Layered multi-color registration"],
+    textures: ["Spray gradient within stencil boundary", "Substrate texture shows through", "Multi-layer depth by stacking stencils"],
+    notable: ["Banksy", "Blek le Rat", "C215", "Nick Walker", "Shepard Fairey (hybrid stencil/paste)"],
+    popularity: 2
+  },
+  {
+    name: "Suprematism",
+    period: "1915–1925",
+    tagline: "The zero of form — pure geometry floating in infinite white space.",
+    desc: "Founded by Kasimir Malevich, Suprematism was one of the earliest purely abstract art movements. It reduced painting to geometric forms — squares, circles, rectangles — floating in white space, freed from any reference to the material world.",
+    mediums: ["Oil on canvas"],
+    materials: ["Black, red, and primary pigments", "White oil paint ground", "Flat even canvas preparation"],
+    strokes: ["Flat even application — no visible stroke", "Compass and ruler geometry", "Pure hard-edged form"],
+    textures: ["Flat smooth surface — no texture", "Geometric form as sole visual element"],
+    notable: ["Kasimir Malevich", "El Lissitzky (adjacent)", "Ivan Klyun", "Lyubov Popova"],
+    popularity: 3
+  },
+  {
+    name: "Surrealism",
+    period: "1920s–1950s",
+    tagline: "Dreams rendered with academic precision — the impossible made hyperreal.",
+    desc: "Surrealism sought to access the unconscious through dream imagery, automatism, and the juxtaposition of unrelated objects. Dalí and Magritte used photorealist technique to render impossible scenes. Ernst and Miró used automatism and biomorphic abstraction.",
+    mediums: ["Oil on canvas (academic finish)", "Collage & photomontage", "Ink & automatic drawing", "Decalcomania & frottage"],
+    materials: ["Fine sable brushes", "Smooth gesso ground (for Dalí/Magritte)", "Found printed materials (Ernst)", "Chance material processes"],
+    strokes: ["Hyper-smooth academic blending (Dalí, Magritte)", "Automatic loose ink line (Miró)", "Rubbed frottage texture (Ernst)", "Biomorphic flowing contours"],
+    textures: ["Illusion of real textures on impossible objects", "Frottage rubbing textures", "Decalcomania random blotch forms"],
+    notable: ["Salvador Dalí", "René Magritte", "Max Ernst", "Joan Miró", "Frida Kahlo", "Man Ray"],
+    popularity: 1
+  },
+  {
+    name: "Symbolism",
+    period: "1880s–1910s",
+    tagline: "The material world as veil — art reaching toward mystery and the ineffable.",
+    desc: "Symbolist artists believed the visible world was merely a symbol of deeper spiritual or psychological truths. Their work turned to myth, dream, death, and eroticism as vehicles for transcendent meaning, using rich color and enigmatic imagery.",
+    mediums: ["Oil on canvas", "Pastel", "Watercolor"],
+    materials: ["Deep jewel-toned pigments", "Gold leaf (decorative)", "Varnished glazes"],
+    strokes: ["Smooth atmospheric blending", "Decorative patterning", "Symbolically charged color"],
+    textures: ["Jewel-like surface", "Decorative flat pattern against deep atmosphere", "Dreamy soft transitions"],
+    notable: ["Gustave Moreau", "Odilon Redon", "Arnold Böcklin", "Fernand Khnopff", "Jan Toorop", "Gustav Klimt (overlap)"],
+    popularity: 2
+  },
+  {
+    name: "Ukiyo-e",
+    period: "1600s–1900s",
+    tagline: "Pictures of the floating world — kabuki, courtesans, and crashing waves.",
+    desc: "Ukiyo-e ('pictures of the floating world') were Japanese woodblock prints depicting the pleasure districts, kabuki actors, and landscapes of Edo-period Japan. Color was applied via separate carved blocks — a labor-intensive, highly collaborative process.",
+    mediums: ["Woodblock print on washi paper", "Hand-painted brushwork (early period)", "Watercolor"],
+    materials: ["Cherry wood blocks", "Mineral and plant-based pigments on washi paper", "Rice paste binder", "Brush-applied ink layers"],
+    strokes: ["Carved woodblock line — even, controlled outlines", "Flat color fills registered between blocks", "Bokashi (gradient) hand-applied while printing"],
+    textures: ["Slight washi paper texture under flat color", "Woodgrain sometimes intentionally shown", "Matte flat color planes"],
+    notable: ["Katsushika Hokusai", "Utagawa Hiroshige", "Kitagawa Utamaro", "Tōshūsai Sharaku"],
+    popularity: 1
+  },
+  {
+    name: "Watercolor",
+    period: "Ancient–Present (formalized 18th–19th C)",
+    tagline: "Water as co-creator — transparency, blooms, and the beautiful accident.",
+    desc: "Watercolor is defined by the transparency of pigment suspended in gum arabic, applied to paper in washes that reveal the white of the surface for luminosity. Its unpredictability — blooms, backruns, wet edges — is a source of both frustration and beauty.",
+    mediums: ["Watercolor on hot or cold press paper", "Gouache (opaque watercolor)"],
+    materials: ["Gum arabic binder", "Cotton rag paper (Arches, Fabriano)", "Sable & synthetic brushes", "Masking fluid"],
+    strokes: ["Wet-on-wet blooms", "Wet-on-dry controlled washes", "Dry brush texture on rough paper", "Salt texture effects", "Granulating pigments (ultramarine, burnt sienna)"],
+    textures: ["Paper texture visible through washes", "Bloom and backrun organic edges", "Layered transparent glazes", "Granulating mineral settling"],
+    notable: ["J.M.W. Turner", "John Singer Sargent", "Winslow Homer", "Paul Cézanne", "Andrew Wyeth"],
+    popularity: 1
+  },
+  {
+    name: "Woodblock / Woodcut Printmaking",
+    period: "9th Century–Present",
+    tagline: "The pressure of wood on paper — bold line, strong grain, and ink.",
+    desc: "Woodblock printing carves a relief image into wood, applies ink, and presses paper against it. In Europe it was bold and expressive (especially German Expressionist woodcuts); in Japan it evolved into the multiblock ukiyo-e tradition of refined color.",
+    mediums: ["Relief print on paper", "Fabric stamping", "Artist's book pages"],
+    materials: ["Cherry, pine, or plywood block", "Oil-based block ink or water-based", "Washi or western printmaking paper", "Baren or printing press"],
+    strokes: ["V-gouge fine line cuts", "Broad flat-gouge clear areas", "Grain patterns visible", "Bold contrasting black and white"],
+    textures: ["Wood grain impression on paper", "Ink pressure variation", "Slight embossing of relief line"],
+    notable: ["Albrecht Dürer", "Ernst Ludwig Kirchner", "Käthe Kollwitz", "Hokusai (color woodblock)", "Gustave Baumann"],
+    popularity: 2
+  }
+];
+
+// Sort alphabetically
+const alphaSorted = [...styles].sort((a, b) => a.name.localeCompare(b.name));
+
+// Sort by popularity (1 = most popular), secondary alpha
+const popSorted = [...styles].sort((a, b) => a.popularity - b.popularity || a.name.localeCompare(b.name));
+
+// Build a card
+function buildCard(s, id) {
+  return `
+  <div class="style-card" id="card-${id}" onclick="toggleCard('card-${id}')">
+    <div class="card-header">
+      <div class="card-title-row">
+        <span class="style-name">${s.name}</span>
+        <span class="style-period">${s.period}</span>
+      </div>
+      <span class="card-toggle">▾</span>
+    </div>
+    <div class="card-tagline">${s.tagline}</div>
+    <div class="card-body">
+      <p class="detail-desc">${s.desc}</p>
+      <div class="detail-grid">
+        <div class="detail-block">
+          <h4>Mediums</h4>
+          <ul>${s.mediums.map(m=>`<li>${m}</li>`).join('')}</ul>
+        </div>
+        <div class="detail-block">
+          <h4>Materials</h4>
+          <ul>${s.materials.map(m=>`<li>${m}</li>`).join('')}</ul>
+        </div>
+        <div class="detail-block">
+          <h4>Stroke / Technique</h4>
+          <ul>${s.strokes.map(m=>`<li>${m}</li>`).join('')}</ul>
+        </div>
+        <div class="detail-block">
+          <h4>Texture Characteristics</h4>
+          <ul>${s.textures.map(m=>`<li>${m}</li>`).join('')}</ul>
+        </div>
+      </div>
+      <div class="notable-wrap">
+        ${s.notable.map(n=>`<span class="notable-tag">${n}</span>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// Build alphabetical view
+function buildAlpha(list) {
+  const letters = {};
+  list.forEach(s => {
+    const l = s.name[0].toUpperCase();
+    if (!letters[l]) letters[l] = [];
+    letters[l].push(s);
+  });
+
+  let indexHtml = '<div class="alpha-index">';
+  Object.keys(letters).sort().forEach(l => {
+    indexHtml += `<a href="#alpha-${l}">${l}</a>`;
+  });
+  indexHtml += '</div>';
+
+  let bodyHtml = '';
+  let cardId = 0;
+  Object.keys(letters).sort().forEach(l => {
+    bodyHtml += `<div class="alpha-group" id="alpha-${l}">
+      <div class="alpha-letter">${l}</div>`;
+    letters[l].forEach(s => {
+      bodyHtml += buildCard(s, 'a-' + cardId++);
+    });
+    bodyHtml += '</div>';
+  });
+
+  document.getElementById('alphaContent').innerHTML = indexHtml + `<div id="alphaCards">${bodyHtml}</div>`;
+}
+
+// Build popularity view
+function buildPop() {
+  const tiers = [
+    { key: 1, label: 'Iconic', sub: 'Universally recognized, globally taught, endlessly referenced.' },
+    { key: 2, label: 'Established', sub: 'Widely known, studied in depth, significant cultural presence.' },
+    { key: 3, label: 'Specialist', sub: 'Important within art history, studied by enthusiasts and scholars.' }
+  ];
+  let html = '';
+  let cardId = 0;
+  tiers.forEach(t => {
+    const group = popSorted.filter(s => s.popularity === t.key);
+    html += `<div class="tier-section tier-${t.key}">
+      <div class="tier-header">
+        <span class="tier-badge">${t.label}</span>
+        <span class="tier-label">${t.sub}</span>
+      </div>`;
+    group.forEach(s => { html += buildCard(s, 'p-' + cardId++); });
+    html += '</div>';
+  });
+  document.getElementById('popContent').innerHTML = html;
+}
+
+function toggleCard(id) {
+  const card = document.getElementById(id);
+  card.classList.toggle('open');
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.getAttribute('onclick').includes("'"+tab+"'")) b.classList.add('active');
+  });
+}
+
+function filterStyles() {
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+  if (!query) {
+    buildAlpha(alphaSorted);
+    document.getElementById('countDisplay').textContent = alphaSorted.length;
+    return;
+  }
+  const filtered = alphaSorted.filter(s =>
+    s.name.toLowerCase().includes(query) ||
+    s.tagline.toLowerCase().includes(query) ||
+    s.desc.toLowerCase().includes(query) ||
+    s.mediums.some(m => m.toLowerCase().includes(query)) ||
+    s.materials.some(m => m.toLowerCase().includes(query)) ||
+    s.strokes.some(m => m.toLowerCase().includes(query)) ||
+    s.textures.some(m => m.toLowerCase().includes(query)) ||
+    s.notable.some(m => m.toLowerCase().includes(query)) ||
+    s.period.toLowerCase().includes(query)
+  );
+  buildAlpha(filtered);
+  document.getElementById('countDisplay').textContent = filtered.length;
+}
+
+buildAlpha(alphaSorted);
+buildPop();
+</script>
+</body>
+</html>
