@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Sim — A Handbook for Forgotten Realms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --plumbob-green: #6FE34A;
+    --plumbob-bright: #A6FF66;
+    --plumbob-dark: #3DA82C;
+    --sim-cream: #FFF9EC;
+    --sim-ink: #2A2D34;
+    --sim-soft: #555862;
+    --mood-happy: #6FE34A;
+    --mood-fine: #F5D547;
+    --mood-tense: #F39C12;
+    --mood-angry: #E74C3C;
+    --mood-sad: #5DADE2;
+    --mood-flirty: #E87FD0;
+    --vampire: #7B0D17;
+    --spellcaster: #8A4DFF;
+    --mermaid: #1ABAE0;
+    --ghost: #AFD6E6;
+    --alien: #4DFF91;
+    --servo: #C4C9D1;
+    --plantsim: #6A9A4A;
+    --werewolf: #8B4513;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Quicksand', sans-serif;
+    background: linear-gradient(180deg, #F4FBEF 0%, #FFF9EC 100%);
+    color: var(--sim-ink);
+    line-height: 1.65;
+    font-weight: 500;
+  }
+
+  .plumbob {
+    display: inline-block;
+    width: 20px;
+    height: 28px;
+    position: relative;
+    filter: drop-shadow(0 0 8px rgba(111, 227, 74, 0.6));
+    animation: float 3s ease-in-out infinite;
+    vertical-align: middle;
+  }
+  .plumbob::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--plumbob-bright) 0%, var(--plumbob-green) 50%, var(--plumbob-dark) 100%);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-6px); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .cover {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: radial-gradient(ellipse at top, rgba(111, 227, 74, 0.15) 0%, transparent 60%), linear-gradient(180deg, #FFFDF4 0%, #F4FBEF 100%);
+    text-align: center;
+  }
+
+  .cover-plumbob {
+    width: 100px;
+    height: 140px;
+    position: relative;
+    margin-bottom: 40px;
+    filter: drop-shadow(0 0 30px rgba(111, 227, 74, 0.8));
+    animation: float 3s ease-in-out infinite;
+  }
+  .cover-plumbob::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #D4FFB0 0%, var(--plumbob-bright) 30%, var(--plumbob-green) 60%, var(--plumbob-dark) 100%);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+  .cover-plumbob::after {
+    content: '';
+    position: absolute;
+    top: 18%;
+    left: 22%;
+    width: 28%;
+    height: 22%;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    filter: blur(2px);
+  }
+
+  .cover h1 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(2.5rem, 7vw, 5.5rem);
+    font-weight: 700;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--plumbob-dark) 0%, var(--plumbob-green) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .cover-subtitle {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(1rem, 2vw, 1.4rem);
+    font-weight: 500;
+    color: var(--sim-soft);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 30px;
+  }
+
+  .cover-tagline {
+    max-width: 600px;
+    font-size: 1.1rem;
+    color: var(--sim-soft);
+    font-style: italic;
+    margin-top: 20px;
+  }
+
+  .cover-meta {
+    margin-top: 60px;
+    padding: 16px 32px;
+    background: white;
+    border: 2px solid var(--plumbob-green);
+    border-radius: 40px;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--sim-soft);
+    box-shadow: 0 4px 20px rgba(111, 227, 74, 0.2);
+  }
+
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(253, 253, 248, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 2px solid var(--plumbob-green);
+    padding: 12px 0;
+  }
+  .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-inner::-webkit-scrollbar { display: none; }
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--plumbob-dark);
+    flex-shrink: 0;
+  }
+  .nav a {
+    color: var(--sim-soft);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.88rem;
+    white-space: nowrap;
+    padding: 6px 12px;
+    border-radius: 20px;
+    transition: all 0.2s;
+  }
+  .nav a:hover {
+    background: var(--plumbob-green);
+    color: white;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 60px 24px;
+  }
+
+  section {
+    margin-bottom: 100px;
+    scroll-margin-top: 80px;
+  }
+
+  .section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 18px;
+    background: var(--plumbob-green);
+    color: white;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(111, 227, 74, 0.3);
+  }
+
+  h2 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 700;
+    color: var(--sim-ink);
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+    line-height: 1.1;
+  }
+
+  h3 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--sim-ink);
+    margin-bottom: 14px;
+    margin-top: 32px;
+  }
+
+  h4 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--plumbob-dark);
+    margin-bottom: 10px;
+    margin-top: 20px;
+  }
+
+  .lead {
+    font-size: 1.15rem;
+    color: var(--sim-soft);
+    max-width: 800px;
+    margin-bottom: 30px;
+  }
+
+  p { margin-bottom: 14px; }
+  strong { color: var(--sim-ink); font-weight: 700; }
+
+  .sim-profile {
+    background: white;
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 0 10px 40px rgba(42, 45, 52, 0.08);
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 40px;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+
+  @media (max-width: 768px) {
+    .sim-profile { grid-template-columns: 1fr; }
+  }
+
+  .sim-portrait {
+    aspect-ratio: 1;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #E8F9DA 0%, #FFF5E5 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sim-portrait-plumbob {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 30px;
+    height: 42px;
+  }
+  .sim-portrait-plumbob::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--plumbob-bright) 0%, var(--plumbob-green) 100%);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    filter: drop-shadow(0 0 8px rgba(111, 227, 74, 0.6));
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .info-cell {
+    background: var(--sim-cream);
+    padding: 14px 16px;
+    border-radius: 12px;
+    border-left: 3px solid var(--plumbob-green);
+  }
+  .info-cell-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--sim-soft);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .info-cell-value {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--sim-ink);
+  }
+
+  .stat-block {
+    background: white;
+    border-radius: 20px;
+    padding: 24px 28px;
+    box-shadow: 0 6px 24px rgba(42, 45, 52, 0.06);
+    margin: 20px 0;
+    border: 1px solid rgba(111, 227, 74, 0.2);
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 10px 0;
+    border-bottom: 1px dashed #E8EAEF;
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { color: var(--sim-soft); font-weight: 600; }
+  .stat-value { font-weight: 700; color: var(--sim-ink); text-align: right; }
+
+  .mood-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+
+  .mood-card {
+    padding: 20px;
+    border-radius: 16px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.2s;
+  }
+  .mood-card:hover { transform: translateY(-4px); }
+
+  .mood-card h4 {
+    color: white;
+    font-size: 1.3rem;
+    margin: 6px 0;
+  }
+  .mood-card p {
+    font-size: 0.9rem;
+    opacity: 0.95;
+    margin: 0;
+  }
+
+  .mood-card-plumbob {
+    width: 24px;
+    height: 32px;
+    background: rgba(255,255,255,0.85);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.5));
+  }
+
+  .mood-happy { background: linear-gradient(135deg, #6FE34A 0%, #2ECC40 100%); }
+  .mood-elated { background: linear-gradient(135deg, #2ECC40 0%, #1B7A1B 100%); }
+  .mood-fine { background: linear-gradient(135deg, #F5D547 0%, #D4A72C 100%); }
+  .mood-tense { background: linear-gradient(135deg, #F39C12 0%, #C0661A 100%); }
+  .mood-angry { background: linear-gradient(135deg, #E74C3C 0%, #A02820 100%); }
+  .mood-sad { background: linear-gradient(135deg, #5DADE2 0%, #2874A6 100%); }
+  .mood-flirty { background: linear-gradient(135deg, #E87FD0 0%, #9B4A8A 100%); }
+  .mood-depressed { background: linear-gradient(135deg, #3A5F8A 0%, #1B2D45 100%); }
+  .mood-mortified { background: linear-gradient(135deg, #4A4A4A 0%, #1A1A1A 100%); }
+
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin: 24px 0;
+  }
+
+  .stage {
+    background: white;
+    padding: 20px 16px;
+    border-radius: 16px;
+    border-top: 4px solid var(--plumbob-green);
+    box-shadow: 0 4px 16px rgba(42, 45, 52, 0.06);
+    transition: transform 0.2s;
+  }
+  .stage:hover { transform: translateY(-2px); }
+
+  .stage-icon {
+    font-size: 2.5rem;
+    margin-bottom: 8px;
+  }
+
+  .stage-days {
+    font-size: 0.8rem;
+    color: var(--plumbob-dark);
+    font-weight: 700;
+    background: #E8F9DA;
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+
+  .stage p {
+    font-size: 0.88rem;
+    color: var(--sim-soft);
+    margin: 0;
+  }
+
+  .occult-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+  }
+
+  .occult {
+    background: white;
+    border-radius: 20px;
+    padding: 28px;
+    position: relative;
+    box-shadow: 0 6px 24px rgba(42, 45, 52, 0.08);
+    transition: transform 0.2s;
+    border-top: 6px solid var(--plumbob-green);
+  }
+  .occult:hover { transform: translateY(-4px); }
+
+  .occult-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 14px;
+  }
+
+  .occult-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+  }
+
+  .occult-tag {
+    font-size: 0.72rem;
+    padding: 4px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    background: var(--sim-cream);
+    color: var(--sim-soft);
+  }
+
+  .occult h4 {
+    font-size: 1.4rem;
+    margin: 0 0 4px 0;
+    color: var(--sim-ink);
+  }
+
+  .occult-subtitle {
+    font-size: 0.9rem;
+    color: var(--sim-soft);
+    font-style: italic;
+    margin-bottom: 12px;
+  }
+
+  .occult-traits {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed #E8EAEF;
+    font-size: 0.88rem;
+    color: var(--sim-soft);
+  }
+
+  .occult-traits strong { color: var(--sim-ink); }
+
+  .occult.vampire { border-top-color: var(--vampire); }
+  .occult.spellcaster { border-top-color: var(--spellcaster); }
+  .occult.mermaid { border-top-color: var(--mermaid); }
+  .occult.ghost { border-top-color: var(--ghost); }
+  .occult.alien { border-top-color: var(--alien); }
+  .occult.servo { border-top-color: var(--servo); }
+  .occult.plantsim { border-top-color: var(--plantsim); }
+  .occult.werewolf { border-top-color: var(--werewolf); }
+
+  .death-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .death {
+    background: white;
+    padding: 16px 18px;
+    border-radius: 14px;
+    border-left: 4px solid #4A4A4A;
+    box-shadow: 0 4px 12px rgba(42, 45, 52, 0.05);
+  }
+
+  .death-icon {
+    font-size: 1.6rem;
+    margin-bottom: 4px;
+  }
+
+  .death-name {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    color: var(--sim-ink);
+    margin-bottom: 4px;
+  }
+
+  .death-desc {
+    font-size: 0.82rem;
+    color: var(--sim-soft);
+    line-height: 1.4;
+  }
+
+  .worlds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin: 20px 0;
+  }
+
+  .world {
+    background: linear-gradient(135deg, white 0%, #FFFDF4 100%);
+    padding: 18px 20px;
+    border-radius: 14px;
+    box-shadow: 0 4px 14px rgba(42, 45, 52, 0.06);
+    border-bottom: 3px solid var(--plumbob-green);
+  }
+
+  .world-name {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--sim-ink);
+    margin-bottom: 4px;
+  }
+
+  .world-tag {
+    font-size: 0.72rem;
+    color: var(--plumbob-dark);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .world-desc {
+    font-size: 0.82rem;
+    color: var(--sim-soft);
+    line-height: 1.5;
+  }
+
+  .careers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+    margin: 28px 0;
+  }
+
+  .career {
+    background: white;
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 6px 20px rgba(42, 45, 52, 0.07);
+    transition: all 0.2s;
+    border-left: 5px solid var(--plumbob-green);
+  }
+  .career:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 28px rgba(42, 45, 52, 0.12);
+  }
+
+  .career-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .career-icon {
+    font-size: 1.8rem;
+    background: var(--sim-cream);
+    padding: 8px;
+    border-radius: 12px;
+    min-width: 44px;
+    text-align: center;
+  }
+
+  .career h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--sim-ink);
+  }
+
+  .career-class {
+    font-size: 0.78rem;
+    color: var(--plumbob-dark);
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .career p {
+    font-size: 0.9rem;
+    color: var(--sim-soft);
+    margin-bottom: 10px;
+  }
+
+  .career-traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .career-trait {
+    background: var(--sim-cream);
+    padding: 4px 10px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--sim-ink);
+  }
+
+  .weapon {
+    background: white;
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 6px 20px rgba(42, 45, 52, 0.07);
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .weapon-icon {
+    font-size: 2.8rem;
+    background: linear-gradient(135deg, #E8F9DA 0%, #FFF5E5 100%);
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .weapon-name {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--sim-ink);
+    margin-bottom: 2px;
+  }
+
+  .weapon-type {
+    font-size: 0.75rem;
+    color: var(--plumbob-dark);
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .weapon p { font-size: 0.92rem; margin-bottom: 0; }
+
+  .plant {
+    display: flex;
+    gap: 16px;
+    padding: 18px;
+    background: linear-gradient(135deg, #F4FBEF 0%, #FFF9EC 100%);
+    border-radius: 16px;
+    margin-bottom: 12px;
+    border-left: 4px solid var(--plantsim);
+  }
+
+  .plant-icon {
+    font-size: 2.5rem;
+    flex-shrink: 0;
+  }
+
+  .plant-name {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    color: var(--sim-ink);
+    margin-bottom: 4px;
+    font-size: 1.1rem;
+  }
+
+  .plant-desc {
+    font-size: 0.9rem;
+    color: var(--sim-soft);
+    line-height: 1.5;
+  }
+
+  .callout {
+    background: linear-gradient(135deg, #E8F9DA 0%, #F4FBEF 100%);
+    padding: 24px 28px;
+    border-radius: 18px;
+    border-left: 5px solid var(--plumbob-green);
+    margin: 24px 0;
+  }
+
+  .callout-label {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--plumbob-dark);
+    margin-bottom: 8px;
+  }
+
+  .needs-list {
+    display: grid;
+    gap: 14px;
+    margin: 20px 0;
+  }
+
+  .need {
+    background: white;
+    padding: 16px 20px;
+    border-radius: 14px;
+    box-shadow: 0 3px 10px rgba(42, 45, 52, 0.05);
+  }
+
+  .need-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .need-name {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    color: var(--sim-ink);
+  }
+
+  .need-icon {
+    font-size: 1.4rem;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  .need-bar {
+    height: 12px;
+    background: #E8EAEF;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .need-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--mood-angry) 0%, var(--mood-tense) 35%, var(--mood-fine) 60%, var(--mood-happy) 100%);
+    border-radius: 6px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .need-consequences {
+    font-size: 0.85rem;
+    color: var(--sim-soft);
+    margin-top: 6px;
+  }
+
+  footer {
+    background: var(--sim-ink);
+    color: white;
+    padding: 50px 24px;
+    text-align: center;
+    margin-top: 60px;
+  }
+
+  footer h3 {
+    color: var(--plumbob-bright);
+    margin-bottom: 10px;
+  }
+
+  footer p {
+    opacity: 0.7;
+    max-width: 600px;
+    margin: 0 auto 10px;
+    font-size: 0.9rem;
+  }
+
+  footer .sul {
+    margin-top: 30px;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 1.2rem;
+    color: var(--plumbob-bright);
+    letter-spacing: 4px;
+  }
+
+  .sim-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(42, 45, 52, 0.06);
+    margin: 20px 0;
+  }
+
+  .sim-table thead {
+    background: var(--plumbob-green);
+    color: white;
+  }
+
+  .sim-table th {
+    padding: 14px 18px;
+    text-align: left;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .sim-table td {
+    padding: 12px 18px;
+    border-bottom: 1px solid #F0F2F5;
+    font-size: 0.92rem;
+  }
+
+  .sim-table tr:last-child td { border-bottom: none; }
+  .sim-table tr:hover td { background: #F9FDEF; }
+
+  .simlish-box {
+    background: linear-gradient(135deg, #FFF5E5 0%, #FFE8CC 100%);
+    padding: 24px 28px;
+    border-radius: 18px;
+    border: 2px dashed var(--mood-tense);
+    margin: 16px 0;
+  }
+
+  .simlish-phrase {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #C0661A;
+    margin-bottom: 4px;
+  }
+
+  .simlish-translation {
+    font-size: 0.95rem;
+    color: var(--sim-soft);
+    font-style: italic;
+  }
+
+  section, .stage, .occult, .career, .mood-card, .world, .weapon, .death {
+    animation: fadeInUp 0.6s ease-out backwards;
+  }
+
+  .divider {
+    height: 60px;
+    background-image:
+      radial-gradient(circle, var(--plumbob-green) 2px, transparent 2px),
+      radial-gradient(circle, var(--plumbob-bright) 2px, transparent 2px);
+    background-size: 30px 30px;
+    background-position: 0 0, 15px 15px;
+    opacity: 0.3;
+    margin: 60px 0;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="cover">
+  <div class="cover-plumbob"></div>
+  <div class="cover-subtitle">A Race Handbook for Forgotten Realms</div>
+  <h1>THE SIM</h1>
+  <div class="cover-tagline">
+    "Miscalculated rocket trajectories and accidental planar breaches — a field guide to the accidental tourist from The Neighborhood."
+  </div>
+  <div class="cover-meta">Volume I · Compiled in Faerûn, 1493 DR</div>
+</div>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-logo"><span class="plumbob"></span> SIM HANDBOOK</div>
+    <a href="#overview">Overview</a>
+    <a href="#life-stages">Life Stages</a>
+    <a href="#plumbob">Plumbob</a>
+    <a href="#needs">Needs</a>
+    <a href="#moods">Moods</a>
+    <a href="#occults">Occults</a>
+    <a href="#death">Death</a>
+    <a href="#worlds">Worlds</a>
+    <a href="#careers">Careers</a>
+    <a href="#weapons">Gear</a>
+    <a href="#horticulture">Plants</a>
+    <a href="#simlish">Simlish</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <section id="overview">
+    <div class="section-label"><span class="plumbob"></span> The Species</div>
+    <h2>An Overview of Sims</h2>
+    <p class="lead">
+      Sims are a humanoid species from a parallel material plane known as <strong>The Neighborhood</strong> — a reality operating under fundamentally different physical laws than Faerûn. In their world, needs are quantified, emotions are color-coded, and a glowing diamond floats above every living creature's head at all times.
+    </p>
+
+    <div class="sim-profile">
+      <div class="sim-portrait">
+        <div class="sim-portrait-plumbob"></div>
+        😊
+      </div>
+      <div>
+        <h3 style="margin-top:0;">Quick Profile</h3>
+        <div class="info-grid">
+          <div class="info-cell">
+            <div class="info-cell-label">Home Plane</div>
+            <div class="info-cell-value">The Neighborhood</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Size</div>
+            <div class="info-cell-value">Medium</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Speed</div>
+            <div class="info-cell-value">30 ft</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Lifespan</div>
+            <div class="info-cell-value">~90 Sim-Days</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Language</div>
+            <div class="info-cell-value">Simlish, Common</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Rarity</div>
+            <div class="info-cell-value">Singular</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Racial Traits</h3>
+    <div class="stat-block">
+      <div class="stat-row"><span class="stat-label">Ability Score Increase</span><span class="stat-value">+2 INT, +1 to any two others</span></div>
+      <div class="stat-row"><span class="stat-label">Size</span><span class="stat-value">Medium — uncanny proportions</span></div>
+      <div class="stat-row"><span class="stat-label">Speed</span><span class="stat-value">30 ft, Speed-Up 1/short rest</span></div>
+      <div class="stat-row"><span class="stat-label">Plumbob</span><span class="stat-value">Always visible, cannot be hidden</span></div>
+      <div class="stat-row"><span class="stat-label">Skill Grind</span><span class="stat-value">Retry failed skill check 1/long rest</span></div>
+      <div class="stat-row"><span class="stat-label">Emotional Cooking</span><span class="stat-value">Infuse mood into food during short rest</span></div>
+      <div class="stat-row"><span class="stat-label">Free Will Toggle</span><span class="stat-value">Autonomous action 1/session</span></div>
+      <div class="stat-row"><span class="stat-label">Death Bargain</span><span class="stat-value">CHA check vs. death entity 1/long rest</span></div>
+      <div class="stat-row"><span class="stat-label">Mood Sight</span><span class="stat-value">See plumbobs on all creatures</span></div>
+      <div class="stat-row"><span class="stat-label">Languages</span><span class="stat-value">Simlish, Common</span></div>
+    </div>
+
+    <div class="callout">
+      <div class="callout-label"><span class="plumbob"></span> A Note on Lifespan</div>
+      <p style="margin-bottom:0;">
+        Sims age in <strong>distinct life stages</strong>. In their home world an adult Sim lives approximately 24 in-world days — roughly 90 days total from infant to elder. <strong>Planar travel has disrupted this cycle</strong>. A Sim in Faerûn may age at standard Sim rates, at Faerûnian human rates, or at no rate at all. They do not know which. They are choosing not to ask.
+      </p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="life-stages">
+    <div class="section-label"><span class="plumbob"></span> Life Stages</div>
+    <h2>The Seven Ages of a Sim</h2>
+    <p class="lead">
+      Unlike the long slow aging of elves, Sims progress through clean discrete stages. The transition is instantaneous and involves a brief light show nobody fully understands.
+    </p>
+
+    <div class="timeline">
+      <div class="stage">
+        <div class="stage-icon">👶</div>
+        <div class="stage-days">Days 0–3</div>
+        <h4>Infant</h4>
+        <p>Immobile. Cannot speak. Requires constant care. Will cry in Simlish at frequencies that disturb nearby wizards.</p>
+      </div>
+      <div class="stage">
+        <div class="stage-icon">🍼</div>
+        <div class="stage-days">Days 3–7</div>
+        <h4>Toddler</h4>
+        <p>Walks, climbs, falls frequently. Learns one Skill permanently. Will eat anything.</p>
+      </div>
+      <div class="stage">
+        <div class="stage-icon">🧒</div>
+        <div class="stage-days">Days 7–20</div>
+        <h4>Child</h4>
+        <p>Attends school. Develops Personality traits. Unable to WooHoo, unable to die of Old Age.</p>
+      </div>
+      <div class="stage">
+        <div class="stage-icon">📚</div>
+        <div class="stage-days">Days 20–34</div>
+        <h4>Teen</h4>
+        <p>Moody by default. Plumbob cycles at 3× rate. Part-time jobs available. Social need doubles.</p>
+      </div>
+      <div class="stage">
+        <div class="stage-icon">🧑</div>
+        <div class="stage-days">Days 34–58</div>
+        <h4>Young Adult</h4>
+        <p>Peak condition. All careers accessible. All WooHoo unlocked. Most Sim adventurers are this stage.</p>
+      </div>
+      <div class="stage">
+        <div class="stage-icon">👔</div>
+        <div class="stage-days">Days 58–82</div>
+        <h4>Adult</h4>
+        <p>Established. Skills peak. Slight physical softening. Sims refuse to notice this stage.</p>
+      </div>
+      <div class="stage">
+        <div class="stage-icon">👴</div>
+        <div class="stage-days">Days 82–90</div>
+        <h4>Elder</h4>
+        <p>Grey hair, slower movement. +2 INT and WIS. Dies of Old Age at unpredictable moment with trumpet fanfare.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="callout-label"><span class="plumbob"></span> Mechanical Translation</div>
+      <p style="margin-bottom:0;">
+        For D&D purposes, Young Adult/Adult is the default playable range. Teen stage: +2 CHA but emotional penalties doubled. Elder stage: +2 INT/WIS, -2 CON, may die of Old Age on a DM-determined timer.
+      </p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="plumbob">
+    <div class="section-label"><span class="plumbob"></span> The Plumbob</div>
+    <h2>The Diamond Above</h2>
+    <p class="lead">
+      A translucent diamond-shaped gem floats approximately one foot above the head of every Sim at all times. It is not jewelry. It is not magical in any Faerûnian sense. It simply <em>is</em>.
+    </p>
+
+    <p>
+      The Plumbob shifts color to reflect the Sim's emotional state. It cannot be hidden, covered, dispelled, or removed. Attempts have all failed and some produced Wild Magic side effects. <strong>Detect Magic</strong> reveals it as conjuration of a school unknown to Faerûnian theory. <strong>True Sight</strong> reveals it as part of the Sim's fundamental essence — as integral as a heart or shadow.
+    </p>
+
+    <p>
+      All creatures within 60 feet can see the Plumbob. Enemies can read the Sim's emotional state before the first attack lands. This is a significant tactical disadvantage. <strong>The Sim cannot perceive their own Plumbob.</strong> They are the only being who cannot see it.
+    </p>
+
+    <div class="callout">
+      <div class="callout-label"><span class="plumbob"></span> Mood Sight — Racial Gift</div>
+      <p style="margin-bottom:0;">
+        The Sim can perceive the emotional state of every creature they look at, even those without Plumbobs. They automatically know when someone is lying, aroused, frightened, or grieving. <strong>This is not Detect Thoughts.</strong> It is simply how Sims perceive other beings. The Sim assumes this is normal and cannot understand why mortals make such a big deal about Insight checks.
+      </p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="moods">
+    <div class="section-label"><span class="plumbob"></span> Emotional States</div>
+    <h2>The Nine Moods</h2>
+    <p class="lead">
+      The Plumbob cycles through nine documented emotional states. Each produces distinct mechanical effects.
+    </p>
+
+    <div class="mood-grid">
+      <div class="mood-card mood-happy">
+        <div><div class="mood-card-plumbob"></div><h4>Happy</h4></div>
+        <p><strong>+1</strong> to all ability checks. Default adventuring state.</p>
+      </div>
+      <div class="mood-card mood-elated">
+        <div><div class="mood-card-plumbob"></div><h4>Elated</h4></div>
+        <p>Advantage on CHA, +5 ft movement. Plumbob glows visibly.</p>
+      </div>
+      <div class="mood-card mood-fine">
+        <div><div class="mood-card-plumbob"></div><h4>Fine</h4></div>
+        <p>No effect. Baseline neutral. Most NPCs live here.</p>
+      </div>
+      <div class="mood-card mood-tense">
+        <div><div class="mood-card-plumbob"></div><h4>Tense</h4></div>
+        <p>Disadvantage on concentration saves. Paces involuntarily.</p>
+      </div>
+      <div class="mood-card mood-angry">
+        <div><div class="mood-card-plumbob"></div><h4>Angry</h4></div>
+        <p><strong>+2</strong> attack rolls, <strong>-2</strong> WIS saves. Red plumbob.</p>
+      </div>
+      <div class="mood-card mood-sad">
+        <div><div class="mood-card-plumbob"></div><h4>Sad</h4></div>
+        <p>Disadvantage on social checks. Sighs before speaking.</p>
+      </div>
+      <div class="mood-card mood-flirty">
+        <div><div class="mood-card-plumbob"></div><h4>Flirty</h4></div>
+        <p>Advantage on Persuasion, disadvantage on Intimidation.</p>
+      </div>
+      <div class="mood-card mood-depressed">
+        <div><div class="mood-card-plumbob"></div><h4>Depressed</h4></div>
+        <p><strong>-1</strong> all checks. Cannot use Skill Grind.</p>
+      </div>
+      <div class="mood-card mood-mortified">
+        <div><div class="mood-card-plumbob"></div><h4>Mortified</h4></div>
+        <p>Black Plumbob. CON save DC 13 or die of Embarrassment.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="needs">
+    <div class="section-label"><span class="plumbob"></span> The Motives</div>
+    <h2>Six Fundamental Needs</h2>
+    <p class="lead">
+      Sims have six core Needs that must be periodically met. Extended stress, imprisonment, or long journeys can produce real consequences.
+    </p>
+
+    <div class="needs-list">
+      <div class="need">
+        <div class="need-header"><span class="need-name"><span class="need-icon">🍔</span>Hunger</span><span style="font-size:0.85rem;color:var(--sim-soft);">Every Long Rest</span></div>
+        <div class="need-bar"><div class="need-fill" style="width:72%"></div></div>
+        <div class="need-consequences">Unmet: Sad → Depressed (3 rests) → Incapacitated (7 rests) → Death.</div>
+      </div>
+      <div class="need">
+        <div class="need-header"><span class="need-name"><span class="need-icon">💬</span>Social</span><span style="font-size:0.85rem;color:var(--sim-soft);">Every 24 hours</span></div>
+        <div class="need-bar"><div class="need-fill" style="width:45%"></div></div>
+        <div class="need-consequences">Unmet: Sim will attempt conversation with anything — enemies, animals, furniture.</div>
+      </div>
+      <div class="need">
+        <div class="need-header"><span class="need-name"><span class="need-icon">🎨</span>Fun</span><span style="font-size:0.85rem;color:var(--sim-soft);">Every 24 hours</span></div>
+        <div class="need-bar"><div class="need-fill" style="width:58%"></div></div>
+        <div class="need-consequences">Unmet: Tense mood. What is "fun" is determined by the Sim.</div>
+      </div>
+      <div class="need">
+        <div class="need-header"><span class="need-name"><span class="need-icon">💤</span>Energy</span><span style="font-size:0.85rem;color:var(--sim-soft);">Standard Long Rest</span></div>
+        <div class="need-bar"><div class="need-fill" style="width:88%"></div></div>
+        <div class="need-consequences">Sim sleeps anywhere. Falls asleep mid-conversation if critical.</div>
+      </div>
+      <div class="need">
+        <div class="need-header"><span class="need-name"><span class="need-icon">🛁</span>Hygiene</span><span style="font-size:0.85rem;color:var(--sim-soft);">Every 48 hours</span></div>
+        <div class="need-bar"><div class="need-fill" style="width:33%"></div></div>
+        <div class="need-consequences">Unmet: Green miasma. CON save DC 12 for creatures within 10 ft.</div>
+      </div>
+      <div class="need">
+        <div class="need-header"><span class="need-name"><span class="need-icon">🚽</span>Bladder</span><span style="font-size:0.85rem;color:var(--sim-soft);">Varies</span></div>
+        <div class="need-bar"><div class="need-fill" style="width:65%"></div></div>
+        <div class="need-consequences">Urgent need produces distinctive animation visible to all observers.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="occults">
+    <div class="section-label"><span class="plumbob"></span> Sub-Races</div>
+    <h2>Occult Variants</h2>
+    <p class="lead">
+      Just as elves have Drow, Wood, Sea, and High variants, Sims have multiple sub-species. These may be present at character creation or acquired through specific planar events.
+    </p>
+
+    <div class="occult-grid">
+      <div class="occult vampire">
+        <div class="occult-header"><span class="occult-icon">🧛</span><span class="occult-tag">Forgotten Hollow</span></div>
+        <h4>Vampire Sim</h4>
+        <div class="occult-subtitle">Sired, not born. Immortal. Perpetually dramatic.</div>
+        <p>Sims converted by the Dark Form. Feed on plasma (blood), die in sunlight, develop a tree of Powers and Weaknesses chosen at creation.</p>
+        <div class="occult-traits"><strong>Mechanical:</strong> +2 STR, Sun Vulnerability (2d6 radiant/round in direct sunlight), Plasma Drain (bite attack heals self), Mist Form, Immortality. Plumbob darkens.</div>
+      </div>
+
+      <div class="occult spellcaster">
+        <div class="occult-header"><span class="occult-icon">🔮</span><span class="occult-tag">Glimmerbrook</span></div>
+        <h4>Spellcaster Sim</h4>
+        <div class="occult-subtitle">Trained in the Realm of Magic.</div>
+        <p>Sims who studied under Sages of Practical, Mischief, or Untamed magic. Cast spells using Spell Charges. Risk of Overcharge if used carelessly.</p>
+        <div class="occult-traits"><strong>Mechanical:</strong> +2 INT, cantrips from chosen school at will. Three schools: Practical (utility), Mischief (illusion/charm), Untamed (destructive). Overcharge = Wild Magic surge.</div>
+      </div>
+
+      <div class="occult mermaid">
+        <div class="occult-header"><span class="occult-icon">🧜</span><span class="occult-tag">Sulani</span></div>
+        <h4>Mermaid Sim</h4>
+        <div class="occult-subtitle">Island-born, saltwater in their blood.</div>
+        <p>Sims with full aquatic transformation. Legs become tail when submerged. Communicate with dolphins. Can summon storms.</p>
+        <div class="occult-traits"><strong>Mechanical:</strong> +2 CHA, Swim speed 60 ft, breathe underwater, Siren's Lure 1/long rest, dehydrates after 24 hours out of saltwater.</div>
+      </div>
+
+      <div class="occult ghost">
+        <div class="occult-header"><span class="occult-icon">👻</span><span class="occult-tag">Any World</span></div>
+        <h4>Ghost Sim</h4>
+        <div class="occult-subtitle">Died, came back, did not leave.</div>
+        <p>A Sim who died and persisted. The Plumbob is fixed forever at the emotion they died experiencing. Can be resurrected via Ambrosia or Fae intervention.</p>
+        <div class="occult-traits"><strong>Mechanical:</strong> Resistance to all damage except radiant/psychic. Pass through non-magical barriers. Cannot be Healed normally. Plumbob locked on one emotion.</div>
+      </div>
+
+      <div class="occult alien">
+        <div class="occult-header"><span class="occult-icon">👽</span><span class="occult-tag">Sixam</span></div>
+        <h4>Alien Sim</h4>
+        <div class="occult-subtitle">From the world beyond the stars.</div>
+        <p>Green-skinned Sims from Sixam. Telepathic. Can disguise themselves perfectly. Prone to abducting other Sims for scientific research they conduct politely.</p>
+        <div class="occult-traits"><strong>Mechanical:</strong> +2 INT, Telepathy (30 ft), Disguise Self at will, Advanced Brain Power, Vulnerability to mind magic.</div>
+      </div>
+
+      <div class="occult servo">
+        <div class="occult-header"><span class="occult-icon">🤖</span><span class="occult-tag">Any Lab</span></div>
+        <h4>Servo / PlumBot</h4>
+        <div class="occult-subtitle">Constructed, not born.</div>
+        <p>Robotic Sims built through the Robotics skill. Don't eat, sleep, or breathe — recharge from Solar or Electrical sources. Fully sentient. Have Plumbobs anyway.</p>
+        <div class="occult-traits"><strong>Mechanical:</strong> Construct type, no Hunger/Energy/Hygiene/Bladder needs. Needs Charge. Vulnerable to Water. Immune to poison, disease, charm, sleep.</div>
+      </div>
+
+      <div class="occult plantsim">
+        <div class="occult-header"><span class="occult-icon">🌱</span><span class="occult-tag">Greenhouse</span></div>
+        <h4>PlantSim</h4>
+        <div class="occult-subtitle">The Gardener who ate the wrong fruit.</div>
+        <p>Sims transformed into living plant-humanoids. Green skin, leafy hair. Photosynthesize in sunlight. Cannot be hungry if there is sun and water.</p>
+        <div class="occult-traits"><strong>Mechanical:</strong> +2 WIS, Photosynthesis (no Hunger need with 1 hour daily sunlight), Vulnerable to Fire, Druidic Speech with plants, Hunger replaced with Water need.</div>
+      </div>
+
+      <div class="occult werewolf">
+        <div class="occult-header"><span class="occult-icon">🐺</span><span class="occult-tag">Moonwood Mill</span></div>
+        <h4>Werewolf Sim</h4>
+        <div class="occult-subtitle">Cursed by a scratch. Transformed by the moon.</div>
+        <p>Sims afflicted with lycanthropy. Transform under full moons or intense rage. Bound by Pack loyalty. Fury mechanics at emotional extremes.</p>
+        <div class="occult-traits"><strong>Mechanical:</strong> +2 STR, +1 CON, claws (1d6 + STR slashing), transform 1/full moon, Fury when Plumbob red. Pack bond: advantage within 30 ft of ally.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="death">
+    <div class="section-label"><span class="plumbob"></span> Vulnerabilities</div>
+    <h2>Known Causes of Death</h2>
+    <p class="lead">
+      Sims die in surprisingly specific and documented ways. The Grim Reaper arrives promptly and performs the appropriate ceremony before departing.
+    </p>
+
+    <div class="death-grid">
+      <div class="death"><div class="death-icon">🍔</div><div class="death-name">Starvation</div><div class="death-desc">Hunger fully depleted for seven days. Sim simply stops.</div></div>
+      <div class="death"><div class="death-icon">😱</div><div class="death-name">Embarrassment</div><div class="death-desc">Mortified Plumbob sustained too long. Dies of shame. Literally.</div></div>
+      <div class="death"><div class="death-icon">😂</div><div class="death-name">Hysteria</div><div class="death-desc">Laughed too hard too long. Plumbob Elated into cardiac failure.</div></div>
+      <div class="death"><div class="death-icon">🐄</div><div class="death-name">Cowplant</div><div class="death-desc">Devoured by sentient carnivorous plant. See Horticulture.</div></div>
+      <div class="death"><div class="death-icon">⚰️</div><div class="death-name">Old Age</div><div class="death-desc">Elder timer expires. Trumpet fanfare plays. Peaceful, usually.</div></div>
+      <div class="death"><div class="death-icon">🔥</div><div class="death-name">Fire</div><div class="death-desc">Consumed by flames. Runs in panic circles before collapsing.</div></div>
+      <div class="death"><div class="death-icon">⚡</div><div class="death-name">Electrocution</div><div class="death-desc">Repaired faulty object while Tense. Hair permanently vertical.</div></div>
+      <div class="death"><div class="death-icon">🌊</div><div class="death-name">Drowning</div><div class="death-desc">Entered pool without exit. Cannot swim for help.</div></div>
+      <div class="death"><div class="death-icon">💪</div><div class="death-name">Overexertion</div><div class="death-desc">Exercised beyond limit. Red Plumbob. Muscle failure.</div></div>
+      <div class="death"><div class="death-icon">😡</div><div class="death-name">Anger</div><div class="death-desc">Angry Plumbob sustained too long. Combusts internally.</div></div>
+      <div class="death"><div class="death-icon">🚀</div><div class="death-name">Rocket</div><div class="death-desc">Miscalculated trajectory. How the Sim arrived in Faerûn.</div></div>
+      <div class="death"><div class="death-icon">🛏️</div><div class="death-name">Murphy Bed</div><div class="death-desc">Poorly-installed bed folded at wrong moment.</div></div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="worlds">
+    <div class="section-label"><span class="plumbob"></span> Domains</div>
+    <h2>The Worlds of The Neighborhood</h2>
+    <p class="lead">
+      The Sim comes from one of many regional worlds within the parallel plane. Each has distinct climate, culture, and native occult variants.
+    </p>
+
+    <div class="worlds-grid">
+      <div class="world"><div class="world-tag">Starter</div><div class="world-name">Willow Creek</div><div class="world-desc">Rolling southern greenery. Cultural heart. Plumbobs trend Happy.</div></div>
+      <div class="world"><div class="world-tag">Starter</div><div class="world-name">Oasis Springs</div><div class="world-desc">Desert homes, cacti, hot-tempered Plumbobs.</div></div>
+      <div class="world"><div class="world-tag">Starter</div><div class="world-name">Newcrest</div><div class="world-desc">Empty by design. Sims build everything here themselves.</div></div>
+      <div class="world"><div class="world-tag">Coastal</div><div class="world-name">Windenburg</div><div class="world-desc">European-inspired. Ancient forests, Spellcaster traditions.</div></div>
+      <div class="world"><div class="world-tag">Urban</div><div class="world-name">San Myshuno</div><div class="world-desc">Dense city, five districts, street food, political tensions.</div></div>
+      <div class="world"><div class="world-tag">Island</div><div class="world-name">Sulani</div><div class="world-desc">Tropical archipelago. Mermaid homeland. Humid Hygiene decay.</div></div>
+      <div class="world"><div class="world-tag">Dark</div><div class="world-name">Forgotten Hollow</div><div class="world-desc">Eternal twilight. Vampire territory. Arrival usually not accidental.</div></div>
+      <div class="world"><div class="world-tag">Magic</div><div class="world-name">Glimmerbrook</div><div class="world-desc">Portal to Realm of Magic. Spellcaster Sims originate here.</div></div>
+      <div class="world"><div class="world-tag">Mountain</div><div class="world-name">Mt. Komorebi</div><div class="world-desc">Japan-inspired. Snow, skiing, onsen. Cold-weather shifts.</div></div>
+      <div class="world"><div class="world-tag">Industrial</div><div class="world-name">Evergreen Harbor</div><div class="world-desc">Eco-focused. Servo-friendly charging stations.</div></div>
+      <div class="world"><div class="world-tag">Academic</div><div class="world-name">Britechester</div><div class="world-desc">Two rival universities. Scholarly Sims.</div></div>
+      <div class="world"><div class="world-tag">Rural</div><div class="world-name">Henford-on-Bagley</div><div class="world-desc">Countryside, livestock, cottagecore. Horticulture bonuses.</div></div>
+      <div class="world"><div class="world-tag">Strange</div><div class="world-name">StrangerVille</div><div class="world-desc">Mind control plants. Military. Conspiracy-driven plots.</div></div>
+      <div class="world"><div class="world-tag">Urban</div><div class="world-name">Del Sol Valley</div><div class="world-desc">Fame and celebrity. Paparazzi. Acting careers.</div></div>
+      <div class="world"><div class="world-tag">Pets</div><div class="world-name">Brindleton Bay</div><div class="world-desc">Coastal. Cats and dogs. Veterinary careers.</div></div>
+      <div class="world"><div class="world-tag">Teen</div><div class="world-name">Copperdale</div><div class="world-desc">Suburban high school drama. Bullies and prom.</div></div>
+      <div class="world"><div class="world-tag">Horse</div><div class="world-name">Chestnut Ridge</div><div class="world-desc">Ranch life. Horses. Competitive riding.</div></div>
+      <div class="world"><div class="world-tag">Werewolf</div><div class="world-name">Moonwood Mill</div><div class="world-desc">Pacific Northwest woods. Werewolf packs. Full moon activity.</div></div>
+      <div class="world"><div class="world-tag">Exotic</div><div class="world-name">Tomarang</div><div class="world-desc">Southeast Asia inspired. Temples, tropical storms.</div></div>
+      <div class="world"><div class="world-tag">Secret</div><div class="world-name">Sixam</div><div class="world-desc">Alien homeworld. Accessible only by rocket.</div></div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="careers">
+    <div class="section-label"><span class="plumbob"></span> Careers &amp; Classes</div>
+    <h2>Occupations as Classes</h2>
+    <p class="lead">
+      Sims do not use standard D&D classes. Their mechanical identity is built around the Career they held before the planar accident.
+    </p>
+
+    <div class="careers-grid">
+      <div class="career">
+        <div class="career-header"><div class="career-icon">🧪</div><h4>Scientist</h4></div>
+        <div class="career-class">Artificer — Alchemist</div>
+        <p>Worked in a home laboratory. Built serums, invented small tools. The Moodlet Solver Ray is theirs.</p>
+        <div class="career-traits"><span class="career-trait">INT primary</span><span class="career-trait">Serums</span><span class="career-trait">Invention</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">🎨</div><h4>Painter</h4></div>
+        <div class="career-class">Bard — College of Creation</div>
+        <p>Oils, watercolors, or digital. Paints can be magical conduits. Emotion affects output.</p>
+        <div class="career-traits"><span class="career-trait">CHA primary</span><span class="career-trait">Reality Painting</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">👨‍🍳</div><h4>Chef</h4></div>
+        <div class="career-class">Rogue — Epicurean</div>
+        <p>Master of Emotional Cooking. Food infuses targets with moods. Poison-proficient. Kitchen is a battlefield.</p>
+        <div class="career-traits"><span class="career-trait">DEX primary</span><span class="career-trait">Cooking</span><span class="career-trait">Poison</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">🏋️</div><h4>Athlete</h4></div>
+        <div class="career-class">Fighter — Champion</div>
+        <p>Pure physical excellence. Gym-built. Can die of Overexertion and considers it acceptable risk.</p>
+        <div class="career-traits"><span class="career-trait">STR primary</span><span class="career-trait">Peak Condition</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">📝</div><h4>Writer</h4></div>
+        <div class="career-class">Wizard — Order of the Scribes</div>
+        <p>Published novels. Can literally write reality if skill is high. Typewriter is sacred.</p>
+        <div class="career-traits"><span class="career-trait">INT primary</span><span class="career-trait">Research</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">🎸</div><h4>Musician</h4></div>
+        <div class="career-class">Bard — College of Glamour</div>
+        <p>Guitar, violin, piano, or singing. Performance-based magic. Plumbob syncs to tempo.</p>
+        <div class="career-traits"><span class="career-trait">CHA primary</span><span class="career-trait">Inspiration</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">💻</div><h4>Programmer</h4></div>
+        <div class="career-class">Artificer — Armorer</div>
+        <p>Built the firewall. Hacks reality through clicks. Tech-proficient. Socially awkward.</p>
+        <div class="career-traits"><span class="career-trait">INT primary</span><span class="career-trait">Hacking</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">🕵️</div><h4>Detective</h4></div>
+        <div class="career-class">Ranger — Gloom Stalker</div>
+        <p>Solves crimes. Reads clues supernaturally well. Plumbob always slightly suspicious.</p>
+        <div class="career-traits"><span class="career-trait">WIS primary</span><span class="career-trait">Investigation</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">🦹</div><h4>Criminal</h4></div>
+        <div class="career-class">Rogue — Assassin</div>
+        <p>Legitimate career choice in The Neighborhood. Stealth, infiltration, larceny. Has a Getaway Car.</p>
+        <div class="career-traits"><span class="career-trait">DEX primary</span><span class="career-trait">Stealth</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">💊</div><h4>Doctor</h4></div>
+        <div class="career-class">Cleric — Life Domain</div>
+        <p>Medical professional. Diagnoses ailments. Can revive. Bedside manner varies by mood.</p>
+        <div class="career-traits"><span class="career-trait">WIS primary</span><span class="career-trait">Heal</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">🚀</div><h4>Astronaut</h4></div>
+        <div class="career-class">Fighter — Eldritch Knight</div>
+        <p>Military branch of space program. Trained in firearms and the void.</p>
+        <div class="career-traits"><span class="career-trait">STR/INT</span><span class="career-trait">Void Resistance</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">🎬</div><h4>Actor</h4></div>
+        <div class="career-class">Bard — College of Whispers</div>
+        <p>Fame-obsessed. Every emotion performed and genuine simultaneously. Minor celebrity.</p>
+        <div class="career-traits"><span class="career-trait">CHA primary</span><span class="career-trait">Disguise</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">🏛️</div><h4>Politician</h4></div>
+        <div class="career-class">Warlock — Pact of the Tome</div>
+        <p>Career requires patron support. Makes deals. The Plumbob can be weaponized as rhetoric.</p>
+        <div class="career-traits"><span class="career-trait">CHA primary</span><span class="career-trait">Charm</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">💼</div><h4>Business</h4></div>
+        <div class="career-class">Rogue — Mastermind</div>
+        <p>Corporate warfare. Manipulates markets. Owns a Simoleon portfolio.</p>
+        <div class="career-traits"><span class="career-trait">INT/CHA</span><span class="career-trait">Persuasion</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">🌻</div><h4>Gardener</h4></div>
+        <div class="career-class">Druid — Circle of Spores</div>
+        <p>Horticulturist. Grafts impossible hybrids. One small mistake from PlantSim.</p>
+        <div class="career-traits"><span class="career-trait">WIS primary</span><span class="career-trait">Plant Speech</span></div>
+      </div>
+      <div class="career">
+        <div class="career-header"><div class="career-icon">🪖</div><h4>Military</h4></div>
+        <div class="career-class">Paladin — Oath of Conquest</div>
+        <p>Trained. Disciplined. Follows orders until they don't. Strong Plumbob regulation.</p>
+        <div class="career-traits"><span class="career-trait">STR/CHA</span><span class="career-trait">Command</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="weapons">
+    <div class="section-label"><span class="plumbob"></span> Equipment</div>
+    <h2>Signature Gear</h2>
+    <p class="lead">
+      Sims do not natively use swords, bows, or staves. Their equipment is tech-adjacent, emotionally volatile, and deeply impractical by Faerûnian standards.
+    </p>
+
+    <div class="weapon">
+      <div class="weapon-icon">🔫</div>
+      <div>
+        <div class="weapon-name">Moodlet Solver Ray</div>
+        <div class="weapon-type">Uncommon Wand · Sim Tech · Attunement</div>
+        <p>Sleek silver device with green gemstone and dials. Arcane focus. 3 charges/long rest. Roll d6: 1 Frightens, 2 Charms, 3 Resets mood (intended), 4 Incapacitates with laughter, 5 Grants 2d6 temp HP, 6 Swaps emotional states.</p>
+      </div>
+    </div>
+
+    <div class="weapon">
+      <div class="weapon-icon">⚡</div>
+      <div>
+        <div class="weapon-name">SimRay</div>
+        <div class="weapon-type">Rare Wand · Sim Tech · Attunement</div>
+        <p>Built at Scientist career level 10. Three functions: Transmogrify (polymorph CR 1), Freeze Ray (Hold Person), Mind Control (Dominate Person). Charges recover on short rest.</p>
+      </div>
+    </div>
+
+    <div class="weapon">
+      <div class="weapon-icon">🎹</div>
+      <div>
+        <div class="weapon-name">Portable Instrument</div>
+        <div class="weapon-type">Bardic Focus · Performance</div>
+        <p>Violin, guitar, or portable piano. Grants Performance proficiency. Emotional Performance: synchronize party Plumbobs for 1 minute — allies gain advantage on one save during duration.</p>
+      </div>
+    </div>
+
+    <div class="weapon">
+      <div class="weapon-icon">🎮</div>
+      <div>
+        <div class="weapon-name">Voidcritter Cards</div>
+        <div class="weapon-type">Minor Magic Item · Collectible</div>
+        <p>Small creatures bound to cards. Summon as action (Find Familiar rules). Distressed by Faerûn's fauna. Occasionally refuses to return to card.</p>
+      </div>
+    </div>
+
+    <div class="weapon">
+      <div class="weapon-icon">🪑</div>
+      <div>
+        <div class="weapon-name">Ironing Board</div>
+        <div class="weapon-type">Improvised Weapon · Mundane</div>
+        <p>The Sim has killed before with this. 1d6 bludgeoning. Requires two hands. One of the most effective mundane weapons in a Sim's inventory — they understand the grip.</p>
+      </div>
+    </div>
+
+    <div class="weapon">
+      <div class="weapon-icon">🕹️</div>
+      <div>
+        <div class="weapon-name">MySims Trophies</div>
+        <div class="weapon-type">Collectible · Sentimental</div>
+        <p>Small figurines. Not magical. Losing one produces Sad Plumbob for 24 hours. Finding a new one produces Elated Plumbob for 24 hours. Sim will abandon a dungeon to retrieve one.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="horticulture">
+    <div class="section-label"><span class="plumbob"></span> Horticulture</div>
+    <h2>Plants of the Neighborhood</h2>
+    <p class="lead">
+      Sims cultivate specific magical plants. Many have translated to Faerûn surprisingly well. Druids have taken a quiet interest.
+    </p>
+
+    <div class="plant">
+      <div class="plant-icon">🐄</div>
+      <div>
+        <div class="plant-name">Cowplant</div>
+        <div class="plant-desc">Grass-green carnivorous plant with a cow-shaped head and cake in its mouth. Lures creature within reach with cake then swallows whole. Restraint save DC 14 or swallowed. 2d6 acid/round. Sim can harvest milk for Youth Essence 1/week.</div>
+      </div>
+    </div>
+
+    <div class="plant">
+      <div class="plant-icon">💀</div>
+      <div>
+        <div class="plant-name">Death Flower</div>
+        <div class="plant-desc">Black orchid with silver veins. One petal offered to Grim Reaper reverses a Sim's death. Used in Ambrosia recipe. In Faerûn, bargaining with Kelemvor's servants substitutes.</div>
+      </div>
+    </div>
+
+    <div class="plant">
+      <div class="plant-icon">🍎</div>
+      <div>
+        <div class="plant-name">Forbidden Fruit</div>
+        <div class="plant-desc">Purple-black apple of Vampiric origin. Eating transforms living Sim into Vampire over 7 days. Restores full power for existing Vampires. Refused by Celestials on principle.</div>
+      </div>
+    </div>
+
+    <div class="plant">
+      <div class="plant-icon">🐉</div>
+      <div>
+        <div class="plant-name">Dragonfruit</div>
+        <div class="plant-desc">Bright red hybrid from multiple spliced plants. Exceptionally valuable. Grants advantage on CON saves for 24 hours when consumed fresh.</div>
+      </div>
+    </div>
+
+    <div class="plant">
+      <div class="plant-icon">💰</div>
+      <div>
+        <div class="plant-name">Money Tree</div>
+        <div class="plant-desc">Literally grows currency. Requires 5,000 gold and 3 days to mature. Produces 1d6 × 100 gold per harvest. One per character. Multiple plants fail. The only economic rule The Neighborhood enforces.</div>
+      </div>
+    </div>
+
+    <div class="plant">
+      <div class="plant-icon">🍷</div>
+      <div>
+        <div class="plant-name">Plasma Fruit</div>
+        <div class="plant-desc">Grown from sanguine tubers. Alternate food source for Vampires unwilling to feed on sapients. Tastes like iron and regret to non-Vampires.</div>
+      </div>
+    </div>
+
+    <div class="plant">
+      <div class="plant-icon">🌺</div>
+      <div>
+        <div class="plant-name">StrangerVille Plant</div>
+        <div class="plant-desc">Do not approach. Do not handle. Spores cause WIS save DC 15 or become Charmed by the Plant Mother for 24 hours. Faerûn should not permit this.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="simlish">
+    <div class="section-label"><span class="plumbob"></span> Language</div>
+    <h2>Simlish</h2>
+    <p class="lead">
+      Simlish is the native language of all Sims. A fully grammatical complete language that no creature in Faerûn speaks. It sounds like Italian, Welsh, Korean, and Ukrainian had an argument inside a blender.
+    </p>
+
+    <div class="simlish-box">
+      <div class="simlish-phrase">"Sul sul."</div>
+      <div class="simlish-translation">— Hello / Goodbye. All-purpose greeting.</div>
+    </div>
+
+    <div class="simlish-box">
+      <div class="simlish-phrase">"Dag dag."</div>
+      <div class="simlish-translation">— Farewell. More formal. Extended partings.</div>
+    </div>
+
+    <div class="simlish-box">
+      <div class="simlish-phrase">"Zoop!"</div>
+      <div class="simlish-translation">— Exclamation of surprise, typically in combat.</div>
+    </div>
+
+    <div class="simlish-box">
+      <div class="simlish-phrase">"Plerg."</div>
+      <div class="simlish-translation">— An insult. Mild. The Sim doesn't know why it bothers them.</div>
+    </div>
+
+    <div class="simlish-box">
+      <div class="simlish-phrase">"Woohoo."</div>
+      <div class="simlish-translation">— Intimate act. The only Simlish word universally understood across every known plane.</div>
+    </div>
+
+    <h3>Mechanical Rules for Simlish</h3>
+    <div class="stat-block">
+      <div class="stat-row"><span class="stat-label">Comprehend Languages</span><span class="stat-value">Fails — not a translatable language</span></div>
+      <div class="stat-row"><span class="stat-label">Tongues</span><span class="stat-value">Works partially — 50% per sentence</span></div>
+      <div class="stat-row"><span class="stat-label">Divination</span><span class="stat-value">Nonsense and a brief headache</span></div>
+      <div class="stat-row"><span class="stat-label">Emotional Reversion</span><span class="stat-value">Sim reverts to Simlish when emotional</span></div>
+    </div>
+
+    <div class="callout">
+      <div class="callout-label"><span class="plumbob"></span> WooHoo — A Note</div>
+      <p style="margin-bottom:0;">
+        Sims WooHoo. Intimate activity with mechanical significance — increases Romantic relationship status, produces offspring, creates Flirty moodlet retroactively. Specific locations (Rocket, Observatory, Bush, Closet) produce unique Moodlets. In Faerûn the Sim still uses the term WooHoo. It has entered local slang among companions.
+      </p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="proficiencies">
+    <div class="section-label"><span class="plumbob"></span> Proficiencies</div>
+    <h2>Language &amp; Skill Proficiencies</h2>
+
+    <table class="sim-table">
+      <thead><tr><th>Category</th><th>Default</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Armor</strong></td><td>None</td><td>Sims wear fashion, not armor. They find plate mail confusing.</td></tr>
+        <tr><td><strong>Weapons</strong></td><td>Simple, Ironing Board, Tools-as-Weapons</td><td>Cast iron skillet as war pick. Kitchen knives as daggers.</td></tr>
+        <tr><td><strong>Tools</strong></td><td>Tinker's, Alchemist's, Cook's</td><td>Career-dependent. Scientist adds Herbalism Kit.</td></tr>
+        <tr><td><strong>Languages</strong></td><td>Simlish, Common</td><td>Cannot learn new languages — brain categorizes all as "Not Simlish."</td></tr>
+        <tr><td><strong>Skills</strong></td><td>2 from any + 1 bonus</td><td>Skill Grind retries one failure per rest.</td></tr>
+        <tr><td><strong>Saves</strong></td><td>Class-based</td><td>+2 CHA saves against Intimidation specifically.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="dynamics">
+    <div class="section-label"><span class="plumbob"></span> Party Integration</div>
+    <h2>The Sim in the Adventuring Party</h2>
+    <p class="lead">
+      The Sim is a wild card by design. Their racial features introduce small chaos into otherwise serious situations. They are also genuinely useful and emotionally loyal.
+    </p>
+
+    <h3>Social Dynamics</h3>
+    <p>
+      The Social need forces the Sim to engage with the party constantly. The party will know the Sim better than the Sim knows themselves within three days of travel. The Sim's Mood Sight means they know exactly what every party member is feeling at all times. They are usually polite about this. Usually.
+    </p>
+
+    <h3>Combat Role</h3>
+    <p>
+      Depends on Career translation. Their Plumbob broadcasts emotional state to enemies — a Tense Sim is easier to target with concentration-disruption tactics. A tactically savvy DM will weaponize this. A tactically savvy player will learn to stay Fine.
+    </p>
+
+    <h3>Roleplay Hooks</h3>
+    <div class="stat-block">
+      <div class="stat-row"><span class="stat-label">Primary Goal</span><span class="stat-value">Find a way home to The Neighborhood</span></div>
+      <div class="stat-row"><span class="stat-label">Secondary Goal</span><span class="stat-value">Document Faerûn exhaustively for publication</span></div>
+      <div class="stat-row"><span class="stat-label">Hidden Goal</span><span class="stat-value">Max out a skill unreachable at home</span></div>
+      <div class="stat-row"><span class="stat-label">Flaw</span><span class="stat-value">Treats mortal stakes as save-and-reload adjacent</span></div>
+      <div class="stat-row"><span class="stat-label">Bond</span><span class="stat-value">The Cat. Always The Cat.</span></div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <h3>The Sim — A Handbook</h3>
+  <p>A playable 5e race adaptation of the Sims 4 species, with canonical mechanical translations of life stages, occult variants, careers, and material culture.</p>
+  <p>All Sim-specific terminology, world names, and mechanical flavor drawn from the Sims 4 franchise. D&amp;D 5e mechanics used for adaptation.</p>
+  <div class="sul">☆ SUL SUL ☆</div>
+</footer>
+
+</body>
+</html>
