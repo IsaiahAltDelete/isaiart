@@ -111,6 +111,11 @@
     tab-size:2;
   }
   #editor::placeholder{color:var(--muted);opacity:.7}
+
+  /* Show the text (I-beam) cursor only in real typing areas; arrow everywhere else */
+  body{cursor:default}
+  .head,.status,.actions,.brand,.brand h1,.brand p,.stat,.save-state,#saveLabel{cursor:default;user-select:none}
+  #editor,#filename{cursor:text;user-select:text}
   #editor::-webkit-scrollbar{width:11px}
   #editor::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;border:3px solid var(--panel)}
   #editor::-webkit-scrollbar-thumb:hover{background:var(--muted)}
