@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Neon Air Hockey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --p1:#22d3ee;   /* player - cyan */
+    --p2:#fb3e6e;   /* cpu - pink/red */
+    --bg:#070a12;
+    --ink:#eaf6ff;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(120% 90% at 50% 0%,#0d1426,#04060d 70%);
+    color:var(--ink);
+    font-family:'Rajdhani',system-ui,sans-serif;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100%;gap:14px;padding:16px;overflow:hidden;
+    -webkit-user-select:none;user-select:none;touch-action:none;
+  }
+
+  /* Scoreboard */
+  .scoreboard{
+    display:flex;align-items:center;gap:clamp(16px,5vw,46px);
+    font-family:'Orbitron',sans-serif;
+  }
+  .score-side{display:flex;flex-direction:column;align-items:center;line-height:1}
+  .score-side .who{
+    font-size:12px;letter-spacing:.28em;text-transform:uppercase;
+    font-family:'Rajdhani',sans-serif;font-weight:700;opacity:.85;margin-bottom:4px;
+  }
+  .score-side .num{font-size:clamp(34px,8vw,52px);font-weight:900;transition:transform .2s}
+  .score-side.pop .num{transform:scale(1.35)}
+  #cpuName{color:var(--p2)}#cpuScore{color:var(--p2);text-shadow:0 0 18px rgba(251,62,110,.6)}
+  #youName{color:var(--p1)}#youScore{color:var(--p1);text-shadow:0 0 18px rgba(34,211,238,.6)}
+  .vs{font-size:13px;letter-spacing:.2em;opacity:.5;font-family:'Rajdhani',sans-serif;font-weight:700}
+  .first-to{font-size:11px;letter-spacing:.25em;text-transform:uppercase;opacity:.45;margin-top:2px}
+
+  /* Stage */
+  .stage{position:relative;border-radius:18px;overflow:hidden;
+    box-shadow:0 30px 80px -20px rgba(0,0,0,.8),0 0 0 1px rgba(34,211,238,.12);}
+  canvas{display:block;border-radius:18px;background:#070a12}
+
+  /* Overlays */
+  .overlay{
+    position:absolute;inset:0;z-index:5;
+    background:radial-gradient(circle at 50% 38%,rgba(10,16,30,.82),rgba(3,5,11,.95));
+    backdrop-filter:blur(3px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:24px;gap:8px;
+    opacity:0;visibility:hidden;transition:opacity .3s;
+  }
+  .overlay.show{opacity:1;visibility:visible}
+  .overlay h1{
+    font-family:'Orbitron',sans-serif;font-weight:900;
+    font-size:clamp(30px,8vw,46px);letter-spacing:.04em;line-height:1.05;
+    background:linear-gradient(90deg,var(--p1),#a78bfa,var(--p2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    margin-bottom:4px;
+  }
+  .overlay p{opacity:.8;font-size:15px;letter-spacing:.04em;max-width:340px;margin-bottom:14px}
+  .overlay .res{font-family:'Orbitron',sans-serif;font-weight:900;font-size:clamp(30px,9vw,52px);}
+  .btn-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+  button{
+    font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;
+    letter-spacing:.12em;text-transform:uppercase;color:#04121a;cursor:pointer;
+    padding:12px 22px;border:none;border-radius:11px;
+    background:linear-gradient(180deg,#67e8f9,#22d3ee);
+    box-shadow:0 8px 22px -8px var(--p1),0 2px 0 rgba(255,255,255,.35) inset;
+    transition:transform .12s,filter .12s,box-shadow .12s;
+  }
+  button:hover{transform:translateY(-2px);filter:brightness(1.08)}
+  button:active{transform:translateY(0)}
+  button.diff{min-width:120px}
+  button.sel{outline:2px solid #fff;outline-offset:2px}
+  button.ghost{background:transparent;color:var(--ink);box-shadow:0 0 0 1.5px rgba(255,255,255,.25)}
+  button.danger{background:linear-gradient(180deg,#fb7185,#e11d48);color:#fff;box-shadow:0 8px 22px -8px #e11d48,0 2px 0 rgba(255,255,255,.25) inset}
+  .diff-grid{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:6px 0 4px}
+  .hint{font-size:12px;letter-spacing:.16em;text-transform:uppercase;opacity:.5;margin-top:14px}
+</style>
+</head>
+<body>
+
+  <div class="scoreboard">
+    <div class="score-side" id="cpuSide">
+      <span class="who" id="cpuName">CPU</span>
+      <span class="num" id="cpuScore">0</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <span class="vs">VS</span>
+      <span class="first-to">First to 7</span>
+    </div>
+    <div class="score-side" id="youSide">
+      <span class="who" id="youName">You</span>
+      <span class="num" id="youScore">0</span>
+    </div>
+  </div>
+
+  <div class="stage">
+    <canvas id="game" width="500" height="760"></canvas>
+
+    <!-- Start menu -->
+    <div class="overlay show" id="menu">
+      <h1>NEON<br>AIR HOCKEY</h1>
+      <p>Drag your mallet to defend your goal and strike the puck. First to 7 wins.</p>
+      <div class="diff-grid" id="diffGrid">
+        <button class="btn diff" data-d="easy">Easy</button>
+        <button class="btn diff sel" data-d="medium">Medium</button>
+        <button class="btn diff" data-d="hard">Hard</button>
+        <button class="btn diff danger" data-d="impossible">Impossible</button>
+      </div>
+      <button class="btn" id="startBtn">Play</button>
+      <div class="hint">Mouse / Touch to move</div>
+    </div>
+
+    <!-- Game over -->
+    <div class="overlay" id="over">
+      <h1 id="overTitle">YOU WIN</h1>
+      <div class="res"><span id="overCpu" style="color:var(--p2)">0</span> <span style="opacity:.4">–</span> <span id="overYou" style="color:var(--p1)">0</span></div>
+      <div class="btn-row">
+        <button class="btn" id="againBtn">Play Again</button>
+        <button class="btn ghost" id="menuBtn">Main Menu</button>
+      </div>
+    </div>
+
+    <!-- Pause -->
+    <div class="overlay" id="pause">
+      <h1>PAUSED</h1>
+      <div class="btn-row">
+        <button class="btn" id="resumeBtn">Resume</button>
+        <button class="btn ghost" id="quitBtn">Main Menu</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+// UI refs
+const el = {
+  menu: document.getElementById('menu'),
+  over: document.getElementById('over'),
+  pause: document.getElementById('pause'),
+  cpuScore: document.getElementById('cpuScore'),
+  youScore: document.getElementById('youScore'),
+  cpuSide: document.getElementById('cpuSide'),
+  youSide: document.getElementById('youSide'),
+  overTitle: document.getElementById('overTitle'),
+  overCpu: document.getElementById('overCpu'),
+  overYou: document.getElementById('overYou'),
+};
+
+// Config
+const GOAL_W = 170;             // goal opening width
+const WIN = 7;
+const WALL = 12;                // inner wall thickness
+const PUCK_R = 17;
+const MALLET_R = 30;
+const MAX_PUCK = 16;            // max puck speed
+const FRICTION = 0.9965;
+
+const DIFF = {
+  easy:       { ai: 3.2,  react: 0.055, defend: 0.42, predict: 1.0 },
+  medium:     { ai: 4.7,  react: 0.095, defend: 0.60, predict: 1.7 },
+  hard:       { ai: 6.7,  react: 0.145, defend: 0.80, predict: 2.6 },
+  impossible: { ai: 11.5, react: 0.32,  defend: 1.0,  predict: 4.6 },
+};
+let difficulty = 'medium';
+
+// State
+let state = 'menu';   // menu | play | goal | pause | over
+let cpuS = 0, youS = 0;
+let goalTimer = 0;
+let stuckFrames = 0;
+let stuckRef = { x: W/2, y: H/2 };
+let shake = 0, lastTime = 0;
+let flash = 0, flashColor = null;
+
+const puck = { x: W/2, y: H/2, vx: 0, vy: 0, trail: [] };
+const you = { x: W/2, y: H*0.78, px: W/2, py: H*0.78, vx: 0, vy: 0 };
+const cpu = { x: W/2, y: H*0.16, vx: 0, vy: 0 };
+let particles = [];
+
+// ---- Input ----
+let pointer = null;
+function toCanvas(e){
+  const r = cv.getBoundingClientRect();
+  const cx = (e.touches ? e.touches[0].clientX : e.clientX);
+  const cy = (e.touches ? e.touches[0].clientY : e.clientY);
+  return { x: (cx - r.left) * (W / r.width), y: (cy - r.top) * (H / r.height) };
+}
+function onMove(e){ if(e.cancelable) e.preventDefault(); pointer = toCanvas(e); }
+cv.addEventListener('mousemove', onMove);
+cv.addEventListener('touchmove', onMove, { passive:false });
+cv.addEventListener('touchstart', onMove, { passive:false });
+document.addEventListener('keydown', e => {
+  if(e.code === 'Escape' || e.code === 'Space'){
+    if(state === 'play'){ state='pause'; el.pause.classList.add('show'); }
+    else if(state === 'pause'){ resume(); }
+  }
+});
+
+// ---- Flow ----
+function reset(){
+  cpuS = 0; youS = 0; updateScore();
+  centerPuck(0);
+  you.x = W/2; you.y = H*0.78; you.vx = you.vy = 0;
+  cpu.x = W/2; cpu.y = H*0.16; cpu.vx = cpu.vy = 0;
+  particles = []; puck.trail = []; stuckFrames = 0;
+}
+function centerPuck(dir){
+  puck.x = W/2; puck.y = H/2;
+  puck.vx = 0; puck.vy = dir * 3.2;
+  puck.trail = [];
+  stuckRef.x = W/2; stuckRef.y = H/2; stuckFrames = 0;
+}
+function startGame(){
+  reset();
+  el.menu.classList.remove('show');
+  el.over.classList.remove('show');
+  state = 'play'; lastTime = performance.now();
+  requestAnimationFrame(loop);
+}
+function resume(){ el.pause.classList.remove('show'); state='play'; lastTime=performance.now(); requestAnimationFrame(loop); }
+function toMenu(){ state='menu'; el.over.classList.remove('show'); el.pause.classList.remove('show'); el.menu.classList.add('show'); }
+
+function updateScore(){
+  el.cpuScore.textContent = cpuS;
+  el.youScore.textContent = youS;
+}
+function pop(side){
+  side.classList.add('pop');
+  setTimeout(()=>side.classList.remove('pop'), 220);
+}
+
+function scoreGoal(scorer){ // 'you' or 'cpu'
+  if(scorer === 'you'){ youS++; pop(el.youSide); flashColor = '#22d3ee'; }
+  else { cpuS++; pop(el.cpuSide); flashColor = '#fb3e6e'; }
+  updateScore();
+  shake = 16; flash = 1;
+  burst(puck.x, puck.y, scorer === 'you' ? '#22d3ee' : '#fb3e6e', 36, 6);
+  if(youS >= WIN || cpuS >= WIN){ endGame(); return; }
+  state = 'goal'; goalTimer = 55;
+}
+function endGame(){
+  state = 'over';
+  const win = youS > cpuS;
+  el.overTitle.textContent = win ? 'YOU WIN' : 'CPU WINS';
+  el.overTitle.style.background = win
+    ? 'linear-gradient(90deg,#22d3ee,#a78bfa)'
+    : 'linear-gradient(90deg,#fb3e6e,#f59e0b)';
+  el.overTitle.style.webkitBackgroundClip='text';
+  el.overCpu.textContent = cpuS; el.overYou.textContent = youS;
+  el.over.classList.add('show');
+}
+
+// ---- Particles ----
+function burst(x, y, color, n, spd){
+  for(let i=0;i<n;i++){
+    const a = Math.random()*Math.PI*2, s = Math.random()*spd+1;
+    particles.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:1, color, r:Math.random()*3+1.5 });
+  }
+}
+
+// ---- Physics helpers ----
+function clamp(v,a,b){ return v<a?a:v>b?b:v; }
+function inGoalX(x){ return x > (W-GOAL_W)/2 && x < (W+GOAL_W)/2; }
+
+function collidePuckMallet(m, isPlayer){
+  const dx = puck.x - m.x, dy = puck.y - m.y;
+  const dist = Math.hypot(dx, dy);
+  const min = PUCK_R + MALLET_R;
+  if(dist < min && dist > 0){
+    const nx = dx/dist, ny = dy/dist;
+    // separate
+    const overlap = min - dist;
+    puck.x += nx*overlap; puck.y += ny*overlap;
+    // reflect puck velocity about normal + add mallet momentum
+    const vDot = puck.vx*nx + puck.vy*ny;
+    puck.vx -= 2*vDot*nx; puck.vy -= 2*vDot*ny;
+    puck.vx = puck.vx*0.5 + (nx*6) + m.vx*0.7;
+    puck.vy = puck.vy*0.5 + (ny*6) + m.vy*0.7;
+    // ensure it moves away from mallet
+    const away = puck.vx*nx + puck.vy*ny;
+    if(away < 2){ puck.vx += nx*3; puck.vy += ny*3; }
+    burst(puck.x, puck.y, isPlayer ? '#67e8f9' : '#ff8fb0', 8, 4);
+    shake = Math.max(shake, 5);
+  }
+}
+
+// ---- AI ----
+function updateAI(dt){
+  const d = DIFF[difficulty];
+  let tx, ty;
+  const puckInTop = puck.y < H*0.5;
+  if(puckInTop){
+    // attack: get behind puck (above it) and push down
+    tx = puck.x + puck.vx * d.predict;
+    ty = Math.min(puck.y - 6, H*0.5 - MALLET_R - 4);
+    // if puck above mallet, reposition below to strike down
+    if(puck.y < cpu.y){ ty = puck.y + MALLET_R*0.6; }
+  } else {
+    // defend: track puck x toward home, mix by defend factor
+    const homeX = W/2 + (puck.x - W/2) * d.defend;
+    tx = homeX; ty = H*0.16;
+  }
+  tx = clamp(tx, WALL+MALLET_R, W-WALL-MALLET_R);
+  ty = clamp(ty, WALL+MALLET_R, H*0.5 - MALLET_R);
+  // accelerate toward target, capped
+  const ax = (tx - cpu.x) * d.react;
+  const ay = (ty - cpu.y) * d.react;
+  cpu.vx = clamp(cpu.vx*0.6 + ax, -d.ai, d.ai);
+  cpu.vy = clamp(cpu.vy*0.6 + ay, -d.ai, d.ai);
+  cpu.x += cpu.vx*dt; cpu.y += cpu.vy*dt;
+  cpu.x = clamp(cpu.x, WALL+MALLET_R, W-WALL-MALLET_R);
+  cpu.y = clamp(cpu.y, WALL+MALLET_R, H*0.5 - MALLET_R);
+}
+
+// ---- Player ----
+function updatePlayer(dt){
+  you.px = you.x; you.py = you.y;
+  if(pointer){
+    you.x = clamp(pointer.x, WALL+MALLET_R, W-WALL-MALLET_R);
+    you.y = clamp(pointer.y, H*0.5 + MALLET_R, H-WALL-MALLET_R);
+  }
+  you.vx = (you.x - you.px)/dt;
+  you.vy = (you.y - you.py)/dt;
+}
+
+// ---- Puck ----
+function updatePuck(dt){
+  // sub-step to avoid tunneling
+  const speed = Math.hypot(puck.vx, puck.vy);
+  const steps = Math.max(1, Math.ceil(speed*dt / (PUCK_R*0.7)));
+  for(let s=0;s<steps;s++){
+    puck.x += (puck.vx*dt)/steps;
+    puck.y += (puck.vy*dt)/steps;
+
+    // side walls
+    if(puck.x - PUCK_R < WALL){ puck.x = WALL+PUCK_R; puck.vx = Math.abs(puck.vx); wallFx(puck.x,puck.y); }
+    else if(puck.x + PUCK_R > W-WALL){ puck.x = W-WALL-PUCK_R; puck.vx = -Math.abs(puck.vx); wallFx(puck.x,puck.y); }
+
+    // top / bottom: goal or wall
+    if(puck.y - PUCK_R < WALL){
+      if(inGoalX(puck.x) && puck.y < WALL+PUCK_R){ if(puck.y - PUCK_R < -8){ scoreGoal('you'); return; } }
+      else { puck.y = WALL+PUCK_R; puck.vy = Math.abs(puck.vy); wallFx(puck.x,puck.y); }
+    }
+    if(puck.y + PUCK_R > H-WALL){
+      if(inGoalX(puck.x)){ if(puck.y + PUCK_R > H+8){ scoreGoal('cpu'); return; } }
+      else { puck.y = H-WALL-PUCK_R; puck.vy = -Math.abs(puck.vy); wallFx(puck.x,puck.y); }
+    }
+
+    collidePuckMallet(you, true);
+    collidePuckMallet(cpu, false);
+  }
+
+  // friction + clamp
+  puck.vx *= FRICTION; puck.vy *= FRICTION;
+  const sp = Math.hypot(puck.vx, puck.vy);
+  if(sp > MAX_PUCK){ puck.vx = puck.vx/sp*MAX_PUCK; puck.vy = puck.vy/sp*MAX_PUCK; }
+
+  // anti-stuck: detect lack of real progress (covers slow crawl AND a puck
+  // pinned/oscillating between a wall and a mallet, where speed stays high).
+  if(Math.hypot(puck.x - stuckRef.x, puck.y - stuckRef.y) > 46){
+    stuckRef.x = puck.x; stuckRef.y = puck.y; stuckFrames = 0;
+  } else {
+    stuckFrames += dt;
+  }
+  if(stuckFrames > 40){
+    const dx = W/2 - puck.x, dy = H/2 - puck.y, m = Math.hypot(dx,dy) || 1;
+    // shove its position toward center too, to break out from under a mallet
+    puck.x += dx/m * 24; puck.y += dy/m * 24;
+    puck.vx = dx/m * 8.5 + (Math.random()-0.5)*3;
+    puck.vy = dy/m * 8.5 + (Math.random()-0.5)*3;
+    stuckRef.x = puck.x; stuckRef.y = puck.y; stuckFrames = 0;
+    burst(puck.x, puck.y, '#a78bfa', 14, 4);
+  }
+
+  puck.trail.push({x:puck.x,y:puck.y});
+  if(puck.trail.length > 12) puck.trail.shift();
+}
+function wallFx(x,y){ burst(x,y,'#9be8ff',4,3); shake = Math.max(shake,3); }
+
+// ---- Draw ----
+function drawTable(){
+  // felt
+  ctx.fillStyle = '#070a12';
+  ctx.fillRect(0,0,W,H);
+  // soft glow gradient
+  const g = ctx.createRadialGradient(W/2,H/2,40,W/2,H/2,H*0.6);
+  g.addColorStop(0,'rgba(40,70,120,0.18)');
+  g.addColorStop(1,'rgba(5,8,16,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+  ctx.lineWidth = 2;
+  // center line
+  ctx.strokeStyle = 'rgba(160,200,255,0.18)';
+  ctx.beginPath(); ctx.moveTo(WALL,H/2); ctx.lineTo(W-WALL,H/2); ctx.stroke();
+  // center circle
+  ctx.beginPath(); ctx.arc(W/2,H/2,62,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(W/2,H/2,6,0,Math.PI*2); ctx.fillStyle='rgba(160,200,255,0.25)'; ctx.fill();
+
+  // goal zones (arcs)
+  ctx.strokeStyle = 'rgba(160,200,255,0.13)';
+  ctx.beginPath(); ctx.arc(W/2,WALL,90,0,Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.arc(W/2,H-WALL,90,Math.PI,Math.PI*2); ctx.stroke();
+
+  // walls (neon border with goal gaps)
+  drawWalls();
+  drawGoals();
+}
+function drawWalls(){
+  ctx.save();
+  ctx.strokeStyle = 'rgba(34,211,238,0.5)';
+  ctx.shadowColor = 'rgba(34,211,238,0.6)'; ctx.shadowBlur = 14;
+  ctx.lineWidth = 3;
+  const gl = (W-GOAL_W)/2, gr = (W+GOAL_W)/2;
+  ctx.beginPath();
+  // left wall
+  ctx.moveTo(WALL,WALL); ctx.lineTo(WALL,H-WALL);
+  // right wall
+  ctx.moveTo(W-WALL,WALL); ctx.lineTo(W-WALL,H-WALL);
+  // top with gap
+  ctx.moveTo(WALL,WALL); ctx.lineTo(gl,WALL);
+  ctx.moveTo(gr,WALL); ctx.lineTo(W-WALL,WALL);
+  // bottom with gap
+  ctx.moveTo(WALL,H-WALL); ctx.lineTo(gl,H-WALL);
+  ctx.moveTo(gr,H-WALL); ctx.lineTo(W-WALL,H-WALL);
+  ctx.stroke();
+  ctx.restore();
+}
+function drawGoals(){
+  const gl=(W-GOAL_W)/2, gr=(W+GOAL_W)/2;
+  // top goal (cpu) - pink
+  glowLine(gl,WALL,gr,WALL,'#fb3e6e');
+  // bottom goal (you) - cyan
+  glowLine(gl,H-WALL,gr,H-WALL,'#22d3ee');
+}
+function glowLine(x1,y1,x2,y2,color){
+  ctx.save();
+  ctx.strokeStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 22;
+  ctx.lineWidth = 6; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.restore();
+}
+function drawMallet(m,color,glow){
+  ctx.save();
+  ctx.shadowColor = glow; ctx.shadowBlur = 24;
+  const g = ctx.createRadialGradient(m.x-6,m.y-6,4,m.x,m.y,MALLET_R);
+  g.addColorStop(0,'#ffffff'); g.addColorStop(0.25,color); g.addColorStop(1,glow);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(m.x,m.y,MALLET_R,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  // inner ring
+  ctx.strokeStyle='rgba(255,255,255,0.85)'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.arc(m.x,m.y,MALLET_R*0.5,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(m.x,m.y,MALLET_R*0.82,0,Math.PI*2); ctx.stroke();
+}
+function drawPuck(){
+  // trail
+  for(let i=0;i<puck.trail.length;i++){
+    const t = puck.trail[i], a = (i/puck.trail.length)*0.5;
+    ctx.beginPath(); ctx.arc(t.x,t.y,PUCK_R*(0.3+i/puck.trail.length*0.7),0,Math.PI*2);
+    ctx.fillStyle=`rgba(167,139,250,${a})`; ctx.fill();
+  }
+  ctx.save();
+  ctx.shadowColor='#a78bfa'; ctx.shadowBlur=26;
+  const g = ctx.createRadialGradient(puck.x-4,puck.y-4,2,puck.x,puck.y,PUCK_R);
+  g.addColorStop(0,'#f4f0ff'); g.addColorStop(1,'#7c5cff');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(puck.x,puck.y,PUCK_R,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(puck.x,puck.y,PUCK_R*0.62,0,Math.PI*2); ctx.stroke();
+}
+function drawParticles(){
+  particles.forEach(p=>{
+    ctx.globalAlpha = Math.max(0,p.life);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+function render(){
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  if(shake > 0.4) ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake);
+  drawTable();
+  drawParticles();
+  drawMallet(cpu,'#fb3e6e','#7a0f2e');
+  drawMallet(you,'#22d3ee','#0a4a5c');
+  drawPuck();
+  if(flash > 0 && flashColor){
+    ctx.globalAlpha = flash*0.4; ctx.fillStyle = flashColor; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
+  }
+  ctx.restore();
+}
+
+// ---- Loop ----
+function loop(now){
+  if(state !== 'play' && state !== 'goal') return;
+  let dt = (now - lastTime)/16.6667;
+  if(!isFinite(dt)||dt<=0) dt=1; dt = Math.min(dt,2.2);
+  lastTime = now;
+
+  if(state === 'play'){
+    updatePlayer(dt);
+    updateAI(dt);
+    updatePuck(dt);
+  } else if(state === 'goal'){
+    updatePlayer(dt);
+    // ease cpu home
+    cpu.x += (W/2 - cpu.x)*0.1; cpu.y += (H*0.16 - cpu.y)*0.1;
+    if(--goalTimer <= 0){ centerPuck(youS>cpuS?-1:1); state='play'; }
+  }
+
+  // particles + fx decay
+  particles.forEach(p=>{ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.95; p.vy*=0.95; p.life-=0.025*dt; });
+  particles = particles.filter(p=>p.life>0);
+  if(shake>0) shake -= 0.7*dt;
+  if(flash>0) flash -= 0.04*dt;
+
+  render();
+  if(state==='play'||state==='goal') requestAnimationFrame(loop);
+}
+
+// ---- Menu wiring ----
+document.getElementById('diffGrid').addEventListener('click', e=>{
+  const b = e.target.closest('.diff'); if(!b) return;
+  document.querySelectorAll('.diff').forEach(x=>x.classList.remove('sel'));
+  b.classList.add('sel'); difficulty = b.dataset.d;
+});
+document.getElementById('startBtn').onclick = startGame;
+document.getElementById('againBtn').onclick = startGame;
+document.getElementById('menuBtn').onclick = toMenu;
+document.getElementById('resumeBtn').onclick = resume;
+document.getElementById('quitBtn').onclick = ()=>{ el.pause.classList.remove('show'); toMenu(); };
+
+// initial idle render
+drawTable();
+drawMallet(cpu,'#fb3e6e','#7a0f2e');
+drawMallet(you,'#22d3ee','#0a4a5c');
+drawPuck();
+</script>
+</body>
+</html>

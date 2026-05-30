@@ -27,6 +27,11 @@
             --info-text-color: #ffffff;
 
 
+            /* "desk" = area outside the finite canvas world */
+            --desk-light: #dfe3e8;
+            --canvas-surface-light: #f8f9fa;
+            --canvas-edge-light: rgba(0,0,0,0.14);
+
             --bg-color-dark: #1a1c1e;
             --text-color-dark: #e0e0e0;
             --card-bg-dark: rgba(40, 42, 44, 0.75);
@@ -36,6 +41,9 @@
             --grid-color-dark: rgba(255, 255, 255, 0.08);
             --icon-color-dark: #E0E0E0;
             --placeholder-color-dark: #868e96;
+            --desk-dark: #0e0f10;
+            --canvas-surface-dark: #1f2123;
+            --canvas-edge-dark: rgba(255,255,255,0.12);
         }
 
         html { font-family: 'Poppins', sans-serif; }
@@ -48,20 +56,35 @@
 
         #canvas-container {
             width: 100vw; height: 100vh; position: relative; overflow: hidden;
-            cursor: grab; transition: background-image 0.3s ease;
+            cursor: grab; background-color: var(--desk-light);
+            transition: background-color 0.3s ease;
         }
-        .grid-visible {
+        html.dark #canvas-container { background-color: var(--desk-dark); }
+
+        /* The canvas IS the finite world. Grid lives here so it pans/zooms
+           in lockstep with the notes and always lines up with snapping. */
+        #canvas {
+            position: absolute; left: 0; top: 0; transform-origin: 0 0;
+            background-color: var(--canvas-surface-light);
+            border-radius: 8px;
+            box-shadow: 0 0 0 1.5px var(--canvas-edge-light), 0 16px 60px rgba(0,0,0,0.18);
+            transition: background-color 0.3s ease;
+        }
+        html.dark #canvas {
+            background-color: var(--canvas-surface-dark);
+            box-shadow: 0 0 0 1.5px var(--canvas-edge-dark), 0 16px 60px rgba(0,0,0,0.5);
+        }
+        #canvas.grid-visible {
             background-image:
                 linear-gradient(to right, var(--grid-color-light) 1px, transparent 1px),
                 linear-gradient(to bottom, var(--grid-color-light) 1px, transparent 1px);
             background-size: 20px 20px; /* GRID_SIZE */
         }
-        html.dark .grid-visible {
+        html.dark #canvas.grid-visible {
              background-image:
                 linear-gradient(to right, var(--grid-color-dark) 1px, transparent 1px),
                 linear-gradient(to bottom, var(--grid-color-dark) 1px, transparent 1px);
         }
-        #canvas { position: absolute; transform-origin: 0 0; width: 1px; height: 1px; }
 
         .note {
             position: absolute;
@@ -164,6 +187,38 @@
         .note.selected .note-resize-handle:hover { opacity: 1; }
         .note-resize-handle .material-symbols-outlined { font-size: 18px; color: var(--icon-color-light); }
         html.dark .note-resize-handle .material-symbols-outlined { color: var(--icon-color-dark); }
+
+        /* Minimap */
+        #minimap {
+            position: fixed; top: 16px; right: 16px; z-index: 1000;
+            background-color: var(--toolbar-bg-light);
+            border: 1px solid var(--card-border-light);
+            border-radius: 10px; box-shadow: var(--toolbar-shadow-light);
+            overflow: hidden; cursor: pointer;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        }
+        html.dark #minimap {
+            background-color: var(--toolbar-bg-dark);
+            border-color: var(--card-border-dark); box-shadow: var(--toolbar-shadow-dark);
+        }
+        #minimap-world { position: absolute; inset: 0; }
+        .minimap-note {
+            position: absolute; border-radius: 1.5px;
+            background-color: var(--accent-color); opacity: 0.85;
+        }
+        .minimap-note.selected { outline: 1.5px solid var(--accent-color); outline-offset: 0; opacity: 1; z-index: 3; }
+        #minimapViewport {
+            position: absolute; box-sizing: border-box;
+            border: 1.5px solid var(--accent-color);
+            background-color: rgba(255, 215, 0, 0.14);
+            border-radius: 2px; pointer-events: none; z-index: 4;
+        }
+        #minimapLabel {
+            position: absolute; bottom: 2px; left: 5px; z-index: 5;
+            font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--placeholder-color-light); pointer-events: none; opacity: 0.7;
+        }
+        html.dark #minimapLabel { color: var(--placeholder-color-dark); }
 
         #toolbar {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -268,6 +323,11 @@
 <body>
 
     <div id="canvas-container"><div id="canvas"></div></div>
+    <div id="minimap">
+        <div id="minimap-world"></div>
+        <div id="minimapViewport"></div>
+        <div id="minimapLabel">Map</div>
+    </div>
     <div id="toolbar">
         <button id="addNoteBtn" class="toolbar-button" data-tooltip="Add Note"><span class="material-symbols-outlined">add_circle</span></button>
         <button id="deleteNoteBtn" class="toolbar-button" data-tooltip="Delete Selected Note" disabled><span class="material-symbols-outlined">delete</span></button>
@@ -377,11 +437,69 @@
         const GRID_SIZE = 20;
         const MIN_NOTE_WIDTH = GRID_SIZE * 5;
         const MIN_NOTE_HEIGHT = GRID_SIZE * 4;
+        // Finite canvas world (multiples of GRID_SIZE) so you can't get lost.
+        const WORLD_WIDTH = GRID_SIZE * 300;   // 6000
+        const WORLD_HEIGHT = GRID_SIZE * 200;  // 4000
+        const PAN_MARGIN = 80;                 // small overscroll past the world edge
+        const MINIMAP_MAX = 190;               // max minimap dimension in px
+
+        // Minimap DOM
+        const minimapEl = document.getElementById('minimap');
+        const minimapWorldEl = document.getElementById('minimap-world');
+        const minimapViewportEl = document.getElementById('minimapViewport');
+        let minimapScale = 1;
+        let isMinimapDragging = false;
         const NOTE_COLORS = ['rgba(255, 215, 0, 0.7)', 'rgba(173, 216, 230, 0.7)', 'rgba(144, 238, 144, 0.7)', 'rgba(255, 182, 193, 0.7)', 'rgba(221, 160, 221, 0.7)', 'rgba(240, 240, 240, 0.7)'];
         const DARK_NOTE_COLORS = ['rgba(255, 215, 0, 0.6)', 'rgba(70, 130, 180, 0.6)', 'rgba(60, 179, 113, 0.6)', 'rgba(219, 112, 147, 0.6)', 'rgba(147, 112, 219, 0.6)', 'rgba(60, 60, 60, 0.7)'];
         const EXPORT_VERSION = "1.0.0"; // For data structure versioning
 
         function snapToGrid(value, gridSize = GRID_SIZE) { return Math.round(value / gridSize) * gridSize; }
+        function clamp(v, min, max) { return Math.max(min, Math.min(v, max)); }
+        // Keep a note fully inside the finite world.
+        function clampNoteX(x, w) { return clamp(x, 0, Math.max(0, WORLD_WIDTH - w)); }
+        function clampNoteY(y, h) { return clamp(y, 0, Math.max(0, WORLD_HEIGHT - h)); }
+
+        // --- Minimap ---
+        function layoutMinimap() {
+            const ar = WORLD_WIDTH / WORLD_HEIGHT;
+            let w = MINIMAP_MAX, h = MINIMAP_MAX / ar;
+            if (h > MINIMAP_MAX) { h = MINIMAP_MAX; w = MINIMAP_MAX * ar; }
+            minimapEl.style.width = `${w}px`; minimapEl.style.height = `${h}px`;
+            minimapScale = w / WORLD_WIDTH;
+        }
+        function updateMinimap() {
+            if (!minimapScale) layoutMinimap();
+            // notes
+            minimapWorldEl.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            notes.forEach(n => {
+                const d = document.createElement('div');
+                d.className = 'minimap-note' + (n.id === selectedNoteId ? ' selected' : '');
+                d.style.left = `${n.x * minimapScale}px`;
+                d.style.top = `${n.y * minimapScale}px`;
+                d.style.width = `${Math.max(2, n.width * minimapScale)}px`;
+                d.style.height = `${Math.max(2, n.height * minimapScale)}px`;
+                if (n.color) d.style.backgroundColor = n.color;
+                frag.appendChild(d);
+            });
+            minimapWorldEl.appendChild(frag);
+            // viewport rectangle (visible region expressed in world coords)
+            const vw = canvasContainer.clientWidth, vh = canvasContainer.clientHeight;
+            const viewLeft = -panX / zoomLevel, viewTop = -panY / zoomLevel;
+            minimapViewportEl.style.left = `${viewLeft * minimapScale}px`;
+            minimapViewportEl.style.top = `${viewTop * minimapScale}px`;
+            minimapViewportEl.style.width = `${(vw / zoomLevel) * minimapScale}px`;
+            minimapViewportEl.style.height = `${(vh / zoomLevel) * minimapScale}px`;
+        }
+        function minimapPanTo(clientX, clientY) {
+            const rect = minimapEl.getBoundingClientRect();
+            const worldX = (clientX - rect.left) / minimapScale;
+            const worldY = (clientY - rect.top) / minimapScale;
+            // center the main viewport on the clicked world point
+            panX = canvasContainer.clientWidth / 2 - worldX * zoomLevel;
+            panY = canvasContainer.clientHeight / 2 - worldY * zoomLevel;
+            updateCanvasTransform(); saveState();
+        }
         function getSelectedNoteContentElement() {
             if (!selectedNoteId) return null;
             const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
@@ -389,6 +507,11 @@
         }
 
         function init() {
+            // Size the finite world and prepare the minimap before first paint.
+            canvas.style.width = `${WORLD_WIDTH}px`;
+            canvas.style.height = `${WORLD_HEIGHT}px`;
+            layoutMinimap();
+
             loadState(); updateCanvasTransform(); renderNotes(); updateToolbarState();
             applyTheme(localStorage.getItem('modularNotepad_theme_v8') || 'light');
             applyGridVisibility(localStorage.getItem('modularNotepad_gridVisible_v8') === 'true');
@@ -397,6 +520,12 @@
             canvasContainer.addEventListener('wheel', handleCanvasWheel, { passive: false });
             document.addEventListener('mousemove', handleGlobalMouseMove);
             document.addEventListener('mouseup', handleGlobalMouseUp);
+
+            minimapEl.addEventListener('mousedown', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                isMinimapDragging = true; minimapPanTo(e.clientX, e.clientY);
+            });
+            window.addEventListener('resize', () => { updateCanvasTransform(); });
 
             setupToolbarButtonListeners();
             setupCustomTooltips();
@@ -482,7 +611,7 @@
             notes = notes.filter(note => note.id !== idOfNoteToDelete);
             canvas.querySelector(`.note[data-id="${idOfNoteToDelete}"]`)?.remove();
             if (selectedNoteId === idOfNoteToDelete) selectedNoteId = null;
-            updateToolbarState(); saveState();
+            updateToolbarState(); saveState(); updateMinimap();
         }
 
         function setupImportConfirmation() {
@@ -513,13 +642,30 @@
         }
         function toggleTheme() { applyTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark'); }
         function applyGridVisibility(visible) {
-            canvasContainer.classList.toggle('grid-visible', visible);
+            canvas.classList.toggle('grid-visible', visible);
             toggleGridBtn.classList.toggle('active', visible);
             localStorage.setItem('modularNotepad_gridVisible_v8', visible);
         }
-        function toggleGrid() { applyGridVisibility(!canvasContainer.classList.contains('grid-visible')); }
+        function toggleGrid() { applyGridVisibility(!canvas.classList.contains('grid-visible')); }
 
-        function updateCanvasTransform() { canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`; }
+        function clampPan() {
+            const vw = canvasContainer.clientWidth, vh = canvasContainer.clientHeight;
+            const worldW = WORLD_WIDTH * zoomLevel, worldH = WORLD_HEIGHT * zoomLevel;
+            if (worldW <= vw) { panX = (vw - worldW) / 2; }      // world narrower than view -> center
+            else { panX = clamp(panX, vw - worldW - PAN_MARGIN, PAN_MARGIN); }
+            if (worldH <= vh) { panY = (vh - worldH) / 2; }
+            else { panY = clamp(panY, vh - worldH - PAN_MARGIN, PAN_MARGIN); }
+        }
+        function updateCanvasTransform() {
+            clampPan();
+            canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+            updateMinimap();
+        }
+        function centerView() {
+            const vw = canvasContainer.clientWidth, vh = canvasContainer.clientHeight;
+            panX = vw / 2 - (WORLD_WIDTH / 2) * zoomLevel;
+            panY = vh / 2 - (WORLD_HEIGHT / 2) * zoomLevel;
+        }
         function zoomAtPoint(mouseX, mouseY, factor) {
             const mouseBeforeZoomX = (mouseX - panX) / zoomLevel;
             const mouseBeforeZoomY = (mouseY - panY) / zoomLevel;
@@ -532,7 +678,7 @@
             const rect = canvasContainer.getBoundingClientRect();
             zoomAtPoint(rect.width / 2, rect.height / 2, factor);
         }
-        function resetView() { zoomLevel = 1; panX = 0; panY = 0; updateCanvasTransform(); saveState(); }
+        function resetView() { zoomLevel = 1; centerView(); updateCanvasTransform(); saveState(); }
         function handleCanvasMouseDown(e) {
             if (e.target === canvasContainer || e.target === canvas) {
                 isPanning = true; canvasContainer.style.cursor = 'grabbing';
@@ -657,28 +803,40 @@
                 const dx = e.clientX - lastPanX; const dy = e.clientY - lastPanY;
                 panX += dx; panY += dy; lastPanX = e.clientX; lastPanY = e.clientY;
                 updateCanvasTransform();
+            } else if (isMinimapDragging) {
+                minimapPanTo(e.clientX, e.clientY);
             } else if (isDraggingNote && selectedNoteId) {
                 const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`); if (!noteEl) return;
-                let newX = (e.clientX - panX) / zoomLevel - dragOffsetX;
-                let newY = (e.clientY - panY) / zoomLevel - dragOffsetY;
+                const w = parseFloat(noteEl.style.width), h = parseFloat(noteEl.style.height);
+                // live snap-to-grid + keep inside the world
+                let newX = clampNoteX(snapToGrid((e.clientX - panX) / zoomLevel - dragOffsetX), w);
+                let newY = clampNoteY(snapToGrid((e.clientY - panY) / zoomLevel - dragOffsetY), h);
                 noteEl.style.left = `${newX}px`; noteEl.style.top = `${newY}px`;
+                updateMinimap();
             } else if (isResizingNote && selectedNoteId) {
                 const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`); if (!noteEl) return;
+                const noteX = parseFloat(noteEl.style.left), noteY = parseFloat(noteEl.style.top);
                 const currentMouseX = (e.clientX - panX) / zoomLevel; const currentMouseY = (e.clientY - panY) / zoomLevel;
-                let newWidth = initialNoteWidth + (currentMouseX - initialResizeMouseX);
-                let newHeight = initialNoteHeight + (currentMouseY - initialResizeMouseY);
-                noteEl.style.width = `${Math.max(newWidth, MIN_NOTE_WIDTH)}px`;
-                noteEl.style.height = `${Math.max(newHeight, MIN_NOTE_HEIGHT)}px`;
+                // live snap, clamp to minimum and to the world edge
+                let newWidth = snapToGrid(initialNoteWidth + (currentMouseX - initialResizeMouseX));
+                let newHeight = snapToGrid(initialNoteHeight + (currentMouseY - initialResizeMouseY));
+                newWidth = clamp(newWidth, MIN_NOTE_WIDTH, WORLD_WIDTH - noteX);
+                newHeight = clamp(newHeight, MIN_NOTE_HEIGHT, WORLD_HEIGHT - noteY);
+                noteEl.style.width = `${newWidth}px`; noteEl.style.height = `${newHeight}px`;
+                updateMinimap();
             }
         }
         function handleGlobalMouseUp() {
             if (isPanning) { isPanning = false; saveState(); }
+            if (isMinimapDragging) { isMinimapDragging = false; }
             if (isDraggingNote && selectedNoteId) {
                 const note = notes.find(n => n.id === selectedNoteId);
                 const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
                 if (note && noteEl) {
-                    note.x = snapToGrid(parseFloat(noteEl.style.left)); note.y = snapToGrid(parseFloat(noteEl.style.top));
-                    noteEl.style.left = `${note.x}px`; noteEl.style.top = `${note.y}px`; saveState();
+                    note.x = clampNoteX(snapToGrid(parseFloat(noteEl.style.left)), note.width);
+                    note.y = clampNoteY(snapToGrid(parseFloat(noteEl.style.top)), note.height);
+                    noteEl.style.left = `${note.x}px`; noteEl.style.top = `${note.y}px`;
+                    saveState(); updateMinimap();
                 }
                 isDraggingNote = false;
             }
@@ -686,16 +844,17 @@
                 const note = notes.find(n => n.id === selectedNoteId);
                 const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
                 if (note && noteEl) {
-                    note.width = snapToGrid(Math.max(parseFloat(noteEl.style.width), MIN_NOTE_WIDTH));
-                    note.height = snapToGrid(Math.max(parseFloat(noteEl.style.height), MIN_NOTE_HEIGHT));
-                    noteEl.style.width = `${note.width}px`; noteEl.style.height = `${note.height}px`; saveState();
+                    note.width = clamp(snapToGrid(parseFloat(noteEl.style.width)), MIN_NOTE_WIDTH, WORLD_WIDTH - note.x);
+                    note.height = clamp(snapToGrid(parseFloat(noteEl.style.height)), MIN_NOTE_HEIGHT, WORLD_HEIGHT - note.y);
+                    noteEl.style.width = `${note.width}px`; noteEl.style.height = `${note.height}px`;
+                    saveState(); updateMinimap();
                 }
                 isResizingNote = false;
             }
             if (!isPanning && !isDraggingNote && !isResizingNote) canvasContainer.style.cursor = 'grab';
         }
         
-        function renderNotes() { canvas.innerHTML = ''; notes.forEach(note => canvas.appendChild(createNoteElement(note))); }
+        function renderNotes() { canvas.innerHTML = ''; notes.forEach(note => canvas.appendChild(createNoteElement(note))); updateMinimap(); }
         function addNote() {
             highestZIndex++;
             const viewCenterX = (canvasContainer.offsetWidth / 2 - panX) / zoomLevel;
@@ -703,14 +862,15 @@
             const initialWidth = snapToGrid(240); const initialHeight = snapToGrid(180);
             const newNote = {
                 id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, title: '', content: '',
-                x: snapToGrid(viewCenterX - initialWidth / 2), y: snapToGrid(viewCenterY - initialHeight / 2),
+                x: clampNoteX(snapToGrid(viewCenterX - initialWidth / 2), initialWidth),
+                y: clampNoteY(snapToGrid(viewCenterY - initialHeight / 2), initialHeight),
                 width: initialWidth, height: initialHeight,
                 color: document.documentElement.classList.contains('dark') ? DARK_NOTE_COLORS[5] : NOTE_COLORS[5],
                 zIndex: highestZIndex
             };
             notes.push(newNote);
             const noteEl = createNoteElement(newNote); canvas.appendChild(noteEl);
-            selectNote(newNote.id); saveState();
+            selectNote(newNote.id); saveState(); updateMinimap();
         }
         function selectNote(noteId) {
             if (selectedNoteId === noteId && document.querySelector(`.note[data-id="${noteId}"].selected`)) {
@@ -720,7 +880,7 @@
                 const noteEl = canvas.querySelector(`.note[data-id="${noteId}"]`);
                 if (noteEl) { noteEl.classList.add('selected'); bringToFront(noteId); }
             }
-            updateToolbarState(); updateFormattingButtonStates();
+            updateToolbarState(); updateFormattingButtonStates(); updateMinimap();
         }
         function deselectAllNotes() {
             if (selectedNoteId) {
@@ -731,7 +891,7 @@
                     titleEl?.blur();
                 }
             }
-            selectedNoteId = null; updateToolbarState(); updateFormattingButtonStates();
+            selectedNoteId = null; updateToolbarState(); updateFormattingButtonStates(); updateMinimap();
         }
         function handleDocumentClickForDeselectionAndPalette(event) {
             if ((event.target === canvasContainer || event.target === canvas) && !isPanning && !isDraggingNote && !isResizingNote) {
@@ -890,16 +1050,19 @@
                     }
                     // Could add version check here: if (importedData.version !== EXPORT_VERSION) ...
 
-                    notes = importedData.notes.map(note => ({ // Sanitize/default imported notes
-                        ...note,
-                        x: snapToGrid(parseFloat(note.x) || 0),
-                        y: snapToGrid(parseFloat(note.y) || 0),
-                        width: snapToGrid(Math.max(parseFloat(note.width) || MIN_NOTE_WIDTH, MIN_NOTE_WIDTH)),
-                        height: snapToGrid(Math.max(parseFloat(note.height) || MIN_NOTE_HEIGHT, MIN_NOTE_HEIGHT)),
-                        zIndex: parseInt(note.zIndex, 10) || 1,
-                        title: note.title || '',
-                        content: note.content || ''
-                    }));
+                    notes = importedData.notes.map(note => { // Sanitize/default imported notes
+                        const width = snapToGrid(Math.max(parseFloat(note.width) || MIN_NOTE_WIDTH, MIN_NOTE_WIDTH));
+                        const height = snapToGrid(Math.max(parseFloat(note.height) || MIN_NOTE_HEIGHT, MIN_NOTE_HEIGHT));
+                        return {
+                            ...note,
+                            x: clampNoteX(snapToGrid(parseFloat(note.x) || 0), width),
+                            y: clampNoteY(snapToGrid(parseFloat(note.y) || 0), height),
+                            width, height,
+                            zIndex: parseInt(note.zIndex, 10) || 1,
+                            title: note.title || '',
+                            content: note.content || ''
+                        };
+                    });
                     
                     zoomLevel = parseFloat(importedData.transform.zoomLevel) || 1;
                     panX = parseFloat(importedData.transform.panX) || 0;
@@ -950,13 +1113,17 @@
             const storedNotes = localStorage.getItem(LS_NOTES_KEY);
             if (storedNotes) {
                 try {
-                    notes = JSON.parse(storedNotes).map(note => ({
-                        id: note.id, title: note.title || '', content: note.content || '',
-                        x: snapToGrid(parseFloat(note.x) || 0), y: snapToGrid(parseFloat(note.y) || 0),
-                        width: snapToGrid(Math.max(parseFloat(note.width) || MIN_NOTE_WIDTH, MIN_NOTE_WIDTH)),
-                        height: snapToGrid(Math.max(parseFloat(note.height) || MIN_NOTE_HEIGHT, MIN_NOTE_HEIGHT)),
-                        color: note.color, zIndex: parseInt(note.zIndex, 10) || 1
-                    }));
+                    notes = JSON.parse(storedNotes).map(note => {
+                        const width = snapToGrid(Math.max(parseFloat(note.width) || MIN_NOTE_WIDTH, MIN_NOTE_WIDTH));
+                        const height = snapToGrid(Math.max(parseFloat(note.height) || MIN_NOTE_HEIGHT, MIN_NOTE_HEIGHT));
+                        return {
+                            id: note.id, title: note.title || '', content: note.content || '',
+                            x: clampNoteX(snapToGrid(parseFloat(note.x) || 0), width),
+                            y: clampNoteY(snapToGrid(parseFloat(note.y) || 0), height),
+                            width, height,
+                            color: note.color, zIndex: parseInt(note.zIndex, 10) || 1
+                        };
+                    });
                 } catch (e) { console.error("Error parsing notes:", e); notes = []; }
             }
             const storedTransform = localStorage.getItem(LS_TRANSFORM_KEY);
@@ -964,7 +1131,9 @@
                 try {
                     const t = JSON.parse(storedTransform);
                     zoomLevel = parseFloat(t.zoomLevel) || 1; panX = parseFloat(t.panX) || 0; panY = parseFloat(t.panY) || 0;
-                } catch (e) { /* defaults already set */ }
+                } catch (e) { centerView(); }
+            } else {
+                centerView();
             }
             highestZIndex = parseInt(localStorage.getItem(LS_HIGHEST_Z_KEY), 10) || (notes.length > 0 ? Math.max(...notes.map(n => n.zIndex || 0), 0) + 1 : 1);
         }
