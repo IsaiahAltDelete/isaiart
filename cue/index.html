@@ -1,415 +1,544 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CUE CLOCK</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Courier New', monospace;
-            background-color: #000;
-            color: #fff;
-            padding: 10px;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        header {
-            text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 10px;
-        }
-        
-        h1 {
-            font-size: 1.5rem;
-            font-weight: normal;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-        
-        .current-time {
-            font-size: 3.5rem;
-            font-weight: bold;
-            letter-spacing: 2px;
-            margin: 15px 0;
-        }
-        
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-bottom: 30px;
-        }
-        
-        input, button {
-            font-family: 'Courier New', monospace;
-            height: 36px;
-            border: 1px solid #444;
-            padding: 0 10px;
-            font-size: 0.9rem;
-            background-color: #000;
-            color: #fff;
-        }
-        
-        input {
-            flex: 1;
-            min-width: 120px;
-        }
-        
-        button {
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            cursor: pointer;
-        }
-        
-        button:hover {
-            background-color: #222;
-        }
-        
-        .countdown-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 10px;
-        }
-        
-        .countdown-item {
-            border: 1px solid #333;
-            padding: 15px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .countdown-label {
-            font-size: 1rem;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .countdown-time {
-            font-size: 1.8rem;
-            font-weight: bold;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap;
-        }
-        
-        .countdown-date {
-            font-size: 0.8rem;
-            opacity: 0.6;
-        }
-        
-        .delete-btn {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: none;
-            border: none;
-            color: #555;
-            cursor: pointer;
-            font-size: 1.2rem;
-            height: auto;
-            padding: 2px 5px;
-        }
-        
-        .delete-btn:hover {
-            color: #fff;
-            background: none;
-        }
-        
-        .warning .countdown-time {
-            color: #ff0;
-        }
-        
-        .critical .countdown-time {
-            color: #f00;
-        }
-        
-        .critical.blink .countdown-time {
-            animation: blink 1s infinite;
-        }
-        
-        @keyframes blink {
-            0% { opacity: 1; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
-        }
-        
-        @media (max-width: 800px) {
-            .countdown-list {
-                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            }
-            
-            .countdown-time {
-                font-size: 1.6rem;
-                letter-spacing: 0;
-            }
-        }
-        
-        @media (max-width: 600px) {
-            .countdown-list {
-                grid-template-columns: 1fr;
-            }
-            
-            .current-time {
-                font-size: 2.5rem;
-            }
-            
-            .countdown-time {
-                font-size: 1.8rem;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CUE CLOCK</title>
+<meta name="description" content="A function-first theater cue clock: stage timer, countdowns to curtain, SM message board and a fullscreen backstage display.">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    font-family:'Courier New',Courier,monospace;background:#000;color:#fff;
+    display:flex;flex-direction:column;min-height:100%;
+    -webkit-user-select:none;user-select:none;
+  }
+  button,input,select{font-family:inherit;color:#fff;background:#000}
+
+  /* top bar */
+  .topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #333;flex-wrap:wrap}
+  .brand{font-size:1rem;letter-spacing:3px;text-transform:uppercase;line-height:1.1}
+  .brand small{display:block;font-size:.58rem;letter-spacing:.25em;color:#777}
+  .wallclock{margin-left:auto;font-size:clamp(1.4rem,5vw,2.2rem);font-weight:bold;letter-spacing:2px;font-variant-numeric:tabular-nums}
+  .wallclock .ampm{font-size:.5em;color:#888;margin-left:6px}
+  .top-actions{display:flex;gap:6px}
+  .ibtn{border:1px solid #444;background:#000;padding:8px 11px;cursor:pointer;text-transform:uppercase;letter-spacing:1px;font-size:.72rem}
+  .ibtn:hover{background:#222}
+  .ibtn.on{border-color:#fff}
+
+  /* message banner */
+  #message-banner{display:none;text-align:center;padding:12px;border-bottom:1px solid #333;
+    font-size:clamp(1.6rem,7vw,3.2rem);font-weight:bold;letter-spacing:5px;text-transform:uppercase}
+  #message-banner.show{display:block}
+  #message-banner.standby{color:#ff0}
+  #message-banner.go{color:#0f0;animation:blink 1s steps(2,start) infinite}
+  #message-banner.hold{color:#f00}
+  #message-banner.blackout{color:#444}
+  #message-banner.custom{color:#fff}
+
+  /* layout */
+  .stage{flex:1;max-width:900px;width:100%;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+  .card{border:1px solid #333;padding:16px}
+  .card h2{font-size:.68rem;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:12px}
+
+  /* primary timer */
+  #primary{text-align:center}
+  .primary-label{display:block;width:100%;text-align:center;border:none;color:#888;
+    font-size:1rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px}
+  .primary-label:focus{outline:none;color:#fff}
+  .big-time{font-size:clamp(4rem,22vw,12rem);font-weight:bold;line-height:1;letter-spacing:2px;font-variant-numeric:tabular-nums}
+  .state-normal,.state-run{color:#fff}
+  .state-warn{color:#ff0}
+  .state-crit,.state-over{color:#f00}
+  .blink{animation:blink 1s steps(2,start) infinite}
+  @keyframes blink{50%{opacity:.2}}
+
+  .mode-tabs{display:flex;gap:6px;justify-content:center;margin:14px 0 10px;flex-wrap:wrap}
+  .tab{border:1px solid #444;background:#000;color:#888;padding:8px 16px;cursor:pointer;text-transform:uppercase;letter-spacing:1px;font-size:.78rem}
+  .tab:hover{background:#222;color:#fff}
+  .tab.active{background:#fff;color:#000}
+
+  .timer-inputs{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .duration-field,.clock-field{border:1px solid #444;font-size:1.6rem;font-weight:bold;text-align:center;
+    width:170px;height:50px;letter-spacing:2px;font-variant-numeric:tabular-nums}
+  .duration-field:focus,.clock-field:focus{outline:none;border-color:#fff}
+  .presets{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
+  .chip{border:1px solid #444;padding:7px 10px;cursor:pointer;font-size:.8rem}
+  .chip:hover{background:#222}
+
+  .primary-controls{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .btn{border:1px solid #444;height:50px;padding:0 26px;cursor:pointer;text-transform:uppercase;letter-spacing:2px;font-size:1rem;font-weight:bold}
+  .btn:hover{background:#222}
+  .btn.go{border-color:#0c0;color:#0f0}
+  .btn.go:hover{background:#031003}
+  .btn.pause{border-color:#cc0;color:#ff0}
+  .btn.pause:hover{background:#100f03}
+  .nudges{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  .nudge{border:1px solid #333;color:#888;height:36px;min-width:56px;padding:0 10px;cursor:pointer;font-size:.85rem}
+  .nudge:hover{background:#222;color:#fff}
+
+  /* message board */
+  .msg-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .msg-row input{flex:1;min-width:150px;height:42px;border:1px solid #444;padding:0 12px;font-size:1rem}
+  .msg-row input:focus{outline:none;border-color:#fff}
+  .msg-btn{height:42px;padding:0 14px;border:1px solid #444;cursor:pointer;letter-spacing:2px;font-size:.78rem}
+  .msg-btn:hover{background:#222}
+  .msg-btn[data-msg=GO]{color:#0f0;border-color:#0c0}
+  .msg-btn[data-msg=STANDBY]{color:#ff0;border-color:#cc0}
+  .msg-btn[data-msg=HOLD]{color:#f00;border-color:#c00}
+
+  /* cues */
+  .cue-add{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .cue-add input{height:42px;border:1px solid #444;padding:0 10px;font-size:.95rem}
+  .cue-add input[type=text]{flex:1;min-width:140px;text-transform:uppercase}
+  .cue-add input[type=time]{width:120px;font-variant-numeric:tabular-nums}
+  .cue-add .chip{height:42px;display:inline-flex;align-items:center}
+  .cue-add .add{height:42px;padding:0 18px;border:1px solid #fff;cursor:pointer;letter-spacing:2px;text-transform:uppercase}
+  .cue-add .add:hover{background:#fff;color:#000}
+  .cue-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+  .cue{border:1px solid #333;padding:12px;position:relative}
+  .cue.next{border-color:#fff}
+  .cue.fired{opacity:.4}
+  .cue.warn{border-color:#cc0}
+  .cue.crit{border-color:#c00}
+  .cue-name{text-transform:uppercase;font-size:.84rem;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:18px;color:#ccc}
+  .cue-count{font-size:1.7rem;font-weight:bold;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+  .cue.warn .cue-count{color:#ff0}
+  .cue.crit .cue-count{color:#f00}
+  .cue.fired .cue-count{color:#666}
+  .cue-at{font-size:.72rem;color:#777}
+  .next-tag{position:absolute;top:-8px;left:10px;background:#fff;color:#000;font-size:.58rem;letter-spacing:2px;padding:1px 6px}
+  .cue-del{position:absolute;top:5px;right:6px;border:none;background:none;color:#666;cursor:pointer;font-size:1.1rem;line-height:1}
+  .cue-del:hover{color:#f00}
+  .empty{color:#666;text-align:center;padding:14px;font-size:.9rem}
+
+  /* alert flash */
+  #flash{position:fixed;inset:0;background:#f00;opacity:0;pointer-events:none;z-index:90}
+  #flash.fire{animation:flashFire 1.6s ease-out}
+  @keyframes flashFire{0%,100%{opacity:0}10%{opacity:.5}30%{opacity:0}40%{opacity:.5}60%{opacity:0}70%{opacity:.45}}
+
+  /* stage / display mode */
+  body.stage-mode .brand small,
+  body.stage-mode .mode-tabs,
+  body.stage-mode .timer-inputs,
+  body.stage-mode .nudges,
+  body.stage-mode #card-message,
+  body.stage-mode #card-cues-editor{display:none}
+  body.stage-mode .stage{max-width:none}
+  body.stage-mode #card-primary{border:none;padding:6px}
+  body.stage-mode .big-time{font-size:clamp(6rem,32vw,22rem)}
+  body.stage-mode .primary-controls .btn.reset{display:none}
+
+  /* modals */
+  .modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.85);padding:16px}
+  .modal.open{display:flex}
+  .modal .inner{border:1px solid #444;max-width:460px;width:100%;padding:20px;position:relative;background:#000}
+  .modal h3{margin-bottom:12px;letter-spacing:2px;text-transform:uppercase;font-size:1rem}
+  .modal .close{position:absolute;top:8px;right:12px;font-size:22px;color:#888;cursor:pointer;background:none;border:none}
+  .kbd-row,.set-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #222;font-size:.9rem}
+  .kbd-row:last-child,.set-row:last-child{border:none}
+  kbd{border:1px solid #444;padding:2px 7px;font-size:.8rem}
+  .set-row label{color:#aaa}
+  .set-row input[type=number]{width:80px;height:36px;border:1px solid #444;text-align:center;font-weight:bold}
+
+  @media (max-width:600px){
+    .stage{padding:12px}
+    .card{padding:13px}
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>CUE CLOCK</h1>
-            <div id="current-time" class="current-time">00:00:00</div>
-        </header>
-        
-        <div class="controls">
-            <input type="text" id="event-name" placeholder="CUE NAME">
-            <input type="datetime-local" id="event-datetime">
-            <button id="add-preset-15">+15</button>
-            <button id="add-preset-30">+30</button>
-            <button id="add-preset-60">+60</button>
-            <button id="add-countdown">SET</button>
-            <button id="clear-all">CLEAR</button>
-        </div>
-        
-        <div class="countdown-list" id="countdown-list">
-            <!-- Countdown items will be added here dynamically -->
-        </div>
+  <div class="topbar">
+    <div class="brand">CUE CLOCK<small>Stage Timer</small></div>
+    <div class="wallclock"><span id="wall">00:00:00</span><span class="ampm" id="wall-ampm"></span></div>
+    <div class="top-actions">
+      <button class="ibtn" id="sound-btn">SOUND ●</button>
+      <button class="ibtn" id="settings-btn">SET</button>
+      <button class="ibtn" id="help-btn">?</button>
+      <button class="ibtn" id="stage-btn">STAGE</button>
     </div>
+  </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const countdownList = document.getElementById('countdown-list');
-            const eventNameInput = document.getElementById('event-name');
-            const eventDatetimeInput = document.getElementById('event-datetime');
-            const addCountdownBtn = document.getElementById('add-countdown');
-            const currentTimeEl = document.getElementById('current-time');
-            const clearAllBtn = document.getElementById('clear-all');
-            const add15MinBtn = document.getElementById('add-preset-15');
-            const add30MinBtn = document.getElementById('add-preset-30');
-            const add60MinBtn = document.getElementById('add-preset-60');
-            
-            let countdowns = [];
-            
-            // Set current datetime as default
-            const now = new Date();
-            const localDatetime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
-                .toISOString()
-                .slice(0, 16);
-            eventDatetimeInput.value = localDatetime;
-            
-            // Load countdowns from localStorage if available
-            if (localStorage.getItem('stageCountdowns')) {
-                try {
-                    countdowns = JSON.parse(localStorage.getItem('stageCountdowns'));
-                    renderCountdowns();
-                } catch (e) {
-                    console.error('Failed to load countdowns:', e);
-                    localStorage.removeItem('stageCountdowns');
-                }
-            }
-            
-            // Update current time
-            function updateCurrentTime() {
-                const now = new Date();
-                const timeString = now.toLocaleTimeString([], { hour12: false });
-                currentTimeEl.textContent = timeString;
-            }
-            
-            // Update current time every second
-            setInterval(updateCurrentTime, 1000);
-            updateCurrentTime();
-            
-            // Add new countdown
-            addCountdownBtn.addEventListener('click', function() {
-                addNewCountdown();
-            });
-            
-            // Add preset countdowns
-            add15MinBtn.addEventListener('click', function() {
-                addPresetCountdown('15 MIN', 15);
-            });
-            
-            add30MinBtn.addEventListener('click', function() {
-                addPresetCountdown('30 MIN', 30);
-            });
-            
-            add60MinBtn.addEventListener('click', function() {
-                addPresetCountdown('60 MIN', 60);
-            });
-            
-            // Clear all countdowns
-            clearAllBtn.addEventListener('click', function() {
-                countdowns = [];
-                saveCountdowns();
-                renderCountdowns();
-            });
-            
-            function addPresetCountdown(name, minutes) {
-                const now = new Date();
-                const targetDate = new Date(now.getTime() + (minutes * 60000));
-                
-                countdowns.push({
-                    id: Date.now().toString(),
-                    name: name,
-                    targetDate: targetDate.getTime(),
-                    completed: false
-                });
-                
-                saveCountdowns();
-                renderCountdowns();
-            }
-            
-            function addNewCountdown() {
-                const name = eventNameInput.value.trim() || 'CUE';
-                const datetime = eventDatetimeInput.value;
-                
-                if (!datetime) {
-                    return;
-                }
-                
-                const targetDate = new Date(datetime).getTime();
-                if (isNaN(targetDate)) {
-                    return;
-                }
-                
-                // Add the new countdown
-                countdowns.push({
-                    id: Date.now().toString(),
-                    name: name,
-                    targetDate: targetDate,
-                    completed: false
-                });
-                
-                // Save to localStorage
-                saveCountdowns();
-                
-                // Clear name input but keep the datetime
-                eventNameInput.value = '';
-                
-                // Render countdowns
-                renderCountdowns();
-            }
-            
-            // Delete countdown
-            countdownList.addEventListener('click', function(e) {
-                if (e.target.classList.contains('delete-btn')) {
-                    const countdownId = e.target.dataset.id;
-                    countdowns = countdowns.filter(countdown => countdown.id !== countdownId);
-                    saveCountdowns();
-                    renderCountdowns();
-                }
-            });
-            
-            // Save countdowns to localStorage
-            function saveCountdowns() {
-                localStorage.setItem('stageCountdowns', JSON.stringify(countdowns));
-            }
-            
-            // Render all countdowns
-            function renderCountdowns() {
-                countdownList.innerHTML = '';
-                
-                if (countdowns.length === 0) {
-                    return;
-                }
-                
-                // Sort countdowns by target date (soonest first)
-                countdowns.sort((a, b) => a.targetDate - b.targetDate);
-                
-                countdowns.forEach(countdown => {
-                    const countdownEl = document.createElement('div');
-                    countdownEl.className = 'countdown-item';
-                    
-                    countdownEl.innerHTML = `
-                        <button class="delete-btn" data-id="${countdown.id}">X</button>
-                        <div class="countdown-label">${countdown.name}</div>
-                        <div class="countdown-time" id="time-${countdown.id}">--:--:--</div>
-                        <div class="countdown-date">${new Date(countdown.targetDate).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'})}</div>
-                    `;
-                    
-                    countdownList.appendChild(countdownEl);
-                });
-                
-                // Start the countdown timers
-                updateAllCountdowns();
-            }
-            
-            // Update all countdowns
-            function updateAllCountdowns() {
-                countdowns.forEach(countdown => {
-                    updateCountdown(countdown);
-                });
-            }
-            
-            // Update a single countdown
-            function updateCountdown(countdown) {
-                const countdownEl = document.getElementById(`time-${countdown.id}`);
-                if (!countdownEl) return;
-                
-                const countdownItem = countdownEl.closest('.countdown-item');
-                const now = new Date().getTime();
-                const distance = countdown.targetDate - now;
-                
-                if (distance < 0) {
-                    countdownEl.innerHTML = "00:00:00";
-                    countdownItem.className = 'countdown-item critical blink';
-                    
-                    if (!countdown.completed) {
-                        countdown.completed = true;
-                        saveCountdowns();
-                    }
-                    return;
-                }
-                
-                // Time calculations
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                
-                // Format time
-                let formattedTime;
-                if (days > 0) {
-                    formattedTime = `${days}d ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                } else {
-                    formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                }
-                
-                countdownEl.innerHTML = formattedTime;
-                
-                // Add warning class if getting close
-                if (distance < 1000 * 60 * 5) { // Less than 5 minutes
-                    countdownItem.className = 'countdown-item critical';
-                } else if (distance < 1000 * 60 * 15) { // Less than 15 minutes
-                    countdownItem.className = 'countdown-item warning';
-                } else {
-                    countdownItem.className = 'countdown-item';
-                }
-            }
-            
-            // Update countdowns every second
-            setInterval(updateAllCountdowns, 1000);
-        });
-    </script>
+  <div id="message-banner"></div>
+
+  <main class="stage">
+    <!-- PRIMARY TIMER -->
+    <section class="card" id="card-primary">
+      <div id="primary">
+        <input class="primary-label" id="primary-label" value="STAGE TIMER" maxlength="40" spellcheck="false" aria-label="Timer label">
+        <div class="big-time state-normal" id="big-time">05:00</div>
+
+        <div class="mode-tabs">
+          <button class="tab active" data-mode="countdown">Countdown</button>
+          <button class="tab" data-mode="stopwatch">Count Up</button>
+          <button class="tab" data-mode="target">To Clock Time</button>
+        </div>
+
+        <div class="timer-inputs" id="inputs-countdown">
+          <input class="duration-field" id="duration-input" value="05:00" inputmode="numeric" aria-label="Duration mm:ss" spellcheck="false">
+          <div class="presets">
+            <button class="chip" data-min="1">1:00</button>
+            <button class="chip" data-min="5">5:00</button>
+            <button class="chip" data-min="10">10:00</button>
+            <button class="chip" data-min="15">15:00</button>
+            <button class="chip" data-min="20">20:00</button>
+            <button class="chip" data-min="30">30:00</button>
+          </div>
+        </div>
+        <div class="timer-inputs" id="inputs-target" style="display:none">
+          <input type="time" class="clock-field" id="target-input" step="60" aria-label="Target clock time">
+        </div>
+
+        <div class="primary-controls">
+          <button class="btn go" id="start-btn">START</button>
+          <button class="btn reset" id="reset-btn">RESET</button>
+        </div>
+        <div class="nudges" id="nudges">
+          <button class="nudge" data-sec="-60">&minus;1:00</button>
+          <button class="nudge" data-sec="-10">&minus;0:10</button>
+          <button class="nudge" data-sec="10">+0:10</button>
+          <button class="nudge" data-sec="60">+1:00</button>
+          <button class="nudge" data-sec="300">+5:00</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- MESSAGE BOARD -->
+    <section class="card" id="card-message">
+      <h2>Message to display</h2>
+      <div class="msg-row">
+        <input id="msg-input" placeholder="Type a custom message…" maxlength="60">
+        <button class="msg-btn" data-msg="STANDBY">STANDBY</button>
+        <button class="msg-btn" data-msg="GO">GO</button>
+        <button class="msg-btn" data-msg="HOLD">HOLD</button>
+        <button class="msg-btn" data-msg="BLACKOUT">BLACKOUT</button>
+        <button class="msg-btn" id="msg-clear">CLEAR</button>
+      </div>
+    </section>
+
+    <!-- CUE LIST -->
+    <section class="card" id="card-cues">
+      <h2>Cues</h2>
+      <div id="card-cues-editor">
+        <div class="cue-add">
+          <input type="text" id="cue-name" placeholder="CUE NAME (e.g. HOUSE OPEN)" maxlength="32">
+          <input type="time" id="cue-time" step="60">
+          <button class="chip" data-cuemin="15">+15m</button>
+          <button class="chip" data-cuemin="30">+30m</button>
+          <button class="chip" data-cuemin="60">+60m</button>
+          <button class="add" id="cue-add-btn">Add Cue</button>
+        </div>
+      </div>
+      <div class="cue-list" id="cue-list"></div>
+    </section>
+  </main>
+
+  <div id="flash"></div>
+
+  <!-- Help modal -->
+  <div class="modal" id="help-modal"><div class="inner">
+    <button class="close" data-close>&times;</button>
+    <h3>Shortcuts</h3>
+    <div class="kbd-row"><span>Start / Pause timer</span><kbd>Space</kbd></div>
+    <div class="kbd-row"><span>Reset timer</span><kbd>R</kbd></div>
+    <div class="kbd-row"><span>Stage / display mode</span><kbd>F</kbd></div>
+    <div class="kbd-row"><span>Flash GO</span><kbd>G</kbd></div>
+    <div class="kbd-row"><span>Flash STANDBY</span><kbd>S</kbd></div>
+    <div class="kbd-row"><span>Clear message</span><kbd>Esc</kbd></div>
+    <p style="margin-top:12px;color:#888;font-size:.84rem;line-height:1.6">
+      COUNTDOWN times a segment. COUNT UP tracks running time. TO CLOCK TIME counts down to curtain (e.g. 19:30). At zero the timer flashes, beeps, and rolls into red overtime.</p>
+  </div></div>
+
+  <!-- Settings modal -->
+  <div class="modal" id="settings-modal"><div class="inner">
+    <button class="close" data-close>&times;</button>
+    <h3>Settings</h3>
+    <div class="set-row"><label>Amber (warning) at — sec left</label><input type="number" id="set-warn" value="120" min="5" max="3600"></div>
+    <div class="set-row"><label>Red (critical) at — sec left</label><input type="number" id="set-crit" value="30" min="1" max="3600"></div>
+    <div class="set-row"><label>24-hour clock</label><input type="checkbox" id="set-24h"></div>
+    <div class="set-row"><label>Blink in critical / overtime</label><input type="checkbox" id="set-blink" checked></div>
+    <div class="set-row"><label>Alert sound at zero</label><input type="checkbox" id="set-sound" checked></div>
+  </div></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const pad = n => String(Math.floor(Math.abs(n))).padStart(2,'0');
+const now = () => Date.now();
+
+/* ---------------- persistence ---------------- */
+const LS = 'cueClock_v2';
+let store = load();
+function load(){
+  let d = { primary:{label:'STAGE TIMER',mode:'countdown',durationMs:300000,remainingMs:300000,running:false,endAt:null,elapsedMs:0,startedAt:null,targetClock:'19:30'},
+            cues:[], message:null, settings:{warn:120,crit:30,h24:true,blink:true,sound:true} };
+  try{ const s = JSON.parse(localStorage.getItem(LS)); if(s){ d=Object.assign(d,s); if(s.primary)d.primary=Object.assign(d.primary,s.primary); if(s.settings)d.settings=Object.assign(d.settings,s.settings);} }catch(e){}
+  return d;
+}
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(store)); }catch(e){} }
+const P = store.primary;
+const SET = store.settings;
+
+/* ---------------- audio ---------------- */
+let audioCtx=null;
+function beep(times=3){
+  if(!SET.sound) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    let t = audioCtx.currentTime;
+    for(let i=0;i<times;i++){
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type='square'; o.frequency.value=880;
+      o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.25,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+0.18);
+      o.start(t); o.stop(t+0.2); t+=0.28;
+    }
+  }catch(e){}
+}
+
+/* ---------------- helpers ---------------- */
+function parseDuration(str){
+  str=String(str).trim();
+  if(/^\d+$/.test(str)) return parseInt(str,10)*60000;
+  const parts=str.split(':').map(s=>parseInt(s,10));
+  if(parts.some(isNaN)) return null;
+  let s=0;
+  if(parts.length===2) s=parts[0]*60+parts[1];
+  else if(parts.length===3) s=parts[0]*3600+parts[1]*60+parts[2];
+  else return null;
+  return s*1000;
+}
+function fmt(ms,withSign){
+  const neg=ms<0; ms=Math.abs(ms);
+  const total=Math.floor(ms/1000);
+  const h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60;
+  let str = h>0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  return (withSign&&neg?'-':'')+str;
+}
+function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ---------------- primary timer ---------------- */
+function targetEndAt(){
+  const [h,m]=(P.targetClock||'19:30').split(':').map(Number);
+  const d=new Date(); d.setHours(h,m,0,0);
+  let end=d.getTime();
+  if(end-now() < -12*3600*1000) end+=24*3600*1000;
+  return end;
+}
+function primaryValue(){
+  if(P.mode==='stopwatch') return P.running ? P.elapsedMs+(now()-P.startedAt) : P.elapsedMs;
+  if(P.mode==='target') return targetEndAt()-now();
+  return P.running ? P.endAt-now() : P.remainingMs;
+}
+let firedZero=false;
+function startPrimary(){
+  if(P.mode==='stopwatch'){ if(P.running)return; P.startedAt=now(); P.running=true; }
+  else if(P.mode==='target'){ P.running=true; }
+  else { if(P.running)return; if(P.remainingMs<=0)P.remainingMs=P.durationMs; P.endAt=now()+P.remainingMs; P.running=true; }
+  firedZero = primaryValue()<=0;
+  save(); renderControls();
+}
+function pausePrimary(){
+  if(P.mode==='stopwatch'){ if(!P.running)return; P.elapsedMs+=now()-P.startedAt; P.running=false; }
+  else if(P.mode==='target'){ P.running=false; }
+  else { if(!P.running)return; P.remainingMs=P.endAt-now(); P.running=false; }
+  save(); renderControls();
+}
+function resetPrimary(){
+  if(P.mode==='stopwatch'){ P.elapsedMs=0; P.running=false; }
+  else if(P.mode==='target'){ P.running=false; }
+  else { P.remainingMs=P.durationMs; P.running=false; P.endAt=null; }
+  firedZero=false; save(); renderControls(); paintPrimary();
+}
+function nudge(sec){
+  const ms=sec*1000;
+  if(P.mode==='stopwatch'){ if(P.running)P.startedAt-=ms; else P.elapsedMs=Math.max(0,P.elapsedMs+ms); }
+  else if(P.mode==='target'){ return; }
+  else { if(P.running)P.endAt+=ms; else P.remainingMs+=ms; P.durationMs=Math.max(0,P.durationMs+ms); }
+  save();
+}
+function setMode(mode){
+  P.mode=mode;
+  document.querySelectorAll('.mode-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.mode===mode));
+  $('inputs-countdown').style.display = mode==='countdown'?'flex':'none';
+  $('inputs-target').style.display = mode==='target'?'flex':'none';
+  P.running=false; firedZero=false;
+  if(mode==='countdown') P.remainingMs=P.durationMs;
+  save(); renderControls(); paintPrimary();
+}
+function setDurationFromInput(){
+  const ms=parseDuration($('duration-input').value);
+  if(ms==null) return;
+  P.durationMs=ms; if(!P.running)P.remainingMs=ms;
+  save(); paintPrimary();
+}
+function renderControls(){
+  const btn=$('start-btn');
+  if(P.mode==='target'){ btn.textContent = P.running?'ARMED':'ARM ALERT'; btn.className='btn '+(P.running?'pause':'go'); }
+  else { btn.textContent = P.running?'PAUSE':'START'; btn.className='btn '+(P.running?'pause':'go'); }
+}
+
+/* ---------------- paint ---------------- */
+function paintPrimary(){
+  const v=primaryValue();
+  const big=$('big-time');
+  big.textContent=fmt(v,true);
+  let cls='state-normal';
+  if(P.mode==='stopwatch'){ cls=P.running?'state-run':'state-normal'; }
+  else {
+    if(v<=0) cls='state-over';
+    else if(v<=SET.crit*1000) cls='state-crit';
+    else if(v<=SET.warn*1000) cls='state-warn';
+    else cls=P.running?'state-run':'state-normal';
+  }
+  const blink = SET.blink && (cls==='state-over'||cls==='state-crit') && (P.running||P.mode==='target');
+  big.className='big-time '+cls+(blink?' blink':'');
+  if((P.mode==='countdown'||P.mode==='target') && P.running && v<=0 && !firedZero){ firedZero=true; beep(3); flash(); }
+  if(v>0) firedZero=false;
+}
+function flash(){ const f=$('flash'); f.classList.remove('fire'); void f.offsetWidth; f.classList.add('fire'); }
+
+/* ---------------- wall clock ---------------- */
+function paintWall(){
+  const d=new Date();
+  let h=d.getHours(); const m=d.getMinutes(), s=d.getSeconds();
+  let ampm='';
+  if(!SET.h24){ ampm=h>=12?'PM':'AM'; h=h%12||12; }
+  $('wall').textContent = `${SET.h24?pad(h):h}:${pad(m)}:${pad(s)}`;
+  $('wall-ampm').textContent=ampm;
+}
+
+/* ---------------- cues ---------------- */
+function addCue(name,timeStr){
+  const [h,m]=timeStr.split(':').map(Number);
+  if(isNaN(h)||isNaN(m)) return;
+  const d=new Date(); d.setHours(h,m,0,0);
+  let target=d.getTime();
+  if(target-now() < -12*3600*1000) target+=24*3600*1000;
+  store.cues.push({ id:String(now())+Math.random().toString(36).slice(2,6), name:(name||'CUE').toUpperCase(), target });
+  save(); renderCues();
+}
+function addCueRelative(min){
+  store.cues.push({ id:String(now())+Math.random().toString(36).slice(2,6), name:`${min} MIN`, target:now()+min*60000 });
+  save(); renderCues();
+}
+function renderCues(){
+  const list=$('cue-list');
+  store.cues.sort((a,b)=>a.target-b.target);
+  if(!store.cues.length){ list.innerHTML='<div class="empty">No cues yet. Add curtain, places, house-open times above.</div>'; return; }
+  const upcoming = store.cues.filter(c=>c.target-now()>0).sort((a,b)=>a.target-b.target)[0];
+  list.innerHTML = store.cues.map(c=>{
+    const d=new Date(c.target);
+    const at = SET.h24
+      ? `${pad(d.getHours())}:${pad(d.getMinutes())}`
+      : `${(d.getHours()%12)||12}:${pad(d.getMinutes())} ${d.getHours()>=12?'PM':'AM'}`;
+    return `<div class="cue" data-id="${c.id}" data-target="${c.target}" data-next="${upcoming&&upcoming.id===c.id?1:0}">
+      ${upcoming&&upcoming.id===c.id?'<span class="next-tag">NEXT</span>':''}
+      <button class="cue-del" data-del="${c.id}">&times;</button>
+      <div class="cue-name">${escapeHtml(c.name)}</div>
+      <div class="cue-count">--:--</div>
+      <div class="cue-at">at ${at}</div>
+    </div>`;
+  }).join('');
+}
+function paintCues(){
+  document.querySelectorAll('#cue-list .cue').forEach(el=>{
+    const target=+el.dataset.target, diff=target-now();
+    const countEl=el.querySelector('.cue-count');
+    if(diff<=0){ el.classList.add('fired'); el.classList.remove('warn','crit','next'); countEl.textContent='—'; }
+    else {
+      el.classList.remove('fired');
+      countEl.textContent=fmt(diff,false);
+      el.classList.toggle('crit',diff<=SET.crit*1000);
+      el.classList.toggle('warn',diff>SET.crit*1000 && diff<=SET.warn*1000);
+      el.classList.toggle('next',el.dataset.next==='1');
+    }
+  });
+}
+
+/* ---------------- message ---------------- */
+function setMessage(text,kind){ store.message = text?{text,kind:kind||'custom'}:null; save(); paintMessage(); }
+function paintMessage(){
+  const b=$('message-banner');
+  if(!store.message){ b.className=''; b.textContent=''; return; }
+  b.className='show '+(store.message.kind||'custom');
+  b.textContent=store.message.text;
+}
+
+/* ---------------- loop ---------------- */
+function loop(){ paintWall(); paintPrimary(); paintCues(); }
+function startLoop(){ loop(); setInterval(loop,250); }
+
+/* ---------------- init ---------------- */
+function init(){
+  $('primary-label').value=P.label||'STAGE TIMER';
+  $('duration-input').value=fmt(P.durationMs,false);
+  $('target-input').value=P.targetClock||'19:30';
+  setMode(P.mode||'countdown');
+  renderControls();
+
+  $('set-warn').value=SET.warn; $('set-crit').value=SET.crit;
+  $('set-24h').checked=SET.h24; $('set-blink').checked=SET.blink; $('set-sound').checked=SET.sound;
+  updateSoundBtn();
+
+  $('primary-label').addEventListener('input',e=>{P.label=e.target.value;save();});
+  $('start-btn').addEventListener('click',()=>{ P.running?pausePrimary():startPrimary(); });
+  $('reset-btn').addEventListener('click',resetPrimary);
+  document.querySelectorAll('.mode-tabs .tab').forEach(t=>t.addEventListener('click',()=>setMode(t.dataset.mode)));
+  $('duration-input').addEventListener('change',setDurationFromInput);
+  $('duration-input').addEventListener('blur',()=>{$('duration-input').value=fmt(P.durationMs,false);});
+  document.querySelectorAll('#inputs-countdown .chip').forEach(c=>c.addEventListener('click',()=>{
+    P.durationMs=+c.dataset.min*60000; P.remainingMs=P.durationMs; P.running=false;
+    $('duration-input').value=fmt(P.durationMs,false); save(); renderControls(); paintPrimary();
+  }));
+  $('target-input').addEventListener('change',e=>{P.targetClock=e.target.value;save();paintPrimary();});
+  document.querySelectorAll('#nudges .nudge').forEach(n=>n.addEventListener('click',()=>{nudge(+n.dataset.sec);paintPrimary();$('duration-input').value=fmt(P.durationMs,false);}));
+
+  document.querySelectorAll('.msg-btn[data-msg]').forEach(b=>b.addEventListener('click',()=>setMessage(b.dataset.msg,b.dataset.msg.toLowerCase())));
+  $('msg-clear').addEventListener('click',()=>{setMessage(null);$('msg-input').value='';});
+  $('msg-input').addEventListener('keydown',e=>{ if(e.key==='Enter') setMessage(e.target.value.trim()||null,'custom'); });
+
+  const ct=$('cue-time'); const d=new Date(); ct.value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  $('cue-add-btn').addEventListener('click',()=>{ if($('cue-time').value){addCue($('cue-name').value.trim(),$('cue-time').value);$('cue-name').value='';} });
+  $('cue-name').addEventListener('keydown',e=>{if(e.key==='Enter'&&$('cue-time').value){addCue($('cue-name').value.trim(),$('cue-time').value);$('cue-name').value='';}});
+  document.querySelectorAll('[data-cuemin]').forEach(c=>c.addEventListener('click',()=>addCueRelative(+c.dataset.cuemin)));
+  $('cue-list').addEventListener('click',e=>{ const del=e.target.dataset.del; if(del){ store.cues=store.cues.filter(c=>c.id!==del); save(); renderCues(); }});
+
+  $('stage-btn').addEventListener('click',toggleStage);
+  $('sound-btn').addEventListener('click',()=>{SET.sound=!SET.sound;save();updateSoundBtn();if(SET.sound)beep(1);});
+  $('help-btn').addEventListener('click',()=>$('help-modal').classList.add('open'));
+  $('settings-btn').addEventListener('click',()=>$('settings-modal').classList.add('open'));
+  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',e=>e.target.closest('.modal').classList.remove('open')));
+  document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+  $('set-warn').addEventListener('change',e=>{SET.warn=Math.max(5,+e.target.value||120);save();});
+  $('set-crit').addEventListener('change',e=>{SET.crit=Math.max(1,+e.target.value||30);save();});
+  $('set-24h').addEventListener('change',e=>{SET.h24=e.target.checked;save();renderCues();});
+  $('set-blink').addEventListener('change',e=>{SET.blink=e.target.checked;save();});
+  $('set-sound').addEventListener('change',e=>{SET.sound=e.target.checked;save();updateSoundBtn();});
+
+  document.addEventListener('keydown',e=>{
+    if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){ if(e.key==='Escape')document.activeElement.blur(); return; }
+    if(e.code==='Space'){ e.preventDefault(); P.running?pausePrimary():startPrimary(); }
+    else if(e.key==='r'||e.key==='R'){ resetPrimary(); }
+    else if(e.key==='f'||e.key==='F'){ toggleStage(); }
+    else if(e.key==='g'||e.key==='G'){ setMessage('GO','go'); }
+    else if(e.key==='s'||e.key==='S'){ setMessage('STANDBY','standby'); }
+    else if(e.key==='Escape'){ setMessage(null); document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open')); }
+  });
+
+  renderCues(); paintMessage(); startLoop();
+}
+function updateSoundBtn(){ const b=$('sound-btn'); b.classList.toggle('on',SET.sound); b.textContent = SET.sound?'SOUND ●':'SOUND ○'; }
+function toggleStage(){
+  const on=document.body.classList.toggle('stage-mode');
+  $('stage-btn').classList.toggle('on',on);
+  try{ if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+       else if(!on && document.fullscreenElement) document.exitFullscreen().catch(()=>{}); }catch(e){}
+}
+
+init();
+</script>
 </body>
 </html>

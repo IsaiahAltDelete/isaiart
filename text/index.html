@@ -1,239 +1,409 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>.txt</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: system-ui, -apple-system, sans-serif;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>.txt — Text File Maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#F59E0B;
+    --accent-press:#d8860a;
+    --bg:#f4f5f7;
+    --panel:#ffffff;
+    --panel-2:#f8f9fb;
+    --ink:#16181d;
+    --muted:#6b7280;
+    --line:#e6e8ec;
+    --field:#ffffff;
+    --shadow:0 18px 50px -24px rgba(20,24,40,.35), 0 2px 8px -4px rgba(20,24,40,.12);
+    --radius:16px;
+    --ok:#16a34a;
+    --err:#e11d48;
+  }
+  html.dark{
+    --bg:#0c0e13;
+    --panel:#15181f;
+    --panel-2:#1b1f28;
+    --ink:#e8eaf0;
+    --muted:#8b93a3;
+    --line:#272c37;
+    --field:#11141a;
+    --shadow:0 24px 60px -28px rgba(0,0,0,.8), 0 2px 8px -4px rgba(0,0,0,.5);
+  }
 
-        body {
-            background-color: #ffffff;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-        }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:
+      radial-gradient(120% 80% at 50% -10%, rgba(245,158,11,.10), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    padding:clamp(12px,3vw,28px);
+    transition:background-color .3s,color .3s;
+  }
 
-        .container {
-            background-color: white;
-            padding: 2.5rem;
-            border-radius: 20px;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-            width: 100%;
-            max-width: 800px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1.5rem;
-            height: calc(100vh - 2rem);
-            max-height: 800px;
-        }
+  .app{
+    width:100%;max-width:880px;height:min(860px,calc(100vh - 40px));
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    display:flex;flex-direction:column;overflow:hidden;
+    transition:background-color .3s,border-color .3s;
+  }
 
-        h1 {
-            color: #000;
-            font-size: 2rem;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
+  /* Header */
+  .head{
+    display:flex;align-items:center;gap:12px;
+    padding:14px 16px;border-bottom:1px solid var(--line);
+    background:var(--panel-2);transition:background-color .3s,border-color .3s;
+  }
+  .brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+  .brand .dot{
+    width:30px;height:30px;border-radius:9px;flex-shrink:0;
+    background:linear-gradient(180deg,#ffd36b,var(--accent));
+    display:grid;place-items:center;color:#3a2600;font-weight:800;font-size:15px;
+    box-shadow:0 4px 12px -4px var(--accent);
+  }
+  .brand h1{font-size:15px;font-weight:700;letter-spacing:-.2px}
+  .brand p{font-size:12px;color:var(--muted);font-weight:500}
 
-        .filename-input {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            width: 100%;
-            max-width: 300px;
-        }
+  /* Filename group */
+  .file-group{
+    display:flex;align-items:stretch;
+    border:1.5px solid var(--line);border-radius:11px;overflow:hidden;
+    background:var(--field);transition:border-color .15s, box-shadow .15s;
+  }
+  .file-group:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,158,11,.18)}
+  .file-group.shake{animation:shake .4s}
+  #filename{
+    border:none;background:transparent;color:var(--ink);
+    font:600 14px 'Inter',sans-serif;padding:9px 12px;width:160px;outline:none;
+  }
+  #ext{
+    border:none;border-left:1.5px solid var(--line);
+    background:var(--panel-2);color:var(--muted);
+    font:600 13px 'JetBrains Mono',monospace;padding:0 10px;cursor:pointer;outline:none;
+  }
+  @keyframes shake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
 
-        .filename-input input {
-            padding: 0.75rem 1rem;
-            border: 2px solid #000;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            flex-grow: 1;
-            text-align: center;
-        }
+  .icon-btn{
+    width:38px;height:38px;flex-shrink:0;display:grid;place-items:center;
+    border:1.5px solid var(--line);border-radius:11px;background:var(--field);
+    color:var(--ink);cursor:pointer;transition:all .15s;
+  }
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
+  .icon-btn:active{transform:translateY(0)}
+  .icon-btn svg{width:18px;height:18px}
 
-        .filename-input span {
-            color: #000;
-            font-size: 1rem;
-            font-weight: 600;
-        }
+  /* Editor */
+  .editor-wrap{position:relative;flex:1;display:flex;min-height:0}
+  #editor{
+    flex:1;width:100%;height:100%;resize:none;border:none;outline:none;
+    background:var(--panel);color:var(--ink);
+    font:14px/1.65 'JetBrains Mono',ui-monospace,monospace;
+    padding:18px 20px;transition:background-color .3s,color .3s;
+    tab-size:2;
+  }
+  #editor::placeholder{color:var(--muted);opacity:.7}
+  #editor::-webkit-scrollbar{width:11px}
+  #editor::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;border:3px solid var(--panel)}
+  #editor::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 
-        textarea {
-            width: 100%;
-            flex-grow: 1;
-            padding: 1rem;
-            border: 2px solid #000;
-            border-radius: 16px;
-            resize: none;
-            font-size: 1rem;
-            line-height: 1.5;
-            font-weight: 500;
-        }
+  /* Status bar */
+  .status{
+    display:flex;align-items:center;gap:18px;
+    padding:8px 16px;border-top:1px solid var(--line);
+    background:var(--panel-2);font-size:12px;color:var(--muted);font-weight:500;
+    transition:background-color .3s,border-color .3s;
+  }
+  .status .stat{display:flex;align-items:center;gap:5px}
+  .status .stat b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+  .save-state{margin-left:auto;display:flex;align-items:center;gap:6px}
+  .save-state .pip{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(22,163,74,.18)}
+  .save-state.unsaved .pip{background:var(--accent);box-shadow:0 0 0 3px rgba(245,158,11,.18)}
 
-        textarea:focus, .filename-input input:focus {
-            outline: none;
-            border-color: #000;
-            box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
-        }
+  /* Footer actions */
+  .actions{
+    display:flex;gap:10px;padding:12px 16px;border-top:1px solid var(--line);
+    background:var(--panel);transition:background-color .3s,border-color .3s;
+  }
+  button.btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:11px 18px;border-radius:11px;border:1.5px solid var(--line);
+    font:700 13px 'Inter',sans-serif;letter-spacing:.02em;cursor:pointer;
+    background:var(--field);color:var(--ink);transition:all .15s;
+  }
+  button.btn svg{width:16px;height:16px}
+  button.btn:hover{transform:translateY(-1px)}
+  button.btn:active{transform:translateY(0)}
+  .btn.primary{
+    background:linear-gradient(180deg,#ffcf6a,var(--accent));
+    border-color:transparent;color:#3a2600;margin-right:auto;
+    box-shadow:0 8px 20px -10px var(--accent);
+  }
+  .btn.primary:hover{filter:brightness(1.05)}
+  .btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.danger:hover{border-color:var(--err);color:var(--err)}
 
-        .button-group {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            width: 100%;
-        }
+  /* Toast */
+  #toast{
+    position:fixed;top:20px;left:50%;transform:translate(-50%,-18px);
+    background:var(--ink);color:var(--panel);
+    padding:11px 18px;border-radius:11px;font-size:13px;font-weight:600;
+    display:flex;align-items:center;gap:9px;
+    box-shadow:0 14px 34px -12px rgba(0,0,0,.5);
+    opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  #toast .ic{width:16px;height:16px;flex-shrink:0}
+  #toast.ok .ic{color:#7ef0a6}
+  #toast.err{background:var(--err);color:#fff}
+  #toast.err .ic{color:#fff}
 
-        button {
-            padding: 0.75rem 1.5rem;
-            border: 2px solid #000;
-            border-radius: 12px;
-            font-size: 0.875rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            min-width: 120px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .primary {
-            background-color: #000;
-            color: white;
-        }
-
-        .primary:hover {
-            background-color: white;
-            color: black;
-        }
-
-        .secondary {
-            background-color: white;
-            color: black;
-        }
-
-        .secondary:hover {
-            background-color: #000;
-            color: white;
-        }
-
-        .message {
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            text-align: center;
-            display: none;
-        }
-
-        .success {
-            background-color: #000;
-            color: white;
-        }
-
-        .error {
-            background-color: #000;
-            color: white;
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                padding: 1.5rem;
-            }
-
-            .button-group {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            button {
-                width: 100%;
-            }
-
-            h1 {
-                font-size: 1.75rem;
-            }
-        }
-
-        ::placeholder {
-            color: rgba(0, 0, 0, 0.4);
-            font-weight: 500;
-        }
-    </style>
+  @media (max-width:560px){
+    .head{flex-wrap:wrap}
+    .file-group{order:3;width:100%}
+    #filename{width:100%;flex:1}
+    .actions{flex-wrap:wrap}
+    .btn.primary{flex-basis:100%;margin-right:0}
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>.txt</h1>
-        <div class="filename-input">
-            <input 
-                type="text" 
-                id="filename" 
-                placeholder="filename"
-                value="untitled"
-            >
+  <div class="app">
+    <div class="head">
+      <div class="brand">
+        <div class="dot">T</div>
+        <div>
+          <h1>Text File Maker</h1>
+          <p>Write it, name it, download it.</p>
         </div>
-        <textarea id="textInput" placeholder="start typing..."></textarea>
-        <div class="button-group">
-            <button onclick="saveTextFile()" class="primary">Save</button>
-            <button onclick="copyText()" class="secondary">Copy</button>
-            <button onclick="clearText()" class="secondary">Clear</button>
-        </div>
-        <div id="message" class="message"></div>
+      </div>
+
+      <div class="file-group" id="fileGroup">
+        <input type="text" id="filename" value="untitled" spellcheck="false" aria-label="File name" placeholder="filename">
+        <select id="ext" aria-label="File extension">
+          <option value=".txt" selected>.txt</option>
+          <option value=".md">.md</option>
+          <option value=".markdown">.markdown</option>
+          <option value=".csv">.csv</option>
+          <option value=".json">.json</option>
+          <option value=".log">.log</option>
+          <option value=".html">.html</option>
+          <option value=".css">.css</option>
+          <option value=".js">.js</option>
+          <option value=".xml">.xml</option>
+          <option value=".yml">.yml</option>
+          <option value=".sql">.sql</option>
+        </select>
+      </div>
+
+      <button class="icon-btn" id="openBtn" title="Open a file (Ctrl+O)" aria-label="Open file">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      </button>
+      <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
     </div>
 
-    <script>
-        function saveTextFile() {
-            const text = document.getElementById('textInput').value;
-            const filename = document.getElementById('filename').value.trim() || 'untitled';
-            
-            if (!text) {
-                showMessage('Please enter some text first', 'error');
-                return;
-            }
+    <div class="editor-wrap">
+      <textarea id="editor" placeholder="Start typing…  (your draft is saved automatically)" spellcheck="true"></textarea>
+    </div>
 
-            const blob = new Blob([text], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${filename}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showMessage('Saved', 'success');
-        }
+    <div class="status">
+      <span class="stat"><b id="cWords">0</b> words</span>
+      <span class="stat"><b id="cChars">0</b> chars</span>
+      <span class="stat"><b id="cLines">1</b> lines</span>
+      <span class="save-state" id="saveState"><span class="pip"></span><span id="saveLabel">Saved</span></span>
+    </div>
 
-        function copyText() {
-            const textarea = document.getElementById('textInput');
-            textarea.select();
-            document.execCommand('copy');
-            showMessage('Copied', 'success');
-        }
+    <div class="actions">
+      <button class="btn primary" id="saveBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        Download
+      </button>
+      <button class="btn ghost" id="copyBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy
+      </button>
+      <button class="btn danger" id="clearBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+        Clear
+      </button>
+    </div>
+  </div>
 
-        function clearText() {
-            document.getElementById('textInput').value = '';
-            document.getElementById('filename').value = 'untitled';
-            showMessage('Cleared', 'success');
-        }
+  <input type="file" id="filePicker" accept=".txt,.md,.markdown,.csv,.json,.log,.html,.css,.js,.xml,.yml,.yaml,.sql,text/*" hidden>
+  <div id="toast"><span class="ic"></span><span id="toastMsg"></span></div>
 
-        function showMessage(text, type) {
-            const message = document.getElementById('message');
-            message.textContent = text;
-            message.style.display = 'block';
-            message.className = `message ${type}`;
-            setTimeout(() => {
-                message.style.display = 'none';
-            }, 2000);
-        }
-    </script>
+<script>
+  const $ = id => document.getElementById(id);
+  const editor = $('editor'), filename = $('filename'), ext = $('ext');
+  const fileGroup = $('fileGroup'), filePicker = $('filePicker');
+  const cWords = $('cWords'), cChars = $('cChars'), cLines = $('cLines');
+  const saveState = $('saveState'), saveLabel = $('saveLabel');
+
+  const LS = { text:'txtmaker_text', name:'txtmaker_name', ext:'txtmaker_ext', theme:'txtmaker_theme' };
+
+  // ---- Theme ----
+  function applyTheme(t){
+    document.documentElement.classList.toggle('dark', t === 'dark');
+    $('themeIcon').innerHTML = t === 'dark'
+      ? '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'
+      : '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+    localStorage.setItem(LS.theme, t);
+  }
+  $('themeBtn').addEventListener('click', () =>
+    applyTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark'));
+
+  // ---- Stats ----
+  function updateStats(){
+    const v = editor.value;
+    const words = (v.trim().match(/\S+/g) || []).length;
+    cWords.textContent = words.toLocaleString();
+    cChars.textContent = v.length.toLocaleString();
+    cLines.textContent = (v ? v.split('\n').length : 1).toLocaleString();
+  }
+
+  // ---- Autosave (debounced) ----
+  let saveTimer, dirty = false;
+  function markDirty(){
+    dirty = true; saveState.classList.add('unsaved'); saveLabel.textContent = 'Saving…';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(persist, 450);
+  }
+  function persist(){
+    localStorage.setItem(LS.text, editor.value);
+    localStorage.setItem(LS.name, filename.value);
+    localStorage.setItem(LS.ext, ext.value);
+    dirty = false; saveState.classList.remove('unsaved'); saveLabel.textContent = 'Saved';
+  }
+
+  editor.addEventListener('input', () => { updateStats(); markDirty(); });
+  filename.addEventListener('input', markDirty);
+  ext.addEventListener('change', markDirty);
+
+  // Tab inserts indent instead of leaving the field
+  editor.addEventListener('keydown', e => {
+    if(e.key === 'Tab'){
+      e.preventDefault();
+      const s = editor.selectionStart, en = editor.selectionEnd;
+      editor.value = editor.value.slice(0,s) + '  ' + editor.value.slice(en);
+      editor.selectionStart = editor.selectionEnd = s + 2;
+      updateStats(); markDirty();
+    }
+  });
+
+  // ---- Toast ----
+  let toastTimer;
+  function toast(msg, type='ok'){
+    const t = $('toast');
+    $('toastMsg').textContent = msg;
+    t.className = 'show ' + type;
+    $('toast').querySelector('.ic').innerHTML = type === 'err'
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1900);
+  }
+
+  // ---- Filename helpers ----
+  function cleanName(){
+    let n = filename.value.trim().replace(/[\\/:*?"<>|]+/g,'').replace(/\.+$/,'');
+    return n || 'untitled';
+  }
+
+  // ---- Save / Download ----
+  function save(){
+    if(!editor.value.trim()){
+      fileGroup.classList.remove('shake'); void fileGroup.offsetWidth;
+      editor.focus();
+      toast('Nothing to save yet', 'err');
+      return;
+    }
+    const name = cleanName();
+    filename.value = name;
+    const blob = new Blob([editor.value], { type:'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name + ext.value;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    persist();
+    toast('Saved ' + name + ext.value);
+  }
+
+  // ---- Copy ----
+  async function copy(){
+    if(!editor.value){ toast('Nothing to copy', 'err'); return; }
+    try{
+      await navigator.clipboard.writeText(editor.value);
+    }catch{
+      editor.select(); document.execCommand('copy');
+      window.getSelection()?.removeAllRanges();
+    }
+    toast('Copied to clipboard');
+  }
+
+  // ---- Clear ----
+  function clearAll(){
+    if(!editor.value){ toast('Already empty', 'err'); return; }
+    editor.value = '';
+    updateStats(); persist(); editor.focus();
+    toast('Cleared');
+  }
+
+  // ---- Open / Import ----
+  $('openBtn').addEventListener('click', () => filePicker.click());
+  filePicker.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      editor.value = ev.target.result;
+      const dot = file.name.lastIndexOf('.');
+      if(dot > 0){
+        filename.value = file.name.slice(0, dot);
+        const found = [...ext.options].find(o => o.value === file.name.slice(dot).toLowerCase());
+        if(found) ext.value = found.value;
+      } else {
+        filename.value = file.name;
+      }
+      updateStats(); persist();
+      toast('Opened ' + file.name);
+    };
+    reader.onerror = () => toast('Could not read file', 'err');
+    reader.readAsText(file);
+    filePicker.value = '';
+  });
+
+  // ---- Buttons + shortcuts ----
+  $('saveBtn').addEventListener('click', save);
+  $('copyBtn').addEventListener('click', copy);
+  $('clearBtn').addEventListener('click', clearAll);
+  document.addEventListener('keydown', e => {
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'){ e.preventDefault(); save(); }
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o'){ e.preventDefault(); filePicker.click(); }
+  });
+  window.addEventListener('beforeunload', () => { if(dirty) persist(); });
+
+  // ---- Init: restore draft + theme ----
+  (function init(){
+    applyTheme(localStorage.getItem(LS.theme) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+    const savedText = localStorage.getItem(LS.text);
+    if(savedText != null) editor.value = savedText;
+    filename.value = localStorage.getItem(LS.name) || 'untitled';
+    const savedExt = localStorage.getItem(LS.ext);
+    if(savedExt && [...ext.options].some(o => o.value === savedExt)) ext.value = savedExt;
+    updateStats();
+    editor.focus();
+  })();
+</script>
 </body>
 </html>

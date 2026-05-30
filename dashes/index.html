@@ -4,109 +4,203 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Clean up your text by replacing hyphens with spaces and em-dashes with commas, with smooth UX and easy copy/paste features.">
-  <title>Paper-Themed Dash Remover</title>
-  <link href="https://fonts.googleapis.com/css2?family=Lora&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <title>Dash Remover</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
   <style>
     :root {
-      --paper-bg: #fdfaf6;
-      --paper-border: #e3dcd2;
-      --paper-shadow: rgba(0,0,0,0.1);
-      --accent: #b35c00;
-      --text: #333;
-      --highlight: #fffae6;
-      --transition: 0.3s ease;
+      --bg1: #f6f1ea;
+      --bg2: #efe7db;
+      --card: #fffdfa;
+      --ink: #2e2a25;
+      --muted: #8a8178;
+      --line: #ece4d8;
+      --field: #fbf8f3;
+      --accent: #c2410c;
+      --accent-soft: #fbe9df;
+      --accent-ring: rgba(194,65,12,0.18);
+      --shadow: 0 20px 50px -20px rgba(60,40,20,0.30), 0 4px 14px -8px rgba(60,40,20,0.18);
+      --radius: 18px;
+      --t: 0.22s cubic-bezier(.4,0,.2,1);
+      --font-d: 'Fraunces', Georgia, serif;
+      --font-b: 'Inter', system-ui, -apple-system, sans-serif;
     }
     *, *::before, *::after { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; padding: 0; }
+    html, body { height: 100%; margin: 0; }
     body {
       display: flex; justify-content: center; align-items: center;
-      background: var(--paper-bg); font-family: 'Lora', serif; color: var(--text);
-      padding: 1rem;
+      min-height: 100%;
+      background: radial-gradient(120% 120% at 50% 0%, var(--bg1), var(--bg2));
+      font-family: var(--font-b); color: var(--ink);
+      padding: clamp(1rem, 4vw, 2.5rem);
+      line-height: 1.5;
     }
+
     .container {
-      background: white; border: 1px solid var(--paper-border);
-      box-shadow: 0 4px 12px var(--paper-shadow); border-radius: 8px;
-      width: 100%; max-width: 900px; height: 100%; max-height: 100vh;
-      display: flex; flex-direction: column; overflow: hidden;
+      background: var(--card);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      width: 100%; max-width: 940px;
+      display: flex; flex-direction: column;
+      overflow: hidden;
     }
-    header { padding: 1rem; text-align: center; }
-    header h1 { margin: 0; font-size: 2rem; color: var(--accent); }
-    header p { margin: 0.5rem 0 0; font-style: italic; }
+
+    header {
+      padding: 1.9rem 2rem 1.5rem;
+      text-align: center;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.6), transparent);
+    }
+    header .eyebrow {
+      font-size: 0.7rem; letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--accent); font-weight: 600; margin-bottom: 0.55rem;
+    }
+    header h1 {
+      margin: 0; font-family: var(--font-d); font-weight: 600;
+      font-size: clamp(1.9rem, 4vw, 2.5rem); letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+    header p { margin: 0.5rem 0 0; color: var(--muted); font-size: 0.95rem; }
+
     .main {
-      flex: 1; display: flex; gap: 1rem; padding: 1rem;
-      overflow: hidden;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1.25rem; padding: 1.75rem 2rem 0.5rem;
     }
-    .pane {
-      flex: 1; display: flex; flex-direction: column;
-      overflow: hidden;
+    @media (max-width: 680px) { .main { grid-template-columns: 1fr; } }
+
+    .pane { display: flex; flex-direction: column; min-width: 0; }
+    .pane-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.6rem;
     }
-    label { font-weight: bold; margin-bottom: 0.5rem; }
+    label {
+      font-weight: 600; font-size: 0.8rem; letter-spacing: 0.05em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .pane-actions { display: flex; gap: 0.4rem; }
+
     textarea {
-      flex: 1; width: 100%; padding: 0.75rem;
-      border: 1px solid var(--paper-border); border-radius: 4px;
-      resize: none; font-family: inherit; font-size: 1rem;
-      transition: height var(--transition), border-color var(--transition);
-      overflow-y: auto;
+      width: 100%; min-height: 230px; padding: 1rem 1.05rem;
+      border: 1.5px solid var(--line); border-radius: 12px;
+      background: var(--field); color: var(--ink);
+      resize: vertical; font-family: var(--font-b); font-size: 1rem;
+      line-height: 1.6;
+      transition: border-color var(--t), box-shadow var(--t), background var(--t);
     }
-    textarea:focus { border-color: var(--accent); outline: none; }
-    .controls {
-      display: flex; gap: 0.5rem; margin-top: 0.5rem;
+    textarea::placeholder { color: #b7ad9f; }
+    textarea:focus {
+      border-color: var(--accent); outline: none;
+      box-shadow: 0 0 0 4px var(--accent-ring);
+      background: #fff;
     }
-    .controls button {
-      flex: none; background: var(--accent); border: none;
-      color: white; padding: 0.5rem; border-radius: 4px;
-      cursor: pointer; transition: transform var(--transition), background var(--transition);
-      display: flex; align-items: center; justify-content: center;
+    textarea[readonly] { background: #f4efe7; }
+
+    /* Icon buttons */
+    .icon-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 9px;
+      background: var(--field); border: 1.5px solid var(--line);
+      color: var(--muted); cursor: pointer;
+      transition: all var(--t);
     }
-    .controls button:hover { transform: scale(1.05); background: #933e00; }
-    .controls .material-icons { font-size: 20px; }
+    .icon-btn:hover {
+      color: var(--accent); border-color: var(--accent);
+      background: var(--accent-soft); transform: translateY(-1px);
+    }
+    .icon-btn:active { transform: translateY(0) scale(0.96); }
+    .icon-btn .material-icons-round { font-size: 19px; }
+
+    /* Primary action */
+    .action-bar {
+      display: flex; justify-content: center;
+      padding: 1.25rem 2rem 1.75rem;
+    }
     #processBtn {
-      margin: 0 auto; background: var(--accent); color: white;
-      padding: 0.75rem 1.5rem; font-size: 1rem; border: none;
-      border-radius: 4px; cursor: pointer;
-      transition: background var(--transition), transform var(--transition);
+      display: inline-flex; align-items: center; gap: 0.55rem;
+      background: var(--accent); color: #fff;
+      padding: 0.85rem 1.9rem; font-size: 0.98rem; font-weight: 600;
+      font-family: var(--font-b); letter-spacing: 0.01em;
+      border: none; border-radius: 999px; cursor: pointer;
+      box-shadow: 0 10px 24px -10px var(--accent), 0 2px 6px -2px rgba(194,65,12,0.4);
+      transition: transform var(--t), box-shadow var(--t), background var(--t);
     }
-    #processBtn:hover { background: #933e00; transform: translateY(-2px); }
+    #processBtn:hover {
+      background: #a8350a; transform: translateY(-2px);
+      box-shadow: 0 16px 30px -12px var(--accent), 0 3px 8px -2px rgba(194,65,12,0.45);
+    }
+    #processBtn:active { transform: translateY(0); }
+    #processBtn .material-icons-round { font-size: 20px; }
+
+    /* Changes summary */
     #changes {
-      background: var(--highlight); padding: 1rem; border-top: 1px solid var(--paper-border);
-      max-height: 30vh; overflow-y: auto; transition: opacity var(--transition);
+      border-top: 1px solid var(--line);
+      background: linear-gradient(180deg, #fbf6ef, #fffdfa);
+      padding: 1.5rem 2rem 1.9rem;
+      transition: opacity var(--t);
     }
-    #changes.hidden { opacity: 0; height: 0; padding: 0; border: none; overflow: hidden; }
-    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-    th, td {
-      border: 1px solid var(--paper-border); padding: 0.5rem; text-align: left;
+    #changes.hidden { display: none; }
+    #changes h2 {
+      margin: 0 0 0.35rem; font-family: var(--font-d); font-weight: 600;
+      font-size: 1.25rem; color: var(--ink);
     }
-    th { background: var(--paper-border); }
+    #counts { margin: 0 0 1.1rem; color: var(--muted); font-size: 0.92rem; }
+
+    table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+      font-size: 0.92rem;
+    }
+    th, td { padding: 0.7rem 1rem; text-align: left; }
+    thead th {
+      background: var(--field); color: var(--muted);
+      font-weight: 600; font-size: 0.72rem; letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--line);
+    }
+    tbody td { border-bottom: 1px solid var(--line); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) td { background: #fcf9f4; }
+    tbody td:first-child { font-family: var(--font-d); font-size: 1.05rem; color: var(--accent); }
+    tbody td:last-child { font-weight: 600; }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
+      <div class="eyebrow">Text Cleaner</div>
       <h1>Dash Remover</h1>
-      <p>Paste your text to swap dashes for spaces and commas</p>
+      <p>Swap hyphens for spaces and em-dashes for commas in a click.</p>
     </header>
+
     <div class="main">
       <div class="pane">
-        <label for="inputText">Original Text</label>
-        <textarea id="inputText" placeholder="Enter or paste here..."></textarea>
-        <div class="controls">
-          <button id="pasteBtn" title="Paste"><i class="material-icons">content_paste</i></button>
-          <button id="clearBtn" title="Clear"><i class="material-icons">clear</i></button>
+        <div class="pane-head">
+          <label for="inputText">Original Text</label>
+          <div class="pane-actions">
+            <button id="pasteBtn" class="icon-btn" title="Paste"><i class="material-icons-round">content_paste</i></button>
+            <button id="clearBtn" class="icon-btn" title="Clear"><i class="material-icons-round">close</i></button>
+          </div>
         </div>
+        <textarea id="inputText" placeholder="Enter or paste your text here…"></textarea>
       </div>
 
       <div class="pane">
-        <label for="outputText">Processed Text</label>
-        <textarea id="outputText" placeholder="Processed result..." readonly></textarea>
-        <div class="controls">
-          <button id="copyBtn" title="Copy"><i class="material-icons">content_copy</i></button>
+        <div class="pane-head">
+          <label for="outputText">Processed Text</label>
+          <div class="pane-actions">
+            <button id="copyBtn" class="icon-btn" title="Copy"><i class="material-icons-round">content_copy</i></button>
+          </div>
         </div>
+        <textarea id="outputText" placeholder="Your cleaned-up result appears here…" readonly></textarea>
       </div>
     </div>
 
-    <div style="text-align:center;padding:0.5rem 0;">
-      <button id="processBtn">Process Text</button>
+    <div class="action-bar">
+      <button id="processBtn"><i class="material-icons-round">auto_fix_high</i> Process Text</button>
     </div>
 
     <section id="changes" class="hidden" aria-live="polite">
@@ -132,12 +226,6 @@
     const countsEl = document.getElementById('counts');
     const detailsEl = document.getElementById('details');
 
-    function autoResize(el) {
-      el.style.height = 'auto';
-      el.style.height = el.scrollHeight + 'px';
-    }
-    inputEl.addEventListener('input', () => autoResize(inputEl));
-
     processBtn.addEventListener('click', () => {
       const text = inputEl.value;
       if (!text) return;
@@ -146,19 +234,18 @@
       let processed = text.replace(/—\s*/g, ', ').replace(/-/g, ' ');
       processed = processed.replace(/,\s*,/g, ',');
       outputEl.value = processed;
-      autoResize(outputEl);
 
       countsEl.textContent = `Found ${hyphens} hyphen${hyphens!==1?'s':''} and ${emDashes} em-dash${emDashes!==1?'es':''}.`;
       detailsEl.innerHTML = `
-        <tr><td>'-'</td><td>space</td><td>${hyphens}</td></tr>
-        <tr><td>'—'</td><td>comma + space</td><td>${emDashes}</td></tr>
+        <tr><td>-</td><td>space</td><td>${hyphens}</td></tr>
+        <tr><td>—</td><td>comma + space</td><td>${emDashes}</td></tr>
       `;
       changesEl.classList.remove('hidden');
     });
 
     copyBtn.addEventListener('click', () => {
       navigator.clipboard.writeText(outputEl.value || '').then(() => {
-        copyBtn.style.transform = 'scale(1.2)';
+        copyBtn.style.transform = 'scale(1.18)';
         setTimeout(() => copyBtn.style.transform = '', 200);
       });
     });
@@ -167,7 +254,6 @@
       try {
         const clip = await navigator.clipboard.readText();
         inputEl.value = clip;
-        autoResize(inputEl);
       } catch (e) {
         alert('Paste failed. Please allow clipboard permissions.');
       }
@@ -176,8 +262,6 @@
     clearBtn.addEventListener('click', () => {
       inputEl.value = '';
       outputEl.value = '';
-      autoResize(inputEl);
-      autoResize(outputEl);
       changesEl.classList.add('hidden');
     });
   </script>
