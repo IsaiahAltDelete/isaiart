@@ -8,111 +8,147 @@
     <!-- Core Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 
     <style>
         /* Base & Fonts */
-        body { 
-            font-family: 'Poppins', sans-serif; 
-            -webkit-font-smoothing: antialiased; 
-            -moz-osx-font-smoothing: grayscale; 
+        body {
+            font-family: 'Poppins', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        .material-symbols-outlined { 
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; 
-            vertical-align: middle; 
+        .font-mono-code { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
         }
 
         /* Custom Scrollbar */
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; border: 2px solid #f3f4f6; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 
-        /* Drop Zone Animation */
-        .drop-zone-base { 
-            transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; 
+        /* Drop Zone */
+        .drop-zone-base {
+            transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
         }
-        .drop-zone-base.dragover { 
-            border-color: #dc2626; 
-            background-color: #fee2e2; 
-            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2); 
+        .drop-zone-base.dragover {
+            border-color: #dc2626;
+            background-color: #fee2e2;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+            transform: scale(1.01);
         }
 
-        /* Modal Styling */
-        #imageModal { 
-            transition: opacity 0.3s ease, visibility 0.3s ease; 
+        /* Global drop overlay */
+        #globalDropOverlay {
+            transition: opacity 0.25s ease, visibility 0.25s ease;
         }
+        #globalDropOverlay.hidden-overlay { opacity: 0; visibility: hidden; pointer-events: none; }
+        #globalDropOverlay .overlay-card {
+            animation: overlay-pulse 1.6s ease-in-out infinite;
+        }
+        @keyframes overlay-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+
+        /* Modal */
+        #imageModal { transition: opacity 0.3s ease, visibility 0.3s ease; }
         #imageModal:not(.hidden) { opacity: 1; visibility: visible; }
         #imageModal.hidden { opacity: 0; visibility: hidden; }
+        #imageModal .modal-panel { transition: transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1); transform: scale(0.96); }
+        #imageModal:not(.hidden) .modal-panel { transform: scale(1); }
         body.modal-open { overflow: hidden; }
 
-        /* Toast Notification Animation */
-        .custom-toast { animation: toast-in 0.5s ease forwards; }
-        .custom-toast.fade-out { animation: toast-out 0.5s ease forwards; }
-        @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        @keyframes toast-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, 20px); } }
+        /* Toasts (stacked) */
+        #toastStack { pointer-events: none; }
+        .custom-toast { animation: toast-in 0.4s cubic-bezier(0.34, 1.3, 0.64, 1) forwards; pointer-events: auto; }
+        .custom-toast.fade-out { animation: toast-out 0.4s ease forwards; }
+        @keyframes toast-in { from { opacity: 0; transform: translateY(16px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes toast-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(16px) scale(0.95); } }
 
-        /* Metadata Content Styling */
-        pre { 
-            white-space: pre-wrap; 
-            word-wrap: break-word; 
-        }
-        pre .copy-btn { 
-            position: absolute; 
-            top: 0.5rem; 
-            right: 0.5rem; 
-            opacity: 0.6; 
-            transition: opacity 0.2s ease, background-color 0.2s ease; 
+        /* Metadata Content */
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        pre .copy-btn {
+            position: absolute; top: 0.5rem; right: 0.5rem; opacity: 0.55;
+            transition: opacity 0.2s ease, background-color 0.2s ease;
+            background: rgba(255,255,255,0.85);
         }
         pre:hover .copy-btn { opacity: 1; }
         pre .copy-btn:hover { background-color: rgba(0, 0, 0, 0.08); }
 
-        /* Tab Styling & Transition */
+        /* Staggered card entrance */
+        .anim-in { animation: card-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        @keyframes card-in {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Collapsible sections */
+        details.meta-details > summary { list-style: none; cursor: pointer; user-select: none; }
+        details.meta-details > summary::-webkit-details-marker { display: none; }
+        details.meta-details .chevron { transition: transform 0.25s ease; }
+        details.meta-details[open] .chevron { transform: rotate(90deg); }
+        details.meta-details > *:not(summary) { animation: card-in 0.3s ease both; }
+
+        /* Tabs */
         .tab-btn {
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1.25rem;
             font-weight: 500;
-            color: #4b5563; /* gray-600 */
-            border-bottom: 2px solid transparent;
-            transition: color 0.2s ease, border-color 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            cursor: pointer;
+            color: #4b5563;
+            transition: color 0.2s ease;
+            display: flex; align-items: center; gap: 0.5rem;
+            cursor: pointer; position: relative; white-space: nowrap;
         }
-        .tab-btn:hover {
-            color: #dc2626; /* red-600 */
+        .tab-btn:hover { color: #dc2626; }
+        .tab-btn.active { color: #dc2626; font-weight: 600; }
+        #tabIndicator {
+            position: absolute; bottom: -1px; height: 2.5px; background: #dc2626;
+            border-radius: 999px;
+            transition: left 0.3s cubic-bezier(0.22, 1, 0.36, 1), width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
         }
-        .tab-btn.active {
-            color: #dc2626; /* red-600 */
-            border-bottom-color: #dc2626; /* red-600 */
-            font-weight: 600;
-        }
-        
+
         .tab-content {
-            /* Base styles for tab content structure are applied by Tailwind (flex, flex-col, etc.) */
-            /* Transition properties for smooth animation */
             transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            will-change: opacity, transform; /* Hint for browser performance */
+            will-change: opacity, transform;
         }
+        .tab-content-prepared { opacity: 0; transform: translateY(15px); }
+        .tab-content-active { opacity: 1; transform: translateY(0px); }
 
-        /* State for a tab that is about to be shown or has just been hidden (animating out to this state) */
-        .tab-content-prepared {
-            opacity: 0;
-            transform: translateY(15px);
+        /* Buttons: subtle press */
+        .btn-press:active { transform: scale(0.97); }
+        .btn-press { transition: transform 0.12s ease, background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease; }
+
+        /* Format chip */
+        .format-chip { animation: card-in 0.3s ease both; }
+
+        /* Bulk progress bar */
+        #bulkProgressBar { transition: width 0.35s ease; }
+
+        /* Bulk list row entrance/exit */
+        .bulk-image-item { animation: card-in 0.3s ease both; }
+        .bulk-image-item.removing { animation: row-out 0.25s ease forwards; }
+        @keyframes row-out { to { opacity: 0; transform: translateX(20px); height: 0; padding: 0; margin: 0; } }
+
+        /* LoRA strength meter */
+        .lora-meter { height: 4px; border-radius: 999px; background: #f3f4f6; overflow: hidden; }
+        .lora-meter > div { height: 100%; border-radius: 999px; background: #dc2626; transition: width 0.5s ease; }
+
+        /* Search highlight-ish hidden state */
+        [data-searchable].search-hidden { display: none !important; }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
         }
-
-        /* State for an active, fully visible tab (animating in to this state) */
-        .tab-content-active {
-            opacity: 1;
-            transform: translateY(0px);
-        }
-        /* Tailwind's .hidden class (display: none !important) is used to remove from layout when not active/transitioning */
-
     </style>
 
     <script>
@@ -122,7 +158,7 @@
           extend: {
             fontFamily: { sans: ['Poppins', 'sans-serif'], },
             boxShadow: { 'subtle': '0 4px 12px rgba(0, 0, 0, 0.05)', 'card': '0 8px 20px rgba(0, 0, 0, 0.07)', },
-            maxHeight: { 'modal-img': 'calc(100vh - 8rem)', 'preview-area': 'calc(100vh - 20rem)', 'bulk-list': 'calc(100vh - 28rem)' }
+            maxHeight: { 'modal-img': 'calc(100vh - 8rem)', 'preview-area': 'calc(100vh - 20rem)', 'bulk-list': 'calc(100vh - 30rem)' }
           }
         }
       }
@@ -136,34 +172,36 @@
       <h3 class="text-3xl sm:text-4xl font-bold text-gray-800 tracking-tight flex items-center justify-center gap-3">
         <span class="material-symbols-outlined text-red-600 text-4xl">policy</span>METADATA VIEWER
       </h3>
-      <p class="text-gray-500 text-sm mt-1">Inspect image metadata or strip it in bulk. All processing is done in your browser.</p>
+      <p class="text-gray-500 text-sm mt-1">Inspect image metadata, decode ComfyUI &amp; A1111 generation data, or strip it in bulk. Everything runs in your browser.</p>
     </div>
 
     <!-- Tab Navigation -->
-    <div class="tabs-container mb-6 flex border-b border-gray-200 flex-shrink-0">
-        <button id="singleImageTabBtn" class="tab-btn"> <!-- Initial active state set by JS -->
+    <div class="tabs-container mb-6 flex border-b border-gray-200 flex-shrink-0 relative overflow-x-auto custom-scrollbar" id="tabsBar">
+        <button id="singleImageTabBtn" class="tab-btn">
             <span class="material-symbols-outlined text-xl">image_search</span>Single Image Inspector
+        </button>
+        <button id="pasteMetaTabBtn" class="tab-btn">
+            <span class="material-symbols-outlined text-xl">content_paste_search</span>Paste Metadata
         </button>
         <button id="bulkStripTabBtn" class="tab-btn">
             <span class="material-symbols-outlined text-xl">auto_fix_high</span>Bulk Metadata Stripper
         </button>
+        <div id="tabIndicator"></div>
     </div>
 
     <!-- Tab Content Area -->
-    <!-- The parent div for tab content panels. It handles overall flex growth and overflow. -->
     <div class="flex-grow overflow-hidden flex flex-col">
 
-        <!-- Single Image Inspector Tab Content -->
-        <!-- `tab-content` class is essential. `hidden`, `tab-content-prepared`, `tab-content-active` are managed by JS -->
-        <div id="singleImageTabContent" class="tab-content flex flex-col flex-grow overflow-hidden"> <!-- Added flex flex-col flex-grow overflow-hidden here -->
+        <!-- ============ Single Image Inspector ============ -->
+        <div id="singleImageTabContent" class="tab-content flex flex-col flex-grow overflow-hidden">
             <div class="content-area flex flex-col lg:flex-row gap-8 flex-grow overflow-hidden">
-                <!-- Left Column: Upload, Preview, and Actions -->
+                <!-- Left Column -->
                 <div class="left-column lg:w-2/5 flex flex-col gap-6 overflow-hidden">
                     <div id="dropZone" class="drop-zone-base border-2 border-dashed border-gray-300 rounded-xl p-6 sm:py-8 flex flex-col items-center justify-center text-center text-gray-600 cursor-pointer hover:border-red-500 hover:bg-red-50 hover:text-red-700 flex-shrink-0 group">
                         <span class="material-symbols-outlined text-5xl mb-3 text-gray-400 group-hover:text-red-500">upload_file</span>
                         <span class="font-semibold text-lg text-gray-700 group-hover:text-red-700">Drop Image Here</span>
                         <span class="text-gray-500 text-sm mt-1">or click to select (PNG, JPG, WEBP)</span>
-                        <span class="text-gray-400 text-xs mt-3">(Paste with Ctrl+V)</span>
+                        <span class="text-gray-400 text-xs mt-3">Paste an image with Ctrl+V — anywhere on the page</span>
                     </div>
                     <div class="image-preview-container border border-gray-200 rounded-xl overflow-hidden flex justify-center items-center bg-gray-100 relative group flex-grow min-h-0">
                         <img id="imagePreview" alt="Image Preview" class="object-contain max-w-full max-h-full hidden group-hover:opacity-90 transition-opacity duration-300 cursor-pointer" />
@@ -171,16 +209,17 @@
                             <span class="material-symbols-outlined text-6xl">image</span>
                             <span class="mt-2 text-sm">Image preview will appear here</span>
                         </div>
+                        <div id="imageDimsBadge" class="hidden absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md font-mono-code"></div>
                     </div>
                     <!-- Action Buttons -->
                     <div id="actionsContainer" class="flex-shrink-0 flex flex-col sm:flex-row gap-3 justify-center">
-                        <button id="stripButton" class="hidden w-full sm:w-auto justify-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-wait disabled:shadow-none">
+                        <button id="stripButton" class="btn-press hidden w-full sm:w-auto justify-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-wait disabled:shadow-none">
                             <span class="material-symbols-outlined">shield</span>Strip Metadata
                         </button>
-                        <a id="downloadButton" class="hidden w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg" href="#" download="cleaned_image.png">
+                        <a id="downloadButton" class="btn-press hidden w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg" href="#" download="cleaned_image.png">
                             <span class="material-symbols-outlined">download</span>Download Cleaned
                         </a>
-                        <button id="resetButton" class="hidden w-full sm:w-auto justify-center bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg">
+                        <button id="resetButton" class="btn-press hidden w-full sm:w-auto justify-center bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg">
                             <span class="material-symbols-outlined">refresh</span>Reset
                         </button>
                     </div>
@@ -189,15 +228,28 @@
 
                 <!-- Right Column: Metadata Display -->
                 <div class="right-column lg:w-3/5 flex flex-col overflow-hidden">
-                    <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                    <div class="flex flex-wrap justify-between items-center mb-3 flex-shrink-0 gap-2">
                         <h4 class="text-xl font-semibold text-gray-700 flex items-center gap-2">
                             <span class="material-symbols-outlined text-red-600">description</span>
                             Extracted Metadata
                         </h4>
-                        <button id="copyAllMetadataBtn" class="hidden bg-red-500 hover:bg-red-600 text-white text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5 transition-colors duration-150">
-                            <span class="material-symbols-outlined text-sm leading-none">inventory_2</span>
-                            Copy All Raw
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button id="exportTxtBtn" class="btn-press hidden bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5" title="Export metadata as .txt">
+                                <span class="material-symbols-outlined text-sm leading-none">text_snippet</span>.txt
+                            </button>
+                            <button id="exportJsonBtn" class="btn-press hidden bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5" title="Export metadata as .json">
+                                <span class="material-symbols-outlined text-sm leading-none">data_object</span>.json
+                            </button>
+                            <button id="copyAllMetadataBtn" class="btn-press hidden bg-red-500 hover:bg-red-600 text-white text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm leading-none">inventory_2</span>
+                                Copy All Raw
+                            </button>
+                        </div>
+                    </div>
+                    <div id="metadataSearchWrap" class="hidden relative mb-3 flex-shrink-0">
+                        <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">search</span>
+                        <input id="metadataSearch" type="text" placeholder="Filter metadata fields…" class="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-8 py-2 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-colors" />
+                        <button id="metadataSearchClear" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><span class="material-symbols-outlined text-lg">close</span></button>
                     </div>
                     <div id="metadataOutput" class="custom-scrollbar flex-grow bg-gray-100 border border-gray-200 rounded-xl p-5 overflow-y-auto min-h-0">
                         <div class="no-metadata flex flex-col items-center justify-center h-full text-gray-500 text-center">
@@ -210,9 +262,55 @@
             </div>
         </div>
 
-        <!-- Bulk Metadata Stripper Tab Content -->
-        <div id="bulkStripTabContent" class="tab-content flex flex-col flex-grow overflow-hidden"> <!-- Added flex flex-col flex-grow overflow-hidden here -->
-            <div class="flex flex-col gap-6 flex-grow overflow-hidden"> <!-- This inner div now handles the specific layout of bulk tab -->
+        <!-- ============ Paste Metadata ============ -->
+        <div id="pasteMetaTabContent" class="tab-content flex flex-col flex-grow overflow-hidden">
+            <div class="flex flex-col gap-4 flex-grow overflow-hidden">
+                <details id="pasteInputDetails" open class="meta-details flex-shrink-0 border border-gray-200 rounded-xl bg-gray-50">
+                    <summary class="flex items-center justify-between p-3">
+                        <span class="flex items-center gap-2 font-semibold text-gray-700">
+                            <span class="material-symbols-outlined chevron text-gray-400">chevron_right</span>
+                            <span class="material-symbols-outlined text-red-600">content_paste</span>
+                            Raw Metadata Input
+                        </span>
+                        <span id="pasteFormatChip" class="hidden format-chip text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-700"></span>
+                    </summary>
+                    <div class="p-3 pt-0 flex flex-col gap-3">
+                        <textarea id="pasteTextarea" rows="9" spellcheck="false" placeholder="Paste raw metadata here — a ComfyUI prompt/workflow JSON dump, A1111 / Forge 'parameters' text, plain JSON, or key: value lines. Parsing runs automatically on paste."
+                            class="custom-scrollbar w-full text-xs font-mono-code border border-gray-200 rounded-lg p-3 bg-white focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 resize-y transition-colors"></textarea>
+                        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                            <button id="parsePasteBtn" class="btn-press w-full sm:w-auto justify-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg">
+                                <span class="material-symbols-outlined">manage_search</span>Parse Metadata
+                            </button>
+                            <button id="clearPasteBtn" class="btn-press w-full sm:w-auto justify-center bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg">
+                                <span class="material-symbols-outlined">backspace</span>Clear
+                            </button>
+                        </div>
+                    </div>
+                </details>
+
+                <div class="flex flex-wrap justify-between items-center flex-shrink-0 gap-2">
+                    <h4 class="text-lg font-semibold text-gray-700 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-red-600">quick_reference_all</span>
+                        Parsed Result
+                    </h4>
+                    <div class="flex items-center gap-2">
+                        <button id="pasteExportTxtBtn" class="btn-press hidden bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5"><span class="material-symbols-outlined text-sm leading-none">text_snippet</span>.txt</button>
+                        <button id="pasteCopyAllBtn" class="btn-press hidden bg-red-500 hover:bg-red-600 text-white text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5"><span class="material-symbols-outlined text-sm leading-none">inventory_2</span>Copy All Raw</button>
+                    </div>
+                </div>
+                <div id="pasteOutput" class="custom-scrollbar flex-grow bg-gray-100 border border-gray-200 rounded-xl p-5 overflow-y-auto min-h-0">
+                    <div class="no-metadata flex flex-col items-center justify-center h-full text-gray-500 text-center">
+                        <span class="material-symbols-outlined text-6xl mb-3">content_paste_go</span>
+                        <p class="font-medium">Nothing parsed yet.</p>
+                        <p class="text-sm">Paste metadata text above — ComfyUI graphs get fully decoded into prompts, models, LoRAs and sampler settings.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ Bulk Metadata Stripper ============ -->
+        <div id="bulkStripTabContent" class="tab-content flex flex-col flex-grow overflow-hidden">
+            <div class="flex flex-col gap-5 flex-grow overflow-hidden">
                 <div id="bulkDropZone" class="drop-zone-base border-2 border-dashed border-gray-300 rounded-xl p-6 sm:py-8 flex flex-col items-center justify-center text-center text-gray-600 cursor-pointer hover:border-red-500 hover:bg-red-50 hover:text-red-700 flex-shrink-0 group">
                     <span class="material-symbols-outlined text-5xl mb-3 text-gray-400 group-hover:text-red-500">upload_file</span>
                     <span class="font-semibold text-lg text-gray-700 group-hover:text-red-700">Drop Multiple Images Here</span>
@@ -221,20 +319,30 @@
                 <input type="file" id="bulkFileInput" accept="image/png, image/jpeg, image/webp" class="hidden" multiple />
 
                 <div class="bulk-actions-container flex flex-col sm:flex-row gap-3 justify-center flex-shrink-0">
-                    <button id="stripAllBulkButton" class="w-full sm:w-auto justify-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-wait disabled:shadow-none">
+                    <button id="stripAllBulkButton" class="btn-press w-full sm:w-auto justify-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-wait disabled:shadow-none">
                         <span class="material-symbols-outlined">auto_fix_high</span>Strip All Metadata
                     </button>
-                    <button id="downloadAllCleanedBulkButton" class="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                        <span class="material-symbols-outlined">download_for_offline</span>Download All Cleaned
+                    <button id="downloadAllCleanedBulkButton" class="btn-press w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span class="material-symbols-outlined">folder_zip</span>Download All (.zip)
                     </button>
-                    <button id="clearBulkQueueButton" class="w-full sm:w-auto justify-center bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg">
+                    <button id="clearBulkQueueButton" class="btn-press w-full sm:w-auto justify-center bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg">
                         <span class="material-symbols-outlined">delete_sweep</span>Clear Queue
                     </button>
                 </div>
-                
-                <div class="bulk-image-list-container flex-grow overflow-hidden border border-gray-200 rounded-xl bg-gray-50">
-                    <div id="bulkImageListHeader" class="p-3 border-b border-gray-200 bg-gray-100 text-xs text-gray-600 font-semibold hidden">
-                        <div class="grid grid-cols-[auto_1fr_100px_120px_100px] gap-2 items-center">
+
+                <div id="bulkProgressWrap" class="hidden flex-shrink-0">
+                    <div class="flex justify-between text-xs text-gray-500 mb-1">
+                        <span id="bulkProgressLabel">Processing…</span>
+                        <span id="bulkProgressCount"></span>
+                    </div>
+                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="bulkProgressBar" class="h-full bg-red-600 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="bulk-image-list-container flex-grow overflow-hidden border border-gray-200 rounded-xl bg-gray-50 flex flex-col">
+                    <div id="bulkImageListHeader" class="p-3 border-b border-gray-200 bg-gray-100 text-xs text-gray-600 font-semibold hidden flex-shrink-0">
+                        <div class="grid grid-cols-[60px_1fr_110px_120px_130px] gap-2 items-center">
                             <span>Preview</span>
                             <span>Filename</span>
                             <span class="text-center">Size</span>
@@ -242,7 +350,7 @@
                             <span class="text-center">Action</span>
                         </div>
                     </div>
-                    <div id="bulkImageList" class="custom-scrollbar overflow-y-auto p-2 space-y-2 max-h-bulk-list">
+                    <div id="bulkImageList" class="custom-scrollbar overflow-y-auto p-2 space-y-1 flex-grow min-h-0">
                         <div id="bulkPlaceholder" class="flex flex-col items-center justify-center h-full text-gray-400 text-center p-4">
                             <span class="material-symbols-outlined text-6xl">imagesmode</span>
                             <span class="mt-2 text-sm">Uploaded images will appear here</span>
@@ -255,9 +363,21 @@
 
   </div>
 
+  <!-- Global Drop Overlay -->
+  <div id="globalDropOverlay" class="hidden-overlay fixed inset-0 z-[90] bg-red-600/10 backdrop-blur-sm flex items-center justify-center">
+      <div class="overlay-card bg-white border-2 border-dashed border-red-400 rounded-2xl px-10 py-8 shadow-card flex flex-col items-center text-center">
+          <span class="material-symbols-outlined text-red-500 text-6xl mb-2">place_item</span>
+          <p class="font-semibold text-lg text-gray-800">Drop it anywhere</p>
+          <p id="globalDropHint" class="text-sm text-gray-500 mt-1">Images will be routed to the current tab</p>
+      </div>
+  </div>
+
+  <!-- Toast Stack -->
+  <div id="toastStack" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2"></div>
+
   <!-- Image Modal -->
   <div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-8" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div class="relative bg-white p-4 rounded-lg shadow-xl max-w-4xl w-full max-h-full flex flex-col">
+      <div class="modal-panel relative bg-white p-4 rounded-lg shadow-xl max-w-4xl w-full max-h-full flex flex-col">
           <div class="flex justify-between items-center pb-3 border-b border-gray-200 flex-shrink-0">
               <h5 id="modal-title" class="text-lg font-medium text-gray-800">Image Preview</h5>
               <button id="closeModalBtn" type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" aria-label="Close modal">
@@ -271,13 +391,21 @@
   </div>
 
   <script>
-    // --- DOM Elements ---
+    // =========================================================
+    //  DOM Elements
+    // =========================================================
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
     const imagePreview = document.getElementById('imagePreview');
     const previewPlaceholder = document.getElementById('previewPlaceholder');
+    const imageDimsBadge = document.getElementById('imageDimsBadge');
     const metadataOutput = document.getElementById('metadataOutput');
     const copyAllMetadataBtn = document.getElementById('copyAllMetadataBtn');
+    const exportTxtBtn = document.getElementById('exportTxtBtn');
+    const exportJsonBtn = document.getElementById('exportJsonBtn');
+    const metadataSearchWrap = document.getElementById('metadataSearchWrap');
+    const metadataSearch = document.getElementById('metadataSearch');
+    const metadataSearchClear = document.getElementById('metadataSearchClear');
     const imageModal = document.getElementById('imageModal');
     const modalImage = document.getElementById('modalImage');
     const closeModalBtn = document.getElementById('closeModalBtn');
@@ -285,13 +413,27 @@
     const downloadButton = document.getElementById('downloadButton');
     const resetButton = document.getElementById('resetButton');
 
-    // Tab Elements
+    // Tabs
+    const tabsBar = document.getElementById('tabsBar');
+    const tabIndicator = document.getElementById('tabIndicator');
     const singleImageTabBtn = document.getElementById('singleImageTabBtn');
+    const pasteMetaTabBtn = document.getElementById('pasteMetaTabBtn');
     const bulkStripTabBtn = document.getElementById('bulkStripTabBtn');
     const singleImageTabContent = document.getElementById('singleImageTabContent');
+    const pasteMetaTabContent = document.getElementById('pasteMetaTabContent');
     const bulkStripTabContent = document.getElementById('bulkStripTabContent');
 
-    // Bulk Tab Elements
+    // Paste tab
+    const pasteInputDetails = document.getElementById('pasteInputDetails');
+    const pasteTextarea = document.getElementById('pasteTextarea');
+    const parsePasteBtn = document.getElementById('parsePasteBtn');
+    const clearPasteBtn = document.getElementById('clearPasteBtn');
+    const pasteFormatChip = document.getElementById('pasteFormatChip');
+    const pasteOutput = document.getElementById('pasteOutput');
+    const pasteCopyAllBtn = document.getElementById('pasteCopyAllBtn');
+    const pasteExportTxtBtn = document.getElementById('pasteExportTxtBtn');
+
+    // Bulk tab
     const bulkDropZone = document.getElementById('bulkDropZone');
     const bulkFileInput = document.getElementById('bulkFileInput');
     const stripAllBulkButton = document.getElementById('stripAllBulkButton');
@@ -300,38 +442,146 @@
     const bulkImageList = document.getElementById('bulkImageList');
     const bulkPlaceholder = document.getElementById('bulkPlaceholder');
     const bulkImageListHeader = document.getElementById('bulkImageListHeader');
+    const bulkProgressWrap = document.getElementById('bulkProgressWrap');
+    const bulkProgressBar = document.getElementById('bulkProgressBar');
+    const bulkProgressLabel = document.getElementById('bulkProgressLabel');
+    const bulkProgressCount = document.getElementById('bulkProgressCount');
 
+    // Global overlay
+    const globalDropOverlay = document.getElementById('globalDropOverlay');
+    const globalDropHint = document.getElementById('globalDropHint');
+    const toastStack = document.getElementById('toastStack');
 
-    // --- State Variables ---
+    // =========================================================
+    //  State
+    // =========================================================
     let currentFile = null;
     let originalImageDataUrl = null;
     let textToCopy = "";
-    let bulkFilesData = []; 
+    let jsonToExport = null;         // structured metadata for .json export
+    let pasteTextToCopy = "";
+    let bulkFilesData = [];
     let nextBulkFileId = 0;
+    let currentActiveTabId = 'single';
 
-    // --- UI Reset ---
-    function resetUI() {
-        fileInput.value = '';
-        currentFile = null;
-        originalImageDataUrl = null;
-        textToCopy = "";
-
-        imagePreview.src = '#';
-        imagePreview.classList.add('hidden');
-        previewPlaceholder.classList.remove('hidden');
-
-        metadataOutput.innerHTML = `<div class="no-metadata flex flex-col items-center justify-center h-full text-gray-500 text-center"><span class="material-symbols-outlined text-6xl mb-3">search_off</span><p class="font-medium">No metadata to display yet.</p><p class="text-sm">Upload an image to inspect its data.</p></div>`;
-        
-        copyAllMetadataBtn.classList.add('hidden');
-        stripButton.classList.add('hidden');
-        downloadButton.classList.add('hidden');
-        resetButton.classList.add('hidden');
-        
-        stripButton.disabled = false;
-        stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`;
+    // =========================================================
+    //  Small Utilities
+    // =========================================================
+    function escapeHtml(str) {
+        return String(str)
+            .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+    }
+    function formatBytes(bytes) {
+        if (!Number.isFinite(bytes)) return '—';
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+    function downloadTextFile(filename, text, mime = 'text/plain') {
+        const blob = new Blob([text], { type: mime + ';charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+    // Native zlib inflate for zTXt / compressed iTXt chunks (no pako needed).
+    async function inflateBytes(bytes) {
+        if (typeof DecompressionStream === 'undefined') throw new Error('Decompression not supported in this browser.');
+        const ds = new DecompressionStream('deflate'); // PNG zTXt uses zlib-wrapped deflate
+        const stream = new Blob([bytes]).stream().pipeThrough(ds);
+        const buf = await new Response(stream).arrayBuffer();
+        return new Uint8Array(buf);
+    }
+    function staggerChildren(container) {
+        // Applies a staggered entrance animation to direct children.
+        Array.from(container.children).forEach((el, i) => {
+            el.classList.add('anim-in');
+            el.style.animationDelay = `${Math.min(i * 60, 420)}ms`;
+        });
     }
 
-    // --- Modal Logic ---
+    // =========================================================
+    //  Toasts (stacked)
+    // =========================================================
+    function showToast(message, icon = 'info', type = 'info', duration = 3000) {
+        while (toastStack.children.length >= 3) toastStack.firstChild.remove();
+        const toast = document.createElement('div');
+        toast.className = 'custom-toast text-sm font-medium px-5 py-3 rounded-lg shadow-lg flex items-center gap-2';
+        let bgColor = 'bg-gray-800', textColor = 'text-white', iconColor = 'text-white';
+        if (type === 'success') { bgColor = 'bg-green-600'; icon = 'check_circle'; }
+        else if (type === 'error') { bgColor = 'bg-red-600'; icon = 'error'; }
+        else if (type === 'warning') { bgColor = 'bg-yellow-500'; textColor = 'text-yellow-900'; iconColor = 'text-yellow-900'; icon = 'warning'; }
+        toast.classList.add(bgColor, textColor);
+        const iconSpan = document.createElement('span');
+        iconSpan.className = `material-symbols-outlined ${iconColor}`; iconSpan.textContent = icon;
+        const messageSpan = document.createElement('span'); messageSpan.textContent = message;
+        toast.appendChild(iconSpan); toast.appendChild(messageSpan);
+        toastStack.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('fade-out');
+            toast.addEventListener('animationend', () => toast.remove(), { once: true });
+        }, duration);
+    }
+
+    // =========================================================
+    //  Clipboard
+    // =========================================================
+    function copyToClipboard(text, elementToFeedback) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('Copied!', 'content_copy', 'success', 1500);
+            if (!elementToFeedback) return;
+            const icon = elementToFeedback.querySelector('.material-symbols-outlined');
+            if (icon) {
+                const originalIcon = icon.textContent;
+                icon.textContent = 'check';
+                setTimeout(() => { icon.textContent = originalIcon; }, 1500);
+            }
+        }).catch(err => { showToast('Failed to copy.', 'error', 'error'); console.error('Copy failed: ', err); });
+    }
+    copyAllMetadataBtn.addEventListener('click', () => {
+        if (textToCopy) copyToClipboard(textToCopy, copyAllMetadataBtn);
+        else showToast("No metadata content to copy.", "info", "info");
+    });
+    pasteCopyAllBtn.addEventListener('click', () => {
+        if (pasteTextToCopy) copyToClipboard(pasteTextToCopy, pasteCopyAllBtn);
+        else showToast("No parsed content to copy.", "info", "info");
+    });
+
+    // Export handlers
+    exportTxtBtn.addEventListener('click', () => {
+        if (!textToCopy) return showToast('Nothing to export yet.', 'info', 'info');
+        const base = currentFile ? (currentFile.name.replace(/\.[^.]+$/, '') || 'metadata') : 'metadata';
+        downloadTextFile(`${base}_metadata.txt`, textToCopy);
+    });
+    exportJsonBtn.addEventListener('click', () => {
+        if (!jsonToExport) return showToast('No structured metadata to export.', 'info', 'info');
+        const base = currentFile ? (currentFile.name.replace(/\.[^.]+$/, '') || 'metadata') : 'metadata';
+        downloadTextFile(`${base}_metadata.json`, JSON.stringify(jsonToExport, null, 2), 'application/json');
+    });
+    pasteExportTxtBtn.addEventListener('click', () => {
+        if (!pasteTextToCopy) return showToast('Nothing to export yet.', 'info', 'info');
+        downloadTextFile('parsed_metadata.txt', pasteTextToCopy);
+    });
+
+    // =========================================================
+    //  Search / filter within results
+    // =========================================================
+    function applyMetadataFilter(query) {
+        const q = query.trim().toLowerCase();
+        metadataSearchClear.classList.toggle('hidden', !q);
+        metadataOutput.querySelectorAll('[data-searchable]').forEach(el => {
+            const match = !q || el.textContent.toLowerCase().includes(q);
+            el.classList.toggle('search-hidden', !match);
+        });
+    }
+    metadataSearch.addEventListener('input', () => applyMetadataFilter(metadataSearch.value));
+    metadataSearchClear.addEventListener('click', () => { metadataSearch.value = ''; applyMetadataFilter(''); metadataSearch.focus(); });
+
+    // =========================================================
+    //  Modal
+    // =========================================================
     function openModal(imageUrl) { if (!imageUrl || imageUrl.endsWith('#')) return; modalImage.src = imageUrl; imageModal.classList.remove('hidden'); document.body.classList.add('modal-open'); document.addEventListener('keydown', handleEscapeKey); }
     function closeModal() { imageModal.classList.add('hidden'); modalImage.src = ""; document.body.classList.remove('modal-open'); document.removeEventListener('keydown', handleEscapeKey); }
     function handleEscapeKey(event) { if (event.key === 'Escape') closeModal(); }
@@ -339,58 +589,159 @@
     closeModalBtn.addEventListener('click', closeModal);
     imageModal.addEventListener('click', (event) => { if (event.target === imageModal) closeModal(); });
 
-    // --- Toast Notification ---
-    function showToast(message, icon = 'info', type = 'info', duration = 3000) {
-        document.querySelectorAll('.custom-toast').forEach(t => t.remove()); const toast = document.createElement('div');
-        toast.className = 'custom-toast fixed bottom-6 left-1/2 -translate-x-1/2 text-sm font-medium px-5 py-3 rounded-lg shadow-lg flex items-center gap-2 z-[100]';
-        let bgColor = 'bg-gray-800', textColor = 'text-white', iconColor = 'text-white';
-        if (type === 'success') { bgColor = 'bg-green-600'; icon = 'check_circle'; }
-        else if (type === 'error') { bgColor = 'bg-red-600'; icon = 'error'; }
-        else if (type === 'warning') { bgColor = 'bg-yellow-500'; textColor = 'text-yellow-900'; iconColor = 'text-yellow-900'; icon = 'warning'; }
-        toast.classList.add(bgColor, textColor); const iconSpan = document.createElement('span'); iconSpan.className = `material-symbols-outlined ${iconColor}`; iconSpan.textContent = icon; toast.appendChild(iconSpan);
-        const messageSpan = document.createElement('span'); messageSpan.textContent = message; toast.appendChild(messageSpan);
-        document.body.appendChild(toast); setTimeout(() => { toast.classList.add('fade-out'); toast.addEventListener('animationend', () => toast.remove()); }, duration);
+    // =========================================================
+    //  Tabs (sliding indicator + animated content swap)
+    // =========================================================
+    const tabDefs = [
+        { btn: singleImageTabBtn, content: singleImageTabContent, id: 'single' },
+        { btn: pasteMetaTabBtn,   content: pasteMetaTabContent,   id: 'paste'  },
+        { btn: bulkStripTabBtn,   content: bulkStripTabContent,   id: 'bulk'   }
+    ];
+    function positionIndicator(btn) {
+        tabIndicator.style.left = btn.offsetLeft + 'px';
+        tabIndicator.style.width = btn.offsetWidth + 'px';
     }
+    function switchTab(targetId, { instant = false } = {}) {
+        if (targetId === currentActiveTabId && !instant) return;
+        const newTab = tabDefs.find(t => t.id === targetId);
+        const oldTab = tabDefs.find(t => t.id === currentActiveTabId);
+        if (!newTab) return;
 
-    // --- Clipboard Functionality ---
-    function copyToClipboard(text, elementToFeedback) {
-        navigator.clipboard.writeText(text).then(() => {
-            showToast('Copied!', 'content_copy', 'success', 1500);
-            if (!elementToFeedback) return;
-            const icon = elementToFeedback.querySelector('.material-symbols-outlined');
-            const originalIcon = icon ? icon.textContent : null;
-            const originalTextContent = elementToFeedback.textContent; 
-            const originalClasses = Array.from(elementToFeedback.classList);
-            
-            elementToFeedback.classList.remove('bg-red-500', 'hover:bg-red-600', 'bg-gray-200');
-            elementToFeedback.classList.add('bg-green-500', 'hover:bg-green-600');
-            if(icon) icon.textContent = 'check';
-            
-            const textNode = Array.from(elementToFeedback.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
-            if(textNode) textNode.nodeValue = ' Copied!';
-            else if (!icon) elementToFeedback.textContent = 'Copied!';
+        tabDefs.forEach(t => t.btn.classList.toggle('active', t.id === targetId));
+        positionIndicator(newTab.btn);
 
+        if (instant) {
+            tabDefs.forEach(t => {
+                const active = t.id === targetId;
+                t.content.classList.toggle('hidden', !active);
+                t.content.classList.toggle('tab-content-active', active);
+                t.content.classList.toggle('tab-content-prepared', !active);
+            });
+            currentActiveTabId = targetId;
+            return;
+        }
 
-            setTimeout(() => {
-                elementToFeedback.className = originalClasses.join(' ');
-                if(icon) icon.textContent = originalIcon;
-                
-                if(textNode) textNode.nodeValue = originalTextContent.replace(originalIcon || '', '').trim();
-                else if (!icon && elementToFeedback.textContent === 'Copied!') elementToFeedback.textContent = originalTextContent;
-
-            }, 1500);
-        }).catch(err => { showToast('Failed to copy.', 'error', 'error'); console.error('Copy failed: ', err); });
+        if (oldTab && oldTab !== newTab) {
+            oldTab.content.classList.remove('tab-content-active');
+            oldTab.content.classList.add('tab-content-prepared');
+        }
+        newTab.content.classList.remove('hidden');
+        newTab.content.classList.add('tab-content-prepared');
+        void newTab.content.offsetWidth; // reflow
+        requestAnimationFrame(() => {
+            newTab.content.classList.remove('tab-content-prepared');
+            newTab.content.classList.add('tab-content-active');
+        });
+        setTimeout(() => { if (oldTab && oldTab !== newTab) oldTab.content.classList.add('hidden'); }, 300);
+        currentActiveTabId = targetId;
     }
-    copyAllMetadataBtn.addEventListener('click', () => {
-        if (textToCopy) copyToClipboard(textToCopy, copyAllMetadataBtn);
-        else showToast("No metadata content to copy.", "info", "info");
+    tabDefs.forEach(t => t.btn.addEventListener('click', () => switchTab(t.id)));
+    window.addEventListener('resize', () => {
+        const active = tabDefs.find(t => t.id === currentActiveTabId);
+        if (active) positionIndicator(active.btn);
     });
 
-    // --- Main File Processing Logic (Single Image) ---
+    // =========================================================
+    //  Global drag & drop + paste routing
+    // =========================================================
+    let dragCounter = 0;
+    document.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+        globalDropHint.textContent = currentActiveTabId === 'bulk'
+            ? 'Images will be added to the bulk queue'
+            : 'Image will open in the Single Image Inspector';
+        globalDropOverlay.classList.remove('hidden-overlay');
+    });
+    document.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragCounter = Math.max(0, dragCounter - 1);
+        if (dragCounter === 0) globalDropOverlay.classList.add('hidden-overlay');
+    });
+    document.addEventListener('dragover', (e) => e.preventDefault());
+    document.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        globalDropOverlay.classList.add('hidden-overlay');
+        const files = Array.from(e.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'));
+        if (files.length === 0) return;
+        if (currentActiveTabId === 'bulk' || files.length > 1) {
+            switchTab('bulk');
+            addFilesToBulkQueue(files);
+        } else {
+            switchTab('single');
+            processFile(files[0]);
+        }
+    });
+
+    // Smart paste: images go to the inspector, metadata-looking text goes to the Paste tab.
+    document.addEventListener('paste', (e) => {
+        const target = e.target;
+        const isTextField = target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT');
+        const file = e.clipboardData?.files?.[0];
+        if (file && file.type.startsWith('image/')) {
+            e.preventDefault();
+            switchTab('single');
+            showToast('Pasted image!', 'add_photo_alternate', 'info');
+            processFile(file);
+            return;
+        }
+        const text = e.clipboardData?.getData('text');
+        if (!text) return;
+        if (isTextField && target === pasteTextarea) {
+            // Let the paste land, then auto-parse.
+            setTimeout(() => handleParsePaste(true), 30);
+            return;
+        }
+        if (isTextField) return; // don't hijack the search box etc.
+        if (looksLikeMetadataText(text)) {
+            e.preventDefault();
+            switchTab('paste');
+            pasteTextarea.value = text;
+            handleParsePaste(true);
+            showToast('Metadata detected — parsed it for you.', 'auto_awesome', 'success');
+        }
+    });
+    function looksLikeMetadataText(text) {
+        const t = text.trim();
+        if (t.length < 20) return false;
+        if (/^\s*[\{\[]/.test(t)) return true;                              // JSON-ish
+        if (/^prompt:\s*$/m.test(t) || /^workflow:\s*$/m.test(t)) return true; // ComfyUI dump
+        if (/Negative prompt:/.test(t)) return true;                        // A1111
+        if (/\bSteps:\s*\d+/.test(t) && /\b(Sampler|CFG scale|Seed):/.test(t)) return true;
+        if (/"class_type"/.test(t) || /"widgets_values"/.test(t)) return true;
+        return false;
+    }
+
+    // =========================================================
+    //  Single Image: main processing
+    // =========================================================
+    function resetUI() {
+        fileInput.value = '';
+        currentFile = null;
+        originalImageDataUrl = null;
+        textToCopy = "";
+        jsonToExport = null;
+
+        imagePreview.src = '#';
+        imagePreview.classList.add('hidden');
+        previewPlaceholder.classList.remove('hidden');
+        imageDimsBadge.classList.add('hidden');
+
+        metadataOutput.innerHTML = `<div class="no-metadata flex flex-col items-center justify-center h-full text-gray-500 text-center"><span class="material-symbols-outlined text-6xl mb-3">search_off</span><p class="font-medium">No metadata to display yet.</p><p class="text-sm">Upload an image to inspect its data.</p></div>`;
+
+        [copyAllMetadataBtn, exportTxtBtn, exportJsonBtn, stripButton, downloadButton, resetButton].forEach(b => b.classList.add('hidden'));
+        metadataSearchWrap.classList.add('hidden');
+        metadataSearch.value = '';
+
+        stripButton.disabled = false;
+        stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`;
+    }
+
     function processFile(file) {
         if (!file || !file.type.startsWith('image/')) { showToast('Please select a valid image file.', 'warning', 'warning'); return; }
-        
-        resetUI(); 
+
+        resetUI();
         currentFile = file;
 
         const reader = new FileReader();
@@ -399,7 +750,13 @@
             imagePreview.src = originalImageDataUrl;
             imagePreview.classList.remove('hidden');
             previewPlaceholder.classList.add('hidden');
-            
+            imagePreview.onload = () => {
+                if (imagePreview.naturalWidth) {
+                    imageDimsBadge.textContent = `${imagePreview.naturalWidth} × ${imagePreview.naturalHeight}`;
+                    imageDimsBadge.classList.remove('hidden');
+                }
+            };
+
             stripButton.classList.remove('hidden');
             resetButton.classList.remove('hidden');
 
@@ -409,7 +766,7 @@
                 processPng(file);
             } else if (file.type === 'image/jpeg') {
                 processJpeg(file, originalImageDataUrl);
-            } else { 
+            } else {
                 displayBasicInfo(file);
             }
         };
@@ -417,73 +774,95 @@
         reader.readAsDataURL(file);
     }
 
-    // --- PNG Metadata Processing ---
+    // =========================================================
+    //  PNG chunk parsing (tEXt / iTXt / zTXt with real inflate)
+    // =========================================================
+    async function extractPngTextChunks(arrayBuffer) {
+        const data = new DataView(arrayBuffer);
+        const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+        for (let i = 0; i < 8; i++) { if (data.getUint8(i) !== pngSignature[i]) throw new Error('Invalid PNG signature.'); }
+        let offset = 8;
+        const metadata = {};
+        while (offset < data.byteLength) {
+            if (offset + 8 > data.byteLength) break;
+            const length = data.getUint32(offset); offset += 4;
+            let type = '';
+            for (let i = 0; i < 4; i++) type += String.fromCharCode(data.getUint8(offset + i));
+            offset += 4;
+            if (offset + length + 4 > data.byteLength) break;
+
+            if (type === 'tEXt' || type === 'iTXt' || type === 'zTXt') {
+                const chunkBytes = new Uint8Array(arrayBuffer, offset, length);
+                const nullIndex = chunkBytes.indexOf(0);
+                if (nullIndex !== -1) {
+                    const keyword = new TextDecoder('utf-8').decode(chunkBytes.slice(0, nullIndex));
+                    let textValue = '';
+                    try {
+                        if (type === 'tEXt') {
+                            textValue = new TextDecoder('latin1').decode(chunkBytes.slice(nullIndex + 1));
+                        } else if (type === 'zTXt') {
+                            // keyword \0 compressionMethod(1 byte) compressedData
+                            const compressed = chunkBytes.slice(nullIndex + 2);
+                            const inflated = await inflateBytes(compressed);
+                            textValue = new TextDecoder('utf-8').decode(inflated);
+                        } else { // iTXt: keyword \0 compFlag compMethod langTag \0 translatedKeyword \0 text
+                            const compFlag = chunkBytes[nullIndex + 1];
+                            let p = nullIndex + 3;
+                            while (p < chunkBytes.length && chunkBytes[p] !== 0) p++; // language tag
+                            p++;
+                            while (p < chunkBytes.length && chunkBytes[p] !== 0) p++; // translated keyword
+                            p++;
+                            const body = chunkBytes.slice(p);
+                            if (compFlag === 0) {
+                                textValue = new TextDecoder('utf-8').decode(body);
+                            } else {
+                                const inflated = await inflateBytes(body);
+                                textValue = new TextDecoder('utf-8').decode(inflated);
+                            }
+                        }
+                        if (keyword) metadata[keyword] = textValue;
+                    } catch (err) {
+                        console.warn(`Failed to decode ${type} chunk "${keyword}":`, err);
+                        if (keyword) metadata[keyword] = `[${type} chunk could not be decoded: ${err.message}]`;
+                    }
+                }
+            } else if (type === 'IEND') {
+                break;
+            }
+            offset += length + 4; // skip data + CRC
+        }
+        return metadata;
+    }
+
     function processPng(file) {
         const fileReader = new FileReader();
-        fileReader.onload = (evt) => {
+        fileReader.onload = async (evt) => {
             try {
-                const arrayBuffer = evt.target.result; const data = new DataView(arrayBuffer); const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
-                for (let i = 0; i < 8; i++) { if (data.getUint8(i) !== pngSignature[i]) throw new Error('Invalid PNG signature.'); }
-                let offset = 8; const metadata = {};
-                while (offset < data.byteLength) {
-                    if (offset + 8 > data.byteLength) break; const length = data.getUint32(offset); offset += 4; let type = '';
-                    for (let i = 0; i < 4; i++) type += String.fromCharCode(data.getUint8(offset + i)); offset += 4;
-                    if (offset + length + 4 > data.byteLength) break;
-                    if (type === 'tEXt' || type === 'iTXt' || type === 'zTXt') { 
-                        let textBytes = new Uint8Array(arrayBuffer, offset, length);
-                        if (type === 'zTXt') {
-                            const nullIdx = textBytes.indexOf(0);
-                            if (nullIdx !== -1 && textBytes[nullIdx+1] === 0) { 
-                                console.warn("zTXt chunk found, decompression not fully implemented without pako.js.");
-                                metadata['zTXt_chunk_present (not_decompressed)'] = `Length: ${length}`;
-                                offset += length + 4;
-                                continue;
-                            }
-                        }
-
-                        let keyword = '', textValue = ''; const nullIndex = textBytes.indexOf(0);
-                        if (nullIndex !== -1) { keyword = new TextDecoder("utf-8").decode(textBytes.slice(0, nullIndex));
-                            if (type === 'tEXt') { textValue = new TextDecoder("latin1").decode(textBytes.slice(nullIndex + 1)); }
-                            else if (type === 'iTXt') { 
-                                const iTXtParts = [];
-                                let currentPartStart = nullIndex + 1;
-                                for(let i = nullIndex + 1; i < textBytes.length; i++) {
-                                    if (textBytes[i] === 0) {
-                                        iTXtParts.push(textBytes.slice(currentPartStart, i));
-                                        currentPartStart = i + 1;
-                                    }
-                                }
-                                iTXtParts.push(textBytes.slice(currentPartStart));
-
-                                const compressionFlag = iTXtParts[0] ? iTXtParts[0][0] : 0;
-                                const actualTextBytes = iTXtParts[4];
-
-                                if (compressionFlag === 0) { 
-                                    textValue = new TextDecoder("utf-8").decode(actualTextBytes);
-                                } else {
-                                    textValue = "[Compressed iTXt data - decompression not supported]";
-                                }
-                            }
-                            if (keyword) metadata[keyword] = textValue;
-                        }
-                    } offset += length + 4;
+                const metadata = await extractPngTextChunks(evt.target.result);
+                if (Object.keys(metadata).length === 0) {
+                    displayBasicInfo(file, 'No textual metadata chunks found in PNG.');
+                    return;
                 }
                 displayPngMetadata(metadata);
-                if (Object.keys(metadata).length > 0) {
-                    textToCopy = metadata.parameters || Object.entries(metadata).map(([k, v]) => `${k}: ${v}`).join('\n');
-                    copyAllMetadataBtn.classList.remove('hidden');
-                } else {
-                     displayBasicInfo(file, 'No textual metadata chunks found in PNG.');
-                }
+                jsonToExport = metadata;
+                textToCopy = metadata.parameters
+                    || (metadata.prompt ? `prompt:\n${metadata.prompt}\n\n${metadata.workflow ? 'workflow:\n' + metadata.workflow : ''}`.trim() : null)
+                    || Object.entries(metadata).map(([k, v]) => `${k}: ${v}`).join('\n');
+                copyAllMetadataBtn.classList.remove('hidden');
+                exportTxtBtn.classList.remove('hidden');
+                exportJsonBtn.classList.remove('hidden');
             } catch (error) {
-                console.error("Error processing PNG:", error); showToast(`Error processing file: ${error.message}`, 'error', 'error');
+                console.error("Error processing PNG:", error);
+                showToast(`Error processing file: ${error.message}`, 'error', 'error');
                 displayBasicInfo(file, `Failed to parse PNG metadata. ${error.message}`);
             }
         };
         fileReader.readAsArrayBuffer(file);
     }
 
-    // --- JPEG Metadata Processing ---
+    // =========================================================
+    //  JPEG / EXIF
+    // =========================================================
     function processJpeg(file, imageUrl) {
         const imgForExif = new Image();
         imgForExif.onload = () => {
@@ -492,9 +871,10 @@
                 displayExifAndBasicInfo(file, allTags);
                 if (Object.keys(allTags).length > 0) {
                     textToCopy = Object.entries(allTags).map(([k, v]) => `${k}: ${v}`).join('\n');
+                    jsonToExport = allTags;
                     copyAllMetadataBtn.classList.remove('hidden');
-                } else {
-                    displayBasicInfo(file, 'No EXIF data found.');
+                    exportTxtBtn.classList.remove('hidden');
+                    exportJsonBtn.classList.remove('hidden');
                 }
             });
         };
@@ -505,61 +885,148 @@
         imgForExif.src = imageUrl;
     }
 
-    // --- Metadata Display Functions ---
+    // =========================================================
+    //  Display building blocks
+    // =========================================================
+    function createParamItem(label, value, valueClass = 'text-gray-700') {
+        const item = document.createElement('div');
+        item.className = 'flex flex-col sm:flex-row justify-between sm:items-start bg-white rounded-md p-2 mb-1 gap-1 sm:gap-2';
+        item.setAttribute('data-searchable', '');
+        item.innerHTML = `
+            <div class="param-label font-medium text-gray-500 text-xs sm:text-sm flex-shrink-0 sm:w-2/5">${escapeHtml(String(label).replace(/_/g, ' '))}:</div>
+            <div class="param-value ${valueClass} text-xs sm:text-sm break-all sm:text-right flex-grow">${escapeHtml(String(value))}</div>
+        `;
+        return item;
+    }
+
+    function createSectionHeader(title, icon, colorClass = 'text-gray-600') {
+        const h = document.createElement('h5');
+        h.className = `text-sm font-semibold ${colorClass} uppercase mb-3 flex items-center gap-1.5`;
+        h.innerHTML = `<span class="material-symbols-outlined text-base">${icon}</span>${escapeHtml(title)}`;
+        return h;
+    }
+
+    function createPromptSection(title, icon, content, colorClass) {
+        const section = document.createElement('div');
+        section.className = 'metadata-section';
+        section.setAttribute('data-searchable', '');
+        section.appendChild(createSectionHeader(title, icon, colorClass));
+        const pre = document.createElement('pre');
+        pre.className = 'bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-700 relative font-sans custom-scrollbar overflow-auto max-h-48';
+        pre.textContent = content;
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn p-1.5 rounded-full text-gray-400 hover:text-red-600 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-red-500 transition-colors duration-200';
+        copyBtn.title = `Copy ${title}`;
+        copyBtn.innerHTML = '<span class="material-symbols-outlined text-base">content_copy</span>';
+        copyBtn.onclick = (e) => { e.stopPropagation(); copyToClipboard(content, copyBtn); };
+        pre.appendChild(copyBtn);
+        section.appendChild(pre);
+        return section;
+    }
+
+    function createIndividualParamCard(label, value) {
+        const card = document.createElement('div');
+        card.className = 'bg-white border border-gray-200 rounded-lg p-3 shadow-sm flex flex-col gap-1.5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150';
+        card.setAttribute('data-searchable', '');
+        const header = document.createElement('div'); header.className = 'flex justify-between items-center';
+        const paramLabel = document.createElement('span');
+        paramLabel.className = 'text-xs font-semibold text-red-700 uppercase tracking-wider';
+        paramLabel.textContent = String(label).replace(/_/g, ' ');
+        const copyButton = document.createElement('button');
+        copyButton.className = 'p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-red-600';
+        copyButton.title = `Copy ${label}`;
+        copyButton.onclick = (e) => { e.stopPropagation(); copyToClipboard(String(value), copyButton); };
+        copyButton.innerHTML = '<span class="material-symbols-outlined text-sm">content_copy</span>';
+        header.appendChild(paramLabel); header.appendChild(copyButton);
+        const paramValue = document.createElement('div');
+        paramValue.className = 'text-sm text-gray-700 break-all';
+        paramValue.textContent = String(value);
+        card.appendChild(header); card.appendChild(paramValue);
+        return card;
+    }
+
+    function createCollapsibleRaw(title, rawText, { open = false, mono = true } = {}) {
+        const details = document.createElement('details');
+        details.className = 'meta-details bg-white border border-gray-200 rounded-lg shadow-sm';
+        details.setAttribute('data-searchable', '');
+        if (open) details.open = true;
+        const summary = document.createElement('summary');
+        summary.className = 'flex items-center justify-between p-3';
+        summary.innerHTML = `<span class="flex items-center gap-1.5 text-sm font-semibold text-gray-600"><span class="material-symbols-outlined chevron text-gray-400 text-base">chevron_right</span><span class="material-symbols-outlined text-base text-red-600">data_object</span>${escapeHtml(title)}</span><span class="text-xs text-gray-400">${formatBytes(rawText.length)}</span>`;
+        const pre = document.createElement('pre');
+        pre.className = `m-3 mt-0 bg-gray-50 border border-gray-100 rounded-lg p-3 text-xs text-gray-700 relative custom-scrollbar overflow-auto max-h-72 ${mono ? 'font-mono-code' : 'font-sans'}`;
+        pre.textContent = rawText;
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn p-1.5 rounded-full text-gray-400 hover:text-red-600';
+        copyBtn.title = `Copy ${title}`;
+        copyBtn.innerHTML = '<span class="material-symbols-outlined text-base">content_copy</span>';
+        copyBtn.onclick = (e) => { e.stopPropagation(); copyToClipboard(rawText, copyBtn); };
+        pre.appendChild(copyBtn);
+        details.appendChild(summary);
+        details.appendChild(pre);
+        return details;
+    }
+
     function displayBasicInfo(file, message = null) {
         metadataOutput.innerHTML = '';
         const card = document.createElement('div'); card.className = 'metadata-content space-y-6';
         const section = document.createElement('div'); section.className = 'metadata-section';
-        section.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">info</span>Basic Information</h5>`;
-        const container = document.createElement('div'); container.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
-        
+        section.appendChild(createSectionHeader('Basic Information', 'info'));
+        const container = document.createElement('div');
+        container.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
+
         container.appendChild(createParamItem('File Name', file.name));
         container.appendChild(createParamItem('File Type', file.type));
-        container.appendChild(createParamItem('File Size', `${(file.size / 1024).toFixed(2)} KB`));
+        container.appendChild(createParamItem('File Size', formatBytes(file.size)));
         container.appendChild(createParamItem('Last Modified', new Date(file.lastModified).toLocaleString()));
-        
+
         let statusMessage = message;
         if (!statusMessage) {
-            if (file.type === 'image/webp') {
-                statusMessage = 'WEBP metadata parsing is limited. Only basic info shown.';
-            } else {
-                statusMessage = 'No specific AI or EXIF metadata found, or format not fully supported for deep inspection.';
-            }
+            statusMessage = file.type === 'image/webp'
+                ? 'WEBP metadata parsing is limited. Only basic info shown.'
+                : 'No specific AI or EXIF metadata found, or format not fully supported for deep inspection.';
         }
         container.appendChild(createParamItem('Metadata Status', statusMessage, message && message.toLowerCase().includes('error') ? 'text-red-600' : 'text-gray-500'));
-
 
         section.appendChild(container);
         card.appendChild(section);
         metadataOutput.appendChild(card);
-        textToCopy = `File Name: ${file.name}\nFile Type: ${file.type}\nFile Size: ${(file.size / 1024).toFixed(2)} KB\nLast Modified: ${new Date(file.lastModified).toLocaleString()}\nStatus: ${statusMessage}`;
+        staggerChildren(card);
+        textToCopy = `File Name: ${file.name}\nFile Type: ${file.type}\nFile Size: ${formatBytes(file.size)}\nLast Modified: ${new Date(file.lastModified).toLocaleString()}\nStatus: ${statusMessage}`;
         copyAllMetadataBtn.classList.remove('hidden');
+        exportTxtBtn.classList.remove('hidden');
+    }
+
+    function buildBasicInfoSection(file) {
+        const basicSection = document.createElement('div');
+        basicSection.appendChild(createSectionHeader('Basic Information', 'info'));
+        const basicContainer = document.createElement('div');
+        basicContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
+        basicContainer.appendChild(createParamItem('File Name', file.name));
+        basicContainer.appendChild(createParamItem('File Type', file.type));
+        basicContainer.appendChild(createParamItem('File Size', formatBytes(file.size)));
+        basicSection.appendChild(basicContainer);
+        return basicSection;
     }
 
     function displayExifAndBasicInfo(file, exifData) {
         metadataOutput.innerHTML = '';
         const card = document.createElement('div'); card.className = 'metadata-content space-y-6';
-        
-        const basicSection = document.createElement('div');
-        basicSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">info</span>Basic Information</h5>`;
-        const basicContainer = document.createElement('div'); basicContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
-        basicContainer.appendChild(createParamItem('File Name', file.name));
-        basicContainer.appendChild(createParamItem('File Type', file.type));
-        basicContainer.appendChild(createParamItem('File Size', `${(file.size / 1024).toFixed(2)} KB`));
-        basicSection.appendChild(basicContainer);
-        card.appendChild(basicSection);
+        card.appendChild(buildBasicInfoSection(file));
 
         if (Object.keys(exifData).length > 0) {
+            metadataSearchWrap.classList.remove('hidden');
             const exifSection = document.createElement('div');
-            exifSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">camera</span>EXIF Data</h5>`;
-            const exifContainer = document.createElement('div'); exifContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
-            
+            exifSection.appendChild(createSectionHeader('EXIF Data', 'camera'));
+            const exifContainer = document.createElement('div');
+            exifContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
+
             const commonTags = { "Make": "Camera Make", "Model": "Camera Model", "DateTimeOriginal": "Date/Time Original", "PixelXDimension": "Image Width", "PixelYDimension": "Image Height", "ISOSpeedRatings": "ISO Speed", "ExposureTime": "Exposure Time", "FNumber": "F-Number", "FocalLength": "Focal Length", "GPSLatitude": "GPS Latitude", "GPSLongitude": "GPS Longitude", "Software": "Software", "Artist": "Artist", "Copyright": "Copyright" };
-            
-            let foundCommonExif = false;
+
+            const shown = new Set();
             Object.entries(commonTags).forEach(([key, label]) => {
-                if (exifData[key]) {
-                    foundCommonExif = true;
+                if (exifData[key] !== undefined && exifData[key] !== '') {
+                    shown.add(key);
                     let value = exifData[key];
                     if (key === "ExposureTime" && typeof value === 'number' && value > 0) value = value < 1 ? `1/${Math.round(1/value)}s` : `${value}s`;
                     if (key === "FNumber" && typeof value === 'object' && value.numerator && value.denominator) value = `f/${(value.numerator / value.denominator).toFixed(1)}`; else if (key === "FNumber") value = `f/${value}`;
@@ -567,119 +1034,44 @@
                     exifContainer.appendChild(createParamItem(label, value.toString()));
                 }
             });
-            if(!foundCommonExif) {
-                 exifContainer.appendChild(createParamItem('Status', 'No common EXIF tags found. Raw tags might exist.'));
-            }
             exifSection.appendChild(exifContainer);
             card.appendChild(exifSection);
+
+            // Everything else, collapsible
+            const remaining = Object.entries(exifData).filter(([k, v]) => !shown.has(k) && typeof v !== 'object');
+            if (remaining.length > 0) {
+                const rawText = remaining.map(([k, v]) => `${k}: ${v}`).join('\n');
+                card.appendChild(createCollapsibleRaw(`All Other EXIF Tags (${remaining.length})`, rawText, { mono: false }));
+            }
         } else {
             const noExifSection = document.createElement('div');
             noExifSection.innerHTML = `<p class="text-sm text-gray-500 italic mt-4 p-2 bg-white rounded-md border border-gray-200 shadow-sm">No EXIF data found in this image.</p>`;
             card.appendChild(noExifSection);
         }
         metadataOutput.appendChild(card);
+        staggerChildren(card);
     }
 
-    function displayPngMetadata(metadata) {
-        metadataOutput.innerHTML = '';
-        if (Object.keys(metadata).length === 0) {
-            displayBasicInfo(currentFile, 'No PNG textual metadata chunks found.');
-            return;
-        }
-        const metadataCard = document.createElement('div'); metadataCard.className = 'metadata-content space-y-6';
-
-        const basicSection = document.createElement('div');
-        basicSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">info</span>Basic Information</h5>`;
-        const basicContainer = document.createElement('div'); basicContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
-        basicContainer.appendChild(createParamItem('File Name', currentFile.name));
-        basicContainer.appendChild(createParamItem('File Type', currentFile.type));
-        basicContainer.appendChild(createParamItem('File Size', `${(currentFile.size / 1024).toFixed(2)} KB`));
-        basicSection.appendChild(basicContainer);
-        metadataCard.appendChild(basicSection);
-
-
-        if (metadata["parameters"]) { 
-            let paramText = metadata["parameters"], posPrompt = paramText, negPrompt = "", extraParams = "";
-            const negPromptKeyword = "Negative prompt:"; const negIndex = paramText.indexOf(negPromptKeyword);
-            if (negIndex !== -1) { 
-                posPrompt = paramText.substring(0, negIndex).trim(); 
-                const rest = paramText.substring(negIndex + negPromptKeyword.length).trim(); 
-                const newlineIndexAfterNeg = rest.indexOf("\n"); 
-                if (newlineIndexAfterNeg !== -1) { negPrompt = rest.substring(0, newlineIndexAfterNeg).trim(); extraParams = rest.substring(newlineIndexAfterNeg).trim(); } 
-                else { negPrompt = rest; } 
-            } else { 
-                const firstNewline = paramText.indexOf("\n"); 
-                if (firstNewline !== -1) { posPrompt = paramText.substring(0, firstNewline).trim(); extraParams = paramText.substring(firstNewline).trim(); }
-                else { posPrompt = paramText.trim(); }
-            }
-
-            metadataCard.appendChild(createPromptSection('Positive Prompt', 'palette', posPrompt, 'text-gray-700'));
-            if (negPrompt) metadataCard.appendChild(createPromptSection('Negative Prompt', 'block', negPrompt, 'text-red-700'));
-
-            if (extraParams) {
-                const genParamsSection = document.createElement('div');
-                genParamsSection.className = 'metadata-section';
-                genParamsSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">tune</span>Generation Parameters</h5>`;
-                const parsedParams = parseParameters(extraParams);
-                if (Object.keys(parsedParams).length > 0) {
-                    const paramsGridContainer = document.createElement('div');
-                    paramsGridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2';
-                    Object.entries(parsedParams).forEach(([key, value]) => paramsGridContainer.appendChild(createIndividualParamCard(key, value)));
-                    genParamsSection.appendChild(paramsGridContainer);
-                } else {
-                     genParamsSection.innerHTML += `<p class="text-sm text-gray-500 italic p-2 bg-white rounded-md border">No parsable key-value generation parameters found.</p>`;
-                }
-                metadataCard.appendChild(genParamsSection);
-            }
-        }
-        const otherMetadata = Object.entries(metadata).filter(([key]) => key !== "parameters");
-        if (otherMetadata.length > 0) {
-            const additionalSection = document.createElement('div'); additionalSection.className = 'metadata-section pt-4 border-t border-gray-200';
-            additionalSection.innerHTML = `<h5 class="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">label_important</span>Additional Raw Metadata</h5>`;
-            const additionalContainer = document.createElement('div'); additionalContainer.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
-            otherMetadata.forEach(([key, value]) => additionalContainer.appendChild(createParamItem(key, value)));
-            additionalSection.appendChild(additionalContainer); metadataCard.appendChild(additionalSection);
-        }
-        metadataOutput.appendChild(metadataCard);
-    }
-
-    // --- Metadata Display Helpers ---
-    function createParamItem(label, value, valueClass = 'text-gray-700') {
-        const item = document.createElement('div');
-        item.className = 'flex flex-col sm:flex-row justify-between sm:items-start bg-white rounded-md p-2 mb-1 gap-1 sm:gap-2'; 
-        item.innerHTML = `
-            <div class="param-label font-medium text-gray-500 text-xs sm:text-sm flex-shrink-0 sm:w-2/5">${label.replace(/_/g, ' ')}:</div>
-            <div class="param-value ${valueClass} text-xs sm:text-sm break-all sm:text-right flex-grow">${value}</div>
-        `; 
-        return item;
-    }
-    function createPromptSection(title, icon, content, colorClass) {
-        const section = document.createElement('div'); section.className = 'metadata-section';
-        section.innerHTML = `<h5 class="text-sm font-semibold ${colorClass} uppercase mb-2 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">${icon}</span>${title}</h5>`;
-        const pre = document.createElement('pre'); pre.className = 'bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-700 relative font-sans custom-scrollbar overflow-auto max-h-40'; pre.textContent = content;
-        const copyBtn = document.createElement('button'); copyBtn.className = 'copy-btn p-1.5 rounded-full text-gray-400 hover:text-red-600 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-red-500 transition-colors duration-200';
-        copyBtn.title = `Copy ${title}`; copyBtn.innerHTML = '<span class="material-symbols-outlined text-base">content_copy</span>'; copyBtn.onclick = (e) => { e.stopPropagation(); copyToClipboard(content, copyBtn); }; pre.appendChild(copyBtn); section.appendChild(pre);
-        return section;
-    }
-    function createIndividualParamCard(label, value) {
-        const card = document.createElement('div');
-        card.className = 'bg-white border border-gray-200 rounded-lg p-3 shadow-sm flex flex-col gap-1.5 hover:shadow-md transition-shadow duration-150';
-        const header = document.createElement('div'); header.className = 'flex justify-between items-center';
-        const paramLabel = document.createElement('span'); paramLabel.className = 'text-xs font-semibold text-red-700 uppercase tracking-wider'; paramLabel.textContent = label.replace(/_/g, ' ');
-        const copyButton = document.createElement('button'); copyButton.className = 'copy-btn-card p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-red-600'; copyButton.title = `Copy ${label}`;
-        copyButton.onclick = (e) => { e.stopPropagation(); copyToClipboard(value, copyButton); };
-        copyButton.innerHTML = '<span class="material-symbols-outlined text-sm">content_copy</span>';
-        header.appendChild(paramLabel); header.appendChild(copyButton);
-        const paramValue = document.createElement('div'); paramValue.className = 'text-sm text-gray-700 break-all'; paramValue.textContent = value;
-        card.appendChild(header); card.appendChild(paramValue);
-        return card;
-    }
-    function parseParameters(paramsString) {
+    // =========================================================
+    //  A1111 / Forge "parameters" parsing
+    // =========================================================
+    function splitA1111Params(paramsString) {
+        // Splits "Steps: 30, Sampler: Euler a, Lora hashes: "a: b, c: d", ..." respecting quotes/brackets.
         const paramsList = {};
         if (!paramsString || typeof paramsString !== 'string') return paramsList;
-        const pairs = paramsString.match(/([^:,]+:[^,]+(?:,\s*[^:,]+:[^,]+)*)|([^:,]+:[^,]+)/g) || [];
-
-        paramsString.split(', ').forEach(pair => {
+        const s = paramsString.replace(/\n/g, ', ');
+        const parts = [];
+        let cur = '', depth = 0, inQuote = false;
+        for (let i = 0; i < s.length; i++) {
+            const ch = s[i];
+            if (ch === '"') inQuote = !inQuote;
+            else if (!inQuote && (ch === '(' || ch === '[' || ch === '{')) depth++;
+            else if (!inQuote && (ch === ')' || ch === ']' || ch === '}')) depth = Math.max(0, depth - 1);
+            if (ch === ',' && !inQuote && depth === 0) { parts.push(cur); cur = ''; }
+            else cur += ch;
+        }
+        if (cur.trim()) parts.push(cur);
+        parts.forEach(pair => {
             const colonIndex = pair.indexOf(':');
             if (colonIndex !== -1) {
                 const key = pair.substring(0, colonIndex).trim();
@@ -693,7 +1085,601 @@
         return paramsList;
     }
 
-    // --- Metadata Stripping (Single Image) ---
+    function parseA1111(paramText) {
+        let posPrompt = paramText, negPrompt = "", extraParams = "";
+        const negPromptKeyword = "Negative prompt:";
+        const negIndex = paramText.indexOf(negPromptKeyword);
+        if (negIndex !== -1) {
+            posPrompt = paramText.substring(0, negIndex).trim();
+            const rest = paramText.substring(negIndex + negPromptKeyword.length).trim();
+            const settingsMatch = rest.match(/\n(?=Steps:\s*\d)/);
+            if (settingsMatch) {
+                negPrompt = rest.substring(0, settingsMatch.index).trim();
+                extraParams = rest.substring(settingsMatch.index).trim();
+            } else {
+                const newlineIndexAfterNeg = rest.indexOf("\n");
+                if (newlineIndexAfterNeg !== -1) { negPrompt = rest.substring(0, newlineIndexAfterNeg).trim(); extraParams = rest.substring(newlineIndexAfterNeg).trim(); }
+                else { negPrompt = rest; }
+            }
+        } else {
+            const settingsMatch = paramText.match(/\n(?=Steps:\s*\d)/);
+            if (settingsMatch) { posPrompt = paramText.substring(0, settingsMatch.index).trim(); extraParams = paramText.substring(settingsMatch.index).trim(); }
+            else {
+                const firstNewline = paramText.indexOf("\n");
+                if (firstNewline !== -1) { posPrompt = paramText.substring(0, firstNewline).trim(); extraParams = paramText.substring(firstNewline).trim(); }
+                else { posPrompt = paramText.trim(); }
+            }
+        }
+        return { posPrompt, negPrompt, params: splitA1111Params(extraParams) };
+    }
+
+    function renderA1111(container, parsed) {
+        if (parsed.posPrompt) container.appendChild(createPromptSection('Positive Prompt', 'palette', parsed.posPrompt, 'text-gray-700'));
+        if (parsed.negPrompt) container.appendChild(createPromptSection('Negative Prompt', 'block', parsed.negPrompt, 'text-red-700'));
+        const keys = Object.keys(parsed.params);
+        if (keys.length > 0) {
+            const genParamsSection = document.createElement('div');
+            genParamsSection.className = 'metadata-section';
+            genParamsSection.appendChild(createSectionHeader('Generation Parameters', 'tune'));
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2';
+            keys.forEach(k => grid.appendChild(createIndividualParamCard(k, parsed.params[k])));
+            genParamsSection.appendChild(grid);
+            container.appendChild(genParamsSection);
+        }
+    }
+
+    // =========================================================
+    //  ComfyUI parsing — the good stuff
+    // =========================================================
+    function isComfyPromptGraph(obj) {
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+        const vals = Object.values(obj);
+        if (vals.length === 0) return false;
+        const withClass = vals.filter(v => v && typeof v === 'object' && typeof v.class_type === 'string');
+        return withClass.length >= Math.max(1, vals.length * 0.6);
+    }
+    function isComfyWorkflow(obj) {
+        return !!(obj && typeof obj === 'object' && Array.isArray(obj.nodes));
+    }
+
+    function newComfyResult() {
+        return { prompts: [], models: [], loras: [], samplers: [], latents: [], saves: [], textNodes: [], nodeCount: 0, bypassedCount: 0 };
+    }
+
+    // ---- Prompt-graph (API format): follow links from samplers to text ----
+    function traceGraphToText(graph, ref, depth = 0, seen = new Set()) {
+        if (!Array.isArray(ref) || depth > 15) return null;
+        const id = String(ref[0]);
+        if (seen.has(id)) return null;
+        seen.add(id);
+        const node = graph[id];
+        if (!node) return null;
+        const cls = node.class_type || '';
+        const inp = node.inputs || {};
+        if (cls === 'ConditioningZeroOut') return { zeroed: true };
+        const stringKeys = ['text', 'populated_text', 'wildcard_text', 'value', 'string', 'prompt'];
+        for (const k of stringKeys) {
+            if (typeof inp[k] === 'string' && inp[k].trim()) return { text: inp[k], from: cls };
+        }
+        const linkKeys = ['conditioning', 'text', 'value', 'string_a', 'on_true', 'on_false', 'source'];
+        for (const k of linkKeys) {
+            if (Array.isArray(inp[k])) {
+                const res = traceGraphToText(graph, inp[k], depth + 1, seen);
+                if (res) return res;
+            }
+        }
+        return null;
+    }
+
+    function parseComfyPromptGraph(graph) {
+        const r = newComfyResult();
+        const entries = Object.entries(graph).filter(([, v]) => v && typeof v === 'object' && v.class_type);
+        r.nodeCount = entries.length;
+        const promptedTexts = new Set();
+
+        for (const [id, node] of entries) {
+            const cls = node.class_type;
+            const inp = node.inputs || {};
+            const title = node._meta?.title || cls;
+
+            if (/KSampler|SamplerCustom/i.test(cls)) {
+                const s = {};
+                ['seed', 'noise_seed', 'steps', 'cfg', 'sampler_name', 'scheduler', 'denoise'].forEach(k => {
+                    if (inp[k] !== undefined && !Array.isArray(inp[k])) s[k] = inp[k];
+                });
+                if (Object.keys(s).length) r.samplers.push(s);
+                // trace positive / negative
+                if (Array.isArray(inp.positive)) {
+                    const res = traceGraphToText(graph, inp.positive);
+                    if (res?.text) { r.prompts.push({ role: 'positive', title: 'Positive Prompt', text: res.text }); promptedTexts.add(res.text); }
+                }
+                if (Array.isArray(inp.negative)) {
+                    const res = traceGraphToText(graph, inp.negative);
+                    if (res?.zeroed) r.prompts.push({ role: 'negative', title: 'Negative Prompt', text: '(zeroed out — no negative prompt used)' });
+                    else if (res?.text) { r.prompts.push({ role: 'negative', title: 'Negative Prompt', text: res.text }); promptedTexts.add(res.text); }
+                }
+            }
+            else if (cls === 'UNETLoader' && typeof inp.unet_name === 'string') r.models.push({ kind: 'Diffusion Model', name: inp.unet_name });
+            else if (/CheckpointLoader/i.test(cls) && typeof inp.ckpt_name === 'string') r.models.push({ kind: 'Checkpoint', name: inp.ckpt_name });
+            else if (cls === 'CLIPLoader' && typeof inp.clip_name === 'string') r.models.push({ kind: 'Text Encoder (CLIP)', name: inp.clip_name });
+            else if (cls === 'VAELoader' && typeof inp.vae_name === 'string') r.models.push({ kind: 'VAE', name: inp.vae_name });
+            else if (/LoraLoader/i.test(cls) && typeof inp.lora_name === 'string') {
+                r.loras.push({ name: inp.lora_name, strength: Number(inp.strength_model ?? inp.strength ?? 1), enabled: true });
+            }
+            else if (/Power Lora Loader/i.test(cls)) {
+                Object.entries(inp).forEach(([k, v]) => {
+                    if (/^lora_\d+$/.test(k) && v && typeof v === 'object' && v.lora) {
+                        r.loras.push({ name: v.lora, strength: Number(v.strength ?? 1), enabled: v.on !== false });
+                    }
+                });
+            }
+            else if (/EmptyLatentImage|EmptySD3LatentImage/i.test(cls)) {
+                if (typeof inp.width === 'number' && typeof inp.height === 'number') {
+                    r.latents.push({ label: `${inp.width} × ${inp.height}` + (inp.batch_size ? ` (batch ${inp.batch_size})` : '') });
+                }
+            }
+            else if (cls === 'ResolutionSelector') {
+                r.latents.push({ label: `${inp.aspect_ratio || '?'} @ ${inp.megapixels ?? '?'} MP` });
+            }
+            else if (cls === 'SaveImage' && typeof inp.filename_prefix === 'string') r.saves.push(inp.filename_prefix);
+
+            // Collect standalone text nodes not already captured via tracing
+            const textVal = ['wildcard_text', 'populated_text'].map(k => inp[k]).find(v => typeof v === 'string' && v.trim());
+            if (cls === 'ImpactWildcardProcessor' && textVal) {
+                if (!promptedTexts.has(textVal)) r.textNodes.push({ title, text: textVal });
+            } else if (cls === 'CLIPTextEncode' && typeof inp.text === 'string' && inp.text.trim() && !promptedTexts.has(inp.text)) {
+                r.textNodes.push({ title, text: inp.text });
+            }
+        }
+        // De-dupe text nodes that duplicate traced prompts (wildcard populated vs original)
+        r.textNodes = r.textNodes.filter(t => !r.prompts.some(p => p.text === t.text));
+        return r;
+    }
+
+    // ---- Workflow (UI format): read widgets_values per node type ----
+    function collectWorkflowNodes(wf) {
+        const all = [];
+        (wf.nodes || []).forEach(n => all.push(n));
+        (wf.definitions?.subgraphs || []).forEach(sg => (sg.nodes || []).forEach(n => all.push(n)));
+        return all;
+    }
+
+    function parseComfyWorkflow(wf) {
+        const r = newComfyResult();
+        const nodes = collectWorkflowNodes(wf);
+        r.nodeCount = nodes.length;
+
+        for (const node of nodes) {
+            const type = node.type || '';
+            const w = Array.isArray(node.widgets_values) ? node.widgets_values : [];
+            const bypassed = node.mode === 4 || node.mode === 2;
+            if (bypassed) r.bypassedCount++;
+            const title = node.title || type;
+            const tag = bypassed ? ' (bypassed)' : '';
+
+            if (type === 'CLIPTextEncode' && typeof w[0] === 'string' && w[0].trim()) {
+                r.prompts.push({ role: 'text', title: `Prompt — ${title}${tag}`, text: w[0], bypassed });
+            }
+            else if (type === 'ImpactWildcardProcessor') {
+                const text = (typeof w[1] === 'string' && w[1].trim()) ? w[1] : (typeof w[0] === 'string' ? w[0] : '');
+                if (text.trim()) r.prompts.push({ role: 'text', title: `Prompt — ${title}${tag}`, text, bypassed });
+            }
+            else if ((type === 'Text Multiline' || type === 'PrimitiveStringMultiline') && typeof w[0] === 'string' && w[0].trim()) {
+                r.textNodes.push({ title: `${title}${tag}`, text: w[0], bypassed });
+            }
+            else if (/KSampler/.test(type)) {
+                let s;
+                if (typeof w[1] === 'string') s = { seed: w[0], steps: w[2], cfg: w[3], sampler_name: w[4], scheduler: w[5], denoise: w[6] };
+                else s = { seed: w[0], steps: w[1], cfg: w[2], sampler_name: w[3], scheduler: w[4], denoise: w[5] };
+                if (bypassed) s._bypassed = true;
+                r.samplers.push(s);
+            }
+            else if (type === 'LoraLoaderModelOnly' || type === 'LoraLoader') {
+                if (typeof w[0] === 'string') r.loras.push({ name: w[0], strength: Number(w[1] ?? 1), enabled: !bypassed });
+            }
+            else if (type === 'Power Lora Loader (rgthree)') {
+                w.forEach(entry => {
+                    if (entry && typeof entry === 'object' && entry.lora) {
+                        r.loras.push({ name: entry.lora, strength: Number(entry.strength ?? 1), enabled: entry.on !== false && !bypassed });
+                    }
+                });
+            }
+            else if (type === 'UNETLoader' && typeof w[0] === 'string') r.models.push({ kind: 'Diffusion Model' + tag, name: w[0] });
+            else if (/CheckpointLoader/.test(type) && typeof w[0] === 'string') r.models.push({ kind: 'Checkpoint' + tag, name: w[0] });
+            else if (type === 'CLIPLoader' && typeof w[0] === 'string') r.models.push({ kind: 'Text Encoder (CLIP)' + tag, name: w[0] });
+            else if (type === 'VAELoader' && typeof w[0] === 'string') r.models.push({ kind: 'VAE' + tag, name: w[0] });
+            else if (/EmptyLatentImage|EmptySD3LatentImage/.test(type) && typeof w[0] === 'number') {
+                r.latents.push({ label: `${w[0]} × ${w[1]}` + (w[2] ? ` (batch ${w[2]})` : '') + tag });
+            }
+            else if (type === 'ResolutionSelector') r.latents.push({ label: `${w[0] ?? '?'} @ ${w[1] ?? '?'} MP${tag}` });
+            else if (type === 'SaveImage' && typeof w[0] === 'string') r.saves.push(w[0] + tag);
+        }
+        return r;
+    }
+
+    function mergeComfyResults(a, b) {
+        // Prefer prompt-graph (a) data; add anything only present in workflow (b).
+        const out = newComfyResult();
+        out.nodeCount = Math.max(a.nodeCount, b.nodeCount);
+        out.bypassedCount = b.bypassedCount || a.bypassedCount;
+        out.prompts = a.prompts.length ? a.prompts : b.prompts;
+        const seenTexts = new Set(out.prompts.map(p => p.text));
+        b.prompts.forEach(p => { if (!seenTexts.has(p.text)) { /* keep hidden duplicates out */ } });
+        out.textNodes = [...a.textNodes, ...b.textNodes.filter(t => !seenTexts.has(t.text) && !a.textNodes.some(x => x.text === t.text))];
+        const loraKey = l => `${l.name}|${l.strength}|${l.enabled}`;
+        const loraSeen = new Set();
+        [...a.loras, ...b.loras].forEach(l => { const k = loraKey(l); if (!loraSeen.has(k)) { loraSeen.add(k); out.loras.push(l); } });
+        const modelSeen = new Set();
+        [...a.models, ...b.models].forEach(m => { const k = `${m.kind}|${m.name}`; if (!modelSeen.has(k)) { modelSeen.add(k); out.models.push(m); } });
+        out.samplers = a.samplers.length ? a.samplers : b.samplers;
+        out.latents = a.latents.length ? a.latents : b.latents;
+        out.saves = [...new Set([...a.saves, ...b.saves])];
+        return out;
+    }
+
+    // ---- Renderer for a parsed ComfyUI result ----
+    function renderComfyResult(container, result, rawSections = []) {
+        // Summary pill row
+        const summary = document.createElement('div');
+        summary.className = 'flex flex-wrap gap-2';
+        summary.setAttribute('data-searchable', '');
+        const pill = (icon, label) => `<span class="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-full px-3 py-1 text-xs font-medium text-gray-600 shadow-sm"><span class="material-symbols-outlined text-sm text-red-600">${icon}</span>${escapeHtml(label)}</span>`;
+        let pills = pill('hub', `${result.nodeCount} nodes`);
+        if (result.bypassedCount) pills += pill('block', `${result.bypassedCount} bypassed`);
+        if (result.loras.length) pills += pill('layers', `${result.loras.length} LoRA${result.loras.length > 1 ? 's' : ''}`);
+        if (result.samplers.length) pills += pill('casino', `seed ${result.samplers[0].seed ?? result.samplers[0].noise_seed ?? '?'}`);
+        summary.innerHTML = pills;
+        container.appendChild(summary);
+
+        // Prompts
+        result.prompts.forEach(p => {
+            const color = p.role === 'negative' ? 'text-red-700' : 'text-gray-700';
+            const icon = p.role === 'negative' ? 'block' : 'palette';
+            container.appendChild(createPromptSection(p.title, icon, p.text, color));
+        });
+        result.textNodes.forEach(t => {
+            container.appendChild(createPromptSection(t.title, 'notes', t.text, 'text-gray-500'));
+        });
+
+        // Models
+        if (result.models.length) {
+            const sec = document.createElement('div');
+            sec.setAttribute('data-searchable', '');
+            sec.appendChild(createSectionHeader('Models', 'neurology'));
+            const wrap = document.createElement('div');
+            wrap.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
+            result.models.forEach(m => wrap.appendChild(createParamItem(m.kind, m.name)));
+            sec.appendChild(wrap);
+            container.appendChild(sec);
+        }
+
+        // LoRAs with strength meters
+        if (result.loras.length) {
+            const sec = document.createElement('div');
+            sec.setAttribute('data-searchable', '');
+            sec.appendChild(createSectionHeader('LoRAs', 'layers'));
+            const wrap = document.createElement('div');
+            wrap.className = 'space-y-2 bg-white p-3 rounded-md border border-gray-200 shadow-sm';
+            result.loras.forEach(l => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-3' + (l.enabled ? '' : ' opacity-45');
+                const pct = Math.max(0, Math.min(100, Math.round((l.strength || 0) * 100)));
+                row.innerHTML = `
+                    <span class="material-symbols-outlined text-base ${l.enabled ? 'text-green-500' : 'text-gray-300'}" title="${l.enabled ? 'Enabled' : 'Disabled'}">${l.enabled ? 'toggle_on' : 'toggle_off'}</span>
+                    <div class="flex-grow min-w-0">
+                        <div class="text-xs sm:text-sm text-gray-700 truncate font-mono-code" title="${escapeHtml(l.name)}">${escapeHtml(l.name)}</div>
+                        <div class="lora-meter mt-1"><div style="width:${pct}%"></div></div>
+                    </div>
+                    <span class="text-xs font-semibold text-red-700 flex-shrink-0 w-12 text-right">${(l.strength ?? 1).toFixed(2)}</span>`;
+                wrap.appendChild(row);
+            });
+            sec.appendChild(wrap);
+            container.appendChild(sec);
+        }
+
+        // Sampler settings
+        if (result.samplers.length) {
+            const sec = document.createElement('div');
+            sec.setAttribute('data-searchable', '');
+            sec.appendChild(createSectionHeader('Sampler Settings', 'tune'));
+            result.samplers.forEach((s, idx) => {
+                if (result.samplers.length > 1) {
+                    const sub = document.createElement('p');
+                    sub.className = 'text-xs text-gray-400 mb-1 mt-2';
+                    sub.textContent = `Sampler ${idx + 1}${s._bypassed ? ' (bypassed)' : ''}`;
+                    sec.appendChild(sub);
+                }
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-2 sm:grid-cols-3 gap-3 mt-1';
+                const labels = { seed: 'Seed', noise_seed: 'Seed', steps: 'Steps', cfg: 'CFG', sampler_name: 'Sampler', scheduler: 'Scheduler', denoise: 'Denoise' };
+                Object.entries(labels).forEach(([k, label]) => {
+                    if (s[k] !== undefined) grid.appendChild(createIndividualParamCard(label, s[k]));
+                });
+                sec.appendChild(grid);
+            });
+            container.appendChild(sec);
+        }
+
+        // Resolution + Output
+        if (result.latents.length || result.saves.length) {
+            const sec = document.createElement('div');
+            sec.setAttribute('data-searchable', '');
+            sec.appendChild(createSectionHeader('Resolution & Output', 'aspect_ratio'));
+            const wrap = document.createElement('div');
+            wrap.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
+            result.latents.forEach(l => wrap.appendChild(createParamItem('Latent Size', l.label)));
+            result.saves.forEach(s => wrap.appendChild(createParamItem('Save Prefix', s)));
+            sec.appendChild(wrap);
+            container.appendChild(sec);
+        }
+
+        // Raw JSON sections, collapsed
+        rawSections.forEach(({ title, text }) => container.appendChild(createCollapsibleRaw(title, text)));
+    }
+
+    function comfyResultToText(result) {
+        const lines = [];
+        result.prompts.forEach(p => { lines.push(`--- ${p.title} ---`, p.text, ''); });
+        result.textNodes.forEach(t => { lines.push(`--- ${t.title} ---`, t.text, ''); });
+        if (result.models.length) { lines.push('--- Models ---'); result.models.forEach(m => lines.push(`${m.kind}: ${m.name}`)); lines.push(''); }
+        if (result.loras.length) { lines.push('--- LoRAs ---'); result.loras.forEach(l => lines.push(`${l.enabled ? '[on] ' : '[off]'} ${l.name} @ ${l.strength}`)); lines.push(''); }
+        result.samplers.forEach((s, i) => {
+            lines.push(`--- Sampler ${result.samplers.length > 1 ? (i + 1) + ' ' : ''}---`);
+            Object.entries(s).forEach(([k, v]) => { if (!k.startsWith('_')) lines.push(`${k}: ${v}`); });
+            lines.push('');
+        });
+        result.latents.forEach(l => lines.push(`Latent: ${l.label}`));
+        result.saves.forEach(s => lines.push(`Save prefix: ${s}`));
+        return lines.join('\n').trim();
+    }
+
+    // =========================================================
+    //  PNG smart display (routes to ComfyUI / A1111 renderers)
+    // =========================================================
+    function tryParseJson(text) {
+        try { return JSON.parse(text); } catch { return null; }
+    }
+
+    function displayPngMetadata(metadata) {
+        metadataOutput.innerHTML = '';
+        metadataSearchWrap.classList.remove('hidden');
+        const card = document.createElement('div');
+        card.className = 'metadata-content space-y-6';
+        card.appendChild(buildBasicInfoSection(currentFile));
+
+        const handledKeys = new Set();
+
+        // ComfyUI: 'prompt' (API graph) and/or 'workflow' (UI graph)
+        const promptJson = metadata.prompt ? tryParseJson(metadata.prompt) : null;
+        const workflowJson = metadata.workflow ? tryParseJson(metadata.workflow) : null;
+        const hasComfy = (promptJson && isComfyPromptGraph(promptJson)) || (workflowJson && isComfyWorkflow(workflowJson));
+
+        if (hasComfy) {
+            handledKeys.add('prompt'); handledKeys.add('workflow');
+            const banner = document.createElement('div');
+            banner.className = 'flex items-center gap-2 bg-red-50 border border-red-100 text-red-700 text-sm font-medium rounded-lg px-3 py-2';
+            banner.setAttribute('data-searchable', '');
+            banner.innerHTML = `<span class="material-symbols-outlined text-lg">account_tree</span>ComfyUI generation data detected — decoded below.`;
+            card.appendChild(banner);
+
+            const a = promptJson && isComfyPromptGraph(promptJson) ? parseComfyPromptGraph(promptJson) : newComfyResult();
+            const b = workflowJson && isComfyWorkflow(workflowJson) ? parseComfyWorkflow(workflowJson) : newComfyResult();
+            const merged = mergeComfyResults(a, b);
+            const rawSections = [];
+            if (promptJson) rawSections.push({ title: 'Raw prompt JSON', text: JSON.stringify(promptJson, null, 2) });
+            if (workflowJson) rawSections.push({ title: 'Raw workflow JSON', text: JSON.stringify(workflowJson, null, 2) });
+            renderComfyResult(card, merged, rawSections);
+        }
+
+        // A1111: 'parameters'
+        if (metadata.parameters && !handledKeys.has('parameters')) {
+            handledKeys.add('parameters');
+            renderA1111(card, parseA1111(metadata.parameters));
+        }
+
+        // Everything else raw
+        const other = Object.entries(metadata).filter(([key]) => !handledKeys.has(key));
+        if (other.length > 0) {
+            const additionalSection = document.createElement('div');
+            additionalSection.className = 'metadata-section pt-4 border-t border-gray-200';
+            additionalSection.appendChild(createSectionHeader('Additional Raw Metadata', 'label_important'));
+            other.forEach(([key, value]) => {
+                const v = String(value);
+                if (v.length > 300 || tryParseJson(v)) {
+                    const json = tryParseJson(v);
+                    additionalSection.appendChild(createCollapsibleRaw(key, json ? JSON.stringify(json, null, 2) : v));
+                } else {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm mb-2';
+                    wrap.appendChild(createParamItem(key, v));
+                    additionalSection.appendChild(wrap);
+                }
+            });
+            card.appendChild(additionalSection);
+        }
+
+        metadataOutput.appendChild(card);
+        staggerChildren(card);
+    }
+
+    // =========================================================
+    //  Paste Metadata tab
+    // =========================================================
+    function detectPasteFormat(text) {
+        const t = text.trim();
+        // Multi-section dump: lines like "prompt:" / "workflow:" / "dpi:" as headers
+        const sectionHeaders = [...t.matchAll(/^([A-Za-z_][A-Za-z0-9_ -]*):\s*$/gm)];
+        if (sectionHeaders.length >= 1 && sectionHeaders.some(m => /^(prompt|workflow|parameters|exif|dpi|icc_profile)$/i.test(m[1].trim()))) {
+            return 'dump';
+        }
+        const json = tryParseJson(t);
+        if (json) {
+            if (isComfyPromptGraph(json)) return 'comfy-prompt';
+            if (isComfyWorkflow(json)) return 'comfy-workflow';
+            return 'json';
+        }
+        if (/Negative prompt:/.test(t) || (/\bSteps:\s*\d+/.test(t) && /\b(Sampler|CFG scale|Seed):/.test(t))) return 'a1111';
+        if (/^[^\n:]{1,60}:\s?.+/m.test(t)) return 'kv';
+        return 'unknown';
+    }
+
+    function splitDumpSections(text) {
+        // Splits "prompt:\n{...}\n\nworkflow:\n{...}\ndpi:\n(72,72)" style dumps.
+        const lines = text.split('\n');
+        const sections = [];
+        let current = null;
+        for (const line of lines) {
+            const m = line.match(/^([A-Za-z_][A-Za-z0-9_ -]*):\s*$/);
+            if (m) {
+                if (current) sections.push(current);
+                current = { name: m[1].trim(), body: [] };
+            } else if (current) {
+                current.body.push(line);
+            } else {
+                current = { name: '_preamble', body: [line] };
+            }
+        }
+        if (current) sections.push(current);
+        return sections.map(s => ({ name: s.name, body: s.body.join('\n').trim() })).filter(s => s.body);
+    }
+
+    const FORMAT_LABELS = {
+        'dump': 'ComfyUI metadata dump',
+        'comfy-prompt': 'ComfyUI prompt graph',
+        'comfy-workflow': 'ComfyUI workflow',
+        'a1111': 'A1111 / Forge parameters',
+        'json': 'JSON',
+        'kv': 'Key / value text',
+        'unknown': 'Unrecognized'
+    };
+
+    function handleParsePaste(auto = false) {
+        const text = pasteTextarea.value;
+        if (!text.trim()) {
+            if (!auto) showToast('Paste some metadata first.', 'info', 'info');
+            return;
+        }
+        const format = detectPasteFormat(text);
+        pasteFormatChip.textContent = FORMAT_LABELS[format];
+        pasteFormatChip.classList.remove('hidden');
+
+        pasteOutput.innerHTML = '';
+        const card = document.createElement('div');
+        card.className = 'metadata-content space-y-6';
+        let copyText = '';
+
+        try {
+            if (format === 'dump') {
+                const sections = splitDumpSections(text);
+                let comfyA = newComfyResult(), comfyB = newComfyResult(), gotComfy = false;
+                const rawSections = [], otherSections = [];
+                sections.forEach(sec => {
+                    const json = tryParseJson(sec.body);
+                    if (json && isComfyPromptGraph(json)) { comfyA = parseComfyPromptGraph(json); gotComfy = true; rawSections.push({ title: `Raw ${sec.name} JSON`, text: JSON.stringify(json, null, 2) }); }
+                    else if (json && isComfyWorkflow(json)) { comfyB = parseComfyWorkflow(json); gotComfy = true; rawSections.push({ title: `Raw ${sec.name} JSON`, text: JSON.stringify(json, null, 2) }); }
+                    else if (/parameters/i.test(sec.name)) { renderA1111(card, parseA1111(sec.body)); copyText += sec.body + '\n\n'; }
+                    else otherSections.push(sec);
+                });
+                if (gotComfy) {
+                    const merged = mergeComfyResults(comfyA, comfyB);
+                    renderComfyResult(card, merged, rawSections);
+                    copyText = comfyResultToText(merged) + (copyText ? '\n\n' + copyText : '');
+                }
+                if (otherSections.length) {
+                    const sec = document.createElement('div');
+                    sec.className = 'metadata-section pt-4 border-t border-gray-200';
+                    sec.appendChild(createSectionHeader('Other Sections', 'label_important'));
+                    otherSections.forEach(o => {
+                        const truncated = o.body.length > 4000 ? o.body.slice(0, 4000) + `\n… (${formatBytes(o.body.length - 4000)} truncated)` : o.body;
+                        if (truncated.length > 200) sec.appendChild(createCollapsibleRaw(o.name, truncated));
+                        else {
+                            const wrap = document.createElement('div');
+                            wrap.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm mb-2';
+                            wrap.appendChild(createParamItem(o.name, truncated));
+                            sec.appendChild(wrap);
+                        }
+                    });
+                    card.appendChild(sec);
+                }
+                if (!copyText) copyText = text;
+            }
+            else if (format === 'comfy-prompt' || format === 'comfy-workflow') {
+                const json = tryParseJson(text.trim());
+                const result = format === 'comfy-prompt' ? parseComfyPromptGraph(json) : parseComfyWorkflow(json);
+                renderComfyResult(card, result, [{ title: 'Raw JSON', text: JSON.stringify(json, null, 2) }]);
+                copyText = comfyResultToText(result);
+            }
+            else if (format === 'a1111') {
+                renderA1111(card, parseA1111(text.trim()));
+                copyText = text.trim();
+            }
+            else if (format === 'json') {
+                const json = tryParseJson(text.trim());
+                const pretty = JSON.stringify(json, null, 2);
+                if (json && typeof json === 'object' && !Array.isArray(json)) {
+                    const flat = Object.entries(json).filter(([, v]) => typeof v !== 'object');
+                    if (flat.length) {
+                        const sec = document.createElement('div');
+                        sec.appendChild(createSectionHeader('Fields', 'data_object'));
+                        const grid = document.createElement('div');
+                        grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
+                        flat.forEach(([k, v]) => grid.appendChild(createIndividualParamCard(k, String(v))));
+                        sec.appendChild(grid);
+                        card.appendChild(sec);
+                    }
+                }
+                card.appendChild(createCollapsibleRaw('Pretty-printed JSON', pretty, { open: true }));
+                copyText = pretty;
+            }
+            else if (format === 'kv') {
+                const sec = document.createElement('div');
+                sec.appendChild(createSectionHeader('Parsed Fields', 'list'));
+                const wrap = document.createElement('div');
+                wrap.className = 'space-y-1 bg-white p-2 rounded-md border border-gray-200 shadow-sm';
+                text.split('\n').forEach(line => {
+                    const idx = line.indexOf(':');
+                    if (idx > 0 && idx < 60) wrap.appendChild(createParamItem(line.slice(0, idx).trim(), line.slice(idx + 1).trim()));
+                });
+                sec.appendChild(wrap);
+                card.appendChild(sec);
+                copyText = text.trim();
+            }
+            else {
+                card.appendChild(createCollapsibleRaw('Raw text (format not recognized)', text.trim(), { open: true, mono: false }));
+                copyText = text.trim();
+            }
+        } catch (err) {
+            console.error('Paste parse error:', err);
+            showToast(`Parse error: ${err.message}`, 'error', 'error');
+            card.appendChild(createCollapsibleRaw('Raw text (parse failed)', text.trim(), { open: true, mono: false }));
+            copyText = text.trim();
+        }
+
+        pasteOutput.appendChild(card);
+        staggerChildren(card);
+        pasteTextToCopy = copyText;
+        pasteCopyAllBtn.classList.remove('hidden');
+        pasteExportTxtBtn.classList.remove('hidden');
+        pasteInputDetails.open = false; // collapse the input so results get the room
+        if (!auto) showToast('Metadata parsed.', 'manage_search', 'success', 1800);
+    }
+
+    parsePasteBtn.addEventListener('click', () => handleParsePaste(false));
+    clearPasteBtn.addEventListener('click', () => {
+        pasteTextarea.value = '';
+        pasteTextToCopy = '';
+        pasteFormatChip.classList.add('hidden');
+        pasteCopyAllBtn.classList.add('hidden');
+        pasteExportTxtBtn.classList.add('hidden');
+        pasteInputDetails.open = true;
+        pasteOutput.innerHTML = `<div class="no-metadata flex flex-col items-center justify-center h-full text-gray-500 text-center"><span class="material-symbols-outlined text-6xl mb-3">content_paste_go</span><p class="font-medium">Nothing parsed yet.</p><p class="text-sm">Paste metadata text above — ComfyUI graphs get fully decoded into prompts, models, LoRAs and sampler settings.</p></div>`;
+        pasteTextarea.focus();
+    });
+
+    // =========================================================
+    //  Metadata Stripping (Single Image)
+    // =========================================================
     function stripAndPrepareDownload() {
         if (!originalImageDataUrl || !currentFile) {
             showToast('No image loaded to process.', 'error', 'error');
@@ -708,14 +1694,11 @@
             const ctx = canvas.getContext('2d');
             canvas.width = img.naturalWidth;
             canvas.height = img.naturalHeight;
-
             try {
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 let outputType = currentFile.type;
-                if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) {
-                    outputType = 'image/png'; 
-                }
-                const cleanedDataUrl = canvas.toDataURL(outputType, 0.95); 
+                if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) outputType = 'image/png';
+                const cleanedDataUrl = canvas.toDataURL(outputType, 0.95);
 
                 const baseName = currentFile.name.substring(0, currentFile.name.lastIndexOf('.')) || currentFile.name;
                 const extension = outputType.split('/')[1];
@@ -725,102 +1708,33 @@
                 showToast('Metadata stripped! Ready for download.', 'success', 'success');
                 stripButton.classList.add('hidden');
                 downloadButton.classList.remove('hidden');
-                
-                metadataOutput.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-green-600 text-center"><span class="material-symbols-outlined text-6xl mb-3">verified_user</span><p class="font-medium">Metadata Stripped Successfully</p><p class="text-sm text-gray-500">Your image is now clean and ready for download.</p></div>`;
-                copyAllMetadataBtn.classList.add('hidden');
 
+                metadataOutput.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-green-600 text-center anim-in"><span class="material-symbols-outlined text-6xl mb-3">verified_user</span><p class="font-medium">Metadata Stripped Successfully</p><p class="text-sm text-gray-500">Your image is now clean and ready for download.</p></div>`;
+                [copyAllMetadataBtn, exportTxtBtn, exportJsonBtn].forEach(b => b.classList.add('hidden'));
+                metadataSearchWrap.classList.add('hidden');
             } catch (error) {
-                 console.error("Canvas drawing error:", error);
-                 showToast('Error processing image. It might be too large or corrupted.', 'error', 'error');
-                 stripButton.disabled = false; 
-                 stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`; 
+                console.error("Canvas drawing error:", error);
+                showToast('Error processing image. It might be too large or corrupted.', 'error', 'error');
+                stripButton.disabled = false;
+                stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`;
             }
         };
         img.onerror = () => {
             showToast('Could not load image data for processing.', 'error', 'error');
-            stripButton.disabled = false; 
-            stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`; 
+            stripButton.disabled = false;
+            stripButton.innerHTML = `<span class="material-symbols-outlined">shield</span>Strip Metadata`;
         };
         img.src = originalImageDataUrl;
     }
 
-    // --- Tab Switching Logic ---
-    function initializeTabs() {
-        const tabButtons = [
-            { btn: singleImageTabBtn, content: singleImageTabContent, id: 'single' },
-            { btn: bulkStripTabBtn, content: bulkStripTabContent, id: 'bulk' }
-        ];
-        let currentActiveTabId = 'single'; // Initial active tab
-        let isTransitioning = false;
-        const transitionDuration = 300; // ms, should match CSS transition duration
-
-        // Initial setup
-        tabButtons.forEach(tab => {
-            // Ensure base structural classes are on the tab content elements
-            // These define how the content *within* the tab panel behaves (flex, scroll, etc.)
-            // The .tab-content class itself is for the transition animation.
-            // Example: tab.content.classList.add('flex', 'flex-col', 'flex-grow', 'overflow-hidden');
-            // This is already handled by Tailwind classes directly in the HTML for each tab content.
-
-            if (tab.id === currentActiveTabId) {
-                tab.content.classList.remove('hidden', 'tab-content-prepared');
-                tab.content.classList.add('tab-content-active');
-                tab.btn.classList.add('active');
-            } else {
-                tab.content.classList.add('hidden', 'tab-content-prepared');
-                tab.content.classList.remove('tab-content-active');
-                tab.btn.classList.remove('active');
-            }
-        });
-
-        tabButtons.forEach(tab => {
-            tab.btn.addEventListener('click', () => {
-                if (isTransitioning || tab.id === currentActiveTabId) return;
-                isTransitioning = true;
-
-                const newTab = tab;
-                const oldTab = tabButtons.find(t => t.id === currentActiveTabId);
-
-                // Animate out current active tab
-                if (oldTab) {
-                    oldTab.content.classList.remove('tab-content-active');
-                    oldTab.content.classList.add('tab-content-prepared'); // This triggers its transition out
-                    oldTab.btn.classList.remove('active');
-                }
-
-                // Prepare and animate in new tab
-                newTab.content.classList.remove('hidden'); // Make it part of layout
-                // Ensure it's in the prepared state if it wasn't already (e.g. if JS was interrupted)
-                newTab.content.classList.add('tab-content-prepared'); 
-                
-                // Force reflow to ensure 'prepared' state is rendered before animating to 'active'
-                void newTab.content.offsetWidth; 
-
-                requestAnimationFrame(() => {
-                    newTab.content.classList.remove('tab-content-prepared');
-                    newTab.content.classList.add('tab-content-active'); // This triggers its transition in
-                });
-                newTab.btn.classList.add('active');
-                
-                // After transition duration, add 'hidden' to the old tab
-                setTimeout(() => {
-                    if (oldTab) {
-                        oldTab.content.classList.add('hidden');
-                    }
-                    isTransitioning = false;
-                }, transitionDuration);
-                
-                currentActiveTabId = newTab.id;
-            });
-        });
-    }
-
-
-    // --- Bulk Processing Logic ---
+    // =========================================================
+    //  Bulk processing
+    // =========================================================
     function resetBulkUI() {
         bulkFilesData = [];
         nextBulkFileId = 0;
         bulkFileInput.value = '';
+        bulkProgressWrap.classList.add('hidden');
         renderBulkImageList();
         stripAllBulkButton.disabled = true;
         downloadAllCleanedBulkButton.disabled = true;
@@ -830,76 +1744,108 @@
     function addFilesToBulkQueue(files) {
         bulkPlaceholder.classList.add('hidden');
         bulkImageListHeader.classList.remove('hidden');
-
+        let added = 0;
         for (const file of files) {
             if (!file.type.startsWith('image/')) {
                 showToast(`Skipping non-image file: ${file.name}`, 'warning', 'warning');
                 continue;
             }
+            added++;
             const reader = new FileReader();
             reader.onload = (e) => {
                 bulkFilesData.push({
                     id: nextBulkFileId++,
-                    file: file,
-                    name: file.name,
-                    type: file.type,
-                    size: file.size,
-                    status: 'Pending', 
+                    file, name: file.name, type: file.type, size: file.size,
+                    status: 'Pending',
                     originalSrc: e.target.result,
-                    cleanedSrc: null,
-                    error: null
+                    cleanedSrc: null, cleanedSize: null, error: null
                 });
                 renderBulkImageList();
                 stripAllBulkButton.disabled = false;
             };
             reader.readAsDataURL(file);
         }
+        if (added > 0) showToast(`${added} image${added > 1 ? 's' : ''} added to queue.`, 'add_photo_alternate', 'info', 2000);
+    }
+
+    function dataUrlByteLength(dataUrl) {
+        const base64 = dataUrl.split(',')[1] || '';
+        return Math.floor(base64.length * 3 / 4);
     }
 
     function renderBulkImageList() {
         bulkImageList.innerHTML = '';
         if (bulkFilesData.length === 0) {
-            bulkPlaceholder.classList.remove('hidden');
+            const ph = document.createElement('div');
+            ph.id = 'bulkPlaceholder';
+            ph.className = 'flex flex-col items-center justify-center h-full text-gray-400 text-center p-4';
+            ph.innerHTML = `<span class="material-symbols-outlined text-6xl">imagesmode</span><span class="mt-2 text-sm">Uploaded images will appear here</span>`;
+            bulkImageList.appendChild(ph);
             bulkImageListHeader.classList.add('hidden');
             stripAllBulkButton.disabled = true;
             downloadAllCleanedBulkButton.disabled = true;
             return;
         }
+        bulkImageListHeader.classList.remove('hidden');
 
         bulkFilesData.forEach(item => {
             const div = document.createElement('div');
-            div.className = 'bulk-image-item grid grid-cols-[60px_1fr_100px_120px_100px] gap-2 items-center p-2 border-b border-gray-100 hover:bg-gray-100 transition-colors duration-150';
+            div.className = 'bulk-image-item grid grid-cols-[60px_1fr_110px_120px_130px] gap-2 items-center p-2 border-b border-gray-100 hover:bg-gray-100 transition-colors duration-150 rounded-md';
             div.dataset.fileId = item.id;
 
             let statusColor = 'text-gray-500';
             let statusIcon = 'hourglass_empty';
-            if (item.status === 'Stripping') { statusColor = 'text-blue-500'; statusIcon = 'progress_activity animate-spin'; }
+            if (item.status === 'Stripping') { statusColor = 'text-blue-500'; statusIcon = 'progress_activity'; }
             else if (item.status === 'Stripped') { statusColor = 'text-green-600'; statusIcon = 'check_circle'; }
             else if (item.status === 'Error') { statusColor = 'text-red-600'; statusIcon = 'error'; }
 
+            let sizeCell = formatBytes(item.size);
+            if (item.status === 'Stripped' && item.cleanedSize != null) {
+                const diff = item.size - item.cleanedSize;
+                const sign = diff >= 0 ? '−' : '+';
+                sizeCell = `${formatBytes(item.size)}<br><span class="text-green-600">${sign}${formatBytes(Math.abs(diff))}</span>`;
+            }
+
+            const safeName = escapeHtml(item.name);
+            const baseName = item.name.substring(0, item.name.lastIndexOf('.')) || item.name;
+            const ext = item.type.split('/')[1];
+
             div.innerHTML = `
-                <img src="${item.originalSrc}" alt="${item.name}" class="w-10 h-10 object-cover rounded border border-gray-200">
-                <div class="filename text-sm text-gray-700 truncate" title="${item.name}">${item.name}</div>
-                <div class="filesize text-xs text-gray-500 text-center">${(item.size / 1024).toFixed(1)} KB</div>
+                <img src="${item.originalSrc}" alt="${safeName}" class="w-10 h-10 object-cover rounded border border-gray-200 cursor-pointer bulk-thumb">
+                <div class="filename text-sm text-gray-700 truncate" title="${safeName}">${safeName}</div>
+                <div class="filesize text-xs text-gray-500 text-center leading-tight">${sizeCell}</div>
                 <div class="status ${statusColor} text-xs font-medium flex items-center justify-center gap-1">
-                    <span class="material-symbols-outlined text-sm">${statusIcon}</span>
+                    <span class="material-symbols-outlined text-sm ${item.status === 'Stripping' ? 'animate-spin' : ''}">${statusIcon}</span>
                     ${item.status}
                 </div>
-                <div class="action text-center">
-                    ${item.status === 'Stripped' && item.cleanedSrc ? 
-                        `<a href="${item.cleanedSrc}" download="${item.name.substring(0, item.name.lastIndexOf('.')) || item.name}_cleaned.${item.type.split('/')[1]}" class="text-green-600 hover:text-green-700 text-xs font-semibold inline-flex items-center gap-1">
+                <div class="action text-center flex items-center justify-center gap-2">
+                    ${item.status === 'Stripped' && item.cleanedSrc ?
+                        `<a href="${item.cleanedSrc}" download="${escapeHtml(baseName)}_cleaned.${ext}" class="text-green-600 hover:text-green-700 text-xs font-semibold inline-flex items-center gap-1">
                             <span class="material-symbols-outlined text-sm">download</span>Download
-                         </a>` : 
-                         item.status === 'Error' ? `<span class="text-red-500 text-xs" title="${item.error}">Failed</span>` :
+                         </a>` :
+                         item.status === 'Error' ? `<span class="text-red-500 text-xs" title="${escapeHtml(item.error || '')}">Failed</span>` :
                          `<span class="text-gray-400 text-xs">-</span>`
                     }
+                    <button class="bulk-remove-btn text-gray-300 hover:text-red-500 transition-colors" title="Remove from queue" data-id="${item.id}">
+                        <span class="material-symbols-outlined text-base">close</span>
+                    </button>
                 </div>
             `;
+            div.querySelector('.bulk-thumb').addEventListener('click', () => openModal(item.originalSrc));
+            div.querySelector('.bulk-remove-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                div.classList.add('removing');
+                setTimeout(() => {
+                    bulkFilesData = bulkFilesData.filter(f => f.id !== item.id);
+                    renderBulkImageList();
+                }, 220);
+            });
             bulkImageList.appendChild(div);
         });
-        
+
         const anyStripped = bulkFilesData.some(f => f.status === 'Stripped');
         downloadAllCleanedBulkButton.disabled = !anyStripped;
+        stripAllBulkButton.disabled = !bulkFilesData.some(f => f.status === 'Pending' || f.status === 'Error');
     }
 
     async function stripSingleBulkImage(fileData) {
@@ -914,14 +1860,12 @@
                 const ctx = canvas.getContext('2d');
                 canvas.width = img.naturalWidth;
                 canvas.height = img.naturalHeight;
-
                 try {
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     let outputType = fileData.type;
-                    if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) {
-                        outputType = 'image/png';
-                    }
+                    if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) outputType = 'image/png';
                     fileData.cleanedSrc = canvas.toDataURL(outputType, 0.95);
+                    fileData.cleanedSize = dataUrlByteLength(fileData.cleanedSrc);
                     fileData.status = 'Stripped';
                 } catch (e) {
                     console.error(`Error stripping ${fileData.name}:`, e);
@@ -942,46 +1886,72 @@
     }
 
     async function handleStripAllBulk() {
-        if (bulkFilesData.length === 0 || bulkFilesData.every(f => f.status !== 'Pending')) {
+        const pending = bulkFilesData.filter(f => f.status === 'Pending' || f.status === 'Error');
+        if (pending.length === 0) {
             showToast('No pending images to strip.', 'info', 'info');
             return;
         }
         stripAllBulkButton.disabled = true;
         stripAllBulkButton.innerHTML = `<span class="material-symbols-outlined animate-spin">progress_activity</span>Stripping...`;
+        bulkProgressWrap.classList.remove('hidden');
+        bulkProgressBar.style.width = '0%';
 
-        for (const fileDataItem of bulkFilesData) {
-            if (fileDataItem.status === 'Pending') {
-                await stripSingleBulkImage(fileDataItem);
-            }
+        let done = 0;
+        for (const fileDataItem of pending) {
+            bulkProgressLabel.textContent = `Processing ${fileDataItem.name}`;
+            bulkProgressCount.textContent = `${done} / ${pending.length}`;
+            await stripSingleBulkImage(fileDataItem);
+            done++;
+            bulkProgressBar.style.width = `${Math.round((done / pending.length) * 100)}%`;
+            bulkProgressCount.textContent = `${done} / ${pending.length}`;
         }
-        
-        stripAllBulkButton.innerHTML = `<span class="material-symbols-outlined">auto_fix_high</span>Strip All Metadata`;
-        const hasPending = bulkFilesData.some(f => f.status === 'Pending' || f.status === 'Error');
-        stripAllBulkButton.disabled = !hasPending && bulkFilesData.length > 0;
+        bulkProgressLabel.textContent = 'Done';
+        setTimeout(() => bulkProgressWrap.classList.add('hidden'), 1500);
 
+        stripAllBulkButton.innerHTML = `<span class="material-symbols-outlined">auto_fix_high</span>Strip All Metadata`;
+        renderBulkImageList();
 
         const successCount = bulkFilesData.filter(f => f.status === 'Stripped').length;
         const errorCount = bulkFilesData.filter(f => f.status === 'Error').length;
         if (successCount > 0) showToast(`${successCount} image(s) stripped successfully.`, 'success', 'success');
         if (errorCount > 0) showToast(`${errorCount} image(s) failed to strip.`, 'error', 'error');
-        if (successCount === 0 && errorCount === 0 && bulkFilesData.length > 0) showToast('No images were processed.', 'info', 'info');
     }
-    
-    function handleDownloadAllCleanedBulk() {
+
+    async function handleDownloadAllCleanedBulk() {
         const cleanedFiles = bulkFilesData.filter(f => f.status === 'Stripped' && f.cleanedSrc);
         if (cleanedFiles.length === 0) {
             showToast('No cleaned images available for download.', 'info', 'info');
             return;
         }
-
+        if (typeof JSZip !== 'undefined') {
+            try {
+                showToast(`Zipping ${cleanedFiles.length} image(s)…`, 'folder_zip', 'info', 2500);
+                const zip = new JSZip();
+                cleanedFiles.forEach(fileData => {
+                    const base64 = fileData.cleanedSrc.split(',')[1];
+                    const baseName = fileData.name.substring(0, fileData.name.lastIndexOf('.')) || fileData.name;
+                    const ext = fileData.type.split('/')[1];
+                    zip.file(`${baseName}_cleaned.${ext}`, base64, { base64: true });
+                });
+                const blob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'cleaned_images.zip';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+                showToast('ZIP downloaded.', 'check_circle', 'success');
+                return;
+            } catch (e) {
+                console.warn('JSZip failed, falling back to sequential downloads:', e);
+            }
+        }
+        // Fallback: sequential downloads
         cleanedFiles.forEach((fileData, index) => {
-            setTimeout(() => { 
+            setTimeout(() => {
                 const a = document.createElement('a');
                 a.href = fileData.cleanedSrc;
                 a.download = `${fileData.name.substring(0, fileData.name.lastIndexOf('.')) || fileData.name}_cleaned.${fileData.type.split('/')[1]}`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
             }, index * 300);
         });
         showToast(`Downloading ${cleanedFiles.length} cleaned image(s)...`, 'download', 'info');
@@ -992,43 +1962,44 @@
         showToast('Image queue cleared.', 'delete_sweep', 'info');
     }
 
-
-    // --- Event Listeners ---
+    // =========================================================
+    //  Event Listeners
+    // =========================================================
     fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) processFile(e.target.files[0]); });
     dropZone.addEventListener('click', () => fileInput.click());
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
-    dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) processFile(e.dataTransfer.files[0]); });
-    
-    document.addEventListener('paste', (e) => {
-        if (singleImageTabContent.classList.contains('tab-content-active')) { // Check if single image tab is active
-            const file = e.clipboardData?.files[0];
-            if (file && file.type.startsWith('image/')) {
-                showToast('Pasted image!', 'add_photo_alternate', 'info');
-                processFile(file);
-            }
-        }
-    });
     stripButton.addEventListener('click', stripAndPrepareDownload);
     resetButton.addEventListener('click', resetUI);
 
-    // Bulk Tab Event Listeners
     bulkFileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) addFilesToBulkQueue(e.target.files); });
     bulkDropZone.addEventListener('click', () => bulkFileInput.click());
-    bulkDropZone.addEventListener('dragover', (e) => { e.preventDefault(); bulkDropZone.classList.add('dragover'); });
-    bulkDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); bulkDropZone.classList.remove('dragover'); });
-    bulkDropZone.addEventListener('drop', (e) => { e.preventDefault(); bulkDropZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) addFilesToBulkQueue(e.dataTransfer.files); });
-    
     stripAllBulkButton.addEventListener('click', handleStripAllBulk);
     downloadAllCleanedBulkButton.addEventListener('click', handleDownloadAllCleanedBulk);
     clearBulkQueueButton.addEventListener('click', handleClearBulkQueue);
 
+    // Local dropzone highlight (global overlay handles the actual drop)
+    [dropZone, bulkDropZone].forEach(zone => {
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', (e) => { e.preventDefault(); zone.classList.remove('dragover'); });
+        zone.addEventListener('drop', () => zone.classList.remove('dragover'));
+    });
 
-    // --- Initial State ---
+    // Keyboard shortcuts: Alt+1/2/3 to switch tabs
+    document.addEventListener('keydown', (e) => {
+        if (!e.altKey) return;
+        if (e.key === '1') { e.preventDefault(); switchTab('single'); }
+        else if (e.key === '2') { e.preventDefault(); switchTab('paste'); }
+        else if (e.key === '3') { e.preventDefault(); switchTab('bulk'); }
+    });
+
+    // =========================================================
+    //  Initial State
+    // =========================================================
     resetUI();
-    initializeTabs(); // This will set up initial tab states and transitions
-    resetBulkUI(); 
-
+    resetBulkUI();
+    switchTab('single', { instant: true });
+    // Position the tab indicator once fonts settle
+    requestAnimationFrame(() => positionIndicator(singleImageTabBtn));
+    window.addEventListener('load', () => positionIndicator(tabDefs.find(t => t.id === currentActiveTabId).btn));
   </script>
 </body>
 </html>
