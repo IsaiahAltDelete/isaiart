@@ -265,9 +265,9 @@
         <div id="difficulty-selection" class="difficulty-selection hide">
             <p>Difficulty:</p>
             <div class="difficulty-buttons">
-                <button id="easy-btn" class="difficulty-btn active">Easy</button>
-                <button id="medium-btn" class="difficulty-btn">Medium</button>
-                <button id="hard-btn" class="difficulty-btn">Hard</button>
+                <button id="easy-btn" class="difficulty-btn active" title="Looks one move ahead and misses tactics fairly often">Easy</button>
+                <button id="medium-btn" class="difficulty-btn" title="Looks four moves ahead, but still slips now and then">Medium</button>
+                <button id="hard-btn" class="difficulty-btn" title="Looks six moves ahead and rarely blunders">Hard</button>
             </div>
         </div>
     </div>
@@ -338,7 +338,7 @@
                 
                 // If game is still active and vs computer, make computer move
                 if (gameActive && vsComputer) {
-                    setTimeout(makeComputerMove, 500);
+                    setTimeout(makeComputerMove, 380 + Math.random() * 420);
                 }
             }
             
@@ -372,181 +372,183 @@
                 }
             }
             
-            // Computer makes a move based on difficulty
-            function makeComputerMove() {
-                if (!gameActive || currentPlayer !== 2) return;
-                
-                let col;
-                
-                switch (difficulty) {
-                    case 'easy':
-                        col = makeRandomMove();
-                        break;
-                    case 'medium':
-                        col = makeMediumMove();
-                        break;
-                    case 'hard':
-                        col = makeHardMove();
-                        break;
-                    default:
-                        col = makeRandomMove();
-                }
-                
-                const row = getLowestEmptyRow(col);
-                placePiece(row, col);
+            /* ------------------------------------------------------------------
+             * Computer opponent
+             *
+             * Negamax + alpha-beta over a window-based evaluation, wrapped in a
+             * deliberate imperfection layer. The search is what makes it
+             * competitive; the imperfection layer is what keeps it beatable.
+             * Three knobs do the tuning:
+             *   depth  - how far ahead it actually looks
+             *   temp   - softmax temperature at the root, so it doesn't always
+             *            grab the single best move
+             *   seeWin / seeThreat - odds it notices an immediate win or an
+             *            immediate loss. A missed tactic is hidden from the
+             *            search too, otherwise the lookahead would just find it
+             *            again and the "miss" would never happen.
+             * ---------------------------------------------------------------- */
+            const AI_P = 2, HU_P = 1;
+            const WIN_SCORE = 100000;
+            const COL_ORDER = [3, 2, 4, 1, 5, 0, 6]; // centre-first: better pruning
+
+            // temp/slack are in evaluation units, and real root spreads are only
+            // ~20-90 wide, so these stay small — a slack of a few hundred would
+            // let every column in and reduce the CPU to a coin flip.
+            const AI_LEVELS = {
+                easy:   { depth: 1, temp: 45, seeWin: 0.70, seeThreat: 0.45, slack: 200 },
+                medium: { depth: 4, temp: 22, seeWin: 0.94, seeThreat: 0.82, slack: 55  },
+                hard:   { depth: 6, temp: 8,  seeWin: 1.00, seeThreat: 0.97, slack: 22  },
+            };
+
+            function validMoves() {
+                return COL_ORDER.filter(c => board[ROWS - 1][c] === 0);
             }
-            
-            // Easy difficulty - random valid move
-            function makeRandomMove() {
-                const validCols = [];
-                
-                for (let col = 0; col < COLS; col++) {
-                    if (getLowestEmptyRow(col) !== -1) {
-                        validCols.push(col);
-                    }
+
+            // Score one 4-cell window from `me`'s point of view.
+            function scoreWindow(a, b, c, d, me) {
+                const opp = me === AI_P ? HU_P : AI_P;
+                let mine = 0, theirs = 0, empty = 0;
+                for (const v of [a, b, c, d]) {
+                    if (v === me) mine++;
+                    else if (v === opp) theirs++;
+                    else empty++;
                 }
-                
-                return validCols[Math.floor(Math.random() * validCols.length)];
+                if (mine && theirs) return 0; // dead window
+                if (mine === 4) return 1000;
+                if (mine === 3 && empty === 1) return 60;
+                if (mine === 2 && empty === 2) return 8;
+                // Blocking is worth a shade more than building, so it doesn't
+                // race when it should be defending.
+                if (theirs === 3 && empty === 1) return -75;
+                if (theirs === 2 && empty === 2) return -9;
+                return 0;
             }
-            
-            // Medium difficulty - block opponent or make random move
-            function makeMediumMove() {
-                // Try to win first
-                for (let col = 0; col < COLS; col++) {
-                    const row = getLowestEmptyRow(col);
-                    if (row !== -1) {
-                        // Simulate placing piece
-                        board[row][col] = 2;
-                        if (checkWin(row, col)) {
-                            board[row][col] = 0; // Undo simulation
-                            return col;
-                        }
-                        board[row][col] = 0; // Undo simulation
-                    }
-                }
-                
-                // Try to block opponent
-                for (let col = 0; col < COLS; col++) {
-                    const row = getLowestEmptyRow(col);
-                    if (row !== -1) {
-                        // Simulate opponent placing piece
-                        board[row][col] = 1;
-                        if (checkWin(row, col)) {
-                            board[row][col] = 0; // Undo simulation
-                            return col;
-                        }
-                        board[row][col] = 0; // Undo simulation
-                    }
-                }
-                
-                // Otherwise make a random move
-                return makeRandomMove();
-            }
-            
-            // Hard difficulty - more strategic move
-            function makeHardMove() {
-                // First check for win or block
-                const mediumMove = makeMediumMove();
-                
-                // If medium move found a win or block, use it
-                const row = getLowestEmptyRow(mediumMove);
-                board[row][mediumMove] = 2;
-                if (checkWin(row, mediumMove)) {
-                    board[row][mediumMove] = 0;
-                    return mediumMove;
-                }
-                board[row][mediumMove] = 0;
-                
-                // Next, check if opponent would have winning move after our move
-                const scoresByCol = [];
-                
-                for (let col = 0; col < COLS; col++) {
-                    const score = evaluateColumn(col);
-                    if (score !== null) {
-                        scoresByCol.push({ col, score });
-                    }
-                }
-                
-                if (scoresByCol.length > 0) {
-                    // Sort by score (highest first)
-                    scoresByCol.sort((a, b) => b.score - a.score);
-                    return scoresByCol[0].col;
-                }
-                
-                // If no good move found, use medium level strategy
-                return mediumMove;
-            }
-            
-            // Evaluate a column move for hard difficulty
-            function evaluateColumn(col) {
-                const row = getLowestEmptyRow(col);
-                if (row === -1) return null; // Column is full
-                
+
+            function evaluate(me) {
                 let score = 0;
-                
-                // Check if this creates a future win
-                board[row][col] = 2;
-                
-                // Prefer center columns
-                score += (3 - Math.abs(col - 3)) * 0.5;
-                
-                // Avoid moves that let opponent win
-                for (let opCol = 0; opCol < COLS; opCol++) {
-                    const opRow = getLowestEmptyRow(opCol);
-                    if (opRow !== -1) {
-                        board[opRow][opCol] = 1;
-                        if (checkWin(opRow, opCol)) {
-                            score -= 10;
-                        }
-                        board[opRow][opCol] = 0;
+                for (let r = 0; r < ROWS; r++) {
+                    if (board[r][3] === me) score += 7;         // centre control
+                    else if (board[r][3] !== 0) score -= 7;
+
+                    for (let c = 0; c < COLS; c++) {
+                        if (c + 3 < COLS)
+                            score += scoreWindow(board[r][c], board[r][c+1], board[r][c+2], board[r][c+3], me);
+                        if (r + 3 < ROWS)
+                            score += scoreWindow(board[r][c], board[r+1][c], board[r+2][c], board[r+3][c], me);
+                        if (r + 3 < ROWS && c + 3 < COLS)
+                            score += scoreWindow(board[r][c], board[r+1][c+1], board[r+2][c+2], board[r+3][c+3], me);
+                        if (r + 3 < ROWS && c - 3 >= 0)
+                            score += scoreWindow(board[r][c], board[r+1][c-1], board[r+2][c-2], board[r+3][c-3], me);
                     }
                 }
-                
-                // Look for potential two-in-a-row setups
-                const directions = [
-                    [1, 0], // vertical
-                    [0, 1], // horizontal
-                    [1, 1], // diagonal right
-                    [1, -1] // diagonal left
-                ];
-                
-                directions.forEach(dir => {
-                    const [rowDir, colDir] = dir;
-                    let count = 1;
-                    let spaces = 0;
-                    
-                    // Check positive direction
-                    for (let i = 1; i <= 3; i++) {
-                        const r = row + rowDir * i;
-                        const c = col + colDir * i;
-                        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
-                            if (board[r][c] === 2) count++;
-                            else if (board[r][c] === 0) spaces++;
-                            else break;
-                        }
-                    }
-                    
-                    // Check negative direction
-                    for (let i = 1; i <= 3; i++) {
-                        const r = row - rowDir * i;
-                        const c = col - colDir * i;
-                        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
-                            if (board[r][c] === 2) count++;
-                            else if (board[r][c] === 0) spaces++;
-                            else break;
-                        }
-                    }
-                    
-                    // Score based on potential
-                    if (count >= 2 && spaces > 0) {
-                        score += count * 2;
-                    }
-                });
-                
-                board[row][col] = 0; // Undo simulation
                 return score;
             }
-            
+
+            function negamax(depth, alpha, beta, me) {
+                const moves = validMoves();
+                if (!moves.length) return 0;              // draw
+                if (depth === 0) return evaluate(me);
+
+                let best = -Infinity;
+                for (const col of moves) {
+                    const row = getLowestEmptyRow(col);
+                    board[row][col] = me;
+                    // +depth so a win now beats the same win three moves later
+                    const score = checkWin(row, col)
+                        ? WIN_SCORE + depth
+                        : -negamax(depth - 1, -beta, -alpha, me === AI_P ? HU_P : AI_P);
+                    board[row][col] = 0;
+
+                    if (score > best) best = score;
+                    if (best > alpha) alpha = best;
+                    if (alpha >= beta) break;
+                }
+                return best;
+            }
+
+            // Exact score per legal column (no pruning between roots, since the
+            // sampler needs real numbers to weigh, not just the argmax).
+            function rootScores(depth, skip) {
+                const out = [];
+                for (const col of validMoves()) {
+                    if (skip.includes(col)) continue;
+                    const row = getLowestEmptyRow(col);
+                    board[row][col] = AI_P;
+                    const score = checkWin(row, col)
+                        ? WIN_SCORE
+                        : -negamax(depth - 1, -Infinity, Infinity, HU_P);
+                    board[row][col] = 0;
+                    out.push({ col, score });
+                }
+                return out;
+            }
+
+            // A column where `player` wins outright right now, or -1.
+            function immediateWin(player) {
+                for (const col of validMoves()) {
+                    const row = getLowestEmptyRow(col);
+                    board[row][col] = player;
+                    const won = checkWin(row, col);
+                    board[row][col] = 0;
+                    if (won) return col;
+                }
+                return -1;
+            }
+
+            function pickMove() {
+                const cfg = AI_LEVELS[difficulty] || AI_LEVELS.easy;
+                const moves = validMoves();
+                if (!moves.length) return -1;
+                if (moves.length === 1) return moves[0];
+
+                // Tactics it might overlook. Anything overlooked goes on `blind`
+                // so the search can't quietly rediscover it.
+                const blind = [];
+
+                const win = immediateWin(AI_P);
+                if (win !== -1) {
+                    if (Math.random() < cfg.seeWin) return win;
+                    blind.push(win);
+                }
+
+                const threat = immediateWin(HU_P);
+                if (threat !== -1) {
+                    if (Math.random() < cfg.seeThreat) return threat;
+                    blind.push(threat);
+                }
+
+                let scored = rootScores(cfg.depth, blind);
+                if (!scored.length) scored = rootScores(cfg.depth, []);
+                if (!scored.length) return moves[0];
+
+                // Don't volunteer for a forced loss unless every move is one.
+                const safe = scored.filter(m => m.score > -WIN_SCORE / 2);
+                const pool = (safe.length ? safe : scored);
+                const best = Math.max(...pool.map(m => m.score));
+                const shortlist = pool.filter(m => m.score >= best - cfg.slack);
+
+                // Softmax: usually the best move, sometimes a near-miss. This is
+                // the difference between "tough" and "airtight".
+                const weights = shortlist.map(m => Math.exp((m.score - best) / cfg.temp));
+                let roll = Math.random() * weights.reduce((a, b) => a + b, 0);
+                for (let i = 0; i < shortlist.length; i++) {
+                    roll -= weights[i];
+                    if (roll <= 0) return shortlist[i].col;
+                }
+                return shortlist[shortlist.length - 1].col;
+            }
+
+            function makeComputerMove() {
+                if (!gameActive || currentPlayer !== 2) return;
+
+                const col = pickMove();
+                if (col === -1) return;
+
+                const row = getLowestEmptyRow(col);
+                if (row === -1) return;
+                placePiece(row, col);
+            }
+
             // Update the player indicator
             function updatePlayerIndicator() {
                 if (currentPlayer === 1) {
