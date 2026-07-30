@@ -1,0 +1,7 @@
+# Claude Code / agent + preview artifacts (must never be deployed to Pages)
+.claude/
+**/.claude/
+**/worktrees/
+*.log
+update_repos.log
+.DS_Store

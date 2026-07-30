@@ -1,5 +1,9 @@
 <!DOCTYPE html>
+<<<<<<< HEAD
 <html lang="en" data-style="default" data-color="dark" data-mode="dark">
+=======
+<html lang="en" data-style="default" data-color="orange" data-mode="dark">
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,15 +12,23 @@
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+<<<<<<< HEAD
     <!-- Google Fonts: Poppins, Roboto Mono + theme fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;700&family=VT323&family=Press+Start+2P&family=Cinzel:wght@400;600&family=Cinzel+Decorative:wght@700&family=Bebas+Neue&display=swap" rel="stylesheet">
+=======
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;700&family=VT323&family=Silkscreen:wght@400;700&family=Cinzel:wght@400;600&family=MedievalSharp&family=Bebas+Neue&display=swap" rel="stylesheet">
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
 
     <!-- Google Material Symbols -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
     <style>
+<<<<<<< HEAD
         /* ════ BASE DARK ════ */
         :root {
             --accent:#F59E0B;--accent-hover:#D97706;--accent-trans:rgba(245,158,11,0.12);
@@ -236,9 +248,235 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
+=======
+        /* ════════════════════ BASE DARK (neutral) ════════════════════ */
+        :root {
+            --accent-color:#F59E0B; --accent-hover:#D97706; --accent-trans:rgba(245,158,11,0.14); --accent-text:#1A1305;
+            --background-color:#0E0F13; --text-color:#E5E7EB; --subtle-text-color:#6B7280;
+            --card-bg-color:rgba(30,33,42,0.62); --list-item-bg:rgba(40,44,55,0.7);
+            --input-bg:rgba(255,255,255,0.05); --border-color:rgba(255,255,255,0.09);
+            --hover-bg-color:rgba(255,255,255,0.06);
+            --panel-shadow-color:rgba(0,0,0,0.45); --raised-element-shadow:rgba(0,0,0,0.3);
+            --rate-green:#22C55E; --rate-red:#EF4444; --danger-color:#DC2626; --danger-hover-color:#B91C1C;
+            --panel-radius:1.5rem; --btn-radius:0.5rem; --font-main:'Poppins',sans-serif;
+        }
+        /* ════════════════════ BASE LIGHT (neutral) ════════════════════ */
+        html[data-mode="light"] {
+            --background-color:#F0F2F5; --text-color:#1F2937; --subtle-text-color:#6B7280;
+            --card-bg-color:rgba(255,255,255,0.72); --list-item-bg:#FFFFFF;
+            --input-bg:rgba(0,0,0,0.04); --border-color:rgba(0,0,0,0.08);
+            --hover-bg-color:rgba(0,0,0,0.05);
+            --panel-shadow-color:rgba(0,0,0,0.12); --raised-element-shadow:rgba(0,0,0,0.08);
+            --rate-green:#16A34A; --rate-red:#DC2626;
+            --accent-color:#D97706; --accent-hover:#B45309; --accent-trans:rgba(217,119,6,0.10); --accent-text:#FFFFFF;
         }
 
+        /* ════════════════════ COLOR = ACCENT ONLY (soft styles keep neutral bg) ════════════════════ */
+        /* DARK */
+        html[data-mode="dark"][data-color="dark"]   { --accent-color:#D4D7DD; --accent-hover:#AEB2BC; --accent-trans:rgba(212,215,221,0.12); --accent-text:#15171C; }
+        html[data-mode="dark"][data-color="white"]  { --accent-color:#818CF8; --accent-hover:#6366F1; --accent-trans:rgba(129,140,248,0.14); --accent-text:#FFFFFF; }
+        html[data-mode="dark"][data-color="blue"]   { --accent-color:#38BDF8; --accent-hover:#0EA5E9; --accent-trans:rgba(56,189,248,0.14); --accent-text:#062330; }
+        html[data-mode="dark"][data-color="green"]  { --accent-color:#34D399; --accent-hover:#10B981; --accent-trans:rgba(52,211,153,0.14); --accent-text:#04261A; }
+        html[data-mode="dark"][data-color="pink"]   { --accent-color:#F472B6; --accent-hover:#EC4899; --accent-trans:rgba(244,114,182,0.14); --accent-text:#FFFFFF; }
+        html[data-mode="dark"][data-color="orange"] { --accent-color:#F59E0B; --accent-hover:#D97706; --accent-trans:rgba(245,158,11,0.14); --accent-text:#1A1305; }
+        /* LIGHT */
+        html[data-mode="light"][data-color="dark"]   { --accent-color:#334155; --accent-hover:#1E293B; --accent-trans:rgba(51,65,85,0.10); --accent-text:#FFFFFF; }
+        html[data-mode="light"][data-color="white"]  { --accent-color:#4F46E5; --accent-hover:#4338CA; --accent-trans:rgba(79,70,229,0.10); --accent-text:#FFFFFF; }
+        html[data-mode="light"][data-color="blue"]   { --accent-color:#0284C7; --accent-hover:#0369A1; --accent-trans:rgba(2,132,199,0.10); --accent-text:#FFFFFF; }
+        html[data-mode="light"][data-color="green"]  { --accent-color:#059669; --accent-hover:#047857; --accent-trans:rgba(5,150,105,0.10); --accent-text:#FFFFFF; }
+        html[data-mode="light"][data-color="pink"]   { --accent-color:#DB2777; --accent-hover:#BE185D; --accent-trans:rgba(219,39,119,0.10); --accent-text:#FFFFFF; }
+        html[data-mode="light"][data-color="orange"] { --accent-color:#D97706; --accent-hover:#B45309; --accent-trans:rgba(217,119,6,0.10); --accent-text:#FFFFFF; }
+
+        /* ══════════════════════════ STYLE THEMES ══════════════════════════ */
+
+        /* ── GLASSMORPHIC ── */
+        html[data-style="glass"] #auroraBg { display:block !important; }
+        html[data-style="glass"] #trackerPanel { background:rgba(255,255,255,0.06) !important; border-color:rgba(255,255,255,0.16) !important; backdrop-filter:blur(34px) saturate(190%) !important; -webkit-backdrop-filter:blur(34px) saturate(190%) !important; }
+        html[data-style="glass"] .glass-effect { background:rgba(255,255,255,0.06) !important; border:1px solid rgba(255,255,255,0.14) !important; backdrop-filter:blur(16px) saturate(160%) !important; -webkit-backdrop-filter:blur(16px) saturate(160%) !important; }
+        html[data-style="glass"] .list-item-bg { background:rgba(255,255,255,0.07) !important; border:1px solid rgba(255,255,255,0.12); }
+        html[data-mode="light"][data-style="glass"] #trackerPanel { background:rgba(255,255,255,0.42) !important; border-color:rgba(255,255,255,0.6) !important; }
+        html[data-mode="light"][data-style="glass"] .glass-effect { background:rgba(255,255,255,0.42) !important; border-color:rgba(255,255,255,0.6) !important; }
+        html[data-mode="light"][data-style="glass"] .list-item-bg { background:rgba(255,255,255,0.55) !important; }
+
+        /* ── NEUMORPHIC ── */
+        html[data-style="neumorphic"] { --panel-radius:1.75rem; }
+        html[data-mode="dark"][data-style="neumorphic"]  { --background-color:#1C2028; --card-bg-color:#1C2028; --list-item-bg:#1C2028; --input-bg:#1C2028; --border-color:transparent; --hover-bg-color:#181C24; --text-color:#D2D7E2; --subtle-text-color:#717A8C; }
+        html[data-mode="light"][data-style="neumorphic"] { --background-color:#E0E5EC; --card-bg-color:#E0E5EC; --list-item-bg:#E0E5EC; --input-bg:#E0E5EC; --border-color:transparent; --hover-bg-color:#D6DBE3; --text-color:#42485A; --subtle-text-color:#8A93A6; }
+        html[data-mode="dark"][data-style="neumorphic"] #trackerPanel { background:var(--background-color)!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; border:none!important; box-shadow:12px 12px 24px rgba(8,10,16,0.7),-12px -12px 24px rgba(46,52,68,0.35)!important; }
+        html[data-mode="dark"][data-style="neumorphic"] .glass-effect { background:var(--background-color)!important; border:none!important; box-shadow:inset 5px 5px 10px rgba(8,10,16,0.6),inset -5px -5px 10px rgba(46,52,68,0.3)!important; }
+        html[data-mode="dark"][data-style="neumorphic"] .list-item-bg { background:var(--background-color)!important; box-shadow:5px 5px 10px rgba(8,10,16,0.55),-5px -5px 10px rgba(46,52,68,0.28)!important; }
+        html[data-mode="dark"][data-style="neumorphic"] #themePanel { background:var(--background-color)!important; border:none!important; box-shadow:10px 10px 20px rgba(8,10,16,0.65),-10px -10px 20px rgba(46,52,68,0.3)!important; }
+        html[data-mode="light"][data-style="neumorphic"] #trackerPanel { background:var(--background-color)!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; border:none!important; box-shadow:14px 14px 28px rgba(163,177,198,0.6),-14px -14px 28px rgba(255,255,255,0.9)!important; }
+        html[data-mode="light"][data-style="neumorphic"] .glass-effect { background:var(--background-color)!important; border:none!important; box-shadow:inset 5px 5px 10px rgba(163,177,198,0.55),inset -5px -5px 10px rgba(255,255,255,0.85)!important; }
+        html[data-mode="light"][data-style="neumorphic"] .list-item-bg { background:var(--background-color)!important; box-shadow:5px 5px 10px rgba(163,177,198,0.5),-5px -5px 10px rgba(255,255,255,0.8)!important; }
+        html[data-mode="light"][data-style="neumorphic"] #themePanel { background:var(--background-color)!important; border:none!important; box-shadow:10px 10px 20px rgba(163,177,198,0.5),-10px -10px 20px rgba(255,255,255,0.75)!important; }
+        html[data-style="neumorphic"] .glass-input { box-shadow:inset 3px 3px 6px rgba(0,0,0,0.18),inset -3px -3px 6px rgba(255,255,255,0.12); }
+
+        /* ── MINIMAL ── */
+        html[data-style="minimal"] { --panel-radius:0.5rem; --btn-radius:0.25rem; }
+        html[data-mode="dark"][data-style="minimal"]  { --background-color:#0B0C0F; --card-bg-color:#121317; --list-item-bg:#15171C; --input-bg:#15171C; }
+        html[data-mode="light"][data-style="minimal"] { --background-color:#FFFFFF; --card-bg-color:#FFFFFF; --list-item-bg:#FAFAFA; --input-bg:#FFFFFF; --border-color:rgba(0,0,0,0.1); }
+        html[data-style="minimal"] #trackerPanel { background:var(--card-bg-color)!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; border:1px solid var(--border-color)!important; box-shadow:none!important; }
+        html[data-style="minimal"] .glass-effect { background:transparent!important; border:1px solid var(--border-color)!important; box-shadow:none!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+        html[data-style="minimal"] .list-item-bg { box-shadow:none!important; border:1px solid var(--border-color); }
+        html[data-style="minimal"] #themePanel { box-shadow:0 8px 30px var(--panel-shadow-color)!important; }
+
+        /* ── CYBERPUNK ── */
+        html[data-style="cyberpunk"] { --font-main:'VT323',monospace; --panel-radius:0px; --btn-radius:0px; }
+        html[data-mode="dark"][data-style="cyberpunk"] { --background-color:#080809; --card-bg-color:#0B0B0D; --list-item-bg:#0B0B0D; --input-bg:#000; --text-color:#33FF66; --subtle-text-color:#1C7A3A; --border-color:var(--accent-color); --hover-bg-color:rgba(255,255,255,0.06); --rate-green:var(--accent-color); }
+        html[data-mode="dark"][data-style="cyberpunk"][data-color="dark"],html[data-mode="dark"][data-style="cyberpunk"][data-color="green"] { --text-color:#33FF66; --accent-color:#33FF66; --accent-hover:#00CC44; --accent-text:#001a08; }
+        html[data-mode="dark"][data-style="cyberpunk"][data-color="white"]  { --text-color:#C8C8FF; --accent-color:#C8C8FF; --accent-hover:#9090DD; --accent-text:#0b0b22; }
+        html[data-mode="dark"][data-style="cyberpunk"][data-color="blue"]   { --text-color:#33CCFF; --accent-color:#33CCFF; --accent-hover:#0099CC; --accent-text:#021a26; }
+        html[data-mode="dark"][data-style="cyberpunk"][data-color="pink"]   { --text-color:#FF66CC; --accent-color:#FF66CC; --accent-hover:#CC3399; --accent-text:#26021a; }
+        html[data-mode="dark"][data-style="cyberpunk"][data-color="orange"] { --text-color:#FF9933; --accent-color:#FF9933; --accent-hover:#CC6600; --accent-text:#261202; }
+        html[data-mode="light"][data-style="cyberpunk"] { --background-color:#E9E9EC; --card-bg-color:#DCDCE0; --list-item-bg:#FFFFFF; --input-bg:#FFFFFF; --text-color:#141417; --subtle-text-color:#555; --border-color:var(--accent-color); }
+        html[data-style="cyberpunk"] #matrixCanvas { display:block !important; }
+        html[data-style="cyberpunk"] #trackerPanel { background:var(--background-color)!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; border:2px solid var(--accent-color)!important; box-shadow:6px 6px 0 var(--accent-color)!important; }
+        html[data-style="cyberpunk"] .glass-effect { background:var(--card-bg-color)!important; border:1px solid var(--accent-color)!important; box-shadow:none!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+        html[data-style="cyberpunk"] .list-item-bg { border:1px solid var(--accent-color); }
+        html[data-style="cyberpunk"] #themePanel { border:2px solid var(--accent-color)!important; box-shadow:6px 6px 0 var(--accent-color)!important; }
+        html[data-style="cyberpunk"] .font-\[\'Roboto_Mono\'\] { font-family:'VT323',monospace !important; }
+        html[data-style="cyberpunk"] #keptRate,html[data-style="cyberpunk"] #totalCalls,html[data-style="cyberpunk"] #totalTransfers { font-size:3rem; }
+
+        /* ── PIXEL ART ── */
+        html[data-style="pixelart"] { --font-main:'Silkscreen',monospace; --panel-radius:0px; --btn-radius:0px; }
+        html[data-mode="dark"][data-style="pixelart"]  { --background-color:#1a1c2c; --card-bg-color:#2d2b55; --list-item-bg:#2d2b55; --input-bg:#1a1c2c; --text-color:#f4f4f4; --subtle-text-color:#8b8bc4; --border-color:#6b6bae; --hover-bg-color:rgba(107,107,174,0.2); }
+        html[data-mode="dark"][data-style="pixelart"][data-color="dark"],html[data-mode="dark"][data-style="pixelart"][data-color="orange"] { --accent-color:#ffa300; --accent-hover:#cc8200; --accent-text:#1a1c2c; }
+        html[data-mode="dark"][data-style="pixelart"][data-color="white"]  { --accent-color:#fff1e8; --accent-hover:#d4c8bc; --accent-text:#1a1c2c; }
+        html[data-mode="dark"][data-style="pixelart"][data-color="blue"]   { --accent-color:#29adff; --accent-hover:#1a8ecc; --accent-text:#06121c; }
+        html[data-mode="dark"][data-style="pixelart"][data-color="green"]  { --accent-color:#00e436; --accent-hover:#00b82c; --accent-text:#04200d; }
+        html[data-mode="dark"][data-style="pixelart"][data-color="pink"]   { --accent-color:#ff77a8; --accent-hover:#cc4477; --accent-text:#2a0014; }
+        html[data-mode="light"][data-style="pixelart"]  { --background-color:#e8f0e8; --card-bg-color:#d2e2cc; --list-item-bg:#d2e2cc; --input-bg:#fff; --text-color:#1a2c0a; --subtle-text-color:#4a6a3a; --border-color:#4a6a3a; --hover-bg-color:rgba(74,106,58,0.15); }
+        html[data-mode="light"][data-style="pixelart"][data-color="dark"],html[data-mode="light"][data-style="pixelart"][data-color="green"] { --accent-color:#2c6a10; --accent-hover:#1a4a08; --accent-text:#fff; }
+        html[data-mode="light"][data-style="pixelart"][data-color="white"]  { --accent-color:#3a3a6a; --accent-hover:#272750; --accent-text:#fff; }
+        html[data-mode="light"][data-style="pixelart"][data-color="blue"]   { --accent-color:#2a3a8a; --accent-hover:#1a2870; --accent-text:#fff; }
+        html[data-mode="light"][data-style="pixelart"][data-color="pink"]   { --accent-color:#8a2a4a; --accent-hover:#6a1a38; --accent-text:#fff; }
+        html[data-mode="light"][data-style="pixelart"][data-color="orange"] { --accent-color:#a85a00; --accent-hover:#804500; --accent-text:#fff; }
+        html[data-style="pixelart"] #crtOverlay { display:block !important; }
+        html[data-style="pixelart"] #trackerPanel { background:var(--card-bg-color)!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; border:4px solid var(--border-color)!important; box-shadow:4px 4px 0 var(--border-color),8px 8px 0 rgba(0,0,0,0.4)!important; }
+        html[data-style="pixelart"] .glass-effect { background:var(--input-bg)!important; border:2px solid var(--border-color)!important; box-shadow:none!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+        html[data-style="pixelart"] .list-item-bg { border:2px solid var(--border-color); box-shadow:3px 3px 0 rgba(0,0,0,0.3); }
+        html[data-style="pixelart"] #themePanel { border:3px solid var(--border-color)!important; box-shadow:6px 6px 0 rgba(0,0,0,0.4)!important; font-family:'Poppins',sans-serif!important; }
+        html[data-style="pixelart"] #themePanel * { font-family:'Poppins',sans-serif!important; }
+        html[data-style="pixelart"] .accent-bg { box-shadow:3px 3px 0 rgba(0,0,0,0.5)!important; }
+        html[data-style="pixelart"] .accent-bg:active { transform:translate(2px,2px); box-shadow:1px 1px 0 rgba(0,0,0,0.5)!important; }
+        html[data-style="pixelart"] .font-\[\'Roboto_Mono\'\] { font-family:'Silkscreen',monospace !important; }
+        html[data-style="pixelart"] #keptRate,html[data-style="pixelart"] #totalCalls,html[data-style="pixelart"] #totalTransfers { font-size:1.7rem; }
+        html[data-style="pixelart"] h2 { font-size:0.62rem !important; letter-spacing:0.5px; }
+
+        /* ── RETRO WINDOWS ── */
+        html[data-style="retro"] { --panel-radius:0px; --btn-radius:0px; --font-main:'Roboto Mono',monospace; }
+        html[data-style="retro"]  { --background-color:#008080; --card-bg-color:#C0C0C0; --list-item-bg:#C0C0C0; --input-bg:#FFFFFF; --text-color:#000; --subtle-text-color:#444; --border-color:#808080; --hover-bg-color:#A8A8A8; --accent-color:#000080; --accent-hover:#000060; --accent-text:#fff; }
+        html[data-mode="light"][data-style="retro"] { --background-color:#3A6EA5; }
+        html[data-style="retro"][data-color="green"]  { --background-color:#1A7A6A; --accent-color:#006040; --accent-hover:#004830; }
+        html[data-style="retro"][data-color="pink"]   { --background-color:#7A4A6A; --accent-color:#800060; --accent-hover:#600048; }
+        html[data-style="retro"][data-color="orange"] { --background-color:#8A6A2A; --accent-color:#804000; --accent-hover:#602800; }
+        html[data-style="retro"][data-color="blue"]   { --accent-color:#000090; --accent-hover:#000070; }
+        html[data-style="retro"][data-color="dark"]   { --background-color:#5A5A5A; --accent-color:#303030; --accent-hover:#1a1a1a; }
+        html[data-style="retro"] #trackerPanel { background:#C0C0C0!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; border:none!important; box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff,inset -4px -4px 0 #808080,inset 4px 4px 0 #DFDFDF!important; }
+        html[data-style="retro"] #retroTitleBar { display:flex !important; }
+        html[data-style="retro"] .glass-effect { background:#C0C0C0!important; border:none!important; box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff,inset -4px -4px 0 #808080,inset 4px 4px 0 #DFDFDF!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+        html[data-style="retro"] .list-item-bg { background:#C0C0C0!important; box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff,inset -4px -4px 0 #808080,inset 4px 4px 0 #DFDFDF!important; }
+        html[data-style="retro"] .glass-input { background:#fff!important; border:2px inset #808080!important; border-radius:0!important; box-shadow:none!important; }
+        html[data-style="retro"] #themePanel { background:#C0C0C0!important; border:none!important; box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff,inset -4px -4px 0 #808080,inset 4px 4px 0 #DFDFDF!important; }
+        html[data-style="retro"] .accent-bg { background:#C0C0C0!important; color:#000!important; box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff,inset -4px -4px 0 #808080,inset 4px 4px 0 #DFDFDF!important; }
+        html[data-style="retro"] .accent-bg:active { box-shadow:inset 2px 2px 0 #000,inset -2px -2px 0 #fff,inset 4px 4px 0 #808080,inset -4px -4px 0 #DFDFDF!important; }
+
+        /* ── MEDIEVAL ── */
+        html[data-style="medieval"] { --font-main:'Cinzel',serif; --panel-radius:0.25rem; --btn-radius:0.125rem; }
+        html[data-mode="dark"][data-style="medieval"]  { --background-color:#100c08; --card-bg-color:rgba(34,24,15,0.94); --list-item-bg:rgba(46,33,20,0.85); --input-bg:rgba(20,14,8,0.85); --text-color:#e6c690; --subtle-text-color:#9a7846; --border-color:#7a5a1e; --hover-bg-color:rgba(212,175,114,0.1); --accent-color:#c8962a; --accent-hover:#a07820; --accent-text:#1a1206; --rate-green:#6fa83a; }
+        html[data-mode="dark"][data-style="medieval"][data-color="dark"]   { --accent-color:#c8962a; --accent-hover:#a07820; }
+        html[data-mode="dark"][data-style="medieval"][data-color="white"]  { --accent-color:#9aa0d8; --accent-hover:#787fb8; --accent-text:#0d0f24; }
+        html[data-mode="dark"][data-style="medieval"][data-color="blue"]   { --accent-color:#5a7ec0; --accent-hover:#46689e; --accent-text:#06101f; }
+        html[data-mode="dark"][data-style="medieval"][data-color="green"]  { --accent-color:#6fa83a; --accent-hover:#578a2c; --accent-text:#0a1e04; }
+        html[data-mode="dark"][data-style="medieval"][data-color="pink"]   { --accent-color:#c25878; --accent-hover:#a04460; --accent-text:#2a0a16; }
+        html[data-mode="dark"][data-style="medieval"][data-color="orange"] { --accent-color:#e08a2a; --accent-hover:#bc6e18; --accent-text:#23110a; }
+        html[data-mode="light"][data-style="medieval"]  { --background-color:#5a3e1e; --card-bg-color:#f4e7c4; --list-item-bg:#ece0bb; --input-bg:#fbf3da; --text-color:#3a2410; --subtle-text-color:#7a5a34; --border-color:#9a6a32; --hover-bg-color:rgba(139,94,60,0.1); --accent-color:#8b1a1a; --accent-hover:#6a1010; --accent-text:#fff; --rate-green:#3a7a1a; }
+        html[data-mode="light"][data-style="medieval"][data-color="dark"]   { --accent-color:#5a3a1a; --accent-hover:#42280f; }
+        html[data-mode="light"][data-style="medieval"][data-color="white"]  { --accent-color:#3a3a72; --accent-hover:#272750; }
+        html[data-mode="light"][data-style="medieval"][data-color="blue"]   { --accent-color:#1f4a96; --accent-hover:#163a76; }
+        html[data-mode="light"][data-style="medieval"][data-color="green"]  { --accent-color:#3a6a1a; --accent-hover:#2a4e12; }
+        html[data-mode="light"][data-style="medieval"][data-color="pink"]   { --accent-color:#a01a5a; --accent-hover:#7e1246; }
+        html[data-mode="light"][data-style="medieval"][data-color="orange"] { --accent-color:#a8590e; --accent-hover:#84450a; }
+        html[data-style="medieval"] #medievalBg { display:block !important; }
+        html[data-style="medieval"] #trackerPanel { background:var(--card-bg-color)!important; backdrop-filter:blur(3px)!important; -webkit-backdrop-filter:blur(3px)!important; border:2px solid var(--border-color)!important; box-shadow:0 0 0 1px var(--accent-trans),0 0 0 6px var(--border-color),0 0 0 8px rgba(0,0,0,0.4),inset 0 0 40px rgba(0,0,0,0.18),0 24px 60px var(--panel-shadow-color)!important; }
+        html[data-style="medieval"] .glass-effect { background:transparent!important; border:1.5px solid var(--border-color)!important; box-shadow:inset 0 0 16px rgba(0,0,0,0.12)!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+        html[data-style="medieval"] .list-item-bg { border:1px solid var(--border-color); }
+        html[data-style="medieval"] #themePanel { border:2px solid var(--border-color)!important; box-shadow:0 0 0 4px var(--border-color),0 20px 50px var(--panel-shadow-color)!important; }
+        html[data-style="medieval"] h1,html[data-style="medieval"] h2,html[data-style="medieval"] h3 { font-family:'MedievalSharp',cursive !important; letter-spacing:1px; }
+        html[data-style="medieval"] .font-\[\'Roboto_Mono\'\] { font-family:'Cinzel',serif !important; }
+
+        /* ── BRUTALIST ── */
+        html[data-style="brutalist"] { --font-main:'Bebas Neue',sans-serif; --panel-radius:0px; --btn-radius:0px; }
+        html[data-mode="dark"][data-style="brutalist"]  { --background-color:#111; --card-bg-color:#1a1a1a; --list-item-bg:#1a1a1a; --input-bg:#111; --text-color:#f0f0f0; --subtle-text-color:#888; --border-color:#f0f0f0; --hover-bg-color:rgba(240,240,240,0.08); }
+        html[data-mode="dark"][data-style="brutalist"][data-color="dark"]   { --accent-color:#ff0000; --accent-hover:#cc0000; --accent-text:#fff; }
+        html[data-mode="dark"][data-style="brutalist"][data-color="white"]  { --accent-color:#ffe600; --accent-hover:#ccb800; --accent-text:#111; }
+        html[data-mode="dark"][data-style="brutalist"][data-color="blue"]   { --accent-color:#0066ff; --accent-hover:#0044cc; --accent-text:#fff; }
+        html[data-mode="dark"][data-style="brutalist"][data-color="green"]  { --accent-color:#00ff66; --accent-hover:#00cc52; --accent-text:#04200d; }
+        html[data-mode="dark"][data-style="brutalist"][data-color="pink"]   { --accent-color:#ff0099; --accent-hover:#cc0077; --accent-text:#fff; }
+        html[data-mode="dark"][data-style="brutalist"][data-color="orange"] { --accent-color:#ff6600; --accent-hover:#cc4400; --accent-text:#fff; }
+        html[data-mode="light"][data-style="brutalist"]  { --background-color:#f0f0e8; --card-bg-color:#e8e8e0; --list-item-bg:#e8e8e0; --input-bg:#fff; --text-color:#0a0a0a; --subtle-text-color:#555; --border-color:#0a0a0a; --hover-bg-color:rgba(10,10,10,0.06); }
+        html[data-mode="light"][data-style="brutalist"][data-color="dark"]   { --accent-color:#ff0000; --accent-hover:#cc0000; }
+        html[data-mode="light"][data-style="brutalist"][data-color="white"]  { --accent-color:#1a1a00; --accent-hover:#000; }
+        html[data-mode="light"][data-style="brutalist"][data-color="blue"]   { --accent-color:#0000ff; --accent-hover:#0000cc; }
+        html[data-mode="light"][data-style="brutalist"][data-color="green"]  { --accent-color:#007700; --accent-hover:#005500; }
+        html[data-mode="light"][data-style="brutalist"][data-color="pink"]   { --accent-color:#cc0066; --accent-hover:#990044; }
+        html[data-mode="light"][data-style="brutalist"][data-color="orange"] { --accent-color:#cc5500; --accent-hover:#aa3300; }
+        html[data-style="brutalist"] #brutalistBg { display:block !important; }
+        html[data-style="brutalist"] #trackerPanel { background:var(--card-bg-color)!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; border:3px solid var(--border-color)!important; box-shadow:10px 10px 0 var(--border-color)!important; }
+        html[data-style="brutalist"] .glass-effect { background:transparent!important; border:2px solid var(--border-color)!important; box-shadow:5px 5px 0 var(--border-color)!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+        html[data-style="brutalist"] .list-item-bg { border:2px solid var(--border-color); box-shadow:4px 4px 0 var(--border-color); }
+        html[data-style="brutalist"] #themePanel { border:3px solid var(--border-color)!important; box-shadow:8px 8px 0 var(--border-color)!important; }
+        html[data-style="brutalist"] .accent-bg { box-shadow:5px 5px 0 var(--border-color)!important; }
+        html[data-style="brutalist"] .accent-bg:active { transform:translate(3px,3px); box-shadow:2px 2px 0 var(--border-color)!important; }
+        html[data-style="brutalist"] h1,html[data-style="brutalist"] h2 { letter-spacing:2px; text-transform:uppercase; }
+
+        /* ════════════════════ GLOBAL ════════════════════ */
+        body {
+            font-family:var(--font-main);
+            background-color:var(--background-color);
+            color:var(--text-color);
+            transition:background-color 0.35s ease,color 0.25s ease;
+            -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+            overflow:hidden;
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
+        }
+
+        /* ── Background layers ── */
+        #auroraBg { display:none; position:fixed; inset:0; z-index:-1; overflow:hidden; background:#070a14; }
+        html[data-mode="light"] #auroraBg { background:#dce8f7; }
+        #auroraBg::before { content:''; position:absolute; width:160%; height:160%; top:-30%; left:-30%;
+            background:conic-gradient(from 0deg at 40% 50%,var(--accent-color) 0deg,transparent 70deg,#22d3ee 140deg,transparent 200deg,#a855f7 260deg,transparent 320deg,var(--accent-color) 360deg);
+            filter:blur(80px); opacity:0.5; animation:auroraSpin 22s linear infinite; }
+        html[data-mode="light"] #auroraBg::before { opacity:0.3; }
+        #auroraBg::after { content:''; position:absolute; width:55%; height:55%; top:15%; left:25%;
+            background:radial-gradient(ellipse,var(--accent-trans) 0%,transparent 70%); filter:blur(50px);
+            animation:auroraFloat 11s ease-in-out infinite alternate; }
+        @keyframes auroraSpin { to { transform:rotate(360deg); } }
+        @keyframes auroraFloat { from { transform:translate(0,0) scale(1); } to { transform:translate(10%,6%) scale(1.18); } }
+
+        #matrixCanvas { display:none; position:fixed; inset:0; z-index:-1; }
+
+        #crtOverlay { display:none; position:fixed; inset:0; z-index:9998; pointer-events:none;
+            background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.09) 2px,rgba(0,0,0,0.09) 4px); animation:crtFlicker 8s infinite; }
+        @keyframes crtFlicker { 0%,99%{opacity:1} 99.5%{opacity:0.95} 100%{opacity:1} }
+
+        #medievalBg { display:none; position:fixed; inset:0; z-index:-1; }
+        html[data-mode="dark"] #medievalBg { background:radial-gradient(ellipse at 35% 35%,#2c1c0a 0%,#100c08 70%); }
+        html[data-mode="light"] #medievalBg { background:radial-gradient(ellipse at 50% 25%,#a87a3a 0%,#6a4824 55%,#311f0e 100%); }
+
+        #brutalistBg { display:none; position:fixed; inset:0; z-index:-1; background:var(--background-color);
+            background-image:repeating-linear-gradient(45deg,transparent,transparent 24px,rgba(128,128,128,0.05) 24px,rgba(128,128,128,0.05) 26px); }
+
+        #retroTitleBar { display:none; background:linear-gradient(90deg,#000080,#1084d0); color:#fff; font-size:0.85rem; font-weight:bold;
+            padding:3px 5px; align-items:center; justify-content:space-between; margin:-2rem -2rem 1.25rem -2rem; font-family:'Roboto Mono',monospace; user-select:none; }
+        .retro-win-btn { width:18px; height:16px; background:#C0C0C0; color:#000; font-size:10px; display:inline-flex; align-items:center; justify-content:center;
+            box-shadow:inset -1px -1px 0 #000,inset 1px 1px 0 #fff; cursor:pointer; font-weight:bold; margin-left:2px; }
+
+        #scene { perspective:1500px; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:1rem; }
+
         #trackerPanel {
+<<<<<<< HEAD
             width: 100%;
             max-width: 600px;
             padding: 2rem;
@@ -255,8 +493,19 @@
         }
         #trackerPanel:active {
             cursor: grabbing;
+=======
+            width:100%; max-width:600px; padding:2rem;
+            transform-style:preserve-3d; transition:transform 0.6s cubic-bezier(0.25,0.1,0.25,1.0);
+            cursor:grab; user-select:none;
+            border-radius:var(--panel-radius);
+            box-shadow:0 25px 50px -12px var(--panel-shadow-color);
+            background:var(--card-bg-color); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+            border:1px solid var(--border-color);
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
         }
+        #trackerPanel:active { cursor:grabbing; }
 
+<<<<<<< HEAD
         .raised-element {
             transform: translateZ(30px);
             box-shadow: 0 8px 20px var(--raised-element-shadow);
@@ -292,24 +541,30 @@
 
         #keptRate { transition: color 0.5s ease-in-out, transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         #totalCalls, #totalTransfers { transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+=======
+        .glass-effect { background:var(--card-bg-color); border:1px solid var(--border-color); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
 
-        .bounce-stat { animation: stat-bounce-anim 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        @keyframes stat-bounce-anim {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.25); }
-        }
+        .raised-element { transform:translateZ(30px); box-shadow:0 8px 20px var(--raised-element-shadow); border-radius:0.75rem; }
+        .stat-card-raised { transform:translateZ(20px); box-shadow:0 6px 15px var(--raised-element-shadow); }
 
-        .list-item-base { transition: opacity 0.3s ease, transform 0.3s ease; }
-        .list-item-enter-from { opacity: 0; transform: translateY(20px) scale(0.9); }
-        .list-item-enter-active { animation: item-enter-bounce-anim 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        @keyframes item-enter-bounce-anim {
-            0%   { opacity: 0; transform: translateY(30px) scale(0.8); }
-            60%  { opacity: 1; transform: translateY(-10px) scale(1.1); }
-            80%  { transform: translateY(5px) scale(0.95); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .list-item-exit-active { opacity: 0; transform: translateX(30px) scale(0.9); }
+        ::-webkit-scrollbar { width:8px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+        ::-webkit-scrollbar-thumb { background:var(--accent-color); border-radius:10px; }
+        ::-webkit-scrollbar-thumb:hover { background:var(--accent-hover); }
 
+        .glass-input { background:var(--input-bg); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); border:1px solid var(--border-color); color:var(--text-color); border-radius:var(--btn-radius); }
+        .focus-accent:focus { outline:none; box-shadow:0 0 0 2px var(--background-color),0 0 0 4px var(--accent-color); }
+
+        .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; vertical-align:middle; transition:color 0.3s ease; }
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
+
+        #keptRate { transition:color 0.5s ease-in-out,transform 0.3s cubic-bezier(0.68,-0.55,0.27,1.55); }
+        #totalCalls,#totalTransfers { transition:transform 0.3s cubic-bezier(0.68,-0.55,0.27,1.55); }
+
+        .bounce-stat { animation:stat-bounce-anim 0.5s cubic-bezier(0.68,-0.55,0.27,1.55); }
+        @keyframes stat-bounce-anim { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }
+
+<<<<<<< HEAD
         .custom-hover:hover { background-color: var(--hover-bg) !important; }
         .list-item-bg { background-color: var(--list-item-bg); }
         .subtle-text { color: var(--subtle); }
@@ -352,17 +607,98 @@
     <canvas id="matrixCanvas"></canvas>
     <div id="gradientBg"></div>
     <div id="pixelArtBg"></div>
+=======
+        .input-error { animation:input-shake-anim 0.4s cubic-bezier(0.36,0.07,0.19,0.97); border-color:#ef4444!important; box-shadow:0 0 0 3px rgba(239,68,68,0.35),0 0 12px rgba(239,68,68,0.45)!important; }
+        @keyframes input-shake-anim { 10%,90%{transform:translateX(-2px)} 20%,80%{transform:translateX(4px)} 30%,50%,70%{transform:translateX(-7px)} 40%,60%{transform:translateX(7px)} }
+
+        .list-item-base { transition:opacity 0.3s ease,transform 0.3s ease; }
+        .list-item-enter-from { opacity:0; transform:translateY(20px) scale(0.9); }
+        .list-item-enter-active { animation:item-enter-bounce-anim 0.6s cubic-bezier(0.68,-0.55,0.27,1.55); }
+        @keyframes item-enter-bounce-anim { 0%{opacity:0;transform:translateY(30px) scale(0.8)} 60%{opacity:1;transform:translateY(-10px) scale(1.1)} 80%{transform:translateY(5px) scale(0.95)} 100%{opacity:1;transform:translateY(0) scale(1)} }
+        .list-item-exit-active { opacity:0; transform:translateX(30px) scale(0.9); }
+
+        .custom-hover:hover { background-color:var(--hover-bg-color); }
+        .list-item-bg { background-color:var(--list-item-bg); }
+        .subtle-text { color:var(--subtle-text-color); }
+        .accent-text { color:var(--accent-color); }
+        .accent-bg { background-color:var(--accent-color); color:var(--accent-text)!important; border-radius:var(--btn-radius); }
+        .accent-bg:hover { background-color:var(--accent-hover); }
+        .modal-backdrop { background-color:rgba(0,0,0,0.7); }
+        .modal-border-accent { border-color:var(--accent-color); }
+        .modal-border-danger { border-color:var(--danger-color); }
+        .danger-bg { background-color:var(--danger-color); }
+        .danger-bg:hover { background-color:var(--danger-hover-color); }
+        .fixed-modal { z-index:70; }
+
+        /* ════════════════════ THEMED KEPT-RATE METER ════════════════════ */
+        .rate-meter { width:100%; max-width:160px; height:8px; margin-top:10px; border-radius:6px; background:var(--hover-bg-color); overflow:hidden; }
+        .rate-meter .meter-fill { display:block; height:100%; width:0%; background:var(--accent-color); border-radius:6px; transition:width 0.6s cubic-bezier(0.22,1,0.36,1); }
+        /* segmented: pixel / retro / cyberpunk / brutalist */
+        .rate-meter.seg-meter { display:flex; gap:3px; background:transparent; height:14px; border-radius:0; overflow:visible; }
+        .rate-meter.seg-meter .seg { flex:1; background:var(--hover-bg-color); }
+        .rate-meter.seg-meter .seg.on { background:var(--accent-color); }
+        html[data-style="pixelart"] .rate-meter.seg-meter .seg { border:1px solid var(--border-color); }
+        html[data-style="cyberpunk"] .rate-meter.seg-meter { gap:2px; }
+        html[data-style="cyberpunk"] .rate-meter.seg-meter .seg.on { box-shadow:0 0 5px var(--accent-color); }
+        html[data-style="retro"] .rate-meter.seg-meter { gap:2px; height:16px; padding:1px; box-shadow:inset -1px -1px 0 #fff,inset 1px 1px 0 #808080; background:#C0C0C0; }
+        html[data-style="retro"] .rate-meter.seg-meter .seg { background:#fff; }
+        html[data-style="retro"] .rate-meter.seg-meter .seg.on { background:#000080; }
+        html[data-style="brutalist"] .rate-meter.seg-meter { gap:3px; height:16px; }
+        html[data-style="brutalist"] .rate-meter.seg-meter .seg { border:1px solid var(--border-color); }
+        /* hearts: medieval */
+        .rate-meter.heart-meter { display:flex; gap:5px; background:transparent; height:auto; overflow:visible; justify-content:center; }
+        .rate-meter.heart-meter .heart { font-size:1.05rem; line-height:1; color:var(--hover-bg-color); }
+        .rate-meter.heart-meter .heart.on { color:var(--accent-color); text-shadow:0 0 6px var(--accent-trans); }
+
+        /* ════════════════════ THEME PANEL ════════════════════ */
+        #themePanel { position:fixed; top:72px; right:1.5rem; width:300px; max-height:calc(100vh - 96px); overflow-y:auto;
+            background:var(--card-bg-color); border:1px solid var(--border-color); border-radius:1rem; padding:1rem;
+            box-shadow:0 16px 40px var(--panel-shadow-color); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+            z-index:65; opacity:0; transform:translateY(-8px) scale(0.96); pointer-events:none; transition:opacity 0.22s,transform 0.22s; }
+        #themePanel.visible { opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+        .mode-pill { display:flex; background:var(--hover-bg-color); border-radius:9999px; border:1px solid var(--border-color); padding:3px; gap:2px; margin-bottom:0.9rem; }
+        .mode-pill-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:5px; padding:5px 10px; border-radius:9999px; font-size:0.7rem; font-weight:600; cursor:pointer; transition:all 0.2s; color:var(--subtle-text-color); font-family:var(--font-main); border:none; background:transparent; }
+        .mode-pill-btn.active { background:var(--card-bg-color); color:var(--text-color); box-shadow:0 2px 8px var(--panel-shadow-color); }
+        html[data-mode="light"] .mode-pill-btn.active { background:#fff; }
+        .tp-label { font-size:0.6rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--subtle-text-color); margin-bottom:7px; display:block; }
+        .style-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:1rem; }
+        .style-btn { display:flex; flex-direction:column; align-items:center; gap:5px; padding:8px 4px; background:var(--input-bg); border:1.5px solid var(--border-color); border-radius:0.625rem; cursor:pointer; transition:all 0.18s; font-size:0.6rem; color:var(--subtle-text-color); font-family:var(--font-main); }
+        .style-btn:hover { border-color:var(--accent-color); color:var(--text-color); }
+        .style-btn.selected { border-color:var(--accent-color); background:var(--accent-trans); color:var(--accent-color); font-weight:600; }
+        .style-preview { width:52px; height:34px; border-radius:4px; overflow:hidden; position:relative; flex-shrink:0; }
+        .color-row { display:flex; gap:7px; flex-wrap:wrap; }
+        .color-dot { width:30px; height:30px; border-radius:50%; cursor:pointer; border:2.5px solid transparent; transition:transform 0.18s,box-shadow 0.18s; }
+        .color-dot:hover { transform:scale(1.18); }
+        .color-dot.selected { box-shadow:0 0 0 2px var(--background-color),0 0 0 4.5px var(--text-color); }
+        #themePanel::-webkit-scrollbar { width:5px; }
+        #themePanel::-webkit-scrollbar-thumb { background:var(--accent-color); border-radius:10px; }
+    </style>
+</head>
+<body>
+    <!-- Background layers -->
+    <canvas id="matrixCanvas"></canvas>
+    <div id="auroraBg"></div>
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
     <div id="medievalBg"></div>
     <div id="brutalistBg"></div>
     <div id="crtOverlay"></div>
 
     <!-- Top Right Controls -->
+<<<<<<< HEAD
     <div class="fixed top-6 right-6 flex items-center gap-2 z-[60]">
         <a href="https://isaiart.com/smt" class="p-2.5 rounded-full custom-hover transition-colors shadow-lg" style="background:var(--card-bg);border:1px solid var(--border);color:var(--text);" aria-label="Back to Hub">
             <span class="material-symbols-outlined" style="font-size:20px">home</span>
         </a>
         <button id="themePickerBtn" class="p-2.5 rounded-full transition-colors shadow-lg" style="background:var(--card-bg);border:1px solid var(--border);color:var(--text);" aria-label="Themes">
             <span class="material-symbols-outlined" style="font-size:20px">palette</span>
+=======
+    <div class="fixed top-6 right-6 flex items-center gap-2 z-[80]">
+        <a href="https://isaiart.com/smt" class="p-3 rounded-full custom-hover transition-colors shadow-lg" style="background:var(--card-bg-color);border:1px solid var(--border-color);color:var(--text-color);" aria-label="Back to Hub">
+            <span class="material-symbols-outlined">home</span>
+        </a>
+        <button id="themePickerBtn" class="p-3 rounded-full custom-hover transition-colors shadow-lg" style="background:var(--card-bg-color);border:1px solid var(--border-color);color:var(--text-color);" aria-label="Themes">
+            <span class="material-symbols-outlined">palette</span>
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
         </button>
     </div>
 
@@ -370,7 +706,11 @@
     <div id="themePanel">
         <div class="flex items-center justify-between mb-3">
             <span class="font-semibold text-sm">Themes</span>
+<<<<<<< HEAD
             <button id="closePanelBtn" class="custom-hover" style="padding:2px;border-radius:50%;color:var(--subtle)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+=======
+            <button id="closePanelBtn" class="custom-hover" style="padding:2px;border-radius:50%;color:var(--subtle-text-color)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
         </div>
         <div class="mode-pill">
             <button class="mode-pill-btn active" id="modeDark"><span class="material-symbols-outlined" style="font-size:14px">dark_mode</span> Dark</button>
@@ -379,6 +719,7 @@
         <span class="tp-label">UI Style</span>
         <div class="style-grid" id="styleGrid">
             <button class="style-btn selected" data-style="default">
+<<<<<<< HEAD
                 <div class="style-preview" style="background:linear-gradient(135deg,#0c0d13,#151929);border:1px solid rgba(255,255,255,0.08);"><div style="position:absolute;bottom:5px;left:5px;right:5px;height:5px;background:rgba(245,158,11,0.55);border-radius:2px;"></div></div>
                 <span>Default</span>
             </button>
@@ -388,6 +729,17 @@
             </button>
             <button class="style-btn" data-style="neumorphic">
                 <div class="style-preview" style="background:#DDE5EF;border-radius:4px;box-shadow:5px 5px 10px rgba(163,177,198,0.7),-5px -5px 10px rgba(255,255,255,0.9);"><div style="position:absolute;bottom:6px;left:8px;right:8px;height:5px;background:#DDE5EF;border-radius:2px;box-shadow:2px 2px 4px rgba(163,177,198,0.5),-2px -2px 4px rgba(255,255,255,0.7);"></div></div>
+=======
+                <div class="style-preview" style="background:linear-gradient(135deg,#0e0f13,#1f2937);border:1px solid rgba(255,255,255,0.08);"><div style="position:absolute;bottom:5px;left:5px;right:5px;height:5px;background:rgba(245,158,11,0.7);border-radius:2px;"></div></div>
+                <span>Default</span>
+            </button>
+            <button class="style-btn" data-style="glass">
+                <div class="style-preview" style="background:linear-gradient(135deg,#6366f1,#06b6d4,#a855f7);"><div style="position:absolute;inset:5px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);border-radius:3px;"></div></div>
+                <span>Glassmorphic</span>
+            </button>
+            <button class="style-btn" data-style="neumorphic">
+                <div class="style-preview" style="background:#E0E5EC;border-radius:4px;box-shadow:inset 4px 4px 8px rgba(163,177,198,0.7),inset -4px -4px 8px rgba(255,255,255,0.9);"><div style="position:absolute;bottom:6px;left:8px;right:8px;height:5px;background:#E0E5EC;border-radius:2px;box-shadow:2px 2px 4px rgba(163,177,198,0.6),-2px -2px 4px rgba(255,255,255,0.8);"></div></div>
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
                 <span>Neumorphic</span>
             </button>
             <button class="style-btn" data-style="minimal">
@@ -395,6 +747,7 @@
                 <span>Minimal</span>
             </button>
             <button class="style-btn" data-style="cyberpunk">
+<<<<<<< HEAD
                 <div class="style-preview" style="background:#080808;border:2px solid #33FF66;border-radius:0;background-image:linear-gradient(rgba(51,255,102,0.15) 1px,transparent 1px),linear-gradient(90deg,rgba(51,255,102,0.15) 1px,transparent 1px);background-size:8px 8px;"><div style="position:absolute;bottom:4px;left:4px;right:4px;height:3px;background:#33FF66;border-radius:0;"></div></div>
                 <span>Cyberpunk</span>
             </button>
@@ -412,17 +765,45 @@
             </button>
             <button class="style-btn" data-style="brutalist">
                 <div class="style-preview" style="background:#e8e8e0;border:3px solid #0a0a0a;border-radius:0;box-shadow:4px 4px 0 #0a0a0a;"><div style="position:absolute;top:4px;left:4px;right:4px;height:6px;background:#ff0000;"></div><div style="position:absolute;bottom:4px;left:4px;right:4px;height:3px;background:#0a0a0a;"></div></div>
+=======
+                <div class="style-preview" style="background:#080808;border:2px solid #33FF66;background-image:linear-gradient(rgba(51,255,102,0.15) 1px,transparent 1px),linear-gradient(90deg,rgba(51,255,102,0.15) 1px,transparent 1px);background-size:8px 8px;"><div style="position:absolute;bottom:4px;left:4px;right:4px;height:3px;background:#33FF66;"></div></div>
+                <span>Cyberpunk</span>
+            </button>
+            <button class="style-btn" data-style="pixelart">
+                <div class="style-preview" style="background:#1a1c2c;border:3px solid #6b6bae;image-rendering:pixelated;"><div style="position:absolute;top:4px;left:4px;right:4px;height:4px;background:#ffa300;"></div><div style="position:absolute;bottom:4px;left:4px;width:7px;height:7px;background:#00e436;"></div><div style="position:absolute;bottom:4px;left:14px;width:7px;height:7px;background:#29adff;"></div></div>
+                <span>Pixel Art</span>
+            </button>
+            <button class="style-btn" data-style="retro">
+                <div class="style-preview" style="background:#C0C0C0;box-shadow:inset -2px -2px 0 #000,inset 2px 2px 0 #fff;"><div style="position:absolute;top:0;left:0;right:0;height:10px;background:#000080;display:flex;align-items:center;justify-content:flex-end;padding-right:3px;"><div style="width:7px;height:6px;background:#C0C0C0;box-shadow:inset -1px -1px 0 #000,inset 1px 1px 0 #fff;"></div></div></div>
+                <span>Retro Win</span>
+            </button>
+            <button class="style-btn" data-style="medieval">
+                <div class="style-preview" style="background:radial-gradient(ellipse at 50% 30%,#a87a3a,#4a2e14);"><div style="position:absolute;inset:3px;background:rgba(244,231,196,0.9);border:1px solid #9a6a32;display:flex;align-items:center;justify-content:center;font-size:13px;color:#5a3a1a;">&#9876;</div></div>
+                <span>Medieval</span>
+            </button>
+            <button class="style-btn" data-style="brutalist">
+                <div class="style-preview" style="background:#e8e8e0;border:3px solid #0a0a0a;box-shadow:4px 4px 0 #0a0a0a;"><div style="position:absolute;top:4px;left:4px;right:4px;height:6px;background:#ff0000;"></div><div style="position:absolute;bottom:4px;left:4px;right:4px;height:3px;background:#0a0a0a;"></div></div>
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
                 <span>Brutalist</span>
             </button>
         </div>
         <span class="tp-label">Color</span>
         <div class="color-row">
+<<<<<<< HEAD
             <button class="color-dot selected" data-color="dark"   style="background:linear-gradient(135deg,#1a1a2e,#0c0d13);" title="Dark"></button>
             <button class="color-dot"          data-color="white"  style="background:linear-gradient(135deg,#6366f1,#818CF8);" title="Indigo"></button>
             <button class="color-dot"          data-color="blue"   style="background:linear-gradient(135deg,#0284C7,#38BDF8);" title="Blue"></button>
             <button class="color-dot"          data-color="green"  style="background:linear-gradient(135deg,#15803D,#22C55E);" title="Green"></button>
             <button class="color-dot"          data-color="pink"   style="background:linear-gradient(135deg,#9D174D,#F472B6);" title="Pink"></button>
             <button class="color-dot"          data-color="orange" style="background:linear-gradient(135deg,#C2410C,#FB923C);" title="Orange"></button>
+=======
+            <button class="color-dot"          data-color="dark"   style="background:linear-gradient(135deg,#3a3f4b,#15171c);" title="Mono"></button>
+            <button class="color-dot"          data-color="white"  style="background:linear-gradient(135deg,#6366f1,#818CF8);" title="Indigo"></button>
+            <button class="color-dot"          data-color="blue"   style="background:linear-gradient(135deg,#0284C7,#38BDF8);" title="Blue"></button>
+            <button class="color-dot"          data-color="green"  style="background:linear-gradient(135deg,#059669,#34D399);" title="Green"></button>
+            <button class="color-dot"          data-color="pink"   style="background:linear-gradient(135deg,#BE185D,#F472B6);" title="Pink"></button>
+            <button class="color-dot selected" data-color="orange" style="background:linear-gradient(135deg,#B45309,#F59E0B);" title="Amber"></button>
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
         </div>
     </div>
 
@@ -432,7 +813,10 @@
                 <span>&#128241; Transfer Rate Tracker</span>
                 <div style="display:flex;"><span class="retro-win-btn">_</span><span class="retro-win-btn">&#9633;</span><span class="retro-win-btn">&#10005;</span></div>
             </div>
+<<<<<<< HEAD
 
+=======
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
             <!-- Stats Section -->
             <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                 <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
@@ -450,6 +834,7 @@
                 <div class="glass-effect stat-card-raised rounded-xl p-4 flex flex-col items-center justify-center">
                     <h2 class="text-sm font-medium subtle-text uppercase tracking-wider">Kept Rate</h2>
                     <p id="keptRate" class="text-4xl font-bold font-['Roboto_Mono'] mt-2 subtle-text">0.0%</p>
+                    <div id="keptRateMeter" class="rate-meter"></div>
                 </div>
             </section>
 
@@ -484,7 +869,7 @@
         </main>
     </div>
 
-    <!-- Edit Modal (Stays Fixed) -->
+    <!-- Edit Modal -->
     <div id="editModal" class="fixed-modal fixed inset-0 modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
         <div class="glass-effect rounded-xl p-6 w-full max-w-md space-y-4 border-2 modal-border-accent shadow-2xl">
             <h3 class="text-lg font-semibold flex items-center gap-2"><span class="material-symbols-outlined accent-text">edit</span> Edit Transfer Note</h3>
@@ -496,7 +881,7 @@
         </div>
     </div>
 
-    <!-- Reset Confirmation Modal (Stays Fixed) -->
+    <!-- Reset Confirmation Modal -->
     <div id="resetConfirmModal" class="fixed-modal fixed inset-0 modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 hidden">
         <div class="glass-effect rounded-xl p-6 w-full max-w-md space-y-4 border-2 modal-border-danger shadow-2xl">
             <h3 class="text-lg font-semibold flex items-center gap-2 text-red-500"><span class="material-symbols-outlined">warning</span> Reset Confirmation</h3>
@@ -510,6 +895,7 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
+<<<<<<< HEAD
         const html = document.documentElement;
         const panel = document.getElementById('trackerPanel');
         const transferList = document.getElementById('transferListContainer');
@@ -521,6 +907,15 @@
         let currentRotationY = 0;
         const SENSITIVITY = 0.25;
         const MAX_ROTATION_X = 30;
+=======
+        const htmlEl = document.documentElement;
+
+        // --- 3D Panel Interaction ---
+        const panel = document.getElementById('trackerPanel');
+        const transferList = document.getElementById('transferListContainer');
+        let isDragging = false, previousMouseX, previousMouseY, currentRotationX = 0, currentRotationY = 0;
+        const SENSITIVITY = 0.25, MAX_ROTATION_X = 30;
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
         const DRAG_TRANSITION = 'transform 0.05s linear';
         const SNAP_TRANSITION = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)';
 
@@ -531,6 +926,7 @@
                 const listRect = transferList.getBoundingClientRect();
                 const scrollbarWidth = transferList.offsetWidth - transferList.clientWidth;
                 if (e.clientX >= listRect.right - scrollbarWidth && e.clientX <= listRect.right &&
+<<<<<<< HEAD
                     e.clientY >= listRect.top && e.clientY <= listRect.bottom) {
                     return;
                 }
@@ -538,11 +934,16 @@
             isDragging = true;
             previousMouseX = e.clientX;
             previousMouseY = e.clientY;
+=======
+                    e.clientY >= listRect.top && e.clientY <= listRect.bottom) return;
+            }
+            isDragging = true; previousMouseX = e.clientX; previousMouseY = e.clientY;
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
             panel.style.transition = DRAG_TRANSITION;
         });
-
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
+<<<<<<< HEAD
             const dx = e.clientX - previousMouseX;
             const dy = e.clientY - previousMouseY;
             currentRotationY += dx * SENSITIVITY;
@@ -551,19 +952,32 @@
             panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
             previousMouseX = e.clientX;
             previousMouseY = e.clientY;
+=======
+            const dx = e.clientX - previousMouseX, dy = e.clientY - previousMouseY;
+            currentRotationY += dx * SENSITIVITY; currentRotationX -= dy * SENSITIVITY;
+            currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX));
+            panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
+            previousMouseX = e.clientX; previousMouseY = e.clientY;
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
         });
-
         document.addEventListener('mouseup', () => {
             if (isDragging) {
+<<<<<<< HEAD
                 isDragging = false;
                 panel.style.transition = SNAP_TRANSITION;
                 panel.style.transform = `rotateX(0deg) rotateY(0deg)`;
                 currentRotationX = 0;
                 currentRotationY = 0;
+=======
+                isDragging = false; panel.style.transition = SNAP_TRANSITION;
+                panel.style.transform = `rotateX(0deg) rotateY(0deg)`;
+                currentRotationX = 0; currentRotationY = 0;
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
             }
         });
         panel.ondragstart = () => false;
 
+<<<<<<< HEAD
         // ════════════════════ MATRIX RAIN (cyberpunk style) ════════════════════
         const matrixCanvas = document.getElementById('matrixCanvas');
         const mCtx = matrixCanvas.getContext('2d');
@@ -601,10 +1015,39 @@
             render();
         }
         function applyColor(color) { currentColor = color; html.setAttribute('data-color', color); localStorage.setItem('trt-color', color); document.querySelectorAll('.color-dot').forEach(d => d.classList.toggle('selected', d.dataset.color === color)); render(); }
+=======
+        // --- MATRIX RAIN (cyberpunk) ---
+        const matrixCanvas = document.getElementById('matrixCanvas');
+        const mCtx = matrixCanvas.getContext('2d');
+        const MCHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*!?+-=><アイウエオカキクケコサシスセソ';
+        let matrixAnimId = null, mDrops = [];
+        function mResize(){ matrixCanvas.width=window.innerWidth; matrixCanvas.height=window.innerHeight; const cols=Math.floor(matrixCanvas.width/14); mDrops=Array.from({length:cols},()=>Math.random()*-matrixCanvas.height); }
+        function mTick(){
+            const accent=getComputedStyle(htmlEl).getPropertyValue('--accent-color').trim()||'#33FF66';
+            mCtx.fillStyle='rgba(0,0,0,0.045)'; mCtx.fillRect(0,0,matrixCanvas.width,matrixCanvas.height);
+            mCtx.font='14px VT323,monospace';
+            mDrops.forEach((y,i)=>{ const ch=MCHARS[Math.floor(Math.random()*MCHARS.length)]; mCtx.fillStyle=Math.random()>0.92?'#ffffff':accent; mCtx.fillText(ch,i*14,y); if(y>matrixCanvas.height&&Math.random()>0.975)mDrops[i]=0; mDrops[i]+=14; });
+            matrixAnimId=requestAnimationFrame(mTick);
+        }
+        function startMatrix(){ if(matrixAnimId)return; mResize(); mTick(); }
+        function stopMatrix(){ if(matrixAnimId){cancelAnimationFrame(matrixAnimId); matrixAnimId=null;} mCtx.clearRect(0,0,matrixCanvas.width,matrixCanvas.height); }
+        window.addEventListener('resize',()=>{ if(currentStyle==='cyberpunk')mResize(); });
+
+        // --- THEME SYSTEM ---
+        let appReady = false;
+        let currentStyle = localStorage.getItem('tr-style') || 'default';
+        let currentColor = localStorage.getItem('tr-color') || 'orange';
+        let currentMode  = localStorage.getItem('tr-mode')  || 'dark';
+
+        function applyMode(mode){ currentMode=mode; htmlEl.setAttribute('data-mode',mode); localStorage.setItem('tr-mode',mode); document.getElementById('modeDark').classList.toggle('active',mode==='dark'); document.getElementById('modeLight').classList.toggle('active',mode==='light'); if(appReady)render(); }
+        function applyStyle(style){ currentStyle=style; htmlEl.setAttribute('data-style',style); localStorage.setItem('tr-style',style); document.querySelectorAll('.style-btn').forEach(b=>b.classList.toggle('selected',b.dataset.style===style)); if(style==='cyberpunk')startMatrix(); else stopMatrix(); if(appReady)render(); }
+        function applyColor(color){ currentColor=color; htmlEl.setAttribute('data-color',color); localStorage.setItem('tr-color',color); document.querySelectorAll('.color-dot').forEach(d=>d.classList.toggle('selected',d.dataset.color===color)); if(appReady)render(); }
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
 
         applyMode(currentMode); applyStyle(currentStyle); applyColor(currentColor);
 
         const themePanel = document.getElementById('themePanel');
+<<<<<<< HEAD
         document.getElementById('themePickerBtn').addEventListener('click', e => { e.stopPropagation(); themePanel.classList.toggle('visible'); });
         document.getElementById('closePanelBtn').addEventListener('click', () => themePanel.classList.remove('visible'));
         document.getElementById('modeDark').addEventListener('click', () => applyMode('dark'));
@@ -614,6 +1057,37 @@
         document.addEventListener('click', e => { if (!themePanel.contains(e.target) && !document.getElementById('themePickerBtn').contains(e.target)) themePanel.classList.remove('visible'); });
 
         // ════════════════════ APPLICATION LOGIC ════════════════════
+=======
+        document.getElementById('themePickerBtn').addEventListener('click',e=>{ e.stopPropagation(); themePanel.classList.toggle('visible'); });
+        document.getElementById('closePanelBtn').addEventListener('click',()=>themePanel.classList.remove('visible'));
+        document.getElementById('modeDark').addEventListener('click',()=>applyMode('dark'));
+        document.getElementById('modeLight').addEventListener('click',()=>applyMode('light'));
+        document.querySelectorAll('.style-btn').forEach(b=>b.addEventListener('click',()=>applyStyle(b.dataset.style)));
+        document.querySelectorAll('.color-dot').forEach(d=>d.addEventListener('click',()=>applyColor(d.dataset.color)));
+        document.addEventListener('click',e=>{ if(!themePanel.contains(e.target)&&!document.getElementById('themePickerBtn').contains(e.target))themePanel.classList.remove('visible'); });
+
+        // --- THEMED KEPT-RATE METER ---
+        const keptRateMeter = document.getElementById('keptRateMeter');
+        function renderRateMeter(pct){
+            const p = Math.max(0, Math.min(100, pct));
+            keptRateMeter.className = 'rate-meter';
+            keptRateMeter.innerHTML = '';
+            if (['pixelart','cyberpunk','retro','brutalist'].includes(currentStyle)) {
+                keptRateMeter.classList.add('seg-meter');
+                const N = 10, filled = Math.round(p/10);
+                for (let i=0;i<N;i++){ const s=document.createElement('span'); s.className='seg'+(i<filled?' on':''); keptRateMeter.appendChild(s); }
+            } else if (currentStyle==='medieval') {
+                keptRateMeter.classList.add('heart-meter');
+                const N = 5, full = Math.round(p/20);
+                for (let i=0;i<N;i++){ const h=document.createElement('span'); h.className='heart'+(i<full?' on':''); h.textContent='♥'; keptRateMeter.appendChild(h); }
+            } else {
+                const f = document.createElement('div'); f.className='meter-fill'; f.style.width='0%'; keptRateMeter.appendChild(f);
+                void f.offsetWidth; f.style.width = p+'%';
+            }
+        }
+
+        // --- APPLICATION LOGIC ---
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
         const totalCallsEl = document.getElementById('totalCalls');
         const totalTransfersEl = document.getElementById('totalTransfers');
         const keptRateEl = document.getElementById('keptRate');
@@ -624,27 +1098,31 @@
         const transferListContainer = document.getElementById('transferListContainer');
         const emptyStateEl = document.getElementById('emptyState');
         const lastUpdatedEl = document.getElementById('lastUpdatedEl').querySelector('span:last-child');
+<<<<<<< HEAD
 
+=======
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
         const editModal = document.getElementById('editModal');
         const editNoteInput = document.getElementById('editNoteInput');
         const saveEditBtn = document.getElementById('saveEditBtn');
         const cancelEditBtn = document.getElementById('cancelEditBtn');
+<<<<<<< HEAD
 
+=======
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
         const resetDataBtn = document.getElementById('resetDataBtn');
         const resetConfirmModal = document.getElementById('resetConfirmModal');
         const confirmResetBtn = document.getElementById('confirmResetBtn');
         const cancelResetBtn = document.getElementById('cancelResetBtn');
 
-        const getInitialState = () => ({
-            totalCalls: 0, transfers: [], editingTransferId: null, lastUpdated: null,
-        });
+        const getInitialState = () => ({ totalCalls: 0, transfers: [], editingTransferId: null, lastUpdated: null });
         let state = getInitialState();
 
-        function loadState() {
-            const savedState = localStorage.getItem('transferTrackerState');
-            if (savedState) state = { ...getInitialState(), ...JSON.parse(savedState) };
-        }
+        function loadState(){ const s=localStorage.getItem('transferTrackerState'); if(s)state={...getInitialState(),...JSON.parse(s)}; }
+        function saveState(){ state.lastUpdated=new Date().toISOString(); localStorage.setItem('transferTrackerState',JSON.stringify(state)); }
+        function applyBounce(el){ if(!el)return; el.classList.add('bounce-stat'); el.addEventListener('animationend',()=>el.classList.remove('bounce-stat'),{once:true}); }
 
+<<<<<<< HEAD
         function saveState() {
             state.lastUpdated = new Date().toISOString();
             localStorage.setItem('transferTrackerState', JSON.stringify(state));
@@ -657,11 +1135,23 @@
                 element.classList.remove('bounce-stat');
             }, { once: true });
         }
+=======
+        function render(){
+            const oldTotalCalls=parseInt(totalCallsEl.textContent);
+            const oldTotalTransfers=parseInt(totalTransfersEl.textContent);
+            totalCallsEl.textContent=state.totalCalls;
+            totalTransfersEl.textContent=state.transfers.length;
+            if(state.totalCalls!==oldTotalCalls)applyBounce(totalCallsEl);
+            if(state.transfers.length!==oldTotalTransfers)applyBounce(totalTransfersEl);
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
 
-        function render() {
-            const oldTotalCalls = parseInt(totalCallsEl.textContent);
-            const oldTotalTransfers = parseInt(totalTransfersEl.textContent);
+            const cs=getComputedStyle(htmlEl);
+            const rateGreen=cs.getPropertyValue('--rate-green').trim();
+            const rateRed=cs.getPropertyValue('--rate-red').trim();
+            const accentColor=cs.getPropertyValue('--accent-color').trim();
+            const subtleTextColor=cs.getPropertyValue('--subtle-text-color').trim();
 
+<<<<<<< HEAD
             totalCallsEl.textContent = state.totalCalls;
             totalTransfersEl.textContent = state.transfers.length;
 
@@ -689,19 +1179,41 @@
             } else {
                 keptRateEl.textContent = `0.0%`;
                 keptRateEl.style.color = subtleTextColor;
+=======
+            let rateToShow=0;
+            if(state.totalCalls>0){
+                const keptCalls=state.totalCalls-state.transfers.length;
+                rateToShow=Math.max(0,(keptCalls/state.totalCalls)*100);
+                const oldRateText=keptRateEl.textContent;
+                const newRateText=`${rateToShow.toFixed(1)}%`;
+                keptRateEl.textContent=newRateText;
+                if(newRateText!==oldRateText)applyBounce(keptRateEl);
+                if(rateToShow>=90)keptRateEl.style.color=rateGreen;
+                else if(rateToShow>=75)keptRateEl.style.color=accentColor;
+                else keptRateEl.style.color=rateRed;
+            } else {
+                keptRateEl.textContent=`0.0%`;
+                keptRateEl.style.color=subtleTextColor;
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
             }
+            renderRateMeter(rateToShow);
 
+<<<<<<< HEAD
             transferListContainer.innerHTML = '';
 
             if (state.transfers.length === 0) {
+=======
+            transferListContainer.innerHTML='';
+            if(state.transfers.length===0){
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
                 transferListContainer.appendChild(emptyStateEl);
                 emptyStateEl.classList.remove('hidden');
             } else {
-                [...state.transfers].reverse().forEach(transfer => {
-                    const transferEl = document.createElement('div');
-                    transferEl.className = 'flex items-center justify-between p-3 list-item-bg rounded-lg list-item-base list-item-enter-from shadow';
-                    transferEl.dataset.id = transfer.id;
-                    transferEl.innerHTML = `
+                [...state.transfers].reverse().forEach(transfer=>{
+                    const transferEl=document.createElement('div');
+                    transferEl.className='flex items-center justify-between p-3 list-item-bg rounded-lg list-item-base list-item-enter-from shadow';
+                    transferEl.dataset.id=transfer.id;
+                    transferEl.innerHTML=`
                         <div class="flex-grow pr-4 overflow-hidden">
                             <p class="text-inherit truncate">${escapeHTML(transfer.note)}</p>
                             <p class="text-xs subtle-text">${new Date(transfer.timestamp).toLocaleString()}</p>
@@ -711,16 +1223,19 @@
                             <button class="delete-btn p-2 rounded-full custom-hover transition-colors" aria-label="Delete note"><span class="material-symbols-outlined text-sm">delete</span></button>
                         </div>`;
                     transferListContainer.appendChild(transferEl);
+<<<<<<< HEAD
 
                     requestAnimationFrame(() => {
+=======
+                    requestAnimationFrame(()=>{
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
                         transferEl.classList.remove('list-item-enter-from');
                         transferEl.classList.add('list-item-enter-active');
-                        transferEl.addEventListener('animationend', () => {
-                            transferEl.classList.remove('list-item-enter-active');
-                        }, { once: true });
+                        transferEl.addEventListener('animationend',()=>transferEl.classList.remove('list-item-enter-active'),{once:true});
                     });
                 });
             }
+<<<<<<< HEAD
 
             if (state.lastUpdated) lastUpdatedEl.textContent = `Last updated ${formatRelativeTime(new Date(state.lastUpdated))}`;
             else lastUpdatedEl.textContent = 'No updates yet.';
@@ -735,41 +1250,39 @@
                 transferNoteInput.value = '';
                 render();
             }
+=======
+            if(state.lastUpdated)lastUpdatedEl.textContent=`Last updated ${formatRelativeTime(new Date(state.lastUpdated))}`;
+            else lastUpdatedEl.textContent='No updates yet.';
+            saveState();
         }
 
-        function handleListClick(e) {
-            const target = e.target.closest('button');
-            if (!target) return;
-            const transferEl = target.closest('[data-id]');
-            if (!transferEl) return;
-            const transferId = Number(transferEl.dataset.id);
-
-            if (target.classList.contains('delete-btn')) {
+        function handleAddTransfer(){
+            const note=transferNoteInput.value.trim();
+            if(note){ state.transfers.push({id:Date.now(),note,timestamp:new Date().toISOString()}); transferNoteInput.value=''; render(); }
+            else{ transferNoteInput.classList.remove('input-error'); void transferNoteInput.offsetWidth; transferNoteInput.classList.add('input-error'); transferNoteInput.addEventListener('animationend',()=>transferNoteInput.classList.remove('input-error'),{once:true}); transferNoteInput.focus(); }
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
+        }
+        function handleListClick(e){
+            const target=e.target.closest('button'); if(!target)return;
+            const transferEl=target.closest('[data-id]'); if(!transferEl)return;
+            const transferId=Number(transferEl.dataset.id);
+            if(target.classList.contains('delete-btn')){
                 transferEl.classList.add('list-item-exit-active');
-                transferEl.addEventListener('transitionend', () => {
-                    state.transfers = state.transfers.filter(t => t.id !== transferId);
-                    render();
-                }, { once: true });
-            } else if (target.classList.contains('edit-btn')) {
-                const transferToEdit = state.transfers.find(t => t.id === transferId);
-                if (transferToEdit) {
-                    state.editingTransferId = transferId;
-                    editNoteInput.value = transferToEdit.note;
-                    editModal.classList.remove('hidden');
-                    editNoteInput.focus();
-                }
+                transferEl.addEventListener('transitionend',()=>{ state.transfers=state.transfers.filter(t=>t.id!==transferId); render(); },{once:true});
+            } else if(target.classList.contains('edit-btn')){
+                const t=state.transfers.find(t=>t.id===transferId);
+                if(t){ state.editingTransferId=transferId; editNoteInput.value=t.note; editModal.classList.remove('hidden'); editNoteInput.focus(); }
             }
         }
-
-        function handleSaveEdit() {
-            const newNote = editNoteInput.value.trim();
-            if (newNote && state.editingTransferId !== null) {
-                const transferIndex = state.transfers.findIndex(t => t.id === state.editingTransferId);
-                if (transferIndex > -1) state.transfers[transferIndex].note = newNote;
-                closeEditModal();
-                render();
+        function handleSaveEdit(){
+            const newNote=editNoteInput.value.trim();
+            if(newNote&&state.editingTransferId!==null){
+                const i=state.transfers.findIndex(t=>t.id===state.editingTransferId);
+                if(i>-1)state.transfers[i].note=newNote;
+                closeEditModal(); render();
             }
         }
+<<<<<<< HEAD
 
         function handleResetData() {
             state = getInitialState();
@@ -810,8 +1323,37 @@
         confirmResetBtn.addEventListener('click', handleResetData);
         cancelResetBtn.addEventListener('click', closeResetModal);
         resetConfirmModal.addEventListener('click', (e) => { if (e.target === resetConfirmModal) closeResetModal(); });
+=======
+        function handleResetData(){ state=getInitialState(); localStorage.removeItem('transferTrackerState'); state.lastUpdated=null; closeResetModal(); render(); }
+        function closeEditModal(){ state.editingTransferId=null; editModal.classList.add('hidden'); }
+        function openResetModal(){ resetConfirmModal.classList.remove('hidden'); }
+        function closeResetModal(){ resetConfirmModal.classList.add('hidden'); }
+        function escapeHTML(str){ const d=document.createElement('div'); d.appendChild(document.createTextNode(str)); return d.innerHTML; }
+        function formatRelativeTime(date){
+            const now=new Date(), seconds=Math.round((now-date)/1000), minutes=Math.round(seconds/60), hours=Math.round(minutes/60), days=Math.round(hours/24);
+            if(seconds<10)return`a few seconds ago`; if(seconds<60)return`${seconds}s ago`;
+            if(minutes<2)return`1m ago`; if(minutes<60)return`${minutes}m ago`;
+            if(hours<2)return`1h ago`; if(hours<24)return`${hours}h ago`;
+            if(days<2)return`yesterday`; return`${days}d ago`;
+        }
+
+        incrementCallsBtn.addEventListener('click',()=>{ state.totalCalls++; render(); });
+        decrementCallsBtn.addEventListener('click',()=>{ if(state.totalCalls>0){ state.totalCalls--; render(); } });
+        addTransferBtn.addEventListener('click',handleAddTransfer);
+        transferNoteInput.addEventListener('keydown',e=>{ if(e.key==='Enter')handleAddTransfer(); });
+        transferListContainer.addEventListener('click',handleListClick);
+        saveEditBtn.addEventListener('click',handleSaveEdit);
+        cancelEditBtn.addEventListener('click',closeEditModal);
+        editModal.addEventListener('click',e=>{ if(e.target===editModal)closeEditModal(); });
+        editNoteInput.addEventListener('keydown',e=>{ if(e.key==='Enter')handleSaveEdit(); });
+        resetDataBtn.addEventListener('click',openResetModal);
+        confirmResetBtn.addEventListener('click',handleResetData);
+        cancelResetBtn.addEventListener('click',closeResetModal);
+        resetConfirmModal.addEventListener('click',e=>{ if(e.target===resetConfirmModal)closeResetModal(); });
+>>>>>>> e9f5a405364c2a5b670cb45c7177418d750e4403
 
         loadState();
+        appReady = true;
         render();
     });
     </script>
