@@ -1,345 +1,319 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>8 Beat Drum Machine</title>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #FFC300;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .drum-machine {
-            background-color: #FFC300;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            max-width: 800px;
-            width: 100%;
-        }
-        h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-        }
-        .row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .label {
-            width: 80px;
-            text-align: right;
-            margin-right: 15px;
-            font-weight: bold;
-            color: #333;
-        }
-        .beats {
-            display: flex;
-            flex-grow: 1;
-        }
-        .beat {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin: 0 5px;
-            cursor: pointer;
-            border: 2px solid #333;
-            transition: background-color 0.3s ease;
-        }
-        .beat.active {
-            background-color: #333;
-        }
-        .controls {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 30px;
-            flex-wrap: wrap;
-        }
-        .control-btn {
-            background-color: #333;
-            color: #FFC300;
-            border: none;
-            padding: 10px 15px;
-            margin: 0 10px 10px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            font-weight: bold;
-        }
-        .control-btn:hover {
-            background-color: #555;
-        }
-        .volume-control {
-            display: flex;
-            align-items: center;
-            margin-left: 10px;
-        }
-        .volume-slider {
-            width: 80px;
-            -webkit-appearance: none;
-            background: #333;
-            outline: none;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-            border-radius: 12px;
-        }
-        .volume-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            background: #FFC300;
-            cursor: pointer;
-            border-radius: 50%;
-        }
-        .volume-slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            background: #FFC300;
-            cursor: pointer;
-            border-radius: 50%;
-        }
-        #tempoControl {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 20px;
-        }
-        .tempo-btn {
-            font-size: 24px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            margin: 0 10px;
-        }
-        #tempoDisplay {
-            font-size: 18px;
-            font-weight: bold;
-            margin: 0 20px;
-        }
-        #visualizer {
-            width: 100%;
-            height: 50px;
-            background-color: #333;
-            margin-top: 20px;
-            border-radius: 5px;
-            overflow: hidden;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8 Beat</title>
+<style>
+  :root{
+    --bg:#f4f3ee;
+    --ink:#15140f;
+    --muted:#a39e90;
+    --line:#e0dccf;
+    --cell:#eceadf;
+    --accent:#f5b301;
+    --radius:10px;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+    background:var(--bg);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;min-height:100%;
+    padding:24px;-webkit-user-select:none;user-select:none;
+  }
+  .machine{width:100%;max-width:600px}
+
+  header{display:flex;align-items:baseline;gap:12px;margin-bottom:26px}
+  header h1{font-size:1.5rem;font-weight:800;letter-spacing:.14em}
+  header .sub{font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted)}
+  header .dot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background .2s,box-shadow .2s}
+  header .dot.live{background:var(--accent);box-shadow:0 0 0 4px rgba(245,179,1,.22)}
+
+  #grid{display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;align-items:center;gap:14px}
+  .label{
+    width:52px;flex-shrink:0;text-align:right;font-family:var(--mono);
+    font-size:.72rem;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;
+    cursor:pointer;transition:color .15s;
+  }
+  .label:hover{color:var(--ink)}
+  .steps{display:flex;gap:6px;flex:1}
+  .beat{
+    flex:1;aspect-ratio:1;max-width:46px;border-radius:var(--radius);
+    background:var(--cell);border:1.5px solid var(--line);cursor:pointer;
+    transition:background .12s,border-color .12s,transform .06s;
+  }
+  .beat:hover{border-color:var(--muted)}
+  .beat[data-step="4"]{margin-left:12px}
+  .beat.active{background:var(--ink);border-color:var(--ink)}
+  .beat.playhead{border-color:var(--accent)}
+  .beat.active.playhead{background:var(--accent);border-color:var(--accent)}
+  .beat.hit{transform:scale(.86)}
+  .vol{
+    width:60px;flex-shrink:0;-webkit-appearance:none;appearance:none;height:3px;
+    border-radius:3px;background:var(--line);outline:none;cursor:pointer;
+  }
+  .vol::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--ink);cursor:pointer}
+  .vol::-moz-range-thumb{width:12px;height:12px;border:none;border-radius:50%;background:var(--ink);cursor:pointer}
+
+  .bar{display:flex;align-items:center;gap:10px;margin-top:30px;flex-wrap:wrap}
+  .btn{
+    font-family:inherit;font-size:.8rem;font-weight:600;letter-spacing:.04em;
+    padding:10px 18px;border-radius:10px;border:1.5px solid var(--line);
+    background:transparent;color:var(--ink);cursor:pointer;transition:all .15s;
+  }
+  .btn:hover{border-color:var(--ink)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);min-width:84px}
+  .btn.primary.playing{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+  .spacer{flex:1}
+  .tempo{display:flex;align-items:center;gap:6px}
+  .step{
+    width:32px;height:32px;border-radius:9px;border:1.5px solid var(--line);background:transparent;
+    color:var(--ink);font-size:1.1rem;line-height:1;cursor:pointer;transition:border-color .15s}
+  .step:hover{border-color:var(--ink)}
+  #bpm{font-family:var(--mono);font-size:.95rem;font-weight:600;min-width:70px;text-align:center}
+  #bpm small{font-size:.6rem;color:var(--muted);margin-left:3px;letter-spacing:.08em}
+  .master{display:flex;align-items:center;gap:7px}
+  .master span{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;color:var(--muted)}
+
+  @media (max-width:520px){
+    .label{width:42px}
+    header h1{font-size:1.25rem}
+    .bar{gap:8px}
+    .btn{padding:9px 13px}
+    .spacer{flex-basis:100%;height:0}
+  }
+</style>
 </head>
 <body>
-    <div class="drum-machine">
-        <h2>8 BEAT DRUM</h2>
-        <div id="beats"></div>
-        <div class="controls">
-            <button id="playPauseBtn" class="control-btn">Play</button>
-            <button id="resetBtn" class="control-btn">Reset</button>
-            <button id="randomizeBtn" class="control-btn">Randomize</button>
-        </div>
-        <div id="tempoControl">
-            <button id="tempoDownBtn" class="tempo-btn">-</button>
-            <span id="tempoDisplay">120 BPM</span>
-            <button id="tempoUpBtn" class="tempo-btn">+</button>
-        </div>
-        <div id="visualizer"></div>
+  <main class="machine">
+    <header>
+      <h1>8 BEAT</h1>
+      <span class="sub">drum machine</span>
+      <span class="dot" id="live"></span>
+    </header>
+
+    <div id="grid"></div>
+
+    <div class="bar">
+      <button class="btn primary" id="play">Play</button>
+      <button class="btn" id="clear">Clear</button>
+      <button class="btn" id="random">Random</button>
+      <div class="spacer"></div>
+      <div class="tempo">
+        <button class="step" id="tdown">&minus;</button>
+        <span id="bpm">120<small>BPM</small></span>
+        <button class="step" id="tup">+</button>
+      </div>
+      <div class="master"><span>VOL</span><input class="vol" id="master-vol" type="range" min="0" max="1" step="0.01" value="0.85" style="width:72px"></div>
     </div>
+  </main>
 
-    <script>
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
+<script>
+"use strict";
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+const master = ctx.createGain();
+master.gain.value = 0.85;
+master.connect(ctx.destination);
 
-        const beats = ['kick', 'snare', 'hat', 'tom', 'whistle'];
-        let isPlaying = false;
-        let currentBeat = 0;
-        let tempo = 120;
-        const volumes = {};
+/* ---- reusable white-noise buffer ---- */
+const noiseBuffer = (() => {
+  const b = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+  const d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return b;
+})();
+function noise(){ const s = ctx.createBufferSource(); s.buffer = noiseBuffer; return s; }
+function env(node, t, peak, dur, decayTo = 0.0001){
+  node.gain.setValueAtTime(0.0001, t);
+  node.gain.exponentialRampToValueAtTime(peak, t + 0.004);
+  node.gain.exponentialRampToValueAtTime(decayTo, t + dur);
+}
 
-        function createDrumMachine() {
-            const beatsContainer = document.getElementById('beats');
-            beats.forEach(beat => {
-                const row = document.createElement('div');
-                row.className = 'row';
-                const label = document.createElement('div');
-                label.className = 'label';
-                label.textContent = beat.toUpperCase();
-                row.appendChild(label);
+/* ---- drum voices (t = AudioContext start time, v = 0..1) ---- */
+function kick(t, v){
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(165, t);
+  o.frequency.exponentialRampToValueAtTime(45, t + 0.13);
+  env(g, t, v, 0.45);
+  o.connect(g).connect(master); o.start(t); o.stop(t + 0.46);
+  const n = noise(), ng = ctx.createGain(), hp = ctx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 2200;
+  env(ng, t, v * 0.5, 0.03);
+  n.connect(hp).connect(ng).connect(master); n.start(t); n.stop(t + 0.05);
+}
+function snare(t, v){
+  const n = noise(), ng = ctx.createGain(), hp = ctx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 1400;
+  env(ng, t, v * 0.7, 0.18);
+  n.connect(hp).connect(ng).connect(master); n.start(t); n.stop(t + 0.2);
+  const o = ctx.createOscillator(), og = ctx.createGain();
+  o.type = 'triangle'; o.frequency.setValueAtTime(185, t);
+  env(og, t, v * 0.5, 0.1);
+  o.connect(og).connect(master); o.start(t); o.stop(t + 0.11);
+}
+function hat(t, v){
+  const n = noise(), ng = ctx.createGain(), hp = ctx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 7500;
+  env(ng, t, v * 0.45, 0.05);
+  n.connect(hp).connect(ng).connect(master); n.start(t); n.stop(t + 0.07);
+}
+function tom(t, v){
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(220, t);
+  o.frequency.exponentialRampToValueAtTime(92, t + 0.25);
+  env(g, t, v, 0.3);
+  o.connect(g).connect(master); o.start(t); o.stop(t + 0.31);
+}
+function clap(t, v){
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = 1100; bp.Q.value = 1.3;
+  bp.connect(master);
+  [0, 0.011, 0.022].forEach(off => {
+    const n = noise(), ng = ctx.createGain();
+    env(ng, t + off, v * 0.55, 0.018);
+    n.connect(ng).connect(bp); n.start(t + off); n.stop(t + off + 0.03);
+  });
+  const n = noise(), ng = ctx.createGain();
+  env(ng, t + 0.022, v * 0.4, 0.22);
+  n.connect(ng).connect(bp); n.start(t + 0.022); n.stop(t + 0.26);
+}
+const VOICES = { kick, snare, hat, tom, clap };
+const KIT = ['kick', 'snare', 'hat', 'tom', 'clap'];
 
-                const beatsDiv = document.createElement('div');
-                beatsDiv.className = 'beats';
-                for (let i = 0; i < 8; i++) {
-                    const beatBtn = document.createElement('div');
-                    beatBtn.className = 'beat';
-                    beatBtn.dataset.beat = beat;
-                    beatBtn.dataset.step = i;
-                    beatBtn.addEventListener('click', toggleBeat);
-                    beatsDiv.appendChild(beatBtn);
-                }
-                row.appendChild(beatsDiv);
+/* ---- build grid ---- */
+const STEPS = 8;
+const pattern = {};   // pattern[inst] = [bool x8]
+const volumes = {};
+const grid = document.getElementById('grid');
+KIT.forEach(inst => {
+  pattern[inst] = Array(STEPS).fill(false);
+  volumes[inst] = 0.8;
+  const row = document.createElement('div'); row.className = 'row';
+  const label = document.createElement('div'); label.className = 'label'; label.textContent = inst;
+  label.title = 'Click to preview';
+  label.addEventListener('click', () => { resume(); VOICES[inst](ctx.currentTime, volumes[inst]); });
+  const steps = document.createElement('div'); steps.className = 'steps';
+  for (let i = 0; i < STEPS; i++){
+    const cell = document.createElement('div');
+    cell.className = 'beat'; cell.dataset.inst = inst; cell.dataset.step = i;
+    cell.addEventListener('click', () => {
+      pattern[inst][i] = !pattern[inst][i];
+      cell.classList.toggle('active', pattern[inst][i]);
+      if (pattern[inst][i]) { resume(); VOICES[inst](ctx.currentTime, volumes[inst]); }
+    });
+    steps.appendChild(cell);
+  }
+  const vol = document.createElement('input');
+  vol.type = 'range'; vol.min = 0; vol.max = 1; vol.step = 0.01; vol.value = 0.8; vol.className = 'vol';
+  vol.title = inst + ' volume';
+  vol.addEventListener('input', e => volumes[inst] = parseFloat(e.target.value));
+  row.append(label, steps, vol);
+  grid.appendChild(row);
+});
 
-                const volumeControl = document.createElement('div');
-                volumeControl.className = 'volume-control';
-                const volumeSlider = document.createElement('input');
-                volumeSlider.type = 'range';
-                volumeSlider.min = '0';
-                volumeSlider.max = '1';
-                volumeSlider.step = '0.1';
-                volumeSlider.value = '0.5';
-                volumeSlider.className = 'volume-slider';
-                volumeSlider.addEventListener('input', (e) => {
-                    volumes[beat] = parseFloat(e.target.value);
-                });
-                volumeControl.appendChild(volumeSlider);
-                row.appendChild(volumeControl);
+/* ---- lookahead scheduler (tight timing) ---- */
+let tempo = 120;
+let playing = false;
+let currentStep = 0;
+let nextNoteTime = 0;
+const SCHEDULE_AHEAD = 0.1;     // sec
+const LOOKAHEAD = 25;           // ms
+let schedTimer = null;
+const queue = [];               // {step, time} for UI playhead
 
-                beatsContainer.appendChild(row);
-                volumes[beat] = 0.5;
-            });
-        }
+function stepDur(){ return (60 / tempo) / 2; }   // 8th notes
 
-        function toggleBeat(e) {
-            e.target.classList.toggle('active');
-        }
+function scheduleStep(step, time){
+  KIT.forEach(inst => { if (pattern[inst][step]) VOICES[inst](time, volumes[inst]); });
+  queue.push({ step, time });
+}
+function scheduler(){
+  while (nextNoteTime < ctx.currentTime + SCHEDULE_AHEAD){
+    scheduleStep(currentStep, nextNoteTime);
+    nextNoteTime += stepDur();
+    currentStep = (currentStep + 1) % STEPS;
+  }
+}
+let lastDrawn = -1;
+function draw(){
+  while (queue.length && queue[0].time < ctx.currentTime){
+    lastDrawn = queue.shift().step;
+    paintPlayhead(lastDrawn);
+  }
+  if (playing) requestAnimationFrame(draw);
+}
+function paintPlayhead(step){
+  document.querySelectorAll('.beat.playhead').forEach(c => c.classList.remove('playhead'));
+  document.querySelectorAll(`.beat[data-step="${step}"]`).forEach(c => {
+    c.classList.add('playhead');
+    if (c.classList.contains('active')){
+      c.classList.remove('hit'); void c.offsetWidth; c.classList.add('hit');
+      setTimeout(() => c.classList.remove('hit'), 90);
+    }
+  });
+}
 
-        function playDrum(type) {
-            const osc = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            osc.connect(gainNode);
-            gainNode.connect(analyser);
-            analyser.connect(audioContext.destination);
+function resume(){ if (ctx.state === 'suspended') ctx.resume(); }
+function start(){
+  resume();
+  playing = true; currentStep = 0; nextNoteTime = ctx.currentTime + 0.06;
+  schedTimer = setInterval(scheduler, LOOKAHEAD);
+  requestAnimationFrame(draw);
+  document.getElementById('play').textContent = 'Stop';
+  document.getElementById('play').classList.add('playing');
+  document.getElementById('live').classList.add('live');
+}
+function stop(){
+  playing = false;
+  clearInterval(schedTimer); schedTimer = null;
+  queue.length = 0;
+  document.querySelectorAll('.beat.playhead').forEach(c => c.classList.remove('playhead'));
+  document.getElementById('play').textContent = 'Play';
+  document.getElementById('play').classList.remove('playing');
+  document.getElementById('live').classList.remove('live');
+}
 
-            switch(type) {
-                case 'kick':
-                    osc.frequency.setValueAtTime(150, audioContext.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                    gainNode.gain.setValueAtTime(volumes[type], audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
-                    break;
-                case 'snare':
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(100, audioContext.currentTime);
-                    gainNode.gain.setValueAtTime(volumes[type] * 0.5, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-                    break;
-                case 'hat':
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(3000, audioContext.currentTime);
-                    gainNode.gain.setValueAtTime(volumes[type] * 0.3, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
-                    break;
-                case 'tom':
-                    osc.frequency.setValueAtTime(100, audioContext.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
-                    gainNode.gain.setValueAtTime(volumes[type], audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                    break;
-                case 'whistle':
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(2000, audioContext.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(1800, audioContext.currentTime + 0.2);
-                    gainNode.gain.setValueAtTime(volumes[type] * 0.2, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-                    break;
-            }
+/* ---- controls ---- */
+const bpmEl = document.getElementById('bpm');
+function setTempo(t){ tempo = Math.max(60, Math.min(200, t)); bpmEl.innerHTML = `${tempo}<small>BPM</small>`; }
+document.getElementById('play').addEventListener('click', () => playing ? stop() : start());
+document.getElementById('clear').addEventListener('click', () => {
+  KIT.forEach(i => pattern[i].fill(false));
+  document.querySelectorAll('.beat.active').forEach(c => c.classList.remove('active'));
+});
+document.getElementById('random').addEventListener('click', () => {
+  // musical-ish randomization: kick on strong beats, hats busy, others sparse
+  const density = { kick:0.4, snare:0.3, hat:0.6, tom:0.18, clap:0.22 };
+  KIT.forEach(inst => {
+    for (let i = 0; i < STEPS; i++){
+      pattern[inst][i] = Math.random() < density[inst];
+      document.querySelector(`.beat[data-inst="${inst}"][data-step="${i}"]`).classList.toggle('active', pattern[inst][i]);
+    }
+  });
+});
+document.getElementById('tdown').addEventListener('click', () => setTempo(tempo - 5));
+document.getElementById('tup').addEventListener('click', () => setTempo(tempo + 5));
+document.getElementById('master-vol').addEventListener('input', e => master.gain.value = parseFloat(e.target.value));
 
-            osc.start();
-            osc.stop(audioContext.currentTime + 0.5);
-        }
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT'){
+    e.preventDefault(); playing ? stop() : start();
+  }
+});
 
-        function step() {
-            const currentTime = audioContext.currentTime;
-            
-            beats.forEach(beat => {
-                const beatEl = document.querySelector(`.beat[data-beat="${beat}"][data-step="${currentBeat}"]`);
-                if (beatEl.classList.contains('active')) {
-                    playDrum(beat);
-                }
-            });
-
-            currentBeat = (currentBeat + 1) % 8;
-            if (isPlaying) {
-                setTimeout(step, (60 / tempo) * 1000);
-            }
-        }
-
-        function drawVisualizer() {
-            const canvas = document.createElement('canvas');
-            const visualizer = document.getElementById('visualizer');
-            visualizer.innerHTML = '';
-            visualizer.appendChild(canvas);
-            const ctx = canvas.getContext('2d');
-
-            canvas.width = visualizer.offsetWidth;
-            canvas.height = visualizer.offsetHeight;
-
-            function draw() {
-                analyser.getByteFrequencyData(dataArray);
-
-                ctx.fillStyle = '#FFC300';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                const barWidth = (canvas.width / bufferLength) * 2.5;
-                let x = 0;
-
-                for (let i = 0; i < bufferLength; i++) {
-                    const barHeight = dataArray[i] / 2;
-                    ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
-                    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-                    x += barWidth + 1;
-                }
-
-                requestAnimationFrame(draw);
-            }
-
-            draw();
-        }
-
-        document.getElementById('playPauseBtn').addEventListener('click', () => {
-            if (isPlaying) {
-                isPlaying = false;
-                document.getElementById('playPauseBtn').textContent = 'Play';
-            } else {
-                isPlaying = true;
-                document.getElementById('playPauseBtn').textContent = 'Pause';
-                step();
-            }
-        });
-
-        document.getElementById('resetBtn').addEventListener('click', () => {
-            document.querySelectorAll('.beat').forEach(beat => beat.classList.remove('active'));
-        });
-
-        document.getElementById('randomizeBtn').addEventListener('click', () => {
-            document.querySelectorAll('.beat').forEach(beat => {
-                beat.classList.toggle('active', Math.random() > 0.5);
-            });
-        });
-
-        document.getElementById('tempoDownBtn').addEventListener('click', () => {
-            if (tempo > 60) {
-                tempo -= 5;
-                document.getElementById('tempoDisplay').textContent = `${tempo} BPM`;
-            }
-        });
-
-        document.getElementById('tempoUpBtn').addEventListener('click', () => {
-            if (tempo < 180) {
-                tempo += 5;
-                document.getElementById('tempoDisplay').textContent = `${tempo} BPM`;
-            }
-        });
-
-        createDrumMachine();
-        drawVisualizer();
-    </script>
+/* a gentle starter groove so it's not empty */
+['kick'].forEach(i => [0,4].forEach(s=>{ pattern[i][s]=true; }));
+['hat'].forEach(i => [0,2,4,6].forEach(s=>{ pattern[i][s]=true; }));
+['snare'].forEach(i => [4].forEach(s=>{ pattern[i][s]=true; }));
+document.querySelectorAll('.beat').forEach(c => {
+  if (pattern[c.dataset.inst][+c.dataset.step]) c.classList.add('active');
+});
+</script>
 </body>
 </html>
