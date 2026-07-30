@@ -167,11 +167,27 @@ const MALLET_R = 30;
 const MAX_PUCK = 16;            // max puck speed
 const FRICTION = 0.9965;
 
+/* The CPU is tuned to feel like an opponent rather than a wall. It plays well
+ * because it reads the puck (bounce prediction, shot geometry), not because it
+ * moves faster than physics — that's what used to make the top tiers feel
+ * cheap. Each tier trades away a bit of sight and a bit of speed:
+ *   speed/accel : it has momentum, so hard reversals cost it real time
+ *   reaction    : frames of lag before it "sees" the puck — the main window
+ *                 you get to beat it through
+ *   aimError    : drift on where it thinks the puck is going
+ *   errFloor    : the share of that drift it can NEVER correct, even as the
+ *                 puck arrives. This is the knob that actually separates the
+ *                 tiers — without it every tier converges on the right spot
+ *                 before the puck gets there and saves ~everything.
+ *   aggression  : how far up-table it steps out to meet the puck
+ *   riskLine    : the y it defends at (lower = hugs its own goal)
+ *   recovery    : follow-through frames after a hit, when it stops chasing
+ */
 const DIFF = {
-  easy:       { ai: 3.2,  react: 0.055, defend: 0.42, predict: 1.0 },
-  medium:     { ai: 4.7,  react: 0.095, defend: 0.60, predict: 1.7 },
-  hard:       { ai: 6.7,  react: 0.145, defend: 0.80, predict: 2.6 },
-  impossible: { ai: 11.5, react: 0.32,  defend: 1.0,  predict: 4.6 },
+  easy:       { speed: 4.2,  accel: 0.42, reaction: 13, aimError: 78, errFloor: 0.90, errorEvery: 28, aggression: 0.30, strike: 0.55, defend: 0.42, recovery: 30, riskLine: 0.24 },
+  medium:     { speed: 6.4,  accel: 0.62, reaction: 9,  aimError: 46, errFloor: 0.60, errorEvery: 24, aggression: 0.52, strike: 0.75, defend: 0.60, recovery: 22, riskLine: 0.30 },
+  hard:       { speed: 8.2,  accel: 0.85, reaction: 6,  aimError: 26, errFloor: 0.32, errorEvery: 20, aggression: 0.70, strike: 0.90, defend: 0.78, recovery: 15, riskLine: 0.36 },
+  impossible: { speed: 10.2, accel: 1.15, reaction: 3,  aimError: 12, errFloor: 0.12, errorEvery: 16, aggression: 0.85, strike: 1.00, defend: 0.92, recovery: 9,  riskLine: 0.41 },
 };
 let difficulty = 'medium';
 
@@ -221,6 +237,9 @@ function centerPuck(dir){
   puck.vx = 0; puck.vy = dir * 3.2;
   puck.trail = [];
   stuckRef.x = W/2; stuckRef.y = H/2; stuckFrames = 0;
+  // Drop the CPU's memory of the puck so it doesn't react to pre-goal history.
+  puckHistory.length = 0;
+  ai.mode = 'hold'; ai.cool = 0; ai.errT = 0;
 }
 function startGame(){
   reset();
@@ -293,35 +312,157 @@ function collidePuckMallet(m, isPlayer){
     if(away < 2){ puck.vx += nx*3; puck.vy += ny*3; }
     burst(puck.x, puck.y, isPlayer ? '#67e8f9' : '#ff8fb0', 8, 4);
     shake = Math.max(shake, 5);
+    if(!isPlayer) ai.cool = DIFF[difficulty].recovery;
   }
 }
 
 // ---- AI ----
+const ai = { mode:'hold', cool:0, errT:0, ex:0, ey:0, aimBias:0 };
+const puckHistory = [];
+
+// Roughly normal, range about [-1,1].
+function gauss(){ return (Math.random()+Math.random()+Math.random()-1.5)/1.5; }
+
+function recordPuck(){
+  puckHistory.push({ x:puck.x, y:puck.y, vx:puck.vx, vy:puck.vy });
+  if(puckHistory.length > 64) puckHistory.shift();
+}
+// What the CPU believes the puck is doing, `frames` behind reality.
+function delayedPuck(frames){
+  if(!puckHistory.length) return { x:puck.x, y:puck.y, vx:puck.vx, vy:puck.vy };
+  return puckHistory[clamp(puckHistory.length-1-Math.round(frames), 0, puckHistory.length-1)];
+}
+
+// Roll the puck forward through friction and wall bounces, and report where it
+// first crosses `lineY` heading up-table. This is what lets the CPU read a
+// bank shot instead of chasing the puck's current position.
+function predictCross(src, lineY, maxSteps){
+  let x = src.x, y = src.y, vx = src.vx, vy = src.vy;
+  for(let t=1; t<=maxSteps; t++){
+    const prevY = y;
+    x += vx; y += vy;
+    vx *= FRICTION; vy *= FRICTION;
+    if(x - PUCK_R < WALL){ x = WALL+PUCK_R; vx = Math.abs(vx); }
+    else if(x + PUCK_R > W-WALL){ x = W-WALL-PUCK_R; vx = -Math.abs(vx); }
+    if(y - PUCK_R < WALL){ y = WALL+PUCK_R; vy = Math.abs(vy); }
+    else if(y + PUCK_R > H-WALL && !inGoalX(x)){ y = H-WALL-PUCK_R; vy = -Math.abs(vy); }
+    if(prevY > lineY && y <= lineY) return { x, t };
+  }
+  return null;
+}
+
 function updateAI(dt){
   const d = DIFF[difficulty];
-  let tx, ty;
-  const puckInTop = puck.y < H*0.5;
-  if(puckInTop){
-    // attack: get behind puck (above it) and push down
-    tx = puck.x + puck.vx * d.predict;
-    ty = Math.min(puck.y - 6, H*0.5 - MALLET_R - 4);
-    // if puck above mallet, reposition below to strike down
-    if(puck.y < cpu.y){ ty = puck.y + MALLET_R*0.6; }
-  } else {
-    // defend: track puck x toward home, mix by defend factor
-    const homeX = W/2 + (puck.x - W/2) * d.defend;
-    tx = homeX; ty = H*0.16;
+
+  // Mild rubber band: ease off when the CPU is running away with the game,
+  // tighten up when it's behind. Left out of "impossible" so that tier stays
+  // honest about what it is.
+  let errMul = 1, spdMul = 1;
+  if(difficulty !== 'impossible'){
+    const lead = cpuS - youS;
+    if(lead > 0){ errMul += Math.min(lead,4)*0.14; spdMul -= Math.min(lead,4)*0.035; }
+    else if(lead < 0){ errMul -= Math.min(-lead,4)*0.07; spdMul += Math.min(-lead,4)*0.02; }
   }
-  tx = clamp(tx, WALL+MALLET_R, W-WALL-MALLET_R);
-  ty = clamp(ty, WALL+MALLET_R, H*0.5 - MALLET_R);
-  // accelerate toward target, capped
-  const ax = (tx - cpu.x) * d.react;
-  const ay = (ty - cpu.y) * d.react;
-  cpu.vx = clamp(cpu.vx*0.6 + ax, -d.ai, d.ai);
-  cpu.vy = clamp(cpu.vy*0.6 + ay, -d.ai, d.ai);
+  const maxSpeed = d.speed * spdMul;
+
+  // Re-roll aim error on a slow cadence, so the CPU drifts off target for a
+  // stretch rather than jittering around the right answer every frame.
+  ai.errT -= dt;
+  if(ai.errT <= 0){
+    ai.errT = d.errorEvery * (0.6 + Math.random()*0.8);
+    ai.ex = gauss() * d.aimError * errMul;
+    ai.ey = gauss() * d.aimError * 0.45 * errMul;
+    ai.aimBias = gauss() * 0.5;
+  }
+  if(ai.cool > 0) ai.cool -= dt;
+
+  const view  = delayedPuck(d.reaction);
+  const half  = H*0.5;
+  const homeY = H*0.15;
+  const lineY = H * d.riskLine;
+  const minX = WALL+MALLET_R, maxX = W-WALL-MALLET_R;
+  const minY = WALL+MALLET_R, maxY = half-MALLET_R;
+
+  let tx, ty, striking = false;
+
+  if(ai.cool > 0){
+    // Follow-through after a hit: hold the line instead of instantly
+    // re-engaging. Without this it camps the puck and never lets you set up.
+    ai.mode = 'hold';
+    tx = W/2 + (view.x - W/2) * d.defend;
+    ty = lineY;
+  } else if(view.y < half - PUCK_R){
+    // Puck is on the CPU's side. Hysteresis on the threshold keeps it from
+    // flipping modes when the puck sits level with the mallet.
+    const edge = ai.mode === 'strike' ? -8 : 8;
+    ai.mode = (view.y > cpu.y + edge) ? 'strike' : 'around';
+
+    if(ai.mode === 'strike'){
+      // Lead the puck by roughly how long it'll take to get there.
+      const lead = clamp(Math.hypot(view.x-cpu.x, view.y-cpu.y) / Math.max(maxSpeed,1), 0, 22);
+      const px = clamp(view.x + view.vx*lead*0.8, minX, maxX);
+      const py = clamp(view.y + view.vy*lead*0.8, WALL+PUCK_R, half);
+
+      // Aim at the emptier half of the player's goal, then line up directly
+      // behind the puck along that shot line — that's what produces angled
+      // shots instead of flat pushes straight into the waiting mallet.
+      const goalX = W/2 + (you.x < W/2 ? 1 : -1) * (GOAL_W*0.32) + ai.aimBias*40 + ai.ex*0.4;
+      const gdx = goalX - px, gdy = (H+10) - py;
+      const gm = Math.hypot(gdx, gdy) || 1;
+      const back = PUCK_R + MALLET_R - 4;
+      tx = px - gdx/gm*back;
+      ty = py - gdy/gm*back;
+      striking = Math.hypot(px-cpu.x, py-cpu.y) < 110;
+    } else {
+      // Puck slipped in behind the mallet. Swing around the side rather than
+      // shoving it back toward its own goal.
+      const side = view.x < W/2 ? 1 : -1;
+      tx = view.x + side * (MALLET_R + PUCK_R + 10);
+      ty = view.y - (MALLET_R + PUCK_R) * 0.35;
+      if(ty < minY + 2) ty = view.y + MALLET_R*0.9;  // pinned on the back wall: come from the side
+    }
+  } else {
+    // Puck is on the player's side: figure out if and where it's coming back.
+    ai.mode = 'defend';
+    const hit = view.vy < -0.3 ? predictCross(view, lineY, 150) : null;
+    if(hit){
+      const urgency = clamp(1 - hit.t/70, 0, 1);
+      // It tightens up as the puck closes, but only down to errFloor — the
+      // rest of the misread sticks, so lower tiers leave a real gap open.
+      const keep = d.errFloor + (1 - d.errFloor) * (1 - urgency*0.55);
+      tx = hit.x + ai.ex * keep;
+      ty = lineY - (1 - d.aggression)*40 + urgency*d.aggression*34 + ai.ey*0.3;
+    } else {
+      tx = W/2 + (view.x - W/2) * d.defend + ai.ex*0.5;
+      ty = homeY + (half - homeY) * d.aggression * 0.22;
+    }
+  }
+
+  tx = clamp(tx, minX, maxX);
+  ty = clamp(ty, minY, maxY);
+
+  // Acceleration-limited pursuit. The mallet carries momentum, so a sudden
+  // change of direction genuinely costs it time.
+  const dx = tx - cpu.x, dy = ty - cpu.y;
+  const dist = Math.hypot(dx, dy);
+  const cap = maxSpeed * (striking ? 1 + 0.3*d.strike : 1);
+  if(dist > 0.5){
+    const want = Math.min(dist*0.3, cap);
+    const ddx = dx/dist*want - cpu.vx, ddy = dy/dist*want - cpu.vy;
+    const dm = Math.hypot(ddx, ddy) || 1;
+    const acc = Math.min(dm, d.accel * (striking ? 1.55 : 1) * dt);
+    cpu.vx += ddx/dm*acc; cpu.vy += ddy/dm*acc;
+  } else {
+    cpu.vx *= 0.8; cpu.vy *= 0.8;
+  }
+  const sp = Math.hypot(cpu.vx, cpu.vy);
+  if(sp > cap){ cpu.vx = cpu.vx/sp*cap; cpu.vy = cpu.vy/sp*cap; }
+
   cpu.x += cpu.vx*dt; cpu.y += cpu.vy*dt;
-  cpu.x = clamp(cpu.x, WALL+MALLET_R, W-WALL-MALLET_R);
-  cpu.y = clamp(cpu.y, WALL+MALLET_R, H*0.5 - MALLET_R);
+  if(cpu.x < minX){ cpu.x = minX; cpu.vx = 0; }
+  if(cpu.x > maxX){ cpu.x = maxX; cpu.vx = 0; }
+  if(cpu.y < minY){ cpu.y = minY; cpu.vy = 0; }
+  if(cpu.y > maxY){ cpu.y = maxY; cpu.vy = 0; }
 }
 
 // ---- Player ----
@@ -514,6 +655,7 @@ function loop(now){
 
   if(state === 'play'){
     updatePlayer(dt);
+    recordPuck();
     updateAI(dt);
     updatePuck(dt);
   } else if(state === 'goal'){
