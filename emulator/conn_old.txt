@@ -1,0 +1,29 @@
+function bluetoothView(){
+  const devices=[{n:'AirPods Pro',s:'Connected'},{n:'Isaiah’s Apple Watch',s:'Connected'},{n:'Spectrum Voice Remote',s:'Not Connected'},{n:'Honda HR-V',s:'Not Connected'}];
+  return {title:'Bluetooth', build(b,nav){
+    const s=State.settings;
+    group(b,{rows:[{label:'Bluetooth', toggle:()=>s.bluetooth, onToggle:v=>{s.bluetooth=v;save();nav.refresh();}}],
+      footer:s.bluetooth?`Now discoverable as “${esc(s.name)}”.`:''});
+    if(s.bluetooth){
+      group(b,{header:'My Devices',rows:devices.map(d=>({label:d.n,value:d.s,onClick:()=>toast(d.s==='Connected'?'Disconnected '+d.n:'Connecting to '+d.n)}))});
+      const g=el('div','grp-h','Other Devices'); b.appendChild(g);
+      const sp=el('div','grp'); sp.innerHTML=`<div class="row static"><div class="spinner"></div><div class="lbl muted">Searching…</div></div>`;
+      b.appendChild(sp);
+    }
+  }};
+}
+function cellularView(){
+  return {title:'Cellular', build(b,nav){
+    const s=State.settings;
+    group(b,{rows:[
+      {label:'Cellular Data', toggle:()=>s.cellular, onToggle:v=>{s.cellular=v;save();applyAppearance();}},
+      {label:'Cellular Data Options', value:'5G Auto', onClick:()=>toast('Simulated')},
+      {label:'Personal Hotspot', value:'Off', onClick:()=>toast('Simulated')}]});
+    group(b,{header:'Cellular Data',rows:[
+      {label:'Current Period',value:'14.8 GB'},
+      {label:'Current Period Roaming',value:'0 bytes'}]});
+    const apps=['Safari|1.9 GB','Netflix|4.2 GB','Spectrum TV|3.1 GB','YouTube TV|2.4 GB','Mail|142 MB','App Store|1.1 GB'];
+    group(b,{header:'Cellular Data Usage',rows:apps.map(a=>{const[n,v]=a.split('|');
+      return {label:n,value:v,rightHTML:'<div class="sw on" style="pointer-events:none"></div>'};})});
+  }};
+}
