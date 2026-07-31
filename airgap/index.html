@@ -1,0 +1,1591 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Airgap &mdash; optical file transfer</title>
+<style>
+:root{
+  --bg:#0b0e14; --panel:#121722; --panel2:#0f141d; --line:#222a39;
+  --fg:#e6edf6; --dim:#8b97ab; --accent:#4ade80; --accent2:#38bdf8;
+  --warn:#fbbf24; --bad:#f87171;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--fg); min-height:100vh;
+  font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+header{
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding:14px 20px; border-bottom:1px solid var(--line); background:var(--panel2);
+  position:sticky; top:0; z-index:10;
+}
+h1{font-size:15px;margin:0;letter-spacing:.5px;font-weight:600}
+h1 span{color:var(--accent)}
+.sub{color:var(--dim);font-size:12px}
+nav{margin-left:auto;display:flex;gap:6px}
+nav button{
+  background:transparent;border:1px solid var(--line);color:var(--dim);
+  padding:7px 14px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;
+}
+nav button:hover{color:var(--fg);border-color:#3a465c}
+nav button.on{background:var(--accent);border-color:var(--accent);color:#05240f}
+main{padding:20px;max-width:1180px;margin:0 auto}
+.panel{display:none}
+.panel.on{display:block}
+.grid{display:grid;grid-template-columns:minmax(320px,1fr) minmax(340px,420px);gap:18px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:0 0 12px}
+.drop{
+  border:2px dashed #2c3648;border-radius:10px;padding:26px 16px;text-align:center;
+  cursor:pointer;transition:.15s;color:var(--dim)
+}
+.drop:hover,.drop.hot{border-color:var(--accent);color:var(--fg);background:#101a14}
+.drop b{color:var(--fg);display:block;margin-bottom:4px;font-size:15px}
+label.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:9px 0;font-size:13px}
+label.row span{color:var(--dim)}
+select,input[type=number]{
+  background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+  border-radius:7px;padding:6px 9px;font:inherit;font-size:13px;min-width:120px
+}
+input[type=range]{width:150px;accent-color:var(--accent)}
+button.act{
+  background:var(--accent);border:none;color:#05240f;padding:9px 16px;border-radius:8px;
+  font-weight:600;cursor:pointer;font-size:13px
+}
+button.act:hover{filter:brightness(1.1)}
+button.act:disabled{opacity:.35;cursor:default;filter:none}
+button.ghost{
+  background:transparent;border:1px solid var(--line);color:var(--fg);
+  padding:9px 14px;border-radius:8px;cursor:pointer;font-size:13px
+}
+button.ghost:hover{border-color:#3a465c}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.qrwrap{background:#fff;border-radius:12px;padding:14px;display:flex;justify-content:center}
+#qr{image-rendering:pixelated;width:100%;height:auto;display:block;max-width:640px}
+.stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin-top:12px}
+.stat div{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.stat b{display:block;font:600 16px/1.2 var(--mono);color:var(--accent2)}
+.stat i{font-style:normal;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+.bar{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+#vidwrap{position:relative;background:#000;border-radius:10px;overflow:hidden;aspect-ratio:4/3}
+#vid{width:100%;height:100%;object-fit:cover;display:block}
+#ovl{position:absolute;inset:0;width:100%;height:100%}
+#chunks{display:flex;flex-wrap:wrap;gap:2px;margin-top:10px;max-height:190px;overflow:auto}
+#chunks u{width:9px;height:9px;border-radius:2px;background:#1e2635;text-decoration:none;display:block}
+#chunks u.got{background:var(--accent)}
+.log{
+  font:11px/1.55 var(--mono);background:var(--panel2);border:1px solid var(--line);
+  border-radius:8px;padding:9px;height:150px;overflow:auto;white-space:pre-wrap;color:var(--dim);margin-top:10px
+}
+.log b{color:var(--fg);font-weight:400}
+.log .ok{color:var(--accent)}
+.log .er{color:var(--bad)}
+.log .wa{color:var(--warn)}
+.note{font-size:12px;color:var(--dim);margin-top:10px}
+.note code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-family:var(--mono)}
+.pill{
+  display:inline-block;font:600 10px/1 var(--mono);padding:4px 7px;border-radius:99px;
+  background:#1a2333;color:var(--accent2);letter-spacing:.5px;vertical-align:middle
+}
+.hide{display:none!important}
+ol.steps{margin:0;padding-left:18px;color:var(--dim);font-size:13px}
+ol.steps li{margin:5px 0}
+ol.steps b{color:var(--fg);font-weight:600}
+table.tt{width:100%;border-collapse:collapse;font:12px/1.5 var(--mono)}
+table.tt td{padding:3px 6px;border-bottom:1px solid var(--line)}
+table.tt td:last-child{text-align:right}
+</style>
+</head>
+<body>
+<header>
+  <h1>AIR<span>GAP</span></h1>
+  <div class="sub">optical file transfer &mdash; animated QR, fully offline</div>
+  <nav>
+    <button id="tabSend" class="on">Send</button>
+    <button id="tabRecv">Receive</button>
+    <button id="tabDiag">Self&nbsp;test</button>
+  </nav>
+</header>
+<main>
+
+<!-- ============================ SEND ============================ -->
+<section id="pSend" class="panel on">
+<div class="grid">
+  <div class="card">
+    <h2>Transmitter</h2>
+    <div class="qrwrap"><canvas id="qr" width="512" height="512"></canvas></div>
+    <div class="btnrow">
+      <button class="act" id="play" disabled>Play</button>
+      <button class="ghost" id="prev" disabled>&#8592;</button>
+      <button class="ghost" id="next" disabled>&#8594;</button>
+      <button class="ghost" id="full" disabled>Fullscreen</button>
+    </div>
+    <div class="stat">
+      <div><b id="sFrame">&mdash;</b><i>frame</i></div>
+      <div><b id="sPass">0</b><i>pass</i></div>
+      <div><b id="sVer">&mdash;</b><i>qr version</i></div>
+      <div><b id="sRate">&mdash;</b><i>bytes/s</i></div>
+      <div><b id="sEta">&mdash;</b><i>pass time</i></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>File</h2>
+      <div class="drop" id="drop">
+        <b>Drop a file here</b>
+        or click to choose
+      </div>
+      <input type="file" id="file" class="hide">
+      <div id="fileInfo" class="note"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Channel settings</h2>
+      <label class="row"><span>Payload / frame</span>
+        <select id="optChunk">
+          <option value="120">120 B &mdash; tiny (easiest)</option>
+          <option value="250">250 B &mdash; small</option>
+          <option value="450" selected>450 B &mdash; medium</option>
+          <option value="800">800 B &mdash; large</option>
+          <option value="1200">1200 B &mdash; huge (needs good cam)</option>
+        </select>
+      </label>
+      <label class="row"><span>Error correction</span>
+        <select id="optEcc">
+          <option value="0">L &mdash; 7% (densest)</option>
+          <option value="1" selected>M &mdash; 15%</option>
+          <option value="2">Q &mdash; 25%</option>
+          <option value="3">H &mdash; 30% (toughest)</option>
+        </select>
+      </label>
+      <label class="row"><span>Frames / second</span>
+        <input type="range" id="optFps" min="1" max="20" value="6">
+        <b id="fpsOut" style="font:600 13px var(--mono);color:var(--accent2);min-width:24px">6</b>
+      </label>
+      <label class="row"><span>Compress (gzip)</span>
+        <input type="checkbox" id="optGz" checked style="width:16px;height:16px;accent-color:var(--accent)">
+      </label>
+      <div class="note">Lower FPS + bigger error correction = fewer dropped frames. The sender loops forever; the receiver just needs to see each frame once.</div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>How to use</h2>
+      <ol class="steps">
+        <li>On the <b>offline</b> machine: pick a file, hit Play.</li>
+        <li>On the <b>other</b> machine: open this same page, go to <b>Receive</b>, start the camera.</li>
+        <li>Point the camera at the screen. Fill the frame with the QR code.</li>
+        <li>Leave it running until progress hits 100%, then download.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============================ RECEIVE ============================ -->
+<section id="pRecv" class="panel">
+<div class="grid">
+  <div class="card">
+    <h2>Receiver</h2>
+    <div id="vidwrap">
+      <video id="vid" playsinline muted></video>
+      <canvas id="ovl"></canvas>
+    </div>
+    <div class="btnrow">
+      <button class="act" id="camOn">Start camera</button>
+      <button class="ghost" id="camOff" disabled>Stop</button>
+      <select id="camSel" style="min-width:150px"></select>
+    </div>
+    <div class="stat">
+      <div><b id="rScan">0</b><i>decodes/s</i></div>
+      <div><b id="rSeen">0</b><i>frames read</i></div>
+      <div><b id="rBad">0</b><i>rejected</i></div>
+      <div><b id="rBps">&mdash;</b><i>bytes/s</i></div>
+    </div>
+    <div class="note">No camera? Drop a photo or screenshot of a frame anywhere on this panel to decode it.</div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Incoming</h2>
+      <div id="rMeta" class="note" style="margin:0 0 10px">Waiting for a header frame&hellip;</div>
+      <div class="bar"><i id="rBar"></i></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font:12px var(--mono);color:var(--dim)">
+        <span id="rCount">0 / 0 chunks</span><span id="rPct">0%</span>
+      </div>
+      <div id="chunks"></div>
+      <div class="btnrow">
+        <button class="act" id="save" disabled>Save file</button>
+        <button class="ghost" id="reset">Reset</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h2>Log</h2>
+      <div class="log" id="rLog"></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============================ DIAG ============================ -->
+<section id="pDiag" class="panel">
+<div class="card">
+  <h2>Encoder / decoder self test</h2>
+  <div class="note" style="margin-top:0">
+    Round-trips random payloads through the built-in QR encoder and decoder without a camera,
+    including deliberately corrupted modules to exercise Reed&ndash;Solomon recovery.
+  </div>
+  <div class="btnrow"><button class="act" id="runTest">Run tests</button></div>
+  <div class="log" id="tLog" style="height:320px"></div>
+</div>
+</section>
+
+</main>
+<script>
+"use strict";
+/* =====================================================================
+   1. GF(256) arithmetic + Reed-Solomon (encode & decode)
+   ===================================================================== */
+const GF_EXP = new Uint8Array(512), GF_LOG = new Uint8Array(256);
+(function () {
+  let x = 1;
+  for (let i = 0; i < 255; i++) { GF_EXP[i] = x; GF_LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11d; }
+  for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+})();
+const gmul = (a, b) => (a === 0 || b === 0) ? 0 : GF_EXP[GF_LOG[a] + GF_LOG[b]];
+const ginv = a => GF_EXP[255 - GF_LOG[a]];
+const gdiv = (a, b) => a === 0 ? 0 : GF_EXP[(GF_LOG[a] + 255 - GF_LOG[b]) % 255];
+
+const genCache = new Map();
+function rsGenPoly(deg) {
+  if (genCache.has(deg)) return genCache.get(deg);
+  let p = new Uint8Array([1]);
+  for (let i = 0; i < deg; i++) {
+    const np = new Uint8Array(p.length + 1);
+    for (let j = 0; j < p.length; j++) { np[j] ^= p[j]; np[j + 1] ^= gmul(p[j], GF_EXP[i]); }
+    p = np;
+  }
+  genCache.set(deg, p);
+  return p;
+}
+function rsEncode(data, ecLen) {
+  const gen = rsGenPoly(ecLen);
+  const buf = new Uint8Array(data.length + ecLen);
+  buf.set(data);
+  for (let i = 0; i < data.length; i++) {
+    const f = buf[i];
+    if (!f) continue;
+    for (let j = 1; j < gen.length; j++) buf[i + j] ^= gmul(gen[j], f);
+  }
+  return buf.subarray(data.length);
+}
+
+/* --- polynomials for the decoder: coefficients highest-degree first --- */
+const pTrim = c => { let i = 0; while (i < c.length - 1 && c[i] === 0) i++; return i ? c.slice(i) : c; };
+const pDeg = c => c.length - 1;
+const pIsZero = c => c.length === 1 && c[0] === 0;
+const pCoef = (c, d) => c[c.length - 1 - d];
+function pAdd(a, b) {
+  const n = Math.max(a.length, b.length), r = new Uint8Array(n);
+  for (let i = 0; i < a.length; i++) r[i + n - a.length] ^= a[i];
+  for (let i = 0; i < b.length; i++) r[i + n - b.length] ^= b[i];
+  return pTrim(r);
+}
+function pMul(a, b) {
+  if (pIsZero(a) || pIsZero(b)) return new Uint8Array([0]);
+  const r = new Uint8Array(a.length + b.length - 1);
+  for (let i = 0; i < a.length; i++) { if (!a[i]) continue; for (let j = 0; j < b.length; j++) r[i + j] ^= gmul(a[i], b[j]); }
+  return pTrim(r);
+}
+function pScale(a, s) {
+  if (s === 0) return new Uint8Array([0]);
+  const r = new Uint8Array(a.length);
+  for (let i = 0; i < a.length; i++) r[i] = gmul(a[i], s);
+  return pTrim(r);
+}
+function pMonomial(deg, coef) {
+  if (coef === 0) return new Uint8Array([0]);
+  const r = new Uint8Array(deg + 1); r[0] = coef; return r;
+}
+function pMulMonomial(a, deg, coef) {
+  if (coef === 0) return new Uint8Array([0]);
+  const r = new Uint8Array(a.length + deg);
+  for (let i = 0; i < a.length; i++) r[i] = gmul(a[i], coef);
+  return pTrim(r);
+}
+function pEval(c, x) {
+  if (x === 0) return pCoef(c, 0);
+  let y = c[0];
+  for (let i = 1; i < c.length; i++) y = gmul(y, x) ^ c[i];
+  return y;
+}
+
+/* Euclidean-algorithm Reed-Solomon decoder (generator base a^0, as QR uses).
+   Mutates `msg` in place; returns number of corrected symbols, or -1 on failure. */
+function rsDecode(msg, ecLen) {
+  const synd = new Uint8Array(ecLen);
+  let bad = false;
+  for (let i = 0; i < ecLen; i++) {
+    let s = 0, a = GF_EXP[i];
+    for (let j = 0; j < msg.length; j++) s = gmul(s, a) ^ msg[j];
+    synd[ecLen - 1 - i] = s;
+    if (s) bad = true;
+  }
+  if (!bad) return 0;
+
+  let rLast = pMonomial(ecLen, 1), r = pTrim(synd.slice());
+  let tLast = new Uint8Array([0]), t = new Uint8Array([1]);
+  while (pDeg(r) >= ecLen / 2) {
+    const rLL = rLast, tLL = tLast;
+    rLast = r; tLast = t;
+    if (pIsZero(rLast)) return -1;
+    r = rLL;
+    let q = new Uint8Array([0]);
+    const dltInv = ginv(pCoef(rLast, pDeg(rLast)));
+    let guard = 0;
+    while (pDeg(r) >= pDeg(rLast) && !pIsZero(r)) {
+      if (++guard > 300) return -1;
+      const dd = pDeg(r) - pDeg(rLast);
+      const sc = gmul(pCoef(r, pDeg(r)), dltInv);
+      q = pAdd(q, pMonomial(dd, sc));
+      r = pAdd(r, pMulMonomial(rLast, dd, sc));
+    }
+    t = pAdd(pMul(q, tLast), tLL);
+    if (pDeg(r) >= pDeg(rLast)) return -1;
+  }
+  const s0 = pCoef(t, 0);
+  if (s0 === 0) return -1;
+  const inv = ginv(s0);
+  const sigma = pScale(t, inv), omega = pScale(r, inv);
+
+  const nErr = pDeg(sigma);
+  if (nErr < 1) return -1;
+  const locs = [];
+  if (nErr === 1) locs.push(pCoef(sigma, 1));
+  else { for (let i = 1; i < 256 && locs.length < nErr; i++) if (pEval(sigma, i) === 0) locs.push(ginv(i)); }
+  if (locs.length !== nErr) return -1;
+
+  for (let i = 0; i < nErr; i++) {
+    const xiInv = ginv(locs[i]);
+    let den = 1;
+    for (let j = 0; j < nErr; j++) {
+      if (i === j) continue;
+      const term = gmul(locs[j], xiInv);
+      den = gmul(den, (term & 1) === 0 ? (term | 1) : (term & ~1));
+    }
+    if (den === 0) return -1;
+    const mag = gmul(pEval(omega, xiInv), ginv(den));
+    const pos = msg.length - 1 - GF_LOG[locs[i]];
+    if (pos < 0 || pos >= msg.length) return -1;
+    msg[pos] ^= mag;
+  }
+  return nErr;
+}
+
+/* =====================================================================
+   2. QR code tables & geometry (shared by encoder and decoder)
+   ===================================================================== */
+// index [ecl][version]; ecl 0=L 1=M 2=Q 3=H
+const ECC_PER_BLOCK = [
+  [0,7,10,15,20,26,18,20,24,30,18,20,24,26,30,22,24,20,30,24,28,28,28,28,30,28,30,30,26,28,30,30,30,30,30,30,30,30,30,30,30],
+  [0,10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26,26,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28],
+  [0,13,22,18,26,18,24,18,22,20,24,28,26,24,20,30,24,28,28,26,30,28,30,30,30,30,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],
+  [0,17,28,22,16,22,28,26,26,24,28,24,28,22,24,24,30,28,28,26,28,30,24,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30]
+];
+const NUM_BLOCKS = [
+  [0,1,1,1,1,1,2,2,2,2,4,4,4,4,4,6,6,6,6,7,8,8,9,9,10,12,12,12,13,14,15,16,17,18,19,19,20,21,22,24,25],
+  [0,1,1,1,2,2,4,4,4,5,5,5,8,9,9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,31,33,35,37,38,40,43,45,47,49],
+  [0,1,1,2,2,4,4,6,6,8,8,8,10,12,16,12,17,16,18,21,20,23,23,25,27,29,34,34,35,38,40,43,45,48,51,53,56,59,62,65,68],
+  [0,1,1,2,4,4,4,5,6,8,8,11,11,16,16,18,16,19,21,25,25,25,34,30,32,35,37,40,42,45,48,51,54,57,60,63,66,70,74,77,81]
+];
+const ECL_NAME = ['L', 'M', 'Q', 'H'];
+const ECL_TO_BITS = [1, 0, 3, 2];              // spec's 2-bit encoding
+const ECL_FROM_BITS = [1, 0, 3, 2];            // it is its own inverse
+
+function numRawDataModules(ver) {
+  let r = (16 * ver + 128) * ver + 64;
+  if (ver >= 2) {
+    const na = ((ver / 7) | 0) + 2;
+    r -= (25 * na - 10) * na - 55;
+    if (ver >= 7) r -= 36;
+  }
+  return r;
+}
+const numTotalCodewords = ver => Math.floor(numRawDataModules(ver) / 8);
+const numDataCodewords = (ver, ecl) => numTotalCodewords(ver) - ECC_PER_BLOCK[ecl][ver] * NUM_BLOCKS[ecl][ver];
+const byteCapacity = (ver, ecl) => Math.floor((numDataCodewords(ver, ecl) * 8 - 4 - (ver < 10 ? 8 : 16)) / 8);
+
+function alignPositions(ver) {
+  if (ver === 1) return [];
+  const n = ((ver / 7) | 0) + 2;
+  const step = ver === 32 ? 26 : Math.ceil((ver * 4 + 4) / (n * 2 - 2)) * 2;
+  const out = [6];
+  for (let pos = ver * 4 + 17 - 7; out.length < n; pos -= step) out.splice(1, 0, pos);
+  return out;
+}
+
+/* 15-bit format info, already XOR-masked */
+function formatBitsFor(ecl, mask) {
+  const d = (ECL_TO_BITS[ecl] << 3) | mask;
+  let rem = d;
+  for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+  return ((d << 10) | rem) ^ 0x5412;
+}
+/* 18-bit version info for v >= 7 */
+function versionBitsFor(ver) {
+  let rem = ver;
+  for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25);
+  return (ver << 12) | rem;
+}
+/* module coordinates carrying format bit i (i = 0 is the LSB), both copies */
+function formatBitPositions(size) {
+  const c1 = [], c2 = [];
+  for (let i = 0; i <= 5; i++) c1.push([8, i]);
+  c1.push([8, 7]); c1.push([8, 8]); c1.push([7, 8]);
+  for (let i = 9; i < 15; i++) c1.push([14 - i, 8]);
+  for (let i = 0; i < 8; i++) c2.push([size - 1 - i, 8]);
+  for (let i = 8; i < 15; i++) c2.push([8, size - 15 + i]);
+  return [c1, c2];
+}
+
+/* Build the function-pattern layer for a version.
+   Returns {size, base:Uint8Array (1=dark), fn:Uint8Array (1=reserved)} */
+const tmplCache = new Map();
+function qrTemplate(ver) {
+  if (tmplCache.has(ver)) return tmplCache.get(ver);
+  const size = ver * 4 + 17;
+  const base = new Uint8Array(size * size), fn = new Uint8Array(size * size);
+  const set = (x, y, dark) => { if (x < 0 || y < 0 || x >= size || y >= size) return; base[y * size + x] = dark ? 1 : 0; fn[y * size + x] = 1; };
+
+  // timing patterns
+  for (let i = 0; i < size; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  // finder patterns + separators
+  for (const [cx, cy] of [[3, 3], [size - 4, 3], [3, size - 4]])
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+      const d = Math.max(Math.abs(dx), Math.abs(dy));
+      set(cx + dx, cy + dy, d !== 2 && d !== 4);
+    }
+  // alignment patterns
+  const ap = alignPositions(ver), n = ap.length;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    if ((i === 0 && j === 0) || (i === 0 && j === n - 1) || (i === n - 1 && j === 0)) continue;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
+      set(ap[i] + dx, ap[j] + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+  }
+  // reserve format areas (values written later) + dark module
+  const [c1, c2] = formatBitPositions(size);
+  for (const [x, y] of c1) set(x, y, false);
+  for (const [x, y] of c2) set(x, y, false);
+  set(8, size - 8, true);
+  // version info
+  if (ver >= 7) {
+    const bits = versionBitsFor(ver);
+    for (let i = 0; i < 18; i++) {
+      const on = ((bits >>> i) & 1) === 1, a = size - 11 + (i % 3), b = (i / 3) | 0;
+      set(a, b, on); set(b, a, on);
+    }
+  }
+  // data module traversal order (identical for encode & decode)
+  const order = [];
+  for (let right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (let vert = 0; vert < size; vert++) for (let j = 0; j < 2; j++) {
+      const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - vert : vert;
+      if (!fn[y * size + x]) order.push(y * size + x);
+    }
+  }
+  const t = { size, base, fn, order };
+  tmplCache.set(ver, t);
+  return t;
+}
+
+const MASK_FN = [
+  (x, y) => (x + y) % 2 === 0,
+  (x, y) => y % 2 === 0,
+  (x, y) => x % 3 === 0,
+  (x, y) => (x + y) % 3 === 0,
+  (x, y) => (((y / 2) | 0) + ((x / 3) | 0)) % 2 === 0,
+  (x, y) => (x * y) % 2 + (x * y) % 3 === 0,
+  (x, y) => ((x * y) % 2 + (x * y) % 3) % 2 === 0,
+  (x, y) => ((x + y) % 2 + (x * y) % 3) % 2 === 0
+];
+/* =====================================================================
+   3. QR encoder (8-bit byte mode)
+   ===================================================================== */
+function addEccAndInterleave(data, ver, ecl) {
+  const nBlocks = NUM_BLOCKS[ecl][ver], ecLen = ECC_PER_BLOCK[ecl][ver];
+  const rawCw = numTotalCodewords(ver);
+  const shortLen = Math.floor(rawCw / nBlocks);
+  const nShort = nBlocks - rawCw % nBlocks;
+  const dat = [], ecc = [];
+  for (let i = 0, k = 0; i < nBlocks; i++) {
+    const dl = shortLen - ecLen + (i < nShort ? 0 : 1);
+    const d = data.subarray(k, k + dl); k += dl;
+    dat.push(d); ecc.push(rsEncode(d, ecLen));
+  }
+  const out = new Uint8Array(rawCw);
+  let o = 0;
+  const maxD = shortLen - ecLen + 1;
+  for (let i = 0; i < maxD; i++) for (let b = 0; b < nBlocks; b++) if (i < dat[b].length) out[o++] = dat[b][i];
+  for (let i = 0; i < ecLen; i++) for (let b = 0; b < nBlocks; b++) out[o++] = ecc[b][i];
+  return out;
+}
+
+function penaltyScore(m, size) {
+  let score = 0, dark = 0;
+  const FIND = [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0];
+  const at = (x, y) => m[y * size + x];
+  for (let a = 0; a < 2; a++) {          // a=0 rows, a=1 columns
+    for (let i = 0; i < size; i++) {
+      let run = 1, prev = a ? at(i, 0) : at(0, i);
+      for (let j = 1; j < size; j++) {
+        const v = a ? at(i, j) : at(j, i);
+        if (v === prev) { run++; if (run === 5) score += 3; else if (run > 5) score++; }
+        else { prev = v; run = 1; }
+      }
+      for (let j = 0; j + 11 <= size; j++) {          // rule 3: finder-like
+        let f = true, b = true;
+        for (let k = 0; k < 11; k++) {
+          const v = a ? at(i, j + k) : at(j + k, i);
+          if (v !== FIND[k]) f = false;
+          if (v !== FIND[10 - k]) b = false;
+        }
+        if (f || b) score += 40;
+      }
+    }
+  }
+  for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++) {
+    const v = at(x, y);
+    if (v === at(x + 1, y) && v === at(x, y + 1) && v === at(x + 1, y + 1)) score += 3;
+  }
+  for (let i = 0; i < m.length; i++) dark += m[i];
+  score += Math.floor(Math.abs(dark * 20 - size * size * 10) / (size * size)) * 10;
+  return score;
+}
+
+/** Encode bytes into a QR matrix. Returns {size, modules, version, ecl, mask}. */
+function qrEncode(bytes, ecl, minVer) {
+  let ver = -1;
+  for (let v = minVer || 1; v <= 40; v++) if (bytes.length <= byteCapacity(v, ecl)) { ver = v; break; }
+  if (ver < 0) throw new Error('payload too large for one QR code (' + bytes.length + ' B)');
+
+  const dataCw = numDataCodewords(ver, ecl), capBits = dataCw * 8;
+  const bits = [];
+  const push = (n, val) => { for (let i = n - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+  push(4, 0b0100);
+  push(ver < 10 ? 8 : 16, bytes.length);
+  for (let i = 0; i < bytes.length; i++) push(8, bytes[i]);
+  push(Math.min(4, capBits - bits.length), 0);
+  push((8 - bits.length % 8) % 8, 0);
+  while (bits.length < capBits) push(8, bits.length % 16 === 0 ? 0xEC : 0x11);
+
+  const dataBytes = new Uint8Array(dataCw);
+  for (let i = 0; i < bits.length; i++) if (bits[i]) dataBytes[i >>> 3] |= 0x80 >>> (i & 7);
+  const cw = addEccAndInterleave(dataBytes, ver, ecl);
+
+  const t = qrTemplate(ver), size = t.size;
+  const m = t.base.slice();
+  for (let i = 0; i < cw.length * 8 && i < t.order.length; i++)
+    m[t.order[i]] = (cw[i >>> 3] >>> (7 - (i & 7))) & 1;
+
+  const [c1, c2] = formatBitPositions(size);
+  let best = 0, bestScore = Infinity, bestM = null;
+  for (let mask = 0; mask < 8; mask++) {
+    const cand = m.slice();
+    const f = MASK_FN[mask];
+    for (const idx of t.order) { const y = (idx / size) | 0, x = idx % size; if (f(x, y)) cand[idx] ^= 1; }
+    const fb = formatBitsFor(ecl, mask);
+    for (let i = 0; i < 15; i++) {
+      const b = (fb >>> i) & 1;
+      cand[c1[i][1] * size + c1[i][0]] = b;
+      cand[c2[i][1] * size + c2[i][0]] = b;
+    }
+    const s = penaltyScore(cand, size);
+    if (s < bestScore) { bestScore = s; best = mask; bestM = cand; }
+  }
+  return { size, modules: bestM, version: ver, ecl, mask: best };
+}
+
+/** Paint a QR matrix onto a canvas with a 4-module quiet zone. */
+function qrPaint(canvas, qr, targetPx) {
+  const quiet = 4, total = qr.size + quiet * 2;
+  const scale = Math.max(1, Math.floor((targetPx || 512) / total));
+  const px = total * scale;
+  if (canvas.width !== px) { canvas.width = px; canvas.height = px; }
+  const g = canvas.getContext('2d', { alpha: false });
+  g.fillStyle = '#fff'; g.fillRect(0, 0, px, px);
+  g.fillStyle = '#000';
+  for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++)
+    if (qr.modules[y * qr.size + x]) g.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
+}
+/* =====================================================================
+   4. QR decoder: bit matrix -> payload bytes
+   ===================================================================== */
+const FORMAT_TABLE = (() => {
+  const t = [];
+  for (let e = 0; e < 4; e++) for (let m = 0; m < 8; m++) t.push({ bits: formatBitsFor(e, m), ecl: e, mask: m });
+  return t;
+})();
+const popcount = v => { let c = 0; while (v) { v &= v - 1; c++; } return c; };
+
+function decodeFormat(raw) {
+  let best = null, bestD = 99;
+  for (const c of FORMAT_TABLE) {
+    const d = popcount(c.bits ^ raw);
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  return bestD <= 3 ? { ecl: best.ecl, mask: best.mask, dist: bestD } : null;
+}
+
+function deinterleave(cw, ver, ecl) {
+  const nBlocks = NUM_BLOCKS[ecl][ver], ecLen = ECC_PER_BLOCK[ecl][ver];
+  const rawCw = numTotalCodewords(ver);
+  const shortLen = Math.floor(rawCw / nBlocks);
+  const nShort = nBlocks - rawCw % nBlocks;
+  const lens = [], blocks = [];
+  for (let i = 0; i < nBlocks; i++) {
+    const dl = shortLen - ecLen + (i < nShort ? 0 : 1);
+    lens.push(dl); blocks.push(new Uint8Array(dl + ecLen));
+  }
+  let o = 0;
+  const maxD = shortLen - ecLen + 1;
+  for (let i = 0; i < maxD; i++) for (let b = 0; b < nBlocks; b++) if (i < lens[b]) blocks[b][i] = cw[o++];
+  for (let i = 0; i < ecLen; i++) for (let b = 0; b < nBlocks; b++) blocks[b][lens[b] + i] = cw[o++];
+  return { blocks, lens, ecLen };
+}
+
+/** Decode a square bit matrix (1 = dark). Returns {bytes, version, ecl, mask, errors} or throws. */
+function qrDecodeMatrix(m, size) {
+  const ver = (size - 17) / 4;
+  if (!Number.isInteger(ver) || ver < 1 || ver > 40) throw new Error('bad dimension ' + size);
+  const [c1, c2] = formatBitPositions(size);
+  const grab = pos => { let v = 0; for (let i = 14; i >= 0; i--) v = (v << 1) | m[pos[i][1] * size + pos[i][0]]; return v; };
+  const f = decodeFormat(grab(c1)) || decodeFormat(grab(c2));
+  if (!f) throw new Error('unreadable format info');
+
+  const t = qrTemplate(ver);
+  const maskFn = MASK_FN[f.mask];
+  const totalCw = numTotalCodewords(ver);
+  const cw = new Uint8Array(totalCw);
+  const nBits = totalCw * 8;
+  for (let i = 0; i < nBits; i++) {
+    const idx = t.order[i], y = (idx / size) | 0, x = idx % size;
+    let b = m[idx];
+    if (maskFn(x, y)) b ^= 1;
+    if (b) cw[i >>> 3] |= 0x80 >>> (i & 7);
+  }
+
+  const { blocks, lens, ecLen } = deinterleave(cw, ver, f.ecl);
+  let errors = 0;
+  const data = new Uint8Array(numDataCodewords(ver, f.ecl));
+  let o = 0;
+  for (let i = 0; i < blocks.length; i++) {
+    const n = rsDecode(blocks[i], ecLen);
+    if (n < 0) throw new Error('too many errors in block ' + i);
+    errors += n;
+    data.set(blocks[i].subarray(0, lens[i]), o);
+    o += lens[i];
+  }
+
+  // parse the data bit stream (byte mode only -- that is all this app emits)
+  let bp = 0;
+  const read = n => { let v = 0; for (let i = 0; i < n; i++) { v = (v << 1) | ((data[bp >>> 3] >>> (7 - (bp & 7))) & 1); bp++; } return v; };
+  const avail = data.length * 8;
+  const out = [];
+  while (bp + 4 <= avail) {
+    const mode = read(4);
+    if (mode === 0) break;
+    if (mode !== 4) throw new Error('unsupported QR mode ' + mode);
+    const cbits = ver < 10 ? 8 : 16;
+    if (bp + cbits > avail) throw new Error('truncated');
+    const len = read(cbits);
+    if (bp + len * 8 > avail) throw new Error('length overflow');
+    for (let i = 0; i < len; i++) out.push(read(8));
+  }
+  return { bytes: Uint8Array.from(out), version: ver, ecl: f.ecl, mask: f.mask, errors };
+}
+
+/** Transpose a square matrix (a mirrored QR reads correctly once transposed). */
+function transposeMatrix(m, size) {
+  const r = new Uint8Array(m.length);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) r[x * size + y] = m[y * size + x];
+  return r;
+}
+
+function qrDecodeMatrixAny(m, size) {
+  try { return qrDecodeMatrix(m, size); }
+  catch (e) { return qrDecodeMatrix(transposeMatrix(m, size), size); }
+}
+/* =====================================================================
+   5. Image pipeline: camera frame -> bit matrix
+   ===================================================================== */
+function toGray(img) {
+  const { data, width: w, height: h } = img;
+  const g = new Uint8Array(w * h);
+  for (let i = 0, p = 0; i < g.length; i++, p += 4)
+    g[i] = (data[p] * 306 + data[p + 1] * 601 + data[p + 2] * 117) >> 10;
+  return { g, w, h };
+}
+
+/* Block-adaptive threshold (hybrid binarizer). Returns Uint8Array, 1 = dark. */
+function binarize(g, w, h) {
+  const BS = 8, BW = Math.ceil(w / BS), BH = Math.ceil(h / BS);
+  const th = new Float32Array(BW * BH);
+  for (let by = 0; by < BH; by++) for (let bx = 0; bx < BW; bx++) {
+    const x0 = bx * BS, y0 = by * BS, x1 = Math.min(x0 + BS, w), y1 = Math.min(y0 + BS, h);
+    let mn = 255, mx = 0, sum = 0, n = 0;
+    for (let y = y0; y < y1; y++) { const row = y * w; for (let x = x0; x < x1; x++) { const v = g[row + x]; sum += v; n++; if (v < mn) mn = v; if (v > mx) mx = v; } }
+    let t;
+    if (mx - mn > 24) t = sum / n;
+    else {
+      t = mn / 2;
+      if (by > 0 && bx > 0) {
+        const nb = (th[(by - 1) * BW + bx] + 2 * th[by * BW + bx - 1] + th[(by - 1) * BW + bx - 1]) / 4;
+        if (mn < nb) t = nb;
+      }
+    }
+    th[by * BW + bx] = t;
+  }
+  const bits = new Uint8Array(w * h);
+  for (let by = 0; by < BH; by++) for (let bx = 0; bx < BW; bx++) {
+    let sum = 0, n = 0;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const yy = by + dy, xx = bx + dx;
+      if (yy >= 0 && yy < BH && xx >= 0 && xx < BW) { sum += th[yy * BW + xx]; n++; }
+    }
+    const t = sum / n;
+    const x0 = bx * BS, y0 = by * BS, x1 = Math.min(x0 + BS, w), y1 = Math.min(y0 + BS, h);
+    for (let y = y0; y < y1; y++) { const row = y * w; for (let x = x0; x < x1; x++) bits[row + x] = g[row + x] <= t ? 1 : 0; }
+  }
+  return bits;
+}
+
+/* ---- finder patterns (1:1:3:1:1) ---- */
+function ratioOK(sc) {
+  const total = sc[0] + sc[1] + sc[2] + sc[3] + sc[4];
+  if (total < 7) return false;
+  const ms = total / 7, v = ms / 2;
+  return Math.abs(ms - sc[0]) < v && Math.abs(ms - sc[1]) < v &&
+    Math.abs(3 * ms - sc[2]) < 3 * v && Math.abs(ms - sc[3]) < v && Math.abs(ms - sc[4]) < v;
+}
+const centerFromEnd = (sc, end) => end - sc[4] - sc[3] - sc[2] / 2;
+
+function crossVertical(bits, w, h, cx, cy, maxCount, origTotal) {
+  const sc = [0, 0, 0, 0, 0];
+  let y = cy;
+  while (y >= 0 && bits[y * w + cx]) { sc[2]++; y--; }
+  if (y < 0) return NaN;
+  while (y >= 0 && !bits[y * w + cx] && sc[1] <= maxCount) { sc[1]++; y--; }
+  if (y < 0 || sc[1] > maxCount) return NaN;
+  while (y >= 0 && bits[y * w + cx] && sc[0] <= maxCount) { sc[0]++; y--; }
+  if (sc[0] > maxCount) return NaN;
+  y = cy + 1;
+  while (y < h && bits[y * w + cx]) { sc[2]++; y++; }
+  if (y === h) return NaN;
+  while (y < h && !bits[y * w + cx] && sc[3] < maxCount) { sc[3]++; y++; }
+  if (y === h || sc[3] >= maxCount) return NaN;
+  while (y < h && bits[y * w + cx] && sc[4] < maxCount) { sc[4]++; y++; }
+  if (sc[4] >= maxCount) return NaN;
+  const total = sc[0] + sc[1] + sc[2] + sc[3] + sc[4];
+  if (5 * Math.abs(total - origTotal) >= 2 * origTotal) return NaN;
+  return ratioOK(sc) ? centerFromEnd(sc, y) : NaN;
+}
+
+function crossHorizontal(bits, w, h, cx, cy, maxCount, origTotal) {
+  const sc = [0, 0, 0, 0, 0];
+  const row = cy * w;
+  let x = cx;
+  while (x >= 0 && bits[row + x]) { sc[2]++; x--; }
+  if (x < 0) return NaN;
+  while (x >= 0 && !bits[row + x] && sc[1] <= maxCount) { sc[1]++; x--; }
+  if (x < 0 || sc[1] > maxCount) return NaN;
+  while (x >= 0 && bits[row + x] && sc[0] <= maxCount) { sc[0]++; x--; }
+  if (sc[0] > maxCount) return NaN;
+  x = cx + 1;
+  while (x < w && bits[row + x]) { sc[2]++; x++; }
+  if (x === w) return NaN;
+  while (x < w && !bits[row + x] && sc[3] < maxCount) { sc[3]++; x++; }
+  if (x === w || sc[3] >= maxCount) return NaN;
+  while (x < w && bits[row + x] && sc[4] < maxCount) { sc[4]++; x++; }
+  if (sc[4] >= maxCount) return NaN;
+  const total = sc[0] + sc[1] + sc[2] + sc[3] + sc[4];
+  if (5 * Math.abs(total - origTotal) >= origTotal) return NaN;
+  return ratioOK(sc) ? centerFromEnd(sc, x) : NaN;
+}
+
+function findFinders(bits, w, h) {
+  const found = [];
+  const add = (x, y, ms) => {
+    for (const p of found) {
+      if (Math.abs(p.x - x) <= p.ms && Math.abs(p.y - y) <= p.ms && Math.abs(p.ms - ms) < Math.max(1, p.ms * 0.6)) {
+        p.x = (p.x * p.n + x) / (p.n + 1); p.y = (p.y * p.n + y) / (p.n + 1);
+        p.ms = (p.ms * p.n + ms) / (p.n + 1); p.n++;
+        return;
+      }
+    }
+    found.push({ x, y, ms, n: 1 });
+  };
+  const step = Math.max(1, Math.floor(h / 240));
+  const sc = [0, 0, 0, 0, 0];
+  for (let y = step - 1; y < h; y += step) {
+    sc.fill(0);
+    let st = 0;
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      if (bits[row + x]) { if (st & 1) st++; sc[st]++; }
+      else {
+        if ((st & 1) === 0) {
+          if (st === 4) {
+            if (ratioOK(sc)) {
+              const total = sc[0] + sc[1] + sc[2] + sc[3] + sc[4];
+              const cx = Math.floor(centerFromEnd(sc, x));
+              const cy = crossVertical(bits, w, h, cx, y, sc[2], total);
+              if (!isNaN(cy)) {
+                const cx2 = crossHorizontal(bits, w, h, cx, Math.floor(cy), sc[2], total);
+                if (!isNaN(cx2)) add(cx2, cy, total / 7);
+              }
+              sc.fill(0); st = 0;
+            } else { sc[0] = sc[2]; sc[1] = sc[3]; sc[2] = sc[4]; sc[3] = 1; sc[4] = 0; st = 3; }
+          } else sc[++st]++;
+        } else sc[st]++;
+      }
+    }
+  }
+  return found.filter(p => p.n >= 2 && p.ms >= 1).sort((a, b) => b.n - a.n);
+}
+
+/* ---- alignment pattern ----
+   A horizontal cut through the centre of a 5x5 alignment pattern is
+   dark-light-dark-light-dark, one module each; the outer dark runs may be
+   lengthened by neighbouring dark data modules, so only the middle three
+   runs are measured strictly. */
+function findAlignment(bits, w, h, ex, ey, ms) {
+  const allow = Math.max(5, Math.round(ms * 4));
+  const x0 = Math.max(0, Math.floor(ex - allow)), x1 = Math.min(w - 1, Math.ceil(ex + allow));
+  const y0 = Math.max(0, Math.floor(ey - allow)), y1 = Math.min(h - 1, Math.ceil(ey + allow));
+  if (x1 - x0 < ms * 3 || y1 - y0 < ms * 3) return null;
+  const tol = Math.max(1.2, ms * 0.6), edge = ms * 0.4;
+  const okRun = sc => Math.abs(sc[1] - ms) < tol && Math.abs(sc[2] - ms) < tol &&
+    Math.abs(sc[3] - ms) < tol && sc[0] >= edge && sc[4] >= edge;
+
+  // vertical signature check through (cx, cy); returns refined y or null
+  const vcheck = (cx, cy) => {
+    if (cx < 0 || cx >= w) return null;
+    let mid = 0, u1 = 0, u2 = 0, d1 = 0, d2 = 0, y = cy;
+    const lim = ms * 3;
+    while (y >= 0 && bits[y * w + cx] && mid < lim) { mid++; y--; }
+    const top = y;
+    while (y >= 0 && !bits[y * w + cx] && u1 < lim) { u1++; y--; }
+    while (y >= 0 && bits[y * w + cx] && u2 < lim) { u2++; y--; }
+    y = cy + 1;
+    while (y < h && bits[y * w + cx] && mid < lim) { mid++; y++; }
+    const bot = y;
+    while (y < h && !bits[y * w + cx] && d1 < lim) { d1++; y++; }
+    while (y < h && bits[y * w + cx] && d2 < lim) { d2++; y++; }
+    if (Math.abs(mid - ms) >= tol || Math.abs(u1 - ms) >= tol || Math.abs(d1 - ms) >= tol) return null;
+    if (u2 < edge || d2 < edge) return null;
+    return (top + bot) / 2;
+  };
+
+  const midY = (y0 + y1) >> 1;
+  const sc = [0, 0, 0, 0, 0];
+  for (let k = 0; k <= y1 - y0; k++) {
+    const y = midY + ((k & 1) ? -((k + 1) >> 1) : ((k + 1) >> 1));
+    if (y < y0 || y > y1) continue;
+    const row = y * w;
+    sc.fill(0);
+    let st = 0, x = x0;
+    while (x <= x1 && !bits[row + x]) x++;
+    for (; x <= x1; x++) {
+      const want = (st & 1) === 0 ? 1 : 0;
+      if (bits[row + x] === want) { sc[st]++; continue; }
+      if (st < 4) { sc[++st]++; continue; }
+      if (okRun(sc)) {
+        const cx = x - sc[4] - sc[3] - sc[2] / 2;
+        const cy = vcheck(Math.round(cx), y);
+        if (cy !== null) return { x: cx, y: cy };
+      }
+      sc[0] = sc[2]; sc[1] = sc[3]; sc[2] = sc[4]; sc[3] = 1; sc[4] = 0; st = 3;
+    }
+  }
+  return null;
+}
+
+/* ---- homography from 4 point pairs (module space -> image space) ---- */
+function homography(src, dst) {
+  const A = [];
+  for (let i = 0; i < 4; i++) {
+    const [u, v] = src[i], [x, y] = dst[i];
+    A.push([u, v, 1, 0, 0, 0, -u * x, -v * x, x]);
+    A.push([0, 0, 0, u, v, 1, -u * y, -v * y, y]);
+  }
+  for (let c = 0; c < 8; c++) {
+    let piv = c;
+    for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+    if (Math.abs(A[piv][c]) < 1e-9) return null;
+    const t = A[c]; A[c] = A[piv]; A[piv] = t;
+    const d = A[c][c];
+    for (let k = c; k < 9; k++) A[c][k] /= d;
+    for (let r = 0; r < 8; r++) {
+      if (r === c) continue;
+      const f = A[r][c];
+      if (!f) continue;
+      for (let k = c; k < 9; k++) A[r][k] -= f * A[c][k];
+    }
+  }
+  return A.map(r => r[8]);
+}
+const applyH = (H, u, v) => {
+  const d = H[6] * u + H[7] * v + 1;
+  return [(H[0] * u + H[1] * v + H[2]) / d, (H[3] * u + H[4] * v + H[5]) / d];
+};
+
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/** Try to read one QR code out of a binarized image using three finder centres. */
+function readFromFinders(bits, w, h, p0, p1, p2) {
+  const d01 = dist(p0, p1), d12 = dist(p1, p2), d02 = dist(p0, p2);
+  let A, B, C;
+  if (d12 >= d01 && d12 >= d02) { B = p0; A = p1; C = p2; }
+  else if (d02 >= d12 && d02 >= d01) { B = p1; A = p0; C = p2; }
+  else { B = p2; A = p0; C = p1; }
+  if ((C.x - B.x) * (A.y - B.y) - (C.y - B.y) * (A.x - B.x) < 0) { const t = A; A = C; C = t; }
+  const tl = B, tr = C, bl = A;   // topLeft, topRight, bottomLeft
+
+  const ms = (tl.ms + tr.ms + bl.ms) / 3;
+  if (!(ms > 0.7)) return null;
+  const nTR = Math.round(dist(tl, tr) / ms), nBL = Math.round(dist(tl, bl) / ms);
+  let dim = (((nTR + nBL) / 2) | 0) + 7;
+  switch (dim & 3) { case 0: dim++; break; case 2: dim--; break; case 3: return null; }
+  if (dim < 21 || dim > 177) return null;
+  const ver = (dim - 17) / 4;
+
+  const base = [[3.5, 3.5], [dim - 3.5, 3.5], [3.5, dim - 3.5]];
+  const baseD = [[tl.x, tl.y], [tr.x, tr.y], [bl.x, bl.y]];
+  const brX = tr.x - tl.x + bl.x, brY = tr.y - tl.y + bl.y;
+
+  // candidate fourth correspondences, best first
+  const cands = [];
+  if (ver >= 2) {
+    const corr = 1 - 3 / (dim - 7);
+    const ex = tl.x + corr * (brX - tl.x), ey = tl.y + corr * (brY - tl.y);
+    const a4 = findAlignment(bits, w, h, ex, ey, ms);
+    // a wildly displaced "alignment pattern" is a false positive - drop it
+    if (a4 && Math.hypot(a4.x - ex, a4.y - ey) < ms * 3.5)
+      cands.push([[dim - 6.5, dim - 6.5], [a4.x, a4.y]]);
+  }
+  cands.push([[dim - 3.5, dim - 3.5], [brX, brY]]);   // parallelogram fallback
+
+  const OFF = [[0, 0], [0.3, 0.3], [-0.3, 0.3], [0.3, -0.3], [-0.3, -0.3]];
+  for (const [s4, d4] of cands) {
+    const H = homography(base.concat([s4]), baseD.concat([d4]));
+    if (!H) continue;
+    const m = new Uint8Array(dim * dim);
+    let oob = false;
+    for (let y = 0; y < dim && !oob; y++) for (let x = 0; x < dim; x++) {
+      let vote = 0;
+      for (const [dx, dy] of OFF) {
+        const [px, py] = applyH(H, x + 0.5 + dx, y + 0.5 + dy);
+        const ix = Math.round(px), iy = Math.round(py);
+        if (ix < 0 || iy < 0 || ix >= w || iy >= h) { oob = true; break; }
+        vote += bits[iy * w + ix];
+      }
+      if (oob) break;
+      m[y * dim + x] = vote >= 3 ? 1 : 0;
+    }
+    if (oob) continue;
+    let res;
+    try { res = qrDecodeMatrixAny(m, dim); } catch (e) { continue; }
+    return { res, corners: [[0, 0], [dim, 0], [dim, dim], [0, dim]].map(([u, v]) => applyH(H, u, v)) };
+  }
+  return null;
+}
+
+/* 3x3 box blur - knocks down sensor noise on cheap webcams */
+function smooth3(g, w, h) {
+  const o = new Uint8Array(g.length);
+  for (let y = 0; y < h; y++) {
+    const y0 = y > 0 ? y - 1 : 0, y1 = y < h - 1 ? y + 1 : h - 1;
+    for (let x = 0; x < w; x++) {
+      const x0 = x > 0 ? x - 1 : 0, x1 = x < w - 1 ? x + 1 : w - 1;
+      o[y * w + x] = (g[y0 * w + x0] + g[y0 * w + x] + g[y0 * w + x1] +
+        g[y * w + x0] + g[y * w + x] + g[y * w + x1] +
+        g[y1 * w + x0] + g[y1 * w + x] + g[y1 * w + x1] + 4) / 9;
+    }
+  }
+  return o;
+}
+
+function tryScan(g, w, h) {
+  const bits = binarize(g, w, h);
+  const pts = findFinders(bits, w, h);
+  if (pts.length < 3) return null;
+  const cap = Math.min(pts.length, 6);
+  for (let i = 0; i < cap; i++) for (let j = i + 1; j < cap; j++) for (let k = j + 1; k < cap; k++) {
+    const out = readFromFinders(bits, w, h, pts[i], pts[j], pts[k]);
+    if (out) return { ...out.res, corners: out.corners };
+  }
+  return null;
+}
+
+/** Full pipeline: ImageData -> {bytes, corners, version, ecl, errors} or null. */
+function scanImageData(img) {
+  const { g, w, h } = toGray(img);
+  return tryScan(g, w, h) || tryScan(smooth3(g, w, h), w, h);
+}
+/* =====================================================================
+   6. Wire protocol
+   ---------------------------------------------------------------------
+   header frame: 41 47 00 | sid u16 | flags u8 | xferSize u32 | origSize u32
+                 | crc32 u32 | chunkSize u16 | totalChunks u16
+                 | nameLen u8 name | mimeLen u8 mime
+   data frame:   41 47 01 | sid u16 | idx u16 | total u16 | crc16 u16 | payload
+   ===================================================================== */
+const CRC32_TAB = (() => {
+  const t = new Int32Array(256);
+  for (let i = 0; i < 256; i++) { let c = i; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[i] = c; }
+  return t;
+})();
+function crc32(b) { let c = -1; for (let i = 0; i < b.length; i++) c = CRC32_TAB[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ -1) >>> 0; }
+function crc16(b) {
+  let c = 0xFFFF;
+  for (let i = 0; i < b.length; i++) {
+    c ^= b[i] << 8;
+    for (let k = 0; k < 8; k++) c = (c & 0x8000) ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF;
+  }
+  return c;
+}
+const MAGIC0 = 0x41, MAGIC1 = 0x47;
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+function buildHeaderFrame(s) {
+  const nm = enc.encode(s.name.slice(0, 200)), mm = enc.encode(s.mime || '');
+  const b = new Uint8Array(22 + 1 + nm.length + 1 + mm.length);
+  const dv = new DataView(b.buffer);
+  b[0] = MAGIC0; b[1] = MAGIC1; b[2] = 0;
+  dv.setUint16(3, s.sid); b[5] = s.flags;
+  dv.setUint32(6, s.xferSize); dv.setUint32(10, s.origSize); dv.setUint32(14, s.crc);
+  dv.setUint16(18, s.chunkSize); dv.setUint16(20, s.total);
+  let o = 22; b[o++] = nm.length; b.set(nm, o); o += nm.length;
+  b[o++] = mm.length; b.set(mm, o);
+  return b;
+}
+function buildDataFrame(sid, idx, total, payload) {
+  const b = new Uint8Array(11 + payload.length);
+  const dv = new DataView(b.buffer);
+  b[0] = MAGIC0; b[1] = MAGIC1; b[2] = 1;
+  dv.setUint16(3, sid); dv.setUint16(5, idx); dv.setUint16(7, total);
+  dv.setUint16(9, crc16(payload));
+  b.set(payload, 11);
+  return b;
+}
+function parseFrame(b) {
+  if (b.length < 11 || b[0] !== MAGIC0 || b[1] !== MAGIC1) return null;
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  const sid = dv.getUint16(3);
+  if (b[2] === 0) {
+    if (b.length < 24) return null;
+    const flags = b[5];
+    const xferSize = dv.getUint32(6), origSize = dv.getUint32(10), crc = dv.getUint32(14);
+    const chunkSize = dv.getUint16(18), total = dv.getUint16(20);
+    let o = 22;
+    const nl = b[o++]; if (o + nl >= b.length) return null;
+    const name = dec.decode(b.subarray(o, o + nl)); o += nl;
+    const ml = b[o++];
+    const mime = dec.decode(b.subarray(o, o + ml));
+    return { kind: 'head', sid, flags, xferSize, origSize, crc, chunkSize, total, name, mime };
+  }
+  if (b[2] === 1) {
+    const idx = dv.getUint16(5), total = dv.getUint16(7), ck = dv.getUint16(9);
+    const payload = b.subarray(11);
+    if (crc16(payload) !== ck) return { kind: 'bad' };
+    return { kind: 'data', sid, idx, total, payload };
+  }
+  return null;
+}
+
+/* =====================================================================
+   7. Small helpers + tab wiring
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const fmtBytes = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB';
+const fmtTime = s => s < 60 ? Math.round(s) + 's' : Math.floor(s / 60) + 'm ' + Math.round(s % 60) + 's';
+function logTo(el, msg, cls) {
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  el.appendChild(line);
+  while (el.childNodes.length > 300) el.removeChild(el.firstChild);
+  el.scrollTop = el.scrollHeight;
+}
+const rlog = (m, c) => logTo($('rLog'), m, c);
+
+const TABS = [['tabSend', 'pSend'], ['tabRecv', 'pRecv'], ['tabDiag', 'pDiag']];
+TABS.forEach(([b, p]) => $(b).onclick = () => {
+  TABS.forEach(([bb, pp]) => { $(bb).classList.toggle('on', bb === b); $(pp).classList.toggle('on', pp === p); });
+});
+
+/* =====================================================================
+   8. Transmitter
+   ===================================================================== */
+const TX = { playlist: [], i: 0, pass: 1, timer: null, playing: false, session: null, cache: new Map() };
+
+async function maybeGzip(bytes) {
+  if (!$('optGz').checked || typeof CompressionStream === 'undefined') return { data: bytes, gz: false };
+  try {
+    const cs = new CompressionStream('gzip');
+    const blob = await new Response(new Blob([bytes]).stream().pipeThrough(cs)).blob();
+    const out = new Uint8Array(await blob.arrayBuffer());
+    return out.length < bytes.length ? { data: out, gz: true } : { data: bytes, gz: false };
+  } catch (e) { return { data: bytes, gz: false }; }
+}
+
+async function loadFile(file) {
+  txStop();
+  TX.lastFile = file;
+  $('fileInfo').textContent = 'reading ' + file.name + '…';
+  const raw = new Uint8Array(await file.arrayBuffer());
+  const { data, gz } = await maybeGzip(raw);
+  const chunkSize = +$('optChunk').value;
+  const total = Math.max(1, Math.ceil(data.length / chunkSize));
+  if (total > 65535) { $('fileInfo').innerHTML = '<span style="color:var(--bad)">File needs more than 65535 frames — pick a bigger payload size or a smaller file.</span>'; return; }
+  TX.session = {
+    sid: (Math.random() * 65536) | 0, flags: gz ? 1 : 0, data, chunkSize, total,
+    xferSize: data.length, origSize: raw.length, crc: crc32(data),
+    name: file.name, mime: file.type || 'application/octet-stream'
+  };
+  TX.cache.clear();
+  buildPlaylist();
+  $('fileInfo').innerHTML = '<b style="color:var(--fg)">' + file.name + '</b><br>' +
+    fmtBytes(raw.length) + (gz ? ' → ' + fmtBytes(data.length) + ' gzipped' : '') +
+    ' &middot; ' + total + ' chunks &middot; crc32 ' + TX.session.crc.toString(16).padStart(8, '0');
+  ['play', 'prev', 'next', 'full'].forEach(b => $(b).disabled = false);
+  drawFrame();
+}
+
+function buildPlaylist() {
+  const s = TX.session;
+  if (!s) return;
+  const head = buildHeaderFrame(s);
+  const list = [];
+  for (let i = 0; i < s.total; i++) {
+    if (i % 16 === 0) list.push(head);
+    const off = i * s.chunkSize;
+    list.push(buildDataFrame(s.sid, i, s.total, s.data.subarray(off, Math.min(off + s.chunkSize, s.data.length))));
+  }
+  TX.playlist = list; TX.i = 0; TX.pass = 1;
+  const fps = +$('optFps').value;
+  $('sEta').textContent = fmtTime(list.length / fps);
+  $('sRate').textContent = Math.round(s.xferSize / (list.length / fps));
+}
+
+function drawFrame() {
+  const f = TX.playlist[TX.i];
+  if (!f) return;
+  let qr = TX.cache.get(TX.i);
+  if (!qr) {
+    qr = qrEncode(f, +$('optEcc').value, 1);
+    if (TX.cache.size > 400) TX.cache.clear();
+    TX.cache.set(TX.i, qr);
+  }
+  qrPaint($('qr'), qr, 720);
+  $('sFrame').textContent = (TX.i + 1) + '/' + TX.playlist.length;
+  $('sPass').textContent = TX.pass;
+  $('sVer').textContent = qr.version + ECL_NAME[qr.ecl];
+}
+function txStep(d) {
+  if (!TX.playlist.length) return;
+  TX.i += d;
+  if (TX.i >= TX.playlist.length) { TX.i = 0; TX.pass++; }
+  if (TX.i < 0) { TX.i = TX.playlist.length - 1; TX.pass = Math.max(1, TX.pass - 1); }
+  drawFrame();
+}
+function txPlay() {
+  if (!TX.playlist.length || TX.playing) return;
+  TX.playing = true; $('play').textContent = 'Pause';
+  const tick = () => { txStep(1); TX.timer = setTimeout(tick, 1000 / +$('optFps').value); };
+  TX.timer = setTimeout(tick, 1000 / +$('optFps').value);
+}
+function txStop() {
+  TX.playing = false; clearTimeout(TX.timer); TX.timer = null;
+  const p = $('play'); if (p) p.textContent = 'Play';
+}
+
+$('drop').onclick = () => $('file').click();
+$('file').onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); };
+['dragenter', 'dragover'].forEach(t => $('drop').addEventListener(t, e => { e.preventDefault(); $('drop').classList.add('hot'); }));
+['dragleave', 'drop'].forEach(t => $('drop').addEventListener(t, e => { e.preventDefault(); $('drop').classList.remove('hot'); }));
+$('drop').addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+$('play').onclick = () => TX.playing ? txStop() : txPlay();
+$('prev').onclick = () => { txStop(); txStep(-1); };
+$('next').onclick = () => { txStop(); txStep(1); };
+$('full').onclick = () => { const w = $('qr').parentElement; (w.requestFullscreen || w.webkitRequestFullscreen).call(w); };
+$('optFps').oninput = e => { $('fpsOut').textContent = e.target.value; if (TX.session) buildPlaylist(); };
+$('optEcc').onchange = () => { TX.cache.clear(); drawFrame(); };
+$('optChunk').onchange = () => { if (TX.lastFile) { TX.cache.clear(); loadFile(TX.lastFile); } };
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && $('pSend').classList.contains('on') && TX.playlist.length) {
+    e.preventDefault(); TX.playing ? txStop() : txPlay();
+  }
+});
+$('optGz').onchange = () => { if (TX.lastFile) { TX.cache.clear(); loadFile(TX.lastFile); } };
+
+/* =====================================================================
+   9. Receiver
+   ===================================================================== */
+const RX = {
+  sid: null, meta: null, chunks: null, got: 0, seen: 0, bad: 0,
+  stream: null, running: false, t0: 0, decodes: 0, bytes: 0, lastStat: 0
+};
+const work = document.createElement('canvas');
+const wctx = work.getContext('2d', { alpha: false, willReadFrequently: true });
+
+function rxReset(quiet) {
+  RX.sid = null; RX.meta = null; RX.chunks = null; RX.got = 0; RX.seen = 0; RX.bad = 0; RX.bytes = 0;
+  $('rMeta').textContent = 'Waiting for a header frame…';
+  $('chunks').innerHTML = ''; $('rBar').style.width = '0%';
+  $('rCount').textContent = '0 / 0 chunks'; $('rPct').textContent = '0%';
+  $('rSeen').textContent = '0'; $('rBad').textContent = '0'; $('rBps').textContent = '—';
+  $('save').disabled = true;
+  if (!quiet) rlog('— reset —');
+}
+
+function rxGrid(total) {
+  const box = $('chunks');
+  box.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < total; i++) frag.appendChild(document.createElement('u'));
+  box.appendChild(frag);
+}
+
+function rxProgress() {
+  const total = RX.chunks ? RX.chunks.length : 0;
+  const pct = total ? Math.round(RX.got / total * 100) : 0;
+  $('rBar').style.width = pct + '%';
+  $('rCount').textContent = RX.got + ' / ' + total + ' chunks';
+  $('rPct').textContent = pct + '%';
+  if (RX.meta && RX.got === total) rxComplete();
+}
+
+function rxAccept(bytes) {
+  const f = parseFrame(bytes);
+  if (!f) { RX.bad++; $('rBad').textContent = RX.bad; return; }
+  if (f.kind === 'bad') { RX.bad++; $('rBad').textContent = RX.bad; rlog('frame rejected (crc16 mismatch)', 'wa'); return; }
+  if (RX.sid !== null && f.sid !== RX.sid) {
+    rlog('new session ' + f.sid.toString(16) + ' — resetting', 'wa');
+    rxReset(true);
+  }
+  RX.sid = f.sid;
+  if (f.kind === 'head') {
+    if (!RX.meta) {
+      RX.meta = f;
+      if (!RX.chunks) { RX.chunks = new Array(f.total).fill(null); rxGrid(f.total); }
+      $('rMeta').innerHTML = '<b style="color:var(--fg)">' + f.name.replace(/[<>&]/g, '') + '</b> &middot; ' +
+        fmtBytes(f.origSize) + (f.flags & 1 ? ' <span class="pill">GZIP</span>' : '') +
+        '<br>' + f.total + ' chunks of ' + f.chunkSize + ' B &middot; crc32 ' + f.crc.toString(16).padStart(8, '0');
+      rlog('header: ' + f.name + ' (' + fmtBytes(f.origSize) + ', ' + f.total + ' chunks)', 'ok');
+      rxProgress();
+    }
+    return;
+  }
+  // data frame
+  if (!RX.chunks) { RX.chunks = new Array(f.total).fill(null); rxGrid(f.total); }
+  if (f.idx >= RX.chunks.length) return;
+  RX.seen++; $('rSeen').textContent = RX.seen;
+  if (RX.chunks[f.idx]) return;
+  RX.chunks[f.idx] = f.payload.slice();
+  RX.got++; RX.bytes += f.payload.length;
+  const cell = $('chunks').childNodes[f.idx];
+  if (cell) cell.className = 'got';
+  rxProgress();
+}
+
+async function rxComplete() {
+  if ($('save').dataset.ready === '1') return;
+  const m = RX.meta;
+  const buf = new Uint8Array(m.xferSize);
+  let o = 0;
+  for (const c of RX.chunks) { if (!c) return; buf.set(c.subarray(0, Math.min(c.length, m.xferSize - o)), o); o += c.length; }
+  const sum = crc32(buf.subarray(0, m.xferSize));
+  if (sum !== m.crc) {
+    rlog('CRC32 mismatch (' + sum.toString(16) + ' vs ' + m.crc.toString(16) + ') — data corrupt', 'er');
+    return;
+  }
+  let out = buf;
+  if (m.flags & 1) {
+    try {
+      const ds = new DecompressionStream('gzip');
+      const blob = await new Response(new Blob([buf]).stream().pipeThrough(ds)).blob();
+      out = new Uint8Array(await blob.arrayBuffer());
+    } catch (e) { rlog('gunzip failed: ' + e.message, 'er'); return; }
+  }
+  rlog('complete — ' + fmtBytes(out.length) + ' verified', 'ok');
+  const url = URL.createObjectURL(new Blob([out], { type: m.mime || 'application/octet-stream' }));
+  const btn = $('save');
+  btn.disabled = false; btn.dataset.ready = '1'; btn.textContent = 'Save ' + m.name;
+  btn.onclick = () => { const a = document.createElement('a'); a.href = url; a.download = m.name; a.click(); };
+  rxStopCam();
+}
+
+function rxHandleImage(img) {
+  const r = scanImageData(img);
+  if (!r) return null;
+  RX.decodes++;
+  rxAccept(r.bytes);
+  return r;
+}
+
+function drawOverlay(corners, sw, sh) {
+  const c = $('ovl'), r = $('vidwrap').getBoundingClientRect();
+  if (c.width !== r.width || c.height !== r.height) { c.width = r.width; c.height = r.height; }
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, c.width, c.height);
+  if (!corners) return;
+  // video is object-fit:cover — replicate that mapping
+  const scale = Math.max(c.width / sw, c.height / sh);
+  const ox = (c.width - sw * scale) / 2, oy = (c.height - sh * scale) / 2;
+  g.strokeStyle = '#4ade80'; g.lineWidth = 3; g.lineJoin = 'round';
+  g.beginPath();
+  corners.forEach(([x, y], i) => { const px = x * scale + ox, py = y * scale + oy; i ? g.lineTo(px, py) : g.moveTo(px, py); });
+  g.closePath(); g.stroke();
+}
+
+async function listCams() {
+  try {
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    const sel = $('camSel');
+    sel.innerHTML = '';
+    devs.forEach((d, i) => { const o = document.createElement('option'); o.value = d.deviceId; o.textContent = d.label || ('camera ' + (i + 1)); sel.appendChild(o); });
+  } catch (e) { }
+}
+
+async function rxStartCam() {
+  try {
+    const id = $('camSel').value;
+    RX.stream = await navigator.mediaDevices.getUserMedia({
+      video: id ? { deviceId: { exact: id }, width: { ideal: 1280 }, height: { ideal: 960 } }
+        : { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } }
+    });
+    $('vid').srcObject = RX.stream;
+    await $('vid').play();
+    await listCams();
+    $('camOn').disabled = true; $('camOff').disabled = false;
+    RX.running = true; RX.t0 = performance.now(); RX.decodes = 0; RX.lastStat = performance.now();
+    rlog('camera started ' + $('vid').videoWidth + '×' + $('vid').videoHeight, 'ok');
+    scanLoop();
+  } catch (e) {
+    rlog('camera error: ' + e.name + ' — ' + e.message, 'er');
+    rlog('file:// pages can be blocked; try serving the page over http://localhost', 'wa');
+  }
+}
+function rxStopCam() {
+  RX.running = false;
+  if (RX.stream) { RX.stream.getTracks().forEach(t => t.stop()); RX.stream = null; }
+  $('camOn').disabled = false; $('camOff').disabled = true;
+}
+
+function scanLoop() {
+  if (!RX.running) return;
+  const v = $('vid');
+  if (v.videoWidth) {
+    const maxW = 1024;
+    const sc = Math.min(1, maxW / v.videoWidth);
+    const w = Math.round(v.videoWidth * sc), h = Math.round(v.videoHeight * sc);
+    if (work.width !== w) { work.width = w; work.height = h; }
+    wctx.drawImage(v, 0, 0, w, h);
+    let r = null;
+    try { r = rxHandleImage(wctx.getImageData(0, 0, w, h)); } catch (e) { }
+    drawOverlay(r ? r.corners : null, w, h);
+    const now = performance.now();
+    if (now - RX.lastStat > 1000) {
+      const dt = (now - RX.lastStat) / 1000;
+      $('rScan').textContent = (RX.decodes / dt).toFixed(1);
+      $('rBps').textContent = RX.bytes ? Math.round(RX.bytes / ((now - RX.t0) / 1000)) : '—';
+      RX.decodes = 0; RX.lastStat = now;
+    }
+  }
+  setTimeout(scanLoop, 0);
+}
+
+$('camOn').onclick = rxStartCam;
+$('camOff').onclick = rxStopCam;
+$('camSel').onchange = () => { if (RX.stream) { rxStopCam(); rxStartCam(); } };
+$('reset').onclick = () => { $('save').dataset.ready = ''; $('save').textContent = 'Save file'; rxReset(); };
+
+/* decode a dropped still image */
+$('pRecv').addEventListener('dragover', e => e.preventDefault());
+$('pRecv').addEventListener('drop', async e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if (!f || !f.type.startsWith('image/')) return;
+  const bmp = await createImageBitmap(f);
+  const c = document.createElement('canvas');
+  c.width = Math.min(1600, bmp.width); c.height = Math.round(bmp.height * c.width / bmp.width);
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(bmp, 0, 0, c.width, c.height);
+  const r = rxHandleImage(g.getImageData(0, 0, c.width, c.height));
+  rlog(r ? 'still image decoded (v' + r.version + ECL_NAME[r.ecl] + ', ' + r.errors + ' symbols corrected)' : 'no QR found in image', r ? 'ok' : 'er');
+});
+
+/* =====================================================================
+   10. Self test
+   ===================================================================== */
+$('runTest').onclick = () => {
+  const el = $('tLog'); el.innerHTML = '';
+  const say = (m, c) => logTo(el, m, c);
+  let pass = 0, fail = 0;
+  const check = (name, fn) => {
+    try { const d = fn(); say('PASS  ' + name + (d ? '   ' + d : ''), 'ok'); pass++; }
+    catch (e) { say('FAIL  ' + name + '   ' + e.message, 'er'); fail++; }
+  };
+  const rnd = n => { const b = new Uint8Array(n); for (let i = 0; i < n; i++) b[i] = (Math.random() * 256) | 0; return b; };
+  const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+
+  say('— encoder/decoder round trip —', 'wa');
+  for (const ecl of [0, 1, 2, 3]) for (const n of [1, 17, 100, 400, 900, 1600, 2500]) {
+    if (n > byteCapacity(40, ecl)) continue;
+    check('bytes=' + n + ' ecc=' + ECL_NAME[ecl], () => {
+      const src = rnd(n);
+      const qr = qrEncode(src, ecl, 1);
+      const got = qrDecodeMatrix(qr.modules, qr.size);
+      if (!same(src, got.bytes)) throw new Error('payload mismatch');
+      if (got.version !== qr.version || got.ecl !== ecl || got.mask !== qr.mask) throw new Error('metadata mismatch');
+      return 'v' + qr.version + ECL_NAME[ecl] + ' mask' + qr.mask;
+    });
+  }
+
+  say('— all 40 versions at full capacity —', 'wa');
+  check('versions 1…40', () => {
+    for (let v = 1; v <= 40; v++) {
+      const src = rnd(byteCapacity(v, 1));
+      const qr = qrEncode(src, 1, v);
+      if (qr.version !== v) throw new Error('encoder picked v' + qr.version + ' for v' + v);
+      if (!same(src, qrDecodeMatrix(qr.modules, qr.size).bytes)) throw new Error('v' + v + ' mismatch');
+    }
+    return '40/40 ok';
+  });
+
+  say('— reed-solomon recovery (damaged modules) —', 'wa');
+  for (const ecl of [0, 1, 2, 3]) {
+    check('corrupt ' + ECL_NAME[ecl], () => {
+      const src = rnd(300);
+      const qr = qrEncode(src, ecl, 1);
+      const t = qrTemplate(qr.version);
+      const dmg = qr.modules.slice();
+      // repairable symbols = floor(ecPerBlock / 2) per block; damage ~45% of that
+      const budget = Math.floor(ECC_PER_BLOCK[ecl][qr.version] / 2) * NUM_BLOCKS[ecl][qr.version];
+      const flips = Math.floor(budget * 0.45);
+      for (let i = 0; i < flips; i++) dmg[t.order[(Math.random() * t.order.length) | 0]] ^= 1;
+      const got = qrDecodeMatrix(dmg, qr.size);
+      if (!same(src, got.bytes)) throw new Error('payload mismatch after repair');
+      return got.errors + ' symbols repaired';
+    });
+  }
+
+  say('— mirrored code —', 'wa');
+  check('transposed matrix', () => {
+    const src = rnd(120);
+    const qr = qrEncode(src, 1, 1);
+    const got = qrDecodeMatrixAny(transposeMatrix(qr.modules, qr.size), qr.size);
+    if (!same(src, got.bytes)) throw new Error('mismatch');
+    return 'ok';
+  });
+
+  say('— rendered image pipeline (encode → pixels → detect → decode) —', 'wa');
+  // render a payload to pixels the way a camera would see it, optionally degraded
+  const shoot = (bytes, ecl, noise) => {
+    const qr = qrEncode(bytes, ecl, 1);
+    const cv = document.createElement('canvas');
+    qrPaint(cv, qr, 700);
+    const pad = 40, cw = cv.width + pad * 2;
+    const c2 = document.createElement('canvas'); c2.width = cw; c2.height = cw;
+    const g = c2.getContext('2d', { willReadFrequently: true });
+    g.fillStyle = '#fff'; g.fillRect(0, 0, cw, cw);
+    if (noise) g.filter = 'blur(1px)';
+    g.drawImage(cv, pad, pad);
+    g.filter = 'none';
+    const img = g.getImageData(0, 0, cw, cw);
+    if (noise) for (let i = 0; i < img.data.length; i += 4) {
+      const d = (Math.random() * 2 - 1) * noise;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.max(0, Math.min(255, img.data[i] + d));
+    }
+    return { img, qr };
+  };
+  for (const n of [100, 450, 900]) {
+    check('image scan ' + n + ' B', () => {
+      const src = rnd(n);
+      const r = scanImageData(shoot(src, 1, 0).img);
+      if (!r) throw new Error('no code detected');
+      if (!same(src, r.bytes)) throw new Error('payload mismatch');
+      return 'v' + r.version + ' detected';
+    });
+  }
+  check('image scan 450 B, blurred + noisy', () => {
+    const src = rnd(450);
+    const r = scanImageData(shoot(src, 1, 45).img);
+    if (!r) throw new Error('no code detected');
+    if (!same(src, r.bytes)) throw new Error('payload mismatch');
+    return 'v' + r.version + ', ' + r.errors + ' symbols repaired';
+  });
+
+  say('— protocol framing —', 'wa');
+  check('header + data frames', () => {
+    const payload = rnd(450);
+    const s = { sid: 4242, flags: 1, xferSize: 900, origSize: 2000, crc: 0xDEADBEEF, chunkSize: 450, total: 2, name: 'tëst.bin', mime: 'application/octet-stream' };
+    const h = parseFrame(buildHeaderFrame(s));
+    if (h.kind !== 'head' || h.name !== s.name || h.crc !== s.crc || h.total !== 2 || !(h.flags & 1)) throw new Error('header mismatch');
+    const d = parseFrame(buildDataFrame(4242, 1, 2, payload));
+    if (d.kind !== 'data' || d.idx !== 1 || !same(payload, d.payload)) throw new Error('data mismatch');
+    const bent = buildDataFrame(4242, 1, 2, payload); bent[20] ^= 0xFF;
+    if (parseFrame(bent).kind !== 'bad') throw new Error('crc16 did not catch corruption');
+    return 'ok';
+  });
+
+  say('— end to end: whole file over a lossy optical channel —', 'wa');
+  check('2 KB file, 30% frames missed, noisy camera', () => {
+    const file = rnd(2000), chunkSize = 450;
+    const total = Math.ceil(file.length / chunkSize);
+    const s = {
+      sid: 0xBEEF, flags: 0, chunkSize, total, xferSize: file.length, origSize: file.length,
+      crc: crc32(file), name: 'selftest.bin', mime: 'application/octet-stream'
+    };
+    const playlist = [buildHeaderFrame(s)];
+    for (let i = 0; i < total; i++)
+      playlist.push(buildDataFrame(s.sid, i, total, file.subarray(i * chunkSize, Math.min((i + 1) * chunkSize, file.length))));
+
+    let meta = null, chunks = null, got = 0, missed = 0, undecodable = 0;
+    for (let p = 0; p < 8 && (!meta || got < total); p++) {
+      for (const frame of playlist) {
+        if (meta && got >= total) break;
+        if (Math.random() < 0.3) { missed++; continue; }        // camera did not catch this frame
+        const r = scanImageData(shoot(frame, 1, 30).img);
+        if (!r) { undecodable++; continue; }
+        const f = parseFrame(r.bytes);
+        if (!f || f.kind === 'bad') { undecodable++; continue; }
+        if (f.kind === 'head') { if (!meta) { meta = f; chunks = new Array(f.total).fill(null); } continue; }
+        if (!chunks) chunks = new Array(f.total).fill(null);
+        if (!chunks[f.idx]) { chunks[f.idx] = f.payload.slice(); got++; }
+      }
+    }
+    if (!meta || got < total) throw new Error('did not converge: ' + got + '/' + total);
+    const buf = new Uint8Array(meta.xferSize);
+    let o = 0; for (const c of chunks) { buf.set(c, o); o += c.length; }
+    if (crc32(buf) !== meta.crc) throw new Error('crc32 mismatch');
+    if (!same(file, buf)) throw new Error('reassembled bytes differ');
+    return total + ' chunks recovered, ' + missed + ' frames missed, ' + undecodable + ' undecodable';
+  });
+
+  say('', '');
+  say(fail === 0 ? 'ALL ' + pass + ' TESTS PASSED' : pass + ' passed, ' + fail + ' FAILED', fail === 0 ? 'ok' : 'er');
+};
+
+rxReset(true);
+
+</script>
+</body>
+</html>
