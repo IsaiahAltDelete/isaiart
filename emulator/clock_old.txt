@@ -1,0 +1,21 @@
+defineApp({id:'clock',name:'Clock',bg:'#0a0a0c',
+  glyph:`<svg viewBox="0 0 100 100" style="width:78%"><circle cx="50" cy="50" r="44" fill="#111" stroke="#fff" stroke-width="3"/>
+    <line x1="50" y1="50" x2="50" y2="24" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+    <line x1="50" y1="50" x2="68" y2="58" stroke="#ff9f0a" stroke-width="3" stroke-linecap="round"/></svg>`,
+  darkStatus:true,
+  mount(win,inst){
+    const nav=new Nav(win); inst.nav=nav;
+    nav.setRoot({title:'World Clock',largeTitle:true,build(b){
+      const big=el('div'); big.style.cssText='text-align:center;padding:20px 0';
+      const t=el('div','',''); t.style.cssText='font-size:64px;font-weight:200;letter-spacing:-2px';
+      big.appendChild(t); b.appendChild(big);
+      const tick=()=>{ const d=new Date(); t.textContent=d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',second:'2-digit'}); };
+      tick(); const iv=setInterval(tick,1000);
+      group(b,{rows:[['Cupertino',-3],['New York',0],['London',5],['Tokyo',13]].map(([c,off])=>({
+        label:c, value:new Date(Date.now()+off*3600e3).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}),
+        sub: off===0?'Today':(off>0?'+'+off+'HRS':off+'HRS')}))});
+      group(b,{header:'Alarms',rows:[
+        {label:'7:00 AM',sub:'Weekdays',rightHTML:'<div class="sw on"></div>'},
+        {label:'8:30 AM',sub:'Weekends',rightHTML:'<div class="sw"></div>'}]});
+    }});
+  }});
