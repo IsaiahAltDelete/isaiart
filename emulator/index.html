@@ -566,6 +566,31 @@ ul{list-style:none}
 .light .otp-box{background:rgba(118,118,128,.1)}
 .otp-box:focus{border-color:var(--sysblue);background:color-mix(in srgb,var(--sysblue) 12%,var(--bg3))}
 
+/* ---------- Touch simulation: fingertip cursor ---------- */
+#finger{
+  position:absolute;width:42px;height:42px;border-radius:50%;z-index:1200;pointer-events:none;
+  margin:-21px 0 0 -21px;opacity:0;
+  background:radial-gradient(circle at 34% 30%,rgba(255,255,255,.42),rgba(255,255,255,.16) 62%,rgba(255,255,255,.06));
+  border:1.5px solid rgba(255,255,255,.55);
+  box-shadow:0 2px 10px rgba(0,0,0,.28),inset 0 0 12px rgba(255,255,255,.2);
+  transition:opacity .18s,transform .1s ease-out;
+}
+.light #finger{border-color:rgba(0,0,0,.3);
+  background:radial-gradient(circle at 34% 30%,rgba(0,0,0,.16),rgba(0,0,0,.08) 62%,rgba(0,0,0,.03))}
+#finger.on{opacity:1}
+#finger.press{transform:scale(.78);
+  background:radial-gradient(circle at 34% 30%,rgba(255,255,255,.6),rgba(255,255,255,.26) 62%,rgba(255,255,255,.1))}
+#finger .rip{position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(255,255,255,.6);
+  opacity:0;pointer-events:none}
+#finger.tap .rip{animation:fingerTap .42s ease-out}
+@keyframes fingerTap{0%{opacity:.85;transform:scale(.55)}100%{opacity:0;transform:scale(1.9)}}
+/* A phone doesn't rubber-band blue selection over its own UI. Suppress it on the
+   whole screen, and hand it back only to real text fields. */
+.screen{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.screen input,.screen textarea,.screen [contenteditable]{
+  user-select:text;-webkit-user-select:text;-webkit-touch-callout:default}
+.screen img{-webkit-user-drag:none;user-drag:none}
+
 /* ---------- Volume / ringer HUDs ---------- */
 #volhud{position:absolute;left:10px;top:150px;z-index:770;opacity:0;transform:translateX(-14px);
   transition:opacity .22s,transform .22s cubic-bezier(.25,.9,.3,1);pointer-events:none}
@@ -783,7 +808,7 @@ const DEFAULTS = {
   settings:{
     dark:true, brightness:0.9, wallpaper:0, textSize:1, bold:false,
     airplane:false, wifi:true, wifiName:'SPECTRUM-5G', bluetooth:true, cellular:true, network:'online',
-    dnd:false, lowpower:false, rotationLock:false, autoLock:'2 Minutes',
+    dnd:false, lowpower:false, rotationLock:false, autoLock:'2 Minutes', touchCursor:true,
     searchEngine:'Google', blockPopups:true, preventTracking:true, faceid:true,
     name:"Isaiah's iPhone", appleID:'isaiah.s@icloud.com',
     autoUpdates:true, cellDownloads:false, offloadUnused:false, hapticFeedback:true, appleIntelligence:true,
@@ -1811,6 +1836,134 @@ let lastTap=0;
       else if($('#switcher').classList.contains('on'))$('#switcher').classList.remove('on');
       else locked?unlock():goHome(); }
   });
+})();
+
+/* =========================================================================
+   TOUCH SIMULATION — a fingertip cursor plus drag-to-scroll with momentum,
+   so the phone is driven the way a phone is: by dragging, not scroll wheels.
+   A tap (drag under the slop threshold) still clicks normally.
+   ========================================================================= */
+(function touchSim(){
+  const scr=$('#screen');
+  const finger=el('div'); finger.id='finger';
+  finger.innerHTML='<div class="rip"></div>';
+  scr.appendChild(finger);
+
+  const k=()=>{ const r=scr.getBoundingClientRect(); return (r.height/852)||1; };
+  const devPt=e=>{ const r=scr.getBoundingClientRect(), s=k();
+    return {x:(e.clientX-r.left)/s, y:(e.clientY-r.top)/s}; };
+  function placeFinger(e){
+    if(!State.settings.touchCursor) return;
+    const p=devPt(e);
+    finger.style.left=Math.max(-30,Math.min(423,p.x))+'px';
+    finger.style.top =Math.max(-30,Math.min(882,p.y))+'px';
+    finger.classList.add('on');
+  }
+  scr.addEventListener('pointermove',placeFinger);
+  scr.addEventListener('pointerenter',placeFinger);
+  scr.addEventListener('pointerleave',()=>finger.classList.remove('on'));
+
+  /* Elements that own their own drag behaviour and must not be hijacked. */
+  const NO_DRAG='input,textarea,select,canvas,iframe,.cc-slider,.slider,#homezone,'+
+                '.gm-stage,.sf-frame,.otp-box,.kn-row,.ml-row,#switcher,.sw-rail';
+  const scrollableY=n=>{
+    for(;n&&n!==scr;n=n.parentElement){
+      if(!(n instanceof HTMLElement)) continue;
+      const st=getComputedStyle(n).overflowY;
+      if((st==='auto'||st==='scroll')&&n.scrollHeight-n.clientHeight>2) return n;
+    }
+    return null;
+  };
+  const scrollableX=n=>{
+    for(;n&&n!==scr;n=n.parentElement){
+      if(!(n instanceof HTMLElement)) continue;
+      const st=getComputedStyle(n).overflowX;
+      if((st==='auto'||st==='scroll')&&n.scrollWidth-n.clientWidth>2) return n;
+    }
+    return null;
+  };
+
+  let drag=null, suppressClick=false;
+  const SLOP=7;                    // px of travel before it becomes a scroll
+
+  scr.addEventListener('pointerdown',e=>{
+    if(e.button) return;
+    if(!(e.target.closest&&e.target.closest('input,textarea,[contenteditable]'))){
+      const sel=window.getSelection&&window.getSelection();
+      if(sel&&!sel.isCollapsed) sel.removeAllRanges();
+    }
+    finger.classList.add('press');
+    if(State.settings.touchCursor){
+      finger.classList.remove('tap'); void finger.offsetWidth; finger.classList.add('tap');
+    }
+    if(e.target.closest && e.target.closest(NO_DRAG)) return;
+    drag={ x:e.clientX, y:e.clientY, sx:e.clientX, sy:e.clientY,
+           moved:false, axis:null, vy:0, vx:0, t:performance.now(),
+           ey:scrollableY(e.target), ex:scrollableX(e.target) };
+  },true);
+
+  window.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y, s=k();
+    if(!drag.moved){
+      if(Math.abs(e.clientX-drag.sx)<SLOP && Math.abs(e.clientY-drag.sy)<SLOP) return;
+      drag.moved=true;
+      drag.axis = Math.abs(e.clientY-drag.sy) >= Math.abs(e.clientX-drag.sx) ? 'y' : 'x';
+      const node = drag.axis==='y' ? drag.ey : drag.ex;
+      if(!node){ drag=null; return; }
+      /* CSS scroll-snap re-snaps after every incremental scrollLeft write, which
+         cancels a drag. Suspend it while dragging, restore once the fling ends. */
+      if(getComputedStyle(node).scrollSnapType!=='none'){
+        drag.snapNode=node; drag.snapPrev=node.style.scrollSnapType||'';
+        node.style.scrollSnapType='none';
+      }
+      scr.classList.add('dragging');
+    }
+    const now=performance.now(), dt=Math.max(1,now-drag.t);
+    const clamp=v=>Math.max(-28,Math.min(28,v));   // keep flings believable
+    if(drag.axis==='y'&&drag.ey){ drag.ey.scrollTop-=dy/s; drag.vy=clamp((dy/s)/dt*16); }
+    else if(drag.axis==='x'&&drag.ex){ drag.ex.scrollLeft-=dx/s; drag.vx=clamp((dx/s)/dt*16); }
+    drag.x=e.clientX; drag.y=e.clientY; drag.t=now;
+  },true);
+
+  function fling(node,v,axis,done){
+    let vel=v;
+    (function step(){
+      if(Math.abs(vel)<0.35||!node.isConnected){ done&&done(); return; }
+      if(axis==='y') node.scrollTop-=vel; else node.scrollLeft-=vel;
+      vel*=0.93;
+      requestAnimationFrame(step);
+    })();
+  }
+  const endDrag=()=>{
+    finger.classList.remove('press');
+    if(!drag) return;
+    if(drag.moved){
+      suppressClick=true;
+      setTimeout(()=>suppressClick=false,60);
+      scr.classList.remove('dragging');
+      const snapNode=drag.snapNode, snapPrev=drag.snapPrev;
+      const restore=()=>{ if(snapNode) snapNode.style.scrollSnapType=snapPrev; };
+      if(drag.axis==='y'&&drag.ey) fling(drag.ey,drag.vy,'y',restore);
+      else if(drag.axis==='x'&&drag.ex) fling(drag.ex,drag.vx,'x',restore);
+      else restore();
+    }
+    drag=null;
+  };
+  window.addEventListener('pointerup',endDrag,true);
+  window.addEventListener('pointercancel',endDrag,true);
+
+  /* a drag must never also fire the click underneath it */
+  scr.addEventListener('click',e=>{
+    if(suppressClick){ e.stopPropagation(); e.preventDefault(); }
+  },true);
+
+  window.setTouchCursor=v=>{
+    State.settings.touchCursor=v; save();
+    finger.style.display=v?'':'none';
+    if(!v) finger.classList.remove('on');
+  };
+  if(!State.settings.touchCursor) finger.style.display='none';
 })();
 
 /* ---------- Control Center ---------- */
@@ -7574,6 +7727,9 @@ const Sim={
   theme(){ State.settings.dark=!State.settings.dark; save(); applyAppearance();
     openApps.forEach(i=>i.nav&&i.nav.refresh());
     this.log('Appearance → '+(State.settings.dark?'Dark':'Light')); renderPanel(); },
+  touch(){ setTouchCursor(!State.settings.touchCursor);
+    this.log('Touch mode '+(State.settings.touchCursor?'on — drag to scroll':'off'));
+    renderPanel(); },
   wallpaper(){ State.settings.wallpaper=(State.settings.wallpaper+1)%WALLPAPERS.length; save(); applyAppearance();
     this.log('Wallpaper → '+WALLPAPERS[State.settings.wallpaper].n); },
   erase(){ eraseConfirm(); }
@@ -7639,6 +7795,7 @@ function renderPanel(){
       <button class="pbtn ${s.dnd?'on':''}" data-a="silent">Silent</button>
       <button class="pbtn" data-a="theme">${s.dark?'Light mode':'Dark mode'}</button>
       <button class="pbtn" data-a="wallpaper">Wallpaper</button>
+      <button class="pbtn wide ${s.touchCursor?'on':''}" data-a="touch">${s.touchCursor?'👆 Touch mode: on':'Touch mode: off'}</button>
       <button class="pbtn red wide" data-a="erase">Erase all content</button>
     </div>
 
@@ -7656,8 +7813,9 @@ function renderPanel(){
       cantconnect:()=>Sim.cantConnect(), newmail:()=>Sim.newMail(), addemail:()=>Sim.addEmail(), addother:()=>Sim.addEmailOther(),
       verify:()=>Sim.verify(), openmsgs:()=>Sim.openMessages(),
       low:()=>Sim.battery(.15), full:()=>Sim.battery(1), charge:()=>Sim.charge(), silent:()=>Sim.silent(),
-      theme:()=>Sim.theme(), wallpaper:()=>Sim.wallpaper(), erase:()=>Sim.erase()})[a]();
-    if(['lock','ring','answer','end','charge'].includes(a)) setTimeout(renderPanel,60);
+      theme:()=>Sim.theme(), wallpaper:()=>Sim.wallpaper(), erase:()=>Sim.erase(),
+      touch:()=>Sim.touch()})[a]();
+    if(['lock','ring','answer','end','charge','touch'].includes(a)) setTimeout(renderPanel,60);
   });
   p.querySelectorAll('[data-net]').forEach(b=>b.onclick=()=>Sim.network(b.dataset.net));
   p.querySelectorAll('[data-otp]').forEach(b=>b.onclick=()=>Sim.otp(b.dataset.otp));
