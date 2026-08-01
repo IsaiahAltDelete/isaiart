@@ -115,7 +115,14 @@ ul{list-style:none}
 /* ---------- Home bar ---------- */
 #homebar{
   position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
-  width:140px;height:5px;border-radius:3px;background:#fff;opacity:.85;z-index:600;cursor:pointer;
+  width:140px;height:5px;border-radius:3px;background:#fff;opacity:.85;z-index:600;pointer-events:none;
+  transition:opacity .15s,transform .15s;
+}
+/* The visible pill is only 5px tall so it can never be a reliable tap target.
+   iOS backs the home indicator with a tall invisible gesture strip — this is it. */
+#homezone{
+  position:absolute;left:0;right:0;bottom:0;height:26px;z-index:610;
+  cursor:pointer;touch-action:none;background:transparent;
 }
 .light #homebar,#homebar.dark{background:#000}
 
@@ -177,7 +184,10 @@ ul{list-style:none}
 }
 .applabel{font-size:11.5px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.55);max-width:82px;text-align:center;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:400;letter-spacing:-.1px}
-.badge{position:absolute;top:-4px;right:8px;min-width:21px;height:21px;border-radius:11px;background:#ff3b30;color:#fff;font-size:12px;font-weight:600;display:grid;place-items:center;padding:0 6px;box-shadow:0 0 0 2px rgba(0,0,0,.15);z-index:3}
+.iconwrap{position:relative;display:block;line-height:0}
+.badge{position:absolute;top:-5px;right:-6px;min-width:20px;height:20px;border-radius:10px;background:#ff3b30;color:#fff;
+  font-size:12.5px;font-weight:600;line-height:20px;text-align:center;padding:0 5px;z-index:4;
+  box-shadow:0 0 0 1.5px rgba(0,0,0,.22),0 1px 3px rgba(0,0,0,.35);font-variant-numeric:tabular-nums}
 #dots{display:flex;justify-content:center;gap:7px;padding:10px 0 6px}
 .dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.35)}
 .dot.on{background:#fff}
@@ -275,7 +285,7 @@ ul{list-style:none}
 .searchfield input::placeholder{color:var(--txt2)}
 
 /* tab bar — iOS 26 floating glass capsule */
-.tabbar{flex:none;height:62px;margin:0 12px 24px;border-radius:30px;display:flex;align-items:center;
+.tabbar{flex:none;height:62px;margin:0 12px 26px;border-radius:30px;display:flex;align-items:center;
   background:rgba(120,120,128,.22);backdrop-filter:blur(26px) saturate(180%);
   box-shadow:0 8px 26px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.16);
   border:.5px solid rgba(255,255,255,.14)}
@@ -336,7 +346,9 @@ ul{list-style:none}
 .cc-circ.on.green{background:var(--sysgreen)}
 .cc-slider{background:rgba(120,120,128,.4);border-radius:22px;width:100%;height:150px;position:relative;overflow:hidden;cursor:pointer}
 .cc-fill{position:absolute;bottom:0;left:0;right:0;background:#fff}
-.cc-slider i{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:20px;color:#8e8e93;font-style:normal;mix-blend-mode:difference}
+.cc-slider i{position:absolute;bottom:14px;left:0;right:0;display:flex;justify-content:center;color:#8e8e93;font-style:normal;mix-blend-mode:difference}
+.cc-ic{display:grid;place-items:center;color:#fff}
+.cc-tile[style*="#ffd60a"] .cc-ic,.cc-tile[style*="#fff"] .cc-ic{color:#000}
 .cc-label{font-size:11px;text-align:center;line-height:1.2}
 
 /* app switcher */
@@ -497,7 +509,7 @@ ul{list-style:none}
 .msg-subject{font-size:22px;font-weight:700;line-height:1.2;margin-bottom:12px}
 .msg-body{padding:18px 16px;font-size:16px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
 .msg-body a{color:var(--sysblue)}
-.msg-toolbar{flex:none;height:78px;padding-bottom:20px;display:flex;justify-content:space-around;align-items:center;
+.msg-toolbar{flex:none;height:84px;padding-bottom:26px;display:flex;justify-content:space-around;align-items:center;
   background:color-mix(in srgb,var(--page) 85%,transparent);backdrop-filter:var(--blur);border-top:.5px solid var(--sep)}
 .msg-toolbar button{color:var(--sysblue);font-size:20px;padding:8px 14px}
 .compose-field{display:flex;gap:8px;padding:11px 16px;border-bottom:.5px solid var(--sep);align-items:center}
@@ -517,13 +529,13 @@ ul{list-style:none}
   display:flex;align-items:flex-end;padding:8px;font-size:11px;font-weight:700;text-shadow:0 1px 4px #000}
 .st-nav{position:sticky;top:0;z-index:5;display:flex;gap:18px;padding:56px 16px 12px;font-size:14px;
   background:linear-gradient(to bottom,rgba(0,0,0,.85),transparent)}
-.st-tabbar{position:absolute;bottom:0;left:0;right:0;height:74px;padding-bottom:18px;display:flex;
+.st-tabbar{position:absolute;bottom:0;left:0;right:0;height:82px;padding-bottom:26px;display:flex;
   background:rgba(0,0,0,.9);align-items:center}
 .st-tabbar button{flex:1;font-size:10px;display:flex;flex-direction:column;gap:4px;align-items:center;color:#8e8e93}
 .st-tabbar button.on{color:#fff}
 
 /* calculator */
-.calc{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;padding:0 12px 24px}
+.calc{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;padding:0 12px 32px}
 .calc .out{flex:1;display:flex;align-items:flex-end;justify-content:flex-end;color:#fff;font-size:80px;font-weight:300;padding:0 14px 12px;overflow:hidden}
 .calc .keys{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .calc button{height:76px;border-radius:50px;background:#333;color:#fff;font-size:33px;font-weight:400}
@@ -553,6 +565,24 @@ ul{list-style:none}
 }
 .light .otp-box{background:rgba(118,118,128,.1)}
 .otp-box:focus{border-color:var(--sysblue);background:color-mix(in srgb,var(--sysblue) 12%,var(--bg3))}
+
+/* ---------- Volume / ringer HUDs ---------- */
+#volhud{position:absolute;left:10px;top:150px;z-index:770;opacity:0;transform:translateX(-14px);
+  transition:opacity .22s,transform .22s cubic-bezier(.25,.9,.3,1);pointer-events:none}
+#volhud.on{opacity:1;transform:none}
+#volhud .vh-track{position:relative;width:32px;height:150px;border-radius:16px;overflow:hidden;
+  background:rgba(120,120,128,.34);backdrop-filter:blur(22px) saturate(160%);
+  box-shadow:0 6px 20px rgba(0,0,0,.32),inset 0 0 0 .5px rgba(255,255,255,.14)}
+#volhud .vh-fill{position:absolute;left:0;right:0;bottom:0;background:#fff;transition:height .12s linear}
+#volhud .vh-ic{position:absolute;left:0;right:0;bottom:9px;display:flex;justify-content:center;
+  color:#8e8e93;mix-blend-mode:difference}
+#ringhud{position:absolute;left:50%;top:180px;transform:translate(-50%,-8px);z-index:770;opacity:0;
+  transition:opacity .22s,transform .22s;pointer-events:none;
+  width:150px;height:150px;border-radius:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  background:rgba(40,40,44,.86);backdrop-filter:blur(24px) saturate(160%);color:#fff;
+  box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 0 0 .5px rgba(255,255,255,.12)}
+#ringhud.on{opacity:1;transform:translate(-50%,0)}
+#ringhud .rh-lbl{font-size:14px;opacity:.75}
 
 /* ---------- Call UI ---------- */
 #callui{position:absolute;inset:0;z-index:380;display:none;flex-direction:column;color:#fff;
@@ -725,6 +755,7 @@ ul{list-style:none}
       <div id="island"><div class="il-content"></div></div>
 
       <div id="homebar"></div>
+      <div id="homezone"></div>
       <div id="dim"></div>
 
       <div id="boot">
@@ -763,6 +794,10 @@ const DEFAULTS = {
   mail:null,      // built by Mail module on first run
   safari:null,    // built by Safari module
   wf:null,        // built by the Wi-Fi module (known networks etc.)
+  accounts:null,  // Apple Accounts (sign in / out / switch)
+  wallet:null,    // cards + passes
+  clock:null,     // world clocks + alarms
+  gameBest:null,  // per-game best scores
   phone:null,     // recents + voicemail
   threads:null,   // Messages conversations
   otp:null,       // live one-time passcode
@@ -792,6 +827,114 @@ function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{
   try{ localStorage.setItem(SAVE_KEY, JSON.stringify(State)); }catch(e){}
 },250); }
 function factoryReset(){ localStorage.removeItem(SAVE_KEY); location.reload(); }
+
+/* ---------- Apple Accounts (sign in / out / switch) ---------- */
+function ACC(){
+  if(!State.accounts) State.accounts={
+    signedIn:1,
+    list:[{id:1,name:'Isaiah S.',email:'isaiah.s@icloud.com',initials:'IS',
+           color:'linear-gradient(135deg,#5e5ce6,#0a84ff)',storage:47.2,plan:'200 GB'}]
+  };
+  return State.accounts;
+}
+function currentAccount(){ const a=ACC(); return a.list.find(x=>x.id===a.signedIn)||null; }
+function signInSheet(nav,{switching}={}){
+  sheet((s,close)=>{
+    s.style.height='auto';
+    const wrap=el('div');
+    wrap.style.cssText='padding:26px 24px 34px;text-align:center';
+    wrap.innerHTML=`
+      <div style="width:62px;height:62px;border-radius:16px;margin:0 auto 14px;background:linear-gradient(135deg,#5e5ce6,#0a84ff);
+        display:grid;place-items:center;color:#fff">${sf('<circle cx="12" cy="8" r="3.8"/><path d="M4.6 20.4a7.4 7.4 0 0114.8 0"/>',{size:30})}</div>
+      <div style="font-size:21px;font-weight:700">${switching?'Switch Apple Account':'Apple Account Sign In'}</div>
+      <div class="muted" style="font-size:13.5px;line-height:1.45;margin-top:6px">
+        Use any address you like — this simulator never contacts Apple.</div>`;
+    const g=el('div','grp'); g.style.margin='18px 0 8px';
+    const mk=(label,ph,type)=>{ const f=el('div','compose-field');
+      f.innerHTML=`<div class="k" style="min-width:84px">${label}</div>`;
+      const i=el('input'); i.placeholder=ph; if(type)i.type=type; i.autocapitalize='off';
+      f.appendChild(i); g.appendChild(f); return i; };
+    const nameIn=mk('Name','Jane Appleseed');
+    const mailIn=mk('Email','you@icloud.com');
+    const pwIn=mk('Password','Required','password');
+    g.lastElementChild.style.borderBottom='none';
+    wrap.appendChild(g);
+    const btn=el('button','btn-primary','Sign In');
+    btn.style.marginTop='10px';
+    btn.onclick=()=>{
+      if(!nameIn.value.trim()) return toast('Enter a name');
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mailIn.value.trim())) return toast('Enter a valid email');
+      if(!pwIn.value) return toast('Enter a password');
+      btn.innerHTML='<div class="spinner" style="margin:0 auto;border-top-color:#fff"></div>';
+      setTimeout(()=>{
+        const a=ACC();
+        const email=mailIn.value.trim().toLowerCase();
+        let acct=a.list.find(x=>x.email.toLowerCase()===email);
+        if(!acct){
+          acct={id:Date.now(), name:nameIn.value.trim(), email,
+            initials:nameIn.value.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase(),
+            color:'linear-gradient(135deg,'+colorFor(email)+',#0a84ff)', storage:+(Math.random()*40+5).toFixed(1), plan:'5 GB'};
+          a.list.push(acct);
+        }
+        a.signedIn=acct.id;
+        State.settings.appleID=acct.email;
+        save(); close();
+        island('☁️','#0a84ff','Apple Account','Signed in as '+acct.email,2600);
+        nav&&nav.refresh();
+      },1200);
+    };
+    wrap.appendChild(btn);
+    if(ACC().list.length && !currentAccount()){
+      const other=el('div');
+      other.style.cssText='margin-top:18px;text-align:left';
+      other.appendChild(el('div','grp-h','Accounts on this iPhone'));
+      const gg=el('div','grp');
+      ACC().list.forEach(a2=>gg.appendChild(makeRow({
+        label:a2.name, sub:a2.email,
+        icon:`<div class="avatar" style="width:32px;height:32px;font-size:13px;background:${a2.color}">${esc(a2.initials)}</div>`,
+        iconBg:'transparent',
+        onClick:()=>{ ACC().signedIn=a2.id; State.settings.appleID=a2.email; save(); close();
+          island('☁️','#0a84ff','Apple Account','Signed in as '+a2.email,2400); nav&&nav.refresh(); }})));
+      other.appendChild(gg);
+      wrap.appendChild(other);
+    }
+    const cancel=el('button','','Cancel');
+    cancel.style.cssText='color:var(--txt2);font-size:15px;margin-top:16px;display:block;width:100%';
+    cancel.onclick=close;
+    wrap.appendChild(cancel);
+    s.appendChild(wrap);
+    setTimeout(()=>nameIn.focus(),380);
+  },{full:true});
+}
+/* Erase All Content and Settings, with the real multi-step flow */
+function eraseFlow(){
+  alertBox({title:'Erase All Content and Settings?',
+    message:'This will delete all media, data and settings in the simulator. This cannot be undone.',
+    buttons:[{text:'Cancel'},{text:'Continue',style:'bold',onClick:()=>{
+      alertBox({title:'Erase This iPhone?',
+        message:'Your apps, mail accounts, photos, games and Apple Account will be removed from this iPhone.',
+        buttons:[{text:'Cancel'},{text:'Erase iPhone',style:'red bold',onClick:runErase}]});
+    }}]});
+}
+function runErase(){
+  closeOverlay();
+  openApps.forEach((v,k)=>quitApp(k));
+  currentApp=null;
+  $('#home').classList.remove('blurred');
+  const ov=el('div');
+  ov.style.cssText=`position:absolute;inset:0;z-index:1900;background:#000;color:#fff;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;gap:20px`;
+  ov.innerHTML=`<div style="width:74px;color:#fff">
+      <svg viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg></div>
+    <div style="width:170px;height:5px;border-radius:3px;background:#2b2b2e;overflow:hidden">
+      <i id="eraseBar" style="display:block;height:100%;width:0;background:#e8e8ed;transition:width .3s"></i></div>
+    <div style="font-size:13px;opacity:.6">Erasing iPhone…</div>`;
+  $('#screen').appendChild(ov);
+  let p=0;
+  const t=setInterval(()=>{ p+=8+Math.random()*10;
+    const bar=$('#eraseBar'); if(bar) bar.style.width=Math.min(100,p)+'%';
+    if(p>=100){ clearInterval(t); setTimeout(factoryReset,600); } },240);
+}
 
 /* ---------- theme / appearance ---------- */
 function applyAppearance(){
@@ -1220,7 +1363,7 @@ function appTile(id){
   const def=Apps[id];
   const t=el('div','app'+(State.installed.includes(id)?' removable':''));
   t.dataset.app=id;
-  t.innerHTML = `<div class="delx">✕</div>${appIconHTML(def)}<div class="applabel">${esc(def.name)}</div>`;
+  t.innerHTML = `<div class="delx">✕</div><div class="iconwrap">${appIconHTML(def)}</div><div class="applabel">${esc(def.name)}</div>`;
   t.querySelector('.delx').onclick=e=>{ e.stopPropagation(); confirmDelete(id); };
   t.onclick=()=>{ if($('#home').classList.contains('jiggle'))return; openApp(id,t.querySelector('.appicon')); };
   let lp;
@@ -1248,7 +1391,8 @@ function updateBadges(){
   $$('#home .app,#dock .app').forEach(t=>{
     const id=t.dataset.app, n=State.badges[id]|0;
     let b=t.querySelector('.badge');
-    if(n>0){ if(!b){b=el('div','badge');t.appendChild(b);} b.textContent=n>99?'99+':n; }
+    const host=t.querySelector('.iconwrap')||t;
+    if(n>0){ if(!b){b=el('div','badge');host.appendChild(b);} b.textContent=n>99?'99+':n; }
     else if(b) b.remove();
   });
 }
@@ -1275,9 +1419,42 @@ function unlock(){
   renderPanel&&renderPanel();
 }
 $('#bPower').onclick=()=>{ locked?unlock():lockPhone(); };
-$('#bUp').onclick=()=>{ State.settings.ringer=Math.min(100,State.settings.ringer+10); save(); island('🔊','#3a3a3c','Ringer',State.settings.ringer+'%',1200); };
-$('#bDown').onclick=()=>{ State.settings.ringer=Math.max(0,State.settings.ringer-10); save(); island('🔉','#3a3a3c','Ringer',State.settings.ringer+'%',1200); };
-$('#bMute').onclick=()=>{ State.settings.dnd=!State.settings.dnd; save(); island(State.settings.dnd?'🌙':'🔔','#5e5ce6',State.settings.dnd?'Silent':'Ring',State.settings.dnd?'Notifications silenced':'',1400); };
+/* iOS shows volume as a tall capsule hugging the left edge, level with the
+   physical buttons — not as a banner. */
+let volTimer;
+function volumeHUD(){
+  const s=State.settings;
+  let hud=$('#volhud');
+  if(!hud){
+    hud=el('div'); hud.id='volhud';
+    hud.innerHTML=`<div class="vh-track"><div class="vh-fill"></div><div class="vh-ic"></div></div>`;
+    $('#screen').appendChild(hud);
+  }
+  const muted = s.ringer===0;
+  hud.querySelector('.vh-fill').style.height=s.ringer+'%';
+  hud.querySelector('.vh-ic').innerHTML = muted
+    ? sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor" stroke="none"/><path d="M16 9.6l5 5M21 9.6l-5 5"/>',{size:15})
+    : sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor" stroke="none"/><path d="M15.5 9.2a4 4 0 010 5.6"/>',{size:15});
+  hud.classList.add('on');
+  clearTimeout(volTimer);
+  volTimer=setTimeout(()=>hud.classList.remove('on'),1400);
+}
+function ringerHUD(){
+  const s=State.settings;
+  let hud=$('#ringhud');
+  if(!hud){ hud=el('div'); hud.id='ringhud'; $('#screen').appendChild(hud); }
+  hud.innerHTML=`<div class="rh-ic">${s.dnd
+    ? sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor" stroke="none"/><path d="M16 9.6l5 5M21 9.6l-5 5"/>',{size:26})
+    : sf('<path d="M18 15.5V10a6 6 0 10-12 0v5.5L4.5 18h15z"/><path d="M10 21h4"/>',{size:26})}</div>
+    <div class="rh-lbl">${s.dnd?'Silent':'Ring'}</div>`;
+  hud.classList.add('on');
+  clearTimeout(hud._t);
+  hud._t=setTimeout(()=>hud.classList.remove('on'),1400);
+}
+$('#bUp').onclick=()=>{ State.settings.ringer=Math.min(100,State.settings.ringer+10); save(); volumeHUD(); renderCC(); };
+$('#bDown').onclick=()=>{ State.settings.ringer=Math.max(0,State.settings.ringer-10); save(); volumeHUD(); renderCC(); };
+$('#bMute').onclick=()=>{ State.settings.dnd=!State.settings.dnd; save(); ringerHUD(); renderCC();
+  if(navigator.vibrate) navigator.vibrate(12); };
 
 let LOCK_NOTIFS=[
   {app:'mail',   title:'Spectrum',  body:'Your July statement is ready — $189.98 due August 12', when:'2m ago'},
@@ -1569,12 +1746,45 @@ function verificationSheet({sender='Spectrum', onDone}={}){
    Gestures: home bar, control center, app switcher
    ========================================================================= */
 let lastTap=0;
-$('#homebar').onclick=()=>{
-  const now=Date.now();
-  if(now-lastTap<300){ openSwitcher(); lastTap=0; return; }
-  lastTap=now;
-  setTimeout(()=>{ if(lastTap && Date.now()-lastTap>=290){ locked?unlock():goHome(); lastTap=0; } },310);
-};
+/* The home indicator: tap to go home, double-tap for the switcher, swipe up to
+   go home. All of it lives on #homezone — a full-width strip, not the 5px pill. */
+(function homeIndicator(){
+  const zone=$('#homezone'), bar=$('#homebar');
+  let downY=0, downX=0, downT=0, moved=false;
+  const dev=e=>{ const r=$('#screen').getBoundingClientRect(), k=r.height/852||1;
+    return {x:(e.clientX-r.left)/k, y:(e.clientY-r.top)/k}; };
+  const fire=()=>{
+    const now=Date.now();
+    if(now-lastTap<300){ lastTap=0; if(!locked) openSwitcher(); return; }
+    lastTap=now;
+    setTimeout(()=>{ if(lastTap && Date.now()-lastTap>=290){ locked?unlock():goHome(); lastTap=0; } },305);
+  };
+  zone.addEventListener('pointerdown',e=>{
+    const p=dev(e); downX=p.x; downY=p.y; downT=Date.now(); moved=false;
+    bar.style.opacity='1'; bar.style.transform='translateX(-50%) scaleY(1.6)';
+    zone.setPointerCapture&&zone.setPointerCapture(e.pointerId);
+  });
+  zone.addEventListener('pointermove',e=>{
+    if(!downT) return;
+    const p=dev(e);
+    if(p.y-downY < -14) moved=true;
+  });
+  zone.addEventListener('pointerup',e=>{
+    bar.style.opacity=''; bar.style.transform='translateX(-50%)';
+    if(!downT) return;
+    const p=dev(e), dy=p.y-downY, dx=p.x-downX;
+    downT=0;
+    if(dy < -34){                       // swipe up
+      lastTap=0;
+      if(locked) return unlock();
+      if(Math.abs(dx) < 120 && currentApp) return goHome();
+      return goHome();
+    }
+    if(!moved) fire();                  // plain tap
+  });
+  zone.addEventListener('pointercancel',()=>{ downT=0;
+    bar.style.opacity=''; bar.style.transform='translateX(-50%)'; });
+})();
 (function gestures(){
   const scr=$('#screen'); let sx=0,sy=0,active=null;
   /* the device is CSS-scaled, so convert page pixels back to device pixels */
@@ -1607,29 +1817,50 @@ $('#homebar').onclick=()=>{
 function renderCC(){
   const s=State.settings;
   const cc=$('#cc');
+  const on=(k)=>k?'on':'';
   cc.innerHTML=`
    <div class="cc-grid">
      <div class="cc-tile span2 row2" style="align-content:center">
        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;place-items:center">
-         <div class="cc-circ ${s.airplane?'on':''}" data-t="airplane">${SVG.plane}</div>
-         <div class="cc-circ ${s.cellular&&!s.airplane?'on green':''}" data-t="cellular">📶</div>
-         <div class="cc-circ ${s.wifi&&!s.airplane?'on':''}" data-t="wifi">${SVG.wifi}</div>
-         <div class="cc-circ ${s.bluetooth?'on':''}" data-t="bluetooth">ᛒ</div>
+         <div class="cc-circ ${on(s.airplane)}" data-t="airplane">${sf('<path d="M21 15.6v-1.8l-7.6-4.6V3.9a1.4 1.4 0 10-2.8 0v5.3L3 13.8v1.8l7.6-2.3v4.9l-2 1.4v1.3l3.4-.9 3.4.9v-1.3l-2-1.4v-4.9z" fill="currentColor" stroke="none"/>',{fill:true,size:20})}</div>
+         <div class="cc-circ ${s.cellular&&!s.airplane?'on green':''}" data-t="cellular">${sf('<rect x="3" y="14.5" width="2.6" height="6" rx="1" fill="currentColor" stroke="none"/><rect x="8" y="11" width="2.6" height="9.5" rx="1" fill="currentColor" stroke="none"/><rect x="13" y="7.5" width="2.6" height="13" rx="1" fill="currentColor" stroke="none"/><rect x="18" y="4" width="2.6" height="16.5" rx="1" fill="currentColor" stroke="none"/>',{fill:true,size:20})}</div>
+         <div class="cc-circ ${s.wifi&&!s.airplane?'on':''}" data-t="wifi">${sf('<path d="M2.6 8.6a14 14 0 0118.8 0"/><path d="M5.6 12a10 10 0 0112.8 0"/><path d="M8.6 15.4a6 6 0 016.8 0"/><circle cx="12" cy="19" r="1.1" fill="currentColor" stroke="none"/>',{size:20,w:1.9})}</div>
+         <div class="cc-circ ${on(s.bluetooth)}" data-t="bluetooth">${sf('<path d="M7.5 7.5L16.5 16.5 12 20V4l4.5 3.5L7.5 16.5"/>',{size:20,w:1.9})}</div>
        </div>
      </div>
-     <div class="cc-tile" data-t="lock"><div style="font-size:22px">${s.rotationLock?'🔒':'🔓'}</div><div class="cc-label">Rotation</div></div>
-     <div class="cc-tile" data-t="dnd" style="${s.dnd?'background:#5e5ce6':''}"><div style="font-size:22px">🌙</div><div class="cc-label">Focus</div></div>
-     <div class="cc-tile span2" style="padding:10px">
-       <div style="width:100%;font-size:12px;opacity:.75;margin-bottom:6px">Now Playing</div>
-       <div class="hstack" style="width:100%"><div style="width:34px;height:34px;border-radius:6px;background:linear-gradient(135deg,#ff2d55,#ff9500)"></div>
-       <div style="flex:1;font-size:12px"><b>Not Playing</b><br><span style="opacity:.6">Music</span></div><div>▶</div></div>
+     <div class="cc-tile" data-t="lock" style="${s.rotationLock?'background:#ff3b30':''}">
+       <div class="cc-ic">${sf('<rect x="5" y="10.5" width="14" height="10" rx="3"/><path d="M8.2 10.5V7.8a3.8 3.8 0 017.6 0v2.7"/>',{size:22,w:1.9})}</div>
+       <div class="cc-label">Rotation<br>${s.rotationLock?'Locked':'Unlocked'}</div></div>
+     <div class="cc-tile" data-t="dnd" style="${s.dnd?'background:#5e5ce6':''}">
+       <div class="cc-ic">${sf('<path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z" fill="${s.dnd?"currentColor":"none"}"/>',{size:22,w:1.9})}</div>
+       <div class="cc-label">Focus</div></div>
+     <div class="cc-tile span2" style="padding:11px 13px" data-t="music">
+       <div style="width:100%;display:flex;align-items:center;gap:11px">
+         <div style="width:38px;height:38px;border-radius:8px;background:linear-gradient(135deg,#ff2d55,#ff9500);flex:none"></div>
+         <div style="flex:1;min-width:0;text-align:left"><div style="font-size:13px;font-weight:600">Not Playing</div>
+           <div style="font-size:11px;opacity:.6">Music</div></div>
+         <div style="display:flex;gap:14px;opacity:.9">
+           ${sf('<path d="M18 6v12M16 12L7 5.5v13z" fill="currentColor" stroke="none"/>',{fill:true,size:17})}
+           ${sf('<path d="M7 5.5l11 6.5-11 6.5z" fill="currentColor" stroke="none"/>',{fill:true,size:19})}
+           ${sf('<path d="M6 6v12M8 12l9 6.5v-13z" fill="currentColor" stroke="none"/>',{fill:true,size:17})}
+         </div></div>
      </div>
-     <div class="cc-tile" data-t="low" style="${s.lowpower?'background:#ffd60a;color:#000':''}"><div style="font-size:22px">🔋</div><div class="cc-label">Low Power</div></div>
-     <div class="cc-tile" data-t="flash"><div style="font-size:22px">🔦</div><div class="cc-label">Flashlight</div></div>
-     <div class="cc-slider" id="ccBright"><div class="cc-fill" style="height:${s.brightness*100}%"></div><i>☀</i></div>
-     <div class="cc-slider" id="ccVol"><div class="cc-fill" style="height:${s.ringer}%"></div><i>🔊</i></div>
-     <div class="cc-tile" data-t="calc"><div style="font-size:22px">🧮</div><div class="cc-label">Calculator</div></div>
-     <div class="cc-tile" data-t="camera"><div style="font-size:22px">📷</div><div class="cc-label">Camera</div></div>
+     <div class="cc-tile" data-t="low" style="${s.lowpower?'background:#ffd60a;color:#000':''}">
+       <div class="cc-ic">${sf('<rect x="2" y="8" width="17" height="9" rx="3"/><path d="M21 11.2v2.6"/><path d="M11 9.5l-2.6 3.4h3l-.8 2.6 3-3.6h-2.8z" fill="currentColor" stroke="none"/>',{size:22,w:1.8})}</div>
+       <div class="cc-label">Low Power</div></div>
+     <div class="cc-tile" data-t="flash" style="${s.torch?'background:#fff;color:#000':''}">
+       <div class="cc-ic">${sf('<path d="M9 3h6l-.6 3.4H9.6z"/><path d="M9.6 6.4h4.8l.6 2.2v11a1.4 1.4 0 01-1.4 1.4h-3.2a1.4 1.4 0 01-1.4-1.4v-11z"/><path d="M12 12v3"/>',{size:22,w:1.7})}</div>
+       <div class="cc-label">Torch</div></div>
+     <div class="cc-slider" id="ccBright"><div class="cc-fill" style="height:${s.brightness*100}%"></div>
+       <i>${sf('<circle cx="12" cy="12" r="4.4" fill="currentColor" stroke="none"/><path d="M12 2.4v2.6M12 19v2.6M2.4 12h2.6M19 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" stroke-width="2.1"/>',{size:22})}</i></div>
+     <div class="cc-slider" id="ccVol"><div class="cc-fill" style="height:${s.ringer}%"></div>
+       <i>${sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor" stroke="none"/><path d="M15.5 9.2a4 4 0 010 5.6M18.2 6.6a8 8 0 010 10.8"/>',{size:22})}</i></div>
+     <div class="cc-tile" data-t="calc">
+       <div class="cc-ic">${sf('<rect x="4" y="2.6" width="16" height="18.8" rx="3.4"/><rect x="7" y="5.6" width="10" height="3.4" rx="1.2"/><path d="M8.4 13h.02M12 13h.02M15.6 13h.02M8.4 17h.02M12 17h.02M15.6 17h.02" stroke-width="2.6"/>',{size:22,w:1.7})}</div>
+       <div class="cc-label">Calculator</div></div>
+     <div class="cc-tile" data-t="camera">
+       <div class="cc-ic">${sf('<rect x="2.5" y="6.5" width="19" height="13" rx="3.4"/><path d="M8.5 6.5l1.4-2.4h4.2l1.4 2.4"/><circle cx="12" cy="13" r="3.7"/>',{size:22,w:1.7})}</div>
+       <div class="cc-label">Camera</div></div>
    </div>`;
   cc.querySelectorAll('[data-t]').forEach(n=>n.onclick=e=>{
     e.stopPropagation(); const t=n.dataset.t;
@@ -1639,8 +1870,9 @@ function renderCC(){
     else if(t==='bluetooth'){ s.bluetooth=!s.bluetooth; }
     else if(t==='dnd'){ s.dnd=!s.dnd; toast(s.dnd?'Do Not Disturb On':'Do Not Disturb Off'); }
     else if(t==='low'){ s.lowpower=!s.lowpower; }
-    else if(t==='lock'){ s.rotationLock=!s.rotationLock; }
-    else if(t==='flash'){ toast('Flashlight is simulated'); }
+    else if(t==='lock'){ s.rotationLock=!s.rotationLock; toast(s.rotationLock?'Rotation Lock On':'Rotation Lock Off'); }
+    else if(t==='flash'){ s.torch=!s.torch; toast(s.torch?'Torch On':'Torch Off'); }
+    else if(t==='music'){ cc.classList.remove('on'); openApp('music'); return; }
     else if(t==='calc'){ cc.classList.remove('on'); openApp('calculator'); return; }
     else if(t==='camera'){ cc.classList.remove('on'); openApp('camera'); return; }
     save(); applyAppearance(); renderCC();
@@ -1718,11 +1950,11 @@ defineApp({
 function settingsRoot(){
   return {title:'Settings', largeTitle:true, shortTitle:'Settings', build(b,nav){
     const s=State.settings;
-    const sf=el('div','searchfield',`${SVG.search}<input placeholder="Search" id="setSearch">`);
-    b.appendChild(sf);
+    const sfield=el('div','searchfield',`${SVG.search}<input placeholder="Search" id="setSearch">`);
+    b.appendChild(sfield);
     const results=el('div'); b.appendChild(results);
     const content=el('div'); b.appendChild(content);
-    sf.querySelector('input').oninput=e=>{
+    sfield.querySelector('input').oninput=e=>{
       const q=e.target.value.trim().toLowerCase();
       results.innerHTML=''; content.style.display=q?'none':'';
       if(!q) return;
@@ -1733,12 +1965,22 @@ function settingsRoot(){
     };
 
     // Apple Account card (renamed from "Apple ID" in iOS 18, kept in iOS 26)
+    const acct=currentAccount();
     const idRow=el('div','row');
-    idRow.innerHTML=`<div class="avatar" style="width:60px;height:60px;font-size:24px;background:linear-gradient(135deg,#5e5ce6,#0a84ff)">IS</div>
-      <div class="lbl"><div style="font-size:22px">Isaiah S.</div><div class="sub">Apple Account, iCloud and more</div></div>
-      <div class="chev">${SVG.chev}</div>`;
+    if(acct){
+      idRow.innerHTML=`<div class="avatar" style="width:60px;height:60px;font-size:24px;background:${acct.color}">${esc(acct.initials)}</div>
+        <div class="lbl"><div style="font-size:22px">${esc(acct.name)}</div><div class="sub">Apple Account, iCloud and more</div></div>
+        <div class="chev">${SVG.chev}</div>`;
+      idRow.onclick=()=>nav.push(appleIDView());
+    }else{
+      idRow.innerHTML=`<div class="avatar" style="width:60px;height:60px;background:var(--bg3);color:var(--txt2)">
+          ${sf('<circle cx="12" cy="8" r="3.8"/><path d="M4.6 20.4a7.4 7.4 0 0114.8 0"/>',{size:28})}</div>
+        <div class="lbl"><div style="font-size:19px">Sign in to your iPhone</div>
+          <div class="sub">Set up iCloud, the App Store and more</div></div>
+        <div class="chev">${SVG.chev}</div>`;
+      idRow.onclick=()=>signInSheet(nav);
+    }
     idRow.style.padding='14px';
-    idRow.onclick=()=>nav.push(appleIDView());
     const g0=el('div','grp'); g0.appendChild(idRow); content.appendChild(g0);
 
     if((State.updatesAvailable||[]).length || State.softwareUpdate!==false){
@@ -1933,11 +2175,14 @@ const SETTINGS_INDEX=[
 /* --- sub views --- */
 function appleIDView(){
   return {title:'Apple Account', shortTitle:'Account', build(b,nav){
+    const acct=currentAccount();
+    if(!acct){ b.appendChild(h('<div class="empty"><h3>Not Signed In</h3><p>Sign in to use iCloud and the App Store.</p></div>'));
+      group(b,{rows:[{label:'Sign In',cls:'blue center',onClick:()=>signInSheet(nav)}]}); return; }
     const head=el('div','pad');
     head.style.textAlign='center';
-    head.innerHTML=`<div class="avatar" style="width:88px;height:88px;font-size:34px;margin:6px auto 10px;background:linear-gradient(135deg,#5e5ce6,#0a84ff)">IS</div>
-      <div style="font-size:24px;font-weight:600">Isaiah S.</div>
-      <div class="muted" style="font-size:15px">${esc(State.settings.appleID)}</div>`;
+    head.innerHTML=`<div class="avatar" style="width:88px;height:88px;font-size:34px;margin:6px auto 10px;background:${acct.color}">${esc(acct.initials)}</div>
+      <div style="font-size:24px;font-weight:600">${esc(acct.name)}</div>
+      <div class="muted" style="font-size:15px">${esc(acct.email)}</div>`;
     b.appendChild(head);
     group(b,{rows:[
       {label:'Personal Information', icon:'👤', iconBg:'#8e8e93', onClick:()=>nav.push(personalInfoView())},
@@ -1961,9 +2206,23 @@ function appleIDView(){
       {label:'Isaiah’s Apple Watch', sub:'Apple Watch Series 9', icon:'⌚', iconBg:'#8e8e93',
        onClick:()=>nav.push(deviceDetailView('Isaiah’s Apple Watch','Apple Watch Series 9','Paired with this iPhone'))}
     ]});
-    group(b,{rows:[{label:'Sign Out', cls:'destructive center', onClick:()=>alertBox({title:'Sign Out?',
-      message:'Your iCloud data will be removed from this iPhone. Data in iCloud stays safe.',
-      buttons:[{text:'Cancel'},{text:'Sign Out',style:'red',onClick:()=>toast('Simulated — nothing was signed out')}]})}]});
+    group(b,{rows:[
+      {label:'Switch or Add Account…', cls:'blue center', onClick:()=>signInSheet(nav,{switching:true})},
+      {label:'Remove This Account from iPhone', cls:'destructive center', onClick:()=>alertBox({
+        title:'Remove “'+acct.email+'”?',
+        message:'This account will be removed from this iPhone entirely, including its saved settings.',
+        buttons:[{text:'Cancel'},{text:'Remove Account',style:'red bold',onClick:()=>{
+          const a=ACC(); a.list=a.list.filter(x=>x.id!==acct.id);
+          a.signedIn=a.list[0]?a.list[0].id:null;
+          State.settings.appleID=a.list[0]?a.list[0].email:'';
+          save(); nav.popToRoot(); nav.refresh(); toast('Account removed');
+        }}]})},
+      {label:'Sign Out', cls:'destructive center', onClick:()=>alertBox({title:'Sign Out?',
+        message:'iCloud data will be removed from this iPhone. The account stays available to sign back in.',
+        buttons:[{text:'Cancel'},{text:'Sign Out',style:'red bold',onClick:()=>{
+          ACC().signedIn=null; save(); nav.popToRoot(); nav.refresh();
+          island('☁️','#8e8e93','Apple Account','Signed out',2000);
+        }}]})}]});
   }};
 }
 function personalInfoView(){
@@ -2077,23 +2336,76 @@ function subscriptionsView(){
   }};
 }
 function icloudView(){
-  return {title:'iCloud', build(b){
+  const PLANS=[['5 GB','Free'],['50 GB','$0.99/mo'],['200 GB','$2.99/mo'],['2 TB','$9.99/mo'],['6 TB','$29.99/mo'],['12 TB','$59.99/mo']];
+  return {title:'iCloud', build(b,nav){
+    const acct=currentAccount();
+    if(!acct){ b.appendChild(h('<div class="empty"><h3>Not Signed In</h3></div>')); return; }
+    const cap=parseFloat(acct.plan)||5;
+    const capGB=acct.plan.includes('TB')? cap*1000 : cap;
+    const used=Math.min(acct.storage,capGB);
+    const parts=[['Photos',used*0.62,'#ffd60a'],['Backups',used*0.21,'#0a84ff'],
+      ['Mail',used*0.09,'#30d158'],['Docs',used*0.08,'#bf5af2']];
     const bar=el('div','grp'); bar.style.padding='16px';
-    bar.innerHTML=`<div style="font-size:13px;color:var(--txt2);margin-bottom:8px">47.2 GB of 200 GB Used</div>
-      <div style="height:10px;border-radius:5px;overflow:hidden;display:flex;background:var(--bg3)">
-        <i style="width:38%;background:#ffd60a"></i><i style="width:12%;background:#0a84ff"></i><i style="width:6%;background:#30d158"></i></div>
-      <div style="display:flex;gap:14px;margin-top:10px;font-size:12px;color:var(--txt2)">
-        <span>● Photos</span><span>● Backups</span><span>● Docs</span></div>`;
+    bar.innerHTML=`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--txt2)">
+        <span>${used.toFixed(1)} GB of ${esc(acct.plan)} Used</span><span>${(capGB-used).toFixed(1)} GB free</span></div>
+      <div style="height:11px;border-radius:6px;overflow:hidden;display:flex;background:var(--bg3);margin:10px 0 9px">
+        ${parts.map(p=>`<i style="width:${p[1]/capGB*100}%;background:${p[2]}"></i>`).join('')}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--txt2)">
+        ${parts.map(p=>`<span style="display:flex;align-items:center;gap:5px">
+          <i style="width:8px;height:8px;border-radius:2px;background:${p[2]};display:inline-block"></i>${p[0]}</span>`).join('')}</div>`;
     b.appendChild(bar);
-    group(b,{header:'Apps using iCloud',rows:[
+    group(b,{rows:[
+      {label:'Manage Account Storage',onClick:()=>nav.push(storagePlanView(acct,PLANS))},
+      {label:'Change Storage Plan',value:acct.plan,onClick:()=>nav.push(storagePlanView(acct,PLANS))}]});
+    group(b,{header:'Saved to iCloud',rows:[
       {label:'Photos',value:'On',icon:'🌼',iconBg:'#ff9f0a',onClick:()=>toast('Simulated')},
-      {label:'Mail',value:'On',icon:'✉️',iconBg:'#0a84ff',onClick:()=>toast('Simulated')},
-      {label:'Safari',value:'On',icon:'🧭',iconBg:'#0a84ff',onClick:()=>toast('Simulated')},
-      {label:'Notes',value:'On',icon:'📝',iconBg:'#ffd60a',onClick:()=>toast('Simulated')},
-      {label:'iCloud Backup',value:'On',icon:'☁️',iconBg:'#0a84ff',onClick:()=>toast('Last backup: Today 3:14 AM')}
-    ]});
+      {label:'iCloud Drive',value:'On',icon:'☁️',iconBg:'#0a84ff',onClick:()=>toast('Simulated')},
+      {label:'iCloud Mail',value:'On',icon:'✉️',iconBg:'#0a84ff',onClick:()=>toast('Simulated')},
+      {label:'Passwords & Keychain',value:'On',icon:'🔑',iconBg:'#8e8e93',onClick:()=>toast('Simulated')},
+      {label:'Show All',cls:'blue',onClick:()=>nav.push(infoListView('Apps Using iCloud','',
+        ['Notes','Safari','Messages','Wallet','Health','Home','Siri','Freeform','News','Stocks'],''))}]});
+    group(b,{header:'Device Backups',rows:[
+      {label:'iCloud Backup',value:'On',onClick:()=>nav.push(backupView())},
+      {label:'Last Backup',value:'Today, 3:14 AM',chevron:false}]});
+    group(b,{rows:[{label:'iCloud+ Features',onClick:()=>nav.push(infoListView('iCloud+','Included with your plan',
+      ['Private Relay — On','Hide My Email — 3 addresses','Custom Email Domain','HomeKit Secure Video — 1 camera'],''))}]});
   }};
 }
+function storagePlanView(acct,PLANS){
+  return {title:'Change Storage Plan', shortTitle:'Storage', build(b,nav){
+    b.appendChild(h(`<div class="grp-f" style="margin-top:14px">Current plan: <b>${esc(acct.plan)}</b> · ${acct.storage.toFixed(1)} GB used</div>`));
+    group(b,{header:'Upgrade or Downgrade',rows:PLANS.map(([size,price])=>({
+      label:size, value:price, chevron:false,
+      rightHTML:size===acct.plan?`<div style="color:var(--sysblue)">${sf('<path d="M4.5 12.5l5 5 10-11"/>',{w:2.4,size:17})}</div>`:'',
+      onClick:()=>{
+        if(size===acct.plan) return;
+        alertBox({title:'Change to '+size+'?',message:price==='Free'
+            ? 'Downgrading may exceed your available storage.'
+            : 'Your card ending 0092 will be billed '+price+'.',
+          buttons:[{text:'Cancel'},{text:'Confirm',style:'bold',onClick:()=>{
+            acct.plan=size; save(); nav.refresh();
+            island('☁️','#0a84ff','iCloud','Now on the '+size+' plan',2400);
+          }}]});
+      }}))});
+    group(b,{rows:[{label:'Manage Account Storage',cls:'blue',onClick:()=>nav.push(infoListView('Account Storage','Largest Items',
+      ['Photos — 29.3 GB','Backups — 9.9 GB','Mail — 4.2 GB','Messages — 2.1 GB','Other — 1.7 GB'],
+      'Delete backups or media to free up space.'))}]});
+  }};
+}
+function backupView(){
+  return {title:'iCloud Backup', shortTitle:'Backup', build(b,nav){
+    group(b,{rows:[
+      {label:'Back Up This iPhone',toggle:()=>true,onToggle:()=>{}},
+      {label:'Back Up Over Cellular',toggle:()=>false,onToggle:()=>{}}],
+      footer:'Automatically back up data when this iPhone is locked, plugged in and on Wi-Fi.'});
+    group(b,{rows:[{label:'Back Up Now',cls:'blue center',onClick:()=>{
+      island('☁️','#0a84ff','iCloud Backup','Backing up…',3000); toast('Backup started'); }}]});
+    group(b,{header:'Backups',rows:[
+      {label:State.settings.name,sub:'Today, 3:14 AM · 4.9 GB',onClick:()=>toast('Backup details are simulated')},
+      {label:'MacBook Pro',sub:'Jul 22 · 12.4 GB',onClick:()=>toast('Backup details are simulated')}]});
+  }};
+}
+
 /* =========================================================================
    WI-FI — networks in range, known ("previous") networks, join + forget
    ========================================================================= */
@@ -2991,13 +3303,8 @@ function resetOptionsView(){
       {label:'Reset Location & Privacy',cls:'blue',onClick:()=>toast('Location & Privacy reset')}]});
   }};
 }
-function eraseConfirm(){
-  alertBox({title:'Erase All Content and Settings?',message:'This deletes every installed app, mail account, browsing history and setting in the simulator, then reboots.',
-    buttons:[{text:'Cancel'},{text:'Erase iPhone',style:'red bold',onClick:()=>{
-      $('#dim').style.transition='opacity 1s'; $('#dim').style.opacity='1';
-      setTimeout(factoryReset,900);
-    }}]});
-}
+function eraseConfirm(){ eraseFlow(); }
+
 function displayView(){
   return {title:'Display & Brightness', shortTitle:'Display', build(b,nav){
     const s=State.settings;
@@ -3390,35 +3697,59 @@ const STORE=[
    desc:`Stream shows from HGTV, Food Network, TLC, ID, Discovery Channel and more, plus discovery+ Originals.\n\n• Thousands of hours of nonfiction TV\n• New episodes the day after they air\n• Kids-safe profiles`,
    whatsnew:`• Improved recommendations\n• Playback fixes`,
    shots:['Home','Brands','Originals','My List']},
-  /* ---- games: actually playable once installed ---- */
-  {id:'serpent',name:'Serpent Rush',dev:'Halcyon Games',sub:'Classic snake, modern speed',cat:'Games',
+  /* ---- games: each one is a different, genuinely playable engine ---- */
+  {id:'serpent',name:'Serpent Rush',dev:'Halcyon Games',sub:'Classic snake, modern speed',cat:'Games',engine:'snake',
    icon:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#0f3d2e,#052018);display:grid;place-items:center">
      <svg viewBox="0 0 60 60" style="width:74%"><path d="M10 44c0-9 9-9 18-9s18 0 18-9-9-9-18-9" stroke="#30d158" stroke-width="8" fill="none" stroke-linecap="round"/><circle cx="12" cy="16" r="4.6" fill="#ffd60a"/></svg></div>`,
    bg:'linear-gradient(160deg,#0f3d2e,#052018)',rating:4.7,ratings:'214K',age:'4+',size:'48.2 MB',version:'2.4.1',
    rank:1,editorial:'One more run. Every time.',colors:['#30d158','#0b2b1f'],
    desc:`The timeless snake, rebuilt for quick sessions.\n\n• Swipe or use arrow keys\n• Speed ramps as you grow\n• No ads in this simulator build`,
    whatsnew:`• New neon theme\n• Fixed a crash on game over`,shots:['Play','Scores','Themes','Daily'],game:true},
-  {id:'blockdrop',name:'Block Drop',dev:'Halcyon Games',sub:'Stack. Clear. Repeat.',cat:'Games',
+  {id:'blockdrop',name:'Block Drop',dev:'Halcyon Games',sub:'Stack, clear, repeat',cat:'Games',engine:'tetris',
    icon:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#1a1f4d,#0a0c22);display:grid;place-items:center">
      <svg viewBox="0 0 60 60" style="width:70%"><g stroke="#0a0c22" stroke-width="1.4"><rect x="8" y="36" width="12" height="12" fill="#ff9f0a"/><rect x="20" y="36" width="12" height="12" fill="#ff9f0a"/><rect x="32" y="36" width="12" height="12" fill="#ff9f0a"/><rect x="20" y="24" width="12" height="12" fill="#ff9f0a"/><rect x="36" y="10" width="12" height="12" fill="#40c8e0"/><rect x="36" y="22" width="12" height="12" fill="#40c8e0"/></g></svg></div>`,
    bg:'linear-gradient(160deg,#1a1f4d,#0a0c22)',rating:4.5,ratings:'188K',age:'4+',size:'61.7 MB',version:'1.9.0',
-   rank:2,editorial:'The falling-block habit, minus the ads.',colors:['#40c8e0','#11133a'],
-   desc:`Snake-engine arcade action with a block-stacking skin.\n\n• Quick one-hand sessions\n• Chase your best score\n• Haptic feedback`,
-   whatsnew:`• Smoother input\n• Score sync fixes`,shots:['Play','Ranks','Skins','Events'],game:true},
-  {id:'orbit',name:'Orbit Dash',dev:'Nightjar Studio',sub:'One-tap gravity racer',cat:'Games',
-   icon:`<div style="width:100%;height:100%;background:radial-gradient(80% 80% at 30% 25%,#3b1f9e,#0b0f2b);display:grid;place-items:center">
-     <svg viewBox="0 0 60 60" style="width:74%"><ellipse cx="30" cy="30" rx="22" ry="9" fill="none" stroke="#bf5af2" stroke-width="3" transform="rotate(-24 30 30)"/><circle cx="30" cy="30" r="8" fill="#ff9f0a"/><circle cx="47" cy="20" r="3.6" fill="#fff"/></svg></div>`,
-   bg:'radial-gradient(80% 80% at 30% 25%,#3b1f9e,#0b0f2b)',rating:4.3,ratings:'96K',age:'9+',size:'84.0 MB',version:'3.1.2',
-   rank:3,editorial:'Weightless. Ruthless. Gorgeous.',colors:['#bf5af2','#12081f'],
-   desc:`Slingshot between orbits and don’t hit the debris.\n\n• 120 hand-built levels\n• Controller support\n• Colourblind-friendly palettes`,
-   whatsnew:`• 10 new levels\n• Reduced difficulty spike in world 4`,shots:['Play','Worlds','Ships','Rankings'],game:true},
-  {id:'wordfall',name:'Wordfall',dev:'Pencase',sub:'A daily word puzzle',cat:'Games',
+   rank:2,editorial:'Seven shapes. Infinite regret.',colors:['#40c8e0','#11133a'],
+   desc:`Real falling-block puzzle action.\n\n• Rotate, shift, hard-drop\n• Line clears with combo scoring\n• Levels speed up every 10 lines`,
+   whatsnew:`• Added hard drop\n• Smoother rotation near walls`,shots:['Play','Ranks','Skins','Events'],game:true},
+  {id:'wordfall',name:'Wordfall',dev:'Pencase',sub:'A daily five-letter puzzle',cat:'Games',engine:'wordle',
    icon:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#f4f1e8,#d9d2bd);display:grid;place-items:center">
      <svg viewBox="0 0 60 60" style="width:72%"><g font-family="Georgia,serif" font-weight="700" text-anchor="middle"><rect x="8" y="8" width="20" height="20" rx="4" fill="#1c1c1e"/><text x="18" y="23" font-size="14" fill="#fff">W</text><rect x="32" y="8" width="20" height="20" rx="4" fill="#30d158"/><text x="42" y="23" font-size="14" fill="#fff">F</text><rect x="8" y="32" width="20" height="20" rx="4" fill="#ffd60a"/><text x="18" y="47" font-size="14" fill="#1c1c1e">A</text><rect x="32" y="32" width="20" height="20" rx="4" fill="#8e8e93"/><text x="42" y="47" font-size="14" fill="#fff">L</text></g></svg></div>`,
    bg:'linear-gradient(160deg,#f4f1e8,#d9d2bd)',rating:4.8,ratings:'402K',age:'4+',size:'22.4 MB',version:'5.0.3',
-   rank:4,editorial:'Five letters. One coffee. Every morning.',colors:['#30d158','#3d3a2e'],
-   desc:`A daily word ladder with a twist — letters fall as you solve.\n\n• New puzzle at midnight\n• Streaks and stats\n• Share results without spoilers`,
-   whatsnew:`• New archive browser\n• Bug fixes`,shots:['Daily','Stats','Archive','Friends'],game:true}
+   rank:3,editorial:'Five letters. One coffee.',colors:['#30d158','#3d3a2e'],
+   desc:`Guess the hidden five-letter word in six tries.\n\n• Green means right letter, right spot\n• Yellow means right letter, wrong spot\n• The keyboard tracks what you've ruled out`,
+   whatsnew:`• Bigger word list\n• Keyboard colouring fixes`,shots:['Daily','Stats','Archive','Friends'],game:true},
+  {id:'fourrow',name:'Four in a Row',dev:'Nightjar Studio',sub:'Beat the computer',cat:'Games',engine:'connect4',
+   icon:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#1d4ed8,#0b1f5c);display:grid;place-items:center">
+     <svg viewBox="0 0 60 60" style="width:78%"><rect x="6" y="10" width="48" height="40" rx="6" fill="#1741b6"/>
+     <circle cx="13" cy="19" r="4.4" fill="#ff453a"/><circle cx="24.4" cy="19" r="4.4" fill="#ffd60a"/><circle cx="35.8" cy="19" r="4.4" fill="#0b1f5c"/><circle cx="47.2" cy="19" r="4.4" fill="#ff453a"/>
+     <circle cx="13" cy="30.4" r="4.4" fill="#ffd60a"/><circle cx="24.4" cy="30.4" r="4.4" fill="#0b1f5c"/><circle cx="35.8" cy="30.4" r="4.4" fill="#ff453a"/><circle cx="47.2" cy="30.4" r="4.4" fill="#ffd60a"/>
+     <circle cx="13" cy="41.8" r="4.4" fill="#0b1f5c"/><circle cx="24.4" cy="41.8" r="4.4" fill="#ff453a"/><circle cx="35.8" cy="41.8" r="4.4" fill="#ffd60a"/><circle cx="47.2" cy="41.8" r="4.4" fill="#0b1f5c"/></svg></div>`,
+   bg:'linear-gradient(160deg,#1d4ed8,#0b1f5c)',rating:4.4,ratings:'71K',age:'4+',size:'18.9 MB',version:'1.4.0',
+   rank:4,editorial:'Simple rules, sneaky computer.',colors:['#ffd60a','#0b1f5c'],
+   desc:`Drop discs, connect four, block the computer doing the same.\n\n• Looks two moves ahead\n• Diagonal wins count\n• Instant rematch`,
+   whatsnew:`• Smarter blocking AI\n• Win animation`,shots:['Play','Versus','Stats','Themes'],game:true},
+  {id:'twenty48',name:'2048 Tiles',dev:'Pencase',sub:'Merge to the big number',cat:'Games',engine:'2048',
+   icon:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#f2b179,#b9846b);display:grid;place-items:center">
+     <svg viewBox="0 0 60 60" style="width:78%"><rect x="6" y="6" width="48" height="48" rx="7" fill="#bbada0"/>
+     <rect x="10" y="10" width="19" height="19" rx="3" fill="#eee4da"/><rect x="31" y="10" width="19" height="19" rx="3" fill="#f2b179"/>
+     <rect x="10" y="31" width="19" height="19" rx="3" fill="#f59563"/><rect x="31" y="31" width="19" height="19" rx="3" fill="#edc850"/>
+     <text x="40.5" y="45" font-size="10" font-weight="800" text-anchor="middle" fill="#fff" font-family="Inter,Arial">2048</text></svg></div>`,
+   bg:'linear-gradient(160deg,#f2b179,#b9846b)',rating:4.6,ratings:'330K',age:'4+',size:'14.2 MB',version:'4.2.0',
+   rank:5,editorial:'Deceptively simple. Genuinely hard.',colors:['#edc850','#7a6a5d'],
+   desc:`Swipe to slide every tile, matching numbers merge.\n\n• Reach 2048 to win, keep going for more\n• Undo the last move\n• Best score is saved`,
+   whatsnew:`• Added undo\n• Smoother tile animation`,shots:['Play','Best','Undo','Themes'],game:true},
+  {id:'brickblitz',name:'Brick Blitz',dev:'Nightjar Studio',sub:'Paddle, ball, bricks',cat:'Games',engine:'breakout',
+   icon:`<div style="width:100%;height:100%;background:radial-gradient(80% 80% at 30% 25%,#3b1f9e,#0b0f2b);display:grid;place-items:center">
+     <svg viewBox="0 0 60 60" style="width:78%">
+     <rect x="7" y="9" width="10" height="4" rx="1.4" fill="#ff453a"/><rect x="19" y="9" width="10" height="4" rx="1.4" fill="#ff453a"/><rect x="31" y="9" width="10" height="4" rx="1.4" fill="#ff453a"/><rect x="43" y="9" width="10" height="4" rx="1.4" fill="#ff453a"/>
+     <rect x="7" y="15" width="10" height="4" rx="1.4" fill="#ff9f0a"/><rect x="19" y="15" width="10" height="4" rx="1.4" fill="#ff9f0a"/><rect x="31" y="15" width="10" height="4" rx="1.4" fill="#ff9f0a"/><rect x="43" y="15" width="10" height="4" rx="1.4" fill="#ff9f0a"/>
+     <rect x="7" y="21" width="10" height="4" rx="1.4" fill="#ffd60a"/><rect x="19" y="21" width="10" height="4" rx="1.4" fill="#ffd60a"/><rect x="31" y="21" width="10" height="4" rx="1.4" fill="#ffd60a"/><rect x="43" y="21" width="10" height="4" rx="1.4" fill="#ffd60a"/>
+     <circle cx="30" cy="42" r="3.4" fill="#fff"/><rect x="20" y="49" width="20" height="4.4" rx="2.2" fill="#bf5af2"/></svg></div>`,
+   bg:'radial-gradient(80% 80% at 30% 25%,#3b1f9e,#0b0f2b)',rating:4.3,ratings:'96K',age:'9+',size:'26.0 MB',version:'3.1.2',
+   rank:6,editorial:'The one your dad was good at.',colors:['#bf5af2','#12081f'],
+   desc:`Clear every brick without dropping the ball.\n\n• Drag or use arrow keys to move the paddle\n• Ball angle depends where it hits\n• Three lives, rising speed`,
+   whatsnew:`• New level layouts\n• Paddle physics tuned`,shots:['Play','Levels','Scores','Skins'],game:true}
 ];
 const byId = id => STORE.find(a=>a.id===id);
 const installing = new Set();
@@ -3707,10 +4038,10 @@ function storeStoryView(){
 function storeSearchView(){
   const TRENDING=['spectrum tv','netflix','free movies','live sports','hbo max','peacock','disney plus','paramount plus'];
   return {title:'Search', largeTitle:true, shortTitle:'Search', build(b,nav,view){
-    const sf=el('div','searchfield',`${SVG.search}<input placeholder="Games, Apps, Stories and More" id="storeSearch">`);
-    b.appendChild(sf);
+    const sfield=el('div','searchfield',`${SVG.search}<input placeholder="Games, Apps, Stories and More" id="storeSearch">`);
+    b.appendChild(sfield);
     const res=el('div'); b.appendChild(res);
-    const input=sf.querySelector('input');
+    const input=sfield.querySelector('input');
     const render=q=>{
       res.innerHTML='';
       q=q.trim().toLowerCase();
@@ -4430,8 +4761,8 @@ function messageListView(acctId,box,title){
     right:[{text:'Edit',onClick:n=>toast('Select messages — simulated')}],
     build(b,nav,view){
       const list=boxMessages(acctId,box);
-      const sf=el('div','searchfield',`${SVG.search}<input placeholder="Search">`);
-      b.appendChild(sf);
+      const sfield=el('div','searchfield',`${SVG.search}<input placeholder="Search">`);
+      b.appendChild(sfield);
       const holder=el('div'); b.appendChild(holder);
       const draw=q=>{
         holder.innerHTML='';
@@ -4439,7 +4770,7 @@ function messageListView(acctId,box,title){
         if(!items.length){ holder.appendChild(h(`<div class="empty"><h3>${q?'No Results':'No Mail'}</h3><p>${q?'Try a different search.':'This mailbox is empty.'}</p></div>`)); return; }
         items.forEach(({m,a})=>holder.appendChild(mailRow(m,a,nav,box,()=>{ nav.refresh(); })));
       };
-      sf.querySelector('input').oninput=e=>draw(e.target.value);
+      sfield.querySelector('input').oninput=e=>draw(e.target.value);
       draw('');
       if(!view.tabbar){
         view.tabbar=mailToolbar(nav,{label:`${list.length} Message${list.length===1?'':'s'}`});
@@ -5265,105 +5596,535 @@ function registerStoreApps(){
   }));
 }
 /* =========================================================================
-   GAME SHELL — a genuinely playable snake engine, skinned per title.
-   Arrow keys or swipe to steer.
+   GAMES — one real engine per title. Shared chrome, distinct gameplay.
    ========================================================================= */
-function gameShell(app,win){
+function gameChrome(app,win,{sub,statLabel='Score'}={}){
   const [accent,bgDeep]=app.colors;
-  const v=el('div');
+  const v=el('div','gm-root');
   v.style.cssText=`position:absolute;inset:0;display:flex;flex-direction:column;background:${bgDeep};color:#fff`;
   v.innerHTML=`
-    <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:64px 18px 10px">
-      <div><div style="font-size:20px;font-weight:800;letter-spacing:-.4px">${esc(app.name)}</div>
-        <div style="font-size:12px;opacity:.55">Arcade build · swipe or arrow keys</div></div>
-      <div style="text-align:right"><div style="font-size:11px;opacity:.55;text-transform:uppercase;letter-spacing:1px">Score</div>
-        <div class="gm-score" style="font-size:26px;font-weight:800;font-variant-numeric:tabular-nums">0</div></div>
+    <div class="gm-head" style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:62px 18px 8px">
+      <div><div style="font-size:19px;font-weight:800;letter-spacing:-.4px">${esc(app.name)}</div>
+        <div style="font-size:11.5px;opacity:.55">${esc(sub||'')}</div></div>
+      <div style="text-align:right"><div style="font-size:10px;opacity:.55;text-transform:uppercase;letter-spacing:1.1px">${esc(statLabel)}</div>
+        <div class="gm-score" style="font-size:25px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1">0</div></div>
     </div>
-    <div style="flex:1;position:relative;margin:4px 14px 26px">
-      <canvas class="gm-cv" style="position:absolute;inset:0;width:100%;height:100%;border-radius:18px"></canvas>
-      <div class="gm-overlay" style="position:absolute;inset:0;display:grid;place-items:center;border-radius:18px;
-        background:rgba(0,0,0,.55);backdrop-filter:blur(6px)">
-        <div style="text-align:center">
-          <div style="font-size:40px;margin-bottom:10px">🎮</div>
-          <div class="gm-msg" style="font-size:17px;font-weight:700;margin-bottom:16px">Ready?</div>
-          <button class="gm-go" style="background:${accent};color:#000;font-weight:800;border-radius:22px;padding:12px 34px;font-size:16px">Play</button>
-        </div>
-      </div>
-    </div>`;
+    <div class="gm-stage" style="flex:1;position:relative;margin:2px 14px 8px;min-height:0"></div>
+    <div class="gm-controls" style="flex:none;padding:0 14px 32px"></div>`;
   win.appendChild(v);
-  const cv=v.querySelector('.gm-cv'), overlay=v.querySelector('.gm-overlay'),
-        scoreEl=v.querySelector('.gm-score'), msg=v.querySelector('.gm-msg');
-  const CW=17, CH=26;
-  let snake,dir,pending,food,score,best=0,timer,speed;
-  function reset(){
-    snake=[{x:8,y:13},{x:8,y:14},{x:8,y:15}]; dir={x:0,y:-1}; pending=null;
-    food=spawn(); score=0; speed=150; scoreEl.textContent='0';
-  }
-  function spawn(){
-    while(true){ const f={x:Math.floor(Math.random()*CW),y:Math.floor(Math.random()*CH)};
-      if(!snake.some(s2=>s2.x===f.x&&s2.y===f.y)) return f; }
-  }
+  return {v, stage:v.querySelector('.gm-stage'), controls:v.querySelector('.gm-controls'),
+          scoreEl:v.querySelector('.gm-score'), accent, bgDeep};
+}
+function gmOverlay(stage,{title,body,btn='Play',onGo}){
+  let o=stage.querySelector('.gm-ov');
+  if(o) o.remove();
+  o=el('div','gm-ov');
+  o.style.cssText=`position:absolute;inset:0;display:grid;place-items:center;border-radius:18px;z-index:6;
+    background:rgba(0,0,0,.6);backdrop-filter:blur(7px);text-align:center;padding:20px`;
+  o.innerHTML=`<div><div style="font-size:19px;font-weight:800;margin-bottom:6px">${esc(title)}</div>
+    <div style="font-size:13px;opacity:.7;line-height:1.4;margin-bottom:16px">${body||''}</div></div>`;
+  const b=el('button','',btn);
+  b.style.cssText='background:#fff;color:#000;font-weight:800;border-radius:22px;padding:11px 32px;font-size:15px';
+  b.onclick=()=>{ o.remove(); onGo(); };
+  o.firstChild.appendChild(b);
+  stage.appendChild(o);
+  return o;
+}
+function gmPad(controls,keys){
+  controls.innerHTML='';
+  const row=el('div');
+  row.style.cssText=`display:grid;grid-template-columns:repeat(${keys.length},1fr);gap:9px`;
+  keys.forEach(([label,fn,big])=>{
+    const b=el('button','',label);
+    b.style.cssText=`background:rgba(255,255,255,.13);color:#fff;border-radius:14px;padding:${big?'16px':'13px'} 0;
+      font-size:${big?'19px':'16px'};font-weight:600;backdrop-filter:blur(8px);border:.5px solid rgba(255,255,255,.12)`;
+    b.onpointerdown=e=>{e.preventDefault(); b.style.background='rgba(255,255,255,.28)'; fn();};
+    b.onpointerup=b.onpointerleave=()=>b.style.background='rgba(255,255,255,.13)';
+    row.appendChild(b);
+  });
+  controls.appendChild(row);
+}
+function gmKeys(win,map){
+  win.tabIndex=0;
+  win.addEventListener('keydown',e=>{ const f=map[e.key]; if(f){ e.preventDefault(); f(); } });
+  setTimeout(()=>win.focus(),100);
+}
+function gmSwipe(node,onDir){
+  let sx=0,sy=0,t=0;
+  node.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;t=Date.now();});
+  node.addEventListener('pointerup',e=>{
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(Math.abs(dx)<16&&Math.abs(dy)<16) return;
+    onDir(Math.abs(dx)>Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'down':'up'));
+  });
+}
+/* best-score persistence per game */
+function gmBest(id,val){
+  State.gameBest=State.gameBest||{};
+  if(val!=null && val>(State.gameBest[id]|0)){ State.gameBest[id]=val; save(); }
+  return State.gameBest[id]|0;
+}
+
+/* ---------------------------------------------------------------- SNAKE -- */
+function snakeGame(app,win){
+  const {stage,controls,scoreEl,accent}=gameChrome(app,win,{sub:'Swipe or arrow keys'});
+  const cv=el('canvas'); cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;border-radius:18px';
+  stage.appendChild(cv);
+  const CW=15,CH=22;
+  let snake,dir,pending,food,score,timer,speed;
+  function reset(){ snake=[{x:7,y:11},{x:7,y:12},{x:7,y:13}]; dir={x:0,y:-1}; pending=null;
+    food=spawn(); score=0; speed=170; scoreEl.textContent='0'; }
+  function spawn(){ for(;;){ const f={x:(Math.random()*CW)|0,y:(Math.random()*CH)|0};
+    if(!snake.some(s=>s.x===f.x&&s.y===f.y)) return f; } }
   function draw(){
-    const r=cv.getBoundingClientRect();
+    const r=stage.getBoundingClientRect(); if(!r.width) return;
     cv.width=r.width*2; cv.height=r.height*2;
-    const ctx=cv.getContext('2d'); ctx.scale(2,2);
+    const c=cv.getContext('2d'); c.scale(2,2);
     const cw=r.width/CW, ch=r.height/CH;
-    ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(0,0,r.width,r.height);
-    /* subtle grid */
-    ctx.strokeStyle='rgba(255,255,255,.04)';
-    for(let x=1;x<CW;x++){ ctx.beginPath();ctx.moveTo(x*cw,0);ctx.lineTo(x*cw,r.height);ctx.stroke(); }
-    for(let y=1;y<CH;y++){ ctx.beginPath();ctx.moveTo(0,y*ch);ctx.lineTo(r.width,y*ch);ctx.stroke(); }
-    /* food */
-    ctx.fillStyle='#ffd60a';
-    ctx.beginPath(); ctx.arc((food.x+.5)*cw,(food.y+.5)*ch,Math.min(cw,ch)*.32,0,7); ctx.fill();
-    /* snake */
-    snake.forEach((s2,i)=>{
-      ctx.fillStyle = i===0? '#fff' : accent;
-      ctx.globalAlpha = i===0? 1 : Math.max(.45,1-i*.02);
-      const pad=1.5;
-      ctx.beginPath();
-      ctx.roundRect(s2.x*cw+pad,s2.y*ch+pad,cw-pad*2,ch-pad*2,4);
-      ctx.fill();
-    });
-    ctx.globalAlpha=1;
+    c.fillStyle='rgba(0,0,0,.32)'; c.fillRect(0,0,r.width,r.height);
+    c.strokeStyle='rgba(255,255,255,.04)';
+    for(let x=1;x<CW;x++){c.beginPath();c.moveTo(x*cw,0);c.lineTo(x*cw,r.height);c.stroke();}
+    for(let y=1;y<CH;y++){c.beginPath();c.moveTo(0,y*ch);c.lineTo(r.width,y*ch);c.stroke();}
+    c.fillStyle='#ffd60a';
+    c.beginPath(); c.arc((food.x+.5)*cw,(food.y+.5)*ch,Math.min(cw,ch)*.33,0,7); c.fill();
+    snake.forEach((s,i)=>{ c.fillStyle=i===0?'#fff':accent; c.globalAlpha=i===0?1:Math.max(.4,1-i*.022);
+      c.beginPath(); c.roundRect(s.x*cw+1.5,s.y*ch+1.5,cw-3,ch-3,4); c.fill(); });
+    c.globalAlpha=1;
   }
+  function over(){ clearInterval(timer); timer=null;
+    gmOverlay(stage,{title:'Game Over',body:`Score ${score} · Best ${gmBest(app.id,score)}`,btn:'Play Again',onGo:start}); }
   function tick(){
-    if(!cv.getBoundingClientRect().width) return;   // app hidden → pause, don't die off-screen
+    if(!stage.getBoundingClientRect().width) return;
     if(pending){ dir=pending; pending=null; }
-    const head={x:snake[0].x+dir.x, y:snake[0].y+dir.y};
-    if(head.x<0||head.y<0||head.x>=CW||head.y>=CH||snake.some(s2=>s2.x===head.x&&s2.y===head.y)) return over();
-    snake.unshift(head);
-    if(head.x===food.x&&head.y===food.y){
-      score+=10; scoreEl.textContent=score; food=spawn();
-      if(speed>70){ speed-=3; clearInterval(timer); timer=setInterval(tick,speed); }
-    } else snake.pop();
+    const hd={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+    if(hd.x<0||hd.y<0||hd.x>=CW||hd.y>=CH||snake.some(s=>s.x===hd.x&&s.y===hd.y)) return over();
+    snake.unshift(hd);
+    if(hd.x===food.x&&hd.y===food.y){ score+=10; scoreEl.textContent=score; food=spawn();
+      if(speed>75){ speed-=4; clearInterval(timer); timer=setInterval(tick,speed); } }
+    else snake.pop();
     draw();
   }
-  function over(){
-    clearInterval(timer); timer=null;
-    best=Math.max(best,score);
-    msg.innerHTML=`Game Over<br><span style="font-size:13px;font-weight:400;opacity:.7">Score ${score} · Best ${best}</span>`;
-    v.querySelector('.gm-go').textContent='Play Again';
-    overlay.style.display='grid';
-  }
-  function start(){ reset(); overlay.style.display='none'; draw();
-    clearInterval(timer); timer=setInterval(tick,speed); }
-  v.querySelector('.gm-go').onclick=start;
-  const steer=(x,y)=>{ if(timer && (x!==-dir.x||y!==-dir.y)) pending={x,y}; };
-  win.tabIndex=0;
-  win.addEventListener('keydown',e=>{
-    const m={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[e.key];
-    if(m){ e.preventDefault(); steer(m[0],m[1]); }
-  });
-  let sx=0,sy=0;
-  cv.parentNode.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;});
-  cv.parentNode.addEventListener('pointerup',e=>{
-    const dx=e.clientX-sx, dy=e.clientY-sy;
-    if(Math.abs(dx)<14&&Math.abs(dy)<14) return;
-    Math.abs(dx)>Math.abs(dy)? steer(Math.sign(dx),0) : steer(0,Math.sign(dy));
-  });
+  function start(){ reset(); draw(); clearInterval(timer); timer=setInterval(tick,speed); }
+  const steer=(x,y)=>{ if(timer&&(x!==-dir.x||y!==-dir.y)) pending={x,y}; };
+  gmSwipe(stage,d=>steer(d==='left'?-1:d==='right'?1:0, d==='up'?-1:d==='down'?1:0));
+  gmKeys(win,{ArrowUp:()=>steer(0,-1),ArrowDown:()=>steer(0,1),ArrowLeft:()=>steer(-1,0),ArrowRight:()=>steer(1,0)});
+  gmPad(controls,[['←',()=>steer(-1,0)],['↑',()=>steer(0,-1)],['↓',()=>steer(0,1)],['→',()=>steer(1,0)]]);
   reset(); setTimeout(draw,60);
+  gmOverlay(stage,{title:'Serpent Rush',body:`Best ${gmBest(app.id)}`,onGo:start});
 }
+
+/* --------------------------------------------------------------- TETRIS -- */
+const TETRO={
+  I:{c:'#40c8e0',r:[[[0,1],[1,1],[2,1],[3,1]],[[2,0],[2,1],[2,2],[2,3]]]},
+  O:{c:'#ffd60a',r:[[[1,0],[2,0],[1,1],[2,1]]]},
+  T:{c:'#bf5af2',r:[[[1,0],[0,1],[1,1],[2,1]],[[1,0],[1,1],[2,1],[1,2]],[[0,1],[1,1],[2,1],[1,2]],[[1,0],[0,1],[1,1],[1,2]]]},
+  S:{c:'#30d158',r:[[[1,0],[2,0],[0,1],[1,1]],[[1,0],[1,1],[2,1],[2,2]]]},
+  Z:{c:'#ff453a',r:[[[0,0],[1,0],[1,1],[2,1]],[[2,0],[1,1],[2,1],[1,2]]]},
+  J:{c:'#0a84ff',r:[[[0,0],[0,1],[1,1],[2,1]],[[1,0],[2,0],[1,1],[1,2]],[[0,1],[1,1],[2,1],[2,2]],[[1,0],[1,1],[0,2],[1,2]]]},
+  L:{c:'#ff9f0a',r:[[[2,0],[0,1],[1,1],[2,1]],[[1,0],[1,1],[1,2],[2,2]],[[0,1],[1,1],[2,1],[0,2]],[[0,0],[1,0],[1,1],[1,2]]]}
+};
+function tetrisGame(app,win){
+  const {stage,controls,scoreEl}=gameChrome(app,win,{sub:'Arrow keys or the pad below'});
+  const cv=el('canvas'); cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;border-radius:18px';
+  stage.appendChild(cv);
+  const CW=10,CH=20;
+  let grid,piece,score,lines,level,timer,dropMs;
+  const names=Object.keys(TETRO);
+  function newPiece(){
+    const k=names[(Math.random()*names.length)|0];
+    return {k,rot:0,x:3,y:-1};
+  }
+  function cells(p){ const rs=TETRO[p.k].r; return rs[p.rot%rs.length].map(([x,y])=>[p.x+x,p.y+y]); }
+  function fits(p){ return cells(p).every(([x,y])=>x>=0&&x<CW&&y<CH&&(y<0||!grid[y][x])); }
+  function lock(){
+    cells(piece).forEach(([x,y])=>{ if(y>=0) grid[y][x]=TETRO[piece.k].c; });
+    let cleared=0;
+    for(let y=CH-1;y>=0;y--){ if(grid[y].every(Boolean)){ grid.splice(y,1); grid.unshift(Array(CW).fill(null)); cleared++; y++; } }
+    if(cleared){ score+=[0,100,300,500,800][cleared]*level; lines+=cleared;
+      const nl=Math.floor(lines/10)+1;
+      if(nl!==level){ level=nl; dropMs=Math.max(110,700-(level-1)*60); clearInterval(timer); timer=setInterval(step,dropMs); }
+      scoreEl.textContent=score; }
+    piece=newPiece();
+    if(!fits(piece)) over();
+  }
+  function step(){ if(!stage.getBoundingClientRect().width) return;
+    const n={...piece,y:piece.y+1}; if(fits(n)) piece=n; else lock(); draw(); }
+  function over(){ clearInterval(timer); timer=null;
+    gmOverlay(stage,{title:'Game Over',body:`Score ${score} · Lines ${lines} · Best ${gmBest(app.id,score)}`,btn:'Play Again',onGo:start}); }
+  function draw(){
+    const r=stage.getBoundingClientRect(); if(!r.width) return;
+    cv.width=r.width*2; cv.height=r.height*2;
+    const c=cv.getContext('2d'); c.scale(2,2);
+    const cell=Math.min(r.width/CW,r.height/CH);
+    const ox=(r.width-cell*CW)/2, oy=(r.height-cell*CH)/2;
+    c.fillStyle='rgba(0,0,0,.34)'; c.fillRect(0,0,r.width,r.height);
+    c.strokeStyle='rgba(255,255,255,.05)';
+    for(let x=0;x<=CW;x++){c.beginPath();c.moveTo(ox+x*cell,oy);c.lineTo(ox+x*cell,oy+CH*cell);c.stroke();}
+    for(let y=0;y<=CH;y++){c.beginPath();c.moveTo(ox,oy+y*cell);c.lineTo(ox+CW*cell,oy+y*cell);c.stroke();}
+    const blk=(x,y,col,alpha)=>{ c.globalAlpha=alpha||1; c.fillStyle=col;
+      c.beginPath(); c.roundRect(ox+x*cell+1,oy+y*cell+1,cell-2,cell-2,3); c.fill(); c.globalAlpha=1; };
+    grid.forEach((row,y)=>row.forEach((col,x)=>col&&blk(x,y,col)));
+    if(piece){
+      // ghost
+      let g={...piece}; while(fits({...g,y:g.y+1})) g.y++;
+      cells(g).forEach(([x,y])=>y>=0&&blk(x,y,TETRO[piece.k].c,.22));
+      cells(piece).forEach(([x,y])=>y>=0&&blk(x,y,TETRO[piece.k].c));
+    }
+  }
+  function move(dx){ const n={...piece,x:piece.x+dx}; if(fits(n)){piece=n;draw();} }
+  function rotate(){ const n={...piece,rot:piece.rot+1};
+    if(fits(n)) piece=n;
+    else { for(const k of [-1,1,-2,2]){ const t={...n,x:n.x+k}; if(fits(t)){ piece=t; break; } } }
+    draw(); }
+  function soft(){ const n={...piece,y:piece.y+1}; if(fits(n)){piece=n;draw();} else {lock();draw();} }
+  function hard(){ while(fits({...piece,y:piece.y+1})) piece.y++; lock(); draw(); }
+  function start(){
+    grid=Array.from({length:CH},()=>Array(CW).fill(null));
+    score=0; lines=0; level=1; dropMs=700; scoreEl.textContent='0';
+    piece=newPiece(); draw();
+    clearInterval(timer); timer=setInterval(step,dropMs);
+  }
+  gmKeys(win,{ArrowLeft:()=>move(-1),ArrowRight:()=>move(1),ArrowUp:rotate,ArrowDown:soft,' ':hard});
+  gmSwipe(stage,d=>d==='left'?move(-1):d==='right'?move(1):d==='down'?hard():rotate());
+  gmPad(controls,[['←',()=>move(-1)],['⟳',rotate],['↓',soft],['⤓',hard],['→',()=>move(1)]]);
+  grid=Array.from({length:CH},()=>Array(CW).fill(null)); setTimeout(draw,60);
+  gmOverlay(stage,{title:'Block Drop',body:`Best ${gmBest(app.id)}`,onGo:start});
+}
+
+/* --------------------------------------------------------------- WORDLE -- */
+const WORDS=('crane slate audio house plant mount brick trace shine grape stone flame crown ghost pride '+
+'blend charm dwell eager fable giant haste ivory jolly knelt lemon merry noble ocean pearl quilt raven '+
+'sugar tiger urban vivid wharf yield zebra amber blaze cider dodge elbow flint grasp hedge inlet joker '+
+'kneel latch mirth nudge onset prism quart rider swirl thorn ultra vapor wager yeast abide badge cabin '+
+'daisy eagle fjord glide honey islet jewel kayak lodge motel niche olive punch quest rapid siren tulip '+
+'usher vault waltz alloy bloom coral drift ember frost gauge hover input japan karma lunar month night').split(' ');
+function wordleGame(app,win){
+  const {stage,controls,scoreEl}=gameChrome(app,win,{sub:'Six tries',statLabel:'Streak'});
+  scoreEl.textContent=gmBest(app.id);
+  stage.style.overflow='auto';
+  const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;padding-top:6px';
+  stage.appendChild(wrap);
+  let answer,rows,cur,done;
+  const gridEl=el('div'); gridEl.style.cssText='display:grid;grid-template-rows:repeat(6,1fr);gap:5px;margin-bottom:4px';
+  wrap.appendChild(gridEl);
+  const msg=el('div'); msg.style.cssText='font-size:12.5px;height:18px;opacity:.75;margin-top:2px'; wrap.appendChild(msg);
+  const kbState={};
+  function drawGrid(){
+    gridEl.innerHTML='';
+    for(let r=0;r<6;r++){
+      const row=el('div'); row.style.cssText='display:grid;grid-template-columns:repeat(5,40px);gap:5px';
+      for(let i=0;i<5;i++){
+        const g=rows[r]||'';
+        const ch=(r===cur? (rows[r]||'') : g)[i]||'';
+        const st=r<cur? score(g)[i] : null;
+        const d=el('div','',esc(ch.toUpperCase()));
+        d.style.cssText=`width:40px;height:44px;border-radius:6px;display:grid;place-items:center;font-size:21px;font-weight:800;
+          border:2px solid ${st?'transparent':(ch?'rgba(255,255,255,.45)':'rgba(255,255,255,.18)')};
+          background:${st==='g'?'#30d158':st==='y'?'#e0b83a':st==='b'?'rgba(255,255,255,.13)':'transparent'};
+          color:#fff`;
+        row.appendChild(d);
+      }
+      gridEl.appendChild(row);
+    }
+  }
+  function score(guess){
+    const res=Array(5).fill('b'), a=answer.split(''), taken=Array(5).fill(false);
+    for(let i=0;i<5;i++) if(guess[i]===a[i]){res[i]='g';taken[i]=true;}
+    for(let i=0;i<5;i++){ if(res[i]==='g') continue;
+      const j=a.findIndex((c,k)=>c===guess[i]&&!taken[k]);
+      if(j>=0){res[i]='y';taken[j]=true;} }
+    return res;
+  }
+  function drawKb(){
+    controls.innerHTML='';
+    const layout=['qwertyuiop','asdfghjkl','⏎zxcvbnm⌫'];
+    layout.forEach(rowStr=>{
+      const row=el('div'); row.style.cssText='display:flex;gap:4px;justify-content:center;margin-bottom:5px';
+      [...rowStr].forEach(ch=>{
+        const wide=ch==='⏎'||ch==='⌫';
+        const st=kbState[ch];
+        const b=el('button','',ch==='⏎'?'ENTER':ch==='⌫'?'⌫':ch.toUpperCase());
+        b.style.cssText=`flex:${wide?'1.6':'1'};min-width:0;padding:11px 0;border-radius:5px;font-size:${wide?'10.5':'14'}px;font-weight:700;
+          color:#fff;background:${st==='g'?'#30d158':st==='y'?'#e0b83a':st==='b'?'rgba(255,255,255,.08)':'rgba(255,255,255,.22)'}`;
+        b.onclick=()=>key(ch);
+        row.appendChild(b);
+      });
+      controls.appendChild(row);
+    });
+  }
+  function key(ch){
+    if(done) return;
+    if(ch==='⌫'){ rows[cur]=(rows[cur]||'').slice(0,-1); drawGrid(); return; }
+    if(ch==='⏎'){
+      const g=rows[cur]||'';
+      if(g.length<5){ msg.textContent='Not enough letters'; return; }
+      const res=score(g);
+      [...g].forEach((c,i)=>{ const prev=kbState[c];
+        if(res[i]==='g'||prev!=='g') kbState[c]= res[i]==='g'?'g':(res[i]==='y'&&prev!=='g')?'y':(prev||'b'); });
+      cur++; msg.textContent='';
+      drawGrid(); drawKb();
+      if(g===answer){ done=true;
+        const streak=gmBest(app.id,(State.gameBest?.[app.id]|0)+1); scoreEl.textContent=streak;
+        gmOverlay(stage,{title:'Got it!',body:`${answer.toUpperCase()} in ${cur} ${cur===1?'try':'tries'}`,btn:'New Word',onGo:start}); }
+      else if(cur>=6){ done=true; State.gameBest=State.gameBest||{}; State.gameBest[app.id]=0; save(); scoreEl.textContent='0';
+        gmOverlay(stage,{title:'Out of tries',body:`The word was ${answer.toUpperCase()}`,btn:'New Word',onGo:start}); }
+      return;
+    }
+    if(!/^[a-z]$/.test(ch)) return;
+    if((rows[cur]||'').length>=5) return;
+    rows[cur]=(rows[cur]||'')+ch; drawGrid();
+  }
+  function start(){
+    answer=WORDS[(Math.random()*WORDS.length)|0];
+    rows=Array(6).fill(''); cur=0; done=false; msg.textContent='';
+    Object.keys(kbState).forEach(k=>delete kbState[k]);
+    drawGrid(); drawKb();
+  }
+  gmKeys(win,Object.fromEntries([...'abcdefghijklmnopqrstuvwxyz'].map(c=>[c,()=>key(c)])
+    .concat([['Enter',()=>key('⏎')],['Backspace',()=>key('⌫')]])));
+  start();
+  gmOverlay(stage,{title:'Wordfall',body:'Guess the five-letter word in six tries',onGo:()=>{}});
+}
+
+/* ------------------------------------------------------------- CONNECT 4 -- */
+function connect4Game(app,win){
+  const {stage,controls,scoreEl}=gameChrome(app,win,{sub:'You are yellow',statLabel:'Wins'});
+  scoreEl.textContent=gmBest(app.id);
+  const CW=7,CH=6;
+  let grid,turn,over_,hoverCol=null;
+  const cv=el('canvas'); cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;border-radius:18px';
+  stage.appendChild(cv);
+  const geom=()=>{ const r=stage.getBoundingClientRect();
+    const cell=Math.min(r.width/CW,(r.height-10)/CH);
+    return {r,cell,ox:(r.width-cell*CW)/2,oy:(r.height-cell*CH)/2}; };
+  function draw(){
+    const {r,cell,ox,oy}=geom(); if(!r.width) return;
+    cv.width=r.width*2; cv.height=r.height*2;
+    const c=cv.getContext('2d'); c.scale(2,2);
+    c.clearRect(0,0,r.width,r.height);
+    c.fillStyle='#1741b6';
+    c.beginPath(); c.roundRect(ox,oy,cell*CW,cell*CH,12); c.fill();
+    for(let y=0;y<CH;y++)for(let x=0;x<CW;x++){
+      const v=grid[y][x];
+      c.fillStyle = v===1?'#ffd60a' : v===2?'#ff453a' : '#0b1f5c';
+      c.beginPath(); c.arc(ox+(x+.5)*cell, oy+(y+.5)*cell, cell*.38, 0, 7); c.fill();
+    }
+    if(hoverCol!=null && !over_){
+      c.globalAlpha=.35; c.fillStyle='#ffd60a';
+      c.beginPath(); c.arc(ox+(hoverCol+.5)*cell, oy-cell*.1, cell*.3, 0, 7); c.fill(); c.globalAlpha=1;
+    }
+  }
+  const drop=(g,col,who)=>{ for(let y=CH-1;y>=0;y--) if(!g[y][col]){ g[y][col]=who; return y; } return -1; };
+  function wins(g,who){
+    for(let y=0;y<CH;y++)for(let x=0;x<CW;x++){
+      for(const [dx,dy] of [[1,0],[0,1],[1,1],[1,-1]]){
+        let n=0; for(let k=0;k<4;k++){ const nx=x+dx*k, ny=y+dy*k;
+          if(nx<0||ny<0||nx>=CW||ny>=CH||g[ny][nx]!==who) break; n++; }
+        if(n===4) return true;
+      }
+    }
+    return false;
+  }
+  const openCols=g=>[...Array(CW).keys()].filter(x=>!g[0][x]);
+  function aiMove(){
+    const cols=openCols(grid);
+    // win now, else block, else prefer centre
+    for(const who of [2,1]) for(const col of cols){
+      const g=grid.map(r=>r.slice()); drop(g,col,who);
+      if(wins(g,who)) return col;
+    }
+    const safe=cols.filter(col=>{
+      const g=grid.map(r=>r.slice()); drop(g,col,2);
+      return !openCols(g).some(c2=>{ const g2=g.map(r=>r.slice()); drop(g2,c2,1); return wins(g2,1); });
+    });
+    const pool=safe.length?safe:cols;
+    return pool.sort((a,b)=>Math.abs(3-a)-Math.abs(3-b))[0];
+  }
+  function play(col){
+    if(over_||turn!==1) return;
+    if(grid[0][col]) return;
+    drop(grid,col,1); draw();
+    if(wins(grid,1)){ over_=true; const w=gmBest(app.id,(State.gameBest?.[app.id]|0)+1); scoreEl.textContent=w;
+      return gmOverlay(stage,{title:'You win',body:'Four in a row',btn:'Rematch',onGo:start}); }
+    if(!openCols(grid).length){ over_=true; return gmOverlay(stage,{title:'Draw',body:'Board full',btn:'Rematch',onGo:start}); }
+    turn=2;
+    setTimeout(()=>{
+      drop(grid,aiMove(),2); draw(); turn=1;
+      if(wins(grid,2)){ over_=true; gmOverlay(stage,{title:'Computer wins',body:'Try blocking the diagonals',btn:'Rematch',onGo:start}); }
+      else if(!openCols(grid).length){ over_=true; gmOverlay(stage,{title:'Draw',body:'Board full',btn:'Rematch',onGo:start}); }
+    },420);
+  }
+  const colAt=e=>{ const {r,cell,ox}=geom();
+    return Math.max(0,Math.min(CW-1,Math.floor((e.clientX-r.left-ox)/cell))); };
+  cv.addEventListener('pointermove',e=>{ hoverCol=colAt(e); draw(); });
+  cv.addEventListener('pointerleave',()=>{ hoverCol=null; draw(); });
+  cv.addEventListener('click',e=>play(colAt(e)));
+  function start(){ grid=Array.from({length:CH},()=>Array(CW).fill(0)); turn=1; over_=false; draw(); }
+  gmPad(controls,[...Array(7).keys()].map(i=>[String(i+1),()=>play(i)]));
+  start();
+  gmOverlay(stage,{title:'Four in a Row',body:'Tap a column to drop a disc',onGo:()=>{}});
+}
+
+/* ----------------------------------------------------------------- 2048 -- */
+function game2048(app,win){
+  const {stage,controls,scoreEl}=gameChrome(app,win,{sub:'Swipe or arrow keys'});
+  const N=4;
+  let g,score,prev;
+  const host=el('div'); host.style.cssText='position:absolute;inset:0;display:grid;place-items:center';
+  stage.appendChild(host);
+  const board=el('div');
+  board.style.cssText='background:#bbada0;border-radius:10px;padding:7px;display:grid;grid-template-columns:repeat(4,1fr);gap:7px';
+  host.appendChild(board);
+  const COLORS={2:['#eee4da','#776e65'],4:['#ede0c8','#776e65'],8:['#f2b179','#fff'],16:['#f59563','#fff'],
+    32:['#f67c5f','#fff'],64:['#f65e3b','#fff'],128:['#edcf72','#fff'],256:['#edcc61','#fff'],
+    512:['#edc850','#fff'],1024:['#edc53f','#fff'],2048:['#edc22e','#fff']};
+  function draw(){
+    const size=Math.min(stage.getBoundingClientRect().width, stage.getBoundingClientRect().height)-16;
+    const cell=Math.floor((size-7*5)/4);
+    board.innerHTML='';
+    g.flat().forEach(v=>{
+      const [bg,fg]=COLORS[v]||['#3c3a32','#fff'];
+      const d=el('div','',v?String(v):'');
+      d.style.cssText=`width:${cell}px;height:${cell}px;border-radius:6px;display:grid;place-items:center;
+        background:${v?bg:'rgba(238,228,218,.35)'};color:${fg};
+        font-size:${v>=1024?cell*0.3:v>=128?cell*0.36:cell*0.44}px;font-weight:800`;
+      board.appendChild(d);
+    });
+    scoreEl.textContent=score;
+  }
+  function spawn(){
+    const free=[]; g.forEach((row,y)=>row.forEach((v,x)=>!v&&free.push([x,y])));
+    if(!free.length) return;
+    const [x,y]=free[(Math.random()*free.length)|0];
+    g[y][x]=Math.random()<0.9?2:4;
+  }
+  const rot=m=>m[0].map((_,i)=>m.map(r=>r[i]).reverse());
+  function slide(row){
+    const a=row.filter(Boolean); let gained=0;
+    for(let i=0;i<a.length-1;i++) if(a[i]===a[i+1]){ a[i]*=2; gained+=a[i]; a.splice(i+1,1); }
+    while(a.length<N) a.push(0);
+    return {row:a,gained};
+  }
+  function move(dir){
+    prev={g:g.map(r=>r.slice()),score};
+    let m=g.map(r=>r.slice());
+    const turns={left:0,up:1,right:2,down:3}[dir];
+    for(let i=0;i<turns;i++) m=rot(m);
+    let gained=0;
+    m=m.map(r=>{ const s=slide(r); gained+=s.gained; return s.row; });
+    for(let i=0;i<(4-turns)%4;i++) m=rot(m);
+    if(JSON.stringify(m)===JSON.stringify(g)) return;
+    g=m; score+=gained; spawn(); draw();
+    if(g.flat().includes(2048) && !win._won){ win._won=true;
+      gmOverlay(stage,{title:'2048!',body:`Score ${score}`,btn:'Keep Going',onGo:()=>{}}); }
+    if(!canMove()){ gmBest(app.id,score);
+      gmOverlay(stage,{title:'No moves left',body:`Score ${score} · Best ${gmBest(app.id,score)}`,btn:'New Game',onGo:start}); }
+  }
+  function canMove(){
+    if(g.flat().some(v=>!v)) return true;
+    for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+      if(x<N-1&&g[y][x]===g[y][x+1]) return true;
+      if(y<N-1&&g[y][x]===g[y+1][x]) return true;
+    }
+    return false;
+  }
+  function start(){ g=Array.from({length:N},()=>Array(N).fill(0)); score=0; win._won=false; spawn(); spawn(); draw(); }
+  gmSwipe(stage,move);
+  gmKeys(win,{ArrowLeft:()=>move('left'),ArrowRight:()=>move('right'),ArrowUp:()=>move('up'),ArrowDown:()=>move('down')});
+  gmPad(controls,[['←',()=>move('left')],['↑',()=>move('up')],['↓',()=>move('down')],['→',()=>move('right')],
+    ['↺',()=>{ if(prev){ g=prev.g; score=prev.score; prev=null; draw(); } }]]);
+  start();
+  gmOverlay(stage,{title:'2048 Tiles',body:`Best ${gmBest(app.id)}`,onGo:()=>{}});
+}
+
+/* ------------------------------------------------------------- BREAKOUT -- */
+function breakoutGame(app,win){
+  const {stage,controls,scoreEl,accent}=gameChrome(app,win,{sub:'Drag or arrow keys'});
+  const cv=el('canvas'); cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;border-radius:18px';
+  stage.appendChild(cv);
+  const COLS=7,ROWS=5,ROWC=['#ff453a','#ff9f0a','#ffd60a','#30d158','#40c8e0'];
+  let W=0,H=0,bricks,ball,paddle,score,lives,raf,running;
+  function layout(){
+    const r=stage.getBoundingClientRect(); W=r.width; H=r.height;
+    cv.width=W*2; cv.height=H*2;
+  }
+  function reset(full){
+    layout();
+    if(full){ bricks=[]; score=0; lives=3; scoreEl.textContent='0';
+      const bw=(W-20)/COLS, bh=16;
+      for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+        bricks.push({x:10+x*bw,y:40+y*(bh+6),w:bw-5,h:bh,c:ROWC[y],alive:true});
+    }
+    paddle={w:Math.max(58,W*0.24),h:11,x:W/2};
+    ball={x:W/2,y:H-70,vx:(Math.random()<.5?-1:1)*3.1,vy:-3.6,r:6};
+  }
+  function draw(){
+    const c=cv.getContext('2d'); c.setTransform(2,0,0,2,0,0);
+    c.clearRect(0,0,W,H);
+    c.fillStyle='rgba(0,0,0,.34)'; c.fillRect(0,0,W,H);
+    bricks.forEach(b=>{ if(!b.alive) return; c.fillStyle=b.c;
+      c.beginPath(); c.roundRect(b.x,b.y,b.w,b.h,3); c.fill(); });
+    c.fillStyle=accent;
+    c.beginPath(); c.roundRect(paddle.x-paddle.w/2,H-26,paddle.w,paddle.h,6); c.fill();
+    c.fillStyle='#fff'; c.beginPath(); c.arc(ball.x,ball.y,ball.r,0,7); c.fill();
+    c.fillStyle='rgba(255,255,255,.5)'; c.font='11px Inter,system-ui'; c.textAlign='right';
+    c.fillText('Lives '+lives, W-8, 18);
+  }
+  function loop(){
+    if(!running) return;
+    const r=stage.getBoundingClientRect();
+    if(!r.width){ raf=requestAnimationFrame(loop); return; }
+    if(Math.abs(r.width-W)>1||Math.abs(r.height-H)>1) layout();
+    ball.x+=ball.vx; ball.y+=ball.vy;
+    if(ball.x<ball.r||ball.x>W-ball.r){ ball.vx*=-1; ball.x=Math.max(ball.r,Math.min(W-ball.r,ball.x)); }
+    if(ball.y<ball.r) ball.vy*=-1;
+    // paddle
+    if(ball.vy>0 && ball.y+ball.r>=H-26 && ball.y<H-10 &&
+       ball.x>paddle.x-paddle.w/2-4 && ball.x<paddle.x+paddle.w/2+4){
+      const hit=(ball.x-paddle.x)/(paddle.w/2);
+      const sp=Math.min(7.5,Math.hypot(ball.vx,ball.vy)*1.02);
+      const ang=hit*1.05;
+      ball.vx=Math.sin(ang)*sp; ball.vy=-Math.abs(Math.cos(ang)*sp);
+    }
+    // bricks
+    for(const b of bricks){
+      if(!b.alive) continue;
+      if(ball.x>b.x-ball.r&&ball.x<b.x+b.w+ball.r&&ball.y>b.y-ball.r&&ball.y<b.y+b.h+ball.r){
+        b.alive=false; score+=10; scoreEl.textContent=score;
+        const fromSide = ball.x<b.x||ball.x>b.x+b.w;
+        if(fromSide) ball.vx*=-1; else ball.vy*=-1;
+        break;
+      }
+    }
+    if(!bricks.some(b=>b.alive)){ running=false; gmBest(app.id,score);
+      return gmOverlay(stage,{title:'Cleared!',body:`Score ${score}`,btn:'Play Again',onGo:()=>start(true)}); }
+    if(ball.y>H+20){
+      lives--;
+      if(lives<=0){ running=false; gmBest(app.id,score);
+        return gmOverlay(stage,{title:'Game Over',body:`Score ${score} · Best ${gmBest(app.id,score)}`,btn:'Play Again',onGo:()=>start(true)}); }
+      reset(false);
+    }
+    draw();
+    raf=requestAnimationFrame(loop);
+  }
+  const movePaddle=x=>{ paddle.x=Math.max(paddle.w/2,Math.min(W-paddle.w/2,x)); };
+  stage.addEventListener('pointermove',e=>{ if(!e.buttons&&e.pointerType==='mouse') return;
+    const r=stage.getBoundingClientRect(); movePaddle(e.clientX-r.left); });
+  stage.addEventListener('pointerdown',e=>{ const r=stage.getBoundingClientRect(); movePaddle(e.clientX-r.left); });
+  gmKeys(win,{ArrowLeft:()=>movePaddle(paddle.x-26),ArrowRight:()=>movePaddle(paddle.x+26)});
+  gmPad(controls,[['←',()=>movePaddle(paddle.x-30),true],['→',()=>movePaddle(paddle.x+30),true]]);
+  function start(full){ reset(full!==false); running=true; cancelAnimationFrame(raf); loop(); }
+  reset(true); setTimeout(()=>{layout();draw();},60);
+  gmOverlay(stage,{title:'Brick Blitz',body:`Best ${gmBest(app.id)}`,onGo:()=>start(true)});
+}
+
+const GAME_ENGINES={snake:snakeGame,tetris:tetrisGame,wordle:wordleGame,
+  connect4:connect4Game,'2048':game2048,breakout:breakoutGame};
+function gameShell(app,win){
+  const fn=GAME_ENGINES[app.engine]||snakeGame;
+  fn(app,win);
+}
+
 
 /* =========================================================================
    STOCK APPS
@@ -5786,20 +6547,30 @@ defineApp({id:'messages',name:'Messages',bg:'linear-gradient(180deg,#6ce67d,#17b
       b.appendChild(el('div','searchfield',`${SVG.search}<input placeholder="Search">`));
       MSG().forEach(t=>{
         const last=t.msgs[t.msgs.length-1];
-        const r=el('div','ml-row'+(last[2]?' unread':''));
+        /* a thread is unread if ANY message is — not just the last one, which
+           is often your own reply */
+        const unread=t.msgs.some(m=>m[2]);
+        const r=el('div','ml-row'+(unread?' unread':''));
         r.innerHTML=`<div class="ml-dot"></div>
           <div style="display:flex;gap:10px;flex:1;min-width:0">
           <div class="avatar" style="background:${colorFor(t.n)}">${esc(initials(t.n))}</div>
           <div class="ml-main"><div class="ml-from">${esc(t.n)}<span>${fmtDate(t.at||Date.now()-3600e3)} ${SVG.chev}</span></div>
           <div class="ml-prev">${esc(last[1])}</div></div></div>`;
-        r.onclick=()=>{ t.msgs.forEach(m=>m[2]=0); save();
-          setBadge('messages',MSG().reduce((a,x)=>a+x.msgs.filter(m=>m[2]).length,0));
-          n.push(threadView(t)); };
+        r.onclick=()=>{
+          t.msgs.forEach(m=>m[2]=0); save();
+          r.classList.remove('unread');          // clear it straight away
+          syncMsgBadge();
+          n.push(threadView(t));
+        };
         b.appendChild(r);
       });
-    }});
+    },
+    onReturn(body,nav){ nav.refresh(); }});      // and again when you come back
   },
-  onShow(inst){ inst.nav.refresh(); }});
+  onShow(inst){ inst.nav.refresh(); syncMsgBadge(); }});
+function syncMsgBadge(){
+  setBadge('messages', MSG().reduce((a,t)=>a+t.msgs.filter(m=>m[2]).length,0));
+}
 function threadView(t){
   const shortcode=/^\d{5,6}$/.test(t.n);
   return {title:t.n, build(b,nav,view){
@@ -6413,34 +7184,235 @@ defineApp({id:'maps',name:'Maps',bg:'linear-gradient(160deg,#8fd88f,#3a8f5f)',
 defineApp({id:'tv',name:'TV',bg:'#0a0a0c', darkStatus:true,
   glyph:'<div style="color:#fff;font-size:20px;font-weight:600">tv</div>',
   mount(win){ streamShell({name:'Apple TV',colors:['#1c1c1e','#000']},win); }});
-defineApp({id:'wallet',name:'Wallet',bg:'linear-gradient(160deg,#3a3a3c,#0a0a0c)',
-  glyph:'<div style="font-size:28px">💳</div>', darkStatus:true,
+/* =========================================================================
+   WALLET — payment cards, passes, transactions
+   ========================================================================= */
+function WAL(){
+  if(!State.wallet) State.wallet={
+    cards:[
+      {id:'applecard',kind:'card',name:'Apple Card',last:'4417',bg:'linear-gradient(150deg,#f6f6f8,#d9d9de)',fg:'#111',
+       balance:284.19,limit:2500,daily:12.47,
+       tx:[['Spectrum','Jul 29',189.98,2],['Pizza Roma','Jul 28',24.60,3],['App Store','Jul 27',12.99,3],
+           ['Shell Fuel','Jul 26',48.12,2],['Payment — Thank You','Jul 22',-150.00,0]]},
+      {id:'visa',kind:'card',name:'Visa',last:'0092',bg:'linear-gradient(150deg,#1b3fa0,#0b2263)',fg:'#fff',
+       balance:null,
+       tx:[['Netflix','Jul 30',15.49],['Grocery Co','Jul 28',86.31],['Transit','Jul 27',2.75]]},
+      {id:'transit',kind:'transit',name:'Transit Card',last:'',bg:'linear-gradient(150deg,#0b6e4f,#04382a)',fg:'#fff',
+       balance:18.50, tx:[['Bus fare','Jul 30',2.75],['Rail fare','Jul 29',3.25]]}
+    ],
+    passes:[
+      {id:'boarding',kind:'boarding',name:'Boarding Pass',bg:'linear-gradient(150deg,#0a63e8,#062a63)',fg:'#fff',
+       from:'MCO',to:'JFK',gate:'C14',seat:'12A',flight:'AA 1284',boards:'6:40 PM',date:'Aug 3'},
+      {id:'ticket',kind:'event',name:'Concert Ticket',bg:'linear-gradient(150deg,#bf5af2,#4a1063)',fg:'#fff',
+       event:'Midnight Static',venue:'Amway Center',section:'104',row:'F',seat:'12',date:'Aug 14 · 8:00 PM'},
+      {id:'loyalty',kind:'loyalty',name:'Spectrum Rewards',bg:'linear-gradient(150deg,#0072ce,#003057)',fg:'#fff',
+       points:2480,member:'•••• 4417'}
+    ]
+  };
+  return State.wallet;
+}
+function walletCardFace(c,{compact}={}){
+  const d=el('div','wal-card');
+  d.style.cssText=`background:${c.bg};color:${c.fg};border-radius:15px;padding:15px 16px;height:${compact?126:150}px;
+    box-shadow:0 8px 22px rgba(0,0,0,.45);display:flex;flex-direction:column;justify-content:space-between;
+    position:relative;overflow:hidden;cursor:pointer`;
+  let body='';
+  if(c.kind==='card'){
+    body=`<div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="font-weight:700;font-size:16px">${esc(c.name)}</div>
+        ${c.id==='applecard'?'<div style="font-size:19px"></div>':`<div style="font-size:11px;opacity:.7;letter-spacing:1.5px">${c.id==='visa'?'VISA':''}</div>`}</div>
+      <div>
+        ${c.balance!=null?`<div style="font-size:11px;opacity:.6">Card Balance</div>
+          <div style="font-size:24px;font-weight:700;font-variant-numeric:tabular-nums">$${c.balance.toFixed(2)}</div>`:''}
+        <div style="font-size:13px;letter-spacing:2px;opacity:.75;margin-top:4px">•••• ${esc(c.last)}</div></div>`;
+  } else if(c.kind==='transit'){
+    body=`<div style="font-weight:700;font-size:16px">${esc(c.name)}</div>
+      <div><div style="font-size:11px;opacity:.6">Balance</div>
+      <div style="font-size:24px;font-weight:700">$${c.balance.toFixed(2)}</div></div>`;
+  } else if(c.kind==='boarding'){
+    body=`<div style="display:flex;justify-content:space-between;font-size:11px;opacity:.75">
+        <span>${esc(c.flight)}</span><span>${esc(c.date)}</span></div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:30px;font-weight:800">${esc(c.from)}</div>
+        <div style="flex:1;border-top:1.5px dashed rgba(255,255,255,.5);position:relative">
+          <div style="position:absolute;right:-4px;top:-9px">✈</div></div>
+        <div style="font-size:30px;font-weight:800">${esc(c.to)}</div></div>
+      <div style="display:flex;gap:18px;font-size:11px;opacity:.8">
+        <span>GATE ${esc(c.gate)}</span><span>SEAT ${esc(c.seat)}</span><span>BOARDS ${esc(c.boards)}</span></div>`;
+  } else if(c.kind==='event'){
+    body=`<div style="font-size:11px;opacity:.7;letter-spacing:1px">EVENT TICKET</div>
+      <div><div style="font-size:19px;font-weight:800">${esc(c.event)}</div>
+      <div style="font-size:12px;opacity:.8">${esc(c.venue)} · ${esc(c.date)}</div></div>
+      <div style="display:flex;gap:16px;font-size:11px;opacity:.85">
+        <span>SEC ${esc(c.section)}</span><span>ROW ${esc(c.row)}</span><span>SEAT ${esc(c.seat)}</span></div>`;
+  } else {
+    body=`<div style="font-weight:700;font-size:16px">${esc(c.name)}</div>
+      <div><div style="font-size:11px;opacity:.6">Points</div>
+      <div style="font-size:24px;font-weight:700">${c.points.toLocaleString()}</div>
+      <div style="font-size:11px;opacity:.7;margin-top:2px">${esc(c.member)}</div></div>`;
+  }
+  d.innerHTML=body;
+  return d;
+}
+function barcode(){
+  const bars=Array.from({length:52},()=>Math.random()<.5?2:4).map((w,i)=>
+    `<i style="display:inline-block;width:${w}px;height:100%;background:#111;margin-right:${Math.random()<.5?2:3}px"></i>`).join('');
+  return `<div style="background:#fff;border-radius:10px;padding:14px;text-align:center">
+    <div style="height:64px;white-space:nowrap;overflow:hidden">${bars}</div>
+    <div style="font-size:11px;color:#555;margin-top:8px;letter-spacing:2px">SIMULATED PASS</div></div>`;
+}
+defineApp({id:'wallet',name:'Wallet',bg:'linear-gradient(160deg,#3a3a3e,#0d0d0f)', darkStatus:true,
   mount(win,inst){
+    WAL();
     const nav=new Nav(win); inst.nav=nav;
-    nav.setRoot({title:'Wallet',largeTitle:true,build(b){
-      const cards=[['Apple Card','#e8e8ed','#111','•••• 4417'],['Visa','#1a3a8f','#fff','•••• 0092'],['Spectrum Rewards','#0072ce','#fff','Member']];
-      const wrap=el('div'); wrap.style.padding='0 16px';
-      cards.forEach((c,i)=>{
-        const d=el('div');
-        d.style.cssText=`background:${c[1]};color:${c[2]};border-radius:14px;padding:16px;height:120px;margin-top:${i?-40:0}px;
-          box-shadow:0 6px 18px rgba(0,0,0,.4);display:flex;flex-direction:column;justify-content:space-between;position:relative;z-index:${i}`;
-        d.innerHTML=`<div style="font-weight:700">${c[0]}</div><div style="font-size:14px;letter-spacing:2px">${c[3]}</div>`;
-        d.onclick=()=>toast(c[0]+' — simulated');
-        wrap.appendChild(d);
+    nav.setRoot(walletHomeView());
+  },
+  onShow(inst){ inst.nav.refresh(); }
+});
+function walletHomeView(){
+  return {title:'Wallet', largeTitle:true, shortTitle:'Wallet',
+    right:[{html:sf('<path d="M12 5v14M5 12h14"/>',{w:2.2,size:20}),onClick:n=>addCardSheet(n)}],
+    build(b,nav){
+      const w=WAL();
+      /* payment cards, overlapped like the real stack */
+      const stack=el('div'); stack.style.cssText='padding:2px 16px 0';
+      w.cards.forEach((c,i)=>{
+        const face=walletCardFace(c);
+        face.style.marginTop = i? '-96px':'0';
+        face.style.zIndex=i+1;
+        face.onclick=()=>nav.push(cardDetailView(c));
+        stack.appendChild(face);
       });
-      b.appendChild(wrap);
-      group(b,{rows:[{label:'Add Card',cls:'blue',onClick:()=>toast('Apple Pay setup is disabled in the simulator')}]});
-    }});
-  }});
+      b.appendChild(stack);
+      if(w.passes.length){
+        b.appendChild(el('div','grp-h','Passes'));
+        const ps=el('div'); ps.style.cssText='padding:0 16px;display:flex;flex-direction:column;gap:11px';
+        w.passes.forEach(p=>{
+          const face=walletCardFace(p,{compact:true});
+          face.onclick=()=>nav.push(passDetailView(p));
+          ps.appendChild(face);
+        });
+        b.appendChild(ps);
+      }
+      group(b,{rows:[
+        {label:'Add Card',cls:'blue',icon:'＋',iconBg:'#0a84ff',onClick:()=>addCardSheet(nav)},
+        {label:'Card Details & Transactions',onClick:()=>nav.push(cardDetailView(WAL().cards[0]))},
+        {label:'Express Transit Card',value:'Transit Card',onClick:()=>toast('Express Transit is simulated')}]});
+      b.appendChild(el('div','grp-f','Double-click the side button to pay. All cards and passes here are fictional.'));
+    }};
+}
+function cardDetailView(c){
+  return {title:c.name, shortTitle:'Card', build(b,nav){
+    const wrap=el('div'); wrap.style.padding='4px 16px 0';
+    wrap.appendChild(walletCardFace(c));
+    b.appendChild(wrap);
+    if(c.id==='applecard'){
+      const ring=el('div','grp'); ring.style.padding='16px';
+      const pct=Math.min(1,c.balance/c.limit);
+      ring.innerHTML=`<div style="display:flex;gap:16px;align-items:center">
+        <svg viewBox="0 0 80 80" style="width:78px;flex:none">
+          <circle cx="40" cy="40" r="33" fill="none" stroke="var(--bg3)" stroke-width="9"/>
+          <circle cx="40" cy="40" r="33" fill="none" stroke="#30d158" stroke-width="9" stroke-linecap="round"
+            stroke-dasharray="${2*Math.PI*33}" stroke-dashoffset="${2*Math.PI*33*(1-pct)}" transform="rotate(-90 40 40)"/>
+        </svg>
+        <div><div style="font-size:12px;color:var(--txt2)">Card Balance</div>
+          <div style="font-size:26px;font-weight:700">$${c.balance.toFixed(2)}</div>
+          <div style="font-size:12px;color:var(--txt2);margin-top:2px">$${(c.limit-c.balance).toFixed(2)} available of $${c.limit.toLocaleString()}</div></div></div>`;
+      b.appendChild(ring);
+      group(b,{rows:[
+        {label:'Daily Cash earned this month',value:'$'+c.daily.toFixed(2),chevron:false},
+        {label:'Make a Payment',cls:'blue',onClick:()=>alertBox({title:'Make a Payment',
+          message:'Payments are disabled in the simulator — no real card is connected.',buttons:[{text:'OK'}]})}]});
+    }
+    group(b,{header:'Latest Transactions',rows:(c.tx||[]).map(t=>({
+      label:t[0], sub:t[1]+(t[3]?` · ${t[3]}% Daily Cash`:''),
+      value:(t[2]<0?'-':'')+'$'+Math.abs(t[2]).toFixed(2),
+      onClick:()=>toast(t[0]+' — '+t[1])}))});
+    group(b,{rows:[
+      {label:'Card Number',value:'•••• '+(c.last||'——'),chevron:false},
+      {label:'Notifications',value:'On',onClick:()=>toast('Simulated')},
+      {label:'Remove Card',cls:'destructive',onClick:()=>alertBox({title:'Remove “'+c.name+'”?',
+        message:'You can add this card back to Wallet at any time.',
+        buttons:[{text:'Cancel'},{text:'Remove',style:'red bold',onClick:()=>{
+          WAL().cards=WAL().cards.filter(x=>x.id!==c.id); save(); nav.pop(); nav.refresh(); toast('Card removed');
+        }}]})}]});
+  }};
+}
+function passDetailView(p){
+  return {title:p.name, shortTitle:'Pass', build(b,nav){
+    const wrap=el('div'); wrap.style.padding='4px 16px 14px';
+    wrap.appendChild(walletCardFace(p));
+    b.appendChild(wrap);
+    const code=el('div'); code.style.padding='0 16px 14px'; code.innerHTML=barcode();
+    b.appendChild(code);
+    if(p.kind==='boarding') group(b,{header:'Flight',rows:[
+      {label:'Flight',value:p.flight},{label:'From',value:p.from},{label:'To',value:p.to},
+      {label:'Gate',value:p.gate},{label:'Seat',value:p.seat},{label:'Boards',value:p.boards},{label:'Date',value:p.date}]});
+    if(p.kind==='event') group(b,{header:'Event',rows:[
+      {label:'Event',value:p.event},{label:'Venue',value:p.venue},{label:'When',value:p.date},
+      {label:'Section',value:p.section},{label:'Row',value:p.row},{label:'Seat',value:p.seat}]});
+    if(p.kind==='loyalty') group(b,{header:'Rewards',rows:[
+      {label:'Points',value:p.points.toLocaleString()},{label:'Member',value:p.member},
+      {label:'Redeem Points',cls:'blue',onClick:()=>toast('Redemption is simulated')}]});
+    group(b,{rows:[
+      {label:'Automatic Updates',toggle:()=>true,onToggle:()=>{}},
+      {label:'Suggest on Lock Screen',toggle:()=>true,onToggle:()=>{}},
+      {label:'Remove Pass',cls:'destructive',onClick:()=>alertBox({title:'Remove “'+p.name+'”?',
+        message:'This pass will be deleted from Wallet.',
+        buttons:[{text:'Cancel'},{text:'Remove',style:'red bold',onClick:()=>{
+          WAL().passes=WAL().passes.filter(x=>x.id!==p.id); save(); nav.pop(); nav.refresh(); toast('Pass removed');
+        }}]})}]});
+  }};
+}
+function addCardSheet(nav){
+  const TYPES=[
+    ['Debit or Credit Card','card',()=>({id:'c'+Date.now(),kind:'card',name:'New Card',last:String(1000+((Math.random()*9000)|0)),
+      bg:'linear-gradient(150deg,#4a4a52,#1c1c1e)',fg:'#fff',balance:null,
+      tx:[['Opening balance','Today',0]]})],
+    ['Transit Card','transit',()=>({id:'t'+Date.now(),kind:'transit',name:'Transit Card',last:'',
+      bg:'linear-gradient(150deg,#0b6e4f,#04382a)',fg:'#fff',balance:10,tx:[]})],
+    ['Boarding Pass','boarding',()=>({id:'b'+Date.now(),kind:'boarding',name:'Boarding Pass',
+      bg:'linear-gradient(150deg,#0a63e8,#062a63)',fg:'#fff',from:'MCO',to:'LAX',gate:'B7',seat:'21C',
+      flight:'AA 902',boards:'7:15 AM',date:'Aug 9'})],
+    ['Event Ticket','event',()=>({id:'e'+Date.now(),kind:'event',name:'Event Ticket',
+      bg:'linear-gradient(150deg,#bf5af2,#4a1063)',fg:'#fff',event:'Night Market',venue:'City Hall',
+      section:'GA',row:'—',seat:'—',date:'Aug 20 · 6:00 PM'})],
+    ['Rewards Card','loyalty',()=>({id:'l'+Date.now(),kind:'loyalty',name:'Rewards Card',
+      bg:'linear-gradient(150deg,#ff9f0a,#8a4b00)',fg:'#fff',points:500,member:'•••• '+((Math.random()*9000+1000)|0)})]
+  ];
+  actionSheet('Add to Wallet', TYPES.map(([label,kind,make])=>({
+    text:label, onClick:()=>{
+      const item=make();
+      const w=WAL();
+      (kind==='card'||kind==='transit'? w.cards : w.passes).push(item);
+      save(); nav.refresh();
+      island('💳','#0a84ff','Wallet',label+' added',2200);
+      toast(label+' added to Wallet');
+    }})));
+}
 
 /* =========================================================================
    HOME SCREEN APP ARTWORK — drawn, not emoji
    ========================================================================= */
 const ART={
-  settings:{bg:'linear-gradient(180deg,#e9e9ee,#a3a3ab)',art:`<svg viewBox="0 0 64 64" style="width:78%">
-    <g fill="none" stroke="#fff" stroke-width="3.4"><circle cx="32" cy="32" r="7.6"/>
-    <path d="M32 8.4l3.1 5.6 6.3-1.2 1.2 6.3 5.6 3.1-3.2 5.5 3.2 5.5-5.6 3.1-1.2 6.3-6.3-1.2L32 55.6l-3.1-5.6-6.3 1.2-1.2-6.3-5.6-3.1 3.2-5.5-3.2-5.5 5.6-3.1 1.2-6.3 6.3 1.2z"/></g>
-    <circle cx="32" cy="32" r="7.6" fill="rgba(255,255,255,.25)"/></svg>`},
+  /* machined cog: 12 teeth ringed around a hub, like the real Settings tile */
+  settings:{bg:'linear-gradient(165deg,#d8d8de,#8e8e96)',art:(()=>{
+    const teeth=Array.from({length:12},(_,i)=>{
+      const a=i*30*Math.PI/180;
+      const x=32+Math.sin(a)*22.4, y=32-Math.cos(a)*22.4;
+      return `<rect x="${(x-3.5).toFixed(2)}" y="${(y-5.2).toFixed(2)}" width="7" height="10.4" rx="2.2"
+        transform="rotate(${i*30} ${x.toFixed(2)} ${y.toFixed(2)})" fill="#f7f7fa"/>`;
+    }).join('');
+    return `<svg viewBox="0 0 64 64" style="width:84%">
+      <defs><linearGradient id="cog" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fdfdfe"/><stop offset="1" stop-color="#dcdce2"/></linearGradient></defs>
+      ${teeth}
+      <circle cx="32" cy="32" r="21.5" fill="url(#cog)"/>
+      <circle cx="32" cy="32" r="14.6" fill="#a9a9b2"/>
+      <circle cx="32" cy="32" r="11.4" fill="url(#cog)"/>
+      <circle cx="32" cy="32" r="6.2" fill="#9a9aa3"/>
+      <circle cx="32" cy="32" r="4.4" fill="#ececf1"/></svg>`;
+  })()},
   camera:{bg:'linear-gradient(180deg,#63636a,#2c2c30)',art:`<svg viewBox="0 0 64 64" style="width:74%">
     <rect x="6" y="17" width="52" height="34" rx="9" fill="#fff"/>
     <path d="M23 17l3.4-5.6h11.2L41 17z" fill="#fff"/>
@@ -6505,10 +7477,14 @@ const ART={
     <path d="M45 19L28.6 28.6 19 45l16.4-9.6z" fill="#fff"/>
     <path d="M45 19L35.4 35.4 28.6 28.6z" fill="#ff3b30"/>
     <circle cx="32" cy="32" r="1.8" fill="#fff"/></svg>`},
-  appstore:{bg:'linear-gradient(180deg,#2fa3ff,#0a5fd6)',art:`<svg viewBox="0 0 64 64" style="width:66%">
-    <g stroke="#fff" stroke-width="5.2" stroke-linecap="round" fill="none">
-      <path d="M17.5 46L30 24"/><path d="M34 24l12.5 22"/><path d="M13.5 38.5h30"/></g>
-    <path d="M22.5 24l-2.4-4.2" stroke="#fff" stroke-width="5.2" stroke-linecap="round"/></svg>`},
+  /* the "A" built from three crossed strokes, ends overshooting like the real mark */
+  appstore:{bg:'linear-gradient(170deg,#33a9ff,#0a5fd6)',art:`<svg viewBox="0 0 64 64" style="width:72%">
+    <g stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none">
+      <path d="M19.5 45.5L31 25.5"/>
+      <path d="M33 25.5L44.5 45.5"/>
+      <path d="M25 25.5L21.5 19.4"/>
+      <path d="M17.5 37.2h29"/>
+    </g></svg>`},
   photos:{bg:'linear-gradient(180deg,#fff,#f0f0f4)',art:`<svg viewBox="0 0 64 64" style="width:82%">
     ${['#f9c22e','#f68b1f','#ee3b3b','#c2379b','#7b3fd4','#2f7ee0','#22b5c8','#4cc35a'].map((c,i)=>
       `<ellipse cx="32" cy="32" rx="7.4" ry="19" transform="rotate(${i*45} 32 32)" fill="${c}" opacity=".82"/>`).join('')}
@@ -6734,7 +7710,7 @@ window.addEventListener('resize',fitStage);
 (function boot(){
   registerStoreApps();
   applyAppArt();
-  ML(); SafariState(); WF(); PH(); MSG();
+  ML(); SafariState(); WF(); PH(); MSG(); ACC(); WAL(); CK();
   if(State.settings.wifi && WF().connected) State.settings.wifiName=WF().connected;
   // a couple of pending updates for apps the user has installed
   State.updatesAvailable=(State.updatesAvailable||[]).filter(id=>State.installed.includes(id));
