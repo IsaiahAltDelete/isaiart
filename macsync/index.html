@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Sync for Mac</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;cursor:default}
+  html,body{height:100%}
+  body{
+    font-family:'Poppins',-apple-system,BlinkMacSystemFont,sans-serif;
+    background:#fff;color:#111;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:40px 24px;gap:30px;
+  }
+  h1{font-size:clamp(30px,6vw,46px);font-weight:600;letter-spacing:-.02em}
+  p{font-size:17px;font-weight:400;color:#666;max-width:420px;line-height:1.6}
+
+  .actions{display:flex;flex-direction:column;align-items:center;gap:14px}
+
+  .btn{
+    display:inline-block;font-family:inherit;font-size:17px;font-weight:500;
+    color:#fff;background:#111;text-decoration:none;border:none;
+    padding:16px 42px;border-radius:100px;
+    transition:transform .15s ease,background .15s ease;
+  }
+  .btn:hover{background:#000;transform:translateY(-2px)}
+  .btn:active{transform:translateY(0)}
+
+  .btn-ghost{
+    font-family:inherit;font-size:15px;font-weight:500;
+    color:#111;background:transparent;border:1.5px solid #ddd;
+    padding:11px 28px;border-radius:100px;
+    transition:border-color .15s ease,background .15s ease;
+  }
+  .btn-ghost:hover{border-color:#111;background:#fafafa}
+
+  .meta{font-size:14px;color:#999;font-weight:400}
+
+  /* ── readme popup ── */
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.45);
+    display:none;align-items:center;justify-content:center;padding:24px;z-index:10;
+    opacity:0;transition:opacity .18s ease;
+  }
+  .overlay.open{display:flex}
+  .overlay.shown{opacity:1}
+  .sheet{
+    background:#fff;border-radius:16px;width:100%;max-width:860px;height:88vh;
+    display:flex;flex-direction:column;overflow:hidden;
+    box-shadow:0 24px 70px rgba(0,0,0,.28);
+    transform:translateY(10px);transition:transform .18s ease;
+  }
+  .overlay.shown .sheet{transform:translateY(0)}
+  .sheet header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 22px;border-bottom:1px solid #eee;flex:0 0 auto;
+  }
+  .sheet header span{font-size:15px;font-weight:600}
+  .close{
+    font-family:inherit;font-size:22px;line-height:1;color:#888;
+    background:none;border:none;padding:4px 8px;border-radius:8px;
+    transition:background .15s ease,color .15s ease;
+  }
+  .close:hover{background:#f2f2f2;color:#111}
+  .sheet iframe{flex:1 1 auto;width:100%;border:none}
+</style>
+</head>
+<body>
+
+  <h1>GitHub Sync for Mac</h1>
+
+  <p>Keep your GitHub projects on your Mac. Double-click to download your files, double-click to publish your changes.</p>
+
+  <div class="actions">
+    <a class="btn" href="MacGitHubSync.zip" download>Download</a>
+    <button class="btn-ghost" id="openReadme">Read the instructions</button>
+  </div>
+
+  <div class="meta">macOS &middot; 18 KB &middot; No account or command line required</div>
+
+  <div class="overlay" id="overlay">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Instructions">
+      <header>
+        <span>How to use it</span>
+        <button class="close" id="closeReadme" aria-label="Close">&times;</button>
+      </header>
+      <iframe id="readmeFrame" title="Instructions"></iframe>
+    </div>
+  </div>
+
+<script>
+  var overlay = document.getElementById('overlay');
+  var frame   = document.getElementById('readmeFrame');
+
+  function openSheet(){
+    if(!frame.getAttribute('src')) frame.setAttribute('src','readme.html');
+    overlay.classList.add('open');
+    requestAnimationFrame(function(){ overlay.classList.add('shown'); });
+  }
+  function closeSheet(){
+    overlay.classList.remove('shown');
+    setTimeout(function(){ overlay.classList.remove('open'); }, 180);
+  }
+
+  document.getElementById('openReadme').addEventListener('click', openSheet);
+  document.getElementById('closeReadme').addEventListener('click', closeSheet);
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) closeSheet(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeSheet(); });
+</script>
+
+</body>
+</html>
