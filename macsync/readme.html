@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Sync for Mac — How to use it</title>
+<style>
+  :root{
+    --ink:#1c1f24; --soft:#5b6472; --line:#e3e7ee; --bg:#f6f8fb; --card:#fff;
+    --cyan:#0a7ea4; --violet:#7c3aed; --green:#0f9d58; --amber:#b45309; --red:#c02626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font:17px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    color:var(--ink);background:var(--bg);padding:40px 20px 80px;
+  }
+  .wrap{max-width:760px;margin:0 auto}
+  header{
+    background:linear-gradient(135deg,#151a24,#2b1b47);color:#fff;border-radius:16px;
+    padding:34px 32px;margin-bottom:28px;
+  }
+  header h1{font-size:31px;letter-spacing:-.5px;margin-bottom:8px}
+  header p{color:#b9c2d4;font-size:17px}
+  h2{font-size:23px;margin:38px 0 14px;padding-bottom:9px;border-bottom:2px solid var(--line)}
+  h3{font-size:18px;margin:26px 0 8px;color:var(--cyan)}
+  p,li{margin-bottom:9px}
+  ul,ol{margin:0 0 14px 22px}
+  ol>li{margin-bottom:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:22px 26px;margin-bottom:18px}
+  code{background:#eef1f6;border:1px solid var(--line);border-radius:5px;padding:2px 6px;font:15px/1.4 ui-monospace,Menlo,monospace}
+  .path{display:block;background:#151a24;color:#7ee787;border-radius:8px;padding:12px 16px;margin:10px 0;font:15px/1.5 ui-monospace,Menlo,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0 20px;background:#fff;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+  th,td{text-align:left;padding:11px 15px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#eef1f6;font-size:14px;letter-spacing:.4px;text-transform:uppercase;color:var(--soft)}
+  tr:last-child td{border-bottom:none}
+  .btn{display:inline-block;border-radius:7px;padding:3px 11px;font-weight:600;font-size:15px;white-space:nowrap}
+  .pull{background:#e0f2f9;color:var(--cyan)}
+  .push{background:#f0e7ff;color:var(--violet)}
+  .new{background:#e3f6ea;color:var(--green)}
+  .note{border-left:5px solid var(--amber);background:#fff9ec;padding:14px 18px;border-radius:0 9px 9px 0;margin:16px 0}
+  .note strong{color:var(--amber)}
+  .good{border-left:5px solid var(--green);background:#effbf3;padding:14px 18px;border-radius:0 9px 9px 0;margin:16px 0}
+  .rule{background:#151a24;color:#fff;border-radius:13px;padding:20px 26px;text-align:center;font-size:20px;font-weight:600;margin:22px 0}
+  .rule span{color:#7ee787}
+  details{margin:10px 0;background:#eef1f6;border-radius:9px;padding:12px 16px}
+  summary{cursor:pointer;font-weight:600;color:var(--cyan)}
+  details ol{margin-top:10px}
+  footer{margin-top:44px;text-align:center;color:var(--soft);font-size:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>GitHub Sync for Mac</h1>
+  <p>Keep your GitHub projects on this Mac — no typing commands required.</p>
+</header>
+
+<div class="card">
+  <p>Once it's set up, you get three things you just <strong>double-click</strong>:</p>
+  <table>
+    <tr><th style="width:210px">Button</th><th>What it does</th></tr>
+    <tr><td><span class="btn pull">Pull From GitHub</span></td><td>Downloads the newest version of all your files onto this Mac</td></tr>
+    <tr><td><span class="btn push">Push To GitHub</span></td><td>Uploads everything you changed, so it goes live</td></tr>
+    <tr><td><span class="btn new">Get New Repos</span></td><td>Grabs any brand-new projects you've made since last time</td></tr>
+  </table>
+</div>
+
+<h2>Part 1 — Installing <small style="color:var(--soft);font-size:16px;font-weight:400">(you only do this once)</small></h2>
+
+<h3>What you need first</h3>
+<ul>
+  <li>A Mac</li>
+  <li>Your <strong>GitHub username and password</strong> — you'll sign in through your browser</li>
+  <li>About 5 minutes and an internet connection</li>
+</ul>
+
+<h3>Step by step</h3>
+<ol>
+  <li><strong>Unzip the file.</strong> Double-click <code>MacGitHubSync.zip</code>. A folder appears next to it — drag that folder somewhere you'll remember, like the Desktop.</li>
+
+  <li><strong>Open the folder</strong> and find the file called:
+    <span class="path">1 - INSTALL ME.command</span>
+  </li>
+
+  <li><strong>Right-click it</strong> (or hold <code>Control</code> and click) and choose <strong>Open</strong>.
+    <div class="note"><strong>Important:</strong> it must be right-click → Open. If you plain double-click it the first time, macOS will refuse to run it.</div>
+  </li>
+
+  <li>A warning appears saying Apple "cannot verify" the file. Click <strong>Open</strong> (or <strong>Open Anyway</strong>).
+    <details>
+      <summary>No "Open" button? Only "Done" or "Move to Trash"?</summary>
+      <ol>
+        <li>Open the  menu → <strong>System Settings</strong> → <strong>Privacy &amp; Security</strong></li>
+        <li>Scroll down — you'll see <em>"1 - INSTALL ME.command was blocked…"</em></li>
+        <li>Click <strong>Open Anyway</strong> and confirm</li>
+      </ol>
+    </details>
+  </li>
+
+  <li>A black <strong>Terminal</strong> window opens with a big purple <code>SETUP</code> logo. That's the installer. Press <strong>Return</strong> to begin.</li>
+
+  <li>It walks you through five steps:
+    <ul style="margin-top:9px">
+      <li><strong>1. Developer tools</strong> — if your Mac needs Apple's free developer tools, a small Apple window pops up. Click <strong>Install</strong> and wait. This is the slow part. The installer waits for you.</li>
+      <li><strong>2. GitHub helper</strong> — downloads on its own. Nothing to do.</li>
+      <li><strong>3. Sign in to GitHub</strong> — a short code appears (like <code>A1B2-C3D4</code>). <strong>Copy it</strong>, press Return, and your browser opens GitHub. Paste the code and approve, then come back to the Terminal window.</li>
+      <li><strong>4. Where to keep things</strong> — it suggests <code>Documents/GitHub</code>. Just press <strong>Return</strong>.</li>
+      <li><strong>5. Downloading</strong> — it lists each project as it arrives.</li>
+    </ul>
+  </li>
+
+  <li>When the green <strong>ALL DONE!</strong> box appears, you're finished. A Finder window opens with your projects, and two shortcuts land on your Desktop.</li>
+</ol>
+
+<div class="good">You can throw the <code>MacGitHubSync</code> folder away now if you want — everything you need is in your projects folder and on the Desktop.</div>
+
+<h2>Part 2 — Using it day to day</h2>
+
+<div class="rule">Pull <span>before</span> you start &nbsp;·&nbsp; Push <span>when</span> you're finished</div>
+
+<h3>Before you work on anything</h3>
+<p>Double-click <span class="btn pull">Pull From GitHub</span>. A cyan screen runs through every project and reports <code>UPDATED</code> or <code>ALREADY UP TO DATE</code>. Press Return to close it.</p>
+<p>This makes sure you're editing the newest version of your files.</p>
+
+<h3>After you've made changes</h3>
+<p>Double-click <span class="btn push">Push To GitHub</span>.</p>
+<ol>
+  <li>It asks what you changed. Type something short like <code>fixed the about page</code> — or just press Return and it date-stamps it for you.</li>
+  <li>It works through each project: <code>STAGING</code> → <code>COMMITTING</code> → <code>SYNCING</code> → <code>UPLOADING</code>.</li>
+  <li>Anything you didn't touch says <code>NOTHING TO UPLOAD (clean)</code>. That's normal and good.</li>
+  <li>Press Return to close. Your changes are live within a minute.</li>
+</ol>
+
+<h3>When you make a brand-new project on GitHub</h3>
+<p>Double-click <span class="btn new">Get New Repos</span>. It checks your account and downloads anything that isn't on this Mac yet.</p>
+
+<h2>Where everything lives</h2>
+<table>
+  <tr><th style="width:230px">Thing</th><th>Where</th></tr>
+  <tr><td>Your projects</td><td><code>Documents/GitHub</code> (or wherever you chose)</td></tr>
+  <tr><td>Desktop shortcuts</td><td><code>Pull From GitHub</code> and <code>Push To GitHub</code></td></tr>
+  <tr><td>Your settings</td><td><code>~/.githubsync.conf</code> — plain text, safe to peek at</td></tr>
+  <tr><td>Records of what happened</td><td><code>pull_repos.log</code> and <code>update_repos.log</code> in your projects folder</td></tr>
+</table>
+
+<h2>Troubleshooting</h2>
+<table>
+  <tr><th style="width:275px">If you see…</th><th>Do this</th></tr>
+  <tr><td>"…from an unidentified developer"</td><td>Right-click the file → <strong>Open</strong> → <strong>Open</strong>. Only happens the first time for each file.</td></tr>
+  <tr><td>It still won't open at all</td><td>Open <strong>Terminal</strong> (Applications → Utilities). Type <code>bash</code> and a space, then <strong>drag the file into the window</strong> and press Return. This always works.</td></tr>
+  <tr><td><code>UPLOAD FAILED</code> / <code>authentication failed</code></td><td>Your GitHub sign-in expired. Double-click <span class="btn new">Get New Repos</span> — it signs you back in — then push again.</td></tr>
+  <tr><td><code>CONFLICT — NEEDS A HUMAN</code></td><td>The same file was edited in two places. Nothing is lost, but it needs sorting out by hand. Make a note of the project name and get someone to untangle it.</td></tr>
+  <tr><td>The window closes instantly</td><td>The file lost its "runnable" flag. In Terminal type <code>chmod +x</code> and a space, drag the file in, press Return.</td></tr>
+  <tr><td>You want a different folder or GitHub account</td><td>Run <code>1 - INSTALL ME.command</code> again. It's safe to re-run any time and won't harm anything already downloaded.</td></tr>
+</table>
+
+<h2>Uninstalling</h2>
+<p>Nothing is installed system-wide. To remove it completely: delete your projects folder, delete the two Desktop shortcuts, and delete <code>~/.githubsync.conf</code> plus the hidden <code>~/.githubsync</code> folder. To sign out of GitHub, run <code>gh auth logout</code> in Terminal.</p>
+
+<footer>GitHub Sync for Mac</footer>
+
+</div>
+</body>
+</html>
