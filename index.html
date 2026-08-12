@@ -4,401 +4,426 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ISAIART | Project Directory</title>
+  <meta name="description" content="Every project on isaiart.com — games, simulators, image tools, audio toys, and utilities." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500&family=Barlow+Condensed:wght@300;400;700;900&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:      #07070a;
-      --rule:    rgba(255,255,255,0.08);
-      --rule-hi: rgba(255,255,255,0.18);
-      --white:   #f2f2f0;
-      --off:     #888882;
-      --dim:     #3a3a38;
+      --bg:       #06070b;
+      --panel:    rgba(7, 8, 13, 0.44);
+      --rule:     rgba(255,255,255,0.10);
+      --rule-hi:  rgba(255,255,255,0.22);
+      --white:    #f4f4f2;
+      --off:      #adada8;   /* secondary — 8.9:1 on bg */
+      --dim:      #9a9a95;   /* tertiary  — 6.6:1 on bg, still AA once the
+                                translucent panel lightens the backdrop */
+      --accent:   #8fb4ff;
+      --nav-h:    56px;
     }
 
-    html { scroll-behavior: smooth; }
+    /* no hard-coded root font-size — that would override the reader's own
+       browser text-size setting. scroll-padding clears the fixed nav. */
+    html { scroll-behavior: smooth; scroll-padding-top: var(--nav-h); }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
 
     body {
       background: var(--bg);
       color: var(--white);
-      font-family: 'Barlow', sans-serif;
-      font-weight: 300;
+      font-family: 'Barlow', system-ui, sans-serif;
+      font-weight: 400;
+      line-height: 1.5;
       min-height: 100vh;
       overflow-x: hidden;
-      cursor: crosshair;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* subtle grid overlay over space bg */
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      pointer-events: none; z-index: 0;
-      background-image:
-        linear-gradient(var(--rule) 1px, transparent 1px),
-        linear-gradient(90deg, var(--rule) 1px, transparent 1px);
-      background-size: 72px 72px;
-      opacity: 0.22;
+    a { color: inherit; }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
     }
 
-    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--dim); }
+    ::-webkit-scrollbar-thumb { background: #4d4d54; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--off); }
 
-    /* THREE.JS CANVAS */
-    #bg-canvas {
-      position: fixed; top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      z-index: -1; pointer-events: none;
-      opacity: 0.35;
+    /* ── GALAXY BACKGROUND ───────────────────────────────────────────── */
+    #galaxy {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      z-index: -3; display: block;
+      pointer-events: none;
     }
 
-    /* dark vignette over the space bg so text stays readable */
-    #bg-vignette {
+    /* broad ambient tint that parallaxes against the star field — kept very
+       faint so the rendered core, not a CSS blob, reads as the galactic centre */
+    #core-glow {
+      position: fixed; inset: -20%;
+      z-index: -2; pointer-events: none;
+      background:
+        radial-gradient(46% 34% at 50% 50%, rgba(120,105,220,0.055), transparent 76%),
+        radial-gradient(20% 14% at 50% 50%, rgba(255,206,140,0.05), transparent 78%);
+      will-change: transform;
+    }
+
+    /* keeps the type readable no matter how bright the galaxy gets */
+    #scrim {
       position: fixed; inset: 0;
       z-index: -1; pointer-events: none;
       background:
-        radial-gradient(ellipse at center, transparent 20%, rgba(7,7,10,0.72) 100%),
-        linear-gradient(to bottom, rgba(7,7,10,0.45) 0%, transparent 30%, transparent 70%, rgba(7,7,10,0.6) 100%);
+        radial-gradient(ellipse 90% 75% at 50% 45%, transparent 0%, rgba(6,7,11,0.38) 100%),
+        linear-gradient(to bottom, rgba(6,7,11,0.62) 0%, rgba(6,7,11,0.06) 26%, rgba(6,7,11,0.06) 74%, rgba(6,7,11,0.66) 100%);
     }
 
-    /* NAV */
+    /* ── NAV ─────────────────────────────────────────────────────────── */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 200;
       display: grid;
       grid-template-columns: auto 1fr auto;
       align-items: stretch;
-      height: 52px;
+      height: var(--nav-h);
       border-bottom: 1px solid var(--rule-hi);
-      background: rgba(7,7,10,0.88);
-      backdrop-filter: blur(12px);
+      background: rgba(6,7,11,0.90);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
     }
 
     .nav-brand {
       display: flex; align-items: center; gap: 18px;
-      padding: 0 28px;
+      padding: 0 26px;
       border-right: 1px solid var(--rule-hi);
     }
-
     .brand-name {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 1.05rem; font-weight: 900;
-      letter-spacing: 0.28em; text-transform: uppercase;
+      font-size: 1.15rem; font-weight: 900;
+      letter-spacing: 0.24em; text-transform: uppercase;
       color: var(--white); text-decoration: none;
     }
-    .brand-name:hover { color: var(--off); }
-
-    .brand-tag {
+    .brand-name:hover { color: var(--accent); }
+    .nav-note {
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 0 22px;
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.56rem; font-weight: 400;
-      letter-spacing: 0.22em; text-transform: uppercase;
+      font-size: 0.72rem; font-weight: 400;
+      letter-spacing: 0.16em; text-transform: uppercase;
       color: var(--dim);
-      border-left: 1px solid var(--rule); padding-left: 18px;
     }
-
-    /* TICKER */
-    .nav-ticker {
-      display: flex; align-items: center;
-      overflow: hidden; padding: 0 24px;
-    }
-    .ticker-scroll {
-      display: flex; white-space: nowrap;
-      animation: tick 30s linear infinite;
-    }
-    @keyframes tick { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-    .t-seg {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.58rem; font-weight: 400;
-      letter-spacing: 0.22em; text-transform: uppercase;
-      color: var(--dim); padding: 0 32px;
-      border-right: 1px solid var(--rule);
-      display: inline-flex; align-items: center; gap: 12px;
-    }
-    .t-dot { width: 3px; height: 3px; background: var(--dim); border-radius: 50%; }
 
     .nav-actions {
       display: flex; align-items: center;
-      border-left: 1px solid var(--rule-hi); padding: 0 14px; gap: 2px;
+      border-left: 1px solid var(--rule-hi); padding: 0 12px;
     }
     .icon-btn {
-      width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
-      background: none; border: 1px solid transparent; cursor: crosshair;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: 1px solid transparent; cursor: pointer;
+      text-decoration: none;
       color: var(--off); transition: color .15s, border-color .15s;
     }
     .icon-btn:hover { color: var(--white); border-color: var(--rule-hi); }
-    .icon-btn .material-symbols-outlined { font-size: 16px; }
+    .icon-btn .material-symbols-outlined { font-size: 18px; }
 
-    /* MAIN */
+    /* ── MAIN ────────────────────────────────────────────────────────── */
     main {
       position: relative; z-index: 10;
-      margin-top: 52px;
+      margin: var(--nav-h) auto 0;
       max-width: 1440px;
-      margin-left: auto; margin-right: auto;
-      padding: 0 0 80px;
+      padding-bottom: 0;
+      background: var(--panel);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      border-left: 1px solid var(--rule);
+      border-right: 1px solid var(--rule);
     }
 
-    /* HERO HEADER */
+    /* ── HERO ────────────────────────────────────────────────────────── */
     .hero {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1.35fr 1fr;
       border-bottom: 1px solid var(--rule-hi);
-      min-height: 260px;
     }
 
     .hero-left {
       display: flex; flex-direction: column; justify-content: flex-end;
-      padding: 52px 56px;
+      padding: 64px 56px 44px;
       border-right: 1px solid var(--rule-hi);
       position: relative;
     }
-
     .hero-num {
-      position: absolute; top: 32px; left: 56px;
+      position: absolute; top: 26px; left: 56px;
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.56rem; font-weight: 400;
-      letter-spacing: 0.28em; text-transform: uppercase;
+      font-size: 0.72rem; font-weight: 400;
+      letter-spacing: 0.22em; text-transform: uppercase;
       color: var(--dim);
     }
-
-    .hero-eyebrow {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.62rem; font-weight: 400;
-      letter-spacing: 0.3em; text-transform: uppercase;
-      color: var(--off); margin-bottom: 14px;
-      display: flex; align-items: center; gap: 12px;
-    }
-    .hero-eyebrow::before { content:''; display:block; width:20px; height:1px; background:var(--off); }
-
     .hero-title {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: clamp(4rem, 8vw, 7rem);
-      font-weight: 900; line-height: 0.9;
-      letter-spacing: -0.02em; text-transform: uppercase;
+      font-size: clamp(3.4rem, 7vw, 6rem);
+      font-weight: 900; line-height: 0.88;
+      letter-spacing: -0.015em; text-transform: uppercase;
       color: var(--white);
       animation: fadeUp .7s cubic-bezier(.16,1,.3,1) both;
     }
     @keyframes fadeUp {
-      from { opacity:0; transform:translateY(24px); }
+      from { opacity:0; transform:translateY(22px); }
       to   { opacity:1; transform:translateY(0); }
     }
 
     .hero-right {
       display: flex; flex-direction: column; justify-content: flex-end;
-      padding: 52px 56px; gap: 12px;
+      padding: 64px 56px 44px; gap: 16px;
     }
-
     .hero-stat {
-      display: flex; align-items: baseline; gap: 14px;
-      border-bottom: 1px solid var(--rule); padding-bottom: 12px;
+      display: flex; align-items: baseline; gap: 16px;
+      border-bottom: 1px solid var(--rule); padding-bottom: 14px;
     }
     .hero-stat:last-child { border-bottom: none; padding-bottom: 0; }
     .stat-num {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 2.2rem; font-weight: 900; color: var(--white);
+      font-size: 2.6rem; font-weight: 900; color: var(--white);
       line-height: 1; letter-spacing: -0.02em;
+      min-width: 2.6ch;
     }
     .stat-label {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.6rem; font-weight: 400;
-      letter-spacing: 0.24em; text-transform: uppercase; color: var(--off);
+      font-size: 0.78rem; font-weight: 400;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--off);
     }
 
-    /* SEARCH BAR */
+    /* ── SEARCH ──────────────────────────────────────────────────────── */
     .search-row {
       display: grid;
-      grid-template-columns: 52px 1fr 52px;
+      grid-template-columns: 56px 1fr auto 56px;
       align-items: stretch;
-      border-bottom: 1px solid var(--rule-hi);
-      height: 52px;
-    }
-
-    .search-icon-cell {
-      display: flex; align-items: center; justify-content: center;
-      border-right: 1px solid var(--rule-hi);
-      color: var(--off);
-    }
-    .search-icon-cell .material-symbols-outlined { font-size: 17px; }
-
-    #search-input {
-      background: transparent; border: none; outline: none;
-      width: 100%; padding: 0 24px;
-      font-family: 'Barlow', sans-serif;
-      font-size: 0.78rem; font-weight: 300;
-      letter-spacing: 0.1em;
-      color: var(--white);
-    }
-    #search-input::placeholder { color: var(--dim); }
-    #search-input:focus { background: rgba(255,255,255,0.02); }
-
-    .search-clear {
-      display: flex; align-items: center; justify-content: center;
-      border-left: 1px solid var(--rule-hi);
-      color: var(--dim); cursor: crosshair;
-      transition: color .15s;
-    }
-    .search-clear:hover { color: var(--white); }
-    .search-clear .material-symbols-outlined { font-size: 15px; }
-
-    /* SECTION HEADER */
-    .cat-header {
-      display: grid;
-      grid-template-columns: 52px 1fr auto;
-      align-items: stretch;
-      height: 44px;
       border-bottom: 1px solid var(--rule);
-      border-top: 1px solid var(--rule-hi);
-      margin-top: 32px;
+      min-height: 58px;
     }
-    .cat-header:first-child { margin-top: 0; }
-
-    .cat-icon-cell {
+    .search-icon-cell {
       display: flex; align-items: center; justify-content: center;
       border-right: 1px solid var(--rule);
       color: var(--off);
     }
-    .cat-icon-cell .material-symbols-outlined { font-size: 16px; }
+    .search-icon-cell .material-symbols-outlined { font-size: 19px; }
 
-    .cat-title-cell {
-      display: flex; align-items: center;
-      padding: 0 24px;
+    /* no `outline: none` here — an id selector would beat :focus-visible and
+       leave the page's only text input with no visible focus state */
+    #search-input {
+      background: transparent; border: none;
+      width: 100%; padding: 0 22px;
+      font-family: 'Barlow', sans-serif;
+      font-size: 0.98rem; font-weight: 400;
+      letter-spacing: 0.01em;
+      color: var(--white);
     }
+    #search-input::placeholder { color: var(--dim); }
+    #search-input:focus { background: rgba(255,255,255,0.03); }
+
+    .search-count {
+      display: flex; align-items: center; white-space: nowrap;
+      padding: 0 20px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.76rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--dim);
+    }
+    .search-clear {
+      display: flex; align-items: center; justify-content: center;
+      border-left: 1px solid var(--rule);
+      background: none; border-top: 0; border-right: 0; border-bottom: 0;
+      color: var(--dim); cursor: pointer;
+      transition: color .15s, background .15s;
+    }
+    .search-clear:hover { color: var(--white); background: rgba(255,255,255,0.04); }
+    .search-clear .material-symbols-outlined { font-size: 17px; }
+
+    /* ── CATEGORY FILTER CHIPS ───────────────────────────────────────── */
+    .filter-row {
+      display: flex; flex-wrap: wrap;
+      border-bottom: 1px solid var(--rule-hi);
+    }
+    .chip {
+      appearance: none; background: none; cursor: pointer;
+      border: 0;
+      border-right: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+      padding: 13px 20px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.8rem; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--dim);
+      transition: color .15s, background .15s;
+    }
+    .chip:hover { color: var(--white); background: rgba(255,255,255,0.04); }
+    .chip[aria-pressed="true"] {
+      color: var(--bg); background: var(--white);
+    }
+    /* the accent ring is invisible on the white selected chip — go dark there */
+    .chip[aria-pressed="true"]:focus-visible { outline-color: var(--bg); }
+
+    /* ── CATEGORY HEADERS ────────────────────────────────────────────── */
+    .cat-header {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      align-items: stretch;
+      min-height: 52px;
+      border-bottom: 1px solid var(--rule);
+      background: rgba(255,255,255,0.02);
+    }
+    .cat-icon-cell {
+      display: flex; align-items: center; justify-content: center;
+      border-right: 1px solid var(--rule);
+      color: var(--accent);
+    }
+    .cat-icon-cell .material-symbols-outlined { font-size: 19px; }
+    .cat-title-cell { display: flex; align-items: center; padding: 0 22px; }
     .cat-title {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.7rem; font-weight: 700;
-      letter-spacing: 0.28em; text-transform: uppercase;
-      color: var(--off);
+      font-size: 0.95rem; font-weight: 700;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--white);
     }
-
     .cat-count-cell {
       display: flex; align-items: center;
       padding: 0 20px;
       border-left: 1px solid var(--rule);
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.58rem; font-weight: 400;
-      letter-spacing: 0.22em; text-transform: uppercase;
+      font-size: 0.76rem; font-weight: 400;
+      letter-spacing: 0.16em; text-transform: uppercase;
       color: var(--dim);
     }
 
-    /* PROJECT GRID */
+    /* ── PROJECT GRID ────────────────────────────────────────────────── */
     .project-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      border-left: 1px solid var(--rule);
     }
-
-    @media (max-width: 1100px) { .project-grid { grid-template-columns: repeat(3,1fr); } }
-    @media (max-width: 760px)  { .project-grid { grid-template-columns: repeat(2,1fr); } }
-    @media (max-width: 480px)  { .project-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 1180px) { .project-grid { grid-template-columns: repeat(3,1fr); } }
+    @media (max-width: 860px)  { .project-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 520px)  { .project-grid { grid-template-columns: 1fr; } }
 
     .p-card {
       display: flex; flex-direction: column;
-      align-items: flex-start; justify-content: flex-end;
-      padding: 20px 22px;
+      gap: 10px;
+      padding: 22px 24px 24px;
       border-right: 1px solid var(--rule);
       border-bottom: 1px solid var(--rule);
       text-decoration: none;
       position: relative; overflow: hidden;
-      cursor: crosshair;
-      transition: background .2s;
-      min-height: 110px;
+      transition: background .18s;
+      min-height: 148px;
     }
-    .p-card:hover { background: rgba(255,255,255,0.03); }
+    .p-card:hover, .p-card:focus-visible { background: rgba(255,255,255,0.05); }
 
-    /* corner marks on hover */
+    /* corner marks */
     .p-card::before, .p-card::after {
       content: '';
       position: absolute;
-      width: 10px; height: 10px;
-      border-color: var(--rule-hi); border-style: solid;
-      opacity: 0; transition: opacity .2s;
+      width: 11px; height: 11px;
+      border-color: var(--accent); border-style: solid;
+      opacity: 0; transition: opacity .18s;
     }
-    .p-card::before { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
-    .p-card::after  { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
-    .p-card:hover::before, .p-card:hover::after { opacity: 1; }
+    .p-card::before { top: 9px; left: 9px; border-width: 1px 0 0 1px; }
+    .p-card::after  { bottom: 9px; right: 9px; border-width: 0 1px 1px 0; }
+    .p-card:hover::before, .p-card:hover::after,
+    .p-card:focus-visible::before, .p-card:focus-visible::after { opacity: 1; }
 
-    .p-card-icon {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.52rem; font-weight: 400;
-      letter-spacing: 0.22em; text-transform: uppercase;
-      color: var(--dim); margin-bottom: 16px;
-      display: flex; align-items: center; gap: 8px;
+    .p-card-top {
+      display: flex; align-items: center; gap: 10px;
     }
-    .p-card-icon .material-symbols-outlined {
-      font-size: 14px;
-      transition: color .2s;
+    .p-card-top .material-symbols-outlined { font-size: 20px; }
+    .p-card-path {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.72rem; font-weight: 400;
+      letter-spacing: 0.14em; text-transform: lowercase;
+      color: var(--dim);
     }
 
     .p-card-name {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 1rem; font-weight: 700;
-      letter-spacing: 0.06em; text-transform: uppercase;
-      color: var(--white); line-height: 1.15;
-      transition: color .15s;
+      font-size: 1.35rem; font-weight: 700;
+      letter-spacing: 0.02em; text-transform: uppercase;
+      color: var(--white); line-height: 1.1;
     }
-    .p-card:hover .p-card-name { color: var(--white); }
+    .p-card-desc {
+      font-size: 0.88rem; font-weight: 400; line-height: 1.5;
+      color: var(--off);
+      margin-top: auto;
+    }
 
     .p-card-arrow {
-      position: absolute; top: 16px; right: 16px;
-      color: var(--dim); opacity: 0;
-      transition: opacity .2s, transform .2s;
-      font-size: 0.6rem; letter-spacing: 0.18em;
+      position: absolute; top: 20px; right: 20px;
+      color: var(--accent); opacity: 0;
+      transition: opacity .18s, transform .18s;
+      font-size: 0.85rem;
       font-family: 'Barlow Condensed', sans-serif;
-      text-transform: uppercase;
     }
-    .p-card:hover .p-card-arrow { opacity: 1; transform: translate(2px,-2px); }
+    .p-card:hover .p-card-arrow,
+    .p-card:focus-visible .p-card-arrow { opacity: 1; transform: translate(2px,-2px); }
 
-    /* EMPTY STATE */
+    /* ── EMPTY STATE ─────────────────────────────────────────────────── */
     .no-results {
-      grid-column: 1 / -1;
-      display: flex; flex-direction: column; align-items: center;
-      justify-content: center; padding: 72px;
-      border-right: 1px solid var(--rule);
+      display: none;
+      flex-direction: column; align-items: center; justify-content: center;
+      padding: 88px 24px; text-align: center;
       border-bottom: 1px solid var(--rule);
     }
+    .no-results.show { display: flex; }
     .no-results-num {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 6rem; font-weight: 900;
-      color: var(--dim); line-height: 1; margin-bottom: 12px;
+      font-size: 5rem; font-weight: 900;
+      color: #55555c; line-height: 1; margin-bottom: 10px;
     }
     .no-results-txt {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.65rem; font-weight: 400;
-      letter-spacing: 0.28em; text-transform: uppercase; color: var(--dim);
+      font-size: 0.95rem; color: var(--off);
     }
 
-    /* FOOTER */
+    .cat-block.hidden { display: none; }
+
+    /* ── FOOTER ──────────────────────────────────────────────────────── */
+    /* sibling of <main> so it exposes a contentinfo landmark, so it repeats
+       main's panel treatment to stay visually continuous */
     footer {
+      position: relative; z-index: 10;
+      max-width: 1440px; margin: 0 auto;
+      background: var(--panel);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
       display: grid;
       grid-template-columns: auto 1fr auto;
       align-items: stretch;
-      height: 48px;
-      border-top: 1px solid var(--rule-hi);
-      margin-top: 48px;
+      min-height: 54px;
+      border: 1px solid var(--rule);
+      border-top-color: var(--rule-hi);
+      border-bottom: none;
     }
     .foot-brand {
       display: flex; align-items: center;
       padding: 0 24px;
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.7rem; font-weight: 900;
-      letter-spacing: 0.24em; text-transform: uppercase; color: var(--dim);
+      font-size: 0.9rem; font-weight: 900;
+      letter-spacing: 0.2em; text-transform: uppercase; color: var(--off);
       border-right: 1px solid var(--rule);
     }
-    .foot-links {
-      display: flex; list-style: none;
-    }
+    .foot-links { display: flex; list-style: none; flex-wrap: wrap; }
     .foot-links li { border-right: 1px solid var(--rule); }
     .foot-links a {
-      display: flex; align-items: center; height: 100%; padding: 0 16px;
+      display: flex; align-items: center; height: 100%; padding: 0 18px;
       text-decoration: none;
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.58rem; font-weight: 400;
-      letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim);
+      font-size: 0.78rem; font-weight: 400;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim);
       transition: color .15s;
     }
     .foot-links a:hover { color: var(--white); }
@@ -406,74 +431,77 @@
       display: flex; align-items: center;
       padding: 0 24px;
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.56rem; font-weight: 400;
-      letter-spacing: 0.14em; color: var(--dim);
+      font-size: 0.76rem; letter-spacing: 0.12em; color: var(--dim);
       border-left: 1px solid var(--rule);
     }
 
-    /* CATEGORY SECTION VISIBILITY */
-    .cat-block { display: block; }
-    .cat-block.hidden { display: none; }
+    /* ── RESPONSIVE ──────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .nav-note { display: none; }
+      .hero { grid-template-columns: 1fr; }
+      .hero-left { border-right: none; padding: 56px 26px 32px; }
+      .hero-num { left: 26px; }
+      .hero-right {
+        padding: 24px 26px 30px;
+        flex-direction: row; gap: 0;
+        border-top: 1px solid var(--rule);
+      }
+      .hero-stat {
+        flex-direction: column; gap: 4px; flex: 1;
+        border-bottom: none; padding-bottom: 0;
+      }
+      /* drop the count cell *and* its grid track, or the clear button
+         collapses into the leftover `auto` column */
+      .search-count { display: none; }
+      .search-row { grid-template-columns: 56px 1fr 56px; }
+      main { border-left: none; border-right: none; }
+      footer { grid-template-columns: 1fr; border-left: none; border-right: none; }
+      .foot-brand, .foot-copy { border: none; }
+      .foot-brand { padding: 14px 24px; }
+      .foot-copy { border-top: 1px solid var(--rule); padding: 14px 24px; }
+      .foot-links { border-top: 1px solid var(--rule); }
+      /* the stretched row height is gone here, so pad for a real tap target */
+      .foot-links a { height: auto; min-height: 48px; padding: 0 18px; }
+    }
 
-    @media (max-width: 768px) {
-      nav { grid-template-columns: auto 1fr auto; }
-      .nav-ticker { display: none; }
-      .hero { grid-template-columns: 1fr; min-height: auto; }
-      .hero-right { display: none; }
-      .hero-left { padding: 40px 28px; }
-      .hero-num { left: 28px; }
-      main { padding: 0 0 60px; }
-      footer { grid-template-columns: auto auto; }
-      .foot-copy { display: none; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
     }
   </style>
 </head>
 <body>
 
-<canvas id="bg-canvas"></canvas>
-<div id="bg-vignette" aria-hidden="true"></div>
+<canvas id="galaxy" aria-hidden="true"></canvas>
+<div id="core-glow" aria-hidden="true"></div>
+<div id="scrim" aria-hidden="true"></div>
 
-<!-- NAV -->
 <nav>
   <div class="nav-brand">
-    <a href="https://isaiart.com" target="_blank" class="brand-name">ISAIART</a>
-    <span class="brand-tag">Project Directory</span>
+    <a href="https://isaiart.com" class="brand-name">ISAIART</a>
   </div>
-  <div class="nav-ticker" aria-hidden="true">
-    <div class="ticker-scroll">
-      <span class="t-seg">Games &amp; Entertainment <span class="t-dot"></span></span>
-      <span class="t-seg">Creative &amp; Media <span class="t-dot"></span></span>
-      <span class="t-seg">Tools &amp; Utilities <span class="t-dot"></span></span>
-      <span class="t-seg">isaiart.com <span class="t-dot"></span></span>
-      <span class="t-seg">Games &amp; Entertainment <span class="t-dot"></span></span>
-      <span class="t-seg">Creative &amp; Media <span class="t-dot"></span></span>
-      <span class="t-seg">Tools &amp; Utilities <span class="t-dot"></span></span>
-      <span class="t-seg">isaiart.com <span class="t-dot"></span></span>
-    </div>
-  </div>
+  <div class="nav-note"></div>
   <div class="nav-actions">
-    <button class="icon-btn" aria-label="GitHub" onclick="window.open('https://isaiart.com','_blank')">
+    <a class="icon-btn" href="https://isaiart.com" target="_blank" rel="noopener" aria-label="Open isaiart.com">
       <span class="material-symbols-outlined">open_in_new</span>
-    </button>
+    </a>
   </div>
 </nav>
 
 <main>
 
-  <!-- HERO -->
   <div class="hero">
     <div class="hero-left">
-      <span class="hero-num">ISAIART · 2025</span>
-      <p class="hero-eyebrow">Project Directory</p>
+      <span class="hero-num">ISAIART · 2026</span>
       <h1 class="hero-title">All<br>Projects</h1>
     </div>
     <div class="hero-right">
       <div class="hero-stat">
-        <span class="stat-num" id="total-count">21</span>
-        <span class="stat-label">Total Projects</span>
+        <span class="stat-num" id="total-count">0</span>
+        <span class="stat-label">Projects</span>
       </div>
       <div class="hero-stat">
-        <span class="stat-num">03</span>
+        <span class="stat-num" id="cat-count">0</span>
         <span class="stat-label">Categories</span>
       </div>
       <div class="hero-stat">
@@ -483,307 +511,607 @@
     </div>
   </div>
 
-  <!-- SEARCH -->
   <div class="search-row">
     <div class="search-icon-cell">
       <span class="material-symbols-outlined">search</span>
     </div>
-    <input
-      type="text"
-      id="search-input"
-      placeholder="Search projects, keywords, or categories..."
-      autocomplete="off"
-    />
-    <div class="search-clear" id="search-clear">
+    <input type="text" id="search-input" placeholder="Search projects…" autocomplete="off" aria-label="Search projects" />
+    <div class="search-count" id="search-count"></div>
+    <button class="search-clear" id="search-clear" aria-label="Clear search">
       <span class="material-symbols-outlined">close</span>
-    </div>
+    </button>
   </div>
 
-  <!-- PROJECTS (rendered by JS) -->
+  <div class="filter-row" id="filter-row"></div>
+
+  <!-- the visible count is hidden on small screens, so announce separately -->
+  <div class="sr-only" id="search-status" role="status" aria-live="polite"></div>
+
   <div id="projects-container"></div>
 
-  <!-- FOOTER -->
-  <footer>
-    <div class="foot-brand">ISAIART</div>
-    <ul class="foot-links">
-      <li><a href="https://isaiart.com" target="_blank">Home</a></li>
-      <li><a href="https://dnd.isaiart.com" target="_blank">D&amp;D Tools</a></li>
-      <li><a href="https://music.isaiart.com" target="_blank">Music</a></li>
-    </ul>
-    <div class="foot-copy">© 2026</div>
-  </footer>
+  <div class="no-results" id="no-results">
+    <div class="no-results-num">00</div>
+    <div class="no-results-txt">Nothing matched that search.</div>
+  </div>
 
 </main>
 
+<footer>
+    <div class="foot-brand">ISAIART</div>
+    <ul class="foot-links">
+      <li><a href="https://isaiart.com">Home</a></li>
+      <li><a href="https://dnd.isaiart.com">D&amp;D</a></li>
+      <li><a href="https://music.isaiart.com">Music</a></li>
+      <li><a href="https://thg.isaiart.com">Hunger Games</a></li>
+    </ul>
+    <div class="foot-copy">© 2026 Isaiah</div>
+  </footer>
+
 <script>
-// ─── PROJECT DATA ───────────────────────────────────────────────────────────
+/* ═══ PROJECT DATA ═══════════════════════════════════════════════════════
+   One entry per real directory. Redirect-only folders are intentionally
+   left out and point straight at their destination instead.            */
 const projects = [
   {
-    category: "Games & Entertainment",
+    category: "Games",
     icon: "sports_esports",
     items: [
-      { title: "Chess Battle",              url: "https://isaiart.com/aichess",      icon: "smart_toy",       color: "#60a5fa", keywords: ["ai","bot","board","strategy","computer"] },
-      { title: "Player vs Computer Chess",  url: "https://isaiart.com/chess",        icon: "psychology",      color: "#818cf8", keywords: ["pve","board","strategy","bot","singleplayer"] },
-      { title: "Connect 4",                 url: "https://isaiart.com/connect",      icon: "grid_view",       color: "#f87171", keywords: ["board","multiplayer","four","row","puzzle"] },
-      { title: "Brick Breaker",             url: "https://isaiart.com/brickbreaker", icon: "videogame_asset", color: "#fb923c", keywords: ["arcade","retro","breakout","ball","paddle"] },
-      { title: "Hunger Games Simulator",    url: "https://isaiart.com/thg",          icon: "sports_kabaddi",  color: "#4ade80", keywords: ["simulation","battle royale","survival","text"] },
-      { title: "Coin Flip",                 url: "https://isaiart.com/coinflip",     icon: "toll",            color: "#facc15", keywords: ["rng","random","heads","tails","chance","probability"] },
-      { title: "DND Tools & Resources",     url: "https://dnd.isaiart.com",          icon: "menu_book",       color: "#c084fc", keywords: ["dungeons","dragons","rpg","tabletop","dice","generator","fantasy"] }
+      { title: "Chess",         url: "chess/",        icon: "psychology",      color: "#8fb4ff", desc: "Play a full game against the computer.", keywords: "board strategy ai pve" },
+      { title: "AI Chess",      url: "aichess/",      icon: "smart_toy",       color: "#a5b4fc", desc: "Two engines fight on an infinite board.", keywords: "bot engine infinite watch" },
+      { title: "Connect 4",     url: "connect/",      icon: "grid_view",       color: "#f87171", desc: "Four in a row, two players locally.", keywords: "board four row puzzle" },
+      { title: "Air Hockey",    url: "airhockey/",    icon: "sports_hockey",   color: "#22d3ee", desc: "Neon table, fast rounds, quick rematch.", keywords: "arcade puck paddle sports" },
+      { title: "Brick Breaker", url: "brickbreaker/", icon: "videogame_asset", color: "#fb923c", desc: "Retro paddle-and-ball arcade run.", keywords: "arcade breakout ball retro" },
+      { title: "Coin Flip",     url: "coinflip/",     icon: "toll",            color: "#facc15", desc: "Heads or tails, taken far too seriously.", keywords: "random rng chance heads tails" }
     ]
   },
   {
-    category: "Creative & Media",
+    category: "Simulators",
+    icon: "memory",
+    items: [
+      { title: "macOS",         url: "mac/",      icon: "laptop_mac",       color: "#93c5fd", desc: "A working Tahoe desktop in the browser.", keywords: "apple desktop windows dock settings" },
+      { title: "iPhone",        url: "emulator/", icon: "phone_iphone",     color: "#67e8f9", desc: "iOS home screen, apps and settings.", keywords: "apple ios mobile phone" },
+      { title: "Pokémon",       url: "pkmn/",     icon: "pets",             color: "#fca5a5", desc: "A playable Game Boy style adventure.", keywords: "rpg gameboy monsters battle" },
+      { title: "Realms",        url: "realms/",   icon: "castle",           color: "#c4b5fd", desc: "Live out a life on the Sword Coast.", keywords: "faerun dnd fantasy life sim map" },
+      { title: "Hunger Games",  url: "https://thg.isaiart.com", icon: "sports_kabaddi", color: "#4ade80", desc: "Run a full battle royale simulation.", keywords: "thg survival tribute battle royale" }
+    ]
+  },
+  {
+    category: "Image & Art",
     icon: "palette",
     items: [
-      { title: "Pixel Art Editor",      url: "https://isaiart.com/pixelart", icon: "draw",                  color: "#f472b6", keywords: ["draw","paint","sprite","creator","image","8bit"] },
-      { title: "Collage Maker",         url: "https://isaiart.com/collage",  icon: "auto_awesome_mosaic",   color: "#2dd4bf", keywords: ["photo","image","editor","grid","pictures","stitch"] },
-      { title: "Image to ICO File",     url: "https://isaiart.com/img2ico", icon: "image",                  color: "#22d3ee", keywords: ["converter","icon","favicon","picture","format"] },
-      { title: "Image Tile Checker",    url: "https://isaiart.com/tile",    icon: "grid_on",                color: "#34d399", keywords: ["pattern","seamless","texture","background","repeat"] },
-      { title: "8 Beat Music Mixer",    url: "https://isaiart.com/8beat",   icon: "graphic_eq",             color: "#e879f9", keywords: ["audio","sound","dj","maker","loop","synthesizer"] },
-      { title: "Music Drumpad",         url: "https://isaiart.com/drumpad", icon: "apps",                   color: "#fb7185", keywords: ["audio","sound","instrument","beat","maker","percussion"] },
-      { title: "Virtual Piano",         url: "https://isaiart.com/piano",   icon: "piano",                  color: "#38bdf8", keywords: ["audio","sound","instrument","keyboard","play","music"] },
-      { title: "Music",                 url: "https://music.isaiart.com",   icon: "music_note",             color: "#a78bfa", keywords: ["audio","sound","listen","player","songs","playlist"] }
+      { title: "Pixel Editor", url: "pixelart/", icon: "draw",                color: "#f472b6", desc: "Paint and clean up pixel art.", keywords: "sprite draw paint 8bit pixelizer" },
+      { title: "Pixelate",     url: "pixelate/", icon: "blur_on",             color: "#e879f9", desc: "Turn any photo into pixel art.", keywords: "convert downscale retro image" },
+      { title: "Stipple",      url: "stipple/",  icon: "grain",               color: "#d4d4d8", desc: "Dot and halftone image renders.", keywords: "dots halftone print engraving" },
+      { title: "Stylizer",     url: "stylizer/", icon: "photo_filter",        color: "#2dd4bf", desc: "Crop, color and filter your images.", keywords: "photo edit filter crop brightness" },
+      { title: "Collage",      url: "collage/",  icon: "auto_awesome_mosaic", color: "#34d399", desc: "Lay several photos out on one canvas.", keywords: "photo grid layout montage export" },
+      { title: "Text Maker",   url: "text/",     icon: "text_fields",         color: "#fbbf24", desc: "Build pixel lettering and export it.", keywords: "font type letters banner txt" },
+      { title: "Tile Test",    url: "tile/",     icon: "texture",             color: "#a3e635", desc: "Check whether an image tiles seamlessly.", keywords: "pattern seamless texture repeat" }
     ]
   },
   {
-    category: "Tools & Utilities",
-    icon: "build",
+    category: "Audio",
+    icon: "graphic_eq",
     items: [
-      { title: "English to Braille",    url: "https://isaiart.com/braille",  icon: "translate",           color: "#fbbf24", keywords: ["text","convert","accessibility","blind","language"] },
-      { title: "Self Management Tools", url: "https://isaiart.com/smt",      icon: "dashboard_customize", color: "#a3e635", keywords: ["organize","todo","planner","productivity","schedule"] },
-      { title: "Metadata Reviewer",     url: "https://isaiart.com/metadata", icon: "info",                color: "#60a5fa", keywords: ["exif","data","image","photo","details","hidden"] },
-      { title: "Modular Notepad",       url: "https://isaiart.com/notes",    icon: "edit_note",           color: "#eab308", keywords: ["text","write","editor","document","save","type"] },
-      { title: "Cue Clock / Countdown", url: "https://isaiart.com/cue",      icon: "alarm",               color: "#f87171", keywords: ["time","timer","stopwatch","alarm","schedule"] },
-      { title: "Countdown Timer",       url: "https://isaiart.com/timer",    icon: "timer",               color: "#fb923c", keywords: ["time","clock","stopwatch","alarm","minutes","seconds"] },
-      { title: "Twitter Search",        url: "https://isaiart.com/search/x", icon: "search",              color: "#38bdf8", keywords: ["x","social","media","find","query","tweets"] }
+      { title: "8 Beat",  url: "8beat/",   icon: "graphic_eq", color: "#e879f9", desc: "Step sequencer for quick loops.", keywords: "music beat maker drum sequencer" },
+      { title: "Drumpad", url: "drumpad/", icon: "apps",       color: "#fb7185", desc: "Pads for beats and samples.", keywords: "music percussion sampler ear drums" },
+      { title: "Piano",   url: "piano/",   icon: "piano",      color: "#38bdf8", desc: "Play a keyboard in the browser.", keywords: "music keys instrument notes" },
+      { title: "Music",   url: "https://music.isaiart.com", icon: "music_note", color: "#a78bfa", desc: "Listen to the full library.", keywords: "songs player playlist audio listen" }
+    ]
+  },
+  {
+    category: "Text & Data",
+    icon: "data_object",
+    items: [
+      { title: "Notes",    url: "notes/",    icon: "edit_note",      color: "#eab308", desc: "Modular notepad that saves locally.", keywords: "write editor document scratch" },
+      { title: "JSON",     url: "json/",     icon: "data_object",    color: "#60a5fa", desc: "Format, minify and sort JSON.", keywords: "code parse pretty print developer" },
+      { title: "Braille",  url: "braille/",  icon: "translate",      color: "#fbbf24", desc: "Convert English text into braille.", keywords: "accessibility blind convert language" },
+      { title: "Dashes",   url: "dashes/",   icon: "remove",         color: "#f97316", desc: "Strip hyphens and em dashes from text.", keywords: "clean rewrite punctuation copy" },
+      { title: "Metadata", url: "metadata/", icon: "info",           color: "#22d3ee", desc: "Read the hidden EXIF data in photos.", keywords: "exif image details location camera" },
+      { title: "X Search", url: "search/x/", icon: "travel_explore", color: "#38bdf8", desc: "Build advanced search queries for X.", keywords: "twitter social find query operators" }
+    ]
+  },
+  {
+    category: "Files",
+    icon: "folder_open",
+    items: [
+      { title: "WebP",     url: "webp/",    icon: "folder_zip",     color: "#4ade80", desc: "Convert and compress WebP images.", keywords: "image convert quality png jpg" },
+      { title: "Airgap",   url: "airgap/",  icon: "wifi_tethering", color: "#f472b6", desc: "Move files between devices optically.", keywords: "transfer offline qr camera screen" },
+      { title: "Mac Sync", url: "macsync/", icon: "sync",           color: "#93c5fd", desc: "GitHub sync app for macOS.", keywords: "git repo download tool apple" }
+    ]
+  },
+  {
+    category: "Time & Work",
+    icon: "schedule",
+    items: [
+      { title: "Timer",      url: "timer/",    icon: "timer",      color: "#fb923c", desc: "Countdown with a rising pixel tide.", keywords: "clock stopwatch minutes alarm" },
+      { title: "Cue Clock",  url: "cue/",      icon: "alarm",      color: "#f87171", desc: "Big readable countdown for live cues.", keywords: "stage show timer broadcast" },
+      { title: "Work Tools", url: "smt/",      icon: "checklist",  color: "#a3e635", desc: "Hub for the call and transfer trackers.", keywords: "self management productivity organize" },
+      { title: "Call Flow",  url: "flow/",     icon: "call",       color: "#2dd4bf", desc: "Track calls and set reminder intervals.", keywords: "phone support queue completion" },
+      { title: "Transfers",  url: "transfer/", icon: "swap_horiz", color: "#c084fc", desc: "Log transfers and watch your kept rate.", keywords: "calls rate metrics support log" }
+    ]
+  },
+  {
+    category: "Reference",
+    icon: "menu_book",
+    items: [
+      { title: "D&D",        url: "https://dnd.isaiart.com", icon: "menu_book",  color: "#c084fc", desc: "Tools and resources for the table.", keywords: "dnd dungeons dragons rpg dice tabletop" },
+      { title: "Spellbook",  url: "spellbook/",  icon: "auto_stories", color: "#a78bfa", desc: "Searchable archive of 5e spells.", keywords: "dnd magic arcane index fantasy" },
+      { title: "Art Styles", url: "art-styles/", icon: "palette",      color: "#f472b6", desc: "Reference of styles, mediums and periods.", keywords: "painting history movement medium guide" },
+      { title: "UI Guide",   url: "ui/",         icon: "widgets",      color: "#60a5fa", desc: "Catalog of interface elements.", keywords: "design components patterns web guide" }
     ]
   }
 ];
 
-// ─── RENDER ─────────────────────────────────────────────────────────────────
-const container = document.getElementById('projects-container');
-let totalCount = 0;
+/* ═══ RENDER ════════════════════════════════════════════════════════════ */
+const container  = document.getElementById('projects-container');
+const filterRow  = document.getElementById('filter-row');
+const noResults  = document.getElementById('no-results');
+const countEl    = document.getElementById('search-count');
+const statusEl   = document.getElementById('search-status');
 
+let total = 0;
+
+// strip accents so "pokemon" matches "Pokémon"
+const COMBINING = /[\u0300-\u036f]/g;
+const fold = s => s.toLowerCase().normalize('NFD').replace(COMBINING, '');
+
+// Filter chips
+const chips = [{ label: 'All', key: '*' }, ...projects.map(s => ({ label: s.category, key: s.category }))];
+chips.forEach((c, i) => {
+  const b = document.createElement('button');
+  b.className = 'chip';
+  b.type = 'button';
+  b.textContent = c.label;
+  b.dataset.key = c.key;
+  b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
+  filterRow.appendChild(b);
+});
+
+// Category blocks
 projects.forEach(section => {
-  totalCount += section.items.length;
+  total += section.items.length;
 
-  const block = document.createElement('div');
+  const block = document.createElement('section');
   block.className = 'cat-block';
-  block.dataset.cat = section.category.toLowerCase();
+  block.dataset.cat = section.category;
 
-  // Category header
   block.innerHTML = `
     <div class="cat-header">
-      <div class="cat-icon-cell">
-        <span class="material-symbols-outlined">${section.icon}</span>
-      </div>
-      <div class="cat-title-cell">
-        <span class="cat-title">${section.category}</span>
-      </div>
-      <div class="cat-count-cell">${section.items.length} Projects</div>
+      <div class="cat-icon-cell"><span class="material-symbols-outlined">${section.icon}</span></div>
+      <div class="cat-title-cell"><h2 class="cat-title">${section.category}</h2></div>
+      <div class="cat-count-cell" data-full="${section.items.length}">${section.items.length}</div>
     </div>
-    <div class="project-grid" id="grid-${section.category.replace(/\W/g,'_')}"></div>
+    <div class="project-grid"></div>
   `;
   container.appendChild(block);
 
   const grid = block.querySelector('.project-grid');
 
   section.items.forEach(item => {
+    const external = /^https?:/.test(item.url);
     const a = document.createElement('a');
     a.href = item.url;
-    a.target = '_blank';
     a.className = 'p-card';
-    a.dataset.title = item.title.toLowerCase();
-    a.dataset.keywords = item.keywords.join(' ');
+    if (external) { a.target = '_blank'; a.rel = 'noopener'; }
+    // explicit name: reads "Chess. Play a full game against the computer."
+    // instead of relying on name-from-content across the card's block children
+    a.setAttribute('aria-label', `${item.title}. ${item.desc}`);
+    a.dataset.search = fold([item.title, item.desc, item.keywords, section.category].join(' '));
+
+    const label = external
+      ? item.url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+      : '/' + item.url.replace(/\/$/, '');
+
     a.innerHTML = `
-      <div class="p-card-icon">
+      <div class="p-card-top">
         <span class="material-symbols-outlined" style="color:${item.color}">${item.icon}</span>
-        ${item.keywords.slice(0,2).join(' · ')}
+        <span class="p-card-path">${label}</span>
       </div>
       <div class="p-card-name">${item.title}</div>
-      <div class="p-card-arrow">↗</div>
+      <p class="p-card-desc">${item.desc}</p>
+      <span class="p-card-arrow" aria-hidden="true">↗</span>
     `;
     grid.appendChild(a);
   });
 });
 
-document.getElementById('total-count').textContent = totalCount;
+document.getElementById('total-count').textContent = total;
+document.getElementById('cat-count').textContent  = projects.length;
 
-// ─── SEARCH ─────────────────────────────────────────────────────────────────
+// Material Symbols renders via ligature text, so screen readers would read
+// "psychology /chess CHESS ..." as each card's link name. Hide the glyphs.
+document.querySelectorAll('.material-symbols-outlined')
+  .forEach(el => el.setAttribute('aria-hidden', 'true'));
+
+/* ═══ SEARCH + FILTER ═══════════════════════════════════════════════════ */
 const searchInput = document.getElementById('search-input');
 const searchClear = document.getElementById('search-clear');
+let activeCat = '*';
 
-searchInput.addEventListener('input', () => {
-  const q = searchInput.value.toLowerCase().trim();
+function applyFilters() {
+  const q = fold(searchInput.value.trim());
+  let shown = 0;
 
   document.querySelectorAll('.cat-block').forEach(block => {
-    const cards = block.querySelectorAll('.p-card');
+    const catOk = activeCat === '*' || block.dataset.cat === activeCat;
     let visible = 0;
 
-    cards.forEach(card => {
-      const match = !q
-        || card.dataset.title.includes(q)
-        || card.dataset.keywords.includes(q)
-        || block.dataset.cat.includes(q);
-
+    block.querySelectorAll('.p-card').forEach(card => {
+      const match = catOk && (!q || card.dataset.search.includes(q));
       card.style.display = match ? 'flex' : 'none';
       if (match) visible++;
     });
 
-    // Show/hide empty state
-    const grid = block.querySelector('.project-grid');
-    let empty = grid.querySelector('.no-results');
-    if (visible === 0) {
-      if (!empty) {
-        empty = document.createElement('div');
-        empty.className = 'no-results';
-        empty.innerHTML = `<div class="no-results-num">00</div><div class="no-results-txt">No matches found</div>`;
-        grid.appendChild(empty);
-      }
-      empty.style.display = 'flex';
-    } else if (empty) {
-      empty.style.display = 'none';
-    }
+    // keep the header count honest while a search is narrowing the grid
+    const cell = block.querySelector('.cat-count-cell');
+    cell.textContent = q ? `${visible} / ${cell.dataset.full}` : cell.dataset.full;
 
-    block.classList.toggle('hidden', visible === 0 && q !== '');
+    block.classList.toggle('hidden', visible === 0);
+    shown += visible;
   });
-});
+
+  noResults.classList.toggle('show', shown === 0);
+  const summary = (q || activeCat !== '*')
+    ? `${shown} of ${total}`
+    : `${total} projects`;
+  countEl.textContent = summary;
+  statusEl.textContent = shown === 0
+    ? 'No projects matched'
+    : `${summary} shown`;
+}
+
+searchInput.addEventListener('input', applyFilters);
 
 searchClear.addEventListener('click', () => {
   searchInput.value = '';
-  searchInput.dispatchEvent(new Event('input'));
+  applyFilters();
   searchInput.focus();
 });
 
-// ─── THREE.JS SPACE BACKGROUND ──────────────────────────────────────────────
-(function() {
-  const scene    = new THREE.Scene();
-  scene.fog      = new THREE.FogExp2(0x07070a, 0.0015);
-
-  const camera   = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
-  camera.position.z = 20;
-
-  const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), antialias: true, alpha: true });
-  renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-
-  // Lighting
-  scene.add(new THREE.AmbientLight(0xffffff, 0.15));
-  const sun = new THREE.PointLight(0xffffff, 1.5, 200);
-  sun.position.set(50, 30, 20);
-  scene.add(sun);
-
-  // Star texture
-  const sc = document.createElement('canvas');
-  sc.width = sc.height = 16;
-  const sx = sc.getContext('2d');
-  sx.beginPath(); sx.arc(8,8,8,0,Math.PI*2);
-  sx.fillStyle = '#fff'; sx.fill();
-  const starTex = new THREE.CanvasTexture(sc);
-
-  // Stars
-  const starGroups = [
-    { color:0xffffff, size:0.025, count:3500, opacity:0.5 },
-    { color:0xaaaaaa, size:0.018, count:2500, opacity:0.3 },
-    { color:0x666666, size:0.012, count:1500, opacity:0.18 }
-  ];
-  const starMeshes = starGroups.map(g => {
-    const geo = new THREE.BufferGeometry();
-    const pos = new Float32Array(g.count * 3);
-    for (let i = 0; i < g.count; i++) {
-      const r = 60 * Math.cbrt(Math.random());
-      const t = Math.random() * 2 * Math.PI;
-      const p = Math.acos(2 * Math.random() - 1);
-      pos[i*3]   = r * Math.sin(p) * Math.cos(t);
-      pos[i*3+1] = r * Math.sin(p) * Math.sin(t);
-      pos[i*3+2] = r * Math.cos(p);
-    }
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const mat = new THREE.PointsMaterial({ size:g.size, color:g.color, transparent:true, opacity:g.opacity, map:starTex, depthWrite:false, blending:THREE.AdditiveBlending });
-    const mesh = new THREE.Points(geo, mat);
-    scene.add(mesh);
-    return mesh;
-  });
-
-  // Planets — single small distant one, no rings
-  const planets = [];
-
-  const p2 = new THREE.Mesh(
-    new THREE.SphereGeometry(1.4, 32, 32),
-    new THREE.MeshStandardMaterial({ color:0x1a5a4a, roughness:0.9, metalness:0.1 })
+filterRow.addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  activeCat = chip.dataset.key;
+  filterRow.querySelectorAll('.chip').forEach(c =>
+    c.setAttribute('aria-pressed', String(c === chip))
   );
-  p2.position.set(30, -10, -60);
-  scene.add(p2);
-  planets.push({ mesh:p2, speed:0.002, orbitRadius:55, angle:0 });
+  applyFilters();
+});
 
-  // Meteors
-  const meteors = [];
-  const mGeo = new THREE.CylinderGeometry(0.01, 0.05, 3, 8);
-  mGeo.rotateX(Math.PI / 2);
-  const mMat = new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:0.6, blending:THREE.AdditiveBlending });
+// "/" focuses search, Escape clears it
+const isEditable = el => !el || el.isContentEditable ||
+  /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
 
-  function resetMeteor(m) {
-    const sx = (Math.random() > .5 ? 1 : -1) * (Math.random() * 30 + 20);
-    const sy = Math.random() * 20 + 20;
-    m.position.set(sx, sy, -10 - Math.random() * 30);
-    const vel = new THREE.Vector3((sx > 0 ? -1 : 1) * (Math.random() * 0.1 + 0.05), -(Math.random() * 0.1 + 0.05), 0);
-    m.userData.velocity = vel;
-    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), vel.clone().normalize());
-    m.userData.active = false; m.visible = false;
-    setTimeout(() => { m.userData.active = true; m.visible = true; }, Math.random() * 10000 + 4000);
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey
+      && !isEditable(document.activeElement)) {
+    e.preventDefault();
+    searchInput.focus();
+  } else if (e.key === 'Escape' && document.activeElement === searchInput
+             && !e.isComposing) {   // don't eat an IME candidate cancel
+    searchInput.value = '';
+    applyFilters();
   }
+});
 
-  for (let i = 0; i < 3; i++) {
-    const m = new THREE.Mesh(mGeo, mMat);
-    resetMeteor(m);
-    scene.add(m);
-    meteors.push(m);
-  }
+applyFilters();
 
-  // Mouse
-  let tX = 0, tY = 0;
-  document.addEventListener('mousemove', e => {
-    tX = (e.clientX - innerWidth/2) * 0.0002;
-    tY = (e.clientY - innerHeight/2) * 0.0002;
+/* ═══ GALAXY BACKGROUND — WebGL point-sprite spiral ═════════════════════
+   A tilted spiral galaxy projected in the vertex shader. The mouse orbits
+   the camera (yaw + tilt) and pushes nearby stars away from the cursor. */
+(function initGalaxy() {
+  const canvas = document.getElementById('galaxy');
+  const glow   = document.getElementById('core-glow');
+  // premultipliedAlpha MUST be true: additive blending writes colour already
+  // scaled by alpha, and an unpremultiplied canvas would scale it a second
+  // time on composite, crushing every star to near-black.
+  const gl = canvas.getContext('webgl', {
+    alpha: true, antialias: true, premultipliedAlpha: true, depth: false
   });
+  if (!gl) { canvas.style.display = 'none'; return; }
 
-  let rX = 0, rY = 0;
+  const VERT = `
+    attribute vec3 a_pos;    // galaxy space: disc on XZ, thin on Y
+    attribute vec4 a_seed;   // x size, y phase, z kind, w colour
 
-  function animate() {
-    requestAnimationFrame(animate);
-    rX += (tY - rX) * 0.02;
-    rY += (tX - rY) * 0.02;
+    uniform float u_time;
+    uniform float u_spin;
+    uniform vec2  u_res;
+    uniform vec2  u_mouse;   // -1..1, smoothed
+    uniform float u_dpr;
 
-    starMeshes.forEach((m, i) => {
-      m.rotation.y += 0.00005 * (i + 1);
-      m.rotation.x += rX * 0.05;
-      m.rotation.y += rY * 0.05;
-    });
+    varying float v_alpha;
+    varying vec3  v_color;
+    varying float v_soft;
 
-    planets.forEach(p => {
-      p.angle += p.speed * 0.05;
-      p.mesh.position.x = Math.cos(p.angle) * p.orbitRadius + rY * 5;
-      p.mesh.position.z = Math.sin(p.angle) * p.orbitRadius - 30;
-      p.mesh.position.y += -rX * 5 * 0.016;
-      p.mesh.rotation.y += 0.0005;
-    });
+    vec3 palette(float t) {
+      if (t < 0.16) return vec3(1.00, 0.86, 0.62);  // gold core
+      if (t < 0.32) return vec3(1.00, 0.94, 0.86);  // warm white
+      if (t < 0.54) return vec3(0.90, 0.93, 1.00);  // white blue
+      if (t < 0.74) return vec3(0.55, 0.74, 1.00);  // blue
+      if (t < 0.86) return vec3(0.45, 0.90, 1.00);  // cyan
+      if (t < 0.95) return vec3(0.68, 0.50, 1.00);  // violet
+      return vec3(1.00, 0.55, 0.78);                // pink
+    }
 
-    meteors.forEach(m => {
-      if (m.userData.active) {
-        m.position.add(m.userData.velocity);
-        if (m.position.y < -30 || Math.abs(m.position.x) > 60) resetMeteor(m);
-      }
-    });
+    void main() {
+      vec3 p = a_pos;
+      float r = length(p.xz);
 
-    renderer.render(scene, camera);
+      // differential rotation — the core spins faster than the rim
+      float ang = u_spin * (1.7 / (0.75 + r));
+      float ca = cos(ang), sa = sin(ang);
+      p.xz = mat2(ca, -sa, sa, ca) * p.xz;
+
+      // camera orbit driven by the pointer
+      float yaw  = u_mouse.x * 0.55;
+      float tilt = 0.72 - u_mouse.y * 0.32;
+      float cy = cos(yaw),  sy = sin(yaw);
+      p.xz = mat2(cy, -sy, sy, cy) * p.xz;
+      float ct = cos(tilt), st = sin(tilt);
+      p.yz = mat2(ct, -st, st, ct) * p.yz;
+
+      // perspective projection — the camera sits well clear of the disc so the
+      // whole spiral stays in frame instead of flying past the lens
+      const float CAM   = 12.0;
+      const float FOCAL = 3.0;
+      float depth  = max(CAM - p.z, 1.0);
+      float aspect = u_res.x / max(u_res.y, 1.0);
+      vec2 ndc = vec2(p.x * FOCAL / depth / aspect, p.y * FOCAL / depth);
+
+      // cursor pushes nearby stars outward — a tight local bubble, wide enough
+      // to feel alive but not so wide it drags the whole core off centre
+      vec2 d = ndc - u_mouse;
+      d.x *= aspect;
+      float dd = dot(d, d);
+      ndc += normalize(d + vec2(1e-4)) * exp(-dd * 13.0) * 0.085;
+
+      gl_Position = vec4(ndc, 0.0, 1.0);
+
+      float isNeb = step(a_seed.z, 0.12);
+      float persp = clamp(FOCAL / depth * 4.0, 0.5, 4.0);
+      gl_PointSize = mix(2.1 + a_seed.x * 5.2, 26.0 + a_seed.x * 34.0, isNeb) * persp * u_dpr;
+
+      float twinkle = 0.62 + 0.38 * sin(u_time * (0.6 + a_seed.x * 2.3) + a_seed.y * 6.2831);
+      float fog     = smoothstep(17.0, 7.0, depth);
+      float core    = smoothstep(3.4, 0.0, r) * 0.7;
+
+      v_alpha = mix(0.34 + a_seed.x * 0.66, 0.085, isNeb) * twinkle * (0.40 + fog) * (1.0 + core);
+      v_color = palette(a_seed.w);
+      v_soft  = isNeb;
+    }`;
+
+  const FRAG = `
+    precision mediump float;
+    varying float v_alpha;
+    varying vec3  v_color;
+    varying float v_soft;
+    void main() {
+      float d = length(gl_PointCoord - 0.5);
+      if (d > 0.5) discard;
+      float f    = smoothstep(0.5, 0.0, d);
+      float star = f * f;
+      float puff = f * f * f * 0.55;
+      float a    = mix(star, puff, v_soft);
+      gl_FragColor = vec4(v_color, a * v_alpha);
+    }`;
+
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.warn(gl.getShaderInfoLog(s));
+      return null;
+    }
+    return s;
   }
-  animate();
 
-  window.addEventListener('resize', () => {
-    camera.aspect = innerWidth / innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
-  });
+  const vs = compile(gl.VERTEX_SHADER, VERT);
+  const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+  if (!vs || !fs) { canvas.style.display = 'none'; return; }
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs);
+  gl.attachShader(prog, fs);
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { canvas.style.display = 'none'; return; }
+  gl.useProgram(prog);
+
+  /* ── star field generation ──────────────────────────────────────── */
+  const mobile = innerWidth < 700;
+  const COUNT  = mobile ? 3200 : 9000;
+  const ARMS   = 2;
+  const TWIST  = 0.95;   // open pitch — a tight winding overlaps itself and
+                         // reads as uniform scatter instead of arms
+  const RADIUS = 5.2;
+  const ARM_W  = 0.30;   // arm half-width in world units — constant, so the
+                         // arms stay crisp instead of smearing near the core
+
+  const pos  = new Float32Array(COUNT * 3);
+  const seed = new Float32Array(COUNT * 4);
+
+  const gauss = () => {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  };
+
+  for (let i = 0; i < COUNT; i++) {
+    const roll = Math.random();
+    let x, y, z, kind;
+
+    // pick a point on an arm centreline, then offset perpendicular-ish by a
+    // fixed world-space amount — this is what makes the spiral legible
+    const onArm = (rad, width, thick) => {
+      const theta = Math.floor(Math.random() * ARMS) * (Math.PI * 2 / ARMS) + rad * TWIST;
+      x = Math.cos(theta) * rad + gauss() * width;
+      z = Math.sin(theta) * rad + gauss() * width;
+      y = gauss() * thick;
+    };
+
+    if (roll < 0.11) {
+      // central bulge — dense, warm, slightly puffed sphere
+      const rb = Math.abs(gauss()) * 0.95;
+      const u = Math.random() * 2 - 1, ph = Math.random() * Math.PI * 2;
+      const s = Math.sqrt(1 - u * u);
+      x = rb * s * Math.cos(ph);
+      y = rb * u * 0.62;
+      z = rb * s * Math.sin(ph);
+      kind = 0.2 + Math.random() * 0.8;
+    } else if (roll < 0.21) {
+      // nebula puffs — soft colour along the arms, kept small enough to
+      // tint the arms rather than fog the whole field
+      onArm(0.7 + Math.random() * (RADIUS * 0.8), ARM_W * 1.3, 0.16);
+      kind = 0.02 + Math.random() * 0.09;
+    } else if (roll < 0.82) {
+      // spiral arm stars
+      const rr = Math.pow(Math.random(), 0.5) * RADIUS;
+      onArm(rr, ARM_W, 0.26 * Math.exp(-rr / 2.4) + 0.035);
+      kind = 0.2 + Math.random() * 0.8;
+    } else {
+      // halo / field stars
+      const rh = RADIUS * (0.4 + 1.15 * Math.cbrt(Math.random()));
+      const u = Math.random() * 2 - 1, ph = Math.random() * Math.PI * 2;
+      const s = Math.sqrt(1 - u * u);
+      x = rh * s * Math.cos(ph);
+      y = rh * u * 0.55;
+      z = rh * s * Math.sin(ph);
+      kind = 0.2 + Math.random() * 0.8;
+    }
+
+    pos[i * 3]     = x;
+    pos[i * 3 + 1] = y;
+    pos[i * 3 + 2] = z;
+
+    // colour tracks radius: gold core → white → blue arms → violet rim
+    const r = Math.sqrt(x * x + z * z);
+    let hue = Math.min(1, Math.max(0, (r / RADIUS) * 0.95 + gauss() * 0.10));
+    if (kind < 0.12) hue = 0.80 + Math.random() * 0.20;   // nebulae skew violet/pink
+
+    seed[i * 4]     = Math.random();       // size
+    seed[i * 4 + 1] = Math.random();       // twinkle phase
+    seed[i * 4 + 2] = kind;                // star vs nebula
+    seed[i * 4 + 3] = hue;                 // colour
+  }
+
+  function bind(name, data, size) {
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, name);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+  }
+  bind('a_pos', pos, 3);
+  bind('a_seed', seed, 4);
+
+  const uTime  = gl.getUniformLocation(prog, 'u_time');
+  const uSpin  = gl.getUniformLocation(prog, 'u_spin');
+  const uRes   = gl.getUniformLocation(prog, 'u_res');
+  const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+  const uDpr   = gl.getUniformLocation(prog, 'u_dpr');
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE);   // additive glow
+  gl.clearColor(0, 0, 0, 0);
+
+  /* ── pointer ────────────────────────────────────────────────────── */
+  const target = [0, 0];
+  const smooth = [0, 0];
+  let interacted = false;
+
+  function pointTo(cx, cy) {
+    interacted = true;
+    target[0] =  (cx / innerWidth)  * 2 - 1;
+    target[1] = -((cy / innerHeight) * 2 - 1);
+    start();
+  }
+  addEventListener('pointermove', e => pointTo(e.clientX, e.clientY), { passive: true });
+  addEventListener('touchmove', e => {
+    if (e.touches[0]) pointTo(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  /* ── sizing ─────────────────────────────────────────────────────── */
+  let dpr = 1;
+  function resize() {
+    dpr = Math.min(devicePixelRatio || 1, mobile ? 1.5 : 2);
+    canvas.width  = Math.round(innerWidth  * dpr);
+    canvas.height = Math.round(innerHeight * dpr);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.uniform2f(uRes, canvas.width, canvas.height);
+    gl.uniform1f(uDpr, dpr);
+  }
+  addEventListener('resize', () => { resize(); start(); });
+  resize();
+
+  /* ── loop ───────────────────────────────────────────────────────── */
+  const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+  let reduce = motionQuery.matches;
+  let spin = 0, last = performance.now(), raf = 0, running = false;
+
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+
+    // reduced motion: hold the camera dead centre so nothing moves at all,
+    // not even the pointer-driven orbit
+    if (reduce) {
+      target[0] = 0; target[1] = 0;
+    } else if (!interacted) {
+      // before the first pointer move, drift slowly so it still breathes
+      const t = now * 0.00012;
+      target[0] = Math.sin(t * 1.7) * 0.45;
+      target[1] = Math.cos(t * 1.1) * 0.30;
+    }
+
+    const ease = reduce ? 0.02 : 0.055;
+    smooth[0] += (target[0] - smooth[0]) * ease;
+    smooth[1] += (target[1] - smooth[1]) * ease;
+
+    if (!reduce) spin += dt * 0.075;
+
+    glow.style.transform =
+      `translate3d(${-smooth[0] * 28}px, ${smooth[1] * 20}px, 0)`;
+
+    gl.uniform1f(uTime, reduce ? 0 : now * 0.001);
+    gl.uniform1f(uSpin, spin);
+    gl.uniform2f(uMouse, smooth[0], smooth[1]);
+
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.POINTS, 0, COUNT);
+
+    // Under reduced motion nothing animates, so once the pointer ease has
+    // settled every frame is identical — park the loop rather than redraw a
+    // static image forever. pointTo()/resize() wake it back up.
+    const settling = Math.abs(target[0] - smooth[0]) + Math.abs(target[1] - smooth[1]);
+    if (reduce && settling < 1e-4) { running = false; raf = 0; return; }
+
+    raf = requestAnimationFrame(frame);
+  }
+
+  function start() {
+    if (running || document.hidden) return;
+    running = true;
+    last = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+  function stop() {
+    if (!running) return;
+    cancelAnimationFrame(raf);
+    running = false; raf = 0;
+  }
+
+  start();
+
+  // stop burning frames on a hidden tab
+  document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
+
+  // honour the OS setting changing mid-session instead of only at load
+  const onMotionChange = () => { reduce = motionQuery.matches; start(); };
+  if (motionQuery.addEventListener) motionQuery.addEventListener('change', onMotionChange);
+  else motionQuery.addListener(onMotionChange);
 })();
 </script>
 </body>
