@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0b0d">
+<title>Threads Advanced Search</title>
+<meta name="description" content="A query builder for Instagram Threads: the native keyword and topic-tag search, plus a web-index builder that gives Threads the operators it doesn't have.">
+
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../assets/vector.css">
+<link rel="stylesheet" href="../assets/search.css">
+<script src="../assets/cassette.js"></script>
+
+<style>
+/* Channel 03 runs on the orange band. */
+:root { --accent: var(--s2); }
+
+/* Only one mode's racks are mounted at a time. The !important is doing real
+   work: .rack and .note both set display, which otherwise beats [hidden]. */
+[hidden] { display: none !important; }
+
+.mode-rack .rack-body { gap: 10px; }
+</style>
+</head>
+<body data-mode="native">
+
+<main class="page">
+
+    <!-- ── HEADER ──────────────────────────────────────────────────────── -->
+    <header class="chassis page-head">
+
+        <div class="head-row">
+
+            <div class="brand">
+                <h1 class="designation">THREADS &middot; ADVANCED SEARCH</h1>
+                <span class="stripe brand-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="label">QUERY TERMINAL 03 &middot; THREADS.COM/SEARCH</span>
+            </div>
+
+            <div class="bezel head-well">
+                <div class="screen" id="headScreen">
+                    <div class="well-row">
+                        <span class="phos" id="clock" role="timer" aria-label="System clock">--:--:--</span>
+                        <canvas id="scope" width="120" height="28" aria-hidden="true"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="head-ctl">
+                <div class="lamp">
+                    <span class="led on green" aria-hidden="true"></span>
+                    <span class="label">PWR</span>
+                </div>
+                <div class="phos-sw">
+                    <span class="label">AMBER</span>
+                    <label class="rocker">
+                        <input type="checkbox" id="phosSw" data-no-save aria-label="Display colour: amber or green">
+                        <span class="rock"></span>
+                    </label>
+                    <span class="label">GREEN</span>
+                </div>
+            </div>
+
+        </div>
+
+        <nav class="net-nav" aria-label="Search network">
+            <a class="key net" href="../x/"><span class="net-ix">01</span> X</a>
+            <a class="key net" href="../bluesky/"><span class="net-ix">02</span> BLUESKY</a>
+            <a class="key net" href="../threads/" aria-current="page"><span class="net-ix">03</span> THREADS</a>
+            <a class="key net" href="../"><span class="net-ix">&mdash;</span> INDEX</a>
+        </nav>
+
+    </header>
+
+    <!-- ── READOUT ─────────────────────────────────────────────────────── -->
+    <section class="chassis readout" aria-label="Compiled query">
+        <div class="rack-head">
+            <span class="rack-ix" aria-hidden="true">00</span>
+            <span class="designation rack-name">QUERY OUTPUT</span>
+            <span class="spacer"></span>
+            <span class="row-tight">
+                <span class="led" id="qLed" aria-hidden="true"></span>
+                <span class="label" id="qStat">IDLE</span>
+            </span>
+        </div>
+        <div class="readout-body">
+            <div class="readout-row">
+                <span class="label">QUERY</span>
+                <pre class="screen q-screen empty" id="qOut" aria-live="polite"></pre>
+            </div>
+            <div class="readout-row">
+                <span class="label">URL</span>
+                <pre class="screen u-screen empty" id="uOut"></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── MODE ────────────────────────────────────────────────────────── -->
+    <section class="chassis rack mode-rack">
+        <div class="rack-head">
+            <span class="rack-ix" aria-hidden="true">&mdash;</span>
+            <span class="designation rack-name">MODE</span>
+        </div>
+        <div class="rack-body">
+            <div class="seg-ctl" role="radiogroup" aria-label="Search mode">
+                <label><input type="radio" name="tMode" value="native" checked><span>NATIVE THREADS</span></label>
+                <label><input type="radio" name="tMode" value="web"><span>WEB INDEX</span></label>
+            </div>
+            <span class="hint" id="modeHint"></span>
+        </div>
+    </section>
+
+    <!-- ══ NATIVE ══════════════════════════════════════════════════════ -->
+    <div class="racks" data-panel="native">
+
+        <!-- 01 · THREADS SEARCH -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">01</span>
+                <span class="designation rack-name">THREADS SEARCH</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <span class="label" id="tTargetLbl">TARGET <span class="op">serp_type=</span></span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="tTargetLbl">
+                        <label><input type="radio" name="tTarget" value="default" checked><span>POSTS</span></label>
+                        <label><input type="radio" name="tTarget" value="tags"><span>TOPIC TAG</span></label>
+                    </div>
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="tQ">TERM</label>
+                    <input class="field" type="text" id="tQ" placeholder="cassette futurism" autocomplete="off">
+                    <span class="hint">One term, matched as typed. Quotes, <code>OR</code>, <code>-</code> and <code>from:</code> are <em>not</em> operators here — Threads searches for them literally.</span>
+                </div>
+
+                <label class="chk"><input type="checkbox" id="tRecent"><span class="box"></span><span class="label">RECENT INSTEAD OF TOP</span></label>
+                <span class="hint">Adds <code>&amp;filter=recent</code>. Threads only honours it for a signed-in session — signed out, the app strips the parameter and serves ranked results anyway.</span>
+
+            </div>
+        </section>
+
+        <!-- 02 · PROFILE -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">02</span>
+                <span class="designation rack-name">PROFILE</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <label class="label" for="tHandle">HANDLE</label>
+                    <input class="field" type="text" id="tHandle" placeholder="@zuck" autocomplete="off">
+                    <span class="hint">There is no <code>from:</code> on Threads. A profile is a destination, not a filter — so this opens the account rather than narrowing the search. To search <em>within</em> one account, use WEB INDEX mode.</span>
+                </div>
+
+                <a class="key" id="profileLink" href="https://www.threads.com/" target="_blank" rel="noopener">OPEN PROFILE &rarr;</a>
+
+            </div>
+        </section>
+
+        <!-- NOTE -->
+        <section class="chassis note wide">
+            <span class="tape">READ ME</span>
+            <div class="note-body">
+                <p>Threads has, in practice, <strong>no search operators at all</strong>. It takes one term and gives you Top or Recent. There is no phrase matching, no exclusion, no <code>OR</code>, no author filter, no date range, no media filter and no engagement filter — the entire vocabulary the other two terminals are built around is missing.</p>
+                <p>Everything the native side can address is here: the keyword search (<code>serp_type=default</code>), the topic-tag stream (<code>serp_type=tags</code>), the Recent ordering, and profiles. That is the whole surface.</p>
+                <p>The date-range and from-profile filters Threads added live <strong>inside the app's own filter sheet</strong> and are not addressable from a URL, so they cannot be pre-built here. For operators, switch to <strong>WEB INDEX</strong> — a search engine's copy of Threads answers questions Threads itself won't.</p>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- ══ WEB INDEX ═══════════════════════════════════════════════════ -->
+    <div class="racks" data-panel="web" hidden>
+
+        <!-- 01 · WORDS -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">01</span>
+                <span class="designation rack-name">WORDS</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <label class="label" for="wAll">ALL OF THESE WORDS <span class="op">a b</span></label>
+                    <input class="field" type="text" id="wAll" placeholder="cassette futurism" autocomplete="off">
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="wPhrase">EXACT PHRASE <span class="op">"a b"</span></label>
+                    <input class="field" type="text" id="wPhrase" placeholder="state of the art" autocomplete="off">
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="wAny">ANY OF THESE WORDS <span class="op">(a OR b)</span></label>
+                    <input class="field" type="text" id="wAny" placeholder="synthwave, retrofuture" autocomplete="off">
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="wNone">NONE OF THESE WORDS <span class="op">-a -b</span></label>
+                    <input class="field" type="text" id="wNone" placeholder="giveaway, promo" autocomplete="off">
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 02 · SCOPE -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">02</span>
+                <span class="designation rack-name">SCOPE</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <label class="label" for="wFrom">FROM PROFILE <span class="op">site:…/@handle</span></label>
+                    <input class="field" type="text" id="wFrom" placeholder="@zuck" autocomplete="off">
+                    <span class="hint">This is the <code>from:</code> Threads doesn't have — the handle is part of every post's path, so scoping the site scopes the author.</span>
+                </div>
+
+                <div class="fld">
+                    <span class="label" id="wKindLbl">MATCH</span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="wKindLbl">
+                        <label><input type="radio" name="wKind" value="" checked><span>ANYTHING</span></label>
+                        <label><input type="radio" name="wKind" value="post"><span>POSTS ONLY</span></label>
+                    </div>
+                    <span class="hint">Posts live under <code>/post/</code>, so <code>inurl:/post/</code> drops profile and tag pages from the results.</span>
+                </div>
+
+                <div class="fld">
+                    <span class="label">HOSTS</span>
+                    <div class="checks">
+                        <label class="chk"><input type="checkbox" id="wHostCom" checked><span class="box"></span><span class="label">THREADS.COM</span></label>
+                        <label class="chk"><input type="checkbox" id="wHostNet" checked><span class="box"></span><span class="label">THREADS.NET</span></label>
+                    </div>
+                    <span class="hint">Threads moved from <code>.net</code> to <code>.com</code>, and search engines still hold years of the old host. Dropping either loses results.</span>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 03 · ENGINE & TIME -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">03</span>
+                <span class="designation rack-name">ENGINE &amp; TIME</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <span class="label" id="wEngLbl">ENGINE</span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="wEngLbl">
+                        <label><input type="radio" name="wEngine" value="google" checked><span>GOOGLE</span></label>
+                        <label><input type="radio" name="wEngine" value="bing"><span>BING</span></label>
+                        <label><input type="radio" name="wEngine" value="ddg"><span>DUCKDUCKGO</span></label>
+                    </div>
+                </div>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="pair">
+                    <div class="fld">
+                        <label class="label" for="wAfter">AFTER <span class="op">after:</span></label>
+                        <input class="field" type="date" id="wAfter">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="wBefore">BEFORE <span class="op">before:</span></label>
+                        <input class="field" type="date" id="wBefore">
+                    </div>
+                </div>
+                <span class="hint" id="wDateHint">Google only. These filter on when the page was <em>indexed</em>, which for a Threads post is close to — but not the same as — when it was written.</span>
+
+            </div>
+        </section>
+
+        <!-- NOTE -->
+        <section class="chassis note wide">
+            <span class="tape">READ ME</span>
+            <div class="note-body">
+                <p>This mode searches a <strong>search engine's index of Threads</strong>, not Threads. That buys real operators — phrases, exclusions, <code>OR</code>, author scoping, date ranges — at a real cost: you only see what has been crawled. Coverage skews old and public, misses most replies, and lags hours to days behind a live post.</p>
+                <p>Use NATIVE for <em>what is being said right now</em>. Use WEB INDEX for <em>find the post I know exists</em>.</p>
+                <p><code>inurl:</code> is honoured by Google and Bing; DuckDuckGo supports it inconsistently. <code>before:</code> and <code>after:</code> are Google-only and are dropped from the other two.</p>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- ── FOOTER ──────────────────────────────────────────────────────── -->
+    <footer class="chassis page-foot">
+        <a class="key" href="../">&larr; SEARCH INDEX</a>
+        <a class="key" href="https://isaiart.com">ISAIART.COM</a>
+        <div class="foot-right">
+            <span class="row-tight"><span class="led on green" aria-hidden="true"></span><span class="label">NO BACKEND &middot; NOTHING LEAVES THE BROWSER</span></span>
+        </div>
+    </footer>
+
+</main>
+
+<!-- ── TRANSPORT DOCK ──────────────────────────────────────────────────── -->
+<div class="dock">
+    <span class="stripe dock-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <div class="dock-inner">
+        <button class="key key-go" type="button" id="goBtn">SEARCH THREADS &rarr;</button>
+        <button class="key" type="button" id="copyBtn">COPY <span class="key-lbl">QUERY</span></button>
+        <button class="key" type="button" id="copyUrlBtn">COPY <span class="key-lbl">URL</span></button>
+        <button class="key key-danger" type="button" id="resetBtn">CLEAR</button>
+        <span class="spacer"></span>
+        <span class="label count" id="opCount">0 TERMS</span>
+    </div>
+</div>
+
+<script src="../assets/search.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    var S = window.SRCH;
+    var body = document.body;
+    var goBtn = S.el('goBtn');
+    var modeHint = S.el('modeHint');
+    var profileLink = S.el('profileLink');
+
+    var MODE_TEXT = {
+        native: 'Threads’ own search, addressed directly. One term, Top or Recent, and that is genuinely all there is.',
+        web: 'A search engine, pointed at Threads. Full operators over a crawled copy of the site — slower to update, but it can answer questions Threads cannot.'
+    };
+
+    var ENGINES = {
+        google: { name: 'GOOGLE', url: 'https://www.google.com/search?q=', dates: true,  inurl: true },
+        bing:   { name: 'BING',   url: 'https://www.bing.com/search?q=',    dates: false, inurl: true },
+        ddg:    { name: 'DUCKDUCKGO', url: 'https://duckduckgo.com/?q=',    dates: false, inurl: false }
+    };
+
+    var HOST_COM = 'threads.com';
+    var HOST_NET = 'threads.net';
+
+    /* ── The two compilers ───────────────────────────────────────────────── */
+
+    function compileNative() {
+        var term = S.v('tQ');
+        var target = S.r('tTarget') || 'default';
+        var ops = 0;
+        var url = '';
+
+        if (term) {
+            ops = 1;
+            var bare = term.replace(/^#+/, '');
+            url = 'https://www.threads.com/search?q=' + encodeURIComponent(target === 'tags' ? bare : term);
+            url += '&serp_type=' + target;
+            if (target === 'tags') { url += '&tag=' + encodeURIComponent(bare); ops++; }
+            if (S.c('tRecent')) { url += '&filter=recent'; ops++; }
+        }
+
+        return { q: term, url: url, ops: ops };
+    }
+
+    function compileWeb() {
+        var eng = ENGINES[S.r('wEngine')] || ENGINES.google;
+        var p = [];
+        var push = function (s) { if (s) p.push(s); };
+
+        /* — the site clause. One host or two, optionally narrowed to a single
+             profile's path. Two hosts have to be parenthesised or the OR
+             swallows the rest of the query. — */
+        var handle = S.v('wFrom').replace(/^@+/, '').replace(/\/+$/, '');
+        var hosts = [];
+        if (S.c('wHostCom')) hosts.push(HOST_COM);
+        if (S.c('wHostNet')) hosts.push(HOST_NET);
+        if (!hosts.length) hosts = [HOST_COM];
+
+        var sites = hosts.map(function (h) {
+            return 'site:' + h + (handle ? '/@' + handle : '');
+        });
+        push(sites.length > 1 ? '(' + sites.join(' OR ') + ')' : sites[0]);
+
+        if (S.r('wKind') === 'post' && eng.inurl) push('inurl:/post/');
+
+        /* — words — */
+        push(S.v('wAll'));
+        push(S.phrase('wPhrase'));
+
+        var any = S.list('wAny');
+        if (any.length > 1) push('(' + any.join(' OR ') + ')');
+        else if (any.length === 1) push(any[0]);
+
+        S.list('wNone').forEach(function (w) { push('-' + w.replace(/^-+/, '')); });
+
+        if (eng.dates) {
+            if (S.v('wAfter'))  push('after:'  + S.v('wAfter'));
+            if (S.v('wBefore')) push('before:' + S.v('wBefore'));
+        }
+
+        var q = p.join(' ');
+
+        /* The site clause alone is not a search — it would just list Threads.
+           Require at least one term of the user's own before arming. */
+        var terms = p.length - 1 - (S.r('wKind') === 'post' && eng.inurl ? 1 : 0);
+        var url = terms > 0 ? eng.url + encodeURIComponent(q) : '';
+
+        return { q: q, url: url, ops: p.length };
+    }
+
+    function compile() {
+        return S.r('tMode') === 'web' ? compileWeb() : compileNative();
+    }
+
+    /* ── Mode swap ───────────────────────────────────────────────────────────
+       Driven from onPaint so it stays in step with the readout no matter what
+       moved the radio — a click, a restore from storage, or CLEAR. */
+
+    function onPaint() {
+        var mode = S.r('tMode') || 'native';
+        body.setAttribute('data-mode', mode);
+        modeHint.textContent = MODE_TEXT[mode];
+
+        document.querySelectorAll('[data-panel]').forEach(function (panel) {
+            panel.hidden = panel.getAttribute('data-panel') !== mode;
+        });
+
+        var eng = ENGINES[S.r('wEngine')] || ENGINES.google;
+        goBtn.innerHTML = mode === 'web'
+            ? 'SEARCH ' + eng.name + ' →'
+            : 'SEARCH THREADS →';
+
+        /* Date fields are Google's alone — grey them out on the others rather
+           than silently dropping what the user typed. */
+        var dateHint = S.el('wDateHint');
+        S.el('wAfter').disabled = !eng.dates;
+        S.el('wBefore').disabled = !eng.dates;
+        dateHint.style.opacity = eng.dates ? '' : '0.5';
+
+        var handle = S.v('tHandle').replace(/^@+/, '').replace(/\/+$/, '');
+        profileLink.href = handle
+            ? 'https://www.threads.com/@' + encodeURIComponent(handle)
+            : 'https://www.threads.com/';
+        profileLink.setAttribute('aria-disabled', handle ? 'false' : 'true');
+    }
+
+    S.terminal({
+        net: 'threads',
+        storeKey: 'isa.search.threads',
+        prefill: 'tQ',
+        compile: compile,
+        onPaint: onPaint,
+        emptyQuery: 'Fill anything in — the query assembles as you type.',
+        emptyUrl: '—'
+    });
+
+    if (window.CAS) CAS.pageTransition();
+})();
+</script>
+</body>
+</html>

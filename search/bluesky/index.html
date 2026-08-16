@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0b0d">
+<title>Bluesky Advanced Search</title>
+<meta name="description" content="A query builder for Bluesky search: every operator the AppView understands plus the structured filter params the app itself writes into the URL.">
+
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../assets/vector.css">
+<link rel="stylesheet" href="../assets/search.css">
+<script src="../assets/cassette.js"></script>
+
+<style>
+/* Channel 02 runs on the blue band. */
+:root { --accent: var(--s6); }
+</style>
+</head>
+<body>
+
+<main class="page">
+
+    <!-- ── HEADER ──────────────────────────────────────────────────────── -->
+    <header class="chassis page-head">
+
+        <div class="head-row">
+
+            <div class="brand">
+                <h1 class="designation">BLUESKY &middot; ADVANCED SEARCH</h1>
+                <span class="stripe brand-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="label">QUERY TERMINAL 02 &middot; BSKY.APP/SEARCH</span>
+            </div>
+
+            <div class="bezel head-well">
+                <div class="screen" id="headScreen">
+                    <div class="well-row">
+                        <span class="phos" id="clock" role="timer" aria-label="System clock">--:--:--</span>
+                        <canvas id="scope" width="120" height="28" aria-hidden="true"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="head-ctl">
+                <div class="lamp">
+                    <span class="led on green" aria-hidden="true"></span>
+                    <span class="label">PWR</span>
+                </div>
+                <div class="phos-sw">
+                    <span class="label">AMBER</span>
+                    <label class="rocker">
+                        <input type="checkbox" id="phosSw" data-no-save aria-label="Display colour: amber or green">
+                        <span class="rock"></span>
+                    </label>
+                    <span class="label">GREEN</span>
+                </div>
+            </div>
+
+        </div>
+
+        <nav class="net-nav" aria-label="Search network">
+            <a class="key net" href="../x/"><span class="net-ix">01</span> X</a>
+            <a class="key net" href="../bluesky/" aria-current="page"><span class="net-ix">02</span> BLUESKY</a>
+            <a class="key net" href="../threads/"><span class="net-ix">03</span> THREADS</a>
+            <a class="key net" href="../"><span class="net-ix">&mdash;</span> INDEX</a>
+        </nav>
+
+    </header>
+
+    <!-- ── READOUT ─────────────────────────────────────────────────────── -->
+    <section class="chassis readout" aria-label="Compiled query">
+        <div class="rack-head">
+            <span class="rack-ix" aria-hidden="true">00</span>
+            <span class="designation rack-name">QUERY OUTPUT</span>
+            <span class="spacer"></span>
+            <span class="row-tight">
+                <span class="led" id="qLed" aria-hidden="true"></span>
+                <span class="label" id="qStat">IDLE</span>
+            </span>
+        </div>
+        <div class="readout-body">
+            <div class="readout-row">
+                <span class="label">QUERY</span>
+                <pre class="screen q-screen empty" id="qOut" aria-live="polite"></pre>
+            </div>
+            <div class="readout-row">
+                <span class="label">URL</span>
+                <pre class="screen u-screen empty" id="uOut"></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── RACKS ───────────────────────────────────────────────────────── -->
+    <div class="racks">
+
+        <!-- 01 · WORDS -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">01</span>
+                <span class="designation rack-name">WORDS</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <label class="label" for="bAll">ALL OF THESE WORDS <span class="op">a b</span></label>
+                    <input class="field" type="text" id="bAll" placeholder="cassette futurism" autocomplete="off">
+                    <span class="hint">Every word must appear. Bluesky has no <code>OR</code> — to search alternatives you run two searches.</span>
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="bPhrase">EXACT PHRASE <span class="op">"a b"</span></label>
+                    <input class="field" type="text" id="bPhrase" placeholder="state of the art" autocomplete="off">
+                    <span class="hint">A quoted phrase also matches image alt text, which is the one place Bluesky searches further than X.</span>
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="bNone">NONE OF THESE WORDS <span class="op">-a -b</span></label>
+                    <input class="field" type="text" id="bNone" placeholder="crypto, airdrop" autocomplete="off">
+                </div>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="fld">
+                    <label class="label" for="bTags">TAGS <span class="op">#a</span></label>
+                    <input class="field" type="text" id="bTags" placeholder="#retrofuturism, #synthwave" autocomplete="off">
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="bNotTags">EXCLUDE TAGS <span class="op">&amp;excludeTag=</span></label>
+                    <input class="field" type="text" id="bNotTags" placeholder="#nsfw" autocomplete="off">
+                    <span class="hint">Exclusions have no operator — they ride as their own URL parameter, which older clients ignore.</span>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 02 · ACCOUNTS -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">02</span>
+                <span class="designation rack-name">ACCOUNTS</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <label class="label" for="bFrom">FROM <span class="op">from:</span></label>
+                    <input class="field" type="text" id="bFrom" placeholder="bsky.app, jay.bsky.team" autocomplete="off">
+                    <span class="hint">Full handles, with or without the <code>@</code>. Several handles widen the search rather than narrowing it — but only as a parameter: a query string keeps just the first <code>from:</code> it meets, so a list is emitted as <code>&amp;author=</code> whichever mode you're in.</span>
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="bNotFrom">EXCLUDE AUTHORS <span class="op">&amp;excludeAuthor=</span></label>
+                    <input class="field" type="text" id="bNotFrom" placeholder="noisy.bsky.social" autocomplete="off">
+                </div>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="fld">
+                    <label class="label" for="bMentions">MENTIONS <span class="op">mentions:</span></label>
+                    <input class="field" type="text" id="bMentions" placeholder="jay.bsky.team" autocomplete="off">
+                    <span class="hint"><code>to:</code> is an <em>alias</em> for this on Bluesky — it finds mentions, not replies. There is no reply-recipient operator.</span>
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="bNotMentions">EXCLUDE MENTIONS <span class="op">&amp;excludeMentions=</span></label>
+                    <input class="field" type="text" id="bNotMentions" placeholder="someone.bsky.social" autocomplete="off">
+                </div>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="fld">
+                    <span class="label" id="bScopeLbl">AUTHOR SCOPE</span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="bScopeLbl">
+                        <label><input type="radio" name="bScope" value="" checked><span>ANYONE</span></label>
+                        <label><input type="radio" name="bScope" value="following"><span>FOLLOWING</span></label>
+                        <label><input type="radio" name="bScope" value="me"><span>ME</span></label>
+                    </div>
+                    <span class="hint">Both need you signed in — the server resolves <em>me</em> and <em>following</em> from the session, so a shared link means <em>the reader's</em> follows.</span>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 03 · LINKS -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">03</span>
+                <span class="designation rack-name">LINKS</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <label class="label" for="bDomain">LINKS TO DOMAIN <span class="op">domain:</span></label>
+                    <input class="field" type="text" id="bDomain" placeholder="npr.org" autocomplete="off">
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="bNotDomain">EXCLUDE DOMAIN <span class="op">&amp;excludeDomain=</span></label>
+                    <input class="field" type="text" id="bNotDomain" placeholder="example.com" autocomplete="off">
+                </div>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="fld">
+                    <label class="label" for="bUrl">SHARES THIS URL <span class="op">url:</span></label>
+                    <input class="field" type="text" id="bUrl" placeholder="https://npr.org/some-article" autocomplete="off">
+                    <span class="hint">Everyone who posted one exact link. Useful for finding the discussion around an article rather than the article.</span>
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="bNotUrl">EXCLUDE URL <span class="op">&amp;excludeUrl=</span></label>
+                    <input class="field" type="text" id="bNotUrl" placeholder="https://example.com/x" autocomplete="off">
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 04 · FILTERS -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">04</span>
+                <span class="designation rack-name">FILTERS</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <label class="label" for="bLang">LANGUAGE <span class="op">lang:</span></label>
+                    <select class="field" id="bLang">
+                        <option value="">ANY</option>
+                        <option value="en">EN — English</option>
+                        <option value="es">ES — Spanish</option>
+                        <option value="fr">FR — French</option>
+                        <option value="de">DE — German</option>
+                        <option value="it">IT — Italian</option>
+                        <option value="pt">PT — Portuguese</option>
+                        <option value="nl">NL — Dutch</option>
+                        <option value="ru">RU — Russian</option>
+                        <option value="ar">AR — Arabic</option>
+                        <option value="hi">HI — Hindi</option>
+                        <option value="ja">JA — Japanese</option>
+                        <option value="ko">KO — Korean</option>
+                        <option value="zh">ZH — Chinese</option>
+                        <option value="tr">TR — Turkish</option>
+                        <option value="pl">PL — Polish</option>
+                        <option value="sv">SV — Swedish</option>
+                    </select>
+                    <span class="hint">Two-letter ISO 639 code, matched against the language the <em>author's client declared</em> — not detected from the text.</span>
+                </div>
+
+                <div class="fld">
+                    <span class="label" id="bRepLbl">REPLIES <span class="op">&amp;replies=</span></span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="bRepLbl">
+                        <label><input type="radio" name="bReplies" value="" checked><span>ANY</span></label>
+                        <label><input type="radio" name="bReplies" value="only"><span>ONLY</span></label>
+                        <label><input type="radio" name="bReplies" value="none"><span>NONE</span></label>
+                    </div>
+                </div>
+
+                <div class="fld">
+                    <span class="label" id="bMediaLbl">MEDIA <span class="op">&amp;media= &amp;video=</span></span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="bMediaLbl">
+                        <label><input type="radio" name="bMedia" value="" checked><span>ANY</span></label>
+                        <label><input type="radio" name="bMedia" value="media"><span>MEDIA</span></label>
+                        <label><input type="radio" name="bMedia" value="video"><span>VIDEO</span></label>
+                    </div>
+                    <span class="hint">Mutually exclusive — a post matches at most one, so these are one control rather than two checkboxes.</span>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 05 · TIME -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">05</span>
+                <span class="designation rack-name">TIME</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="pair">
+                    <div class="fld">
+                        <label class="label" for="bSince">SINCE <span class="op">since:</span></label>
+                        <input class="field" type="date" id="bSince">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="bUntil">UNTIL <span class="op">until:</span></label>
+                        <input class="field" type="date" id="bUntil">
+                    </div>
+                </div>
+                <span class="hint">Both accept a plain date or a full UTC timestamp (<code>2024-04-13T17:00:00.000Z</code>). The date form is interpreted as UTC midnight, so a same-day range needs the day after.</span>
+
+            </div>
+        </section>
+
+        <!-- 06 · RESULTS -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">06</span>
+                <span class="designation rack-name">RESULTS</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <span class="label" id="bTabLbl">TAB <span class="op">&amp;tab=</span></span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="bTabLbl">
+                        <label><input type="radio" name="bTab" value="" checked><span>TOP</span></label>
+                        <label><input type="radio" name="bTab" value="latest"><span>LATEST</span></label>
+                        <label><input type="radio" name="bTab" value="user"><span>PEOPLE</span></label>
+                        <label><input type="radio" name="bTab" value="feed"><span>FEEDS</span></label>
+                    </div>
+                    <span class="hint">People and Feeds ignore the post filters — any filter beyond language hides those tabs in the app.</span>
+                </div>
+
+                <div class="fld">
+                    <span class="label" id="bFormLbl">EMIT AS</span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="bFormLbl">
+                        <label><input type="radio" name="bForm" value="mixed" checked><span>OPERATORS</span></label>
+                        <label><input type="radio" name="bForm" value="params"><span>PARAMS</span></label>
+                    </div>
+                    <span class="hint"><strong>OPERATORS</strong> keeps everything it can inside <code>q</code>, so the query survives being pasted into a search box. <strong>PARAMS</strong> writes each filter as its own URL parameter, the way the app's own advanced dialog does. Exclusions, the filters with no operator, and any field holding more than one value always ride as parameters either way.</span>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- NOTE -->
+        <section class="chassis note wide">
+            <span class="tape">READ ME</span>
+            <div class="note-body">
+                <p>Bluesky's search is <strong>narrower than X's on purpose</strong>, and the gaps are worth knowing before you go looking for a control that isn't here: there are <strong>no engagement filters</strong> (no minimum likes, reposts or replies), <strong>no boolean OR</strong>, no wildcards, no geo operators, and no way to search by client or by post shape.</p>
+                <p>What it does have that X does not: a quoted phrase is matched against <strong>image alt text</strong> as well as post text.</p>
+                <p>The exclusion filters and the replies/media controls are the newer structured parameters the official app writes. They are honoured by the current AppView; a third-party client on the older search path will quietly drop them, so a query that depends on an exclusion should be checked in the official app.</p>
+                <p><a class="key" href="https://bsky.social/about/blog/05-31-2024-search" target="_blank" rel="noopener">BLUESKY SEARCH NOTES &rarr;</a></p>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- ── FOOTER ──────────────────────────────────────────────────────── -->
+    <footer class="chassis page-foot">
+        <a class="key" href="../">&larr; SEARCH INDEX</a>
+        <a class="key" href="https://isaiart.com">ISAIART.COM</a>
+        <div class="foot-right">
+            <span class="row-tight"><span class="led on green" aria-hidden="true"></span><span class="label">NO BACKEND &middot; NOTHING LEAVES THE BROWSER</span></span>
+        </div>
+    </footer>
+
+</main>
+
+<!-- ── TRANSPORT DOCK ──────────────────────────────────────────────────── -->
+<div class="dock">
+    <span class="stripe dock-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <div class="dock-inner">
+        <button class="key key-go" type="button" id="goBtn">SEARCH BLUESKY &rarr;</button>
+        <button class="key" type="button" id="copyBtn">COPY <span class="key-lbl">QUERY</span></button>
+        <button class="key" type="button" id="copyUrlBtn">COPY <span class="key-lbl">URL</span></button>
+        <button class="key key-danger" type="button" id="resetBtn">CLEAR</button>
+        <span class="spacer"></span>
+        <span class="label count" id="opCount">0 TERMS</span>
+    </div>
+</div>
+
+<script src="../assets/search.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    var S = window.SRCH;
+
+    /* ── Compiler ────────────────────────────────────────────────────────────
+       Bluesky accepts the same filter two ways: as an operator inside `q`, or
+       as its own URL parameter. The app's advanced dialog reads both and folds
+       them together, so either form works — but they are not interchangeable
+       in every direction:
+
+         · Exclusions, replies, media/video and the following/me scope exist
+           ONLY as parameters. No operator spells them.
+         · Everything else has an operator, and the operator form is the one
+           that survives being pasted into a search box.
+
+       So the default emits operators where they exist and parameters only
+       where they must, and the EMIT AS switch lets the whole thing be written
+       the app's own way instead. */
+
+    function compile() {
+        var p = [];                          /* tokens for q      */
+        var f = {};                          /* URL parameters    */
+        var push = function (s) { if (s) p.push(s); };
+        var params = S.r('bForm') === 'params';
+
+        /* Adds a filter in whichever form the switch is asking for.
+
+           A LIST always goes out as a parameter, even in operator mode. The
+           query parser keeps only the FIRST from:/mentions:/domain:/url: it
+           meets and silently drops every one after it, so two `from:` tokens
+           are not an OR — they are one author and a discarded token. The
+           structured parameter is the only form that carries a list, so a
+           second value forces it. Tags are exempt: those do accumulate. */
+        function filter(op, key, values) {
+            if (!values.length) return;
+            if (params || values.length > 1) {
+                f[key] = values.join(' ');
+            } else {
+                push(op + ':' + values[0]);
+            }
+        }
+
+        /* — free text. Always in q; there is no parameter form for words. — */
+        push(S.v('bAll'));
+        push(S.phrase('bPhrase'));
+        S.list('bNone').forEach(function (w) { push('-' + w.replace(/^-+/, '')); });
+
+        /* — tags. The operator wears a #, the parameter stores it bare. — */
+        var tags = S.bareTags('bTags');
+        if (tags.length) {
+            if (params) f.tag = tags.join(' ');
+            else tags.forEach(function (t) { push('#' + t); });
+        }
+
+        /* — accounts — */
+        filter('from', 'author', S.handles('bFrom'));
+        filter('mentions', 'mentions', S.handles('bMentions'));
+
+        /* — links — */
+        filter('domain', 'domain', S.list('bDomain').map(function (d) {
+            return d.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+        }));
+        filter('url', 'url', S.list('bUrl'));
+
+        /* — language and dates — */
+        if (S.v('bLang'))  { if (params) f.lang  = S.v('bLang');  else push('lang:'  + S.v('bLang')); }
+        if (S.v('bSince')) { if (params) f.since = S.v('bSince'); else push('since:' + S.v('bSince')); }
+        if (S.v('bUntil')) { if (params) f.until = S.v('bUntil'); else push('until:' + S.v('bUntil')); }
+
+        /* — parameter-only territory from here down — */
+        var notAuthors  = S.handles('bNotFrom');
+        var notMentions = S.handles('bNotMentions');
+        var notTags     = S.bareTags('bNotTags');
+        var notDomains  = S.list('bNotDomain').map(function (d) {
+            return d.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+        });
+        var notUrls     = S.list('bNotUrl');
+
+        if (notAuthors.length)  f.excludeAuthor   = notAuthors.join(' ');
+        if (notMentions.length) f.excludeMentions = notMentions.join(' ');
+        if (notTags.length)     f.excludeTag      = notTags.join(' ');
+        if (notDomains.length)  f.excludeDomain   = notDomains.join(' ');
+        if (notUrls.length)     f.excludeUrl      = notUrls.join(' ');
+
+        var replies = S.r('bReplies');
+        if (replies) f.replies = replies;
+
+        var media = S.r('bMedia');
+        if (media === 'media') f.media = 'true';
+        else if (media === 'video') f.video = 'true';
+
+        /* `from:me` is the one scope with an operator, so it goes in q when q
+           is the chosen form — it stays legible in a pasted query. */
+        var scope = S.r('bScope');
+        if (scope === 'following') f.following = 'true';
+        else if (scope === 'me') { if (params) f.from = 'me'; else push('from:me'); }
+
+        var q = p.join(' ');
+        var keys = Object.keys(f);
+
+        /* A parameter-only search is legal — filters alone are a query. */
+        var url = '';
+        if (q || keys.length) {
+            url = 'https://bsky.app/search?q=' + encodeURIComponent(q);
+            keys.forEach(function (k) {
+                url += '&' + k + '=' + encodeURIComponent(f[k]);
+            });
+            var tab = S.r('bTab');
+            if (tab) url += '&tab=' + tab;
+        }
+
+        return { q: q, url: url, ops: p.length + keys.length };
+    }
+
+    S.terminal({
+        net: 'bluesky',
+        storeKey: 'isa.search.bluesky',
+        prefill: 'bAll',
+        compile: compile,
+        emptyQuery: 'Fill anything in — the query assembles as you type.',
+        emptyUrl: '—'
+    });
+
+    if (window.CAS) CAS.pageTransition();
+})();
+</script>
+</body>
+</html>

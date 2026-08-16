@@ -1,1067 +1,695 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Advanced Twitter Search</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-  <style>
-    :root {
-      --primary: #1da1f2;
-      --primary-dark: #0c85d0;
-      --primary-light: #a8dcfa;
-      --secondary: #794bc4;
-      --text-dark: #14171a;
-      --text-light: #f5f8fa;
-      --gray-100: #f7f9fa;
-      --gray-200: #e6ecf0;
-      --gray-300: #aab8c2;
-      --gray-800: #3d4852;
-      --gray-900: #282c37;
-      --success: #17bf63;
-      --warning: #ffad1f;
-      --danger: #e0245e;
-      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-      --card-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
-      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      --radius: 12px;
-      --radius-sm: 8px;
-      --header-height: 70px;
-    }
-
-    .dark-mode {
-      --primary: #1da1f2;
-      --primary-dark: #1a91da;
-      --text-dark: #e6ecf0;
-      --text-light: #14171a;
-      --gray-100: #22303c;
-      --gray-200: #192734;
-      --gray-300: #38444d;
-      --gray-800: #8899a6;
-      --gray-900: #aab8c2;
-      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-      --card-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.25);
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--gray-100);
-      color: var(--text-dark);
-      margin: 0;
-      padding: 0;
-      transition: var(--transition);
-      padding-bottom: 100px;
-    }
-
-    /* Header Styles */
-    header {
-      background: white;
-      height: var(--header-height);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 24px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      transition: var(--transition);
-    }
-
-    .dark-mode header {
-      background: var(--gray-200);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .logo-icon {
-      color: var(--primary);
-      font-size: 2rem;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 700;
-      background: linear-gradient(45deg, var(--primary), var(--secondary));
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-transform: none;
-    }
-
-    #toggleDarkMode {
-      padding: 10px;
-      border: none;
-      border-radius: 50%;
-      background: var(--gray-200);
-      color: var(--text-dark);
-      cursor: pointer;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      transition: var(--transition);
-    }
-
-    #toggleDarkMode:hover {
-      background: var(--gray-300);
-    }
-
-    .dark-mode #toggleDarkMode {
-      background: var(--gray-300);
-      color: var(--text-light);
-    }
-
-    /* Main Layout */
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 24px;
-    }
-
-    .main-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 24px;
-    }
-
-    /* Make the preview card span full width */
-    .preview-card {
-      grid-column: 1 / -1;
-    }
-
-    .card {
-      background: white;
-      padding: 24px;
-      border-radius: var(--radius);
-      box-shadow: var(--card-shadow);
-      transition: var(--transition);
-      border: 1px solid transparent;
-    }
-
-    .card:hover {
-      box-shadow: var(--card-shadow-hover);
-      transform: translateY(-2px);
-    }
-
-    .dark-mode .card {
-      background: var(--gray-200);
-      border-color: var(--gray-300);
-    }
-
-    .card h2 {
-      margin-top: 0;
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-dark);
-      margin-bottom: 20px;
-      padding-bottom: 12px;
-      border-bottom: 2px solid var(--gray-200);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .card h2 .material-icons-round {
-      color: var(--primary);
-    }
-
-    .dark-mode .card h2 {
-      border-bottom-color: var(--gray-300);
-    }
-
-    /* Form Elements */
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 500;
-      color: var(--gray-800);
-      font-size: 0.9rem;
-    }
-
-    .dark-mode .form-group label {
-      color: var(--gray-900);
-    }
-
-    .input-group {
-      display: flex;
-      align-items: center;
-      background: var(--gray-100);
-      border-radius: var(--radius-sm);
-      padding: 0 12px;
-      transition: var(--transition);
-      border: 2px solid transparent;
-    }
-
-    .input-group:focus-within {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(29, 161, 242, 0.2);
-    }
-
-    .dark-mode .input-group {
-      background: var(--gray-300);
-    }
-
-    .input-group .material-icons-round {
-      color: var(--gray-300);
-      margin-right: 8px;
-    }
-
-    .dark-mode .input-group .material-icons-round {
-      color: var(--gray-800);
-    }
-
-    .input-group input[type="text"],
-    .input-group input[type="number"],
-    .input-group input[type="date"],
-    .input-group select {
-      width: 100%;
-      padding: 12px 0;
-      border: none;
-      background: transparent;
-      color: var(--text-dark);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.95rem;
-    }
-
-    .input-group select {
-      appearance: none;
-      cursor: pointer;
-    }
-
-    .input-group input:focus,
-    .input-group select:focus {
-      outline: none;
-    }
-
-    .dark-mode .input-group input,
-    .dark-mode .input-group select {
-      color: var(--text-dark);
-    }
-
-    .dark-mode .input-group select option {
-      background: var(--gray-200);
-      color: var(--text-dark);
-    }
-
-    /* Checkbox & Radio Styles */
-    .checkbox-group, .radio-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-
-    .checkbox-wrapper, .radio-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      position: relative;
-      cursor: pointer;
-    }
-
-    .custom-checkbox,
-    .custom-radio {
-      width: 20px;
-      height: 20px;
-      border: 2px solid var(--gray-300);
-      border-radius: 4px;
-      display: inline-block;
-      position: relative;
-      transition: var(--transition);
-    }
-
-    .custom-radio {
-      border-radius: 50%;
-    }
-
-    .checkbox-wrapper input:checked ~ .custom-checkbox,
-    .radio-wrapper input:checked ~ .custom-radio {
-      background-color: var(--primary);
-      border-color: var(--primary);
-    }
-
-    .checkbox-wrapper input:checked ~ .custom-checkbox:after {
-      content: "";
-      position: absolute;
-      top: 4px;
-      left: 7px;
-      width: 4px;
-      height: 9px;
-      border: solid white;
-      border-width: 0 2px 2px 0;
-      transform: rotate(45deg);
-    }
-
-    .radio-wrapper input:checked ~ .custom-radio:after {
-      content: "";
-      position: absolute;
-      top: 5px;
-      left: 5px;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: white;
-    }
-
-    .checkbox-wrapper input,
-    .radio-wrapper input {
-      opacity: 0;
-      position: absolute;
-    }
-
-    .checkbox-wrapper span,
-    .radio-wrapper span {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--gray-800);
-    }
-
-    .dark-mode .checkbox-wrapper span,
-    .dark-mode .radio-wrapper span {
-      color: var(--gray-900);
-    }
-
-    /* Location Options */
-    #locationInputs {
-      margin-top: 16px;
-      display: none;
-      background: var(--gray-100);
-      padding: 16px;
-      border-radius: var(--radius-sm);
-      animation: fadeIn 0.3s ease-out;
-    }
-
-    .dark-mode #locationInputs {
-      background: var(--gray-300);
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    #locationInputs.active {
-      display: block;
-    }
-
-    .location-group {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    #getLocationButton {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      font-weight: 500;
-      transition: var(--transition);
-    }
-
-    #getLocationButton:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-    }
-
-    #locationStatus {
-      font-size: 0.85rem;
-      margin-top: 12px;
-      padding: 8px 12px;
-      border-radius: var(--radius-sm);
-      background: var(--gray-200);
-      display: none;
-    }
-
-    #locationStatus.active {
-      display: block;
-      animation: fadeIn 0.3s ease-out;
-    }
-
-    .dark-mode #locationStatus {
-      background: var(--gray-800);
-    }
-
-    /* Search Preview */
-    #queryPreview {
-      word-wrap: break-word;
-      background: var(--gray-200);
-      padding: 16px;
-      border-radius: var(--radius-sm);
-      font-family: 'Consolas', monospace;
-      font-size: 0.9rem;
-      position: relative;
-      border-left: 4px solid var(--primary);
-    }
-
-    .dark-mode #queryPreview {
-      background: var(--gray-300);
-    }
-
-    .preview-label {
-      position: absolute;
-      top: -10px;
-      left: 16px;
-      background: var(--primary);
-      color: white;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    /* Fixed Search Button */
-    #searchButton {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: calc(100% - 48px);
-      max-width: 400px;
-      padding: 16px;
-      font-size: 1rem;
-      font-weight: 600;
-      background: var(--primary);
-      border: none;
-      border-radius: 30px;
-      color: white;
-      cursor: pointer;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      box-shadow: 0 4px 14px rgba(29, 161, 242, 0.4);
-      transition: var(--transition);
-    }
-
-    #searchButton:hover {
-      background: var(--primary-dark);
-      transform: translateX(-50%) translateY(-2px);
-      box-shadow: 0 6px 20px rgba(29, 161, 242, 0.5);
-    }
-
-    .separator {
-      margin: 10px 0;
-      border: none;
-      height: 1px;
-      background: var(--gray-200);
-    }
-
-    .dark-mode .separator {
-      background: var(--gray-300);
-    }
-
-    /* Tooltip */
-    .tooltip {
-      position: relative;
-      display: inline-block;
-      margin-left: 6px;
-    }
-
-    .tooltip .material-icons-round {
-      font-size: 18px;
-      color: var(--gray-300);
-      cursor: help;
-    }
-
-    .tooltip .tooltip-text {
-      visibility: hidden;
-      width: 200px;
-      background-color: var(--gray-800);
-      color: white;
-      text-align: center;
-      border-radius: 6px;
-      padding: 8px;
-      position: absolute;
-      z-index: 1;
-      bottom: 125%;
-      left: 50%;
-      margin-left: -100px;
-      opacity: 0;
-      transition: opacity 0.3s;
-      font-size: 0.8rem;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-
-    .tooltip:hover .tooltip-text {
-      visibility: visible;
-      opacity: 1;
-    }
-
-    @media (max-width: 768px) {
-      .main-container {
-        grid-template-columns: 1fr;
-      }
-      
-      header {
-        padding: 0 16px;
-      }
-      
-      .container {
-        padding: 16px;
-      }
-      
-      .card {
-        padding: 16px;
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0b0d">
+<title>X Advanced Search</title>
+<meta name="description" content="A query builder for X (Twitter) advanced search: every operator the web search understands, compiled live and opened in one click.">
+
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../assets/vector.css">
+<link rel="stylesheet" href="../assets/search.css">
+<script src="../assets/cassette.js"></script>
+
+<style>
+/* Channel 01 runs on the amber band. */
+:root { --accent: var(--s3); }
+</style>
 </head>
 <body>
-  <header>
-    <div class="logo">
-      <span class="material-icons-round logo-icon">search</span>
-      <h1>Advanced Twitter Search</h1>
+
+<main class="page">
+
+    <!-- ── HEADER ──────────────────────────────────────────────────────── -->
+    <header class="chassis page-head">
+
+        <div class="head-row">
+
+            <div class="brand">
+                <h1 class="designation">X &middot; ADVANCED SEARCH</h1>
+                <span class="stripe brand-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="label">QUERY TERMINAL 01 &middot; X.COM/SEARCH</span>
+            </div>
+
+            <div class="bezel head-well">
+                <div class="screen" id="headScreen">
+                    <div class="well-row">
+                        <span class="phos" id="clock" role="timer" aria-label="System clock">--:--:--</span>
+                        <canvas id="scope" width="120" height="28" aria-hidden="true"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="head-ctl">
+                <div class="lamp">
+                    <span class="led on green" aria-hidden="true"></span>
+                    <span class="label">PWR</span>
+                </div>
+                <div class="phos-sw">
+                    <span class="label">AMBER</span>
+                    <label class="rocker">
+                        <input type="checkbox" id="phosSw" data-no-save aria-label="Display colour: amber or green">
+                        <span class="rock"></span>
+                    </label>
+                    <span class="label">GREEN</span>
+                </div>
+            </div>
+
+        </div>
+
+        <nav class="net-nav" aria-label="Search network">
+            <a class="key net" href="../x/" aria-current="page"><span class="net-ix">01</span> X</a>
+            <a class="key net" href="../bluesky/"><span class="net-ix">02</span> BLUESKY</a>
+            <a class="key net" href="../threads/"><span class="net-ix">03</span> THREADS</a>
+            <a class="key net" href="../"><span class="net-ix">&mdash;</span> INDEX</a>
+        </nav>
+
+    </header>
+
+    <!-- ── READOUT ─────────────────────────────────────────────────────── -->
+    <section class="chassis readout" aria-label="Compiled query">
+        <div class="rack-head">
+            <span class="rack-ix" aria-hidden="true">00</span>
+            <span class="designation rack-name">QUERY OUTPUT</span>
+            <span class="spacer"></span>
+            <span class="row-tight">
+                <span class="led" id="qLed" aria-hidden="true"></span>
+                <span class="label" id="qStat">IDLE</span>
+            </span>
+        </div>
+        <div class="readout-body">
+            <div class="readout-row">
+                <span class="label">QUERY</span>
+                <pre class="screen q-screen empty" id="qOut" aria-live="polite"></pre>
+            </div>
+            <div class="readout-row">
+                <span class="label">URL</span>
+                <pre class="screen u-screen empty" id="uOut"></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── RACKS ───────────────────────────────────────────────────────── -->
+    <div class="racks">
+
+        <!-- 01 · WORDS -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">01</span>
+                <span class="designation rack-name">WORDS</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <label class="label" for="xAll">ALL OF THESE WORDS <span class="op">a b</span></label>
+                    <input class="field" type="text" id="xAll" placeholder="cassette futurism" autocomplete="off">
+                    <span class="hint">A space means AND. <code>*</code> is a single-word wildcard inside a phrase.</span>
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="xPhrase">EXACT PHRASE <span class="op">"a b"</span></label>
+                    <input class="field" type="text" id="xPhrase" placeholder="state of the art" autocomplete="off">
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="xAny">ANY OF THESE WORDS <span class="op">(a OR b)</span></label>
+                    <input class="field" type="text" id="xAny" placeholder="nasa, esa, jaxa" autocomplete="off">
+                    <span class="hint">Comma or space separated. Grouped so the OR can't leak into the rest of the query.</span>
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="xNone">NONE OF THESE WORDS <span class="op">-a -b</span></label>
+                    <input class="field" type="text" id="xNone" placeholder="crypto, giveaway" autocomplete="off">
+                </div>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="fld">
+                    <label class="label" for="xTags">HASHTAGS <span class="op">#a</span></label>
+                    <input class="field" type="text" id="xTags" placeholder="#retrofuturism, #synthwave" autocomplete="off">
+                    <div class="seg-ctl" role="radiogroup" aria-label="Hashtag match">
+                        <label><input type="radio" name="xTagMode" value="any" checked><span>ANY</span></label>
+                        <label><input type="radio" name="xTagMode" value="all"><span>ALL</span></label>
+                    </div>
+                </div>
+
+                <div class="pair">
+                    <div class="fld">
+                        <label class="label" for="xCash">CASHTAG <span class="op">$TSLA</span></label>
+                        <input class="field" type="text" id="xCash" placeholder="TSLA" autocomplete="off">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="xLang">LANGUAGE <span class="op">lang:</span></label>
+                        <select class="field" id="xLang">
+                            <option value="">ANY</option>
+                            <option value="en">EN — English</option>
+                            <option value="es">ES — Spanish</option>
+                            <option value="fr">FR — French</option>
+                            <option value="de">DE — German</option>
+                            <option value="it">IT — Italian</option>
+                            <option value="pt">PT — Portuguese</option>
+                            <option value="nl">NL — Dutch</option>
+                            <option value="ru">RU — Russian</option>
+                            <option value="ar">AR — Arabic</option>
+                            <option value="hi">HI — Hindi</option>
+                            <option value="ja">JA — Japanese</option>
+                            <option value="ko">KO — Korean</option>
+                            <option value="zh">ZH — Chinese</option>
+                            <option value="tr">TR — Turkish</option>
+                            <option value="pl">PL — Polish</option>
+                            <option value="sv">SV — Swedish</option>
+                            <option value="und">UND — undefined</option>
+                        </select>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 02 · ACCOUNTS -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">02</span>
+                <span class="designation rack-name">ACCOUNTS</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <label class="label" for="xFrom">FROM <span class="op">from:</span></label>
+                    <input class="field" type="text" id="xFrom" placeholder="@nasa, @esa" autocomplete="off">
+                    <span class="hint">Several handles are grouped with OR — one account or the other, not both at once.</span>
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="xTo">REPLIES TO <span class="op">to:</span></label>
+                    <input class="field" type="text" id="xTo" placeholder="@nasa" autocomplete="off">
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="xMention">MENTIONING <span class="op">@handle</span></label>
+                    <input class="field" type="text" id="xMention" placeholder="@nasa" autocomplete="off">
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="xNotFrom">EXCLUDE SENDERS <span class="op">-from:</span></label>
+                    <input class="field" type="text" id="xNotFrom" placeholder="@spamaccount" autocomplete="off">
+                </div>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="fld">
+                    <label class="label">ACCOUNT CLASS</label>
+                    <div class="checks">
+                        <label class="chk"><input type="checkbox" id="xVerified"><span class="box"></span><span class="label">VERIFIED</span></label>
+                        <label class="chk"><input type="checkbox" id="xBlue"><span class="box"></span><span class="label">BLUE</span></label>
+                        <label class="chk"><input type="checkbox" id="xFollows"><span class="box"></span><span class="label">I FOLLOW</span></label>
+                    </div>
+                    <span class="hint"><code>filter:verified</code> / <code>filter:blue_verified</code> / <code>filter:follows</code>. The last needs you signed in and cannot be negated.</span>
+                </div>
+
+                <div class="pair">
+                    <div class="fld">
+                        <label class="label" for="xList">LIST ID <span class="op">list:</span></label>
+                        <input class="field" type="text" id="xList" placeholder="715919216927322112" autocomplete="off">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="xSource">SOURCE APP <span class="op">source:</span></label>
+                        <input class="field" type="text" id="xSource" placeholder="Twitter_for_iOS" autocomplete="off">
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 03 · ENGAGEMENT -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">03</span>
+                <span class="designation rack-name">ENGAGEMENT</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="trio">
+                    <div class="fld">
+                        <label class="label" for="xMinFaves">MIN LIKES</label>
+                        <input class="field" type="number" min="0" step="1" id="xMinFaves" placeholder="100" inputmode="numeric">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="xMinRts">MIN RTS</label>
+                        <input class="field" type="number" min="0" step="1" id="xMinRts" placeholder="50" inputmode="numeric">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="xMinReplies">MIN REPLIES</label>
+                        <input class="field" type="number" min="0" step="1" id="xMinReplies" placeholder="10" inputmode="numeric">
+                    </div>
+                </div>
+                <span class="hint"><code>min_faves:</code> <code>min_retweets:</code> <code>min_replies:</code></span>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="trio">
+                    <div class="fld">
+                        <label class="label" for="xMaxFaves">MAX LIKES</label>
+                        <input class="field" type="number" min="0" step="1" id="xMaxFaves" placeholder="500" inputmode="numeric">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="xMaxRts">MAX RTS</label>
+                        <input class="field" type="number" min="0" step="1" id="xMaxRts" placeholder="500" inputmode="numeric">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="xMaxReplies">MAX REPLIES</label>
+                        <input class="field" type="number" min="0" step="1" id="xMaxReplies" placeholder="100" inputmode="numeric">
+                    </div>
+                </div>
+                <span class="hint">There is no max operator — a ceiling is the minimum, negated: <code>-min_faves:500</code> keeps only posts under 500.</span>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <label class="chk"><input type="checkbox" id="xHasEng"><span class="box"></span><span class="label">HAS ANY ENGAGEMENT</span></label>
+                <span class="hint"><code>filter:has_engagement</code> — at least one reply, like or repost.</span>
+
+            </div>
+        </section>
+
+        <!-- 04 · TIME -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">04</span>
+                <span class="designation rack-name">TIME</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="pair">
+                    <div class="fld">
+                        <label class="label" for="xSince">SINCE <span class="op">since:</span></label>
+                        <input class="field" type="date" id="xSince">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="xUntil">UNTIL <span class="op">until:</span></label>
+                        <input class="field" type="date" id="xUntil">
+                    </div>
+                </div>
+                <span class="hint"><code>since:</code> is inclusive, <code>until:</code> is not — a single day is <code>since:D until:D+1</code>.</span>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="pair">
+                    <div class="fld">
+                        <label class="label" for="xWithinN">LAST N <span class="op">within_time:</span></label>
+                        <input class="field" type="number" min="0" step="1" id="xWithinN" placeholder="7" inputmode="numeric">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="xWithinU">UNIT</label>
+                        <select class="field" id="xWithinU">
+                            <option value="d">DAYS</option>
+                            <option value="h">HOURS</option>
+                            <option value="m">MINUTES</option>
+                            <option value="s">SECONDS</option>
+                        </select>
+                    </div>
+                </div>
+                <span class="hint">A rolling window. Use this <em>or</em> the dates above — together they fight.</span>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="fld">
+                    <label class="label" for="xConv">CONVERSATION ID <span class="op">conversation_id:</span></label>
+                    <input class="field" type="text" id="xConv" placeholder="1234567890123456789" autocomplete="off">
+                    <span class="hint">Every post in one thread. Use the id of the first post.</span>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 05 · POST TYPE -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">05</span>
+                <span class="designation rack-name">POST TYPE</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <span class="label" id="xRepLbl">REPLIES</span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="xRepLbl">
+                        <label><input type="radio" name="xReplies" value="" checked><span>ANY</span></label>
+                        <label><input type="radio" name="xReplies" value="only"><span>ONLY</span></label>
+                        <label><input type="radio" name="xReplies" value="none"><span>NONE</span></label>
+                    </div>
+                    <span class="hint"><code>filter:replies</code> / <code>-filter:replies</code></span>
+                </div>
+
+                <div class="fld">
+                    <span class="label" id="xRtLbl">REPOSTS</span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="xRtLbl">
+                        <label><input type="radio" name="xRts" value="" checked><span>DEFAULT</span></label>
+                        <label><input type="radio" name="xRts" value="include"><span>INCLUDE</span></label>
+                        <label><input type="radio" name="xRts" value="only"><span>ONLY</span></label>
+                        <label><input type="radio" name="xRts" value="none"><span>NONE</span></label>
+                    </div>
+                    <span class="hint">Search hides reposts by default. <code>include:nativeretweets</code> puts them back; <code>filter:nativeretweets</code> shows nothing else. Reposts are only indexed for about a week.</span>
+                </div>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="fld">
+                    <span class="label">SHAPE</span>
+                    <div class="checks">
+                        <label class="chk"><input type="checkbox" id="xQuote"><span class="box"></span><span class="label">QUOTES</span></label>
+                        <label class="chk"><input type="checkbox" id="xSelfThread"><span class="box"></span><span class="label">SELF-THREADS</span></label>
+                        <label class="chk"><input type="checkbox" id="xHasTags"><span class="box"></span><span class="label">HAS HASHTAG</span></label>
+                        <label class="chk"><input type="checkbox" id="xHasMentions"><span class="box"></span><span class="label">HAS MENTION</span></label>
+                        <label class="chk"><input type="checkbox" id="xSafe"><span class="box"></span><span class="label">SAFE ONLY</span></label>
+                    </div>
+                    <span class="hint"><code>filter:quote</code> <code>filter:self_threads</code> <code>filter:hashtags</code> <code>filter:mentions</code> <code>filter:safe</code></span>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 06 · MEDIA & LINKS -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">06</span>
+                <span class="designation rack-name">MEDIA &amp; LINKS</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <span class="label">MEDIA</span>
+                    <div class="checks">
+                        <label class="chk"><input type="checkbox" id="xMedia"><span class="box"></span><span class="label">ANY MEDIA</span></label>
+                        <label class="chk"><input type="checkbox" id="xImages"><span class="box"></span><span class="label">IMAGES</span></label>
+                        <label class="chk"><input type="checkbox" id="xVideos"><span class="box"></span><span class="label">VIDEOS</span></label>
+                        <label class="chk"><input type="checkbox" id="xNativeVideo"><span class="box"></span><span class="label">NATIVE VIDEO</span></label>
+                        <label class="chk"><input type="checkbox" id="xTwimg"><span class="box"></span><span class="label">UPLOADED IMG</span></label>
+                        <label class="chk"><input type="checkbox" id="xSpaces"><span class="box"></span><span class="label">SPACES</span></label>
+                    </div>
+                    <span class="hint">These stack as AND. <code>filter:images filter:videos</code> asks for a post carrying both.</span>
+                </div>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="fld">
+                    <span class="label" id="xLinkLbl">LINKS</span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="xLinkLbl">
+                        <label><input type="radio" name="xLinks" value="" checked><span>ANY</span></label>
+                        <label><input type="radio" name="xLinks" value="only"><span>ONLY</span></label>
+                        <label><input type="radio" name="xLinks" value="none"><span>NONE</span></label>
+                    </div>
+                </div>
+
+                <div class="fld">
+                    <label class="label" for="xUrl">LINKS TO <span class="op">url:</span></label>
+                    <input class="field" type="text" id="xUrl" placeholder="nasa.gov" autocomplete="off">
+                    <span class="hint">Matches the resolved destination, so shorteners are followed. A hyphen in the domain is typed as an underscore: <code>url:t_mobile.com</code>.</span>
+                </div>
+
+                <label class="chk"><input type="checkbox" id="xNews"><span class="box"></span><span class="label">NEWS DOMAINS ONLY</span></label>
+                <span class="hint"><code>filter:news</code> — links to X's list of news publishers.</span>
+
+            </div>
+        </section>
+
+        <!-- 07 · PLACE -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">07</span>
+                <span class="designation rack-name">PLACE</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <label class="label" for="xNear">NEAR <span class="op">near: within:</span></label>
+                    <input class="field" type="text" id="xNear" placeholder="The Hague" autocomplete="off">
+                </div>
+
+                <div class="pair">
+                    <div class="fld">
+                        <label class="label" for="xRadius">RADIUS</label>
+                        <input class="field" type="number" min="1" step="1" id="xRadius" placeholder="15" inputmode="numeric">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="xUnit">UNIT</label>
+                        <select class="field" id="xUnit">
+                            <option value="mi">MILES</option>
+                            <option value="km">KM</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="rule" aria-hidden="true"></div>
+
+                <div class="fld">
+                    <label class="label" for="xLat">COORDINATES <span class="op">geocode:</span></label>
+                    <div class="pair">
+                        <input class="field" type="text" id="xLat" placeholder="lat 37.7764" autocomplete="off" aria-label="Latitude">
+                        <input class="field" type="text" id="xLon" placeholder="lon -122.4172" autocomplete="off" aria-label="Longitude">
+                    </div>
+                    <span class="hint">Coordinates win over the place name when both are filled. Radius above applies to either.</span>
+                </div>
+
+                <button class="key" type="button" id="geoBtn">USE MY LOCATION</button>
+                <span class="hint" id="geoStat">Nothing is sent anywhere — the fix is written straight into the fields above.</span>
+
+            </div>
+        </section>
+
+        <!-- 08 · RESULTS -->
+        <section class="chassis rack">
+            <div class="rack-head">
+                <span class="rack-ix" aria-hidden="true">08</span>
+                <span class="designation rack-name">RESULTS</span>
+            </div>
+            <div class="rack-body">
+
+                <div class="fld">
+                    <span class="label" id="xTabLbl">TAB</span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="xTabLbl">
+                        <label><input type="radio" name="xTab" value="" checked><span>TOP</span></label>
+                        <label><input type="radio" name="xTab" value="live"><span>LATEST</span></label>
+                        <label><input type="radio" name="xTab" value="user"><span>PEOPLE</span></label>
+                        <label><input type="radio" name="xTab" value="image"><span>PHOTOS</span></label>
+                        <label><input type="radio" name="xTab" value="video"><span>VIDEOS</span></label>
+                    </div>
+                    <span class="hint">Lands on <code>?f=</code>. Top is ranked; Latest is the raw reverse-chronological index and is usually what an operator-heavy query wants.</span>
+                </div>
+
+                <div class="fld">
+                    <span class="label" id="xHostLbl">HOST</span>
+                    <div class="seg-ctl" role="radiogroup" aria-labelledby="xHostLbl">
+                        <label><input type="radio" name="xHost" value="x.com" checked><span>X.COM</span></label>
+                        <label><input type="radio" name="xHost" value="twitter.com"><span>TWITTER.COM</span></label>
+                    </div>
+                    <span class="hint">Both resolve to the same index; twitter.com is kept for clients and archives still pinned to it.</span>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- NOTE -->
+        <section class="chassis note wide">
+            <span class="tape">READ ME</span>
+            <div class="note-body">
+                <p>These operators are a property of the <strong>web and app search</strong>, not of the public API — v1.1, v2 and Premium Search accept a different, smaller set, so a query built here will not transplant into a script unchanged.</p>
+                <p>Practical ceilings worth knowing: a query holds roughly <strong>22–23 operators</strong> before it is truncated; <code>filter:nativeretweets</code> and the <code>card_name:</code> family only reach back about <strong>7–10 days</strong>; and a bare time range with no search terms at all tends to return nothing — give it at least one word.</p>
+                <p>Operator reference compiled from Igor Brigadir's <a class="key" href="https://github.com/igorbrigadir/twitter-advanced-search" target="_blank" rel="noopener">TWITTER-ADVANCED-SEARCH &rarr;</a></p>
+            </div>
+        </section>
+
     </div>
-    <button id="toggleDarkMode">
-      <span class="material-icons-round">dark_mode</span>
-    </button>
-  </header>
 
-  <div class="container">
-    <div class="main-container">
-      <!-- Preview Card (Spanning full width) -->
-      <div class="card preview-card">
-        <h2>
-          <span class="material-icons-round">code</span>
-          Search Preview
-        </h2>
-        <div id="queryPreview">
-          <span class="preview-label">Query</span>
+    <!-- ── FOOTER ──────────────────────────────────────────────────────── -->
+    <footer class="chassis page-foot">
+        <a class="key" href="../">&larr; SEARCH INDEX</a>
+        <a class="key" href="https://isaiart.com">ISAIART.COM</a>
+        <div class="foot-right">
+            <span class="row-tight"><span class="led on green" aria-hidden="true"></span><span class="label">NO BACKEND &middot; NOTHING LEAVES THE BROWSER</span></span>
         </div>
-      </div>
+    </footer>
 
-      <!-- Card: Search Keywords -->
-      <div class="card">
-        <h2>
-          <span class="material-icons-round">text_fields</span>
-          Search Keywords
-        </h2>
-        <div class="form-group">
-          <label for="exactPhrase">Exact Phrase</label>
-          <div class="input-group">
-            <span class="material-icons-round">format_quote</span>
-            <input type="text" id="exactPhrase" placeholder="e.g., artificial intelligence">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="anyOfTheseWords">Any of These Words
-            <div class="tooltip">
-              <span class="material-icons-round">help_outline</span>
-              <span class="tooltip-text">Separate words with commas. Will be grouped with (OR) logic.</span>
-            </div>
-          </label>
-          <div class="input-group">
-            <span class="material-icons-round">filter_list</span>
-            <input type="text" id="anyOfTheseWords" placeholder="e.g., horse, orange, cow">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="noneOfTheseWords">None of These Words</label>
-          <div class="input-group">
-            <span class="material-icons-round">block</span>
-            <input type="text" id="noneOfTheseWords" placeholder="e.g., politics, sports">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="hashtags">Hashtags</label>
-          <div class="input-group">
-            <span class="material-icons-round">tag</span>
-            <input type="text" id="hashtags" placeholder="e.g., #AI, #ML">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="language">Language</label>
-          <div class="input-group">
-            <span class="material-icons-round">language</span>
-            <select id="language">
-              <option value="">Any Language</option>
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-              <option value="it">Italian</option>
-              <option value="pt">Portuguese</option>
-              <option value="ja">Japanese</option>
-              <option value="ko">Korean</option>
-              <option value="ar">Arabic</option>
-              <option value="hi">Hindi</option>
-            </select>
-          </div>
-        </div>
-      </div>
+</main>
 
-      <!-- Card: Account Options -->
-      <div class="card">
-        <h2>
-          <span class="material-icons-round">person</span>
-          Account Options
-        </h2>
-        <div class="form-group">
-          <label for="fromAccount">From Account</label>
-          <div class="input-group">
-            <span class="material-icons-round">person</span>
-            <input type="text" id="fromAccount" placeholder="e.g., @username">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="toAccount">To Account</label>
-          <div class="input-group">
-            <span class="material-icons-round">alternate_email</span>
-            <input type="text" id="toAccount" placeholder="e.g., @username">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="mentioningAccount">Mentioning Account</label>
-          <div class="input-group">
-            <span class="material-icons-round">alternate_email</span>
-            <input type="text" id="mentioningAccount" placeholder="e.g., @username">
-          </div>
-        </div>
-      </div>
-
-      <!-- Card: Engagement & Date -->
-      <div class="card">
-        <h2>
-          <span class="material-icons-round">analytics</span>
-          Engagement & Date
-        </h2>
-        <div class="form-group">
-          <label for="minLikes">Minimum Likes
-            <div class="tooltip">
-              <span class="material-icons-round">help_outline</span>
-              <span class="tooltip-text">Filter tweets with at least this many likes</span>
-            </div>
-          </label>
-          <div class="input-group">
-            <span class="material-icons-round">favorite</span>
-            <input type="number" id="minLikes" placeholder="e.g., 100">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="minRetweets">Minimum Retweets</label>
-          <div class="input-group">
-            <span class="material-icons-round">repeat</span>
-            <input type="number" id="minRetweets" placeholder="e.g., 50">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="minReplies">Minimum Replies</label>
-          <div class="input-group">
-            <span class="material-icons-round">reply</span>
-            <input type="number" id="minReplies" placeholder="e.g., 10">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="checkbox-wrapper">
-            <input type="checkbox" id="excludeRetweets">
-            <span class="custom-checkbox"></span>
-            <span>Exclude Retweets (-is:retweet)</span>
-          </label>
-        </div>
-        
-        <div class="separator"></div>
-        
-        <div class="form-group">
-          <label for="beforeDate">Before Date</label>
-          <div class="input-group">
-            <span class="material-icons-round">event</span>
-            <input type="date" id="beforeDate">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="sinceDate">Since Date</label>
-          <div class="input-group">
-            <span class="material-icons-round">event</span>
-            <input type="date" id="sinceDate">
-          </div>
-        </div>
-      </div>
-
-      <!-- Card: Media & Location -->
-      <div class="card">
-        <h2>
-          <span class="material-icons-round">perm_media</span>
-          Media & Location
-        </h2>
-        
-        <div class="form-group">
-          <label>Media Type</label>
-          <div class="checkbox-group">
-            <label class="checkbox-wrapper">
-              <input type="checkbox" id="includeImages">
-              <span class="custom-checkbox"></span>
-              <span>Include Images</span>
-            </label>
-            <label class="checkbox-wrapper">
-              <input type="checkbox" id="includeVideos">
-              <span class="custom-checkbox"></span>
-              <span>Include Videos</span>
-            </label>
-          </div>
-        </div>
-        
-        <div class="form-group">
-          <label>Link Options</label>
-          <div class="radio-group">
-            <label class="radio-wrapper">
-              <input type="radio" name="linkOption" value="ignore" checked>
-              <span class="custom-radio"></span>
-              <span>Don't Care</span>
-            </label>
-            <label class="radio-wrapper">
-              <input type="radio" name="linkOption" value="exclude">
-              <span class="custom-radio"></span>
-              <span>Exclude Links</span>
-            </label>
-            <label class="radio-wrapper">
-              <input type="radio" name="linkOption" value="only">
-              <span class="custom-radio"></span>
-              <span>Only Links</span>
-            </label>
-          </div>
-        </div>
-        
-        <div class="separator"></div>
-        
-        <div class="form-group">
-          <label class="checkbox-wrapper">
-            <input type="checkbox" id="enableLocation">
-            <span class="custom-checkbox"></span>
-            <span>Enable Location Search</span>
-          </label>
-          <div id="locationInputs">
-            <div class="location-group">
-              <button id="getLocationButton">
-                <span class="material-icons-round">my_location</span>
-                Get My Location
-              </button>
-              <div class="input-group" style="width: 120px;">
-                <span class="material-icons-round">explore</span>
-                <input type="number" id="searchRadius" placeholder="Radius (mi)" value="15">
-              </div>
-            </div>
-            <div class="form-group" style="margin-top: 12px;">
-              <div class="input-group">
-                <span class="material-icons-round">location_on</span>
-                <input type="text" id="manualLocation" placeholder="Or enter a place name">
-              </div>
-            </div>
-            <div id="locationStatus"></div>
-          </div>
-        </div>
-      </div>
+<!-- ── TRANSPORT DOCK ──────────────────────────────────────────────────── -->
+<div class="dock">
+    <span class="stripe dock-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <div class="dock-inner">
+        <button class="key key-go" type="button" id="goBtn">SEARCH X &rarr;</button>
+        <button class="key" type="button" id="copyBtn">COPY <span class="key-lbl">QUERY</span></button>
+        <button class="key" type="button" id="copyUrlBtn">COPY <span class="key-lbl">URL</span></button>
+        <button class="key key-danger" type="button" id="resetBtn">CLEAR</button>
+        <span class="spacer"></span>
+        <span class="label count" id="opCount">0 TERMS</span>
     </div>
-  </div>
+</div>
 
-  <!-- Fixed Search Button -->
-  <button id="searchButton">
-    <span class="material-icons-round">search</span>
-    Search on Twitter
-  </button>
+<script src="../assets/search.js"></script>
+<script>
+(function () {
+    'use strict';
 
-  <script>
-    // Global variables for location
-    let latitude = null;
-    let longitude = null;
+    var S = window.SRCH;
 
-    // Dark Mode Toggle
-    document.getElementById('toggleDarkMode').addEventListener('click', function() {
-      document.body.classList.toggle('dark-mode');
-      const icon = this.querySelector('.material-icons-round');
-      if (document.body.classList.contains('dark-mode')) {
-        icon.textContent = 'light_mode';
-      } else {
-        icon.textContent = 'dark_mode';
-      }
-    });
-
-    // Toggle location inputs visibility
-    document.getElementById('enableLocation').addEventListener('change', function() {
-      const locationInputs = document.getElementById('locationInputs');
-      if (this.checked) {
-        locationInputs.classList.add('active');
-      } else {
-        locationInputs.classList.remove('active');
-        latitude = null;
-        longitude = null;
-        document.getElementById('locationStatus').textContent = '';
-        document.getElementById('locationStatus').classList.remove('active');
-        document.getElementById('searchRadius').value = '15';
-        document.getElementById('manualLocation').value = '';
-      }
-      updateQueryPreview();
-    });
-
-    // Get location button click
-    document.getElementById('getLocationButton').addEventListener('click', function() {
-      const locationStatus = document.getElementById('locationStatus');
-      locationStatus.textContent = 'Fetching location...';
-      locationStatus.style.color = '#888';
-      locationStatus.classList.add('active');
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          function(position) {
-            latitude = position.coords.latitude;
-            longitude = position.coords.longitude;
-            locationStatus.textContent = `Location acquired: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-            locationStatus.style.color = 'var(--success)';
-            updateQueryPreview();
-          },
-          function(error) {
-            switch (error.code) {
-              case error.PERMISSION_DENIED:
-                locationStatus.textContent = "User denied the request for Geolocation.";
-                break;
-              case error.POSITION_UNAVAILABLE:
-                locationStatus.textContent = "Location information is unavailable.";
-                break;
-              case error.TIMEOUT:
-                locationStatus.textContent = "The request to get user location timed out.";
-                break;
-              default:
-                locationStatus.textContent = "An unknown error occurred.";
-                break;
-            }
-            locationStatus.style.color = 'var(--danger)';
-          },
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-        );
-      } else {
-        locationStatus.textContent = "Geolocation is not supported by this browser.";
-        locationStatus.style.color = 'var(--danger)';
-      }
-    });
-
-    // Build query string from all fields
-    function buildQuery() {
-      let query = '';
-      
-      const exactPhrase = document.getElementById('exactPhrase').value;
-      if (exactPhrase) {
-        query += `"${exactPhrase}" `;
-      }
-      
-      // Updated: Properly group OR statements with parentheses
-      const anyWords = document.getElementById('anyOfTheseWords').value;
-      if (anyWords) {
-        const wordsArr = anyWords.split(',').map(w => w.trim()).filter(w => w.length > 0);
-        if (wordsArr.length > 1) {
-          query += `(${wordsArr.join(' OR ')}) `;
-        } else if (wordsArr.length === 1) {
-          query += `${wordsArr[0]} `;
+    /* ── Geolocation ─────────────────────────────────────────────────────────
+       Written straight into the two coordinate fields so the value is visible,
+       editable and saved with the rest of the console state — a hidden pair of
+       variables would silently outlive a CLEAR. */
+    var geoStat = S.el('geoStat');
+    S.el('geoBtn').addEventListener('click', function () {
+        if (!navigator.geolocation) {
+            geoStat.textContent = 'This browser has no geolocation.';
+            return;
         }
-      }
-      
-      const noneWords = document.getElementById('noneOfTheseWords').value;
-      if (noneWords) {
-        const arr = noneWords.split(',')
-          .map(word => '-' + word.trim())
-          .filter(word => word !== '-');
-        query += arr.join(' ') + ' ';
-      }
-      
-      const hashtags = document.getElementById('hashtags').value;
-      if (hashtags) {
-        query += `${hashtags.split(',').map(tag => {
-          tag = tag.trim();
-          return tag.startsWith('#') ? tag : '#' + tag;
-        }).join(' ')} `;
-      }
+        geoStat.textContent = 'Waiting for a fix…';
+        navigator.geolocation.getCurrentPosition(function (pos) {
+            S.el('xLat').value = pos.coords.latitude.toFixed(4);
+            S.el('xLon').value = pos.coords.longitude.toFixed(4);
+            if (!S.v('xRadius')) S.el('xRadius').value = '15';
+            geoStat.textContent = 'Fix acquired — ±' + Math.round(pos.coords.accuracy) + 'm.';
+            term.paint();
+        }, function (err) {
+            geoStat.textContent = err.code === err.PERMISSION_DENIED
+                ? 'Permission denied — type the coordinates instead.'
+                : 'No fix available — type the coordinates instead.';
+        }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
+    });
 
-      // New: Language Filter
-      const language = document.getElementById('language').value;
-      if (language) {
-        query += `lang:${language} `;
-      }
-      
-      const fromAccount = document.getElementById('fromAccount').value;
-      if (fromAccount) {
-        query += `from:${fromAccount.replace('@', '')} `;
-      }
-      
-      const toAccount = document.getElementById('toAccount').value;
-      if (toAccount) {
-        query += `to:${toAccount.replace('@', '')} `;
-      }
-      
-      const mentioningAccount = document.getElementById('mentioningAccount').value;
-      if (mentioningAccount) {
-        const mention = mentioningAccount.trim();
-        query += `${mention.startsWith('@') ? mention : '@' + mention} `;
-      }
-      
-      const minLikes = document.getElementById('minLikes').value;
-      if (minLikes) {
-        query += `min_faves:${minLikes} `;
-      }
-      
-      const minRetweets = document.getElementById('minRetweets').value;
-      if (minRetweets) {
-        query += `min_retweets:${minRetweets} `;
-      }
-      
-      const minReplies = document.getElementById('minReplies').value;
-      if (minReplies) {
-        query += `min_replies:${minReplies} `;
-      }
+    /* ── Compiler ────────────────────────────────────────────────────────────
+       Assembled in reading order: what the post says, who wrote it, how it did,
+       when it happened, what shape it is, what it carries, where it was. */
 
-      // New: Exclude Retweets
-      if (document.getElementById('excludeRetweets').checked) {
-        query += `-is:retweet `;
-      }
-      
-      const beforeDate = document.getElementById('beforeDate').value;
-      if (beforeDate) {
-        query += `until:${beforeDate} `;
-      }
-      
-      const sinceDate = document.getElementById('sinceDate').value;
-      if (sinceDate) {
-        query += `since:${sinceDate} `;
-      }
-      
-      if (document.getElementById('includeImages').checked) {
-        query += `filter:images `;
-      }
-      
-      if (document.getElementById('includeVideos').checked) {
-        query += `filter:videos `;
-      }
-      
-      if (document.getElementById('enableLocation').checked) {
-        const manualLocation = document.getElementById('manualLocation').value;
-        const searchRadius = document.getElementById('searchRadius').value;
-        if (manualLocation && searchRadius) {
-          query += `near:"${manualLocation}" within:${searchRadius}mi `;
-        } else if (latitude && longitude && searchRadius) {
-          query += `geocode:${latitude},${longitude},${searchRadius}mi `;
+    function compile() {
+        var p = [];
+        var push = function (s) { if (s) p.push(s); };
+
+        /* — words — */
+        push(S.v('xAll'));
+        push(S.phrase('xPhrase'));
+
+        var any = S.list('xAny');
+        if (any.length > 1) push('(' + any.join(' OR ') + ')');
+        else if (any.length === 1) push(any[0]);
+
+        S.list('xNone').forEach(function (w) { push('-' + w.replace(/^-+/, '')); });
+
+        var tags = S.tags('xTags');
+        if (tags.length > 1) {
+            push(S.r('xTagMode') === 'all' ? tags.join(' ') : '(' + tags.join(' OR ') + ')');
+        } else if (tags.length === 1) {
+            push(tags[0]);
         }
-      }
-      
-      const linkOption = document.querySelector('input[name="linkOption"]:checked').value;
-      if (linkOption === 'exclude') {
-        query += '-filter:links ';
-      } else if (linkOption === 'only') {
-        query += 'filter:links ';
-      }
-      
-      return query.trim();
+
+        var cash = S.v('xCash').replace(/^\$+/, '');
+        if (cash) push('$' + cash);
+
+        if (S.v('xLang')) push('lang:' + S.v('xLang'));
+
+        /* — accounts — */
+        var from = S.handles('xFrom');
+        if (from.length > 1) {
+            push('(' + from.map(function (h) { return 'from:' + h; }).join(' OR ') + ')');
+        } else if (from.length === 1) {
+            push('from:' + from[0]);
+        }
+
+        S.handles('xTo').forEach(function (h) { push('to:' + h); });
+        S.handles('xMention').forEach(function (h) { push('@' + h); });
+        S.handles('xNotFrom').forEach(function (h) { push('-from:' + h); });
+
+        if (S.c('xVerified')) push('filter:verified');
+        if (S.c('xBlue'))     push('filter:blue_verified');
+        if (S.c('xFollows'))  push('filter:follows');
+
+        if (S.v('xList'))   push('list:' + S.v('xList'));
+        if (S.v('xSource')) push('source:' + S.v('xSource').replace(/\s+/g, '_'));
+
+        /* — engagement. The ceilings are the same operator, negated. — */
+        if (S.n('xMinFaves'))   push('min_faves:' + S.n('xMinFaves'));
+        if (S.n('xMinRts'))     push('min_retweets:' + S.n('xMinRts'));
+        if (S.n('xMinReplies')) push('min_replies:' + S.n('xMinReplies'));
+        if (S.n('xMaxFaves'))   push('-min_faves:' + S.n('xMaxFaves'));
+        if (S.n('xMaxRts'))     push('-min_retweets:' + S.n('xMaxRts'));
+        if (S.n('xMaxReplies')) push('-min_replies:' + S.n('xMaxReplies'));
+        if (S.c('xHasEng'))     push('filter:has_engagement');
+
+        /* — time — */
+        if (S.v('xSince')) push('since:' + S.v('xSince'));
+        if (S.v('xUntil')) push('until:' + S.v('xUntil'));
+        if (S.n('xWithinN')) push('within_time:' + S.n('xWithinN') + S.v('xWithinU'));
+        if (S.v('xConv')) push('conversation_id:' + S.v('xConv'));
+
+        /* — shape — */
+        var replies = S.r('xReplies');
+        if (replies === 'only') push('filter:replies');
+        else if (replies === 'none') push('-filter:replies');
+
+        var rts = S.r('xRts');
+        if (rts === 'include') push('include:nativeretweets');
+        else if (rts === 'only') push('filter:nativeretweets');
+        else if (rts === 'none') push('-filter:nativeretweets');
+
+        if (S.c('xQuote'))       push('filter:quote');
+        if (S.c('xSelfThread'))  push('filter:self_threads');
+        if (S.c('xHasTags'))     push('filter:hashtags');
+        if (S.c('xHasMentions')) push('filter:mentions');
+        if (S.c('xSafe'))        push('filter:safe');
+
+        /* — media — */
+        if (S.c('xMedia'))       push('filter:media');
+        if (S.c('xImages'))      push('filter:images');
+        if (S.c('xVideos'))      push('filter:videos');
+        if (S.c('xNativeVideo')) push('filter:native_video');
+        if (S.c('xTwimg'))       push('filter:twimg');
+        if (S.c('xSpaces'))      push('filter:spaces');
+
+        var links = S.r('xLinks');
+        if (links === 'only') push('filter:links');
+        else if (links === 'none') push('-filter:links');
+
+        if (S.v('xUrl')) push('url:' + S.v('xUrl').replace(/^https?:\/\//i, '').replace(/\/+$/, ''));
+        if (S.c('xNews')) push('filter:news');
+
+        /* — place. geocode: and near: answer the same question, so the more
+             precise one wins rather than both being emitted. — */
+        var radius = S.n('xRadius') || '15';
+        var unit = S.v('xUnit') || 'mi';
+        var lat = S.v('xLat'), lon = S.v('xLon');
+        if (lat && lon) {
+            push('geocode:' + lat + ',' + lon + ',' + radius + unit);
+        } else if (S.v('xNear')) {
+            var near = S.v('xNear');
+            push('near:' + (/\s/.test(near) ? '"' + near + '"' : near));
+            push('within:' + radius + unit);
+        }
+
+        var q = p.join(' ');
+        var host = S.r('xHost') || 'x.com';
+        var tab = S.r('xTab');
+        var url = '';
+        if (q) {
+            url = 'https://' + host + '/search?q=' + encodeURIComponent(q) + '&src=typed_query';
+            if (tab) url += '&f=' + tab;
+        }
+
+        return { q: q, url: url, ops: p.length };
     }
 
-    // Update search preview card with current query
-    function updateQueryPreview() {
-      document.getElementById('queryPreview').textContent = buildQuery() || "Your search query will appear here...";
-    }
-
-    // Add subtle animations to inputs on focus
-    const allInputs = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select');
-    allInputs.forEach(input => {
-      input.addEventListener('focus', function() {
-        this.closest('.input-group').style.borderColor = 'var(--primary)';
-      });
-      
-      input.addEventListener('blur', function() {
-        if (!this.value) {
-          this.closest('.input-group').style.borderColor = 'transparent';
-        }
-      });
-      
-      // Attach event listeners to update preview when fields change
-      input.addEventListener('input', updateQueryPreview);
-      input.addEventListener('change', updateQueryPreview);
+    var term = S.terminal({
+        net: 'x',
+        storeKey: 'isa.search.x',
+        prefill: 'xAll',
+        compile: compile,
+        emptyQuery: 'Fill anything in — the query assembles as you type.'
     });
 
-    // Add listeners for checkboxes and radio buttons
-    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-    const radios = document.querySelectorAll('input[type="radio"]');
-    
-    checkboxes.forEach(checkbox => {
-      checkbox.addEventListener('change', updateQueryPreview);
-    });
-    
-    radios.forEach(radio => {
-      radio.addEventListener('change', updateQueryPreview);
-    });
-
-    // Search Button: Build URL and open in new tab
-    document.getElementById('searchButton').addEventListener('click', function() {
-      const query = buildQuery();
-      if (query) {
-        const twitterUrl = `https://twitter.com/search?q=${encodeURIComponent(query)}`;
-        window.open(twitterUrl, '_blank');
-        
-        // Add a nice ripple effect on click
-        const ripple = document.createElement('span');
-        ripple.style.position = 'absolute';
-        ripple.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-        ripple.style.borderRadius = '50%';
-        ripple.style.width = '100px';
-        ripple.style.height = '100px';
-        ripple.style.top = '50%';
-        ripple.style.left = '50%';
-        ripple.style.transform = 'translate(-50%, -50%) scale(0)';
-        ripple.style.animation = 'ripple 0.6s linear';
-        this.appendChild(ripple);
-        
-        setTimeout(() => {
-          this.removeChild(ripple);
-        }, 600);
-      }
-    });
-
-    // Add ripple animation to style
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes ripple {
-        0% {
-          transform: translate(-50%, -50%) scale(0);
-          opacity: 1;
-        }
-        100% {
-          transform: translate(-50%, -50%) scale(3);
-          opacity: 0;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Initialize preview on page load
-    updateQueryPreview();
-    
-    // Check if user prefers dark mode
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      document.body.classList.add('dark-mode');
-      document.querySelector('#toggleDarkMode .material-icons-round').textContent = 'light_mode';
-    }
-  </script>
+    if (window.CAS) CAS.pageTransition();
+})();
+</script>
 </body>
 </html>
