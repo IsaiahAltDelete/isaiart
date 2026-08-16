@@ -1,0 +1,663 @@
+/* ============================================================================
+   VECTOR — the flat design language for code.isaiart.com
+   ---------------------------------------------------------------------------
+   Same class API as cassette.css, opposite philosophy. Nothing here pretends
+   to be an object. No bevels, no moulded gradients, no drop shadows, no
+   screws, no plastic. The reference is the GRAPHIC side of the era rather
+   than the industrial one: NASA technical manuals, wireframe vector displays,
+   plotter output, Vignelli-grade colour bands.
+
+   THE RULE: everything is DRAWN, not built.
+     - structure is a 1px hairline, never a bevel
+     - emphasis is a flat colour block, never a highlight
+     - depth does not exist; hierarchy comes from contrast and spacing
+     - a control is a labelled rectangle that inverts, not a cap that travels
+
+   A page swaps between the two languages by swapping one <link>.
+   ========================================================================= */
+
+/* ── 1. TOKENS ───────────────────────────────────────────────────────────── */
+
+:root {
+    /* Ground — flat, no vignette */
+    --ground:      #0a0b0d;
+    --ground-2:    #101216;
+    --panel:       #0e1013;
+    --well:        #08090b;
+
+    /* Hairlines — the only structural device */
+    --rule:        #23272e;
+    --rule-hi:     #333942;
+    --rule-lo:     #191c21;
+
+    /* Ink */
+    --ink:         #d7dbe2;
+    --ink-soft:    #939aa5;
+    --ink-faint:   #656c77;
+
+    /* Display phosphor — switchable, used for code and readouts */
+    --phos:        #ffb000;
+    --phos-dim:    #b07b06;
+    --phos-faint:  #5c4108;
+
+    /* The stripe. Six flat bands, the identity mark of the whole system. */
+    --s1:          #e5484d;
+    --s2:          #ff6b35;
+    --s3:          #ffb000;
+    --s4:          #4ade80;
+    --s5:          #3dd6c4;
+    --s6:          #4c9aff;
+
+    --accent:      var(--s3);
+    --alert:       var(--s1);
+    --ok:          var(--s4);
+
+    --paper:       #e9e6df;
+
+    /* Geometry — square. Rounding reads as a physical moulding. */
+    --r:           0px;
+    --hair:        1px;
+
+    /* Motion — instant state changes, no easing theatre */
+    --snap:        70ms linear;
+    --slide:       140ms cubic-bezier(0.2, 0, 0.1, 1);
+
+    /* Type */
+    --f-display: 'Chakra Petch', 'Eurostile', 'Bahnschrift', sans-serif;
+    --f-mono:    'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+    --label-size:  0.625rem;
+    --label-track: 0.18em;
+
+    /* ── Compatibility aliases ──────────────────────────────────────────
+       cassette.css names, remapped onto flat equivalents, so a page can be
+       moved between the two languages by swapping one <link> without every
+       var() in its local stylesheet having to be rewritten. Depth-implying
+       tokens all collapse to hairlines here — that is the point. */
+    --chassis:      var(--panel);
+    --chassis-hi:   var(--ground-2);
+    --chassis-lo:   var(--panel);
+    --chassis-edge: var(--rule);
+    --chassis-deep: var(--rule-lo);
+    --screen:       var(--well);
+    --screen-deep:  var(--well);
+    --screen-edge:  var(--rule);
+    --phos-glow:    transparent;        /* nothing glows */
+    --amber:        #ffb000;
+    --amber-dim:    #b07b06;
+    --green:        var(--ok);
+    --green-dim:    #2b8f52;
+    --cyan:         var(--s5);
+    --tape:         var(--s3);
+    --tape-ink:     #0a0b0d;
+    --alert-dim:    #4a1712;
+    --caution:      var(--s3);
+    --r-chassis:    var(--r);
+    --r-key:        var(--r);
+    --r-screen:     var(--r);
+    --bevel:        0px;
+    --travel:       var(--snap);
+
+    color-scheme: dark;
+}
+
+:root[data-phosphor="green"] {
+    --phos:       #4ade80;
+    --phos-dim:   #2b8f52;
+    --phos-faint: #1b3f2a;
+}
+
+/* ── 2. RESET & GROUND ───────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+    font-family: var(--f-mono);
+    color: var(--ink);
+    background-color: var(--ground);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Engineering paper: a faint square grid, drawn not lit — and drifting.
+   The grid lives on a fixed pseudo-layer rather than on `body` so it can be
+   translated without the page scroll dragging it along, and so the drift is
+   one cheap compositor job instead of a repaint of every scroll frame.
+
+   `inset: -80px` overscans the viewport: the layer is bigger than what you
+   can see, so the translated edge never swings into view. One full cell
+   (32px) of travel in each axis is exactly one seamless loop — at 34s that
+   reads as drift rather than motion, which is the whole point.
+
+   `z-index: -1` is safe here because `html` has no background of its own:
+   body's background-color propagates to the canvas and is painted beneath
+   everything, so this layer still sits above the ground and below content. */
+body::before {
+    content: '';
+    position: fixed;
+    inset: -80px;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+        linear-gradient(var(--rule-lo) var(--hair), transparent var(--hair)),
+        linear-gradient(90deg, var(--rule-lo) var(--hair), transparent var(--hair));
+    background-size: 32px 32px, 32px 32px;
+    will-change: transform;
+    animation: grid-drift 34s linear infinite;
+}
+
+@keyframes grid-drift {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(32px, 32px, 0); }
+}
+
+/* A second, coarser rule every 8 cells — the major division on the paper.
+   Drifts at a different rate so the two never lock into one moiré plane. */
+body::after {
+    content: '';
+    position: fixed;
+    inset: -300px;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+        linear-gradient(var(--rule) var(--hair), transparent var(--hair)),
+        linear-gradient(90deg, var(--rule) var(--hair), transparent var(--hair));
+    background-size: 256px 256px, 256px 256px;
+    opacity: 0.5;
+    will-change: transform;
+    animation: grid-drift-major 96s linear infinite;
+}
+
+@keyframes grid-drift-major {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(256px, 256px, 0); }
+}
+
+/* Hardware furniture has no place in a drawing. */
+.screw, .vents, .reel { display: none !important; }
+
+/* ── 3. PANELS ───────────────────────────────────────────────────────────── */
+
+/* Was moulded plastic; now a ruled region. */
+.chassis {
+    position: relative;
+    background: var(--panel);
+    border: var(--hair) solid var(--rule);
+    border-radius: var(--r);
+    color: var(--ink);
+}
+.chassis::after { display: none; }        /* kill the moulding grain */
+
+.engraved { color: var(--ink); text-shadow: none; }
+
+.label {
+    font-family: var(--f-mono);
+    font-size: var(--label-size);
+    font-weight: 500;
+    letter-spacing: var(--label-track);
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-shadow: none;
+}
+.label-lite { color: var(--ink-faint); }
+
+.prose {
+    font-family: var(--f-mono);
+    font-size: 0.72rem;
+    line-height: 1.7;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    color: var(--ink-soft);
+    text-shadow: none;
+}
+
+.designation {
+    font-family: var(--f-display);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+    text-shadow: none;
+}
+
+/* ── 4. THE STRIPE ───────────────────────────────────────────────────────────
+   The identity mark. Six flat bands, no gradient, no bevel. Use it as a
+   masthead rule, a section divider, or a spine down the edge of a panel. */
+
+.stripe {
+    display: flex;
+    flex: 0 0 auto;
+    overflow: hidden;
+}
+.stripe i {
+    display: block;
+    width: 10px;
+    height: 100%;
+    min-height: 12px;
+}
+.stripe i:nth-child(1) { background: var(--s1); }
+.stripe i:nth-child(2) { background: var(--s2); }
+.stripe i:nth-child(3) { background: var(--s3); }
+.stripe i:nth-child(4) { background: var(--s4); }
+.stripe i:nth-child(5) { background: var(--s5); }
+.stripe i:nth-child(6) { background: var(--s6); }
+
+/* Horizontal rule version — a full-width banded bar */
+.stripe-bar { height: 3px; width: 100%; }
+.stripe-bar i { width: auto; flex: 1 1 0; height: 3px; min-height: 0; }
+
+/* A label printed as a solid colour block. Replaces the dymo tape. */
+.tape {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    background: var(--s3);
+    color: #0a0b0d;
+    font-family: var(--f-mono);
+    font-size: var(--label-size);
+    font-weight: 600;
+    letter-spacing: var(--label-track);
+    text-transform: uppercase;
+    border-radius: var(--r);
+    box-shadow: none;
+    text-shadow: none;
+}
+.tape-alt  { background: var(--s2); }
+.tape-cool { background: var(--s5); }
+
+/* Diagonal caution ruling, drawn flat */
+.hazard {
+    background-image: repeating-linear-gradient(
+        45deg, var(--s1) 0 6px, transparent 6px 12px);
+}
+
+/* ── 5. DISPLAY ──────────────────────────────────────────────────────────── */
+
+/* Was a recessed CRT well; now simply a darker ruled field. */
+.bezel {
+    position: relative;
+    background: transparent;
+    border: none;
+    border-radius: var(--r);
+    padding: 0;
+    box-shadow: none;
+}
+
+.screen {
+    position: relative;
+    background: var(--well);
+    border: var(--hair) solid var(--rule);
+    border-radius: var(--r);
+    color: var(--phos);
+    font-family: var(--f-mono);
+    overflow: hidden;
+    box-shadow: none;
+}
+/* No scanlines, no vignette — a vector display draws lines, it doesn't glow. */
+.screen::before, .screen::after { display: none; }
+
+.phos       { color: var(--phos); text-shadow: none; }
+.phos-dim   { color: var(--phos-dim); }
+.phos-amber { color: #ffb000; }
+.phos-green { color: #4ade80; }
+.phos-red   { color: var(--alert); }
+
+@keyframes trace-in { from { opacity: 0; } to { opacity: 1; } }
+.crt-on > * { animation: trace-in 160ms linear both; }
+
+/* ── 6. CONTROLS ─────────────────────────────────────────────────────────── */
+
+/* A control is a labelled rectangle. It inverts; it does not travel. */
+.key {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    min-height: 28px;
+    padding: 0.35em 0.75em;
+    font-family: var(--f-mono);
+    font-size: var(--label-size);
+    font-weight: 500;
+    letter-spacing: var(--label-track);
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--ink-soft);
+    background: transparent;
+    border: var(--hair) solid var(--rule);
+    border-radius: var(--r);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: none;
+    transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+
+.key:hover {
+    color: var(--ink);
+    border-color: var(--rule-hi);
+    background: var(--ground-2);
+}
+
+.key:active,
+.key[aria-pressed="true"],
+.key.latched {
+    color: #0a0b0d;
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: none;             /* no travel — this is not a cap */
+}
+
+.key:focus-visible {
+    outline: 2px solid var(--s6);
+    outline-offset: 1px;
+}
+
+.key[disabled] { opacity: 0.35; cursor: not-allowed; }
+
+.key-sq { width: 28px; min-height: 28px; padding: 0; }
+.key svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+.key-danger { color: var(--alert); border-color: color-mix(in srgb, var(--alert) 45%, var(--rule)); }
+.key-danger:hover { color: #0a0b0d; background: var(--alert); border-color: var(--alert); }
+.key-danger:active { color: #0a0b0d; background: var(--alert); border-color: var(--alert); }
+
+/* Two-state switch drawn as a split rectangle */
+.rocker {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 18px;
+    flex-shrink: 0;
+    background: transparent;
+    border: var(--hair) solid var(--rule);
+    border-radius: var(--r);
+    cursor: pointer;
+    box-shadow: none;
+}
+.rocker input { position: absolute; opacity: 0; width: 0; height: 0; }
+.rocker .rock {
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 50%;
+    background: var(--phos);
+    transition: transform var(--snap), background var(--snap);
+}
+.rocker input:checked + .rock { transform: translateX(100%); }
+.rocker input:focus-visible + .rock { outline: 2px solid var(--s6); outline-offset: 2px; }
+
+/* ── 7. INDICATORS ───────────────────────────────────────────────────────── */
+
+/* A flat marker, not a bulb. */
+.led {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 0;
+    flex-shrink: 0;
+    background: transparent;
+    border: var(--hair) solid var(--rule-hi);
+    box-shadow: none;
+    transition: background var(--snap), border-color var(--snap);
+}
+.led.on       { background: var(--s3); border-color: var(--s3); }
+.led.on.green { background: var(--ok); border-color: var(--ok); }
+.led.on.red   { background: var(--alert); border-color: var(--alert); }
+@keyframes mark-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.2; } }
+.led.blink { animation: mark-blink 1.4s steps(1, end) infinite; }
+
+/* Numerals are set, not simulated. The seven-segment grid is replaced by a
+   ruled readout so JS that writes into .seg still lands somewhere sensible. */
+.seg {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
+    padding: 2px 6px;
+    background: var(--well);
+    border: var(--hair) solid var(--rule);
+    border-radius: var(--r);
+    font-variant-numeric: tabular-nums;
+}
+.seg-digit {
+    position: relative;
+    width: 0.62em;
+    height: 1.05em;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+}
+/* Seven bars, drawn as thin flat rules rather than lit segments */
+.seg-digit i { position: absolute; background: var(--phos); opacity: 0.08; transition: opacity var(--snap); }
+.seg-digit i.on { opacity: 1; }
+.seg-digit i.a { top: 0;           left: 1px; right: 1px; height: 1px; }
+.seg-digit i.b { top: 1px;         right: 0;  width: 1px; height: calc(50% - 1px); }
+.seg-digit i.c { bottom: 1px;      right: 0;  width: 1px; height: calc(50% - 1px); }
+.seg-digit i.d { bottom: 0;        left: 1px; right: 1px; height: 1px; }
+.seg-digit i.e { bottom: 1px;      left: 0;   width: 1px; height: calc(50% - 1px); }
+.seg-digit i.f { top: 1px;         left: 0;   width: 1px; height: calc(50% - 1px); }
+.seg-digit i.g { top: 50%;         left: 1px; right: 1px; height: 1px; }
+
+.meter {
+    height: 3px;
+    background: var(--well);
+    border: var(--hair) solid var(--rule);
+    border-radius: var(--r);
+    overflow: hidden;
+}
+.meter i { display: block; height: 100%; width: 0; background: var(--phos); transition: width var(--slide); }
+
+/* ── 8. FIELDS ───────────────────────────────────────────────────────────── */
+
+.field {
+    width: 100%;
+    padding: 0.5em 0.65em;
+    font-family: var(--f-mono);
+    font-size: 0.8rem;
+    color: var(--ink);
+    background: var(--well);
+    border: var(--hair) solid var(--rule);
+    border-radius: var(--r);
+    outline: none;
+    box-shadow: none;
+    caret-color: var(--phos);
+}
+.field::placeholder { color: var(--ink-faint); }
+.field:focus { border-color: var(--accent); }
+
+select.field {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%),
+        linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 26px;
+}
+select.field option { background: var(--panel); color: var(--ink); }
+
+/* ── 9. PRINTOUT ─────────────────────────────────────────────────────────── */
+
+.printout {
+    position: relative;
+    background: var(--paper);
+    color: #16181c;
+    font-family: var(--f-mono);
+    padding: 12px 24px;
+}
+.printout::before, .printout::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 14px;
+    background-image: radial-gradient(circle at 50% 8px, #16181c 0 2px, transparent 2px);
+    background-size: 14px 20px;
+    background-repeat: repeat-y;
+    opacity: 0.25;
+}
+.printout::before { left: 0; }
+.printout::after  { right: 0; }
+
+/* ── 10. TOAST ───────────────────────────────────────────────────────────── */
+
+.readout-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%) translateY(6px);
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    background: var(--panel);
+    border: var(--hair) solid var(--rule-hi);
+    border-left: 3px solid var(--ok);
+    border-radius: var(--r);
+    font-family: var(--f-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink);
+    box-shadow: none;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--slide), transform var(--slide);
+    white-space: nowrap;
+    max-width: calc(100vw - 32px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.readout-toast.up { opacity: 1; transform: translateX(-50%) translateY(0); }
+.readout-toast.bad { border-left-color: var(--alert); color: var(--ink); }
+
+/* ── 11. MODAL ───────────────────────────────────────────────────────────── */
+
+.panel-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(5, 6, 8, 0.82);
+}
+.panel-modal.open { display: flex; }
+.panel-modal .sheet {
+    width: 100%;
+    max-width: 340px;
+    padding: 0;
+    background: var(--panel);
+    border: var(--hair) solid var(--rule-hi);
+    animation: sheet-in 120ms linear both;
+}
+@keyframes sheet-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── 11b. PAGE WIPE ──────────────────────────────────────────────────────────
+   The cut between pages: a flat sweep led by the six-band stripe. Same mark
+   the pages are branded with, used as the transition. */
+
+.page-wipe {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: var(--ground);
+    pointer-events: none;
+    transform: translateX(0);
+    will-change: transform;
+}
+.page-wipe-edge {
+    position: absolute;
+    top: 0; bottom: 0; right: -6px;
+    width: 6px;
+    display: flex;
+    flex-direction: column;
+}
+.page-wipe-edge i { flex: 1 1 0; }
+.page-wipe-edge i:nth-child(1) { background: var(--s1); }
+.page-wipe-edge i:nth-child(2) { background: var(--s2); }
+.page-wipe-edge i:nth-child(3) { background: var(--s3); }
+.page-wipe-edge i:nth-child(4) { background: var(--s4); }
+.page-wipe-edge i:nth-child(5) { background: var(--s5); }
+.page-wipe-edge i:nth-child(6) { background: var(--s6); }
+
+/* States, in the order they occur:
+     (none) covering — where an arriving page starts
+     .out   swept off to the right — the arrival animation
+     .idle  removed from the compositor once the arrival is done
+     .arm   parked off-screen left, NO transition (pre-position for leaving)
+     .in    swept back to covering — the departure animation            */
+.page-wipe.out  { transform: translateX(100%);  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1); }
+.page-wipe.idle { display: none; }
+.page-wipe.arm  { transform: translateX(-100%); transition: none; display: block; }
+.page-wipe.in   { transform: translateX(0);     transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1); }
+
+@media (prefers-reduced-motion: reduce) { .page-wipe { display: none !important; } }
+
+/* ── 12. UTILITIES ───────────────────────────────────────────────────────── */
+
+.row       { display: flex; align-items: center; gap: 10px; }
+.row-tight { display: flex; align-items: center; gap: 6px; }
+.spacer    { flex: 1 1 auto; }
+.stack     { display: flex; flex-direction: column; gap: 8px; }
+.sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.rule { height: var(--hair); background: var(--rule); box-shadow: none; }
+
+/* ── 13. REDUCED MOTION / CONTRAST / PRINT ───────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+    /* The grid stays — it just stops moving. Parked at the origin rather than
+       at the keyframe's end offset, so the ruling still lands on whole cells. */
+    body::before, body::after {
+        animation: none !important;
+        transform: none !important;
+    }
+}
+
+@media (pointer: coarse) {
+    .key    { min-height: 44px; }
+    .key-sq { width: 44px; min-height: 44px; }
+}
+
+@media (forced-colors: active) {
+    .key           { border: 1px solid ButtonText; }
+    .rocker        { border: 1px solid ButtonText; }
+    .rocker .rock  { background: ButtonText; forced-color-adjust: none; }
+    .led           { border: 2px solid GrayText; }
+    .led.on        { background: CanvasText; border-color: CanvasText; forced-color-adjust: none; }
+    .tape          { border: 1px solid CanvasText; }
+    .stripe i      { forced-color-adjust: none; }
+    .seg-digit i   { background: GrayText; forced-color-adjust: none; }
+    .seg-digit i.on{ background: CanvasText; }
+}
+
+@media print {
+    html, body {
+        height: auto !important;
+        overflow: visible !important;
+        background: #fff !important;
+        background-image: none !important;
+        color: #000 !important;
+    }
+    .screen, .screen *, .field, .chassis {
+        background: #fff !important;
+        color: #000 !important;
+        border-color: #000 !important;
+    }
+    .label, .designation, .prose, .phos, .phos-dim { color: #000 !important; }
+    .tape { background: none !important; color: #000 !important; border: 1px solid #000; }
+    .led, .rocker, .seg, .meter, .readout-toast, .panel-modal { display: none !important; }
+    body::before, body::after { display: none !important; }
+}

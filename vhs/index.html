@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0b0d">
+<title>Tape Transfer</title>
+<meta name="description" content="Give an image the look of 1980s broadcast video and VHS: chroma bleed, lifted blacks, halation and edge ringing — without fake scanlines.">
+
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../assets/vector.css">
+<link rel="stylesheet" href="../assets/console.css">
+<script src="../assets/cassette.js"></script>
+
+<style>
+:root { --accent: var(--s2); }
+
+.work { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
+@media (min-width: 940px) { .work { grid-template-columns: 380px 1fr; } }
+
+.controls { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.controls .rack { break-inside: auto; margin: 0; }
+
+.stage { display: flex; flex-direction: column; padding: 0; min-width: 0; order: -1; }
+@media (min-width: 940px) { .stage { order: 0; position: sticky; top: 12px; } }
+
+.stage-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 9px 12px; border-bottom: var(--hair) solid var(--rule);
+}
+.stage-bar .key { min-height: 26px; }
+
+.canvas-wrap {
+    position: relative;
+    min-height: 360px;
+    height: clamp(360px, 66vh, 780px);
+    overflow: hidden;
+    touch-action: none;
+    background: repeating-conic-gradient(var(--ground-2) 0% 25%, var(--well) 0% 50%) 50% / 16px 16px;
+}
+.canvas-wrap.drag { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.canvas-wrap.has-img { cursor: grab; }
+.canvas-wrap.panning { cursor: grabbing; }
+#view { display: block; position: absolute; inset: 0; }
+
+.drop-hint {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; text-align: center; padding: 20px; pointer-events: none;
+}
+
+.stage-foot {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px;
+    padding: 9px 12px; border-top: var(--hair) solid var(--rule);
+    font-size: 0.68rem; color: var(--ink-soft);
+}
+.stat { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; min-width: 0; }
+.stat b { font-weight: 500; color: var(--phos); font-variant-numeric: tabular-nums; }
+.stat-help { display: none; }
+@media (min-width: 760px) { .stat-help { display: flex; } }
+
+/* ── Slider rows ──────────────────────────────────────────────────────────
+   A filter panel is mostly sliders, so they get a tighter row than the
+   generic .fld: label and live value on one line, track beneath. */
+.sl { display: flex; flex-direction: column; gap: 3px; }
+.sl-top { display: flex; align-items: baseline; gap: 8px; }
+.sl-top .val {
+    margin-left: auto;
+    font-size: 0.62rem; color: var(--phos);
+    font-variant-numeric: tabular-nums;
+}
+.sl input[type="range"] { width: 100%; }
+.rack-body.tight { gap: 11px; }
+
+/* A slider that has been moved off its preset value gets a lit cap, so you can
+   see at a glance which controls you touched. */
+.sl.moved .sl-top .label { color: var(--ink); }
+.sl.moved .val { color: var(--accent); }
+
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets .key { min-height: 26px; padding: 0.3em 0.6em; }
+.presets .key.latched { color: #0a0b0d; background: var(--accent); border-color: var(--accent); }
+
+.nosupport { padding: 14px; border-left: 3px solid var(--s1); }
+</style>
+</head>
+<body>
+
+<main class="page">
+
+    <header class="chassis page-head">
+        <div class="head-row">
+            <div class="brand">
+                <h1 class="designation">TAPE TRANSFER</h1>
+                <span class="stripe brand-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="label">BROADCAST &amp; VHS LOOK &middot; CHROMA BLEED &middot; HALATION</span>
+            </div>
+            <div class="bezel head-well">
+                <div class="screen" id="headScreen">
+                    <div class="well-row">
+                        <span class="phos" id="clock" role="timer" aria-label="System clock">--:--:--</span>
+                        <canvas id="scope" width="120" height="28" aria-hidden="true"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="head-ctl">
+                <div class="lamp"><span class="led on green" aria-hidden="true"></span><span class="label">PWR</span></div>
+                <div class="phos-sw">
+                    <span class="label">AMBER</span>
+                    <label class="rocker">
+                        <input type="checkbox" id="phosSw" aria-label="Display colour: amber or green">
+                        <span class="rock"></span>
+                    </label>
+                    <span class="label">GREEN</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="work">
+
+        <div class="controls">
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">01</span>
+                    <span class="designation rack-name">SOURCE</span>
+                </div>
+                <div class="rack-body">
+                    <input type="file" id="file" accept="image/*" class="sr-only">
+                    <button class="key" type="button" id="pickBtn">CHOOSE AN IMAGE</button>
+                    <span class="hint">Or drop one on the canvas, or paste from the clipboard. Everything runs on your GPU in this tab — nothing is uploaded.</span>
+                    <div class="rule" aria-hidden="true"></div>
+                    <span class="label">PRESET</span>
+                    <div class="presets" id="presets"></div>
+                    <span class="hint">Starting points taken from the eras themselves. Move any slider afterwards — the preset is a seed, not a lock.</span>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">02</span>
+                    <span class="designation rack-name">SIGNAL</span>
+                </div>
+                <div class="rack-body tight">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">SOFTNESS</span><span class="val"></span></span>
+                        <input type="range" id="uSoft" min="0" max="100" value="34" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">The vaseline. Luma is resolved far more sharply than colour on tape, so this stays gentle — push CHROMA BLEED for the smeared look instead.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">CHROMA BLEED</span><span class="val"></span></span>
+                        <input type="range" id="uChroma" min="0" max="100" value="62" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">Colour smeared sideways while the outlines stay put. This is the single control that reads most as "video" — VHS carried colour at a fraction of the luminance bandwidth, so reds run into their neighbours.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">CHROMA LAG</span><span class="val"></span></span>
+                        <input type="range" id="uCLag" min="0" max="100" value="30" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">Colour arriving late, so it sits to the right of the object it belongs to.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">EDGE RINGING</span><span class="val"></span></span>
+                        <input type="range" id="uRing" min="0" max="100" value="42" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">The bright lip trailing every dark edge — aggressive analogue sharpening overshooting. Small amounts do a lot of the period feel.</span>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">03</span>
+                    <span class="designation rack-name">LEVELS</span>
+                </div>
+                <div class="rack-body tight">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">BLACK LIFT</span><span class="val"></span></span>
+                        <input type="range" id="uLift" min="0" max="100" value="30" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">The faded part. Tape never reached black, so shadows sit milky and grey — this is what stops a filter looking like a modern photo with grain on it.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">CONTRAST</span><span class="val"></span></span>
+                        <input type="range" id="uContrast" min="-100" max="100" value="-14" data-u data-fmt="signed">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">SATURATION</span><span class="val"></span></span>
+                        <input type="range" id="uSat" min="-100" max="100" value="18" data-u data-fmt="signed">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">WARMTH</span><span class="val"></span></span>
+                        <input type="range" id="uWarm" min="-100" max="100" value="22" data-u data-fmt="signed">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">SHADOW TINT</span><span class="val"></span></span>
+                        <input type="range" id="uShadowTint" min="-100" max="100" value="20" data-u data-fmt="signed">
+                    </label>
+                    <span class="hint">Negative cools the shadows blue, positive pushes them magenta — the tell-tale cast of a warm dub.</span>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">04</span>
+                    <span class="designation rack-name">GLOW</span>
+                </div>
+                <div class="rack-body tight">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">HALATION</span><span class="val"></span></span>
+                        <input type="range" id="uBloom" min="0" max="100" value="45" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">THRESHOLD</span><span class="val"></span></span>
+                        <input type="range" id="uBloomT" min="0" max="100" value="55" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">GLOW SPREAD</span><span class="val"></span></span>
+                        <input type="range" id="uBloomR" min="0" max="100" value="48" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">Highlights blooming into what surrounds them, warm-tinted the way film and tube phosphor both bloom. Studio key lights are why every one of these clips glows.</span>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">05</span>
+                    <span class="designation rack-name">NOISE</span>
+                    <span class="spacer"></span>
+                    <button class="key" type="button" id="reroll">RE-ROLL</button>
+                </div>
+                <div class="rack-body tight">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">LUMA GRAIN</span><span class="val"></span></span>
+                        <input type="range" id="uGrain" min="0" max="100" value="22" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">CHROMA NOISE</span><span class="val"></span></span>
+                        <input type="range" id="uCNoise" min="0" max="100" value="26" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">Chroma noise is the coarse blotchy kind that drifts in flat colour — a different animal from film grain, and much more of a giveaway that this is tape.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">TAPE STREAKS</span><span class="val"></span></span>
+                        <input type="range" id="uStreak" min="0" max="100" value="14" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">Faint horizontal banding that shifts down the frame. Not scanlines — dropout and tracking, which is the texture these actually have.</span>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">06</span>
+                    <span class="designation rack-name">FRAME</span>
+                </div>
+                <div class="rack-body tight">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">VIGNETTE</span><span class="val"></span></span>
+                        <input type="range" id="uVig" min="0" max="100" value="24" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">EDGE BLEED</span><span class="val"></span></span>
+                        <input type="range" id="uEdge" min="0" max="100" value="18" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">The ragged dark border where the picture runs past the tube's usable area.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">SCANLINES</span><span class="val"></span></span>
+                        <input type="range" id="uScan" min="0" max="100" value="0" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">Left at zero on purpose. Broadcast video on a consumer set had no visible line structure — drawn-on scanlines are the single thing that most makes a "VHS filter" look fake. It is here if you want it.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">HEAD SWITCH</span><span class="val"></span></span>
+                        <input type="range" id="uHead" min="0" max="100" value="26" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">The torn, skewed strip at the very bottom of the frame where the tape head changes over. Genuinely diagnostic of VHS and almost never faked.</span>
+                </div>
+            </section>
+
+        </div>
+
+        <section class="chassis stage">
+            <div class="stage-bar">
+                <span class="row-tight"><span class="led" id="vLed" aria-hidden="true"></span><span class="label" id="vStat">IDLE</span></span>
+                <span class="spacer"></span>
+                <button class="key" type="button" id="cmpBtn">HOLD TO COMPARE</button>
+                <button class="key" type="button" id="zoomOut" aria-label="Zoom out">&minus;</button>
+                <span class="label" id="zoomVal">FIT</span>
+                <button class="key" type="button" id="zoomIn" aria-label="Zoom in">+</button>
+                <button class="key" type="button" id="fitBtn">FIT</button>
+                <button class="key" type="button" id="oneBtn">1:1</button>
+            </div>
+            <div class="canvas-wrap" id="wrap">
+                <canvas id="view"></canvas>
+                <div class="drop-hint" id="hint">
+                    <span class="designation">DROP AN IMAGE</span>
+                    <span class="hint">PNG, JPG or WEBP &middot; or paste from the clipboard</span>
+                </div>
+            </div>
+            <div class="stage-foot">
+                <span class="stat"><span class="label">SIZE</span><b id="fSize">—</b></span>
+                <span class="stat"><span class="label">RENDER</span><b id="fMs">—</b></span>
+                <span class="spacer"></span>
+                <span class="stat stat-help"><span class="label">DRAG TO PAN &middot; SCROLL TO ZOOM &middot; DOUBLE-CLICK TO FIT</span></span>
+            </div>
+        </section>
+
+    </div>
+
+    <section class="chassis nosupport" id="nogl" hidden>
+        <span class="tape">NO GPU</span>
+        <p class="prose">This browser did not give us a WebGL context, so the filter cannot run. It needs hardware acceleration enabled.</p>
+    </section>
+
+    <footer class="chassis page-foot">
+        <a class="key" href="https://isaiart.com">&larr; ISAIART.COM</a>
+        <a class="key" href="../pixelate/">PIXEL RESTORER</a>
+        <div class="foot-right">
+            <span class="row-tight"><span class="led on green" aria-hidden="true"></span><span class="label">NO BACKEND &middot; NOTHING LEAVES THE BROWSER</span></span>
+        </div>
+    </footer>
+
+</main>
+
+<div class="dock">
+    <span class="stripe dock-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <div class="dock-inner">
+        <button class="key key-go" type="button" id="saveBtn" disabled>EXPORT PNG &darr;</button>
+        <button class="key" type="button" id="copyBtn">COPY <span class="key-lbl">IMAGE</span></button>
+        <button class="key key-danger" type="button" id="resetBtn">RESET</button>
+        <span class="spacer"></span>
+        <span class="label count" id="dockStat">NO IMAGE</span>
+    </div>
+</div>
+
+<script src="../assets/console.js"></script>
+<script src="tape.js"></script>
+</body>
+</html>

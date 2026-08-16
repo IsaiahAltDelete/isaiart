@@ -1,1408 +1,352 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pixel Artist</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --main-bg: #f0f2f5; /* Slightly softer background */
-      --panel-bg: #ffffff;
-      --accent: #1a1a1a; /* Darker accent for better contrast */
-      --border-color: #d1d5db; /* Tailwind gray-300 */
-      --border-radius: 12px; /* Slightly smaller for a sharper look */
-      --transition-speed: 0.2s;
-      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0b0d">
+<title>Pixel Restorer</title>
+<meta name="description" content="Recover true pixel art from AI images that only look pixelated. Detects the real block grid, resamples it, and rebuilds the palette.">
 
-    /* Global Styles and Resets */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: var(--main-bg);
-      color: var(--accent);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 1rem; /* Reduced padding for smaller screens */
-      overflow: hidden; /* Prevent body scroll during canvas drag */
-    }
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
 
-    /* Editor Container Layout */
-    #editor-container {
-      display: grid;
-      grid-template-columns: minmax(280px, 320px) 1fr minmax(280px, 320px); /* Adjusted panel widths */
-      gap: 1.5rem;
-      width: 100%;
-      max-width: 1800px; /* Increased max-width */
-      height: 95vh; /* Increased height */
-    }
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-    .controls-panel {
-      background-color: var(--panel-bg);
-      border-radius: var(--border-radius);
-      border: 1px solid var(--border-color);
-      box-shadow: var(--shadow-md);
-      padding: 1.25rem; /* Adjusted padding */
-      overflow-y: auto;
-      scrollbar-width: thin; /* For Firefox */
-      scrollbar-color: var(--border-color) var(--panel-bg); /* For Firefox */
-    }
-    .controls-panel::-webkit-scrollbar {
-      width: 8px;
-    }
-    .controls-panel::-webkit-scrollbar-track {
-      background: var(--panel-bg);
-      border-radius: var(--border-radius);
-    }
-    .controls-panel::-webkit-scrollbar-thumb {
-      background-color: var(--border-color);
-      border-radius: 10px;
-      border: 2px solid var(--panel-bg);
-    }
+<link rel="stylesheet" href="../assets/vector.css">
+<link rel="stylesheet" href="../assets/console.css">
+<script src="../assets/cassette.js"></script>
 
-    .control-group {
-      margin-bottom: 1.25rem;
-    }
-    .control-group:last-child {
-      margin-bottom: 0;
-    }
-    .control-title {
-      font-size: 1.1rem; /* Adjusted size */
-      font-weight: 600;
-      margin-bottom: 0.75rem;
-      text-align: left; /* Align left for conventional look */
-      color: var(--accent);
-    }
+<style>
+:root { --accent: var(--s5); }
 
-    /* Upload Box Styling */
-    #upload-container label {
-      display: flex;
-      flex-direction: column; /* Stack icon and text */
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem 1rem; /* Adjusted padding */
-      border: 2px dashed var(--border-color);
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      transition: background-color var(--transition-speed), border-color var(--transition-speed), transform var(--transition-speed);
-      text-align: center;
-      color: #6b7280; /* Tailwind gray-500 */
-    }
-    #upload-container label i.material-icons {
-      font-size: 2.5rem; /* Larger icon */
-      margin-bottom: 0.5rem;
-    }
-    #upload-container label:hover {
-      background-color: #f9fafb; /* Tailwind gray-50 */
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-    #upload-container label.dragover {
-      background-color: #eff6ff; /* Tailwind blue-100 */
-      border-color: #3b82f6; /* Tailwind blue-500 */
-      transform: scale(1.02);
-      color: #3b82f6;
-    }
+/* ── Work area: controls beside a stage that keeps the art as large as it
+      can be. Stacked on narrow screens, art first. ────────────────────── */
+.work { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
+@media (min-width: 940px) { .work { grid-template-columns: 360px 1fr; } }
 
-    /* Slider and Select Groups */
-    .slider-label, .select-label {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.9rem; /* Adjusted size */
-      font-weight: 500;
-      color: #4b5563; /* Tailwind gray-600 */
-      margin-bottom: 0.25rem;
-    }
-    .slider-label i.material-icons, .select-label i.material-icons {
-      font-size: 1.1rem;
-      margin-right: 0.4rem;
-      vertical-align: middle;
-      color: #6b7280; /* Tailwind gray-500 */
-    }
-    .slider-label span, .select-label span {
-        font-weight: 600;
-        color: var(--accent);
-    }
+.controls { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.controls .rack { break-inside: auto; margin: 0; }
 
-    /* Custom Range Sliders */
-    input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
-      height: 0.75rem; /* Slimmer track */
-      background: #e5e7eb; /* Tailwind gray-200 */
-      border-radius: var(--border-radius);
-      outline: none;
-      border: 1px solid var(--border-color);
-      transition: background-color var(--transition-speed);
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 1.25rem; /* Slightly larger thumb */
-      height: 1.25rem;
-      background: var(--accent);
-      border: 2px solid var(--panel-bg); /* Border for thumb */
-      border-radius: 50%;
-      cursor: pointer;
-      box-shadow: var(--shadow-sm);
-      transition: transform var(--transition-speed), background-color var(--transition-speed);
-    }
-    input[type="range"]::-moz-range-thumb {
-      width: 1.25rem;
-      height: 1.25rem;
-      background: var(--accent);
-      border: 2px solid var(--panel-bg);
-      border-radius: 50%;
-      cursor: pointer;
-      box-shadow: var(--shadow-sm);
-      transition: transform var(--transition-speed), background-color var(--transition-speed);
-    }
-    input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.1); }
-    input[type="range"]:hover::-moz-range-thumb { transform: scale(1.1); }
-    input[type="range"]:active::-webkit-slider-thumb { transform: scale(0.95); }
-    input[type="range"]:active::-moz-range-thumb { transform: scale(0.95); }
-    input[type="range"]:focus {
-        outline: none; /* Tailwind handles focus rings */
-    }
-    input[type="range"]:focus::-webkit-slider-thumb {
-        box-shadow: 0 0 0 3px var(--panel-bg), 0 0 0 5px var(--accent); /* Focus ring for thumb */
-    }
-     input[type="range"]:focus::-moz-range-thumb {
-        box-shadow: 0 0 0 3px var(--panel-bg), 0 0 0 5px var(--accent); /* Focus ring for thumb */
-    }
+.stage { display: flex; flex-direction: column; padding: 0; min-width: 0; order: -1; }
+@media (min-width: 940px) { .stage { order: 0; position: sticky; top: 12px; } }
 
+.stage-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 9px 12px; border-bottom: var(--hair) solid var(--rule);
+}
+.stage-bar .key { min-height: 26px; }
 
-    /* Custom Select */
-    select {
-      padding: 0.6rem 2.25rem; /* Adjusted horizontal padding for centered text and arrow */
-      border-radius: var(--border-radius);
-      border: 1px solid var(--border-color);
-      background-color: var(--panel-bg);
-      color: var(--accent);
-      font-size: 0.9rem;
-      width: 100%; /* Full width */
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-      background-image: url('data:image/svg+xml;utf8,<svg fill="%236b7280" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); /* Tailwind gray-500 for arrow */
-      background-repeat: no-repeat;
-      background-position: right 0.75rem center; /* Standard arrow positioning */
-      transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
-      text-align: center; /* Center the selected text */
-    }
-    select:hover {
-        border-color: #9ca3af; /* Tailwind gray-400 */
-    }
-    select:focus {
-        outline: none; /* Tailwind handles focus rings */
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px rgba(26,26,26,0.2); /* Subtle focus shadow */
-    }
+/* The viewport is a fixed box that the canvas fills exactly; the image is
+   moved around INSIDE it by a transform rather than by resizing the canvas.
+   That is what makes panning and cursor-anchored zoom possible at all. */
+.canvas-wrap {
+    position: relative;
+    min-height: 360px;
+    height: clamp(360px, 66vh, 780px);
+    overflow: hidden;
+    touch-action: none;             /* we handle drag/pinch ourselves */
+    background:
+        repeating-conic-gradient(var(--ground-2) 0% 25%, var(--well) 0% 50%) 50% / 16px 16px;
+}
+.canvas-wrap.drag { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.canvas-wrap.has-img { cursor: grab; }
+.canvas-wrap.panning { cursor: grabbing; }
 
-    /* Aspect Ratio Button Group */
-    .aspect-ratio-buttons {
-      display: grid; /* Use grid for better alignment */
-      grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
-      gap: 0.5rem;
-      margin-top: 0.75rem;
-    }
-    .aspect-ratio-buttons button, #action-buttons button, .canvas-tool-btn {
-      background-color: var(--panel-bg);
-      color: var(--accent);
-      padding: 0.6rem; /* Uniform padding */
-      border: 1px solid var(--border-color);
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      transition: all var(--transition-speed) ease-in-out;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.9rem;
-      font-weight: 500;
-      box-shadow: var(--shadow-sm);
-    }
-    .aspect-ratio-buttons button:hover, #action-buttons button:hover, .canvas-tool-btn:hover {
-      background-color: var(--accent);
-      color: var(--panel-bg);
-      border-color: var(--accent);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
-    .aspect-ratio-buttons button:active, #action-buttons button:active, .canvas-tool-btn:active {
-      transform: translateY(0px) scale(0.95);
-      box-shadow: var(--shadow-sm);
-    }
-    .aspect-ratio-buttons button i.material-icons, #action-buttons button i.material-icons, .canvas-tool-btn i.material-icons {
-        font-size: 1.25rem; /* Consistent icon size */
-    }
+#view { display: block; position: absolute; inset: 0; }
 
-    /* Canvas Card */
-    #canvas-card {
-      display: flex;
-      flex-direction: column;
-      background-color: var(--panel-bg);
-      border-radius: var(--border-radius);
-      border: 1px solid var(--border-color);
-      box-shadow: var(--shadow-md);
-      padding: 1.25rem;
-      overflow: hidden; /* Important for canvas viewport */
-    }
-    #canvas-card h2 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      text-align: center;
-      color: var(--accent);
-    }
-    #canvas-viewport-wrapper {
-      width: 100%;
-      flex-grow: 1; /* Takes available space */
-      min-height: 300px; /* Minimum height for the canvas area */
-      background-color: #e5e7eb; /* Fallback, Tailwind gray-200 */
-      border-radius: calc(var(--border-radius) - 4px); /* Inner radius */
-      box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.05);
-      position: relative;
-      overflow: hidden; /* Crucial for panning/zooming */
-      cursor: grab;
-      /* Checkerboard background */
-      background-image:
-        linear-gradient(45deg, #cccccc 25%, transparent 25%),
-        linear-gradient(-45deg, #cccccc 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #cccccc 75%),
-        linear-gradient(-45deg, transparent 75%, #cccccc 75%);
-      background-size: 20px 20px; /* Size of the squares */
-      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-    }
-    #canvas-viewport-wrapper.grabbing {
-        cursor: grabbing;
-    }
-    #canvas {
-      display: block; /* Removes extra space below canvas */
-      position: absolute; /* Positioned by JS transforms */
-      top: 0; left: 0;
-      image-rendering: -moz-crisp-edges;
-      image-rendering: -webkit-crisp-edges;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-      will-change: transform; /* Hint for browser optimization */
-    }
-    #canvas-controls {
-      margin-top: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem; /* Gap between button groups */
-      flex-wrap: wrap; /* Allow controls to wrap on smaller screens */
-    }
-    #zoom-level-display {
-      min-width: 60px; /* Ensure space for "1000%" */
-      text-align: center;
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--accent);
-      background-color: #f3f4f6; /* Tailwind gray-100 */
-      padding: 0.4rem 0.6rem;
-      border-radius: calc(var(--border-radius) / 2);
-      border: 1px solid var(--border-color);
-    }
-    .canvas-tool-btn.active-tool { /* For toggle buttons like grid */
-        background-color: var(--accent);
-        color: var(--panel-bg);
-    }
+.drop-hint {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; text-align: center; padding: 20px; pointer-events: none;
+}
 
+.stage-foot {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px;
+    padding: 9px 12px; border-top: var(--hair) solid var(--rule);
+    font-size: 0.68rem; color: var(--ink-soft);
+}
+.stat { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; min-width: 0; }
+.stat b { font-weight: 500; color: var(--phos); font-variant-numeric: tabular-nums; }
 
-    /* Right Panel: Split into two cards */
-    #right-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem; /* Gap between adjustment and save/load cards */
-    }
-    #adjustments-card {
-      flex: 1; /* Takes up remaining space */
-    }
-    #save-load-card {
-      flex-shrink: 0; /* Doesn't shrink */
-    }
+/* The interaction legend is the one nowrap item long enough to push the page
+   sideways on a phone — and it describes a mouse, so it is no loss there. */
+.stat-help { display: none; }
+@media (min-width: 720px) { .stat-help { display: flex; } }
 
-    /* Action Buttons */
-    #action-buttons {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
-      gap: 0.5rem;
-      margin-top: 1rem;
-    }
+/* ── Grid readout ─────────────────────────────────────────────────────── */
+.gridout {
+    display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 6px 10px;
+    align-items: baseline; font-size: 0.72rem;
+}
+.gridout b { font-weight: 500; color: var(--phos); font-variant-numeric: tabular-nums; }
 
-    /* Tailwind Focus Rings - apply utility classes in HTML */
-    .tw-focus-ring {
-        @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
-        /* Customize ring color and offset color based on context */
-    }
-    /* Example: focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)] */
+.alts { display: flex; flex-wrap: wrap; gap: 6px; }
+.alts .key { min-height: 24px; padding: 0.25em 0.55em; }
 
+.conf-bar { height: 4px; background: var(--well); border: var(--hair) solid var(--rule); }
+.conf-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width var(--slide); }
 
-    /* Responsive Design */
-    @media (max-width: 1200px) {
-      #editor-container {
-        grid-template-columns: minmax(250px, 300px) 1fr; /* Two columns */
-        grid-template-rows: auto 1fr;
-        grid-template-areas:
-          "controls-left canvas"
-          "controls-right canvas";
-        height: auto; /* Allow height to adjust */
-        max-height: none;
-        padding: 1rem;
-      }
-      .controls-panel {
-        max-height: none; /* Remove max height for panels in this layout */
-      }
-      #canvas-card {
-        grid-area: canvas;
-        min-height: 400px; /* Ensure canvas area has decent height */
-      }
-      #left-controls { grid-area: controls-left; }
-      #right-controls { grid-area: controls-right; }
-    }
+/* ── Palette strip ────────────────────────────────────────────────────── */
+.swatches { display: flex; flex-wrap: wrap; gap: 3px; }
+.swatches i {
+    width: 17px; height: 17px; border: var(--hair) solid var(--rule-lo);
+}
 
-    @media (max-width: 768px) {
-      body { padding: 0.5rem; }
-      #editor-container {
-        grid-template-columns: 1fr; /* Single column */
-        grid-template-rows: auto auto auto; /* Panels first, then canvas */
-        grid-template-areas:
-          "controls-left"
-          "controls-right"
-          "canvas";
-        gap: 1rem;
-        height: auto;
-      }
-      .controls-panel {
-        padding: 1rem;
-        border-radius: var(--border-radius);
-      }
-      #canvas-card {
-        padding: 1rem;
-        border-radius: var(--border-radius);
-        min-height: 350px;
-      }
-    }
-    @media (max-width: 600px) {
-      .control-title { font-size: 1rem; }
-      .aspect-ratio-buttons button, #action-buttons button, .canvas-tool-btn {
-        padding: 0.5rem;
-      }
-      .aspect-ratio-buttons button i.material-icons, #action-buttons button i.material-icons, .canvas-tool-btn i.material-icons {
-        font-size: 1.1rem;
-      }
-      #zoom-level-display { font-size: 0.8rem; padding: 0.3rem 0.5rem; }
-      #canvas-controls { gap: 0.25rem; } /* Reduce gap for smaller screens */
-    }
-
-  </style>
+.busy { opacity: 0.5; pointer-events: none; }
+</style>
 </head>
 <body>
-  <div id="editor-container">
-    <!-- Left Controls Panel -->
-    <div id="left-controls" class="controls-panel">
-      <div class="control-group">
-        <h3 class="control-title">Upload Image</h3>
-        <div id="upload-container">
-          <label for="image-upload" class="tw-focus-ring focus:ring-blue-500 focus:ring-offset-white">
-            <i class="material-icons">cloud_upload</i>
-            <span>Click or Drag & Drop</span>
-          </label>
-          <input type="file" id="image-upload" accept="image/*" class="sr-only" />
-        </div>
-      </div>
 
-      <div class="control-group">
-        <h3 class="control-title">Base Resolution</h3>
-        <div class="select-container mb-2">
-          <label for="resolution-preset" class="select-label">
-            <i class="material-icons">settings_overscan</i> Preset:
-          </label>
-          <select id="resolution-preset" class="tw-focus-ring focus:ring-[var(--accent)] focus:border-[var(--accent)]">
-            <option value="custom" selected>Custom</option>
-            <option value="25">Tiny (25%)</option>
-            <option value="50">Low (50%)</option>
-            <option value="100">Original (100%)</option>
-            <option value="150">High (150%)</option>
-            <option value="200">Ultra (200%)</option>
-          </select>
-        </div>
-        <div class="slider-container">
-          <div class="slider-label">
-            <label for="resolution"><i class="material-icons">photo_size_select_small</i> Scale:</label>
-            <span id="resolution-value">100%</span>
-          </div>
-          <input type="range" id="resolution" min="10" max="200" step="1" value="100" class="tw-focus-ring focus:ring-[var(--accent)]"/>
-        </div>
-      </div>
+<main class="page">
 
-      <div class="control-group">
-        <h3 class="control-title">Pixelation</h3>
-        <div class="slider-container mb-2">
-          <div class="slider-label">
-            <label for="pixel-size"><i class="material-icons">texture</i> Pixel Size:</label>
-            <span id="pixel-size-value">10 px</span>
-          </div>
-          <input type="range" id="pixel-size" min="1" max="50" step="1" value="10" class="tw-focus-ring focus:ring-[var(--accent)]"/>
+    <header class="chassis page-head">
+        <div class="head-row">
+            <div class="brand">
+                <h1 class="designation">PIXEL RESTORER</h1>
+                <span class="stripe brand-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="label">MIXEL REPAIR &middot; GRID RECOVERY &middot; PALETTE REBUILD</span>
+            </div>
+            <div class="bezel head-well">
+                <div class="screen" id="headScreen">
+                    <div class="well-row">
+                        <span class="phos" id="clock" role="timer" aria-label="System clock">--:--:--</span>
+                        <canvas id="scope" width="120" height="28" aria-hidden="true"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="head-ctl">
+                <div class="lamp"><span class="led on green" aria-hidden="true"></span><span class="label">PWR</span></div>
+                <div class="phos-sw">
+                    <span class="label">AMBER</span>
+                    <label class="rocker">
+                        <input type="checkbox" id="phosSw" aria-label="Display colour: amber or green">
+                        <span class="rock"></span>
+                    </label>
+                    <span class="label">GREEN</span>
+                </div>
+            </div>
         </div>
-        <div class="select-container">
-          <label for="pixelation-style" class="select-label"><i class="material-icons">style</i> Style:</label>
-          <select id="pixelation-style" class="tw-focus-ring focus:ring-[var(--accent)] focus:border-[var(--accent)]">
-            <option value="standard" selected>Standard Average</option>
-            <option value="mosaic" disabled>Mosaic (TBD)</option>
-          </select>
-        </div>
-      </div>
+    </header>
 
-      <div class="control-group">
-        <h3 class="control-title">Aspect Ratio</h3>
-        <div class="slider-container mb-2">
-          <div class="slider-label">
-            <label for="aspect-ratio-width"><i class="material-icons">swap_horiz</i> Width:</label>
-            <span id="aspect-ratio-width-value">100%</span>
-          </div>
-          <input type="range" id="aspect-ratio-width" min="25" max="200" step="1" value="100" class="tw-focus-ring focus:ring-[var(--accent)]"/>
+    <div class="work">
+
+        <!-- ══ CONTROLS ══════════════════════════════════════════════ -->
+        <div class="controls">
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">01</span>
+                    <span class="designation rack-name">SOURCE</span>
+                </div>
+                <div class="rack-body">
+                    <input type="file" id="file" accept="image/*" class="sr-only">
+                    <button class="key" type="button" id="pickBtn">CHOOSE AN IMAGE</button>
+                    <span class="hint">Or drop one on the canvas, or paste from the clipboard. Nothing is uploaded — the whole thing runs in this tab.</span>
+                    <div class="rule" aria-hidden="true"></div>
+                    <div class="gridout">
+                        <span class="label">FILE</span><b id="sName">—</b>
+                        <span class="label">SIZE</span><b id="sSize">—</b>
+                    </div>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">02</span>
+                    <span class="designation rack-name">GRID</span>
+                    <span class="spacer"></span>
+                    <span class="row-tight"><span class="led" id="gLed" aria-hidden="true"></span><span class="label" id="gStat">NO IMAGE</span></span>
+                </div>
+                <div class="rack-body">
+
+                    <div class="fld">
+                        <span class="label">CONFIDENCE <span class="op" id="confPct">—</span></span>
+                        <span class="conf-bar" aria-hidden="true"><i id="confBar"></i></span>
+                        <span class="hint" id="confNote">How cleanly a repeating block edge was found. Under 15% there may be no grid to find — the image may already be 1:1.</span>
+                    </div>
+
+                    <label class="chk"><input type="checkbox" id="sqLock" checked><span class="box"></span><span class="label">SQUARE PIXELS</span></label>
+                    <span class="hint">The two axes are measured independently, so they can disagree — and unequal cells make non-square art pixels, which quietly changes the aspect ratio of the result. Locked, both take the mean. Unlock only for art that really was stretched on one axis.</span>
+
+                    <div class="pair">
+                        <div class="fld">
+                            <label class="label" for="cellW">CELL W</label>
+                            <input class="field" type="number" id="cellW" step="0.01" min="1" placeholder="16">
+                        </div>
+                        <div class="fld">
+                            <label class="label" for="cellH">CELL H</label>
+                            <input class="field" type="number" id="cellH" step="0.01" min="1" placeholder="16">
+                        </div>
+                    </div>
+                    <div class="pair">
+                        <div class="fld">
+                            <label class="label" for="offX">OFFSET X</label>
+                            <input class="field" type="number" id="offX" step="0.05" min="0" placeholder="0">
+                        </div>
+                        <div class="fld">
+                            <label class="label" for="offY">OFFSET Y</label>
+                            <input class="field" type="number" id="offY" step="0.05" min="0" placeholder="0">
+                        </div>
+                    </div>
+                    <span class="hint">Detected values, editable. Turn the grid overlay on and nudge the offset until the lines sit in the seams.</span>
+
+                    <div class="fld">
+                        <span class="label">OTHER READINGS</span>
+                        <div class="alts" id="alts"><span class="hint">—</span></div>
+                        <span class="hint">A grid can be genuinely ambiguous: art drawn at 16px where column pairs happen to match is also a valid 32px reading. These are the runners-up, most likely first.</span>
+                    </div>
+
+                    <button class="key" type="button" id="detectBtn">RE-DETECT</button>
+
+                    <div class="rule" aria-hidden="true"></div>
+
+                    <div class="fld">
+                        <span class="label">OR JUST SET THE ART SIZE</span>
+                        <div class="pair">
+                            <input class="field" type="number" id="artW" min="2" step="1" placeholder="111" aria-label="Art width in pixels">
+                            <input class="field" type="number" id="artH" min="2" step="1" placeholder="148" aria-label="Art height in pixels">
+                        </div>
+                        <div class="alts" id="divs"></div>
+                        <span class="hint">For art that was <em>drawn</em> at full resolution in a pixel style rather than upscaled from a small grid, there is no grid to find — you pick the resolution. This resamples to whatever size you name, with the same cell sampling and palette rebuild.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">03</span>
+                    <span class="designation rack-name">SAMPLING</span>
+                </div>
+                <div class="rack-body">
+                    <div class="fld">
+                        <span class="label" id="modeLbl">CELL COLOUR</span>
+                        <div class="seg-ctl" role="radiogroup" aria-labelledby="modeLbl">
+                            <label><input type="radio" name="mode" value="dominant" checked><span>DOMINANT</span></label>
+                            <label><input type="radio" name="mode" value="median"><span>MEDIAN</span></label>
+                            <label><input type="radio" name="mode" value="mean"><span>MEAN</span></label>
+                        </div>
+                        <span class="hint"><strong>DOMINANT</strong> takes the most common colour in a cell and ignores everything else — the right answer when cells are genuinely flat, i.e. when the grid above locked on. <strong>MEDIAN</strong> is the safe middle. <strong>MEAN</strong> averages the cell.<br><br>Pick by what the GRID panel said: a recovered grid means flat blocks, so use DOMINANT. A <em>chosen</em> art size means you are downscaling shaded artwork, and DOMINANT will chase the noise inside each cell — MEDIAN or MEAN hold gradients together far better.</span>
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="inset">EDGE MARGIN <span class="op" id="insetVal">20%</span></label>
+                        <input class="field" type="range" id="inset" min="0" max="45" step="1" value="20">
+                        <span class="hint">How much of each cell's border to ignore. The outer edge is where the anti-aliasing lives; sampling it is what smears two blocks into one.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">04</span>
+                    <span class="designation rack-name">PALETTE</span>
+                </div>
+                <div class="rack-body">
+                    <label class="chk"><input type="checkbox" id="palOn" checked><span class="box"></span><span class="label">REBUILD PALETTE</span></label>
+                    <div class="fld">
+                        <label class="label" for="palN">COLOURS <span class="op" id="palNVal">16</span></label>
+                        <input class="field" type="range" id="palN" min="2" max="64" step="1" value="16">
+                        <span class="hint">Clustered in OKLab and weighted by how much of the art uses each colour, then snapped to colours that really occur — so no entry is an average sitting between two real ones.</span>
+                    </div>
+                    <div class="fld">
+                        <span class="label">RESULT</span>
+                        <div class="swatches" id="swatches"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">05</span>
+                    <span class="designation rack-name">CLEANUP</span>
+                </div>
+                <div class="rack-body">
+                    <label class="chk"><input type="checkbox" id="despOn"><span class="box"></span><span class="label">DESPECKLE</span></label>
+                    <div class="fld">
+                        <span class="label" id="dLbl">STRENGTH</span>
+                        <div class="seg-ctl" role="radiogroup" aria-labelledby="dLbl">
+                            <label><input type="radio" name="desp" value="4" checked><span>SAFE</span></label>
+                            <label><input type="radio" name="desp" value="3"><span>AGGRESSIVE</span></label>
+                        </div>
+                        <span class="hint">Off by default, and measured: on test art SAFE cost 0.1–0.6% accuracy and AGGRESSIVE cost 1–5%, because it cannot tell a sampling casualty from a deliberate single-pixel highlight. Turn it on only if you can see speckle.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">06</span>
+                    <span class="designation rack-name">OUTPUT</span>
+                </div>
+                <div class="rack-body">
+                    <div class="gridout">
+                        <span class="label">ART SIZE</span><b id="oDim">—</b>
+                        <span class="label">COLOURS</span><b id="oCols">—</b>
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="scale">EXPORT SCALE <span class="op" id="scaleVal">1&times;</span></label>
+                        <input class="field" type="range" id="scale" min="1" max="16" step="1" value="1">
+                        <span class="hint">1&times; is the real artwork — one file pixel per art pixel. Larger is an integer nearest-neighbour blow-up for posting somewhere that would otherwise smooth it.</span>
+                    </div>
+                </div>
+            </section>
+
         </div>
-        <div class="slider-container">
-          <div class="slider-label">
-            <label for="aspect-ratio-height"><i class="material-icons">swap_vert</i> Height:</label>
-            <span id="aspect-ratio-height-value">100%</span>
-          </div>
-          <input type="range" id="aspect-ratio-height" min="25" max="200" step="1" value="100" class="tw-focus-ring focus:ring-[var(--accent)]"/>
-        </div>
-        <div class="aspect-ratio-buttons">
-          <button id="default-aspect-btn" title="Reset Aspect (100%)" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">aspect_ratio</i></button>
-          <button id="even-aspect-btn" title="Square Aspect Ratio" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">crop_square</i></button>
-          <button id="switch-aspect-btn" title="Swap Width & Height" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">sync_alt</i></button>
-          <button id="lock-aspect-btn" title="Lock Aspect Ratio" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">lock_open</i></button>
-        </div>
-      </div>
+
+        <!-- ══ STAGE ═════════════════════════════════════════════════ -->
+        <section class="chassis stage">
+            <div class="stage-bar">
+                <span class="row-tight"><span class="led" id="vLed" aria-hidden="true"></span><span class="label" id="vStat">IDLE</span></span>
+                <span class="spacer"></span>
+                <button class="key" type="button" id="cmpBtn" aria-pressed="false">SHOW SOURCE</button>
+                <button class="key" type="button" id="gridBtn" aria-pressed="false">GRID</button>
+                <button class="key" type="button" id="zoomOut" aria-label="Zoom out">&minus;</button>
+                <span class="label" id="zoomVal">FIT</span>
+                <button class="key" type="button" id="zoomIn" aria-label="Zoom in">+</button>
+                <button class="key" type="button" id="fitBtn">FIT</button>
+                <button class="key" type="button" id="oneBtn">1:1</button>
+            </div>
+            <div class="canvas-wrap" id="wrap">
+                <canvas id="view"></canvas>
+                <div class="drop-hint" id="hint">
+                    <span class="designation">DROP AN IMAGE</span>
+                    <span class="hint">PNG, JPG or WEBP &middot; or paste from the clipboard</span>
+                </div>
+            </div>
+            <div class="stage-foot">
+                <span class="stat"><span class="label">SOURCE</span><b id="fSrc">—</b></span>
+                <span class="stat"><span class="label">GRID</span><b id="fGrid">—</b></span>
+                <span class="stat"><span class="label">OUTPUT</span><b id="fOut">—</b></span>
+                <span class="stat"><span class="label">TIME</span><b id="fMs">—</b></span>
+                <span class="spacer"></span>
+                <span class="stat stat-help"><span class="label">DRAG TO PAN &middot; SCROLL TO ZOOM &middot; DOUBLE-CLICK TO FIT</span></span>
+            </div>
+        </section>
+
     </div>
 
-    <!-- Canvas Card (Center) -->
-    <div id="canvas-card">
-      <h2>Preview</h2>
-      <div id="canvas-viewport-wrapper" class="tw-focus-ring focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[var(--panel-bg)]" tabindex="0">
-        <canvas id="canvas"></canvas>
-      </div>
-      <div id="canvas-controls">
-        <button id="preview-original-btn" class="canvas-tool-btn tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]" title="Hold to Preview Original"><i class="material-icons">visibility</i></button>
-        <button id="zoom-out-btn" class="canvas-tool-btn tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]" title="Zoom Out (Scroll Wheel)"><i class="material-icons">zoom_out</i></button>
-        <span id="zoom-level-display">100%</span>
-        <button id="zoom-in-btn" class="canvas-tool-btn tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]" title="Zoom In (Scroll Wheel)"><i class="material-icons">zoom_in</i></button>
-        <button id="reset-view-btn" class="canvas-tool-btn ml-2 tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]" title="Reset View"><i class="material-icons">filter_center_focus</i></button>
-        <button id="toggle-grid-btn" class="canvas-tool-btn ml-2 tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]" title="Toggle Pixel Grid"><i class="material-icons">grid_on</i></button>
-      </div>
+    <footer class="chassis page-foot">
+        <a class="key" href="https://isaiart.com">&larr; ISAIART.COM</a>
+        <div class="foot-right">
+            <span class="row-tight"><span class="led on green" aria-hidden="true"></span><span class="label">NO BACKEND &middot; NOTHING LEAVES THE BROWSER</span></span>
+        </div>
+    </footer>
+
+</main>
+
+<div class="dock">
+    <span class="stripe dock-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <div class="dock-inner">
+        <button class="key key-go" type="button" id="saveBtn" disabled>EXPORT PNG &darr;</button>
+        <button class="key" type="button" id="copyBtn">COPY <span class="key-lbl">IMAGE</span></button>
+        <button class="key key-danger" type="button" id="resetBtn">CLEAR</button>
+        <span class="spacer"></span>
+        <span class="label count" id="dockStat">NO IMAGE</span>
     </div>
-
-    <!-- Right Controls Panel -->
-    <div id="right-controls">
-      <div id="adjustments-card" class="controls-panel">
-        <div class="control-group">
-          <h3 class="control-title">Color Palette</h3>
-          <div class="slider-container mb-2">
-            <div class="slider-label">
-              <label for="color-reduction"><i class="material-icons">palette</i> Max Colors:</label>
-              <span id="color-reduction-value">16</span>
-            </div>
-            <input type="range" id="color-reduction" min="2" max="256" step="1" value="16" class="tw-focus-ring focus:ring-[var(--accent)]"/>
-          </div>
-          <div class="select-container">
-            <label for="color-palette" class="select-label"><i class="material-icons">color_lens</i> Palette Type:</label>
-            <select id="color-palette" class="tw-focus-ring focus:ring-[var(--accent)] focus:border-[var(--accent)]">
-              <option value="default">Image Colors (Default)</option>
-              <option value="random">Random Palette</option>
-              <option value="grayscale">Grayscale</option>
-              <option value="vibrant">Vibrant</option>
-              <option value="pastel">Pastel</option>
-              <option value="custom" disabled>Custom Palette (TBD)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="control-group">
-          <h3 class="control-title">Adjustments</h3>
-          <div class="slider-container mb-2">
-            <div class="slider-label">
-              <label for="saturation"><i class="material-icons">tonality</i> Saturation:</label>
-              <span id="saturation-value">100%</span>
-            </div>
-            <input type="range" id="saturation" min="0" max="200" step="1" value="100" class="tw-focus-ring focus:ring-[var(--accent)]"/>
-          </div>
-          <div class="slider-container">
-            <div class="slider-label">
-              <label for="contrast"><i class="material-icons">contrast</i> Contrast:</label>
-              <span id="contrast-value">100%</span>
-            </div>
-            <input type="range" id="contrast" min="0" max="200" step="1" value="100" class="tw-focus-ring focus:ring-[var(--accent)]"/>
-          </div>
-        </div>
-
-        <div class="control-group">
-          <h3 class="control-title">Effects</h3>
-          <div class="slider-container mb-2">
-            <div class="slider-label">
-              <label for="dithering"><i class="material-icons">gradient</i> Dithering:</label> <!-- Changed icon -->
-              <span id="dithering-value">0%</span>
-            </div>
-            <input type="range" id="dithering" min="0" max="100" step="1" value="0" class="tw-focus-ring focus:ring-[var(--accent)]"/>
-          </div>
-          <div class="slider-container">
-            <div class="slider-label">
-              <label for="noise"><i class="material-icons">grain</i> Noise:</label>
-              <span id="noise-value">0%</span>
-            </div>
-            <input type="range" id="noise" min="0" max="100" step="1" value="0" class="tw-focus-ring focus:ring-[var(--accent)]"/>
-          </div>
-        </div>
-      </div>
-
-      <div id="save-load-card" class="controls-panel">
-        <div class="control-group">
-          <h3 class="control-title">Project</h3>
-          <div class="select-container mb-2">
-            <label for="saved-settings" class="select-label"><i class="material-icons">bookmarks</i> Saved Presets:</label>
-            <select id="saved-settings" class="tw-focus-ring focus:ring-[var(--accent)] focus:border-[var(--accent)]">
-              <option value="" disabled selected>Load a preset...</option>
-            </select>
-          </div>
-          <div id="action-buttons">
-            <button id="load-btn" title="Load Selected Preset" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">folder_open</i></button>
-            <button id="save-btn" title="Save Current Settings as Preset" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">save</i></button>
-            <button id="randomize-btn" title="Randomize Settings" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">casino</i></button>
-            <button id="reset-btn" title="Reset All Settings" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">restart_alt</i></button>
-            <button id="download-btn" title="Download Image" class="tw-focus-ring focus:ring-[var(--accent)] focus:ring-offset-[var(--panel-bg)]"><i class="material-icons">file_download</i></button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // DOM Elements
-    const imageUploadInput = document.getElementById('image-upload');
-    const uploadContainer = document.getElementById('upload-container');
-    const uploadLabel = uploadContainer.querySelector('label');
-
-    const visibleCanvas = document.getElementById('canvas');
-    const vCtx = visibleCanvas.getContext('2d');
-    const canvasViewportWrapper = document.getElementById('canvas-viewport-wrapper');
-    
-    const processedCanvas = document.createElement('canvas'); // For final pixelated image
-    const pCtx = processedCanvas.getContext('2d');
-    const originalBaseImageCanvas = document.createElement('canvas'); // For original scaled image preview
-    const obCtx = originalBaseImageCanvas.getContext('2d');
-
-
-    const savedSettingsSelect = document.getElementById('saved-settings');
-    const colorPaletteSelect = document.getElementById('color-palette');
-    const resolutionSlider = document.getElementById('resolution');
-    const resolutionValue = document.getElementById('resolution-value');
-    const resolutionPresetSelect = document.getElementById('resolution-preset');
-    const pixelSizeSlider = document.getElementById('pixel-size');
-    const pixelSizeValue = document.getElementById('pixel-size-value');
-    const aspectRatioWidthSlider = document.getElementById('aspect-ratio-width');
-    const aspectRatioHeightSlider = document.getElementById('aspect-ratio-height');
-    const aspectRatioWidthValue = document.getElementById('aspect-ratio-width-value');
-    const aspectRatioHeightValue = document.getElementById('aspect-ratio-height-value');
-    const colorReductionSlider = document.getElementById('color-reduction');
-    const colorReductionValue = document.getElementById('color-reduction-value');
-    const saturationSlider = document.getElementById('saturation');
-    const saturationValue = document.getElementById('saturation-value');
-    const contrastSlider = document.getElementById('contrast');
-    const contrastValue = document.getElementById('contrast-value');
-    const noiseSlider = document.getElementById('noise');
-    const noiseValue = document.getElementById('noise-value');
-    const ditheringSlider = document.getElementById('dithering');
-    const ditheringValue = document.getElementById('dithering-value');
-    const pixelationStyleSelect = document.getElementById('pixelation-style');
-
-    const defaultAspectBtn = document.getElementById('default-aspect-btn');
-    const evenAspectBtn = document.getElementById('even-aspect-btn');
-    const switchAspectBtn = document.getElementById('switch-aspect-btn');
-    const lockAspectBtn = document.getElementById('lock-aspect-btn');
-    
-    const downloadBtn = document.getElementById('download-btn');
-    const resetBtn = document.getElementById('reset-btn');
-    const randomizeBtn = document.getElementById('randomize-btn');
-    const saveBtn = document.getElementById('save-btn');
-    const loadBtn = document.getElementById('load-btn');
-
-    const previewOriginalBtn = document.getElementById('preview-original-btn');
-    const zoomInBtn = document.getElementById('zoom-in-btn');
-    const zoomOutBtn = document.getElementById('zoom-out-btn');
-    const resetViewBtn = document.getElementById('reset-view-btn');
-    const zoomLevelDisplay = document.getElementById('zoom-level-display');
-    const toggleGridBtn = document.getElementById('toggle-grid-btn');
-
-    // State Variables
-    let sourceImageElement = null; 
-    let originalWidth = 0;
-    let originalHeight = 0;
-    
-    let savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves_v2')) || [];
-    let paletteCache = {};
-    let aspectLock = false;
-
-    // Canvas View State
-    const viewTransform = { x: 0, y: 0, scale: 1 };
-    let isPanning = false;
-    let lastPanPosition = { x: 0, y: 0 };
-    let showPixelGrid = false;
-    const MIN_GRID_CELL_SIZE = 5; 
-    let isPreviewingOriginal = false;
-
-
-    // Inertial Glide Variables
-    let panVelocity = { x: 0, y: 0 };
-    let lastMoveTimestamp = 0;
-    let recentPanMoves = []; 
-    let glideRequestID = null; 
-
-    const DAMPING_FACTOR = 0.92; 
-    const MIN_GLIDE_VELOCITY = 0.01; 
-    const RECENT_MOVES_SAMPLES = 5; 
-    const MAX_RECENT_MOVES = 10; 
-    const MAX_GLIDE_DT = 100; 
-
-    // Debounce Function
-    function debounce(func, wait) {
-      let timeout;
-      return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-      };
-    }
-    const debouncedProcessAndRender = debounce(processImageAndRender, 250);
-    const debouncedDrawVisibleCanvas = debounce(drawVisibleCanvas, 16); 
-
-    document.addEventListener('DOMContentLoaded', () => {
-        loadSavedSettings();
-        updateAllSliderValueDisplays();
-        setupCanvasViewport();
-        window.addEventListener('resize', debounce(setupCanvasViewport, 200));
-    });
-
-    function setupCanvasViewport() {
-        const rect = canvasViewportWrapper.getBoundingClientRect();
-        visibleCanvas.width = rect.width;
-        visibleCanvas.height = rect.height;
-        if (sourceImageElement) {
-            resetViewTransform(); 
-        } else {
-            drawVisibleCanvas(); 
-        }
-    }
-    
-    function updateAllSliderValueDisplays() {
-      pixelSizeValue.textContent = pixelSizeSlider.value + ' px';
-      colorReductionValue.textContent = colorReductionSlider.value;
-      ditheringValue.textContent = ditheringSlider.value + '%';
-      resolutionValue.textContent = resolutionSlider.value + '%';
-      aspectRatioWidthValue.textContent = aspectRatioWidthSlider.value + '%';
-      aspectRatioHeightValue.textContent = aspectRatioHeightSlider.value + '%';
-      saturationValue.textContent = saturationSlider.value + '%';
-      contrastValue.textContent = contrastSlider.value + '%';
-      noiseValue.textContent = noiseSlider.value + '%';
-    }
-
-    uploadContainer.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadLabel.classList.add('dragover');
-    });
-    uploadContainer.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      uploadLabel.classList.remove('dragover');
-    });
-    uploadContainer.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadLabel.classList.remove('dragover');
-      if(e.dataTransfer.files.length) {
-        imageUploadInput.files = e.dataTransfer.files;
-        handleImageUpload(e.dataTransfer.files[0]);
-      }
-    });
-    imageUploadInput.addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file) handleImageUpload(file);
-    });
-
-    function handleImageUpload(file) {
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        const img = new Image();
-        img.onload = function() {
-          sourceImageElement = img;
-          originalWidth = img.naturalWidth;
-          originalHeight = img.naturalHeight;
-          resetViewTransform(); 
-          processImageAndRender();
-        }
-        img.onerror = () => alert('Failed to load image. Please try a different file.');
-        img.src = event.target.result;
-      }
-      reader.onerror = () => alert('Failed to read file. Please try again.');
-      reader.readAsDataURL(file);
-    }
-
-    function processImageAndRender() {
-      if (!sourceImageElement) return;
-      updateAllSliderValueDisplays();
-
-      const resScale = parseInt(resolutionSlider.value) / 100;
-      const aspectW = parseInt(aspectRatioWidthSlider.value) / 100;
-      const aspectH = parseInt(aspectRatioHeightSlider.value) / 100;
-
-      const procWidth = Math.round(originalWidth * resScale * aspectW);
-      const procHeight = Math.round(originalHeight * resScale * aspectH);
-
-      if (procWidth <= 0 || procHeight <= 0) return; 
-
-      // 1. Prepare the original base image (scaled, no effects) for preview
-      originalBaseImageCanvas.width = procWidth;
-      originalBaseImageCanvas.height = procHeight;
-      obCtx.clearRect(0, 0, procWidth, procHeight);
-      obCtx.drawImage(sourceImageElement, 0, 0, procWidth, procHeight);
-
-      // 2. Prepare the processed canvas
-      processedCanvas.width = procWidth;
-      processedCanvas.height = procHeight;
-      pCtx.clearRect(0, 0, procWidth, procHeight);
-      pCtx.drawImage(sourceImageElement, 0, 0, procWidth, procHeight); // Start with scaled image
-      
-      let imageData = pCtx.getImageData(0, 0, procWidth, procHeight);
-
-      // Apply effects to imageData for processedCanvas
-      imageData = applySaturationContrast(imageData, parseInt(saturationSlider.value), parseInt(contrastSlider.value));
-      
-      const paletteChoice = colorPaletteSelect.value;
-      const numColors = parseInt(colorReductionSlider.value);
-      let activePalette = null;
-
-      if (paletteChoice !== 'default') {
-        if (paletteChoice === 'random') activePalette = generateRandomPalette(numColors);
-        else if (predefinedPalettes[paletteChoice]) activePalette = predefinedPalettes[paletteChoice];
-        
-        if (activePalette) {
-            imageData = reduceColors(imageData, activePalette);
-        }
-      }
-      
-      if (activePalette && parseInt(ditheringSlider.value) > 0) {
-        imageData = applyDithering(imageData, parseInt(ditheringSlider.value), activePalette);
-      }
-      
-      if (parseInt(noiseSlider.value) > 0) {
-        imageData = applyNoise(imageData, parseInt(noiseSlider.value));
-      }
-      
-      pCtx.putImageData(imageData, 0, 0); // Put modified data back to processedCanvas
-
-      // Apply pixelation to processedCanvas
-      const currentPixelSize = parseInt(pixelSizeSlider.value);
-      if (currentPixelSize > 1) { 
-          applyPixelationEffect(currentPixelSize, pCtx, processedCanvas);
-      }
-
-      drawVisibleCanvas(); // This will draw either originalBase or processed based on isPreviewingOriginal
-    }
-
-    function drawVisibleCanvas() {
-      vCtx.setTransform(1, 0, 0, 1, 0, 0); 
-      vCtx.clearRect(0, 0, visibleCanvas.width, visibleCanvas.height);
-      
-      vCtx.translate(viewTransform.x, viewTransform.y);
-      vCtx.scale(viewTransform.scale, viewTransform.scale);
-
-      const sourceToDraw = isPreviewingOriginal && originalBaseImageCanvas.width > 0 ? originalBaseImageCanvas : processedCanvas;
-
-      if (sourceToDraw.width > 0 && sourceToDraw.height > 0) {
-        vCtx.drawImage(sourceToDraw, 0, 0);
-        if (showPixelGrid && !isPreviewingOriginal) drawPixelGrid(); // Only show grid on processed view
-      }
-      
-      zoomLevelDisplay.textContent = `${Math.round(viewTransform.scale * 100)}%`;
-    }
-
-    // --- Preview Original Button Logic ---
-    previewOriginalBtn.addEventListener('mousedown', () => {
-        if (!sourceImageElement) return;
-        isPreviewingOriginal = true;
-        drawVisibleCanvas();
-    });
-    // Add mouseup to document to catch release anywhere
-    document.addEventListener('mouseup', () => {
-        if (isPreviewingOriginal) {
-            isPreviewingOriginal = false;
-            drawVisibleCanvas();
-        }
-    });
-    previewOriginalBtn.addEventListener('mouseleave', () => {
-        if (isPreviewingOriginal) { // If mouse was down on button and dragged off
-            isPreviewingOriginal = false;
-            drawVisibleCanvas();
-        }
-    });
-
-
-    function applySaturationContrast(imageData, saturation, contrast) {
-        const data = imageData.data;
-        const sat = saturation / 100;
-        const con = contrast / 100;
-
-        for (let i = 0; i < data.length; i += 4) {
-            let r = data[i], g = data[i+1], b = data[i+2];
-            const gray = 0.299 * r + 0.587 * g + 0.114 * b; 
-            r = clamp(gray + (r - gray) * sat, 0, 255);
-            g = clamp(gray + (g - gray) * sat, 0, 255);
-            b = clamp(gray + (b - gray) * sat, 0, 255);
-            r = clamp(((r / 255 - 0.5) * con + 0.5) * 255, 0, 255);
-            g = clamp(((g / 255 - 0.5) * con + 0.5) * 255, 0, 255);
-            b = clamp(((b / 255 - 0.5) * con + 0.5) * 255, 0, 255);
-            data[i] = r; data[i+1] = g; data[i+2] = b;
-        }
-        return imageData;
-    }
-
-    function reduceColors(imageData, palette) {
-        const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-            const color = { r: data[i], g: data[i + 1], b: data[i + 2] };
-            const nearest = findNearestColor(color, palette);
-            data[i] = nearest.r; data[i+1] = nearest.g; data[i+2] = nearest.b;
-        }
-        return imageData;
-    }
-    
-    function findNearestColor(color, palette) {
-      let minDistanceSq = Infinity;
-      let nearestColor = palette[0];
-      for (const pColor of palette) {
-        const dr = color.r - pColor.r;
-        const dg = color.g - pColor.g;
-        const db = color.b - pColor.b;
-        const distanceSq = dr*dr + dg*dg + db*db;
-        if (distanceSq < minDistanceSq) {
-          minDistanceSq = distanceSq;
-          nearestColor = pColor;
-        }
-      }
-      return nearestColor;
-    }
-
-    function applyDithering(imageData, percentage, palette) {
-        const data = imageData.data;
-        const width = imageData.width;
-        const height = imageData.height;
-        
-        const dataCopy = new Float32Array(data.length);
-        for(let i=0; i<data.length; i++) dataCopy[i] = data[i];
-
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const idx = (y * width + x) * 4;
-                const oldR = dataCopy[idx], oldG = dataCopy[idx + 1], oldB = dataCopy[idx + 2];
-                const newColor = findNearestColor({ r: oldR, g: oldG, b: oldB }, palette);
-                
-                data[idx] = newColor.r; data[idx+1] = newColor.g; data[idx+2] = newColor.b;
-
-                const errR = oldR - newColor.r;
-                const errG = oldG - newColor.g;
-                const errB = oldB - newColor.b;
-
-                if (x + 1 < width) {
-                    const i = idx + 4;
-                    dataCopy[i]   = clamp(dataCopy[i]   + errR * 7/16, 0, 255);
-                    dataCopy[i+1] = clamp(dataCopy[i+1] + errG * 7/16, 0, 255);
-                    dataCopy[i+2] = clamp(dataCopy[i+2] + errB * 7/16, 0, 255);
-                }
-                if (x - 1 >= 0 && y + 1 < height) {
-                    const i = idx + width*4 - 4;
-                    dataCopy[i]   = clamp(dataCopy[i]   + errR * 3/16, 0, 255);
-                    dataCopy[i+1] = clamp(dataCopy[i+1] + errG * 3/16, 0, 255);
-                    dataCopy[i+2] = clamp(dataCopy[i+2] + errB * 3/16, 0, 255);
-                }
-                if (y + 1 < height) {
-                    const i = idx + width*4;
-                    dataCopy[i]   = clamp(dataCopy[i]   + errR * 5/16, 0, 255);
-                    dataCopy[i+1] = clamp(dataCopy[i+1] + errG * 5/16, 0, 255);
-                    dataCopy[i+2] = clamp(dataCopy[i+2] + errB * 5/16, 0, 255);
-                }
-                if (x + 1 < width && y + 1 < height) {
-                    const i = idx + width*4 + 4;
-                    dataCopy[i]   = clamp(dataCopy[i]   + errR * 1/16, 0, 255);
-                    dataCopy[i+1] = clamp(dataCopy[i+1] + errG * 1/16, 0, 255);
-                    dataCopy[i+2] = clamp(dataCopy[i+2] + errB * 1/16, 0, 255);
-                }
-            }
-        }
-        return imageData; 
-    }
-    
-    function applyNoise(imageData, amount) {
-        const data = imageData.data;
-        const noiseLevel = amount / 100 * 128; 
-        for (let i = 0; i < data.length; i += 4) {
-            const rand = (Math.random() - 0.5) * noiseLevel;
-            data[i]   = clamp(data[i] + rand, 0, 255);
-            data[i+1] = clamp(data[i+1] + rand, 0, 255);
-            data[i+2] = clamp(data[i+2] + rand, 0, 255);
-        }
-        return imageData;
-    }
-
-    function applyPixelationEffect(pixelSize, targetCtx, sourceCanvas) {
-        const width = sourceCanvas.width;
-        const height = sourceCanvas.height;
-        if (pixelSize <= 1) { 
-            if (targetCtx.canvas !== sourceCanvas) {
-                targetCtx.clearRect(0,0,width,height);
-                targetCtx.drawImage(sourceCanvas, 0,0,width,height);
-            }
-            return;
-        }
-
-        const tempSmallCanvas = document.createElement('canvas'); 
-        const tempSmallCtx = tempSmallCanvas.getContext('2d');
-        
-        const smallWidth = Math.max(1, Math.floor(width / pixelSize));
-        const smallHeight = Math.max(1, Math.floor(height / pixelSize));
-        tempSmallCanvas.width = smallWidth;
-        tempSmallCanvas.height = smallHeight;
-
-        tempSmallCtx.imageSmoothingEnabled = true; 
-        tempSmallCtx.drawImage(sourceCanvas, 0, 0, width, height, 0, 0, smallWidth, smallHeight);
-        
-        targetCtx.imageSmoothingEnabled = false; 
-        targetCtx.clearRect(0, 0, width, height);
-        targetCtx.drawImage(tempSmallCanvas, 0, 0, smallWidth, smallHeight, 0, 0, width, height);
-        targetCtx.imageSmoothingEnabled = true; 
-    }
-
-    function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
-
-    const predefinedPalettes = {
-      grayscale: (() => { const p=[]; for(let i=0;i<16;i++){const g=Math.floor(i/15*255);p.push({r:g,g:g,b:g});} return p; })(),
-      vibrant: [{r:255,g:99,b:132},{r:54,g:162,b:235},{r:255,g:206,b:86},{r:75,g:192,b:192},{r:153,g:102,b:255},{r:255,g:159,b:64}],
-      pastel: [{r:255,g:179,b:186},{r:255,g:223,b:186},{r:255,g:255,b:186},{r:186,g:255,b:201},{r:186,g:225,b:255},{r:200,g:186,b:255}]
-    };
-    function generateRandomPalette(numColors) {
-      if (paletteCache[numColors]) return paletteCache[numColors];
-      const palette = [];
-      for (let i = 0; i < numColors; i++) {
-        palette.push({r:getRandomInt(0,255),g:getRandomInt(0,255),b:getRandomInt(0,255)});
-      }
-      paletteCache[numColors] = palette;
-      return palette;
-    }
-
-    // --- Canvas Interaction: Pan, Zoom, Grid, Glide ---
-    canvasViewportWrapper.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return; 
-      isPanning = true;
-      lastPanPosition = { x: e.clientX, y: e.clientY };
-      canvasViewportWrapper.classList.add('grabbing');
-      canvasViewportWrapper.style.cursor = 'grabbing';
-
-      if (glideRequestID) {
-        cancelAnimationFrame(glideRequestID);
-        glideRequestID = null;
-      }
-      panVelocity = { x: 0, y: 0 }; 
-      recentPanMoves = [];
-      lastMoveTimestamp = performance.now();
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (!isPanning) return;
-      const currentTime = performance.now();
-      const dt = currentTime - lastMoveTimestamp;
-
-      const dx = e.clientX - lastPanPosition.x;
-      const dy = e.clientY - lastPanPosition.y;
-
-      viewTransform.x += dx;
-      viewTransform.y += dy;
-
-      if (dt > 0) {
-        const vx = dx / dt; 
-        const vy = dy / dt; 
-        recentPanMoves.push({ x: e.clientX, y: e.clientY, timestamp: currentTime, vx, vy });
-        if (recentPanMoves.length > MAX_RECENT_MOVES) {
-          recentPanMoves.shift(); 
-        }
-      }
-
-      lastPanPosition = { x: e.clientX, y: e.clientY };
-      lastMoveTimestamp = currentTime;
-      drawVisibleCanvas();
-    });
-
-    document.addEventListener('mouseup', (e) => { // This listener is now also used by previewOriginalBtn
-      if (isPanning) {
-        isPanning = false;
-        canvasViewportWrapper.classList.remove('grabbing');
-        canvasViewportWrapper.style.cursor = 'grab';
-
-        if (recentPanMoves.length > 0) {
-          let totalVx = 0;
-          let totalVy = 0;
-          const samplesToAverage = Math.min(recentPanMoves.length, RECENT_MOVES_SAMPLES);
-          
-          for (let i = 0; i < samplesToAverage; i++) {
-            const move = recentPanMoves[recentPanMoves.length - 1 - i];
-            totalVx += move.vx;
-            totalVy += move.vy;
-          }
-          if (samplesToAverage > 0) {
-            panVelocity.x = totalVx / samplesToAverage;
-            panVelocity.y = totalVy / samplesToAverage;
-          }
-        }
-        
-        recentPanMoves = [];
-
-        if (Math.abs(panVelocity.x) > MIN_GLIDE_VELOCITY || Math.abs(panVelocity.y) > MIN_GLIDE_VELOCITY) {
-          lastGlideTimestamp = 0; 
-          if (glideRequestID) cancelAnimationFrame(glideRequestID);
-          glideRequestID = requestAnimationFrame(glideStep);
-        }
-      }
-      // Moved from previewOriginalBtn's mouseup to here for global release
-      if (isPreviewingOriginal) {
-          isPreviewingOriginal = false;
-          drawVisibleCanvas();
-      }
-    });
-
-    let lastGlideTimestamp = 0;
-    function glideStep(timestamp) {
-        if (isPanning) { 
-            panVelocity = { x: 0, y: 0 };
-            glideRequestID = null;
-            return;
-        }
-
-        if (lastGlideTimestamp === 0) { 
-            lastGlideTimestamp = timestamp;
-            glideRequestID = requestAnimationFrame(glideStep); 
-            return;
-        }
-
-        let dt = timestamp - lastGlideTimestamp;
-        lastGlideTimestamp = timestamp;
-
-        if (dt <= 0) { 
-            glideRequestID = requestAnimationFrame(glideStep);
-            return;
-        }
-        
-        const effectiveDt = Math.min(dt, MAX_GLIDE_DT); 
-
-        viewTransform.x += panVelocity.x * effectiveDt;
-        viewTransform.y += panVelocity.y * effectiveDt;
-
-        const dampingExponent = effectiveDt / (1000 / 60); 
-        panVelocity.x *= Math.pow(DAMPING_FACTOR, dampingExponent);
-        panVelocity.y *= Math.pow(DAMPING_FACTOR, dampingExponent);
-        
-        drawVisibleCanvas();
-
-        if (Math.abs(panVelocity.x) > MIN_GLIDE_VELOCITY || Math.abs(panVelocity.y) > MIN_GLIDE_VELOCITY) {
-            glideRequestID = requestAnimationFrame(glideStep);
-        } else {
-            panVelocity = { x: 0, y: 0 }; 
-            glideRequestID = null;
-            lastGlideTimestamp = 0; 
-        }
-    }
-
-
-    canvasViewportWrapper.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      if (glideRequestID) {
-        cancelAnimationFrame(glideRequestID);
-        glideRequestID = null;
-        panVelocity = { x: 0, y: 0 };
-      }
-
-      const zoomFactor = 1.1;
-      const oldScale = viewTransform.scale;
-      
-      if (e.deltaY < 0) viewTransform.scale *= zoomFactor; 
-      else viewTransform.scale /= zoomFactor; 
-      viewTransform.scale = clamp(viewTransform.scale, 0.1, 20); 
-
-      const rect = canvasViewportWrapper.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left; 
-      const mouseY = e.clientY - rect.top;  
-
-      viewTransform.x = mouseX - (mouseX - viewTransform.x) * (viewTransform.scale / oldScale);
-      viewTransform.y = mouseY - (mouseY - viewTransform.y) * (viewTransform.scale / oldScale);
-      
-      drawVisibleCanvas();
-    });
-
-    zoomInBtn.addEventListener('click', () => zoomCanvas(1.25));
-    zoomOutBtn.addEventListener('click', () => zoomCanvas(0.8));
-    resetViewBtn.addEventListener('click', () => {
-        if (glideRequestID) { 
-            cancelAnimationFrame(glideRequestID);
-            glideRequestID = null;
-            panVelocity = { x: 0, y: 0 };
-        }
-        resetViewTransform();
-        drawVisibleCanvas();
-    });
-
-    function zoomCanvas(factor) {
-        if (glideRequestID) { 
-            cancelAnimationFrame(glideRequestID);
-            glideRequestID = null;
-            panVelocity = { x: 0, y: 0 };
-        }
-        const oldScale = viewTransform.scale;
-        viewTransform.scale *= factor;
-        viewTransform.scale = clamp(viewTransform.scale, 0.1, 20);
-
-        const centerX = visibleCanvas.width / 2;
-        const centerY = visibleCanvas.height / 2;
-        viewTransform.x = centerX - (centerX - viewTransform.x) * (viewTransform.scale / oldScale);
-        viewTransform.y = centerY - (centerY - viewTransform.y) * (viewTransform.scale / oldScale);
-        
-        drawVisibleCanvas();
-    }
-    
-    function resetViewTransform() {
-        viewTransform.scale = 1;
-        if (processedCanvas.width > 0 && processedCanvas.height > 0) {
-            viewTransform.x = (visibleCanvas.width - processedCanvas.width * viewTransform.scale) / 2;
-            viewTransform.y = (visibleCanvas.height - processedCanvas.height * viewTransform.scale) / 2;
-        } else {
-            viewTransform.x = 0;
-            viewTransform.y = 0;
-        }
-    }
-
-    toggleGridBtn.addEventListener('click', () => {
-        showPixelGrid = !showPixelGrid;
-        toggleGridBtn.classList.toggle('active-tool', showPixelGrid);
-        drawVisibleCanvas();
-    });
-
-    function drawPixelGrid() {
-        if (!processedCanvas.width || !sourceImageElement) return;
-
-        const pixelArtPixelSize = parseInt(pixelSizeSlider.value); 
-        const numCols = Math.floor(processedCanvas.width / pixelArtPixelSize);
-        const numRows = Math.floor(processedCanvas.height / pixelArtPixelSize);
-
-        const cellWidthOnScreen = pixelArtPixelSize * viewTransform.scale;
-        const cellHeightOnScreen = pixelArtPixelSize * viewTransform.scale;
-
-        if (cellWidthOnScreen < MIN_GRID_CELL_SIZE && cellHeightOnScreen < MIN_GRID_CELL_SIZE) return; 
-
-        vCtx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-        vCtx.lineWidth = 1 / viewTransform.scale; 
-
-        for (let i = 0; i <= numCols; i++) {
-            const x = i * pixelArtPixelSize;
-            vCtx.beginPath();
-            vCtx.moveTo(x, 0);
-            vCtx.lineTo(x, processedCanvas.height); 
-            vCtx.stroke();
-        }
-        for (let i = 0; i <= numRows; i++) {
-            const y = i * pixelArtPixelSize;
-            vCtx.beginPath();
-            vCtx.moveTo(0, y);
-            vCtx.lineTo(processedCanvas.width, y); 
-            vCtx.stroke();
-        }
-    }
-
-    [ resolutionSlider, pixelSizeSlider, aspectRatioWidthSlider, aspectRatioHeightSlider,
-      colorReductionSlider, saturationSlider, contrastSlider, noiseSlider, ditheringSlider,
-      resolutionPresetSelect, colorPaletteSelect, pixelationStyleSelect
-    ].forEach(control => {
-      control.addEventListener('input', () => {
-        if (control === resolutionSlider || control === resolutionPresetSelect) {
-            if (control === resolutionPresetSelect && resolutionPresetSelect.value !== 'custom') {
-                resolutionSlider.value = resolutionPresetSelect.value;
-                resolutionSlider.disabled = true;
-            } else if (control === resolutionSlider) {
-                resolutionPresetSelect.value = 'custom';
-                resolutionSlider.disabled = false;
-            }
-        }
-        debouncedProcessAndRender();
-      });
-    });
-    
-    aspectRatioWidthSlider.addEventListener('input', function() {
-      if (aspectLock) aspectRatioHeightSlider.value = this.value;
-    });
-    aspectRatioHeightSlider.addEventListener('input', function() {
-      if (aspectLock) aspectRatioWidthSlider.value = this.value;
-    });
-
-    defaultAspectBtn.addEventListener('click', () => {
-      aspectRatioWidthSlider.value = 100; aspectRatioHeightSlider.value = 100;
-      debouncedProcessAndRender();
-    });
-    evenAspectBtn.addEventListener('click', () => {
-      const avg = Math.round((parseInt(aspectRatioWidthSlider.value) + parseInt(aspectRatioHeightSlider.value)) / 2);
-      aspectRatioWidthSlider.value = avg; aspectRatioHeightSlider.value = avg;
-      debouncedProcessAndRender();
-    });
-    switchAspectBtn.addEventListener('click', () => {
-      const temp = aspectRatioWidthSlider.value;
-      aspectRatioWidthSlider.value = aspectRatioHeightSlider.value; aspectRatioHeightSlider.value = temp;
-      debouncedProcessAndRender();
-    });
-    lockAspectBtn.addEventListener('click', () => {
-      aspectLock = !aspectLock;
-      lockAspectBtn.querySelector('i.material-icons').textContent = aspectLock ? 'lock' : 'lock_open';
-      lockAspectBtn.title = aspectLock ? 'Unlock Aspect Ratio' : 'Lock Aspect Ratio';
-      if (aspectLock) aspectRatioHeightSlider.value = aspectRatioWidthSlider.value; 
-      debouncedProcessAndRender();
-    });
-
-    function collectCurrentSettings() {
-        return {
-            resolution: resolutionSlider.value, pixelSize: pixelSizeSlider.value,
-            aspectRatioWidth: aspectRatioWidthSlider.value, aspectRatioHeight: aspectRatioHeightSlider.value,
-            aspectLock: aspectLock,
-            colorReduction: colorReductionSlider.value, colorPalette: colorPaletteSelect.value,
-            saturation: saturationSlider.value, contrast: contrastSlider.value,
-            dithering: ditheringSlider.value, noise: noiseSlider.value,
-            pixelationStyle: pixelationStyleSelect.value,
-        };
-    }
-
-    function applySettings(settings) {
-        resolutionSlider.value = settings.resolution;
-        pixelSizeSlider.value = settings.pixelSize;
-        aspectRatioWidthSlider.value = settings.aspectRatioWidth;
-        aspectRatioHeightSlider.value = settings.aspectRatioHeight;
-        aspectLock = settings.aspectLock || false;
-        lockAspectBtn.querySelector('i.material-icons').textContent = aspectLock ? 'lock' : 'lock_open';
-        
-        colorReductionSlider.value = settings.colorReduction;
-        colorPaletteSelect.value = settings.colorPalette;
-        saturationSlider.value = settings.saturation;
-        contrastSlider.value = settings.contrast;
-        ditheringSlider.value = settings.dithering;
-        noiseSlider.value = settings.noise;
-        pixelationStyleSelect.value = settings.pixelationStyle;
-
-        const matchingPreset = Array.from(resolutionPresetSelect.options).find(opt => opt.value === settings.resolution);
-        if (matchingPreset && matchingPreset.value !== 'custom') {
-            resolutionPresetSelect.value = settings.resolution;
-            resolutionSlider.disabled = true;
-        } else {
-            resolutionPresetSelect.value = 'custom';
-            resolutionSlider.disabled = false;
-        }
-        
-        updateAllSliderValueDisplays();
-        processImageAndRender();
-        resetViewTransform(); 
-        drawVisibleCanvas();
-    }
-    
-    resetBtn.addEventListener('click', () => {
-      if (!sourceImageElement) { alert("Upload an image first."); return; }
-      const defaultSettings = {
-        resolution: "100", pixelSize: "10", aspectRatioWidth: "100", aspectRatioHeight: "100", aspectLock: false,
-        colorReduction: "16", colorPalette: "default", saturation: "100", contrast: "100",
-        dithering: "0", noise: "0", pixelationStyle: "standard"
-      };
-      applySettings(defaultSettings);
-    });
-
-    randomizeBtn.addEventListener('click', () => {
-      if (!sourceImageElement) { alert("Upload an image first."); return; }
-      const randomSettings = {
-        resolution: getRandomInt(10, 200).toString(),
-        pixelSize: getRandomInt(1, 50).toString(),
-        aspectRatioWidth: getRandomInt(25, 200).toString(),
-        aspectRatioHeight: getRandomInt(25, 200).toString(),
-        aspectLock: Math.random() < 0.3, 
-        colorReduction: getRandomInt(2, 64).toString(), 
-        colorPalette: Object.keys(predefinedPalettes)[getRandomInt(0, Object.keys(predefinedPalettes).length -1)],
-        saturation: getRandomInt(50, 150).toString(),
-        contrast: getRandomInt(50, 150).toString(),
-        dithering: (getRandomInt(0, 1) * getRandomInt(20,80)).toString(), 
-        noise: (getRandomInt(0, 1) * getRandomInt(5,30)).toString(), 
-        pixelationStyle: "standard"
-      };
-      if (randomSettings.colorPalette === 'default' && Math.random() < 0.7) {
-          randomSettings.colorPalette = 'random';
-      }
-      applySettings(randomSettings);
-    });
-
-    saveBtn.addEventListener('click', () => {
-      const name = prompt("Enter a name for this preset:", `Preset ${savedSettings.length + 1}`);
-      if (!name) return;
-      const currentSettings = collectCurrentSettings();
-      savedSettings.push({ name, ...currentSettings });
-      localStorage.setItem('pixelArtSaves_v2', JSON.stringify(savedSettings));
-      loadSavedSettings(); 
-      alert(`Preset "${name}" saved!`);
-    });
-
-    loadBtn.addEventListener('click', () => {
-      if (savedSettingsSelect.value === "") { alert('Please select a preset to load.'); return; }
-      if (!sourceImageElement && !confirm("No image loaded. Some settings might not apply correctly. Load preset anyway?")) return;
-      
-      const selectedPreset = savedSettings.find(s => s.name === savedSettingsSelect.value);
-      if (selectedPreset) {
-        applySettings(selectedPreset);
-        alert(`Preset "${selectedPreset.name}" loaded.`);
-      } else {
-        alert("Could not find selected preset.");
-      }
-    });
-    
-    function loadSavedSettings() {
-      savedSettings = JSON.parse(localStorage.getItem('pixelArtSaves_v2')) || [];
-      savedSettingsSelect.innerHTML = '<option value="" disabled selected>Load a preset...</option>';
-      savedSettings.forEach(save => {
-        const option = document.createElement('option');
-        option.value = save.name; 
-        option.textContent = save.name;
-        savedSettingsSelect.appendChild(option);
-      });
-    }
-
-    downloadBtn.addEventListener('click', () => {
-      if (!sourceImageElement || !processedCanvas.width || !processedCanvas.height) {
-        alert('Please process an image first.'); return;
-      }
-      const link = document.createElement('a');
-      link.download = `pixel-art-${Date.now()}.png`;
-      link.href = processedCanvas.toDataURL('image/png');
-      link.click();
-    });
-
-    function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-
-  </script>
+</div>
+
+<script src="../assets/console.js"></script>
+<script src="demixel.js"></script>
+<script src="restorer.js"></script>
 </body>
 </html>

@@ -1,10 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta http-equiv="refresh" content="0; url=https://isaiart.com/pixelate" />
-    <title>Redirecting...</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0b0d">
+<title>Moved — Pixel Restorer</title>
+
+<!-- Three independent redirects, because each one fails somewhere the others
+     don't. canonical tells search engines which URL is real; meta refresh
+     works with JS disabled; replace() leaves no history entry, so Back
+     doesn't bounce the visitor straight back here. -->
+<link rel="canonical" href="https://isaiart.com/pixelate/">
+<meta name="robots" content="noindex, follow">
+<meta http-equiv="refresh" content="0; url=https://isaiart.com/pixelate/">
+<script>location.replace("https://isaiart.com/pixelate/");</script>
+
+<link rel="icon" href="../../assets/icon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root { --ground:#0a0b0d; --panel:#0e1013; --rule:#23272e; --ink:#d7dbe2; --ink-soft:#939aa5; --accent:#3dd6c4; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:#0a0b0d;color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  background-image:linear-gradient(#191c21 1px,transparent 1px),linear-gradient(90deg,#191c21 1px,transparent 1px);
+  background-size:32px 32px}
+.card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--rule);padding:22px}
+.stripe{display:flex;height:5px;margin:0 0 16px}
+.stripe i{flex:1}
+.stripe i:nth-child(1){background:#e5484d}.stripe i:nth-child(2){background:#ff6b35}
+.stripe i:nth-child(3){background:#ffb000}.stripe i:nth-child(4){background:#4ade80}
+.stripe i:nth-child(5){background:#3dd6c4}.stripe i:nth-child(6){background:#4c9aff}
+h1{font-family:'Chakra Petch',sans-serif;font-size:1.15rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+p{font-size:.75rem;line-height:1.7;color:var(--ink-soft);margin-bottom:16px}
+a.key{display:inline-flex;align-items:center;min-height:38px;padding:.4em .9em;
+  font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;
+  color:#0a0b0d;background:var(--accent);border:1px solid var(--accent)}
+a.key:hover{background:var(--ink);border-color:var(--ink)}
+</style>
 </head>
 <body>
-    <p>If you are not redirected, <a href="https://isaiart.com/pixelate">click here</a>.</p>
+<main class="card">
+  <span class="stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+  <h1>This tool moved</h1>
+  <p>This archived page is superseded by the tool that now lives at <strong>isaiart.com/pixelate</strong>, rebuilt to recover the real block grid from AI pixel art rather than just averaging squares. You should be sent there automatically.</p>
+  <a class="key" href="https://isaiart.com/pixelate/">GO TO PIXEL RESTORER &rarr;</a>
+</main>
 </body>
 </html>

@@ -1,0 +1,609 @@
+/* ============================================================================
+   SEARCH — composition layer for the query terminals
+   ---------------------------------------------------------------------------
+   Primitives (chassis, key, field, screen, label, stripe, led, rocker) all
+   come from vector.css. Nothing here invents a new visual device; this file
+   only arranges the existing ones into a console: header, network selector,
+   readout, racks of fields, and a fixed transport dock along the bottom.
+
+   The one page-level idea that lives here is the ACCENT SWAP. Each terminal
+   re-points --accent at a different band of the six-colour stripe, so the
+   three pages read as three channels of one machine rather than three sites.
+   ========================================================================= */
+
+/* ── 0. LEGIBILITY TOKENS ────────────────────────────────────────────────────
+   vector.css spends --ink-faint on two very different jobs: furniture that is
+   meant to recede (a rule, an unlit index numeral) and PROSE THE USER HAS TO
+   READ (hints, placeholders). At 3.6:1 it is under the 4.5:1 floor, and the
+   hints are the most numerous text on the page — so the reading text gets its
+   own token, measured at 5.3:1 on --panel, and the furniture keeps the old one.
+
+   The label size moves with it. Uppercase mono at 0.18em tracking needs more
+   height than lowercase to stay readable, and 10px was under it. */
+
+:root {
+    --hint-ink:   #7f8794;
+    --label-size: 0.665rem;
+}
+
+/* ── 1. PAGE FRAME ───────────────────────────────────────────────────────── */
+
+.page {
+    position: relative;
+    width: 100%;
+    max-width: 1240px;
+    min-height: 100dvh;
+    margin: 0 auto;
+    /* The dock is fixed over the bottom of the viewport, so the column has to
+       end above it or the last rack is unreachable on a short screen. */
+    padding: 14px 12px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ── 2. HEADER ───────────────────────────────────────────────────────────── */
+
+.page-head { padding: 16px 20px 0; }
+
+.head-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    gap: 14px 18px;
+}
+
+.brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+    min-width: 0;
+}
+.brand .designation {
+    font-size: clamp(0.98rem, 3.2vw, 1.28rem);
+    line-height: 1;
+    letter-spacing: 0.1em;
+}
+
+.brand-stripe { height: 5px; width: 100%; max-width: 230px; }
+.brand-stripe i { width: auto; flex: 1 1 0; min-height: 5px; }
+
+.head-well { min-width: 0; padding: 7px; }
+.head-well .screen { padding: 7px 10px; }
+
+.well-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 30px;
+}
+
+#clock {
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+#scope {
+    display: block;
+    width: 120px;
+    height: 28px;
+    min-width: 84px;
+    flex: 0 1 120px;
+}
+
+.head-ctl {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+    justify-self: stretch;
+    justify-content: space-between;
+}
+
+.lamp    { display: flex; align-items: center; gap: 7px; }
+.phos-sw { display: flex; align-items: center; gap: 8px; }
+
+@media (min-width: 540px) {
+    .head-row { grid-template-columns: 1fr auto; }
+    .brand    { grid-area: 1 / 1; }
+    .head-ctl { grid-area: 1 / 2; justify-self: end; justify-content: flex-end; }
+    .head-well{ grid-area: 2 / 1 / 3 / 3; }
+}
+
+@media (min-width: 900px) {
+    .head-row { grid-template-columns: auto minmax(210px, 1fr) auto; }
+    .brand    { grid-area: 1 / 1; }
+    .head-well{ grid-area: 1 / 2; }
+    .head-ctl { grid-area: 1 / 3; }
+}
+
+/* ── 3. NETWORK SELECTOR ─────────────────────────────────────────────────────
+   The channel strip. It sits flush with the bottom edge of the header so the
+   selected channel reads as continuous with the page below it. */
+
+.net-nav {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 16px -20px 0;
+    padding: 0 20px;
+    border-top: var(--hair) solid var(--rule);
+}
+
+.net-nav .net {
+    flex: 1 1 auto;
+    min-width: 96px;
+    justify-content: center;
+    gap: 0.65em;
+    min-height: 40px;
+    border: 0;
+    border-right: var(--hair) solid var(--rule);
+    /* The selected channel is marked by a band on its bottom edge, which is
+       why the strip needs the header's own border to run behind it. */
+    border-bottom: 3px solid transparent;
+    background: transparent;
+}
+.net-nav .net:first-child { border-left: var(--hair) solid var(--rule); }
+
+.net-nav .net:hover { background: var(--ground-2); color: var(--ink); }
+
+.net-nav .net[aria-current="page"] {
+    color: var(--ink);
+    background: var(--ground-2);
+    border-bottom-color: var(--accent);
+}
+.net-nav .net[aria-current="page"] .net-ix { color: var(--accent); }
+
+.net-ix {
+    font-family: var(--f-display);
+    font-weight: 700;
+    color: var(--ink-faint);
+    transition: color var(--snap);
+}
+
+/* ── 4. READOUT ──────────────────────────────────────────────────────────────
+   What the console is about to do, in plain sight, at all times. */
+
+.readout { padding: 0; overflow: hidden; }
+
+.readout-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px 14px;
+}
+
+.readout-row {
+    display: grid;
+    grid-template-columns: 62px 1fr;
+    gap: 10px;
+    align-items: start;
+}
+
+.readout-row .label { padding-top: 7px; }
+
+.q-screen,
+.u-screen {
+    margin: 0;
+    padding: 7px 10px;
+    min-height: 2.4em;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    /* A pre inside a bordered well: the scroll cap keeps a 40-operator query
+       from pushing the racks off the fold. */
+    max-height: 8.5em;
+    overflow-y: auto;
+}
+.q-screen { color: var(--phos); }
+.u-screen { color: var(--ink-soft); font-size: 0.72rem; }
+.q-screen.empty, .u-screen.empty { color: var(--hint-ink); }
+
+/* ── 5. RACKS ────────────────────────────────────────────────────────────────
+   One card per family of operators. */
+
+/* Multi-column, NOT grid. A grid row is as tall as its tallest cell, so a
+   short rack next to a long one leaves a card-shaped hole beneath it — with
+   racks this uneven (WORDS is ~590px, ENGAGEMENT ~430px) the page was more
+   hole than panel. Columns pack each rack directly under the one above it,
+   which is what a real rack does. */
+.racks {
+    column-count: 1;
+    column-gap: 12px;
+}
+@media (min-width: 720px)  { .racks { column-count: 2; } }
+@media (min-width: 1080px) { .racks { column-count: 3; } }
+
+/* A rack must never be split across a column break — half a card at the foot
+   of one column and half at the head of the next is unreadable. The margin
+   replaces what grid's row-gap used to provide. */
+.racks > * {
+    break-inside: avoid;
+    margin-bottom: 12px;
+}
+
+.rack {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    /* A colour spine on the leading edge, lit only where the rack is active —
+       the same device the tool cards use on the hub. */
+    border-left: 3px solid var(--rule);
+    transition: border-color var(--snap);
+}
+.rack:focus-within { border-left-color: var(--accent); }
+
+/* Anything asking to span the full width, not just racks — the READ ME panels
+   are notes rather than racks and have to run edge to edge too. */
+.racks > .wide { column-span: all; }
+
+.rack-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border-bottom: var(--hair) solid var(--rule);
+}
+
+.rack-ix {
+    font-family: var(--f-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--rule-hi);
+    transition: color var(--snap);
+}
+.rack:focus-within .rack-ix { color: var(--accent); }
+
+.rack-name {
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+}
+
+.rack-body {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    padding: 14px;
+}
+
+/* A ruled divider inside a rack, for when one card holds two ideas. */
+.rack-body .rule { margin: 2px 0; }
+
+/* ── 6. FIELDS ───────────────────────────────────────────────────────────── */
+
+.fld {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.fld > .label { display: flex; align-items: baseline; gap: 8px; }
+
+/* The operator a field compiles to, printed beside its name. This is the
+   thing that turns the console into documentation. */
+.op {
+    font-family: var(--f-mono);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: none;
+    color: var(--phos-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Hints are prose, and prose wants a measure. Left to run the full width of a
+   400px rack they set as one unbroken block of 10px mono, which is what made
+   the racks read as a wall rather than as labelled fields. */
+.hint {
+    max-width: 46ch;
+    font-size: 0.68rem;
+    line-height: 1.6;
+    letter-spacing: 0.015em;
+    color: var(--hint-ink);
+}
+
+/* ── 6b. FILLED vs EMPTY ─────────────────────────────────────────────────────
+   The console is mostly placeholders, and a placeholder that only differs from
+   a real value by brightness is unreadable as a state: a page full of example
+   text looks like a page full of answers. So a field that actually holds
+   something is marked structurally — an accent bar down its inner edge, and
+   its label lifted to full ink. Now the eye can count the filled fields
+   without reading any of them.
+
+   Inset shadow rather than a border so nothing reflows on the first keystroke.
+
+   Keyed on [placeholder] deliberately, not on the input alone. :placeholder-shown
+   is FALSE for any control that has no placeholder to show — so a bare
+   :not(:placeholder-shown) lights every empty date field on the page. Requiring
+   the attribute puts the mark exactly where the ambiguity is: a field currently
+   displaying example text. Dates and selects opt out by having none, which is
+   right — an empty date already reads as mm/dd/yyyy and a select as ANY. */
+input.field[placeholder]:not(:placeholder-shown),
+textarea.field[placeholder]:not(:placeholder-shown) {
+    box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.fld:has(input.field[placeholder]:not(:placeholder-shown)),
+.fld:has(textarea.field[placeholder]:not(:placeholder-shown)) {
+    --fld-ink: var(--ink);
+}
+.fld > .label { color: var(--fld-ink, var(--ink-soft)); transition: color var(--snap); }
+
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.trio { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+/* 12.8px mono is small for something you type into and re-read. */
+.field { font-size: 0.85rem; }
+.field::placeholder { color: var(--hint-ink); }
+
+textarea.field { resize: vertical; min-height: 62px; line-height: 1.5; }
+
+/* ── 7. CHECKS & SEGMENTED SWITCHES ──────────────────────────────────────── */
+
+.checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+}
+
+.chk {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.chk input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+.chk .box {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    background: var(--well);
+    border: var(--hair) solid var(--rule-hi);
+    transition: background var(--snap), border-color var(--snap);
+}
+.chk input:checked + .box { background: var(--accent); border-color: var(--accent); }
+.chk input:focus-visible + .box { outline: 2px solid var(--s6); outline-offset: 2px; }
+.chk:hover .box { border-color: var(--ink-faint); }
+
+.chk .label { transition: color var(--snap); }
+.chk input:checked ~ .label { color: var(--ink); }
+
+/* A radio group drawn as one ruled bar of cells that invert when selected. */
+.seg-ctl {
+    display: flex;
+    flex-wrap: wrap;
+    border: var(--hair) solid var(--rule);
+}
+.seg-ctl label {
+    flex: 1 1 0;
+    min-width: 62px;
+    display: flex;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.seg-ctl label + label { border-left: var(--hair) solid var(--rule); }
+.seg-ctl input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+.seg-ctl span {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.5em 0.4em;
+    min-height: 30px;
+    font-family: var(--f-mono);
+    font-size: var(--label-size);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    transition: color var(--snap), background var(--snap);
+}
+.seg-ctl label:hover span { color: var(--ink); background: var(--ground-2); }
+.seg-ctl input:checked + span { color: #0a0b0d; background: var(--accent); }
+.seg-ctl input:focus-visible + span { outline: 2px solid var(--s6); outline-offset: -2px; }
+
+@media (pointer: coarse) { .seg-ctl span { min-height: 42px; } }
+
+/* ── 8. TRANSPORT DOCK ───────────────────────────────────────────────────────
+   The controls that actually fire. Fixed, because a builder this long should
+   never make you scroll back to the top to run it. */
+
+.dock {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    padding-bottom: max(9px, env(safe-area-inset-bottom));
+    background: var(--panel);
+    border-top: var(--hair) solid var(--rule-hi);
+}
+
+/* The stripe runs along the top edge of the dock: the machine's identity mark
+   doubling as the boundary between page and transport. */
+.dock-stripe {
+    position: absolute;
+    top: -3px; left: 0; right: 0;
+    height: 3px;
+}
+.dock-stripe i { width: auto; flex: 1 1 0; height: 3px; min-height: 0; }
+
+.dock-inner {
+    width: 100%;
+    max-width: 1240px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 2px;
+}
+
+.dock .key-go {
+    flex: 1 1 auto;
+    max-width: 420px;
+    min-height: 40px;
+    color: #0a0b0d;
+    background: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+}
+.dock .key-go:hover { background: var(--ink); border-color: var(--ink); color: #0a0b0d; }
+.dock .key-go[disabled] { background: transparent; border-color: var(--rule); color: var(--ink-faint); }
+
+.dock .count {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+    .dock .key-lbl { display: none; }
+    .dock .count   { display: none; }
+}
+
+/* ── 9. FOOTER ───────────────────────────────────────────────────────────── */
+
+.page-foot {
+    padding: 13px 18px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    margin-top: auto;
+}
+.foot-right { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; margin-left: auto; }
+
+/* ── 10. NOTE PANEL ──────────────────────────────────────────────────────────
+   Where a page has to be honest about what a network cannot do. */
+
+.note {
+    display: flex;
+    /* Without this the tape is a flex item at default `stretch` and grows into
+       a tall colour block down the side of the panel. It is a label; it should
+       be the height of its own text. */
+    align-items: flex-start;
+    gap: 11px;
+    padding: 12px 14px;
+    border-left: 3px solid var(--s3);
+}
+.note .note-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* The READ ME panels run the full width of the grid, so they need a measure
+   even more than the hints do — 90ch of 11px mono is unreadable as prose. */
+.note p { max-width: 78ch; font-size: 0.72rem; line-height: 1.7; color: var(--ink-soft); }
+.note p + p { margin-top: 2px; }
+.note code {
+    font-family: var(--f-mono);
+    font-size: 0.95em;
+    color: var(--phos-dim);
+    overflow-wrap: anywhere;
+}
+
+/* ── 11. HUB ─────────────────────────────────────────────────────────────────
+   Only the index page uses these. */
+
+.hub-quick { padding: 14px; }
+.hub-quick-row { display: flex; flex-direction: column; gap: 10px; }
+.hub-quick .field { font-size: 0.95rem; padding: 0.7em 0.75em; }
+.hub-quick-keys { display: flex; flex-wrap: wrap; gap: 8px; }
+.hub-quick-keys .key { flex: 1 1 auto; min-width: 130px; }
+
+.hub-nets { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 780px) { .hub-nets { grid-template-columns: repeat(3, 1fr); } }
+
+.net-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 20px 18px;
+    text-decoration: none;
+    color: var(--ink);
+    border-left: 3px solid transparent;
+    transition: border-color var(--snap), background var(--snap);
+}
+.net-card:hover,
+.net-card:focus-visible { background: var(--ground-2); border-color: var(--rule-hi); }
+.net-card:focus-visible { outline: 2px solid var(--s6); outline-offset: 2px; }
+.net-card[data-net="x"]:hover,       .net-card[data-net="x"]:focus-visible       { border-left-color: var(--s3); }
+.net-card[data-net="bluesky"]:hover, .net-card[data-net="bluesky"]:focus-visible { border-left-color: var(--s6); }
+.net-card[data-net="threads"]:hover, .net-card[data-net="threads"]:focus-visible { border-left-color: var(--s2); }
+
+.net-card-ix {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    font-family: var(--f-display);
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--rule-hi);
+    transition: color var(--snap);
+}
+.net-card[data-net="x"]:hover .net-card-ix       { color: var(--s3); }
+.net-card[data-net="bluesky"]:hover .net-card-ix { color: var(--s6); }
+.net-card[data-net="threads"]:hover .net-card-ix { color: var(--s2); }
+
+.net-card-name { font-size: clamp(1rem, 2.2vw, 1.3rem); line-height: 1.05; }
+.net-card-body { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; }
+
+.net-card-list {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 12px 0 0;
+    border-top: var(--hair) solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    color: var(--ink-soft);
+}
+.net-card-list li { position: relative; padding-left: 15px; }
+.net-card-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.5em;
+    width: 7px;
+    height: 1px;
+    background: var(--phos-dim);
+}
+
+.net-card-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 13px;
+    border-top: var(--hair) solid var(--rule);
+}
+.net-card .key { pointer-events: none; }
+.net-card[data-net="x"]:hover .key       { color: #0a0b0d; background: var(--s3); border-color: var(--s3); }
+.net-card[data-net="bluesky"]:hover .key { color: #0a0b0d; background: var(--s6); border-color: var(--s6); }
+.net-card[data-net="threads"]:hover .key { color: #0a0b0d; background: var(--s2); border-color: var(--s2); }
+
+/* ── 12. SMALL SCREENS ───────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+    .page { padding: 10px 8px 92px; }
+    .page-head { padding: 14px 14px 0; }
+    .net-nav { margin: 14px -14px 0; padding: 0 14px; }
+    .readout-row { grid-template-columns: 1fr; gap: 4px; }
+    .readout-row .label { padding-top: 0; }
+    .pair, .trio { grid-template-columns: 1fr; }
+}
