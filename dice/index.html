@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b0c0e">
+<title>Dice</title>
+<meta name="description" content="A quiet dice roller for the table. Every die from d4 to d100, advantage and disadvantage, and nothing else in the way.">
+
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   DICE — minimal by subtraction.
+
+   The restraint is the point: one accent colour, one typeface, hairlines
+   instead of boxes, and no surface that is not carrying information. What
+   is left has to move well, so the motion budget goes almost entirely into
+   the roll itself.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --bg:        #0b0c0e;
+    --raise:     #131519;
+    --line:      #23262c;
+    --line-soft: #191c21;
+    --ink:       #e8eaee;
+    --ink-2:     #9298a3;
+    --ink-3:     #5f6672;
+    --accent:    #d8a657;   /* one warm accent, the only saturated thing here */
+    --crit:      #6ee7a8;
+    --fail:      #f0736a;
+
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);   /* long, soft settle */
+    --snap: cubic-bezier(0.4, 0, 0.2, 1);
+
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.wrap {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 28px 20px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+    flex: 1 1 auto;
+}
+
+/* ── Head ─────────────────────────────────────────────────────────────── */
+
+.head { display: flex; align-items: baseline; gap: 14px; }
+.head h1 {
+    font-size: 0.82rem; font-weight: 500;
+    letter-spacing: 0.34em; text-transform: uppercase;
+}
+.head a {
+    margin-left: auto;
+    font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-3); text-decoration: none;
+    transition: color 160ms var(--snap);
+}
+.head a:hover { color: var(--ink-2); }
+
+/* ── Die picker ───────────────────────────────────────────────────────── */
+
+.dice-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.pick {
+    flex: 1 1 auto;
+    min-width: 62px;
+    padding: 10px 4px;
+    background: none;
+    border: 1px solid var(--line-soft);
+    border-radius: 2px;
+    color: var(--ink-3);
+    font: inherit;
+    font-size: 0.76rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: color 200ms var(--snap), border-color 200ms var(--snap),
+                background 200ms var(--snap);
+}
+.pick:hover { color: var(--ink-2); border-color: var(--line); }
+.pick[aria-pressed="true"] {
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
+}
+.pick:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+
+/* ── Steppers ─────────────────────────────────────────────────────────── */
+
+.controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 18px;
+}
+@media (min-width: 620px) { .controls { grid-template-columns: 1fr 1fr auto; } }
+
+.field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.field > span {
+    font-size: 0.6rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--ink-3);
+}
+
+.stepper {
+    display: flex; align-items: stretch;
+    border: 1px solid var(--line-soft);
+    border-radius: 2px;
+}
+.stepper button {
+    width: 38px;
+    background: none; border: 0;
+    color: var(--ink-3);
+    font: inherit; font-size: 0.95rem;
+    cursor: pointer;
+    transition: color 160ms var(--snap), background 160ms var(--snap);
+}
+.stepper button:hover { color: var(--ink); background: var(--raise); }
+.stepper button:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.stepper output {
+    flex: 1 1 auto;
+    display: grid; place-items: center;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    padding: 9px 0;
+    min-width: 0;
+}
+
+/* Advantage is a d20-only idea, so the control leaves rather than greys. */
+.adv { display: flex; border: 1px solid var(--line-soft); border-radius: 2px; overflow: hidden; }
+.adv button {
+    padding: 9px 12px;
+    background: none; border: 0;
+    color: var(--ink-3);
+    font: inherit; font-size: 0.62rem;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    cursor: pointer;
+    transition: color 180ms var(--snap), background 180ms var(--snap);
+}
+.adv button + button { border-left: 1px solid var(--line-soft); }
+.adv button:hover { color: var(--ink-2); }
+.adv button[aria-pressed="true"] { color: var(--bg); background: var(--accent); }
+.adv[hidden] { display: none; }
+
+/* ── Tray ─────────────────────────────────────────────────────────────── */
+
+.tray {
+    min-height: 230px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 20px 0;
+}
+
+/* The die is a canvas. Everything visual about it — solid, shading, edges,
+   numerals, crit colour — is drawn per frame in JS, because the orientation
+   has to be computed anyway and splitting the look across CSS and canvas
+   would mean two sources of truth for the same object. */
+.die { line-height: 0; }
+.die canvas { display: block; }
+
+/* A die dropped by advantage stays visible but recedes — you can still read
+   what it rolled, which is the whole reason to show it. */
+.die.dropped { opacity: 0.3; }
+
+/* ── Readout ──────────────────────────────────────────────────────────── */
+
+.readout { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.total {
+    font-size: clamp(2.6rem, 12vw, 4rem);
+    font-weight: 300;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+}
+.total.crit { color: var(--crit); }
+.total.fail { color: var(--fail); }
+.breakdown {
+    font-size: 0.7rem;
+    color: var(--ink-3);
+    text-align: center;
+    min-height: 1.2em;
+    letter-spacing: 0.04em;
+}
+.breakdown b { color: var(--ink-2); font-weight: 400; }
+
+/* ── Roll ─────────────────────────────────────────────────────────────── */
+
+.roll {
+    width: 100%;
+    padding: 16px;
+    background: none;
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    color: var(--accent);
+    font: inherit;
+    font-size: 0.74rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 220ms var(--snap), color 220ms var(--snap);
+}
+.roll:hover { background: var(--accent); color: var(--bg); }
+.roll:active { transform: translateY(1px); }
+.roll:focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+
+/* ── History ──────────────────────────────────────────────────────────── */
+
+.log { display: flex; flex-direction: column; }
+.log-head {
+    display: flex; align-items: baseline;
+    font-size: 0.6rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--ink-3);
+    padding-bottom: 8px;
+}
+.log-head button {
+    margin-left: auto;
+    background: none; border: 0; color: var(--ink-3);
+    font: inherit; font-size: 0.6rem; letter-spacing: 0.16em;
+    text-transform: uppercase; cursor: pointer;
+    transition: color 160ms var(--snap);
+}
+.log-head button:hover { color: var(--fail); }
+
+.log-row {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--line-soft);
+    font-size: 0.72rem;
+    color: var(--ink-3);
+}
+.log-row .expr { color: var(--ink-2); }
+.log-row .dice { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-row .sum { color: var(--ink); font-variant-numeric: tabular-nums; }
+.log-row.crit .sum { color: var(--crit); }
+.log-row.fail .sum { color: var(--fail); }
+
+@keyframes slip { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.log-row.fresh { animation: slip 320ms var(--ease) both; }
+
+.hint { font-size: 0.62rem; color: var(--ink-3); letter-spacing: 0.06em; text-align: center; }
+kbd {
+    font: inherit; font-size: 0.95em;
+    border: 1px solid var(--line); border-radius: 2px;
+    padding: 1px 5px; color: var(--ink-2);
+}
+
+/* Minimal type wants small controls; thumbs do not. Only the hit area grows. */
+@media (pointer: coarse) {
+    .adv button   { padding: 14px 14px; }
+    .stepper button { min-height: 44px; }
+    .log-head button { padding: 8px 0 8px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .die.rolling, .log-row.fresh { animation: none; }
+    * { transition-duration: 1ms !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+    <header class="head">
+        <h1>Dice</h1>
+        <a href="https://isaiart.com">isaiart.com</a>
+    </header>
+
+    <div class="dice-row" id="picker" role="group" aria-label="Die type"></div>
+
+    <div class="controls">
+        <label class="field">
+            <span>Count</span>
+            <span class="stepper">
+                <button type="button" data-step="count" data-d="-1" aria-label="Fewer dice">&minus;</button>
+                <output id="countOut">1</output>
+                <button type="button" data-step="count" data-d="1" aria-label="More dice">+</button>
+            </span>
+        </label>
+
+        <label class="field">
+            <span>Modifier</span>
+            <span class="stepper">
+                <button type="button" data-step="mod" data-d="-1" aria-label="Lower modifier">&minus;</button>
+                <output id="modOut">+0</output>
+                <button type="button" data-step="mod" data-d="1" aria-label="Raise modifier">+</button>
+            </span>
+        </label>
+
+        <div class="field" id="advField">
+            <span>Roll</span>
+            <div class="adv" role="group" aria-label="Advantage">
+                <button type="button" data-adv="adv" aria-pressed="false">Adv</button>
+                <button type="button" data-adv="flat" aria-pressed="true">Flat</button>
+                <button type="button" data-adv="dis" aria-pressed="false">Dis</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tray" id="tray" aria-live="polite"></div>
+
+    <div class="readout">
+        <div class="total" id="total">—</div>
+        <div class="breakdown" id="breakdown"></div>
+    </div>
+
+    <button class="roll" type="button" id="rollBtn">Roll</button>
+
+    <p class="hint"><kbd>space</kbd> to roll &middot; <kbd>1</kbd>&ndash;<kbd>7</kbd> to pick a die &middot; <kbd>&uarr;</kbd><kbd>&darr;</kbd> for count</p>
+
+    <section class="log">
+        <div class="log-head"><span>History</span><button type="button" id="clearLog">Clear</button></div>
+        <div id="logRows"></div>
+    </section>
+
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    var DICE = [
+        { sides: 4 }, { sides: 6 }, { sides: 8 },
+        { sides: 10 }, { sides: 12 }, { sides: 20 }, { sides: 100 }
+    ];
+
+    var st = { die: DICE[5], count: 1, mod: 0, adv: 'flat', rolling: false, log: [] };
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    var $ = function (id) { return document.getElementById(id); };
+    var tray = $('tray');
+
+    /* ══ 3D ═══════════════════════════════════════════════════════════════════
+       Real solids, built rather than typed in. Hand-listing the twenty faces of
+       an icosahedron is exactly the sort of thing that is wrong in one place
+       and impossible to spot, so the triangular solids find their own faces: on
+       a Platonic solid every edge is the same length, so any three vertices all
+       separated by the minimum distance form a face. The dodecahedron comes
+       from the icosahedron dual — its face centres are the dodecahedron
+       vertices — and only the cube and the trapezohedron behind the d10,
+       neither of them triangular, are given explicitly.                     */
+
+    var V = {
+        sub:   function (a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; },
+        dot:   function (a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; },
+        cross: function (a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; },
+        len:   function (a) { return Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]); },
+        norm:  function (a) { var l = V.len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+        dist:  function (a, b) { return V.len(V.sub(a, b)); },
+        scale: function (a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+    };
+
+    function centroid(verts, idx) {
+        var c = [0, 0, 0];
+        idx.forEach(function (i) { c[0] += verts[i][0]; c[1] += verts[i][1]; c[2] += verts[i][2]; });
+        return [c[0] / idx.length, c[1] / idx.length, c[2] / idx.length];
+    }
+
+    function triFaces(v) {
+        var n = v.length, e = Infinity, i, j, k;
+        for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) e = Math.min(e, V.dist(v[i], v[j]));
+        var tol = e * 1.08, f = [];
+        for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) for (k = j + 1; k < n; k++) {
+            if (V.dist(v[i], v[j]) < tol && V.dist(v[j], v[k]) < tol && V.dist(v[i], v[k]) < tol) f.push([i, j, k]);
+        }
+        return f;
+    }
+
+    var PHI = (1 + Math.sqrt(5)) / 2;
+
+    function icoVerts() {
+        return [[0, 1, PHI], [0, -1, PHI], [0, 1, -PHI], [0, -1, -PHI],
+                [1, PHI, 0], [-1, PHI, 0], [1, -PHI, 0], [-1, -PHI, 0],
+                [PHI, 0, 1], [-PHI, 0, 1], [PHI, 0, -1], [-PHI, 0, -1]].map(V.norm);
+    }
+
+    function dodeca() {
+        var iv = icoVerts(), iF = triFaces(iv);
+        var verts = iF.map(function (t) { return V.norm(centroid(iv, t)); });
+        var faces = iv.map(function (vert) {
+            var ring = [];
+            iF.forEach(function (t, ti) {
+                if (t.some(function (x) { return V.dist(iv[x], vert) < 1e-9; })) ring.push(ti);
+            });
+            /* Order the five centres around the vertex, or the pentagon draws
+               as a self-crossing star. */
+            var n = V.norm(vert);
+            var ref = V.norm(V.sub(verts[ring[0]], V.scale(n, V.dot(verts[ring[0]], n))));
+            var up = V.cross(n, ref);
+            function ang(ci) {
+                var p = V.sub(verts[ci], V.scale(n, V.dot(verts[ci], n)));
+                return Math.atan2(V.dot(p, up), V.dot(p, ref));
+            }
+            return ring.sort(function (a, b) { return ang(a) - ang(b); });
+        });
+        return { v: verts, f: faces };
+    }
+
+    /* Pentagonal trapezohedron: two apexes and two offset rings of five, so
+       every face is a kite — the actual shape of a d10. */
+    function trapezo() {
+        var v = [[0, 0, 1.32], [0, 0, -1.32]], i, a;
+        for (i = 0; i < 5; i++) { a = i * 2 * Math.PI / 5; v.push([Math.cos(a), Math.sin(a), 0.26]); }
+        for (i = 0; i < 5; i++) { a = (i + 0.5) * 2 * Math.PI / 5; v.push([Math.cos(a), Math.sin(a), -0.26]); }
+        var f = [];
+        for (i = 0; i < 5; i++) f.push([0, 2 + i, 7 + i, 2 + (i + 1) % 5]);
+        for (i = 0; i < 5; i++) f.push([1, 7 + i, 2 + (i + 1) % 5, 7 + (i + 1) % 5]);
+        return { v: v.map(V.norm), f: f };
+    }
+
+    function cubeSolid() {
+        var v = [], i;
+        for (i = 0; i < 8; i++) v.push(V.norm([(i & 1) ? 1 : -1, (i & 2) ? 1 : -1, (i & 4) ? 1 : -1]));
+        return { v: v, f: [[0, 2, 3, 1], [4, 5, 7, 6], [0, 1, 5, 4], [2, 6, 7, 3], [0, 4, 6, 2], [1, 3, 7, 5]] };
+    }
+
+    function build(sides) {
+        if (sides === 4)  { var t = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]].map(V.norm); return { v: t, f: triFaces(t) }; }
+        if (sides === 6)  return cubeSolid();
+        if (sides === 8)  { var o = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]; return { v: o, f: triFaces(o) }; }
+        if (sides === 12) return dodeca();
+        if (sides === 20) { var ic = icoVerts(); return { v: ic, f: triFaces(ic) }; }
+        return trapezo();                                     /* d10 and d100 */
+    }
+
+    /* A percentile die carries the tens, which is why real ones are read in
+       pairs. The face shows 00-90; the exact roll is in the readout. */
+    function labelsFor(sides, faceCount) {
+        var out = [], i;
+        if (sides === 100) { for (i = 0; i < 10; i++) out.push(i === 0 ? '00' : String(i * 10)); return out; }
+        for (i = 0; i < faceCount; i++) out.push(String(i + 1));
+        return out;
+    }
+    function faceForValue(sides, v) {
+        return sides === 100 ? Math.floor((v - 1) / 10) : (v - 1);
+    }
+
+    var SOLIDS = {};
+    [4, 6, 8, 10, 12, 20, 100].forEach(function (s) {
+        var solid = build(s);
+        /* Outward normals derived from the centroid, so no face list above has
+           to be trusted to have consistent winding. */
+        solid.n = solid.f.map(function (idx) {
+            var c = centroid(solid.v, idx);
+            var n = V.norm(V.cross(V.sub(solid.v[idx[1]], solid.v[idx[0]]),
+                                   V.sub(solid.v[idx[2]], solid.v[idx[0]])));
+            return V.dot(n, c) < 0 ? V.scale(n, -1) : n;
+        });
+        solid.labels = labelsFor(s, solid.f.length);
+        SOLIDS[s] = solid;
+    });
+
+    /* ── Quaternions ─────────────────────────────────────────────────────── */
+
+    function qMul(a, b) {
+        return [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+                a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+                a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+                a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
+    }
+    function qAxis(axis, ang) {
+        var a = V.norm(axis), s = Math.sin(ang / 2);
+        return [a[0] * s, a[1] * s, a[2] * s, Math.cos(ang / 2)];
+    }
+    /* Shortest rotation carrying unit a onto unit b — this is what turns the
+       rolled face towards the viewer as the tumble ends. */
+    function qFromTo(a, b) {
+        var d = V.dot(a, b);
+        if (d > 0.999999) return [0, 0, 0, 1];
+        if (d < -0.999999) {
+            var ax = V.norm(V.cross(a, Math.abs(a[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]));
+            return [ax[0], ax[1], ax[2], 0];
+        }
+        var c = V.cross(a, b), q = [c[0], c[1], c[2], 1 + d];
+        var l = Math.sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+        return [q[0] / l, q[1] / l, q[2] / l, q[3] / l];
+    }
+    function qMat(q) {
+        var x = q[0], y = q[1], z = q[2], w = q[3];
+        return [1 - 2 * (y * y + z * z), 2 * (x * y - z * w),     2 * (x * z + y * w),
+                2 * (x * y + z * w),     1 - 2 * (x * x + z * z), 2 * (y * z - x * w),
+                2 * (x * z - y * w),     2 * (y * z + x * w),     1 - 2 * (x * x + y * y)];
+    }
+    function xform(m, p) {
+        return [m[0] * p[0] + m[1] * p[1] + m[2] * p[2],
+                m[3] * p[0] + m[4] * p[1] + m[5] * p[2],
+                m[6] * p[0] + m[7] * p[1] + m[8] * p[2]];
+    }
+
+    /* ── Draw ────────────────────────────────────────────────────────────── */
+
+    var CSSVars = getComputedStyle(document.documentElement);
+    var COL = {
+        line: CSSVars.getPropertyValue('--line').trim() || '#23262c',
+        ink:  CSSVars.getPropertyValue('--ink').trim()  || '#e8eaee',
+        crit: CSSVars.getPropertyValue('--crit').trim() || '#6ee7a8',
+        fail: CSSVars.getPropertyValue('--fail').trim() || '#f0736a'
+    };
+    var LIGHT = V.norm([-0.35, -0.55, 0.76]);
+
+    function drawDie(ctx, sides, q, px, edge, rise, fade) {
+        var solid = SOLIDS[sides];
+        var m = qMat(q);
+        var pts = solid.v.map(function (p) { return xform(m, p); });
+        var R = px * 0.33;
+        var cx = px / 2, cy = px / 2 + rise;
+
+        function proj(p) {
+            var s = 1 / (1 - p[2] * 0.22);                 /* gentle perspective */
+            return [cx + p[0] * R * s, cy - p[1] * R * s];
+        }
+
+        ctx.clearRect(0, 0, px, px);
+        ctx.lineJoin = 'round';
+
+        solid.f.map(function (idx, i) {
+            return { idx: idx, i: i, n: xform(m, solid.n[i]), c: centroid(pts, idx) };
+        }).filter(function (f) { return f.n[2] > 0.015; })
+          .sort(function (a, b) { return a.c[2] - b.c[2]; })
+          .forEach(function (f) {
+            var p = f.idx.map(function (i) { return proj(pts[i]); }), i;
+            ctx.beginPath();
+            ctx.moveTo(p[0][0], p[0][1]);
+            for (i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+            ctx.closePath();
+
+            /* Flat shading only. A gradient would be the first thing on this
+               page pretending to be a real surface. */
+            var lam = Math.max(0, V.dot(f.n, LIGHT));
+            var g = Math.round(14 + lam * 27);
+            ctx.globalAlpha = fade;
+            ctx.fillStyle = 'rgb(' + g + ',' + (g + 2) + ',' + (g + 6) + ')';
+            ctx.fill();
+            ctx.strokeStyle = edge;
+            ctx.globalAlpha = fade * (0.3 + f.n[2] * 0.7);
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            /* Numerals fade as their face turns away, so the die reads as
+               carrying numbers rather than having one stamped over it. */
+            if (f.n[2] > 0.48) {
+                ctx.globalAlpha = fade * Math.min(1, (f.n[2] - 0.48) / 0.32);
+                ctx.fillStyle = edge === COL.line ? COL.ink : edge;
+                ctx.font = '300 ' + (px * (sides === 100 ? 0.155 : 0.185)).toFixed(1) + 'px "IBM Plex Mono", monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(solid.labels[f.i] || '', proj(f.c)[0], proj(f.c)[1]);
+            }
+        });
+        ctx.globalAlpha = 1;
+    }
+
+    /* ── Picker ──────────────────────────────────────────────────────────── */
+
+    DICE.forEach(function (d) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'pick';
+        b.textContent = 'd' + d.sides;
+        b.setAttribute('aria-pressed', String(d === st.die));
+        b.addEventListener('click', function () { selectDie(d); });
+        $('picker').appendChild(b);
+    });
+
+    function selectDie(d) {
+        st.die = d;
+        Array.prototype.forEach.call($('picker').children, function (b) {
+            b.setAttribute('aria-pressed', String(b.textContent === 'd' + d.sides));
+        });
+        /* Advantage only means anything on a single d20. */
+        var ok = d.sides === 20;
+        $('advField').hidden = !ok;
+        if (!ok) setAdv('flat');
+        preview();
+    }
+
+    function setAdv(mode) {
+        st.adv = mode;
+        document.querySelectorAll('[data-adv]').forEach(function (b) {
+            b.setAttribute('aria-pressed', String(b.dataset.adv === mode));
+        });
+        preview();
+    }
+    document.querySelectorAll('[data-adv]').forEach(function (b) {
+        b.addEventListener('click', function () { setAdv(b.dataset.adv); });
+    });
+
+    /* ── Steppers ────────────────────────────────────────────────────────── */
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    function step(what, d) {
+        if (what === 'count') st.count = clamp(st.count + d, 1, 12);
+        else st.mod = clamp(st.mod + d, -20, 20);
+        syncSteppers();
+        preview();
+    }
+    function syncSteppers() {
+        $('countOut').textContent = st.count;
+        $('modOut').textContent = (st.mod >= 0 ? '+' : '') + st.mod;
+    }
+    document.querySelectorAll('[data-step]').forEach(function (b) {
+        b.addEventListener('click', function () { step(b.dataset.step, parseInt(b.dataset.d, 10)); });
+    });
+
+    function expr() {
+        var n = st.adv !== 'flat' ? 1 : st.count;
+        return n + 'd' + st.die.sides +
+               (st.mod ? (st.mod > 0 ? '+' : '') + st.mod : '') +
+               (st.adv === 'adv' ? ' adv' : st.adv === 'dis' ? ' dis' : '');
+    }
+
+    /* Before any roll the breakdown shows what is about to be rolled, so the
+       controls always have something to answer to. */
+    function preview() {
+        if (st.rolling) return;
+        $('breakdown').textContent = expr();
+    }
+
+    /* ── Rolling ─────────────────────────────────────────────────────────── */
+
+    function rnd(sides) {
+        /* crypto over Math.random: it costs nothing here and removes any
+           argument about whether the dice are honest. Rejection sampling
+           keeps the distribution flat rather than biasing low with a modulo. */
+        var limit = Math.floor(4294967296 / sides) * sides;
+        var a = new Uint32Array(1);
+        do { crypto.getRandomValues(a); } while (a[0] >= limit);
+        return (a[0] % sides) + 1;
+    }
+
+    function roll() {
+        if (st.rolling) return;
+        st.rolling = true;
+        $('rollBtn').disabled = true;
+
+        var sides = st.die.sides;
+        var rolls = [], dropped = -1;
+
+        if (st.adv !== 'flat') {
+            rolls = [rnd(sides), rnd(sides)];
+            var keepHigh = st.adv === 'adv';
+            var keep = keepHigh
+                ? (rolls[0] >= rolls[1] ? 0 : 1)
+                : (rolls[0] <= rolls[1] ? 0 : 1);
+            dropped = 1 - keep;
+        } else {
+            for (var i = 0; i < st.count; i++) rolls.push(rnd(sides));
+        }
+
+        var kept = rolls.filter(function (_, i) { return i !== dropped; });
+        var sum = kept.reduce(function (a, b) { return a + b; }, 0) + st.mod;
+
+        paintDice(rolls, dropped, sides);
+        var settle = reduce ? 0 : 780 + (rolls.length - 1) * 70;
+        countTo(sum, settle, kept, sides);
+
+        setTimeout(function () {
+            st.rolling = false;
+            $('rollBtn').disabled = false;
+            addLog(rolls, dropped, sum, sides);
+        }, settle);
+    }
+
+    /* ── The tumble ──────────────────────────────────────────────────────────
+       Each die gets a target orientation that puts its rolled face towards the
+       camera, then is wound back from it by several turns about a random axis
+       and released. Because the animation is expressed as an offset FROM the
+       answer rather than a path towards one, the final frame is exact by
+       construction — the die cannot drift and land a degree off its number,
+       which is what happens if you spin freely and try to correct at the end.
+
+       No churning digits any more: a real solid carries every face, so the
+       numbers flickering past as it turns are simply the die being seen. */
+
+    var live = [];          /* dice currently animating */
+    var rafId = 0;
+
+    function frame(now) {
+        var busy = false;
+        for (var i = 0; i < live.length; i++) {
+            var d = live[i];
+            var t = (now - d.t0) / d.dur;
+            if (t < 0) { busy = true; continue; }           /* still staggered */
+            if (t >= 1) { paintOne(d, 1); continue; }
+            paintOne(d, t);
+            busy = true;
+        }
+        rafId = busy ? requestAnimationFrame(frame) : 0;
+    }
+
+    function paintOne(d, t) {
+        var e = 1 - Math.pow(1 - t, 3);                     /* ease out cubic */
+        var spin = qAxis(d.axis, (1 - e) * d.turns * Math.PI * 2);
+        var q = qMul(d.target, spin);
+        /* A short arc up and back down, and a fade in over the first third. */
+        var rise = -Math.sin(Math.min(1, t) * Math.PI) * d.px * 0.16 - (1 - e) * d.px * 0.06;
+        var fade = Math.min(1, t * 3);
+        drawDie(d.ctx, d.sides, q, d.px, d.edge, rise, fade);
+    }
+
+    function paintDice(rolls, dropped, sides) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+        live = [];
+        tray.innerHTML = '';
+
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        /* One die should command the space it is given; twelve should fit in
+           it. Sizing by the count keeps the tray's weight roughly constant
+           instead of leaving a lone d20 stranded in an empty field. */
+        var n = rolls.length;
+        var px = n === 1 ? 150 : n === 2 ? 124 : n <= 4 ? 104 : n <= 6 ? 92 : 78;
+        px = Math.min(px, Math.floor((tray.clientWidth - 14 * (Math.min(n, 4) - 1)) / Math.min(n, 4)) || px);
+        px = Math.max(64, px);
+
+        rolls.forEach(function (v, i) {
+            var host = document.createElement('div');
+            host.className = 'die';
+            var cv = document.createElement('canvas');
+            cv.width = px * dpr; cv.height = px * dpr;
+            cv.style.width = px + 'px'; cv.style.height = px + 'px';
+            host.appendChild(cv);
+            host.setAttribute('aria-label', 'd' + sides + ' rolled ' + v);
+            if (i === dropped) host.classList.add('dropped');
+            tray.appendChild(host);
+
+            var ctx = cv.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            var edge = COL.line;
+            if (i !== dropped && sides === 20 && v === 20) edge = COL.crit;
+            if (i !== dropped && sides === 20 && v === 1) edge = COL.fail;
+
+            /* Bring the rolled face round to face the camera. */
+            var solid = SOLIDS[sides];
+            var fi = Math.max(0, Math.min(solid.f.length - 1, faceForValue(sides, v)));
+            var target = qFromTo(solid.n[fi], [0, 0, 1]);
+
+            var d = {
+                ctx: ctx, px: px, sides: sides, edge: edge, target: target,
+                axis: [Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1],
+                turns: 1.6 + Math.random() * 1.2,
+                t0: performance.now() + i * 70,
+                dur: 780
+            };
+
+            if (reduce) { drawDie(ctx, sides, target, px, edge, 0, 1); return; }
+            live.push(d);
+        });
+
+        if (!live.length) return;
+        rafId = requestAnimationFrame(frame);
+
+        /* Same guarantee the total has: rAF does not run in a hidden tab, so a
+           backgrounded roll would leave dice frozen mid-tumble. This draws the
+           settled frame regardless of whether a single frame ever fired. */
+        var last = live[live.length - 1];
+        setTimeout(function () {
+            live.forEach(function (d) { paintOne(d, 1); });
+            live = [];
+            cancelAnimationFrame(rafId);
+            rafId = 0;
+        }, (last.t0 - performance.now()) + last.dur + 60);
+    }
+
+    /* The total eases to its value instead of snapping, which reads as the sum
+       being tallied rather than simply appearing.
+
+       The timeout is not belt-and-braces, it is the correctness path.
+       requestAnimationFrame does not run in a hidden tab, so a roll started
+       and then backgrounded would leave the readout frozen on the first frame
+       — a zero — and nothing would ever correct it. `done` makes whichever
+       finishes first the winner. */
+    function countTo(target, delay, kept, sides) {
+        var el = $('total');
+        el.classList.remove('crit', 'fail');
+
+        var done = false;
+        function finish() {
+            if (done) return;
+            done = true;
+            el.textContent = target;
+            flagTotal(kept, sides);
+        }
+
+        if (reduce) { finish(); return; }
+
+        var dur = 420;
+        setTimeout(function () {
+            var t0 = performance.now();
+            requestAnimationFrame(function frame(now) {
+                if (done) return;
+                var p = Math.min(1, (now - t0) / dur);
+                el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+                if (p < 1) requestAnimationFrame(frame); else finish();
+            });
+            setTimeout(finish, dur + 80);
+        }, Math.max(0, delay - 380));
+    }
+
+    /* Flag from the dice that were actually kept, never by subtracting the
+       modifier back out of the total — that only works for a single die, and
+       silently mislabels 3d20+2 the moment more than one is on the table. */
+    function flagTotal(kept, sides) {
+        if (sides !== 20 || !kept) return;
+        var el = $('total');
+        if (kept.indexOf(20) > -1) el.classList.add('crit');
+        else if (kept.length === 1 && kept[0] === 1) el.classList.add('fail');
+    }
+
+    /* ── History ─────────────────────────────────────────────────────────── */
+
+    function addLog(rolls, dropped, sum, sides) {
+        var parts = rolls.map(function (v, i) {
+            return i === dropped ? '(' + v + ')' : String(v);
+        }).join(' ');
+
+        var row = document.createElement('div');
+        row.className = 'log-row fresh';
+        var nat = rolls.filter(function (_, i) { return i !== dropped; });
+        if (sides === 20 && nat.indexOf(20) > -1) row.classList.add('crit');
+        else if (sides === 20 && nat.length === 1 && nat[0] === 1) row.classList.add('fail');
+
+        row.innerHTML =
+            '<span class="expr"></span><span class="dice"></span><span class="sum"></span>';
+        row.children[0].textContent = expr();
+        row.children[1].textContent = parts;
+        row.children[2].textContent = sum;
+
+        $('logRows').prepend(row);
+        while ($('logRows').children.length > 8) $('logRows').lastChild.remove();
+        $('breakdown').innerHTML = '';
+        $('breakdown').append(document.createTextNode(expr() + '  ·  '));
+        var b = document.createElement('b');
+        b.textContent = parts;
+        $('breakdown').append(b);
+    }
+
+    $('clearLog').addEventListener('click', function () { $('logRows').innerHTML = ''; });
+    $('rollBtn').addEventListener('click', roll);
+
+    /* ── Keyboard ────────────────────────────────────────────────────────── */
+
+    document.addEventListener('keydown', function (e) {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); roll(); return; }
+        if (e.key === 'ArrowUp')   { e.preventDefault(); step('count', 1); return; }
+        if (e.key === 'ArrowDown') { e.preventDefault(); step('count', -1); return; }
+        if (e.key === 'ArrowRight'){ e.preventDefault(); step('mod', 1); return; }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); step('mod', -1); return; }
+        var i = '1234567'.indexOf(e.key);
+        if (i > -1) selectDie(DICE[i]);
+    });
+
+    selectDie(st.die);
+    syncSteppers();
+    preview();
+})();
+</script>
+</body>
+</html>
