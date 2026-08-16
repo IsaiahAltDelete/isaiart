@@ -317,15 +317,21 @@
                 uOut.textContent = current.url || (cfg.emptyUrl || '—');
                 uOut.classList.toggle('empty', !current.url);
             }
+            /* The term count reports what was built; the lamp and the status
+               report what can actually FIRE. They are not the same thing —
+               Threads' web mode compiles a site: clause from nothing the user
+               typed, so a query can hold terms and still have no URL. Keying
+               the lamp to the term count lit ARMED next to a dead button. */
             if (opCount) {
                 opCount.textContent = current.ops + (current.ops === 1 ? ' TERM' : ' TERMS');
             }
+            var armed = !!current.url;
             if (qLed) {
-                qLed.classList.toggle('on', current.ops > 0);
-                qLed.classList.toggle('green', current.ops > 0);
+                qLed.classList.toggle('on', armed);
+                qLed.classList.toggle('green', armed);
             }
-            if (qStat) qStat.textContent = current.ops > 0 ? 'ARMED' : 'IDLE';
-            if (goBtn) goBtn.disabled = !current.url;
+            if (qStat) qStat.textContent = armed ? 'ARMED' : 'IDLE';
+            if (goBtn) goBtn.disabled = !armed;
 
             if (cfg.storeKey) save(cfg.storeKey, snapshot(root));
             if (cfg.onPaint) cfg.onPaint(current);

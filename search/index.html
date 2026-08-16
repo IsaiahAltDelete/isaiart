@@ -57,6 +57,9 @@ table.matrix tbody th {
     white-space: normal;
 }
 table.matrix td { text-align: center; width: 20%; }
+/* The network headings sit over columns of centred marks, so they centre too —
+   left-aligned they read as belonging to the capability column beside them. */
+table.matrix thead th + th { text-align: center; }
 table.matrix tr:last-child th,
 table.matrix tr:last-child td { border-bottom: 0; }
 

@@ -26,6 +26,14 @@
 [hidden] { display: none !important; }
 
 .mode-rack .rack-body { gap: 10px; }
+
+/* The native panel holds only two racks. At the shared three-column count the
+   third column is left as an empty void down the right-hand side, so this one
+   panel drops to two and the pair fills the width. The web panel has three
+   racks and keeps the default. */
+@media (min-width: 720px) {
+    [data-panel="native"] { column-count: 2; }
+}
 </style>
 </head>
 <body data-mode="native">

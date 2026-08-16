@@ -11,6 +11,21 @@
    three pages read as three channels of one machine rather than three sites.
    ========================================================================= */
 
+/* ── 0. LEGIBILITY TOKENS ────────────────────────────────────────────────────
+   vector.css spends --ink-faint on two very different jobs: furniture that is
+   meant to recede (a rule, an unlit index numeral) and PROSE THE USER HAS TO
+   READ (hints, placeholders). At 3.6:1 it is under the 4.5:1 floor, and the
+   hints are the most numerous text on the page — so the reading text gets its
+   own token, measured at 5.3:1 on --panel, and the furniture keeps the old one.
+
+   The label size moves with it. Uppercase mono at 0.18em tracking needs more
+   height than lowercase to stay readable, and 10px was under it. */
+
+:root {
+    --hint-ink:   #7f8794;
+    --label-size: 0.665rem;
+}
+
 /* ── 1. PAGE FRAME ───────────────────────────────────────────────────────── */
 
 .page {
@@ -176,10 +191,10 @@
 .q-screen,
 .u-screen {
     margin: 0;
-    padding: 6px 9px;
+    padding: 7px 10px;
     min-height: 2.4em;
-    font-size: 0.76rem;
-    line-height: 1.55;
+    font-size: 0.82rem;
+    line-height: 1.6;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     /* A pre inside a bordered well: the scroll cap keeps a 40-operator query
@@ -188,20 +203,31 @@
     overflow-y: auto;
 }
 .q-screen { color: var(--phos); }
-.u-screen { color: var(--ink-soft); font-size: 0.68rem; }
-.q-screen.empty, .u-screen.empty { color: var(--ink-faint); }
+.u-screen { color: var(--ink-soft); font-size: 0.72rem; }
+.q-screen.empty, .u-screen.empty { color: var(--hint-ink); }
 
 /* ── 5. RACKS ────────────────────────────────────────────────────────────────
    One card per family of operators. */
 
+/* Multi-column, NOT grid. A grid row is as tall as its tallest cell, so a
+   short rack next to a long one leaves a card-shaped hole beneath it — with
+   racks this uneven (WORDS is ~590px, ENGAGEMENT ~430px) the page was more
+   hole than panel. Columns pack each rack directly under the one above it,
+   which is what a real rack does. */
 .racks {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-    align-items: start;
+    column-count: 1;
+    column-gap: 12px;
 }
-@media (min-width: 720px)  { .racks { grid-template-columns: 1fr 1fr; } }
-@media (min-width: 1080px) { .racks { grid-template-columns: 1fr 1fr 1fr; } }
+@media (min-width: 720px)  { .racks { column-count: 2; } }
+@media (min-width: 1080px) { .racks { column-count: 3; } }
+
+/* A rack must never be split across a column break — half a card at the foot
+   of one column and half at the head of the next is unreadable. The margin
+   replaces what grid's row-gap used to provide. */
+.racks > * {
+    break-inside: avoid;
+    margin-bottom: 12px;
+}
 
 .rack {
     display: flex;
@@ -214,9 +240,9 @@
 }
 .rack:focus-within { border-left-color: var(--accent); }
 
-/* Anything asking to span the grid, not just racks — the READ ME panels are
-   notes rather than racks and have to run the full width too. */
-.racks > .wide { grid-column: 1 / -1; }
+/* Anything asking to span the full width, not just racks — the READ ME panels
+   are notes rather than racks and have to run edge to edge too. */
+.racks > .wide { column-span: all; }
 
 .rack-head {
     display: flex;
@@ -256,7 +282,7 @@
 .fld {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 6px;
     min-width: 0;
 }
 
@@ -266,7 +292,7 @@
    thing that turns the console into documentation. */
 .op {
     font-family: var(--f-mono);
-    font-size: 0.58rem;
+    font-size: 0.62rem;
     font-weight: 500;
     letter-spacing: 0.06em;
     text-transform: none;
@@ -276,15 +302,50 @@
     text-overflow: ellipsis;
 }
 
+/* Hints are prose, and prose wants a measure. Left to run the full width of a
+   400px rack they set as one unbroken block of 10px mono, which is what made
+   the racks read as a wall rather than as labelled fields. */
 .hint {
-    font-size: 0.62rem;
-    line-height: 1.5;
-    letter-spacing: 0.02em;
-    color: var(--ink-faint);
+    max-width: 46ch;
+    font-size: 0.68rem;
+    line-height: 1.6;
+    letter-spacing: 0.015em;
+    color: var(--hint-ink);
 }
+
+/* ── 6b. FILLED vs EMPTY ─────────────────────────────────────────────────────
+   The console is mostly placeholders, and a placeholder that only differs from
+   a real value by brightness is unreadable as a state: a page full of example
+   text looks like a page full of answers. So a field that actually holds
+   something is marked structurally — an accent bar down its inner edge, and
+   its label lifted to full ink. Now the eye can count the filled fields
+   without reading any of them.
+
+   Inset shadow rather than a border so nothing reflows on the first keystroke.
+
+   Keyed on [placeholder] deliberately, not on the input alone. :placeholder-shown
+   is FALSE for any control that has no placeholder to show — so a bare
+   :not(:placeholder-shown) lights every empty date field on the page. Requiring
+   the attribute puts the mark exactly where the ambiguity is: a field currently
+   displaying example text. Dates and selects opt out by having none, which is
+   right — an empty date already reads as mm/dd/yyyy and a select as ANY. */
+input.field[placeholder]:not(:placeholder-shown),
+textarea.field[placeholder]:not(:placeholder-shown) {
+    box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.fld:has(input.field[placeholder]:not(:placeholder-shown)),
+.fld:has(textarea.field[placeholder]:not(:placeholder-shown)) {
+    --fld-ink: var(--ink);
+}
+.fld > .label { color: var(--fld-ink, var(--ink-soft)); transition: color var(--snap); }
 
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .trio { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+/* 12.8px mono is small for something you type into and re-read. */
+.field { font-size: 0.85rem; }
+.field::placeholder { color: var(--hint-ink); }
 
 textarea.field { resize: vertical; min-height: 62px; line-height: 1.5; }
 
@@ -433,12 +494,18 @@ textarea.field { resize: vertical; min-height: 62px; line-height: 1.5; }
 
 .note {
     display: flex;
+    /* Without this the tape is a flex item at default `stretch` and grows into
+       a tall colour block down the side of the panel. It is a label; it should
+       be the height of its own text. */
+    align-items: flex-start;
     gap: 11px;
     padding: 12px 14px;
     border-left: 3px solid var(--s3);
 }
 .note .note-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.note p { font-size: 0.68rem; line-height: 1.65; color: var(--ink-soft); }
+/* The READ ME panels run the full width of the grid, so they need a measure
+   even more than the hints do — 90ch of 11px mono is unreadable as prose. */
+.note p { max-width: 78ch; font-size: 0.72rem; line-height: 1.7; color: var(--ink-soft); }
 .note p + p { margin-top: 2px; }
 .note code {
     font-family: var(--f-mono);
