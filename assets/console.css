@@ -26,6 +26,13 @@
     --label-size: 0.665rem;
 }
 
+/* Measured the same way as the dark value: 5.3:1 against --panel. A grey that
+   reads as "quiet" on near-black is nearly invisible on paper, so the light
+   theme needs its own, not a reuse. */
+:root[data-theme="light"] {
+    --hint-ink: #52565e;
+}
+
 /* ── 1. PAGE FRAME ───────────────────────────────────────────────────────── */
 
 .page {
@@ -107,6 +114,33 @@
 
 .lamp    { display: flex; align-items: center; gap: 7px; }
 .phos-sw { display: flex; align-items: center; gap: 8px; }
+
+/* ── Theme rocker ────────────────────────────────────────────────────────────
+   A moon and a sun flanking the switch, rather than the words DARK and LIGHT.
+   The pair reads at a glance in any language and takes about a third of the
+   width, which matters because this sits in the header of every page.
+
+   Which one is lit comes from the theme attribute on the root, so there is no
+   JavaScript keeping the icons in sync with the switch — the same attribute
+   that repaints the page repaints the icon. */
+.theme-ico {
+    width: 14px; height: 14px;
+    flex-shrink: 0;
+    color: var(--ink-faint);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    transition: color var(--slide);
+}
+.ico-moon { fill: currentColor; stroke: none; }
+
+:root[data-theme="dark"]  .ico-moon { color: var(--phos); }
+:root[data-theme="light"] .ico-sun  { color: var(--phos); }
+
+/* The default state before the attribute lands is dark, so the moon should
+   already be lit on the very first paint rather than flicking on. */
+:root:not([data-theme]) .ico-moon { color: var(--phos); }
 
 @media (min-width: 540px) {
     .head-row { grid-template-columns: 1fr auto; }

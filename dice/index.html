@@ -3,340 +3,261 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0b0c0e">
+<meta name="theme-color" content="#0a0b0d">
 <title>Dice</title>
-<meta name="description" content="A quiet dice roller for the table. Every die from d4 to d100, advantage and disadvantage, and nothing else in the way.">
+<meta name="description" content="Every die from d4 to d100, thrown as real solids, with advantage and disadvantage.">
 
 <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../assets/vector.css?v=8">
+<link rel="stylesheet" href="../assets/console.css?v=8">
+<script src="../assets/cassette.js?v=8"></script>
 
 <style>
-/* ═══════════════════════════════════════════════════════════════════════
-   DICE — minimal by subtraction.
+:root { --accent: var(--s4); }
 
-   The restraint is the point: one accent colour, one typeface, hairlines
-   instead of boxes, and no surface that is not carrying information. What
-   is left has to move well, so the motion budget goes almost entirely into
-   the roll itself.
-   ═══════════════════════════════════════════════════════════════════════ */
+.work { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
+@media (min-width: 900px) { .work { grid-template-columns: 340px 1fr; } }
+.controls { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.controls .rack { break-inside: auto; margin: 0; }
 
-:root {
-    --bg:        #0b0c0e;
-    --raise:     #131519;
-    --line:      #23262c;
-    --line-soft: #191c21;
-    --ink:       #e8eaee;
-    --ink-2:     #9298a3;
-    --ink-3:     #5f6672;
-    --accent:    #d8a657;   /* one warm accent, the only saturated thing here */
-    --crit:      #6ee7a8;
-    --fail:      #f0736a;
+.stage { display: flex; flex-direction: column; padding: 0; min-width: 0; order: -1; }
+@media (min-width: 900px) { .stage { order: 0; position: sticky; top: 12px; } }
 
-    --ease: cubic-bezier(0.16, 1, 0.3, 1);   /* long, soft settle */
-    --snap: cubic-bezier(0.4, 0, 0.2, 1);
-
-    color-scheme: dark;
+.stage-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 9px 12px; border-bottom: var(--hair) solid var(--rule);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-    min-height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
-    font-weight: 400;
-    -webkit-font-smoothing: antialiased;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.wrap {
-    width: 100%;
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 28px 20px 40px;
-    display: flex;
-    flex-direction: column;
-    gap: 26px;
-    flex: 1 1 auto;
-}
-
-/* ── Head ─────────────────────────────────────────────────────────────── */
-
-.head { display: flex; align-items: baseline; gap: 14px; }
-.head h1 {
-    font-size: 0.82rem; font-weight: 500;
-    letter-spacing: 0.34em; text-transform: uppercase;
-}
-.head a {
-    margin-left: auto;
-    font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--ink-3); text-decoration: none;
-    transition: color 160ms var(--snap);
-}
-.head a:hover { color: var(--ink-2); }
-
-/* ── Die picker ───────────────────────────────────────────────────────── */
-
-.dice-row { display: flex; flex-wrap: wrap; gap: 6px; }
-
-.pick {
-    flex: 1 1 auto;
-    min-width: 62px;
-    padding: 10px 4px;
-    background: none;
-    border: 1px solid var(--line-soft);
-    border-radius: 2px;
-    color: var(--ink-3);
-    font: inherit;
-    font-size: 0.76rem;
-    letter-spacing: 0.06em;
-    cursor: pointer;
-    transition: color 200ms var(--snap), border-color 200ms var(--snap),
-                background 200ms var(--snap);
-}
-.pick:hover { color: var(--ink-2); border-color: var(--line); }
-.pick[aria-pressed="true"] {
-    color: var(--bg);
-    background: var(--accent);
-    border-color: var(--accent);
-}
-.pick:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
-
-/* ── Steppers ─────────────────────────────────────────────────────────── */
-
-.controls {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px 18px;
-}
-@media (min-width: 620px) { .controls { grid-template-columns: 1fr 1fr auto; } }
-
-.field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
-.field > span {
-    font-size: 0.6rem; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--ink-3);
-}
-
-.stepper {
-    display: flex; align-items: stretch;
-    border: 1px solid var(--line-soft);
-    border-radius: 2px;
-}
-.stepper button {
-    width: 38px;
-    background: none; border: 0;
-    color: var(--ink-3);
-    font: inherit; font-size: 0.95rem;
-    cursor: pointer;
-    transition: color 160ms var(--snap), background 160ms var(--snap);
-}
-.stepper button:hover { color: var(--ink); background: var(--raise); }
-.stepper button:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
-.stepper output {
-    flex: 1 1 auto;
-    display: grid; place-items: center;
-    font-size: 0.9rem;
-    font-variant-numeric: tabular-nums;
-    padding: 9px 0;
-    min-width: 0;
-}
-
-/* Advantage is a d20-only idea, so the control leaves rather than greys. */
-.adv { display: flex; border: 1px solid var(--line-soft); border-radius: 2px; overflow: hidden; }
-.adv button {
-    padding: 9px 12px;
-    background: none; border: 0;
-    color: var(--ink-3);
-    font: inherit; font-size: 0.62rem;
-    letter-spacing: 0.14em; text-transform: uppercase;
-    cursor: pointer;
-    transition: color 180ms var(--snap), background 180ms var(--snap);
-}
-.adv button + button { border-left: 1px solid var(--line-soft); }
-.adv button:hover { color: var(--ink-2); }
-.adv button[aria-pressed="true"] { color: var(--bg); background: var(--accent); }
-.adv[hidden] { display: none; }
-
-/* ── Tray ─────────────────────────────────────────────────────────────── */
-
+/* The felt: a recessed well the solids are thrown into. */
 .tray {
-    min-height: 230px;
-    display: flex;
-    flex-wrap: wrap;
-    align-content: center;
-    justify-content: center;
-    gap: 14px;
-    padding: 20px 0;
+    position: relative;
+    min-height: clamp(260px, 44vh, 420px);
+    display: flex; flex-wrap: wrap;
+    align-content: center; justify-content: center;
+    gap: 16px; padding: 22px 16px;
+    background: var(--well);
+    overflow: hidden;
+    cursor: pointer;
+    transition: background var(--snap);
 }
+.tray:hover { background: var(--ground-2); }
+.tray.busy { cursor: default; }
+.tray.busy:hover { background: var(--well); }
 
-/* The die is a canvas. Everything visual about it — solid, shading, edges,
-   numerals, crit colour — is drawn per frame in JS, because the orientation
-   has to be computed anyway and splitting the look across CSS and canvas
-   would mean two sources of truth for the same object. */
+/* The dock keeps the primary control in the same place on every page; this is
+   the same action within reach of where you are actually looking. */
+.throw-2 { flex: 0 0 auto; margin-left: 14px; min-height: 34px; }
+@media (max-width: 520px) { .throw-2 { display: none; } }
 .die { line-height: 0; }
 .die canvas { display: block; }
+.die.dropped { opacity: 0.28; }
 
-/* A die dropped by advantage stays visible but recedes — you can still read
-   what it rolled, which is the whole reason to show it. */
-.die.dropped { opacity: 0.3; }
+.tray-empty {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+}
 
 /* ── Readout ──────────────────────────────────────────────────────────── */
-
-.readout { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.readout { display: flex; align-items: baseline; gap: 14px; padding: 12px 14px; }
 .total {
-    font-size: clamp(2.6rem, 12vw, 4rem);
-    font-weight: 300;
-    line-height: 1;
+    font-family: var(--f-display);
+    font-size: clamp(2.2rem, 9vw, 3.2rem);
+    font-weight: 700; line-height: 1;
+    color: var(--phos);
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.01em;
 }
-.total.crit { color: var(--crit); }
-.total.fail { color: var(--fail); }
-.breakdown {
-    font-size: 0.7rem;
-    color: var(--ink-3);
-    text-align: center;
-    min-height: 1.2em;
-    letter-spacing: 0.04em;
-}
-.breakdown b { color: var(--ink-2); font-weight: 400; }
+.total.crit { color: var(--ok); }
+.total.fail { color: var(--alert); }
+.readout .spacer { flex: 1 1 auto; }
+.breakdown { font-size: 0.7rem; line-height: 1.5; color: var(--ink-soft); text-align: right; overflow-wrap: anywhere; }
+.breakdown b { color: var(--ink); font-weight: 500; }
 
-/* ── Roll ─────────────────────────────────────────────────────────────── */
-
-.roll {
-    width: 100%;
-    padding: 16px;
-    background: none;
-    border: 1px solid var(--accent);
-    border-radius: 2px;
-    color: var(--accent);
-    font: inherit;
-    font-size: 0.74rem;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background 220ms var(--snap), color 220ms var(--snap);
+/* ── Die picker ───────────────────────────────────────────────────────── */
+.dice-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.dice-row .key { min-height: 38px; }
+.dice-row .key[aria-pressed="true"] {
+    color: #0a0b0d; background: var(--accent); border-color: var(--accent);
 }
-.roll:hover { background: var(--accent); color: var(--bg); }
-.roll:active { transform: translateY(1px); }
-.roll:focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
 
-/* ── History ──────────────────────────────────────────────────────────── */
-
-.log { display: flex; flex-direction: column; }
-.log-head {
-    display: flex; align-items: baseline;
-    font-size: 0.6rem; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--ink-3);
-    padding-bottom: 8px;
+.stepper { display: flex; align-items: stretch; border: var(--hair) solid var(--rule); }
+.stepper button {
+    width: 40px; min-height: 36px;
+    background: none; border: 0; color: var(--ink-soft);
+    font-family: var(--f-mono); font-size: 0.95rem; cursor: pointer;
+    transition: color var(--snap), background var(--snap);
 }
-.log-head button {
-    margin-left: auto;
-    background: none; border: 0; color: var(--ink-3);
-    font: inherit; font-size: 0.6rem; letter-spacing: 0.16em;
-    text-transform: uppercase; cursor: pointer;
-    transition: color 160ms var(--snap);
+.stepper button:hover { color: var(--ink); background: var(--ground-2); }
+.stepper output {
+    flex: 1 1 auto; display: grid; place-items: center;
+    font-size: 0.85rem; font-variant-numeric: tabular-nums; color: var(--phos);
 }
-.log-head button:hover { color: var(--fail); }
+@media (pointer: coarse) { .stepper button { min-height: 44px; } }
 
 .log-row {
-    display: flex; align-items: baseline; gap: 12px;
-    padding: 9px 0;
-    border-top: 1px solid var(--line-soft);
-    font-size: 0.72rem;
-    color: var(--ink-3);
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 8px 0; border-top: var(--hair) solid var(--rule-lo);
+    font-size: 0.68rem; color: var(--ink-faint);
 }
-.log-row .expr { color: var(--ink-2); }
+.log-row .expr { color: var(--ink-soft); white-space: nowrap; }
 .log-row .dice { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.log-row .sum { color: var(--ink); font-variant-numeric: tabular-nums; }
-.log-row.crit .sum { color: var(--crit); }
-.log-row.fail .sum { color: var(--fail); }
-
-@keyframes slip { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-.log-row.fresh { animation: slip 320ms var(--ease) both; }
-
-.hint { font-size: 0.62rem; color: var(--ink-3); letter-spacing: 0.06em; text-align: center; }
-kbd {
-    font: inherit; font-size: 0.95em;
-    border: 1px solid var(--line); border-radius: 2px;
-    padding: 1px 5px; color: var(--ink-2);
-}
-
-/* Minimal type wants small controls; thumbs do not. Only the hit area grows. */
-@media (pointer: coarse) {
-    .adv button   { padding: 14px 14px; }
-    .stepper button { min-height: 44px; }
-    .log-head button { padding: 8px 0 8px 12px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .die.rolling, .log-row.fresh { animation: none; }
-    * { transition-duration: 1ms !important; }
-}
+.log-row .sum { color: var(--phos); font-variant-numeric: tabular-nums; }
+.log-row.crit .sum { color: var(--ok); }
+.log-row.fail .sum { color: var(--alert); }
+@keyframes slip { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+.log-row.fresh { animation: slip 300ms var(--slide) both; }
 </style>
 </head>
 <body>
 
-<div class="wrap">
+<main class="page">
 
-    <header class="head">
-        <h1>Dice</h1>
-        <a href="https://isaiart.com">isaiart.com</a>
-    </header>
-
-    <div class="dice-row" id="picker" role="group" aria-label="Die type"></div>
-
-    <div class="controls">
-        <label class="field">
-            <span>Count</span>
-            <span class="stepper">
-                <button type="button" data-step="count" data-d="-1" aria-label="Fewer dice">&minus;</button>
-                <output id="countOut">1</output>
-                <button type="button" data-step="count" data-d="1" aria-label="More dice">+</button>
-            </span>
-        </label>
-
-        <label class="field">
-            <span>Modifier</span>
-            <span class="stepper">
-                <button type="button" data-step="mod" data-d="-1" aria-label="Lower modifier">&minus;</button>
-                <output id="modOut">+0</output>
-                <button type="button" data-step="mod" data-d="1" aria-label="Raise modifier">+</button>
-            </span>
-        </label>
-
-        <div class="field" id="advField">
-            <span>Roll</span>
-            <div class="adv" role="group" aria-label="Advantage">
-                <button type="button" data-adv="adv" aria-pressed="false">Adv</button>
-                <button type="button" data-adv="flat" aria-pressed="true">Flat</button>
-                <button type="button" data-adv="dis" aria-pressed="false">Dis</button>
+    <header class="chassis page-head">
+        <div class="head-row">
+            <div class="brand">
+                <h1 class="designation">DICE</h1>
+                <span class="stripe brand-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="label">RANDOMISER 01 &middot; d4 &rarr; d100 &middot; TRUE SOLIDS</span>
+            </div>
+            <div class="bezel head-well">
+                <div class="screen" id="headScreen">
+                    <div class="well-row">
+                        <span class="phos" id="clock" role="timer" aria-label="System clock">--:--:--</span>
+                        <canvas id="scope" width="120" height="28" aria-hidden="true"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="head-ctl">
+                <div class="lamp"><span class="led on green" aria-hidden="true"></span><span class="label">PWR</span></div>
+                <div class="phos-sw theme-sw">
+                    <svg class="theme-ico ico-moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 10.6A5.8 5.8 0 0 1 5.4 2.8a5.8 5.8 0 1 0 7.8 7.8Z"/></svg>
+                    <label class="rocker">
+                        <input type="checkbox" id="themeSw" aria-label="Light or dark theme">
+                        <span class="rock"></span>
+                    </label>
+                    <svg class="theme-ico ico-sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.1"/><path d="M8 .8v2M8 13.2v2M.8 8h2M13.2 8h2M2.9 2.9l1.4 1.4M11.7 11.7l1.4 1.4M13.1 2.9l-1.4 1.4M4.3 11.7l-1.4 1.4"/></svg>
+                </div>
             </div>
         </div>
+
+        <nav class="net-nav" aria-label="Randomiser">
+            <a class="key net" href="../dice/" aria-current="page"><span class="net-ix">01</span> DICE</a>
+            <a class="key net" href="../coinflip/"><span class="net-ix">02</span> COIN</a>
+            <a class="key net" href="../"><span class="net-ix">&mdash;</span> INDEX</a>
+        </nav>
+    </header>
+
+    <div class="work">
+
+        <div class="controls">
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">01</span>
+                    <span class="designation rack-name">DIE</span>
+                </div>
+                <div class="rack-body">
+                    <div class="dice-row" id="picker" role="group" aria-label="Die type"></div>
+                    <span class="hint">Each is thrown as its real solid — a tetrahedron, a cube, an octahedron, a trapezohedron, a dodecahedron, an icosahedron.</span>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">02</span>
+                    <span class="designation rack-name">THROW</span>
+                </div>
+                <div class="rack-body">
+                    <div class="pair">
+                        <div class="fld">
+                            <span class="label">COUNT</span>
+                            <span class="stepper">
+                                <button type="button" data-step="count" data-d="-1" aria-label="Fewer dice">&minus;</button>
+                                <output id="countOut">1</output>
+                                <button type="button" data-step="count" data-d="1" aria-label="More dice">+</button>
+                            </span>
+                        </div>
+                        <div class="fld">
+                            <span class="label">MODIFIER</span>
+                            <span class="stepper">
+                                <button type="button" data-step="mod" data-d="-1" aria-label="Lower modifier">&minus;</button>
+                                <output id="modOut">+0</output>
+                                <button type="button" data-step="mod" data-d="1" aria-label="Raise modifier">+</button>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="fld" id="advField">
+                        <span class="label" id="advLbl">ADVANTAGE</span>
+                        <div class="seg-ctl" role="radiogroup" aria-labelledby="advLbl">
+                            <label><input type="radio" name="adv" value="adv"><span>ADV</span></label>
+                            <label><input type="radio" name="adv" value="flat" checked><span>FLAT</span></label>
+                            <label><input type="radio" name="adv" value="dis"><span>DIS</span></label>
+                        </div>
+                        <span class="hint">Throws two d20 and keeps the higher or the lower. The discarded die stays on the felt, struck through.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">03</span>
+                    <span class="designation rack-name">HISTORY</span>
+                    <span class="spacer"></span>
+                    <button class="key" type="button" id="clearLog">CLEAR</button>
+                </div>
+                <div class="rack-body">
+                    <div id="logRows"></div>
+                    <span class="hint" id="logEmpty">Nothing thrown yet.</span>
+                </div>
+            </section>
+
+        </div>
+
+        <section class="chassis stage">
+            <div class="stage-bar">
+                <span class="row-tight"><span class="led" id="vLed" aria-hidden="true"></span><span class="label" id="vStat">READY</span></span>
+                <span class="spacer"></span>
+                <span class="label">SPACE TO THROW &middot; 1&ndash;7 TO PICK</span>
+            </div>
+            <div class="tray" id="tray" aria-live="polite">
+                <div class="tray-empty" id="trayEmpty"><span class="label">CLICK THE FELT TO THROW</span></div>
+            </div>
+            <div class="readout">
+                <span class="total" id="total">&mdash;</span>
+                <span class="spacer"></span>
+                <span class="breakdown" id="breakdown"></span>
+                <button class="key key-go throw-2" type="button" id="rollBtn2">THROW &rarr;</button>
+            </div>
+        </section>
+
     </div>
 
-    <div class="tray" id="tray" aria-live="polite"></div>
+    <footer class="chassis page-foot">
+        <a class="key" href="../">&larr; INDEX</a>
+        <a class="key" href="../coinflip/">COIN FLIP</a>
+        <div class="foot-right">
+            <span class="row-tight"><span class="led on green" aria-hidden="true"></span><span class="label">CRYPTO-RANDOM &middot; NOTHING LEAVES THE BROWSER</span></span>
+        </div>
+    </footer>
 
-    <div class="readout">
-        <div class="total" id="total">—</div>
-        <div class="breakdown" id="breakdown"></div>
+</main>
+
+<div class="dock">
+    <span class="stripe dock-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <div class="dock-inner">
+        <button class="key key-go" type="button" id="rollBtn">THROW &rarr;</button>
+        <span class="spacer"></span>
+        <span class="label count" id="dockStat">1d20</span>
     </div>
-
-    <button class="roll" type="button" id="rollBtn">Roll</button>
-
-    <p class="hint"><kbd>space</kbd> to roll &middot; <kbd>1</kbd>&ndash;<kbd>7</kbd> to pick a die &middot; <kbd>&uarr;</kbd><kbd>&darr;</kbd> for count</p>
-
-    <section class="log">
-        <div class="log-head"><span>History</span><button type="button" id="clearLog">Clear</button></div>
-        <div id="logRows"></div>
-    </section>
-
 </div>
+
+<script src="../assets/console.js?v=8"></script>
 
 <script>
 (function () {
@@ -513,12 +434,24 @@ kbd {
     /* ── Draw ────────────────────────────────────────────────────────────── */
 
     var CSSVars = getComputedStyle(document.documentElement);
-    var COL = {
-        line: CSSVars.getPropertyValue('--line').trim() || '#23262c',
-        ink:  CSSVars.getPropertyValue('--ink').trim()  || '#e8eaee',
-        crit: CSSVars.getPropertyValue('--crit').trim() || '#6ee7a8',
-        fail: CSSVars.getPropertyValue('--fail').trim() || '#f0736a'
-    };
+    function themeColours() {
+        CSSVars = getComputedStyle(document.documentElement);
+        COL.line = (CSSVars.getPropertyValue('--rule-hi') || '#333942').trim();
+        COL.phos = (CSSVars.getPropertyValue('--phos') || '#ffb000').trim();
+        COL.crit = (CSSVars.getPropertyValue('--ok')    || '#4ade80').trim();
+        COL.fail = (CSSVars.getPropertyValue('--alert') || '#e5484d').trim();
+        COL.lo   = rgbOf((CSSVars.getPropertyValue('--solid-lo') || '#0c0d10').trim());
+        COL.hi   = rgbOf((CSSVars.getPropertyValue('--solid-hi') || '#2a2d34').trim());
+    }
+    /* Hex to channels once, so the shading loop is not parsing strings. */
+    function rgbOf(h) {
+        h = h.replace('#', '');
+        if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+        return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+    }
+    var COL = {};
+    themeColours();
+
     var LIGHT = V.norm([-0.35, -0.55, 0.76]);
 
     function drawDie(ctx, sides, q, px, edge, rise, fade) {
@@ -536,11 +469,11 @@ kbd {
         ctx.clearRect(0, 0, px, px);
         ctx.lineJoin = 'round';
 
-        solid.f.map(function (idx, i) {
+        var vis = solid.f.map(function (idx, i) {
             return { idx: idx, i: i, n: xform(m, solid.n[i]), c: centroid(pts, idx) };
-        }).filter(function (f) { return f.n[2] > 0.015; })
-          .sort(function (a, b) { return a.c[2] - b.c[2]; })
-          .forEach(function (f) {
+        }).filter(function (f) { return f.n[2] > 0.015; });
+
+        vis.sort(function (a, b) { return a.c[2] - b.c[2]; }).forEach(function (f) {
             var p = f.idx.map(function (i) { return proj(pts[i]); }), i;
             ctx.beginPath();
             ctx.moveTo(p[0][0], p[0][1]);
@@ -549,27 +482,70 @@ kbd {
 
             /* Flat shading only. A gradient would be the first thing on this
                page pretending to be a real surface. */
+            /* Facet shading walks between the two theme tokens, so the solids
+               are dark on the dark table and pale on paper without any of this
+               code knowing which theme is on. */
             var lam = Math.max(0, V.dot(f.n, LIGHT));
-            var g = Math.round(14 + lam * 27);
             ctx.globalAlpha = fade;
-            ctx.fillStyle = 'rgb(' + g + ',' + (g + 2) + ',' + (g + 6) + ')';
+            ctx.fillStyle = 'rgb(' +
+                Math.round(COL.lo[0] + (COL.hi[0] - COL.lo[0]) * lam) + ',' +
+                Math.round(COL.lo[1] + (COL.hi[1] - COL.lo[1]) * lam) + ',' +
+                Math.round(COL.lo[2] + (COL.hi[2] - COL.lo[2]) * lam) + ')';
             ctx.fill();
             ctx.strokeStyle = edge;
-            ctx.globalAlpha = fade * (0.3 + f.n[2] * 0.7);
+            ctx.globalAlpha = fade * (0.28 + f.n[2] * 0.72);
             ctx.lineWidth = 1;
             ctx.stroke();
-
-            /* Numerals fade as their face turns away, so the die reads as
-               carrying numbers rather than having one stamped over it. */
-            if (f.n[2] > 0.48) {
-                ctx.globalAlpha = fade * Math.min(1, (f.n[2] - 0.48) / 0.32);
-                ctx.fillStyle = edge === COL.line ? COL.ink : edge;
-                ctx.font = '300 ' + (px * (sides === 100 ? 0.155 : 0.185)).toFixed(1) + 'px "IBM Plex Mono", monospace';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(solid.labels[f.i] || '', proj(f.c)[0], proj(f.c)[1]);
-            }
         });
+
+        /* ── The numeral ─────────────────────────────────────────────────────
+           Only the face pointing most directly at the camera is numbered.
+
+           Labelling every face that happened to be tilted less than ~60° away
+           looked right in the abstract and was a mess in practice: the centroid
+           of a steeply raked face projects almost onto the silhouette, so the
+           digits sat on the outline or appeared to float outside the die
+           altogether. Worse, several numbers competed for attention at once and
+           none of them was obviously the result.
+
+           One face, and the type is fitted to that face rather than to the
+           canvas — measured against the polygon's inscribed radius, so a long
+           thin kite on a d10 gets smaller type than a broad pentagon on a d12
+           and both stay comfortably inside their own edges. */
+        var front = null;
+        vis.forEach(function (f) { if (!front || f.n[2] > front.n[2]) front = f; });
+        if (!front || front.n[2] < 0.2) return;
+
+        var poly = front.idx.map(function (i) { return proj(pts[i]); });
+        var mid = proj(front.c);
+
+        /* Inscribed radius: the nearest edge, not the nearest vertex — a
+           vertex distance would overflow the type on any non-circular face. */
+        var inr = Infinity;
+        for (var k = 0; k < poly.length; k++) {
+            var a = poly[k], b = poly[(k + 1) % poly.length];
+            var ex = b[0] - a[0], ey = b[1] - a[1];
+            var len = Math.hypot(ex, ey) || 1;
+            inr = Math.min(inr, Math.abs(ex * (a[1] - mid[1]) - ey * (a[0] - mid[0])) / len);
+        }
+
+        var label = solid.labels[front.i] || '';
+        var size = Math.min(inr * 1.25, px * 0.3);
+        ctx.font = '600 ' + size.toFixed(1) + 'px "Chakra Petch", sans-serif';
+        var w = ctx.measureText(label).width;
+        var room = inr * 1.55;
+        if (w > room) {
+            size *= room / w;
+            ctx.font = '600 ' + size.toFixed(1) + 'px "Chakra Petch", sans-serif';
+        }
+
+        /* Fade in only as the face squares up, so the numeral does not pop into
+           existence halfway through a tumble. */
+        ctx.globalAlpha = fade * Math.min(1, (front.n[2] - 0.2) / 0.35);
+        ctx.fillStyle = edge === COL.line ? COL.phos : edge;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, mid[0], mid[1]);
         ctx.globalAlpha = 1;
     }
 
@@ -578,7 +554,7 @@ kbd {
     DICE.forEach(function (d) {
         var b = document.createElement('button');
         b.type = 'button';
-        b.className = 'pick';
+        b.className = 'key';
         b.textContent = 'd' + d.sides;
         b.setAttribute('aria-pressed', String(d === st.die));
         b.addEventListener('click', function () { selectDie(d); });
@@ -599,13 +575,13 @@ kbd {
 
     function setAdv(mode) {
         st.adv = mode;
-        document.querySelectorAll('[data-adv]').forEach(function (b) {
-            b.setAttribute('aria-pressed', String(b.dataset.adv === mode));
+        document.querySelectorAll('input[name="adv"]').forEach(function (r) {
+            r.checked = r.value === mode;
         });
         preview();
     }
-    document.querySelectorAll('[data-adv]').forEach(function (b) {
-        b.addEventListener('click', function () { setAdv(b.dataset.adv); });
+    document.querySelectorAll('input[name="adv"]').forEach(function (r) {
+        r.addEventListener('change', function () { setAdv(r.value); });
     });
 
     /* ── Steppers ────────────────────────────────────────────────────────── */
@@ -637,6 +613,7 @@ kbd {
        controls always have something to answer to. */
     function preview() {
         if (st.rolling) return;
+        $('dockStat').textContent = expr();
         $('breakdown').textContent = expr();
     }
 
@@ -656,6 +633,11 @@ kbd {
         if (st.rolling) return;
         st.rolling = true;
         $('rollBtn').disabled = true;
+        $('rollBtn2').disabled = true;
+        tray.classList.add('busy');
+        $('vLed').className = 'led on';
+        $('vStat').textContent = 'THROWING';
+        var te = $('trayEmpty'); if (te) te.remove();
 
         var sides = st.die.sides;
         var rolls = [], dropped = -1;
@@ -681,6 +663,10 @@ kbd {
         setTimeout(function () {
             st.rolling = false;
             $('rollBtn').disabled = false;
+            $('rollBtn2').disabled = false;
+            tray.classList.remove('busy');
+            $('vLed').className = 'led on green';
+            $('vStat').textContent = 'READY';
             addLog(rolls, dropped, sum, sides);
         }, settle);
     }
@@ -697,6 +683,7 @@ kbd {
        numbers flickering past as it turns are simply the die being seen. */
 
     var live = [];          /* dice currently animating */
+    var settled = [];       /* the last thrown frame, for repaints */
     var rafId = 0;
 
     function frame(now) {
@@ -722,10 +709,18 @@ kbd {
         drawDie(d.ctx, d.sides, q, d.px, d.edge, rise, fade);
     }
 
+    function redrawSettled() {
+        settled.forEach(function (d) {
+            if (d.edge !== COL.crit && d.edge !== COL.fail) d.edge = COL.line;
+            drawDie(d.ctx, d.sides, d.target, d.px, d.edge, 0, 1);
+        });
+    }
+
     function paintDice(rolls, dropped, sides) {
         cancelAnimationFrame(rafId);
         rafId = 0;
         live = [];
+        settled = [];
         tray.innerHTML = '';
 
         var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -769,6 +764,7 @@ kbd {
                 dur: 780
             };
 
+            settled.push(d);
             if (reduce) { drawDie(ctx, sides, target, px, edge, 0, 1); return; }
             live.push(d);
         });
@@ -852,6 +848,7 @@ kbd {
         row.children[1].textContent = parts;
         row.children[2].textContent = sum;
 
+        var le = $('logEmpty'); if (le) le.remove();
         $('logRows').prepend(row);
         while ($('logRows').children.length > 8) $('logRows').lastChild.remove();
         $('breakdown').innerHTML = '';
@@ -863,6 +860,10 @@ kbd {
 
     $('clearLog').addEventListener('click', function () { $('logRows').innerHTML = ''; });
     $('rollBtn').addEventListener('click', roll);
+    $('rollBtn2').addEventListener('click', roll);
+    /* The felt itself throws. roll() already refuses to re-enter while dice are
+       in the air, so a second click mid-throw is a no-op rather than a race. */
+    tray.addEventListener('click', roll);
 
     /* ── Keyboard ────────────────────────────────────────────────────────── */
 
@@ -876,6 +877,19 @@ kbd {
         var i = '1234567'.indexOf(e.key);
         if (i > -1) selectDie(DICE[i]);
     });
+
+    /* ── Console furniture ───────────────────────────────────────────────── */
+    if (window.CAS) CAS.bootOnce($('headScreen'));
+    SRCH.clock($('clock'));
+    var trace = SRCH.scope($('scope'));
+    SRCH.themeSwitch($('themeSw'), function () {
+        if (trace) trace.repaint();
+        /* The dice are drawn with the display colour, so they have to be
+           redrawn when it changes or the felt keeps the old phosphor. */
+        themeColours();
+        redrawSettled();
+    });
+    if (window.CAS) CAS.pageTransition();
 
     selectDie(st.die);
     syncSteppers();

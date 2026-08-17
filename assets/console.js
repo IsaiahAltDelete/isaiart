@@ -187,20 +187,20 @@
         return { repaint: function () { readColour(); draw(); } };
     }
 
-    /* ── Phosphor rocker ─────────────────────────────────────────────────── */
+    /* ── Theme rocker ────────────────────────────────────────────────────── */
 
-    function phosphorSwitch(input, onChange) {
+    function themeSwitch(input, onChange) {
         if (!input || !window.CAS) return;
-        input.checked = CAS.getPhosphor() === 'green';
+        input.checked = CAS.getTheme() === 'light';
         input.addEventListener('change', function () {
-            var want = input.checked ? 'green' : 'amber';
-            var mode = CAS.togglePhosphor();
-            /* Where storage is blocked the toggle can't read its own state,
-               so it can answer with the mode it just left. Force it. */
-            if (mode !== want) mode = CAS.setPhosphor(want);
-            input.checked = mode === 'green';
+            var want = input.checked ? 'light' : 'dark';
+            var mode = CAS.toggleTheme();
+            /* Where storage is blocked the toggle cannot read its own state and
+               can answer with the mode it just left. Force it. */
+            if (mode !== want) mode = CAS.setTheme(want);
+            input.checked = mode === 'light';
             if (onChange) onChange(mode);
-            CAS.toast(mode === 'green' ? 'GREEN DISPLAY' : 'AMBER DISPLAY');
+            CAS.toast(mode === 'light' ? 'LIGHT' : 'DARK');
         });
     }
 
@@ -280,7 +280,7 @@
         if (window.CAS) CAS.bootOnce(el('headScreen'));
         clock(el('clock'));
         var trace = scope(el('scope'));
-        phosphorSwitch(el('phosSw'), function () { if (trace) trace.repaint(); });
+        themeSwitch(el('themeSw'), function () { if (trace) trace.repaint(); });
 
         /* ── restore, then let the URL override ──────────────────────────────
            A shared link is a deliberate act; the last local session is not. So
@@ -414,7 +414,8 @@
         phrase: phrase,
         clock: clock,
         scope: scope,
-        phosphorSwitch: phosphorSwitch,
+        themeSwitch: themeSwitch,
+        phosphorSwitch: themeSwitch,
         terminal: terminal
     };
 })();

@@ -40,6 +40,12 @@
     --phos-dim:    #b07b06;
     --phos-faint:  #5c4108;
 
+    /* The lit and unlit ends of a shaded facet, for anything drawing solids
+       into a canvas — the dice and the coin sample these so their shading
+       follows the theme instead of being hardcoded dark. */
+    --solid-lo:    #0c0d10;
+    --solid-hi:    #2a2d34;
+
     /* The stripe. Six flat bands, the identity mark of the whole system. */
     --s1:          #e5484d;
     --s2:          #ff6b35;
@@ -101,10 +107,47 @@
     color-scheme: dark;
 }
 
-:root[data-phosphor="green"] {
-    --phos:       #4ade80;
-    --phos-dim:   #2b8f52;
-    --phos-faint: #1b3f2a;
+:root[data-theme="light"] {
+    /* ── LIGHT: engineering paper ────────────────────────────────────────────
+       Not an inversion of the dark palette but the other half of the same
+       reference. This language already cites plotter output and technical
+       manuals; those were printed on paper, so light mode is the drawing as it
+       came off the plotter — warm white stock, graphite ruling, and the same
+       six bands of ink. Nothing glows, because nothing is lit.
+
+       The stripe keeps its exact values in both themes. It is the identity
+       mark; a mark that changes colour with the lights is not a mark. */
+    --ground:      #dcd9d0;
+    --ground-2:    #d3d0c6;
+    --panel:       #e5e2d9;
+    --well:        #eeece4;
+
+    --rule:        #b4b0a3;
+    --rule-hi:     #8b8779;
+    --rule-lo:     #c9c5b8;
+
+    /* Ink, not black. The first pass ran #16181c on near-white stock — 16:1,
+       which is a lot of glare for a page you sit in front of. Warm graphite on
+       toned paper still clears AA comfortably at ~11:1 and stops the whole
+       thing shouting. */
+    --ink:         #262a2f;
+    --ink-soft:    #55595f;
+    --ink-faint:   #767a82;
+
+    /* The readout ink. Amber on paper is illegible, so the display colour
+       becomes the pigment a plotter would actually have laid down. */
+    --phos:        #7a4a00;
+    --phos-dim:    #7a5108;   /* re-darkened when the paper was toned down */
+    --phos-faint:  #c8b88e;
+
+    --paper:       #16181c;
+
+    /* Shaded solids invert with the ground: dark facets on a dark table,
+       pale facets on paper. Read by the dice and the coin. */
+    --solid-lo:    #f4f2ea;
+    --solid-hi:    #c4bfb0;
+
+    color-scheme: light;
 }
 
 /* ── 2. RESET & GROUND ───────────────────────────────────────────────────── */

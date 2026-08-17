@@ -24,7 +24,7 @@
     if (window.CAS) CAS.bootOnce(el('headScreen'));
     S.clock(el('clock'));
     var trace = S.scope(el('scope'));
-    S.phosphorSwitch(el('phosSw'), function () { if (trace) trace.repaint(); });
+    S.themeSwitch(el('themeSw'), function () { if (trace) trace.repaint(); });
     if (window.CAS) CAS.pageTransition();
 
     /* ── State ───────────────────────────────────────────────────────────── */

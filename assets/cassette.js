@@ -5,36 +5,54 @@
 (function () {
     'use strict';
 
-    var PHOSPHOR_KEY = 'isa.phosphor';
+    var THEME_KEY = 'isa.theme';
 
-    /* ── Phosphor selector (P3 amber / P1 green) ─────────────────────────── */
+    /* ── Theme (dark / light) ────────────────────────────────────────────────
+       This replaced an amber/green phosphor selector. That control was a joke
+       about CRT tubes and it was the only global switch on every page, which
+       made it the most prominent thing a first-time visitor could touch and
+       also the least useful — it changed one accent and nothing else. Dark and
+       light do real work.
 
-    /* The applied mode is held in memory, not re-read from storage. Reading it
-       back made the switch one-way wherever storage is blocked (private mode):
-       getPhosphor() always answered 'amber', so toggle always returned 'green'. */
+       The applied value is held in memory, not re-read from storage. Reading
+       it back made the switch one-way wherever storage is blocked (private
+       mode): the getter always answered 'dark', so toggle always returned
+       'light'. */
     var applied = null;
 
-    function getPhosphor() {
+    function getTheme() {
         if (applied) return applied;
-        try { applied = localStorage.getItem(PHOSPHOR_KEY) || 'amber'; }
-        catch (e) { applied = 'amber'; }
+        try { applied = localStorage.getItem(THEME_KEY) || preferredTheme(); }
+        catch (e) { applied = preferredTheme(); }
         return applied;
     }
 
-    function setPhosphor(mode) {
-        var m = mode === 'green' ? 'green' : 'amber';
+    /* Follow the operating system on a first visit, and only then. Once the
+       switch has been touched, the stored choice wins — someone who picked
+       light at noon should not be flipped to dark by their OS at dusk. */
+    function preferredTheme() {
+        return (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)
+            ? 'light' : 'dark';
+    }
+
+    function setTheme(mode) {
+        var m = mode === 'light' ? 'light' : 'dark';
         applied = m;
-        document.documentElement.setAttribute('data-phosphor', m);
-        try { localStorage.setItem(PHOSPHOR_KEY, m); } catch (e) {}
+        document.documentElement.setAttribute('data-theme', m);
+        /* Keep the browser chrome in step, or the address bar stays black over
+           a white page on mobile. */
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', m === 'light' ? '#eceae3' : '#0a0b0d');
+        try { localStorage.setItem(THEME_KEY, m); } catch (e) {}
         return m;
     }
 
-    function togglePhosphor() {
-        return setPhosphor(getPhosphor() === 'amber' ? 'green' : 'amber');
+    function toggleTheme() {
+        return setTheme(getTheme() === 'dark' ? 'light' : 'dark');
     }
 
-    /* Apply immediately so the page never flashes the wrong phosphor. */
-    document.documentElement.setAttribute('data-phosphor', getPhosphor());
+    /* Apply immediately so the page never flashes the wrong theme. */
+    document.documentElement.setAttribute('data-theme', getTheme());
 
     /* ── file:// link fixup ──────────────────────────────────────────────────
        The pages link to directories — "editor/", "../" — which is what makes
@@ -460,9 +478,13 @@
     }
 
     window.CAS = {
-        getPhosphor: getPhosphor,
-        setPhosphor: setPhosphor,
-        togglePhosphor: togglePhosphor,
+        getTheme: getTheme,
+        setTheme: setTheme,
+        toggleTheme: toggleTheme,
+        /* Old names, so a page that has not been ported yet still runs. */
+        getPhosphor: getTheme,
+        setPhosphor: setTheme,
+        togglePhosphor: toggleTheme,
         toast: toast,
         segInit: segInit,
         segSet: segSet,

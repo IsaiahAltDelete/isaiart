@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0b0d">
+<title>Cutout Lab</title>
+<meta name="description" content="A background removal bench. Nine segmentation engines you can mix, real alpha matting on the edge, colour decontamination, and a brush for the bits that argue. Runs entirely in the browser.">
+
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../assets/vector.css?v=8">
+<link rel="stylesheet" href="../assets/console.css?v=8">
+<script src="../assets/cassette.js?v=8"></script>
+
+<style>
+:root { --accent: var(--s6); }
+
+/* ── Work area ───────────────────────────────────────────────────────────
+   Controls beside a stage that keeps the picture as large as it can be.
+   Stacked on narrow screens with the picture first, because on a phone the
+   thing you are looking at matters more than the thing you are turning. */
+.work { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
+@media (min-width: 1000px) { .work { grid-template-columns: 390px 1fr; } }
+
+.controls { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.controls .rack { break-inside: auto; margin: 0; }
+
+.stage { display: flex; flex-direction: column; padding: 0; min-width: 0; order: -1; }
+@media (min-width: 1000px) { .stage { order: 0; position: sticky; top: 12px; } }
+
+.stage-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 9px 12px; border-bottom: var(--hair) solid var(--rule);
+}
+.stage-bar .key { min-height: 26px; }
+.stage-bar .seg-ctl { flex: 1 1 260px; min-width: 200px; }
+.stage-bar .seg-ctl span { min-height: 26px; padding: 0.3em 0.35em; letter-spacing: 0.06em; }
+
+/* The viewport is a fixed box the canvas fills exactly; the picture moves
+   INSIDE it by transform rather than by resizing the canvas, which is what
+   makes panning and cursor-anchored zoom possible at all. */
+.canvas-wrap {
+    position: relative;
+    min-height: 340px;
+    height: clamp(340px, 62vh, 820px);
+    overflow: hidden;
+    touch-action: none;
+    background: repeating-conic-gradient(var(--ground-2) 0% 25%, var(--well) 0% 50%) 50% / 16px 16px;
+}
+.canvas-wrap.drag { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.canvas-wrap.has-img { cursor: grab; }
+.canvas-wrap.panning { cursor: grabbing; }
+.canvas-wrap.paint { cursor: crosshair; }
+.canvas-wrap.pick { cursor: cell; }
+
+/* width/height, not just inset. A canvas is a replaced element with an
+   intrinsic size taken from its width/height ATTRIBUTES, and those are the
+   backing store — devicePixelRatio times the CSS box. With only `inset: 0`
+   the over-constrained `right` is dropped and the element lays out at its
+   intrinsic width, so on any HiDPI screen the canvas renders twice the size
+   of the box it sits in: the picture draws at half scale and every pointer
+   coordinate maps to the wrong pixel. */
+#view { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.drop-hint {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; text-align: center; padding: 20px; pointer-events: none;
+}
+
+.busybar {
+    position: absolute; left: 0; right: 0; top: 0; height: 2px;
+    background: var(--rule-lo); pointer-events: none; opacity: 0;
+    transition: opacity var(--snap);
+}
+.busybar.on { opacity: 1; }
+.busybar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 90ms linear; }
+
+.stage-foot {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px;
+    padding: 9px 12px; border-top: var(--hair) solid var(--rule);
+    font-size: 0.68rem; color: var(--ink-soft);
+}
+.stat { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; min-width: 0; }
+.stat b { font-weight: 500; color: var(--phos); font-variant-numeric: tabular-nums; }
+.stat-help { display: none; }
+@media (min-width: 760px) { .stat-help { display: flex; } }
+
+/* ── Readouts ────────────────────────────────────────────────────────── */
+.gridout {
+    display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 6px 10px;
+    align-items: baseline; font-size: 0.72rem;
+}
+.gridout b { font-weight: 500; color: var(--phos); font-variant-numeric: tabular-nums; }
+
+/* ── Engine list ─────────────────────────────────────────────────────────
+   One row per engine. The row is the whole control surface: a switch, a
+   name, a weight, a thumbnail of what that engine alone thinks, and a
+   drawer of its own parameters. The thumbnail is the point — nine numbers
+   in a mixer tell you nothing, nine little pictures tell you everything. */
+.eng { border-top: var(--hair) solid var(--rule-lo); padding: 9px 0 0; }
+.eng:first-child { border-top: 0; padding-top: 0; }
+
+.eng-head { display: flex; align-items: center; gap: 8px; }
+.eng-head .chk { flex: 0 0 auto; }
+
+.eng-thumb {
+    width: 58px; height: 42px; flex: 0 0 auto;
+    background: var(--well); border: var(--hair) solid var(--rule);
+    display: block; cursor: pointer; image-rendering: auto;
+}
+.eng-thumb:hover { border-color: var(--accent); }
+.eng.solo .eng-thumb { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+.eng-mid { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.eng-name { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+.eng input:checked ~ .eng-name, .eng.on .eng-name { color: var(--ink); }
+.eng-row2 { display: flex; align-items: center; gap: 8px; }
+.eng-w { flex: 1 1 auto; min-width: 0; }
+.eng-ms { font-size: 0.6rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
+
+.eng-more { width: 24px; min-height: 24px; padding: 0; flex: 0 0 auto; font-size: 0.7rem; }
+.eng-body { display: none; flex-direction: column; gap: 10px; padding: 10px 0 4px 0; }
+.eng.open .eng-body { display: flex; }
+
+/* Range inputs get a flat treatment so they belong to the drawing rather
+   than to the operating system. */
+input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 18px; background: transparent; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+    height: 2px; background: var(--rule-hi); border: 0;
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 10px; height: 14px; margin-top: -6px;
+    background: var(--accent); border: 0; border-radius: 0;
+}
+input[type="range"]::-moz-range-track { height: 2px; background: var(--rule-hi); border: 0; }
+input[type="range"]::-moz-range-thumb { width: 10px; height: 14px; background: var(--accent); border: 0; border-radius: 0; }
+input[type="range"]:focus-visible { outline: 2px solid var(--s6); outline-offset: 2px; }
+input[type="range"]:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.eng-w { height: 14px; }
+.eng-w::-webkit-slider-thumb { height: 12px; margin-top: -5px; }
+
+/* ── Key swatches ────────────────────────────────────────────────────── */
+.keys { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.keys .sw {
+    width: 24px; height: 24px; padding: 0; border: var(--hair) solid var(--rule-hi);
+    cursor: pointer; position: relative; flex: 0 0 auto;
+}
+.keys .sw:hover { border-color: var(--alert); }
+.keys .sw::after {
+    content: '×'; position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center;
+    color: #fff; text-shadow: 0 0 3px #000; font-size: 0.8rem;
+}
+.keys .sw:hover::after { display: flex; }
+
+.colour-row { display: flex; align-items: center; gap: 8px; }
+input[type="color"] {
+    width: 34px; height: 28px; padding: 0; border: var(--hair) solid var(--rule);
+    background: var(--well); cursor: pointer;
+}
+
+/* ── Misc ────────────────────────────────────────────────────────────── */
+.hist { display: block; width: 100%; height: 40px; background: var(--well); border: var(--hair) solid var(--rule); }
+.subrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.subrow .key { flex: 1 1 auto; min-width: 84px; }
+.warn { border-left: 3px solid var(--s2); }
+.busy { opacity: 0.5; pointer-events: none; }
+.rack-body > .rule:first-child { display: none; }
+
+.tri-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.65rem; color: var(--ink-faint); }
+.tri-legend i { display: inline-block; width: 9px; height: 9px; margin-right: 5px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+
+<main class="page">
+
+    <header class="chassis page-head">
+        <div class="head-row">
+            <div class="brand">
+                <h1 class="designation">CUTOUT LAB</h1>
+                <span class="stripe brand-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="label">NINE ENGINES &middot; ALPHA MATTING &middot; DECONTAMINATION</span>
+            </div>
+            <div class="bezel head-well">
+                <div class="screen" id="headScreen">
+                    <div class="well-row">
+                        <span class="phos" id="clock" role="timer" aria-label="System clock">--:--:--</span>
+                        <canvas id="scope" width="120" height="28" aria-hidden="true"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="head-ctl">
+                <div class="lamp"><span class="led on green" aria-hidden="true"></span><span class="label">PWR</span></div>
+                <div class="phos-sw theme-sw">
+                    <svg class="theme-ico ico-moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 10.6A5.8 5.8 0 0 1 5.4 2.8a5.8 5.8 0 1 0 7.8 7.8Z"/></svg>
+                    <label class="rocker">
+                        <input type="checkbox" id="themeSw" aria-label="Light or dark theme">
+                        <span class="rock"></span>
+                    </label>
+                    <svg class="theme-ico ico-sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.1"/><path d="M8 .8v2M8 13.2v2M.8 8h2M13.2 8h2M2.9 2.9l1.4 1.4M11.7 11.7l1.4 1.4M13.1 2.9l-1.4 1.4M4.3 11.7l-1.4 1.4"/></svg>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="work">
+
+        <!-- ══ CONTROLS ══════════════════════════════════════════════ -->
+        <div class="controls">
+
+            <!-- 01 SOURCE ────────────────────────────────────────── -->
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">01</span>
+                    <span class="designation rack-name">SOURCE</span>
+                </div>
+                <div class="rack-body">
+                    <input type="file" id="file" accept="image/*" class="sr-only" data-no-save>
+                    <button class="key" type="button" id="pickBtn">CHOOSE AN IMAGE</button>
+                    <span class="hint">Or drop one on the picture, or paste from the clipboard. Nothing is uploaded &mdash; every engine below runs in this tab.</span>
+
+                    <div class="gridout">
+                        <span class="label">FILE</span><b id="sName">&mdash;</b>
+                        <span class="label">SIZE</span><b id="sSize">&mdash;</b>
+                    </div>
+
+                    <div class="rule" aria-hidden="true"></div>
+
+                    <div class="fld">
+                        <label class="label" for="workRes">WORKING RESOLUTION <span class="op" id="workResVal">512 px</span></label>
+                        <select class="field" id="workRes">
+                            <option value="384">384 px &mdash; fastest</option>
+                            <option value="512" selected>512 px &mdash; balanced</option>
+                            <option value="768">768 px</option>
+                            <option value="1024">1024 px</option>
+                            <option value="1536">1536 px &mdash; slow</option>
+                        </select>
+                        <span class="hint">Every engine and the matte solve run on a copy no bigger than this on its long edge, and the finished alpha is carried back to full size <em>through the full-resolution photograph</em> by a guided filter &mdash; so the exported edge is as sharp as the file, not as sharp as this number. Raise it only if the subject has detail finer than the working grid can see.</span>
+                    </div>
+
+                    <div class="rule" aria-hidden="true"></div>
+
+                    <input type="file" id="plateFile" accept="image/*" class="sr-only" data-no-save>
+                    <div class="subrow">
+                        <button class="key" type="button" id="plateBtn">LOAD BACKGROUND PLATE</button>
+                        <button class="key key-danger" type="button" id="plateClear" disabled>DROP</button>
+                    </div>
+                    <span class="hint">A photograph of the same scene with the subject out of it. If you have one, the PLATE engine below becomes the most accurate thing on this page by a distance. <b id="plateName" class="phos">&mdash;</b></span>
+                </div>
+            </section>
+
+            <!-- 02 ENGINES ───────────────────────────────────────── -->
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">02</span>
+                    <span class="designation rack-name">ENGINES</span>
+                    <span class="spacer"></span>
+                    <span class="row-tight"><span class="led" id="engLed" aria-hidden="true"></span><span class="label" id="engStat">IDLE</span></span>
+                </div>
+                <div class="rack-body">
+
+                    <div class="fld">
+                        <span class="label" id="mixLbl">HOW THEY COMBINE</span>
+                        <div class="seg-ctl" role="radiogroup" aria-labelledby="mixLbl">
+                            <label><input type="radio" name="mixMode" value="mean" checked><span>AVERAGE</span></label>
+                            <label><input type="radio" name="mixMode" value="min"><span>AGREE</span></label>
+                            <label><input type="radio" name="mixMode" value="max"><span>ANY</span></label>
+                        </div>
+                        <span class="hint"><strong>AVERAGE</strong> is a weighted vote &mdash; the usual answer, and the only mode where the weight sliders do anything. <strong>AGREE</strong> keeps a pixel only if every enabled engine calls it subject, which is how you get a mask with no false positives and holes everywhere. <strong>ANY</strong> is the opposite. Click a thumbnail to see one engine on its own.</span>
+                    </div>
+
+                    <div class="rule" aria-hidden="true"></div>
+
+                    <!-- ENGINE: BORDER -->
+                    <div class="eng" data-eng="border">
+                        <div class="eng-head">
+                            <label class="chk"><input type="checkbox" id="e_border" checked><span class="box"></span></label>
+                            <canvas class="eng-thumb" width="58" height="42" title="Show this engine alone"></canvas>
+                            <div class="eng-mid">
+                                <span class="eng-name">BORDER PRIOR</span>
+                                <div class="eng-row2">
+                                    <input type="range" class="eng-w" id="w_border" min="0" max="100" value="35" aria-label="Border prior weight">
+                                    <span class="eng-ms">&mdash;</span>
+                                </div>
+                            </div>
+                            <button class="key eng-more" type="button" aria-expanded="false" aria-label="Border prior settings">&#9662;</button>
+                        </div>
+                        <div class="eng-body">
+                            <span class="hint">Learns a five-component colour model from the frame of the picture, scores every pixel against it, then learns a second model from whatever scored worst and takes the posterior between them. That second, self-taught model is what stops a subject that shares a colour family with its background from vanishing.</span>
+                            <div class="fld">
+                                <label class="label" for="b_band">FRAME THICKNESS <span class="op" id="b_bandVal">6%</span></label>
+                                <input type="range" id="b_band" min="1" max="20" step="1" value="6">
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="b_quant">ASSUMED SUBJECT SIZE <span class="op" id="b_quantVal">35%</span></label>
+                                <input type="range" id="b_quant" min="5" max="70" step="1" value="35">
+                                <span class="hint">How much of the frame to hand the second model as training data. Set it near the fraction of the picture the subject actually occupies: too high and the subject model learns background, too low and it starves.</span>
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="b_sharp">DECISIVENESS <span class="op" id="b_sharpVal">1.00</span></label>
+                                <input type="range" id="b_sharp" min="10" max="400" step="5" value="100">
+                            </div>
+                            <div class="fld">
+                                <span class="label">TRUST THESE EDGES</span>
+                                <div class="checks">
+                                    <label class="chk"><input type="checkbox" id="b_top" checked><span class="box"></span><span class="label">TOP</span></label>
+                                    <label class="chk"><input type="checkbox" id="b_bottom" checked><span class="box"></span><span class="label">BOTTOM</span></label>
+                                    <label class="chk"><input type="checkbox" id="b_left" checked><span class="box"></span><span class="label">LEFT</span></label>
+                                    <label class="chk"><input type="checkbox" id="b_right" checked><span class="box"></span><span class="label">RIGHT</span></label>
+                                </div>
+                                <span class="hint">A portrait cropped at the chest has a bottom edge made entirely of subject. Turn that edge off and the model stops being taught that skin is background.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ENGINE: CHROMA -->
+                    <div class="eng" data-eng="chroma">
+                        <div class="eng-head">
+                            <label class="chk"><input type="checkbox" id="e_chroma"><span class="box"></span></label>
+                            <canvas class="eng-thumb" width="58" height="42" title="Show this engine alone"></canvas>
+                            <div class="eng-mid">
+                                <span class="eng-name">CHROMA KEY</span>
+                                <div class="eng-row2">
+                                    <input type="range" class="eng-w" id="w_chroma" min="0" max="100" value="100" aria-label="Chroma key weight">
+                                    <span class="eng-ms">&mdash;</span>
+                                </div>
+                            </div>
+                            <button class="key eng-more" type="button" aria-expanded="false" aria-label="Chroma key settings">&#9662;</button>
+                        </div>
+                        <div class="eng-body">
+                            <span class="hint">Soft keying with two shells. Inside the inner radius a colour is pure background, outside the outer one it is pure subject, and the ramp between them is where hair and motion blur live. Distance is measured in OKLab, so the chroma and lightness axes can be weighted apart.</span>
+                            <div class="fld">
+                                <span class="label">KEY COLOURS</span>
+                                <div class="keys" id="keyList"><span class="hint">none &mdash; add one</span></div>
+                                <div class="subrow">
+                                    <button class="key" type="button" id="k_auto">SAMPLE THE FRAME</button>
+                                    <button class="key" type="button" id="k_pick" aria-pressed="false">PICK FROM PICTURE</button>
+                                </div>
+                                <span class="hint">Click a swatch to remove it. Several keys are allowed &mdash; a screen with a lit half and a shadowed half is two colours, not one.</span>
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="k_inner">INNER TOLERANCE <span class="op" id="k_innerVal">0.060</span></label>
+                                <input type="range" id="k_inner" min="0" max="300" step="1" value="60">
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="k_outer">OUTER TOLERANCE <span class="op" id="k_outerVal">0.200</span></label>
+                                <input type="range" id="k_outer" min="1" max="600" step="1" value="200">
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="k_chroma">CHROMA WEIGHT <span class="op" id="k_chromaVal">1.00</span></label>
+                                <input type="range" id="k_chroma" min="0" max="300" step="5" value="100">
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="k_luma">LIGHTNESS WEIGHT <span class="op" id="k_lumaVal">0.50</span></label>
+                                <input type="range" id="k_luma" min="0" max="300" step="5" value="50">
+                                <span class="hint">Drop the lightness weight towards zero to forgive an unevenly lit screen; raise it to key something that differs from its background only in brightness.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ENGINE: IFT -->
+                    <div class="eng" data-eng="ift">
+                        <div class="eng-head">
+                            <label class="chk"><input type="checkbox" id="e_ift" checked><span class="box"></span></label>
+                            <canvas class="eng-thumb" width="58" height="42" title="Show this engine alone"></canvas>
+                            <div class="eng-mid">
+                                <span class="eng-name">CONNECTEDNESS</span>
+                                <div class="eng-row2">
+                                    <input type="range" class="eng-w" id="w_ift" min="0" max="100" value="35" aria-label="Connectedness weight">
+                                    <span class="eng-ms">&mdash;</span>
+                                </div>
+                            </div>
+                            <button class="key eng-more" type="button" aria-expanded="false" aria-label="Connectedness settings">&#9662;</button>
+                        </div>
+                        <div class="eng-body">
+                            <span class="hint">Segmentation as a walking problem. Background is whatever you can reach from the frame &mdash; or from a background scribble &mdash; without crossing a strong edge. A wall that fades from white to grey is one long chain of easy steps and comes out whole; a subject behind one hard edge is cut off no matter what colour it is.</span>
+                            <div class="fld">
+                                <label class="label" for="i_metric">PATH COST</label>
+                                <select class="field" id="i_metric">
+                                    <option value="auto" selected>AUTOMATIC</option>
+                                    <option value="bottleneck">BOTTLENECK &mdash; the worst step on the path</option>
+                                    <option value="geodesic">ADDITIVE &mdash; the total of every step</option>
+                                </select>
+                                <span class="hint"><strong>BOTTLENECK</strong> is scale-free: a wall is a wall however far away it is. But it saturates &mdash; once both a foreground and a background scribble can reach a pixel over easy steps, both score ~1 and the comparison between them is noise. <strong>ADDITIVE</strong> never saturates, so it is the one that works with scribbles on both sides. AUTOMATIC picks additive the moment you draw a foreground mark.</span>
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="i_sigma">EDGE SENSITIVITY <span class="op" id="i_sigmaVal">0.090</span></label>
+                                <input type="range" id="i_sigma" min="5" max="400" step="1" value="90">
+                                <span class="hint">How big a colour step counts as a wall. Lower is stricter.</span>
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="i_chroma">CHROMA WEIGHT <span class="op" id="i_chromaVal">1.40</span></label>
+                                <input type="range" id="i_chroma" min="0" max="400" step="5" value="140">
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="i_gamma">FALLOFF <span class="op" id="i_gammaVal">1.00</span></label>
+                                <input type="range" id="i_gamma" min="20" max="400" step="5" value="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ENGINE: SALIENCY -->
+                    <div class="eng" data-eng="saliency">
+                        <div class="eng-head">
+                            <label class="chk"><input type="checkbox" id="e_saliency"><span class="box"></span></label>
+                            <canvas class="eng-thumb" width="58" height="42" title="Show this engine alone"></canvas>
+                            <div class="eng-mid">
+                                <span class="eng-name">SALIENCY</span>
+                                <div class="eng-row2">
+                                    <input type="range" class="eng-w" id="w_saliency" min="0" max="100" value="30" aria-label="Saliency weight">
+                                    <span class="eng-ms">&mdash;</span>
+                                </div>
+                            </div>
+                            <button class="key eng-more" type="button" aria-expanded="false" aria-label="Saliency settings">&#9662;</button>
+                        </div>
+                        <div class="eng-body">
+                            <span class="hint">Three ways of asking "what is unusual here", averaged because they fail differently. It needs no seeds and no assumptions about the frame, which makes it the useful vote when everything else is confused &mdash; but it produces a blurry blob, never an edge. Give it a small weight and let something else find the outline.</span>
+                            <div class="fld">
+                                <label class="label" for="s_ft">DISTANCE FROM THE AVERAGE COLOUR <span class="op" id="s_ftVal">1.00</span></label>
+                                <input type="range" id="s_ft" min="0" max="200" step="5" value="100">
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="s_sr">SPECTRAL RESIDUAL <span class="op" id="s_srVal">1.00</span></label>
+                                <input type="range" id="s_sr" min="0" max="200" step="5" value="100">
+                                <span class="hint">Natural images have a roughly 1/f amplitude spectrum. Take this picture's log spectrum, subtract the smoothed version of itself, keep the phase and transform back: what is left is whatever this picture has that an average picture does not.</span>
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="s_hc">COLOUR CONTRAST <span class="op" id="s_hcVal">1.00</span></label>
+                                <input type="range" id="s_hc" min="0" max="200" step="5" value="100">
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="s_centre">CENTRE BIAS <span class="op" id="s_centreVal">0.35</span></label>
+                                <input type="range" id="s_centre" min="0" max="100" step="1" value="35">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ENGINE: SLIC -->
+                    <div class="eng" data-eng="slic">
+                        <div class="eng-head">
+                            <label class="chk"><input type="checkbox" id="e_slic"><span class="box"></span></label>
+                            <canvas class="eng-thumb" width="58" height="42" title="Show this engine alone"></canvas>
+                            <div class="eng-mid">
+                                <span class="eng-name">REGION SPILL</span>
+                                <div class="eng-row2">
+                                    <input type="range" class="eng-w" id="w_slic" min="0" max="100" value="40" aria-label="Region spill weight">
+                                    <span class="eng-ms">&mdash;</span>
+                                </div>
+                            </div>
+                            <button class="key eng-more" type="button" aria-expanded="false" aria-label="Region spill settings">&#9662;</button>
+                        </div>
+                        <div class="eng-body">
+                            <span class="hint">Cuts the picture into superpixels, then asks of each one: if I flood outwards from here through colour-similar neighbours, how much of what I reach is the frame? A big uniform wall spills onto the frame from everywhere, even in the middle of the picture. A subject leaning against the frame barely spills at all. That distinction is what a plain border model cannot make.</span>
+                            <div class="fld">
+                                <label class="label" for="p_count">SUPERPIXELS <span class="op" id="p_countVal">350</span></label>
+                                <input type="range" id="p_count" min="60" max="1200" step="10" value="350">
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="p_compact">COMPACTNESS <span class="op" id="p_compactVal">0.12</span></label>
+                                <input type="range" id="p_compact" min="1" max="60" step="1" value="12">
+                                <span class="hint">High makes tidy hexagons that ignore the picture; low makes ragged regions that follow every edge. Low is usually right here.</span>
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="p_sigma">FLOOD REACH <span class="op" id="p_sigmaVal">0.100</span></label>
+                                <input type="range" id="p_sigma" min="2" max="400" step="1" value="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ENGINE: GRABCUT -->
+                    <div class="eng" data-eng="grabcut">
+                        <div class="eng-head">
+                            <label class="chk"><input type="checkbox" id="e_grabcut" checked><span class="box"></span></label>
+                            <canvas class="eng-thumb" width="58" height="42" title="Show this engine alone"></canvas>
+                            <div class="eng-mid">
+                                <span class="eng-name">GRAPH CUT</span>
+                                <div class="eng-row2">
+                                    <input type="range" class="eng-w" id="w_grabcut" min="0" max="100" value="100" aria-label="Graph cut weight">
+                                    <span class="eng-ms">&mdash;</span>
+                                </div>
+                            </div>
+                            <button class="key eng-more" type="button" aria-expanded="false" aria-label="Graph cut settings">&#9662;</button>
+                        </div>
+                        <div class="eng-body">
+                            <span class="hint">GrabCut, in full. Two five-component colour models with real covariances, an eight-connected field whose edge costs are calibrated against this picture's own contrast, and an exact global minimum found by Boykov&ndash;Kolmogorov max-flow &mdash; not an approximation, the actual cheapest cut. Then it re-fits the models to the result and does it again. It is the slowest engine here and usually the right one.</span>
+                            <div class="fld">
+                                <label class="label" for="g_seed">WHAT IT STARTS FROM</label>
+                                <select class="field" id="g_seed">
+                                    <option value="engines" selected>THE OTHER ENGINES</option>
+                                    <option value="rect">THE DRAWN BOX</option>
+                                    <option value="auto">A BOX INSET FROM THE FRAME</option>
+                                </select>
+                                <span class="hint">Feeding it the other engines' consensus is the strongest setting: the cut then has a real opinion to sharpen instead of a rectangle to guess from. Your brush marks are honoured as hard facts in every mode.</span>
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="g_iter">ROUNDS <span class="op" id="g_iterVal">4</span></label>
+                                <input type="range" id="g_iter" min="1" max="10" step="1" value="4">
+                                <span class="hint">It stops early once the labelling stops moving, so a high number costs nothing on an easy picture.</span>
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="g_gamma">SMOOTHNESS <span class="op" id="g_gammaVal">50</span></label>
+                                <input type="range" id="g_gamma" min="1" max="200" step="1" value="50">
+                                <span class="hint">The price of a boundary. High gives a short, clean outline that ignores detail; low lets the cut wander into every crevice and every JPEG artefact.</span>
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="g_k">COLOUR CLUSTERS <span class="op" id="g_kVal">5</span></label>
+                                <input type="range" id="g_k" min="2" max="10" step="1" value="5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ENGINE: PLATE -->
+                    <div class="eng" data-eng="plate">
+                        <div class="eng-head">
+                            <label class="chk"><input type="checkbox" id="e_plate"><span class="box"></span></label>
+                            <canvas class="eng-thumb" width="58" height="42" title="Show this engine alone"></canvas>
+                            <div class="eng-mid">
+                                <span class="eng-name">PLATE DIFFERENCE</span>
+                                <div class="eng-row2">
+                                    <input type="range" class="eng-w" id="w_plate" min="0" max="100" value="100" aria-label="Plate difference weight">
+                                    <span class="eng-ms">&mdash;</span>
+                                </div>
+                            </div>
+                            <button class="key eng-more" type="button" aria-expanded="false" aria-label="Plate difference settings">&#9662;</button>
+                        </div>
+                        <div class="eng-body">
+                            <span class="hint">With a photograph of the empty scene, the subject is simply what changed. Needs a plate loaded in panel 01.</span>
+                            <div class="fld">
+                                <label class="label" for="pl_inner">IGNORE CHANGES BELOW <span class="op" id="pl_innerVal">0.020</span></label>
+                                <input type="range" id="pl_inner" min="0" max="200" step="1" value="20">
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="pl_outer">FULLY SUBJECT ABOVE <span class="op" id="pl_outerVal">0.100</span></label>
+                                <input type="range" id="pl_outer" min="1" max="400" step="1" value="100">
+                            </div>
+                            <div class="fld">
+                                <label class="label" for="pl_shadow">COUNT SHADOWS <span class="op" id="pl_shadowVal">0.25</span></label>
+                                <input type="range" id="pl_shadow" min="0" max="100" step="1" value="25">
+                                <span class="hint">A cast shadow darkens the plate without changing its colour. At zero that is forgiven and the shadow stays behind; at one it is subject like anything else. In between it becomes partial alpha, which is what you want if you are keeping the shadow.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ENGINE: MANUAL -->
+                    <div class="eng" data-eng="manual">
+                        <div class="eng-head">
+                            <label class="chk"><input type="checkbox" id="e_manual"><span class="box"></span></label>
+                            <canvas class="eng-thumb" width="58" height="42" title="Show this engine alone"></canvas>
+                            <div class="eng-mid">
+                                <span class="eng-name">RAW MARKS</span>
+                                <div class="eng-row2">
+                                    <input type="range" class="eng-w" id="w_manual" min="0" max="100" value="100" aria-label="Raw marks weight">
+                                    <span class="eng-ms">&mdash;</span>
+                                </div>
+                            </div>
+                            <button class="key eng-more" type="button" aria-expanded="false" aria-label="Raw marks settings">&#9662;</button>
+                        </div>
+                        <div class="eng-body">
+                            <span class="hint">Your brush strokes, blurred outwards and nothing else. Not much of an engine, but as a voter it lets one stroke overrule everything above it.</span>
+                            <div class="fld">
+                                <label class="label" for="m_spread">SPREAD <span class="op" id="m_spreadVal">2%</span></label>
+                                <input type="range" id="m_spread" min="1" max="15" step="1" value="2">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ENGINE: NEURAL -->
+                    <div class="eng" data-eng="neural">
+                        <div class="eng-head">
+                            <label class="chk"><input type="checkbox" id="e_neural" disabled><span class="box"></span></label>
+                            <canvas class="eng-thumb" width="58" height="42" title="Show this engine alone"></canvas>
+                            <div class="eng-mid">
+                                <span class="eng-name">NEURAL &mdash; RMBG&nbsp;1.4</span>
+                                <div class="eng-row2">
+                                    <input type="range" class="eng-w" id="w_neural" min="0" max="100" value="100" aria-label="Neural weight">
+                                    <span class="eng-ms">&mdash;</span>
+                                </div>
+                            </div>
+                            <button class="key eng-more" type="button" aria-expanded="false" aria-label="Neural settings">&#9662;</button>
+                        </div>
+                        <div class="eng-body">
+                            <div class="note warn" style="padding:10px 0 0;border-left:0">
+                                <div class="note-body">
+                                    <p>The one engine here that is <strong>not</strong> offline. Switching it on downloads a segmentation network &mdash; roughly 45&nbsp;MB &mdash; from a public CDN, once, after which the browser caches it. Nothing about your picture is uploaded; the model comes to the image, not the other way round. Everything else on this page keeps working with the network unplugged.</p>
+                                </div>
+                            </div>
+                            <div class="subrow">
+                                <button class="key" type="button" id="n_load">DOWNLOAD THE MODEL</button>
+                            </div>
+                            <div class="meter" aria-hidden="true"><i id="n_bar"></i></div>
+                            <span class="hint" id="n_status">Not loaded.</span>
+                            <div class="fld">
+                                <label class="label" for="n_device">RUN ON</label>
+                                <select class="field" id="n_device">
+                                    <option value="auto" selected>GPU IF AVAILABLE</option>
+                                    <option value="wasm">CPU ONLY</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- 03 MARKS ─────────────────────────────────────────── -->
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">03</span>
+                    <span class="designation rack-name">MARKS</span>
+                    <span class="spacer"></span>
+                    <span class="label" id="markStat">0 STROKES</span>
+                </div>
+                <div class="rack-body">
+                    <div class="fld">
+                        <span class="label" id="toolLbl">TOOL</span>
+                        <div class="seg-ctl" role="radiogroup" aria-labelledby="toolLbl">
+                            <label><input type="radio" name="tool" value="pan" checked><span>PAN</span></label>
+                            <label><input type="radio" name="tool" value="fg"><span>KEEP</span></label>
+                            <label><input type="radio" name="tool" value="bg"><span>DROP</span></label>
+                            <label><input type="radio" name="tool" value="erase"><span>ERASE</span></label>
+                            <label><input type="radio" name="tool" value="rect"><span>BOX</span></label>
+                        </div>
+                        <span class="hint">KEEP and DROP paint hard facts that every engine has to honour. You almost never need many &mdash; two strokes on a picture that came out wrong is usually the whole job. Hold <kbd>space</kbd> to pan while painting; <kbd>1</kbd>&ndash;<kbd>5</kbd> pick a tool.</span>
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="brushSize">BRUSH <span class="op" id="brushVal">28 px</span></label>
+                        <input type="range" id="brushSize" min="2" max="200" step="1" value="28">
+                    </div>
+                    <div class="subrow">
+                        <button class="key" type="button" id="undoBtn" disabled>UNDO STROKE</button>
+                        <button class="key key-danger" type="button" id="clearMarks" disabled>CLEAR ALL</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 04 SHAPE ─────────────────────────────────────────── -->
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">04</span>
+                    <span class="designation rack-name">SHAPE</span>
+                </div>
+                <div class="rack-body">
+                    <span class="hint">Cheap repairs to a mask that is basically right, applied before any matting happens. Nine times out of ten a mask that looks wrong just needs its midtones pushed apart.</span>
+                    <canvas class="hist" id="hist" width="360" height="40" aria-hidden="true"></canvas>
+                    <div class="pair">
+                        <div class="fld">
+                            <label class="label" for="sh_black">BLACK POINT <span class="op" id="sh_blackVal">0.35</span></label>
+                            <input type="range" id="sh_black" min="0" max="100" step="1" value="35">
+                        </div>
+                        <div class="fld">
+                            <label class="label" for="sh_white">WHITE POINT <span class="op" id="sh_whiteVal">0.65</span></label>
+                            <input type="range" id="sh_white" min="0" max="100" step="1" value="65">
+                        </div>
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="sh_gamma">GAMMA <span class="op" id="sh_gammaVal">1.00</span></label>
+                        <input type="range" id="sh_gamma" min="20" max="400" step="5" value="100">
+                    </div>
+                    <div class="rule" aria-hidden="true"></div>
+                    <div class="pair">
+                        <div class="fld">
+                            <label class="label" for="sh_open">DESPECKLE <span class="op" id="sh_openVal">1</span></label>
+                            <input type="range" id="sh_open" min="0" max="12" step="1" value="1">
+                        </div>
+                        <div class="fld">
+                            <label class="label" for="sh_close">FILL PINHOLES <span class="op" id="sh_closeVal">1</span></label>
+                            <input type="range" id="sh_close" min="0" max="12" step="1" value="1">
+                        </div>
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="sh_blobs">KEEP THE LARGEST <span class="op" id="sh_blobsVal">1</span></label>
+                        <input type="range" id="sh_blobs" min="0" max="12" step="1" value="1">
+                        <span class="hint">At zero nothing is dropped. At one you get the single biggest piece &mdash; which is wrong if the subject is a person <em>and</em> the bag they are carrying, so raise it when that is the case.</span>
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="sh_minfrac">&hellip;PLUS ANYTHING THIS BIG <span class="op" id="sh_minfracVal">25%</span></label>
+                        <input type="range" id="sh_minfrac" min="1" max="100" step="1" value="25">
+                    </div>
+                    <label class="chk"><input type="checkbox" id="sh_holes" checked><span class="box"></span><span class="label">FILL ENCLOSED HOLES</span></label>
+                    <span class="hint">A gap that never reaches the frame is a hole in the mask, not a gap in the subject. Turn this off for anything you can genuinely see through &mdash; a wicker chair, a pair of glasses.</span>
+                    <div class="rule" aria-hidden="true"></div>
+                    <div class="fld">
+                        <label class="label" for="sh_shift">MOVE THE EDGE <span class="op" id="sh_shiftVal">0.0 px</span></label>
+                        <input type="range" id="sh_shift" min="-60" max="60" step="1" value="0">
+                        <span class="hint">Positive eats into the subject, negative grows it, measured as a true Euclidean distance so corners move at the same speed as flat sides. A pixel of choke hides almost every remaining fringe.</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 05 MATTE ─────────────────────────────────────────── -->
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">05</span>
+                    <span class="designation rack-name">MATTE</span>
+                    <span class="spacer"></span>
+                    <span class="label" id="bandStat">&mdash;</span>
+                </div>
+                <div class="rack-body">
+                    <span class="hint">Everything above this point produces one bit per pixel. Hair, fur, glass, motion blur and every antialiased edge are <em>fractions</em>, and this is where they are solved for &mdash; inside a band straddling the outline, which is the only place the answer was ever in doubt.</span>
+                    <div class="fld">
+                        <label class="label" for="mt_method">SOLVER</label>
+                        <select class="field" id="mt_method">
+                            <option value="guided" selected>GUIDED FILTER &mdash; fast</option>
+                            <option value="closed">CLOSED FORM &mdash; best edges</option>
+                            <option value="sampling">SAMPLING &mdash; best on wisps</option>
+                            <option value="geodesic">GEODESIC &mdash; best on wide bands</option>
+                            <option value="none">NONE &mdash; keep the hard mask</option>
+                        </select>
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="mt_band">BAND WIDTH <span class="op" id="mt_bandVal">6 px</span></label>
+                        <input type="range" id="mt_band" min="1" max="60" step="1" value="6">
+                        <span class="hint">The single most important number on this page. Too narrow and hair is cut off at the root; too wide and the solver has to invent alpha for pixels that were never ambiguous. Switch the view to TRIMAP to see exactly what you are asking it to solve.</span>
+                    </div>
+
+                    <div class="fld" data-for="closed">
+                        <label class="label" for="mt_eps">COLOUR TOLERANCE <span class="op" id="mt_epsVal">1e-6</span></label>
+                        <input type="range" id="mt_eps" min="0" max="60" step="1" value="30">
+                        <span class="hint">The regulariser in the matting Laplacian. Small lets alpha follow colour into every crevice and picks up individual hairs; large behaves more like a smooth interpolation. Below about 1e-9 the maths becomes genuinely ill-conditioned on flat regions and the answer degrades &mdash; the slider stops before that.</span>
+                    </div>
+                    <div class="fld" data-for="closed">
+                        <label class="label" for="mt_iter">SOLVER ROUNDS <span class="op" id="mt_iterVal">60</span></label>
+                        <input type="range" id="mt_iter" min="10" max="400" step="10" value="60">
+                    </div>
+                    <div class="fld" data-for="guided">
+                        <label class="label" for="mt_radius">FILTER RADIUS <span class="op" id="mt_radiusVal">8 px</span></label>
+                        <input type="range" id="mt_radius" min="1" max="40" step="1" value="8">
+                    </div>
+                    <div class="fld" data-for="guided">
+                        <label class="label" for="mt_geps">EDGE STICKINESS <span class="op" id="mt_gepsVal">1e-5</span></label>
+                        <input type="range" id="mt_geps" min="0" max="60" step="1" value="25">
+                    </div>
+                    <div class="fld" data-for="sampling">
+                        <label class="label" for="mt_rays">SAMPLE DIRECTIONS <span class="op" id="mt_raysVal">16</span></label>
+                        <input type="range" id="mt_rays" min="4" max="48" step="2" value="16">
+                    </div>
+                    <div class="fld" data-for="geodesic">
+                        <label class="label" for="mt_ggamma">EDGE SENSITIVITY <span class="op" id="mt_ggammaVal">40</span></label>
+                        <input type="range" id="mt_ggamma" min="1" max="200" step="1" value="40">
+                    </div>
+
+                    <div class="rule" aria-hidden="true"></div>
+
+                    <label class="chk"><input type="checkbox" id="crf_on"><span class="box"></span><span class="label">DENSE CRF PASS</span></label>
+                    <span class="hint">Mean-field inference over a fully connected field: every pixel talks to every other pixel through a Gaussian on position <em>and</em> colour, which becomes tractable because that sum is a blur, and a blur can be done on a grid. Use it when the matte has the right shape but is bleeding across a colour boundary it should have respected. It is a sharpener, not a fixer &mdash; it will happily make a confidently wrong mask worse.</span>
+                    <div class="pair">
+                        <div class="fld">
+                            <label class="label" for="crf_iter">ROUNDS <span class="op" id="crf_iterVal">5</span></label>
+                            <input type="range" id="crf_iter" min="1" max="15" step="1" value="5">
+                        </div>
+                        <div class="fld">
+                            <label class="label" for="crf_colour">COLOUR RANGE <span class="op" id="crf_colourVal">0.050</span></label>
+                            <input type="range" id="crf_colour" min="5" max="200" step="1" value="50">
+                        </div>
+                    </div>
+                    <div class="pair">
+                        <div class="fld">
+                            <label class="label" for="crf_spatial">SPATIAL RANGE <span class="op" id="crf_spatialVal">24 px</span></label>
+                            <input type="range" id="crf_spatial" min="4" max="80" step="1" value="24">
+                        </div>
+                        <div class="fld">
+                            <label class="label" for="crf_wb">STRENGTH <span class="op" id="crf_wbVal">4.0</span></label>
+                            <input type="range" id="crf_wb" min="0" max="150" step="1" value="40">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 06 COLOUR ────────────────────────────────────────── -->
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">06</span>
+                    <span class="designation rack-name">COLOUR</span>
+                </div>
+                <div class="rack-body">
+                    <label class="chk"><input type="checkbox" id="dc_on" checked><span class="box"></span><span class="label">DECONTAMINATE THE EDGE</span></label>
+                    <span class="hint">An edge pixel is a <em>mixture</em>. Composite it somewhere new without undoing the mixture and it carries a rim of its old surroundings &mdash; the fringe that makes a cutout look like a cutout. This estimates the background hiding behind the edge by interpolating inwards from the parts of it you can see, then inverts the mixing equation to recover the subject's true colour.</span>
+                    <div class="fld">
+                        <label class="label" for="dc_strength">STRENGTH <span class="op" id="dc_strengthVal">0.80</span></label>
+                        <input type="range" id="dc_strength" min="0" max="100" step="1" value="80">
+                        <span class="hint">Full strength divides by alpha, which is loudest exactly where alpha is least trustworthy. Back it off if the edge starts to sparkle.</span>
+                    </div>
+
+                    <div class="rule" aria-hidden="true"></div>
+
+                    <label class="chk"><input type="checkbox" id="ds_on"><span class="box"></span><span class="label">DESPILL THE KEY COLOUR</span></label>
+                    <span class="hint">Green bounced off a screen lands on the subject too, and no alpha channel will remove it. This pushes colour off the key's chroma axis without touching anything on the other side of it &mdash; in OKLab, so "the green axis" means the same thing in the shadows as in the highlights. Needs a key colour in panel 02.</span>
+                    <div class="fld">
+                        <label class="label" for="ds_strength">STRENGTH <span class="op" id="ds_strengthVal">1.00</span></label>
+                        <input type="range" id="ds_strength" min="0" max="100" step="1" value="100">
+                    </div>
+                    <label class="chk"><input type="checkbox" id="ds_luma" checked><span class="box"></span><span class="label">HOLD THE ORIGINAL BRIGHTNESS</span></label>
+                </div>
+            </section>
+
+            <!-- 07 OUTPUT ────────────────────────────────────────── -->
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">07</span>
+                    <span class="designation rack-name">OUTPUT</span>
+                </div>
+                <div class="rack-body">
+                    <div class="fld">
+                        <label class="label" for="out_bg">BEHIND THE SUBJECT</label>
+                        <select class="field" id="out_bg">
+                            <option value="none" selected>NOTHING &mdash; transparent</option>
+                            <option value="colour">A FLAT COLOUR</option>
+                            <option value="blur">THE ORIGINAL, BLURRED</option>
+                        </select>
+                    </div>
+                    <div class="colour-row">
+                        <input type="color" id="out_colour" value="#ffffff" aria-label="Background colour">
+                        <span class="hint" style="margin:0">Only used by the flat-colour option, but worth setting anyway &mdash; the preview uses it as the checkerboard alternative when you press the composite key.</span>
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="out_blur">BLUR AMOUNT <span class="op" id="out_blurVal">24 px</span></label>
+                        <input type="range" id="out_blur" min="2" max="120" step="1" value="24">
+                    </div>
+                    <div class="rule" aria-hidden="true"></div>
+                    <div class="fld">
+                        <label class="label" for="out_scale">EXPORT SCALE <span class="op" id="out_scaleVal">100%</span></label>
+                        <input type="range" id="out_scale" min="10" max="100" step="5" value="100">
+                    </div>
+                    <div class="fld">
+                        <label class="label" for="out_format">FILE FORMAT</label>
+                        <select class="field" id="out_format">
+                            <option value="png" selected>PNG &mdash; lossless, real alpha</option>
+                            <option value="webp">WEBP &mdash; smaller, real alpha</option>
+                        </select>
+                    </div>
+                    <div class="gridout">
+                        <span class="label">OUT SIZE</span><b id="oDim">&mdash;</b>
+                        <span class="label">SOFT PX</span><b id="oSoft">&mdash;</b>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ══ STAGE ═════════════════════════════════════════════════ -->
+        <section class="chassis stage">
+            <div class="stage-bar">
+                <div class="seg-ctl" role="radiogroup" aria-label="View">
+                    <label><input type="radio" name="vMode" value="result" checked><span>RESULT</span></label>
+                    <label><input type="radio" name="vMode" value="alpha"><span>ALPHA</span></label>
+                    <label><input type="radio" name="vMode" value="trimap"><span>TRIMAP</span></label>
+                    <label><input type="radio" name="vMode" value="source"><span>SOURCE</span></label>
+                </div>
+                <span class="spacer"></span>
+                <button class="key" type="button" id="marksBtn" aria-pressed="true">MARKS</button>
+                <button class="key" type="button" id="compBtn" aria-pressed="false">SOLID BG</button>
+                <button class="key" type="button" id="zoomOut" aria-label="Zoom out">&minus;</button>
+                <span class="label" id="zoomVal">FIT</span>
+                <button class="key" type="button" id="zoomIn" aria-label="Zoom in">+</button>
+                <button class="key" type="button" id="fitBtn">FIT</button>
+                <button class="key" type="button" id="oneBtn">1:1</button>
+            </div>
+            <div class="canvas-wrap" id="wrap">
+                <canvas id="view"></canvas>
+                <div class="busybar" id="busybar" aria-hidden="true"><i id="busyfill"></i></div>
+                <div class="drop-hint" id="hint">
+                    <span class="designation">DROP AN IMAGE</span>
+                    <span class="hint">PNG, JPG or WEBP &middot; or paste from the clipboard</span>
+                </div>
+            </div>
+            <div class="stage-foot">
+                <span class="stat"><span class="label">STAGE</span><b id="fStage">&mdash;</b></span>
+                <span class="stat"><span class="label">WORK</span><b id="fWork">&mdash;</b></span>
+                <span class="stat"><span class="label">BAND</span><b id="fBand">&mdash;</b></span>
+                <span class="stat"><span class="label">TIME</span><b id="fMs">&mdash;</b></span>
+                <span class="spacer"></span>
+                <span class="stat stat-help"><span class="label">DRAG TO PAN &middot; SCROLL TO ZOOM &middot; DOUBLE-CLICK TO FIT</span></span>
+            </div>
+        </section>
+
+    </div>
+
+    <section class="chassis note">
+        <span class="tape">READ ME</span>
+        <div class="note-body">
+            <p>There is no single algorithm that removes backgrounds. There are a dozen, each of which is the best one for some pictures and useless for others, and the honest version of this tool is one that shows you all of them arguing rather than one that picks for you and hopes. The thumbnails in panel&nbsp;02 are the whole idea: nine opinions, side by side, with a weight on each.</p>
+            <p>A working order, if you want one. Load the picture and look at the thumbnails &mdash; usually one of them is already nearly right. Turn the others down. If nothing is right, draw one <span class="phos">KEEP</span> stroke inside the subject and one <span class="phos">DROP</span> stroke outside it; every engine takes those as fact. Then set the band width in panel&nbsp;05 wide enough to contain the fuzzy part of the edge, pick a solver, and switch the view to <span class="phos">ALPHA</span> to see what you actually have.</p>
+            <p>The parts worth knowing about: the graph cut finds a genuine global optimum rather than a local one, and its max-flow is checked against brute-force minimum cuts. The closed-form matte never builds the matting Laplacian &mdash; it only ever needs the product of that matrix with a vector, and that factors into two three-component passes per window, which is why a solve that ought to need hundreds of megabytes finishes in a fraction of a second. And the whole pipeline runs on a downscaled copy, then carries the answer back to full size through the full-resolution photograph, so working at 768&nbsp;px does not cost you a soft edge at 6000.</p>
+            <p>Everything here runs on your machine, offline, with one clearly-marked exception: the neural engine, which downloads a model the first time you switch it on and is off until you do.</p>
+        </div>
+    </section>
+
+    <footer class="chassis page-foot">
+        <a class="key" href="https://isaiart.com">&larr; ISAIART.COM</a>
+        <div class="foot-right">
+            <span class="row-tight"><span class="led on green" aria-hidden="true"></span><span class="label">NO BACKEND &middot; NOTHING LEAVES THE BROWSER</span></span>
+        </div>
+    </footer>
+
+</main>
+
+<div class="dock">
+    <span class="stripe dock-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <div class="dock-inner">
+        <button class="key key-go" type="button" id="saveBtn" disabled>EXPORT CUTOUT &darr;</button>
+        <button class="key" type="button" id="maskBtn" disabled>SAVE <span class="key-lbl">MASK</span></button>
+        <button class="key" type="button" id="copyBtn" disabled>COPY</button>
+        <button class="key key-danger" type="button" id="resetBtn">RESET</button>
+        <span class="spacer"></span>
+        <span class="label count" id="dockStat">NO IMAGE</span>
+    </div>
+</div>
+
+<script src="../assets/console.js?v=8"></script>
+<script src="engines.js"></script>
+<script src="matting.js"></script>
+<script src="lab.js?v=8"></script>
+</body>
+</html>
