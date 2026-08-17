@@ -85,10 +85,22 @@
     function runDetect() {
         if (!st.src) return;
         busy(true);
-        /* Yield a frame so the WORKING lamp paints before the sweep blocks. */
-        requestAnimationFrame(function () {
+        /* A timer, not requestAnimationFrame. The point of deferring is to let
+           the WORKING lamp paint before the sweep blocks the thread, and rAF
+           does that — but rAF does not fire at all in a tab that is not
+           compositing, so backgrounding the page mid-detect left the panel
+           stuck on WORKING with its controls disabled and nothing to clear
+           them. A timer still fires when backgrounded. */
+        setTimeout(function () {
             var t0 = performance.now();
-            st.grid = D.detectGrid(st.src);
+            try {
+                st.grid = D.detectGrid(st.src);
+            } catch (err) {
+                /* Never strand the panel behind a busy flag. */
+                busy(false);
+                if (window.CAS) CAS.toast('DETECTION FAILED', true);
+                throw err;
+            }
             var ms = Math.round(performance.now() - t0);
 
             /* Independent axes can disagree — measured 9.05 vs 9.63 on a real
@@ -116,7 +128,7 @@
             renderDivisors();
             el('fMs').textContent = ms + 'ms';
             runResample();
-        });
+        }, 30);
     }
 
     function renderAlternates() {
