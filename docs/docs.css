@@ -1,0 +1,1167 @@
+/* ============================================================================
+   DOCS — composition layer for the text composition terminal
+   ---------------------------------------------------------------------------
+   Primitives (chassis, key, field, screen, label, stripe, led, seg, rocker)
+   come from vector.css; the page frame, masthead, racks and dock come from
+   console.css. Nothing here invents a new visual device. This file arranges
+   the existing ones into a word processor: menubar, ribbon of labelled bays,
+   two rails, a scrolling deck with a sheet of paper on it, and a status dock.
+
+   THE ONE PAGE-LEVEL IDEA is the SHEET. Every other terminal on this site is
+   a machine you read output from; this one is a machine you put PAPER in. So
+   the chrome follows the house theme and inverts with it, while the sheet is
+   lit stock that stays paper in both — because a document does not change
+   colour when you turn the lights off. The sheet carries the furniture of a
+   drawing office: registration marks at the corners, a plotter ruler along
+   the top, and a dashed rule where the page will break.
+
+   The channel colour is --s6, the blue band. Drafting blue, for the terminal
+   that draws documents.
+   ========================================================================= */
+
+:root {
+    --accent: var(--s6);
+
+    /* Reading text needs a floor console.css already established at 5.3:1;
+       this page has more prose than any other, so it inherits that token. */
+    --hint-ink: #7f8794;
+    --label-size: 0.665rem;
+
+    /* Page geometry, in CSS pixels at the canonical 96dpi. Letter by default;
+       the page-setup sheet rewrites these four and the two margins. */
+    --pw: 816px;      /* 8.5in */
+    --ph: 1056px;     /* 11in  */
+    --mt: 96px;
+    --mr: 96px;
+    --mb: 96px;
+    --ml: 96px;
+
+    --zoom: 1;
+    --rail-w: 252px;
+}
+
+:root[data-theme="light"] { --hint-ink: #52565e; }
+
+/* ── 1. PAGE FRAME ───────────────────────────────────────────────────────────
+   console.css centres the column at 1240px and leaves room for its transport
+   dock. An editor wants the whole width — the sheet does its own centring —
+   and its dock is shorter, so both are re-stated here.
+
+   The shell is pinned to the viewport rather than merely filling it. A word
+   processor whose toolbar scrolls away with the text is a web page pretending
+   to be an application: the chrome has to stay put and the PAPER has to be
+   the thing that moves, which means the height is fixed and the deck owns
+   the only scrollbar. */
+
+.page {
+    max-width: none;
+    height: 100dvh;
+    overflow: hidden;
+    padding: 8px 12px 44px;
+    gap: 8px;
+}
+
+/* ── 1b. HEADROOM ────────────────────────────────────────────────────────────
+   console.css is sized for a console: a page you read a screenful of output
+   from, where a generous masthead costs nothing. Here it cost 282px — 36% of
+   a 900px laptop screen gone before one line of the document was visible, on
+   a page whose entire job is showing paper.
+
+   So every band above the deck is measured against what it earns. The two
+   that earned the least are gone: the channel strip, which had become a
+   two-item nav, is now a single key up in the head controls, and the brand's
+   stacked wordmark/stripe/legend is tightened rather than spaced out. The
+   rest is trimmed, not shrunk — type sizes and hit targets are untouched, so
+   nothing became harder to read or to click; only the air between things
+   changed. Chrome now sits at roughly a fifth of the viewport. */
+
+.page-head { padding: 9px 14px 0; flex-shrink: 0; }
+
+.head-row { gap: 8px 14px; }
+
+.brand { gap: 4px; }
+.brand .designation { font-size: clamp(0.92rem, 3vw, 1.08rem); }
+.brand-stripe { height: 3px; max-width: 180px; }
+.brand-stripe i { min-height: 3px; }
+
+/* The name well was carrying 28px of padding around a 30px row. */
+.head-well { padding: 4px; }
+.head-well .screen { padding: 5px 9px; }
+.well-row { min-height: 22px; }
+
+.head-ctl { gap: 12px; }
+.head-ctl .key { min-height: 24px; padding: 0.3em 0.7em; }
+@media (pointer: coarse) { .head-ctl .key { min-height: 38px; } }
+
+/* The masthead carries the document's name, so the well holds a field rather
+   than a readout. It is still a screen: phosphor text in a dark well. */
+.head-well { flex: 1 1 320px; }
+
+.title-field {
+    width: 100%;
+    padding: 0;
+    font-family: var(--f-mono);
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--phos);
+    background: transparent;
+    border: none;
+    outline: none;
+    text-overflow: ellipsis;
+}
+.title-field::placeholder { color: var(--phos-faint); }
+.title-field:focus { color: var(--phos); }
+
+.well-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.well-row .spacer { flex: 1 1 auto; }
+
+/* Live edit state, sitting to the right of the name in the same well. */
+.save-state {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    font-size: var(--label-size);
+    letter-spacing: var(--label-track);
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    white-space: nowrap;
+}
+
+/* ── 2. MENUBAR ──────────────────────────────────────────────────────────────
+   Six words in a row of hairline cells. A menu is not a floating card with a
+   shadow — there is no depth in this language — it is a ruled region that
+   appears directly beneath its word, hard against the bar. */
+
+.menubar {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    border-top: var(--hair) solid var(--rule);
+}
+
+.menu { position: relative; }
+
+.menu > .menu-btn {
+    display: block;
+    padding: 6px 13px;
+    font-family: var(--f-mono);
+    font-size: var(--label-size);
+    font-weight: 500;
+    letter-spacing: var(--label-track);
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    background: transparent;
+    border: none;
+    border-right: var(--hair) solid var(--rule-lo);
+    cursor: pointer;
+    transition: color var(--snap), background var(--snap);
+}
+.menu:first-child > .menu-btn { border-left: var(--hair) solid var(--rule-lo); }
+.menu > .menu-btn:hover { color: var(--ink); background: var(--ground-2); }
+.menu > .menu-btn:focus-visible { outline: 2px solid var(--s6); outline-offset: -2px; }
+.menu.open > .menu-btn { color: #0a0b0d; background: var(--accent); }
+
+.menu-sheet {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 700;
+    display: none;
+    min-width: 268px;
+    padding: 4px 0;
+    background: var(--panel);
+    border: var(--hair) solid var(--rule-hi);
+    border-top: none;
+}
+.menu.open > .menu-sheet { display: block; }
+
+/* Right-hand menus would run off the viewport if they opened leftward. */
+.menu.flip > .menu-sheet { left: auto; right: 0; }
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 7px 14px;
+    font-family: var(--f-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+    text-align: left;
+    color: var(--ink-soft);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: color var(--snap), background var(--snap);
+}
+.menu-item:hover { color: var(--ink); background: var(--ground-2); }
+.menu-item:focus-visible { outline: 2px solid var(--s6); outline-offset: -2px; }
+.menu-item[disabled] { opacity: 0.35; cursor: not-allowed; }
+.menu-item .ico { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.75; }
+.menu-item .mk {
+    margin-left: auto;
+    padding-left: 14px;
+    font-size: var(--label-size);
+    letter-spacing: var(--label-track);
+    color: var(--ink-faint);
+    white-space: nowrap;
+}
+/* A toggle reports its state in the same slot a shortcut would use. */
+.menu-item[aria-checked="true"] { color: var(--ink); }
+.menu-item[aria-checked="true"] .mk { color: var(--accent); }
+
+.menu-sep { height: var(--hair); margin: 4px 0; background: var(--rule-lo); }
+
+/* ── 3. RIBBON ───────────────────────────────────────────────────────────────
+   The Office ribbon, redrawn to the house rules: bays of controls divided by
+   hairlines, each bay named underneath in the same microlabel every rack head
+   on this site uses, and numbered, because everything here is numbered. */
+
+.ribbon {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.bay {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 5px 11px 4px;
+    border-right: var(--hair) solid var(--rule-lo);
+    flex-shrink: 0;
+}
+.bay:last-child { border-right: none; }
+
+.bay-row { display: flex; align-items: center; gap: 4px; }
+
+/* The legend keeps its size and its place; it just stops reserving a line of
+   air above itself. */
+.bay-foot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+}
+.bay-ix {
+    font-family: var(--f-mono);
+    font-size: var(--label-size);
+    letter-spacing: 0.06em;
+    color: var(--rule-hi);
+    font-variant-numeric: tabular-nums;
+}
+.bay:focus-within .bay-ix { color: var(--accent); }
+.bay-name { color: var(--ink-faint); }
+
+/* The ribbon's own controls are the house key, just tightened — a toolbar of
+   28px caps at 0.75em padding would not fit the six bays on a laptop. */
+.ribbon .key { min-height: 26px; padding: 0.3em 0.55em; }
+.ribbon .key-sq { width: 26px; padding: 0; }
+@media (pointer: coarse) {
+    .ribbon .key    { min-height: 38px; }
+    .ribbon .key-sq { width: 38px; }
+}
+
+/* Selects in the ribbon are sized to their content, not to the bay. */
+.ribbon .field { width: auto; padding: 0.35em 0.5em; font-size: 0.7rem; }
+select.style-pick { min-width: 116px; }
+select.font-pick  { min-width: 128px; }
+
+/* Size stepper: a field with a key either side, reading as one instrument. */
+.stepper { display: flex; align-items: center; }
+.stepper .key { border-radius: 0; }
+.stepper .key:first-child { border-right: none; }
+.stepper .key:last-child  { border-left: none; }
+.stepper .size-in {
+    width: 40px;
+    padding: 0.35em 0;
+    font-family: var(--f-mono);
+    font-size: 0.7rem;
+    text-align: center;
+    color: var(--ink);
+    background: var(--well);
+    border: var(--hair) solid var(--rule);
+    outline: none;
+    font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield;
+}
+.stepper .size-in::-webkit-inner-spin-button,
+.stepper .size-in::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper .size-in:focus { border-color: var(--accent); }
+
+/* A colour control is a key with a band of the current ink under the glyph —
+   the swatch is drawn as a flat bar, not as a chip with a bevel. */
+.swatch-key { position: relative; flex-direction: column; gap: 0; padding-bottom: 6px !important; }
+.swatch-key .bar {
+    position: absolute;
+    left: 4px; right: 4px; bottom: 3px;
+    height: 3px;
+    background: var(--sw, var(--ink));
+}
+
+.pal {
+    position: absolute;
+    z-index: 750;
+    display: none;
+    grid-template-columns: repeat(10, 18px);
+    gap: 2px;
+    padding: 8px;
+    background: var(--panel);
+    border: var(--hair) solid var(--rule-hi);
+}
+.pal.open { display: grid; }
+.pal button {
+    width: 18px; height: 18px;
+    border: var(--hair) solid rgba(128, 128, 128, 0.35);
+    cursor: pointer;
+    padding: 0;
+}
+.pal button:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pal .pal-wide { grid-column: 1 / -1; width: auto; height: auto; }
+
+/* ── 4. WORK GRID ────────────────────────────────────────────────────────────
+   Rail, deck, rail. A hidden rail collapses its own column because the tracks
+   are min-content, so nothing has to recompute the template. */
+
+.work {
+    display: grid;
+    grid-template-columns: min-content minmax(0, 1fr) min-content;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.rail {
+    width: var(--rail-w);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+.rail[hidden] { display: none; }
+
+.rail-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: var(--hair) solid var(--rule);
+    flex-shrink: 0;
+}
+.rail-body { overflow-y: auto; padding: 8px 0; flex: 1 1 auto; scrollbar-width: thin; }
+
+/* Rail tabs — outline and files share the left rail. */
+.rail-tabs { display: flex; }
+.rail-tabs .key {
+    flex: 1 1 0;
+    border-radius: 0;
+    border-right: none;
+    min-height: 26px;
+}
+.rail-tabs .key:last-child { border-right: var(--hair) solid var(--rule); }
+
+/* The outline is a plotted tree: an index numeral, a connector hairline, the
+   heading. Depth is expressed by indent alone — no disclosure triangles, no
+   guides that imply a folder. */
+.tree-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    width: 100%;
+    padding: 5px 12px 5px 0;
+    font-family: var(--f-mono);
+    font-size: 0.7rem;
+    line-height: 1.45;
+    text-align: left;
+    color: var(--ink-soft);
+    background: transparent;
+    border: none;
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    transition: color var(--snap), background var(--snap), border-color var(--snap);
+}
+.tree-item:hover { color: var(--ink); background: var(--ground-2); }
+.tree-item:focus-visible { outline: 2px solid var(--s6); outline-offset: -2px; }
+.tree-item.here { color: var(--ink); border-left-color: var(--accent); }
+.tree-ix {
+    flex-shrink: 0;
+    font-size: var(--label-size);
+    letter-spacing: 0.04em;
+    color: var(--rule-hi);
+    font-variant-numeric: tabular-nums;
+}
+.tree-item.here .tree-ix { color: var(--accent); }
+.tree-tx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lv1 { padding-left: 12px; }
+.lv2 { padding-left: 26px; }
+.lv3 { padding-left: 40px; }
+.lv4 { padding-left: 54px; }
+.lv1 .tree-tx { color: var(--ink); }
+
+/* File list — one row per stored document. */
+.file-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 12px;
+    font-family: var(--f-mono);
+    font-size: 0.7rem;
+    text-align: left;
+    color: var(--ink-soft);
+    background: transparent;
+    border: none;
+    border-left: 2px solid transparent;
+    cursor: pointer;
+}
+.file-row:hover { color: var(--ink); background: var(--ground-2); }
+.file-row.here { color: var(--ink); border-left-color: var(--accent); }
+.file-meta {
+    display: block;
+    font-size: var(--label-size);
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+    margin-top: 2px;
+}
+.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Comment cards in the right rail. The anchor colour is the stripe's amber:
+   a note is an annotation on the drawing, and annotations are marked up. */
+.cmt-card {
+    margin: 0 10px 8px;
+    padding: 9px 10px;
+    background: var(--ground-2);
+    border: var(--hair) solid var(--rule);
+    border-left: 2px solid var(--s3);
+    cursor: pointer;
+}
+.cmt-card.here { border-left-color: var(--accent); background: var(--well); }
+.cmt-quote {
+    font-size: 0.66rem;
+    line-height: 1.5;
+    color: var(--ink-faint);
+    border-left: var(--hair) solid var(--rule-hi);
+    padding-left: 7px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+.cmt-body { font-size: 0.7rem; line-height: 1.55; color: var(--ink); white-space: pre-wrap; }
+.cmt-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.cmt-time { font-size: var(--label-size); letter-spacing: 0.08em; color: var(--ink-faint); }
+
+.rail-empty { padding: 14px 12px; }
+
+/* ── 5. DECK & SHEET ─────────────────────────────────────────────────────────
+   The deck is the table the paper lies on; it is the only region that scrolls
+   with the document. The ruler rides inside the zoom wrapper so it stays in
+   register with the sheet at every magnification. */
+
+.deck {
+    position: relative;
+    overflow: auto;
+    min-width: 0;
+    background: var(--ground-2);
+    border: var(--hair) solid var(--rule);
+    padding: 14px 14px 60px;
+    scrollbar-width: thin;
+}
+
+.zoomer { zoom: var(--zoom); width: max-content; margin: 0 auto; }
+
+/* Plotter ruler. Ticks every 1/8in, a taller mark on the half, a numeral on
+   the inch. The margin zones are the only filled area on it. */
+.ruler {
+    position: relative;
+    width: var(--pw);
+    height: 20px;
+    margin: 0 auto 8px;
+    background: var(--panel);
+    border: var(--hair) solid var(--rule);
+    overflow: hidden;
+    font-variant-numeric: tabular-nums;
+}
+.ruler[hidden] { display: none; }
+.ruler .marg {
+    position: absolute;
+    top: 0; bottom: 0;
+    background: var(--rule-lo);
+}
+.ruler .tk { position: absolute; bottom: 0; width: var(--hair); background: var(--rule-hi); height: 4px; }
+.ruler .tk.half { height: 7px; }
+.ruler .tk.inch { height: 10px; background: var(--ink-faint); }
+.ruler .nm {
+    position: absolute;
+    top: 2px;
+    transform: translateX(-50%);
+    font-family: var(--f-mono);
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+}
+
+/* The paper. A single continuous leaf with the page divisions drawn on it,
+   rather than N stacked sheets: the browser cannot reflow a contenteditable
+   across real page boundaries, and a guide that tells the truth about where
+   the break falls is worth more than a stack that only looks right. */
+.leaf {
+    position: relative;
+    width: var(--pw);
+    min-height: var(--ph);
+    margin: 0 auto;
+    padding: var(--mt) var(--mr) var(--mb) var(--ml);
+    background: var(--sheet-bg, #f4f2ec);
+    border: var(--hair) solid var(--rule-hi);
+    color: var(--sheet-ink, #1a1c20);
+}
+
+/* Registration marks. Four corner crosses, set out in the margin the way a
+   crop mark sits outside the trim on a plate. */
+.reg { position: absolute; width: 13px; height: 13px; opacity: 0.5; pointer-events: none; }
+.reg::before, .reg::after { content: ''; position: absolute; background: var(--sheet-ink, #1a1c20); }
+.reg::before { left: 0; right: 0; top: 6px; height: 1px; }
+.reg::after  { top: 0; bottom: 0; left: 6px; width: 1px; }
+.reg.tl { top: 22px; left: 22px; }
+.reg.tr { top: 22px; right: 22px; }
+.reg.bl { bottom: 22px; left: 22px; }
+.reg.br { bottom: 22px; right: 22px; }
+
+/* The margin frame — a hairline box showing the live area, the way a layout
+   sheet is pre-ruled. Off by default; View turns it on. */
+.marg-frame {
+    position: absolute;
+    top: var(--mt); right: var(--mr); bottom: var(--mb); left: var(--ml);
+    border: var(--hair) dashed color-mix(in srgb, var(--sheet-ink, #1a1c20) 22%, transparent);
+    pointer-events: none;
+}
+.marg-frame[hidden] { display: none; }
+
+/* Where the page will break, with the sheet number set in the right margin. */
+.pbreak {
+    position: absolute;
+    left: 0; right: 0;
+    height: 0;
+    border-top: var(--hair) dashed color-mix(in srgb, var(--sheet-ink, #1a1c20) 34%, transparent);
+    pointer-events: none;
+}
+.pbreak span {
+    position: absolute;
+    right: 8px;
+    top: 4px;
+    font-family: var(--f-mono);
+    font-size: 8px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--sheet-ink, #1a1c20) 45%, transparent);
+}
+
+/* Dark stock, for writing at night. The paper stops being paper only because
+   the user asked it to. */
+body.stock-dark .leaf { --sheet-bg: #15171b; --sheet-ink: #d9dde3; border-color: var(--rule-hi); }
+
+/* Focus mode hides everything that is not the sheet. */
+body.focus .page-head,
+body.focus .ribbon,
+body.focus .rail { display: none; }
+body.focus .deck { border: none; background: var(--ground); }
+
+/* ── 6. DOCUMENT TYPOGRAPHY ──────────────────────────────────────────────────
+   Inside the sheet the house rules stop applying. This is a document, and a
+   document is set in a reading face at a reading size — the terminal around
+   it is the machine, not the page. */
+
+.doc {
+    outline: none;
+    font-family: var(--doc-font, Georgia, 'Times New Roman', serif);
+    font-size: var(--doc-size, 11pt);
+    line-height: var(--doc-lead, 1.5);
+    color: inherit;
+    word-wrap: break-word;
+    min-height: 1em;
+}
+.doc:focus { outline: none; }
+
+.doc > *:first-child { margin-top: 0; }
+.doc p { margin: 0 0 var(--doc-after, 8pt); }
+.doc h1, .doc h2, .doc h3, .doc h4 {
+    font-family: var(--doc-head-font, inherit);
+    font-weight: 600;
+    line-height: 1.25;
+    margin: 16pt 0 6pt;
+}
+.doc h1 { font-size: 1.65em; }
+.doc h2 { font-size: 1.35em; }
+.doc h3 { font-size: 1.15em; }
+.doc h4 { font-size: 1em; letter-spacing: 0.02em; }
+
+.doc h1.s-title {
+    font-size: 2.1em;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 2pt;
+    padding-bottom: 8pt;
+    border-bottom: 2px solid color-mix(in srgb, var(--sheet-ink, #1a1c20) 22%, transparent);
+}
+.doc h2.s-sub {
+    font-size: 1.05em;
+    font-weight: 400;
+    font-style: italic;
+    opacity: 0.72;
+    margin: 6pt 0 18pt;
+    border: none;
+}
+
+.doc ul, .doc ol { margin: 0 0 8pt; padding-left: 2.2em; }
+.doc li { margin-bottom: 3pt; }
+.doc ul ul, .doc ol ol, .doc ul ol, .doc ol ul { margin-bottom: 0; }
+
+/* Checklist — a list whose marker is a box you can click. */
+.doc ul.task { list-style: none; padding-left: 1.55em; }
+.doc ul.task > li { position: relative; }
+.doc ul.task > li::before {
+    content: '';
+    position: absolute;
+    left: -1.5em; top: 0.28em;
+    width: 0.78em; height: 0.78em;
+    border: 1.2px solid currentColor;
+    opacity: 0.65;
+    cursor: pointer;
+}
+.doc ul.task > li.done::after {
+    content: '';
+    position: absolute;
+    left: -1.34em; top: 0.4em;
+    width: 0.46em; height: 0.24em;
+    border-left: 1.6px solid currentColor;
+    border-bottom: 1.6px solid currentColor;
+    transform: rotate(-45deg);
+}
+.doc ul.task > li.done { opacity: 0.55; text-decoration: line-through; }
+
+.doc blockquote {
+    margin: 10pt 0;
+    padding: 2pt 0 2pt 14pt;
+    border-left: 3px solid color-mix(in srgb, var(--sheet-ink, #1a1c20) 28%, transparent);
+    font-style: italic;
+    opacity: 0.86;
+}
+
+.doc pre {
+    margin: 10pt 0;
+    padding: 10pt 12pt;
+    font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+    font-size: 0.88em;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    background: color-mix(in srgb, var(--sheet-ink, #1a1c20) 6%, transparent);
+    border-left: 3px solid color-mix(in srgb, var(--sheet-ink, #1a1c20) 28%, transparent);
+}
+.doc code { font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace; font-size: 0.9em; }
+
+.doc a { color: #1a56c4; text-decoration: underline; text-underline-offset: 2px; }
+body.stock-dark .doc a { color: #79a9ff; }
+
+.doc hr {
+    height: 0;
+    margin: 14pt 0;
+    border: none;
+    border-top: 1px solid color-mix(in srgb, var(--sheet-ink, #1a1c20) 30%, transparent);
+}
+
+.doc img { max-width: 100%; height: auto; display: inline-block; }
+.doc figure { margin: 12pt 0; }
+.doc figcaption { font-size: 0.82em; opacity: 0.7; margin-top: 4pt; text-align: center; }
+
+.doc table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10pt 0;
+    font-size: 0.95em;
+}
+.doc table td, .doc table th {
+    border: 1px solid color-mix(in srgb, var(--sheet-ink, #1a1c20) 34%, transparent);
+    padding: 5pt 7pt;
+    vertical-align: top;
+    min-width: 24px;
+}
+.doc table th {
+    background: color-mix(in srgb, var(--sheet-ink, #1a1c20) 8%, transparent);
+    font-weight: 600;
+    text-align: left;
+}
+/* The cell the caret is in, so the row/column keys say what they will act on */
+.doc table td.cell-on, .doc table th.cell-on {
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, #4c9aff 70%, transparent);
+}
+
+/* A page break the user asked for, as opposed to one the flow produced. */
+.doc .forced-break {
+    display: block;
+    height: 0;
+    margin: 14pt 0;
+    border-top: 1.5px dashed color-mix(in srgb, var(--sheet-ink, #1a1c20) 45%, transparent);
+}
+
+/* Generated contents block. */
+.doc .toc {
+    margin: 12pt 0 18pt;
+    padding: 10pt 0;
+    border-top: 1px solid color-mix(in srgb, var(--sheet-ink, #1a1c20) 25%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--sheet-ink, #1a1c20) 25%, transparent);
+}
+.doc .toc-h {
+    font-weight: 600;
+    font-size: 0.78em;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-bottom: 7pt;
+    opacity: 0.7;
+}
+.doc .toc-row { display: block; font-size: 0.94em; margin: 3pt 0; text-decoration: none; color: inherit; }
+.doc .toc-row:hover { text-decoration: underline; }
+.doc .toc-row.d2 { padding-left: 1.4em; }
+.doc .toc-row.d3 { padding-left: 2.8em; }
+.doc .toc-row.d4 { padding-left: 4.2em; }
+
+/* Footnote markers and the note block at the end. The marker is an anchor —
+   see insFootnote — so it is superscripted here rather than by a <sup>, and
+   it opts out of the underline every other link in the document carries. */
+.doc a.fn-ref {
+    font-size: 0.7em;
+    font-weight: 600;
+    vertical-align: super;
+    line-height: 0;
+    text-decoration: none;
+    cursor: pointer;
+    padding: 0 0.1em;
+}
+.doc a.fn-ref:hover { text-decoration: underline; }
+.doc .fn-no { font-size: 0.75em; vertical-align: super; font-weight: 600; line-height: 0; }
+.doc .fn-list {
+    margin-top: 20pt;
+    padding-top: 8pt;
+    border-top: 1px solid color-mix(in srgb, var(--sheet-ink, #1a1c20) 30%, transparent);
+    font-size: 0.84em;
+    opacity: 0.85;
+}
+
+/* Commented text, and a search hit. Both are ink laid over the writing, so
+   both are flat washes rather than boxes. */
+.doc .cmt-mark {
+    background: color-mix(in srgb, #ffb000 34%, transparent);
+    border-bottom: 1.5px solid #b07b06;
+    cursor: pointer;
+}
+.doc .cmt-mark.here { background: color-mix(in srgb, #ffb000 62%, transparent); }
+.doc .hit { background: color-mix(in srgb, #4c9aff 34%, transparent); }
+.doc .hit.on { background: #ffb000; color: #16181c; }
+
+/* ── 7. STATUS DOCK ──────────────────────────────────────────────────────── */
+
+.dock { padding: 6px 12px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+.dock-inner { max-width: none; gap: 12px; flex-wrap: wrap; }
+
+.stat {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: var(--f-mono);
+    font-size: 0.68rem;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.stat b { font-weight: 500; color: var(--ink); }
+.stat .label { color: var(--ink-faint); }
+
+.dock-sep { width: var(--hair); height: 16px; background: var(--rule); flex-shrink: 0; }
+
+.zoom-ctl { display: flex; align-items: center; gap: 4px; }
+.zoom-ctl .key { min-height: 24px; }
+.zoom-ctl .key-sq { width: 24px; }
+.zoom-out { min-width: 44px; text-align: center; }
+
+@media (max-width: 900px) {
+    .stat.opt { display: none; }
+}
+
+/* ── 8. MODAL SHEETS ─────────────────────────────────────────────────────────
+   vector.css gives the overlay and the sheet; everything here is the inside
+   of one: a head with an index numeral, a ruled body, a row of keys. */
+
+.panel-modal .sheet { max-width: 520px; max-height: 88vh; display: flex; flex-direction: column; }
+.panel-modal .sheet.narrow { max-width: 380px; }
+.panel-modal .sheet.wide   { max-width: 660px; }
+
+.sheet-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border-bottom: var(--hair) solid var(--rule);
+    flex-shrink: 0;
+}
+.sheet-ix {
+    font-family: var(--f-mono);
+    font-size: var(--label-size);
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+}
+.sheet-body { padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.sheet-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    border-top: var(--hair) solid var(--rule);
+    flex-shrink: 0;
+}
+
+.fld { display: flex; flex-direction: column; gap: 5px; }
+.fld-row { display: flex; gap: 10px; }
+.fld-row > .fld { flex: 1 1 0; min-width: 0; }
+
+/* Table size picker — the grid you drag across in Word, drawn as hairlines. */
+.grid-pick {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 2px;
+    width: max-content;
+}
+.grid-pick i {
+    display: block;
+    width: 16px; height: 16px;
+    border: var(--hair) solid var(--rule);
+    cursor: pointer;
+}
+.grid-pick i.lit { background: var(--accent); border-color: var(--accent); }
+
+/* Special characters. */
+.sym-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.sym-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+    gap: 3px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+.sym-grid button {
+    height: 34px;
+    font-family: var(--f-mono);
+    font-size: 0.9rem;
+    color: var(--ink);
+    background: transparent;
+    border: var(--hair) solid var(--rule);
+    cursor: pointer;
+}
+.sym-grid button:hover { background: var(--accent); border-color: var(--accent); color: #0a0b0d; }
+
+/* Find & replace hit counter. */
+.hit-count { font-family: var(--f-mono); font-size: 0.68rem; color: var(--ink-faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Document manager rows. */
+.doc-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border: var(--hair) solid var(--rule);
+    border-left: 2px solid var(--rule);
+}
+.doc-row.here { border-left-color: var(--accent); background: var(--ground-2); }
+.doc-row .grow { flex: 1 1 auto; min-width: 0; }
+.doc-row .nm { display: block; font-size: 0.74rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Shortcut table. */
+table.keys { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+table.keys td { padding: 5px 8px; border-bottom: var(--hair) solid var(--rule-lo); color: var(--ink-soft); }
+table.keys td:last-child { text-align: right; color: var(--ink-faint); white-space: nowrap; font-size: var(--label-size); letter-spacing: 0.1em; }
+table.keys tr.grp td {
+    color: var(--accent);
+    font-size: var(--label-size);
+    letter-spacing: var(--label-track);
+    text-transform: uppercase;
+    border-bottom-color: var(--rule);
+    padding-top: 12px;
+}
+
+/* ── 9. RESPONSIVE ───────────────────────────────────────────────────────────
+   Under 1100px the rails stop being columns and the sheet takes the width.
+   They are still reachable — View toggles them, and they overlay the deck. */
+
+@media (max-width: 1100px) {
+    .work { grid-template-columns: minmax(0, 1fr); }
+    .rail {
+        position: fixed;
+        top: 0; bottom: 0;
+        z-index: 780;
+        width: min(300px, 84vw);
+        background: var(--panel);
+        border: var(--hair) solid var(--rule-hi);
+    }
+    .rail-left  { left: 0; }
+    .rail-right { right: 0; }
+}
+
+@media (max-width: 700px) {
+    .page { padding: 6px 8px 44px; }
+    .page-head { padding: 9px 12px 0; }
+    .deck { padding: 10px 4px 60px; }
+
+    /* Stacked, the three bands of the masthead ate 45% of a phone screen
+       before any paper showed. The wordmark and the controls are both small,
+       so they share the top line and the name well takes the one below. */
+    .head-row  { grid-template-columns: minmax(0, 1fr) auto; }
+    .brand     { grid-area: 1 / 1; }
+    .head-ctl  { grid-area: 1 / 2; justify-self: end; }
+    .head-well { grid-area: 2 / 1 / 3 / 3; }
+
+    /* First to go when there is no room: the model legend, which is a caption
+       on the machine rather than a control, and the power lamp, which reports
+       something the lit screen already tells you. */
+    .brand > .label { display: none; }
+    .head-ctl .lamp { display: none; }
+}
+
+/* ── 9b. MOTION ──────────────────────────────────────────────────────────────
+   vector.css says motion is for state, not theatre: --snap is 70ms linear and
+   a control INVERTS rather than travels. That rule is kept exactly as it is.
+   Nothing here slows a control down, because a toolbar that eases is a toolbar
+   that feels broken.
+
+   What it adds is motion for SURFACES — menus, palettes, dialogs, rails. Those
+   are not controls; they are things that ARRIVE, and the house already has a
+   precedent for moving them: the page wipe travels the whole frame in 220ms on
+   a mechanical curve. So the same idea, scaled down. A menu is a shutter. A
+   dialog drops onto the page. A rail slides in from the edge it lives on.
+   Nothing scales up from nothing, nothing bounces, nothing blurs — none of
+   that belongs to a machine.
+
+   The technique throughout is visibility + opacity + transform rather than
+   display, because display cannot be transitioned. visibility:hidden still
+   removes the element from the accessibility tree and from hit-testing, so a
+   closed menu is closed in every sense — it just gets to animate on the way
+   out as well as in. */
+
+:root {
+    --m-fast: 110ms;                          /* a surface acknowledging you */
+    --m-base: 160ms;                          /* a surface arriving          */
+    --m-slow: 220ms;                          /* a surface crossing the frame */
+    --ease:   cubic-bezier(0.2, 0, 0.1, 1);   /* the house curve, from --slide */
+}
+
+/* Nothing moves until the editor has applied its saved view state. Boot is not
+   an interaction, and animating the difference between the markup's starting
+   layout and the user's actual one is just showing them the machine's working. */
+:root.boot *,
+:root.boot *::before,
+:root.boot *::after {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* ── Menus: a shutter dropping out of the bar ─────────────────────────────── */
+
+.menu-sheet {
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-5px);
+    transform-origin: top center;
+    pointer-events: none;
+    transition: opacity var(--m-fast) linear,
+                transform var(--m-base) var(--ease),
+                visibility 0s linear var(--m-base);
+}
+.menu.open > .menu-sheet {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition: opacity var(--m-fast) linear,
+                transform var(--m-base) var(--ease),
+                visibility 0s;
+}
+
+/* ── Palettes: same shutter, shorter throw ────────────────────────────────── */
+
+.pal {
+    display: grid;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: opacity var(--m-fast) linear,
+                transform var(--m-fast) var(--ease),
+                visibility 0s linear var(--m-fast);
+}
+.pal.open {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition: opacity var(--m-fast) linear,
+                transform var(--m-fast) var(--ease),
+                visibility 0s;
+}
+
+/* ── Dialogs: the scrim fades, the sheet drops ────────────────────────────── */
+
+/* pointer-events is set independently of the fade, and deliberately. This is a
+   full-screen fixed overlay: if the only thing making it inert were the tail of
+   a transition, then any moment the transition did not run — a backgrounded
+   tab, a paused compositor, a browser that skips it — would leave an invisible
+   sheet of glass over the whole page. Inert is a state, not an animation. */
+.panel-modal {
+    display: flex;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--m-base) linear,
+                visibility 0s linear var(--m-base);
+}
+.panel-modal.open {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity var(--m-base) linear, visibility 0s;
+}
+/* vector.css fades the sheet in with a keyframe; this replaces it with a
+   transition so the sheet animates on the way OUT too. */
+.panel-modal .sheet {
+    animation: none;
+    transform: translateY(-10px);
+    transition: transform var(--m-slow) var(--ease);
+}
+.panel-modal.open .sheet { transform: none; }
+
+/* ── Rails ────────────────────────────────────────────────────────────────────
+   As desktop columns they cannot slide — the grid track has to collapse — so
+   they get a short arrival instead. As phone drawers they are fixed overlays
+   with no layout to disturb, so they slide from their own edge, both ways. */
+
+@keyframes rail-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: none; }
+}
+.rail { animation: rail-in var(--m-base) var(--ease) both; }
+
+/* The pane that appears when you switch OUTLINE ⇄ FILES. */
+@keyframes pane-in { from { opacity: 0; } to { opacity: 1; } }
+.rail-body:not([hidden]) { animation: pane-in var(--m-fast) linear both; }
+
+@media (max-width: 1100px) {
+    .rail {
+        display: flex !important;
+        visibility: hidden;
+        animation: none;
+        transition: transform var(--m-slow) var(--ease),
+                    visibility 0s linear var(--m-slow);
+    }
+    .rail-left  { transform: translateX(-102%); }
+    .rail-right { transform: translateX(102%); }
+    .rail:not([hidden]) {
+        visibility: visible;
+        transform: none;
+        transition: transform var(--m-slow) var(--ease), visibility 0s;
+    }
+}
+
+/* ── Small arrivals ───────────────────────────────────────────────────────── */
+
+@keyframes card-in { from { opacity: 0; transform: translateX(6px); } to { opacity: 1; transform: none; } }
+.cmt-card { animation: card-in var(--m-base) var(--ease) both; }
+
+/* Page-break guides recompute constantly while typing, so they fade rather
+   than appear — a hard line snapping in mid-sentence reads as an error. */
+@keyframes guide-in { from { opacity: 0; } to { opacity: 1; } }
+.pbreak { animation: guide-in var(--m-slow) linear both; }
+
+/* The hit you just jumped to gets one beat of emphasis. */
+@keyframes hit-flash {
+    0%   { box-shadow: 0 0 0 6px color-mix(in srgb, #ffb000 45%, transparent); }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+.doc .hit.on { animation: hit-flash 420ms var(--ease) both; }
+
+/* ── Theme change ─────────────────────────────────────────────────────────────
+   Every token swaps at once, which without this is a hard cut across the whole
+   window. The transition is applied only for the length of the swap — left on
+   permanently it would drag on every hover and focus that touches a colour. */
+
+:root.theming body,
+:root.theming .chassis,
+:root.theming .deck,
+:root.theming .screen,
+:root.theming .field,
+:root.theming .leaf,
+:root.theming .dock,
+:root.theming .menu-sheet,
+:root.theming .rail,
+:root.theming .doc {
+    transition: background-color var(--m-base) linear,
+                border-color var(--m-base) linear,
+                color var(--m-base) linear;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────────
+   vector.css already zeroes every duration globally, but a zeroed DURATION is
+   not a zeroed DELAY — the visibility hand-offs above would still hold a menu
+   on screen for 160ms after it closed. So the delays are cleared too. */
+
+@media (prefers-reduced-motion: reduce) {
+    .menu-sheet, .menu.open > .menu-sheet,
+    .pal, .pal.open,
+    .panel-modal, .panel-modal.open,
+    .rail, .rail:not([hidden]) {
+        transition-delay: 0s !important;
+    }
+    .menu-sheet, .pal, .panel-modal .sheet,
+    .rail-left, .rail-right { transform: none !important; }
+}
+
+/* ── 10. PRINT ───────────────────────────────────────────────────────────────
+   Printing is the point of a word processor, so this is not an afterthought.
+   Everything that is machine disappears; the sheet loses its own padding and
+   lets @page own the margins, which is what makes the printed result match
+   the page setup the user chose rather than the browser's default. */
+
+@media print {
+    .page-head, .ribbon, .rail, .dock, .ruler, .panel-modal, .page-wipe, .readout-toast { display: none !important; }
+    body::before, body::after { display: none !important; }
+    html, body { background: #fff !important; }
+    .page { padding: 0; gap: 0; display: block; min-height: 0; height: auto; overflow: visible; }
+    .work { display: block; }
+    .deck { overflow: visible; border: none; background: #fff; padding: 0; }
+    .zoomer { zoom: 1; width: auto; }
+    .leaf {
+        width: auto;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: #fff !important;
+        --sheet-bg: #fff;
+        --sheet-ink: #000;
+        color: #000 !important;
+    }
+    .reg, .pbreak, .marg-frame { display: none !important; }
+    .doc { color: #000 !important; }
+    .doc a { color: #000 !important; }
+    .doc .cmt-mark { background: none !important; border-bottom: none !important; }
+    .doc .hit { background: none !important; }
+    .doc .forced-break { border: none; margin: 0; break-after: page; page-break-after: always; }
+    /* Widow and orphan control, and headings that do not strand themselves. */
+    .doc p { orphans: 2; widows: 2; }
+    .doc h1, .doc h2, .doc h3, .doc h4 { break-after: avoid; page-break-after: avoid; }
+    .doc table, .doc figure, .doc pre { break-inside: avoid; page-break-inside: avoid; }
+}

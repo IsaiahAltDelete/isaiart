@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<!-- class="boot" suppresses every transition and animation until the editor has
+     applied its saved view state. Without it the first paint is a real frame:
+     the rails start un-parked in the markup, so on a phone both drawers would
+     be sitting over the sheet and would visibly slide away on every load. The
+     class is set here rather than by script so it is already true for the very
+     first paint, and editor.js removes it once the layout has settled. -->
+<html lang="en" class="boot">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0b0d">
+<title>Docs</title>
+<meta name="description" content="A word processor that runs entirely in the browser. Styles, tables, comments, footnotes, find and replace, page setup and print — nothing leaves the machine.">
+
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../assets/vector.css?v=10">
+<link rel="stylesheet" href="../assets/console.css?v=10">
+<link rel="stylesheet" href="docs.css?v=9">
+<script src="../assets/cassette.js?v=10"></script>
+</head>
+<body>
+
+<!-- Icons. Drawn as strokes, never filled, so they belong to the same hand as
+     the hairlines they sit between. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<g id="ik" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="square"></g>
+<symbol id="i-al" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3.5h12M2 6.8h8M2 10.1h12M2 13.4h7"/></symbol>
+<symbol id="i-ac" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3.5h12M4 6.8h8M2 10.1h12M4.5 13.4h7"/></symbol>
+<symbol id="i-ar" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3.5h12M6 6.8h8M2 10.1h12M7 13.4h7"/></symbol>
+<symbol id="i-aj" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3.5h12M2 6.8h12M2 10.1h12M2 13.4h12"/></symbol>
+<symbol id="i-ul" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 3.5h8M6 8h8M6 12.5h8"/><circle cx="2.9" cy="3.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="2.9" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="2.9" cy="12.5" r="1.1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-ol" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 3.5h8M6 8h8M6 12.5h8M2 2.6l1-.6v3M2 12h2l-2 2.4h2"/><path d="M2 6.6h2l-2 2.4h2" stroke-width="1.1"/></symbol>
+<symbol id="i-task" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 3.5h7M7 8h7M7 12.5h7"/><rect x="1.6" y="2.1" width="3" height="3"/><rect x="1.6" y="6.6" width="3" height="3"/><path d="M1.6 12.4l1 1 2-2.2"/></symbol>
+<symbol id="i-indent" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3h12M7 6.5h7M7 10h7M2 13.5h12M2 6.4l2.4 2.1L2 10.6z" /></symbol>
+<symbol id="i-outdent" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3h12M7 6.5h7M7 10h7M2 13.5h12M4.6 6.4L2.2 8.5l2.4 2.1z"/></symbol>
+<symbol id="i-lead" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 3h7M7 8h7M7 13h7M3.4 2v12M1.7 3.6L3.4 1.9l1.7 1.7M1.7 12.4l1.7 1.7 1.7-1.7"/></symbol>
+<symbol id="i-link" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6.6 9.4a2.6 2.6 0 0 0 3.7 0l2.4-2.4a2.6 2.6 0 0 0-3.7-3.7l-1 1"/><path d="M9.4 6.6a2.6 2.6 0 0 0-3.7 0L3.3 9a2.6 2.6 0 0 0 3.7 3.7l1-1"/></symbol>
+<symbol id="i-image" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.8" y="2.8" width="12.4" height="10.4"/><circle cx="5.6" cy="6.3" r="1.2"/><path d="M2 11.4l3.4-3 3 2.6 2.6-2.3 3.2 2.8"/></symbol>
+<symbol id="i-table" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.8" y="2.8" width="12.4" height="10.4"/><path d="M1.8 6.3h12.4M1.8 9.8h12.4M6.4 2.8v10.4M10.2 2.8v10.4"/></symbol>
+<symbol id="i-hr" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.6 8h12.8M3 4h10M3 12h10" stroke-opacity=".45"/><path d="M1.6 8h12.8"/></symbol>
+<symbol id="i-break" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.6 8h2.4M6.2 8h3.6M12 8h2.4"/><path d="M8 1.6v4M6.4 4l1.6 1.7L9.6 4M8 14.4v-4M6.4 12l1.6-1.7L9.6 12"/></symbol>
+<symbol id="i-comment" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.9 2.9h12.2v8.2H6.6L3.4 14v-2.9H1.9z"/><path d="M4.4 6h7.2M4.4 8.4h4.8"/></symbol>
+<symbol id="i-toc" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3h12M4.5 6.3h9.5M4.5 9.6h9.5M7 12.9h7"/><circle cx="2.4" cy="6.3" r=".9" fill="currentColor" stroke="none"/><circle cx="2.4" cy="9.6" r=".9" fill="currentColor" stroke="none"/><circle cx="4.9" cy="12.9" r=".9" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-find" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.9" cy="6.9" r="4.4"/><path d="M10.2 10.2l3.6 3.6"/></symbol>
+<symbol id="i-print" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4.4 5.6V1.9h7.2v3.7"/><rect x="1.7" y="5.6" width="12.6" height="5.4"/><rect x="4.4" y="9.4" width="7.2" height="4.7"/><path d="M11.9 7.8h.8"/></symbol>
+<symbol id="i-down" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1.9v8.4M4.7 7.2L8 10.5l3.3-3.3M2.2 13.4h11.6"/></symbol>
+<symbol id="i-undo" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.3 7.3h7.1a3.9 3.9 0 0 1 0 7.8H5.6"/><path d="M5.3 4.3L2.2 7.3l3.1 3"/></symbol>
+<symbol id="i-redo" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M13.7 7.3H6.6a3.9 3.9 0 0 0 0 7.8h3.8"/><path d="M10.7 4.3l3.1 3-3.1 3"/></symbol>
+<symbol id="i-clear" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.6 2.6h8.8M7 2.6v8.4M4.9 11h4.2"/><path d="M10.4 10.4l4 4M14.4 10.4l-4 4"/></symbol>
+<symbol id="i-paint" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.4" y="1.9" width="9.4" height="3.4"/><path d="M11.8 3.6h1.9v3.1H6.6v1.9"/><rect x="5.2" y="8.6" width="2.8" height="5.5"/></symbol>
+<symbol id="i-doc" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3.1 1.8h6.2l3.6 3.6v8.8H3.1z"/><path d="M9.3 1.8v3.6h3.6M5.4 8h5.2M5.4 10.4h5.2"/></symbol>
+<symbol id="i-folder" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.8 3.4h4.6l1.4 1.8h6.4v7.4H1.8z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 3v10M3 8h10"/></symbol>
+<symbol id="i-minus" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 8h10"/></symbol>
+<symbol id="i-x" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.4 3.4l9.2 9.2M12.6 3.4l-9.2 9.2"/></symbol>
+<symbol id="i-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.8 8.4l3.4 3.4 7-7.6"/></symbol>
+<symbol id="i-eye" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M.9 8S3.6 3.4 8 3.4 15.1 8 15.1 8 12.4 12.6 8 12.6.9 8 .9 8z"/><circle cx="8" cy="8" r="2.1"/></symbol>
+<symbol id="i-side" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.8" y="2.8" width="12.4" height="10.4"/><path d="M6 2.8v10.4"/></symbol>
+</defs></svg>
+
+<main class="page">
+
+    <!-- ── MASTHEAD ─────────────────────────────────────────────────────── -->
+    <header class="chassis page-head">
+        <div class="head-row">
+            <div class="brand">
+                <h1 class="designation">DOCS</h1>
+                <span class="stripe brand-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="label">TEXT COMPOSITION TERMINAL &middot; MK II &middot; LOCAL STORE</span>
+            </div>
+
+            <div class="bezel head-well">
+                <div class="screen" style="padding:8px 11px">
+                    <div class="well-row">
+                        <label class="sr-only" for="docTitle">Document name</label>
+                        <input class="title-field" id="docTitle" type="text" placeholder="Untitled document" spellcheck="false" autocomplete="off">
+                        <span class="spacer"></span>
+                        <span class="save-state" id="saveState">
+                            <span class="led on green" id="saveLed" aria-hidden="true"></span>
+                            <span id="saveTx">SAVED</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="head-ctl">
+                <div class="lamp"><span class="led on green" aria-hidden="true"></span><span class="label">PWR</span></div>
+                <div class="phos-sw theme-sw">
+                    <svg class="theme-ico ico-moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 10.6A5.8 5.8 0 0 1 5.4 2.8a5.8 5.8 0 1 0 7.8 7.8Z"/></svg>
+                    <label class="rocker">
+                        <input type="checkbox" id="themeSw" aria-label="Light or dark theme">
+                        <span class="rock"></span>
+                    </label>
+                    <svg class="theme-ico ico-sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.1"/><path d="M8 .8v2M8 13.2v2M.8 8h2M13.2 8h2M2.9 2.9l1.4 1.4M11.7 11.7l1.4 1.4M13.1 2.9l-1.4 1.4M4.3 11.7l-1.4 1.4"/></svg>
+                </div>
+                <a class="key" href="../" title="Back to the index">INDEX</a>
+            </div>
+        </div>
+
+        <!-- ── MENUBAR ──────────────────────────────────────────────────── -->
+        <nav class="menubar" id="menubar" aria-label="Main menu">
+
+            <div class="menu">
+                <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">FILE</button>
+                <div class="menu-sheet" role="menu">
+                    <button class="menu-item" role="menuitem" data-cmd="doc.new"><svg class="ico"><use href="#i-doc"/></svg>New document</button>
+                    <button class="menu-item" role="menuitem" data-cmd="doc.manage"><svg class="ico"><use href="#i-folder"/></svg>Open&hellip;<span class="mk">CTRL+O</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="doc.import">Import a file&hellip;</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="doc.save">Save now<span class="mk">CTRL+S</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="doc.rename">Rename&hellip;</button>
+                    <button class="menu-item" role="menuitem" data-cmd="doc.copy">Make a copy</button>
+                    <button class="menu-item" role="menuitem" data-cmd="doc.delete">Move to trash</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="exp.html"><svg class="ico"><use href="#i-down"/></svg>Download &middot; Web page (.html)</button>
+                    <button class="menu-item" role="menuitem" data-cmd="exp.doc"><svg class="ico"><use href="#i-down"/></svg>Download &middot; Word (.doc)</button>
+                    <button class="menu-item" role="menuitem" data-cmd="exp.md"><svg class="ico"><use href="#i-down"/></svg>Download &middot; Markdown (.md)</button>
+                    <button class="menu-item" role="menuitem" data-cmd="exp.txt"><svg class="ico"><use href="#i-down"/></svg>Download &middot; Plain text (.txt)</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="page.setup">Page setup&hellip;</button>
+                    <button class="menu-item" role="menuitem" data-cmd="doc.print"><svg class="ico"><use href="#i-print"/></svg>Print / Save as PDF<span class="mk">CTRL+P</span></button>
+                </div>
+            </div>
+
+            <div class="menu">
+                <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">EDIT</button>
+                <div class="menu-sheet" role="menu">
+                    <button class="menu-item" role="menuitem" data-cmd="ed.undo"><svg class="ico"><use href="#i-undo"/></svg>Undo<span class="mk">CTRL+Z</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="ed.redo"><svg class="ico"><use href="#i-redo"/></svg>Redo<span class="mk">CTRL+Y</span></button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="ed.cut">Cut<span class="mk">CTRL+X</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="ed.copy">Copy<span class="mk">CTRL+C</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="ed.paste">Paste<span class="mk">CTRL+V</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="ed.pastePlain">Paste without formatting<span class="mk">CTRL+SHIFT+V</span></button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="ed.selectAll">Select all<span class="mk">CTRL+A</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="ed.find"><svg class="ico"><use href="#i-find"/></svg>Find and replace&hellip;<span class="mk">CTRL+F</span></button>
+                </div>
+            </div>
+
+            <div class="menu">
+                <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">INSERT</button>
+                <div class="menu-sheet" role="menu">
+                    <button class="menu-item" role="menuitem" data-cmd="ins.link"><svg class="ico"><use href="#i-link"/></svg>Link&hellip;<span class="mk">CTRL+K</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="ins.image"><svg class="ico"><use href="#i-image"/></svg>Image&hellip;</button>
+                    <button class="menu-item" role="menuitem" data-cmd="ins.table"><svg class="ico"><use href="#i-table"/></svg>Table&hellip;</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="ins.hr"><svg class="ico"><use href="#i-hr"/></svg>Horizontal rule</button>
+                    <button class="menu-item" role="menuitem" data-cmd="ins.pagebreak"><svg class="ico"><use href="#i-break"/></svg>Page break<span class="mk">CTRL+ENTER</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="ins.symbol">Special character&hellip;</button>
+                    <button class="menu-item" role="menuitem" data-cmd="ins.datetime">Date and time</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="ins.comment"><svg class="ico"><use href="#i-comment"/></svg>Comment<span class="mk">CTRL+ALT+M</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="ins.footnote">Footnote</button>
+                    <button class="menu-item" role="menuitem" data-cmd="ins.toc"><svg class="ico"><use href="#i-toc"/></svg>Table of contents</button>
+                </div>
+            </div>
+
+            <div class="menu">
+                <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">FORMAT</button>
+                <div class="menu-sheet" role="menu">
+                    <button class="menu-item" role="menuitem" data-cmd="fmt.bold">Bold<span class="mk">CTRL+B</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="fmt.italic">Italic<span class="mk">CTRL+I</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="fmt.underline">Underline<span class="mk">CTRL+U</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="fmt.strike">Strikethrough<span class="mk">CTRL+SHIFT+X</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="fmt.sup">Superscript<span class="mk">CTRL+.</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="fmt.sub">Subscript<span class="mk">CTRL+,</span></button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="blk.h1">Heading 1<span class="mk">CTRL+ALT+1</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="blk.h2">Heading 2<span class="mk">CTRL+ALT+2</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="blk.h3">Heading 3<span class="mk">CTRL+ALT+3</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="blk.p">Normal text<span class="mk">CTRL+ALT+0</span></button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="fmt.painter"><svg class="ico"><use href="#i-paint"/></svg>Format painter</button>
+                    <button class="menu-item" role="menuitem" data-cmd="fmt.clear"><svg class="ico"><use href="#i-clear"/></svg>Clear formatting<span class="mk">CTRL+\</span></button>
+                </div>
+            </div>
+
+            <div class="menu">
+                <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">TABLE</button>
+                <div class="menu-sheet" role="menu">
+                    <button class="menu-item" role="menuitem" data-cmd="tbl.rowAbove">Insert row above</button>
+                    <button class="menu-item" role="menuitem" data-cmd="tbl.rowBelow">Insert row below</button>
+                    <button class="menu-item" role="menuitem" data-cmd="tbl.colLeft">Insert column left</button>
+                    <button class="menu-item" role="menuitem" data-cmd="tbl.colRight">Insert column right</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="tbl.delRow">Delete row</button>
+                    <button class="menu-item" role="menuitem" data-cmd="tbl.delCol">Delete column</button>
+                    <button class="menu-item" role="menuitem" data-cmd="tbl.delTable">Delete table</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="tbl.header">Toggle header row</button>
+                </div>
+            </div>
+
+            <div class="menu">
+                <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">TOOLS</button>
+                <div class="menu-sheet" role="menu">
+                    <button class="menu-item" role="menuitem" data-cmd="t.wordcount">Word count&hellip;<span class="mk">CTRL+SHIFT+C</span></button>
+                    <button class="menu-item" role="menuitem" data-cmd="t.spell" role="menuitemcheckbox" aria-checked="true">Spelling suggestions<span class="mk">ON</span></button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" role="menuitem" data-cmd="t.shortcuts">Keyboard shortcuts&hellip;</button>
+                </div>
+            </div>
+
+            <div class="menu">
+                <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">VIEW</button>
+                <div class="menu-sheet" role="menu">
+                    <button class="menu-item" data-cmd="v.outline" role="menuitemcheckbox" aria-checked="true"><svg class="ico"><use href="#i-side"/></svg>Document outline<span class="mk">ON</span></button>
+                    <button class="menu-item" data-cmd="v.comments" role="menuitemcheckbox" aria-checked="true"><svg class="ico"><use href="#i-comment"/></svg>Comments rail<span class="mk">ON</span></button>
+                    <button class="menu-item" data-cmd="v.ruler" role="menuitemcheckbox" aria-checked="true">Ruler<span class="mk">ON</span></button>
+                    <button class="menu-item" data-cmd="v.margins" role="menuitemcheckbox" aria-checked="false">Margin guides<span class="mk">OFF</span></button>
+                    <button class="menu-item" data-cmd="v.breaks" role="menuitemcheckbox" aria-checked="true">Page break guides<span class="mk">ON</span></button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" data-cmd="v.stock" role="menuitemcheckbox" aria-checked="false">Dark paper<span class="mk">OFF</span></button>
+                    <button class="menu-item" data-cmd="v.focus" role="menuitemcheckbox" aria-checked="false"><svg class="ico"><use href="#i-eye"/></svg>Focus mode<span class="mk">ESC</span></button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item" data-cmd="v.zoomIn">Zoom in<span class="mk">CTRL+=</span></button>
+                    <button class="menu-item" data-cmd="v.zoomOut">Zoom out<span class="mk">CTRL+-</span></button>
+                    <button class="menu-item" data-cmd="v.zoomReset">Zoom to 100%<span class="mk">CTRL+0</span></button>
+                    <button class="menu-item" data-cmd="v.zoomFit">Fit to width</button>
+                </div>
+            </div>
+        </nav>
+
+    </header>
+
+    <!-- ── RIBBON ───────────────────────────────────────────────────────── -->
+    <div class="chassis ribbon" role="toolbar" aria-label="Formatting">
+
+        <div class="bay">
+            <div class="bay-row">
+                <button class="key key-sq" type="button" data-cmd="ed.undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg><use href="#i-undo"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="ed.redo" title="Redo (Ctrl+Y)" aria-label="Redo"><svg><use href="#i-redo"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="fmt.painter" id="painterKey" title="Format painter" aria-label="Format painter" aria-pressed="false"><svg><use href="#i-paint"/></svg></button>
+            </div>
+            <div class="bay-foot"><span class="bay-ix">01</span><span class="label bay-name">HISTORY</span></div>
+        </div>
+
+        <div class="bay">
+            <div class="bay-row">
+                <label class="sr-only" for="stylePick">Paragraph style</label>
+                <select class="field style-pick" id="stylePick">
+                    <option value="p">Normal text</option>
+                    <option value="title">Title</option>
+                    <option value="sub">Subtitle</option>
+                    <option value="h1">Heading 1</option>
+                    <option value="h2">Heading 2</option>
+                    <option value="h3">Heading 3</option>
+                    <option value="h4">Heading 4</option>
+                    <option value="quote">Quote</option>
+                    <option value="code">Code block</option>
+                </select>
+                <label class="sr-only" for="fontPick">Font</label>
+                <select class="field font-pick" id="fontPick">
+                    <optgroup label="Serif">
+                        <option value="Georgia, 'Times New Roman', serif">Georgia</option>
+                        <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                        <option value="Garamond, 'EB Garamond', Georgia, serif">Garamond</option>
+                        <option value="Cambria, Georgia, serif">Cambria</option>
+                        <option value="'Book Antiqua', Palatino, serif">Book Antiqua</option>
+                    </optgroup>
+                    <optgroup label="Sans">
+                        <option value="Arial, Helvetica, sans-serif">Arial</option>
+                        <option value="'Segoe UI', system-ui, sans-serif">Segoe UI</option>
+                        <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                        <option value="Tahoma, Geneva, sans-serif">Tahoma</option>
+                        <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                    </optgroup>
+                    <optgroup label="Mono &amp; display">
+                        <option value="'IBM Plex Mono', ui-monospace, monospace">IBM Plex Mono</option>
+                        <option value="'Courier New', Courier, monospace">Courier New</option>
+                        <option value="'Chakra Petch', sans-serif">Chakra Petch</option>
+                    </optgroup>
+                </select>
+                <span class="stepper">
+                    <button class="key key-sq" type="button" data-size="-1" aria-label="Smaller text"><svg><use href="#i-minus"/></svg></button>
+                    <input class="size-in" id="sizeIn" type="number" min="6" max="96" step="1" value="11" aria-label="Font size in points">
+                    <button class="key key-sq" type="button" data-size="1" aria-label="Larger text"><svg><use href="#i-plus"/></svg></button>
+                </span>
+            </div>
+            <div class="bay-foot"><span class="bay-ix">02</span><span class="label bay-name">STYLE</span></div>
+        </div>
+
+        <div class="bay">
+            <div class="bay-row">
+                <button class="key key-sq glyph" type="button" data-cmd="fmt.bold" title="Bold (Ctrl+B)" aria-label="Bold" style="font-family:Georgia,serif;font-weight:700;text-transform:none;letter-spacing:0">B</button>
+                <button class="key key-sq glyph" type="button" data-cmd="fmt.italic" title="Italic (Ctrl+I)" aria-label="Italic" style="font-family:Georgia,serif;font-style:italic;text-transform:none;letter-spacing:0">I</button>
+                <button class="key key-sq glyph" type="button" data-cmd="fmt.underline" title="Underline (Ctrl+U)" aria-label="Underline" style="font-family:Georgia,serif;text-decoration:underline;text-transform:none;letter-spacing:0">U</button>
+                <button class="key key-sq glyph" type="button" data-cmd="fmt.strike" title="Strikethrough" aria-label="Strikethrough" style="font-family:Georgia,serif;text-decoration:line-through;text-transform:none;letter-spacing:0">S</button>
+                <button class="key key-sq glyph" type="button" data-cmd="fmt.sup" title="Superscript" aria-label="Superscript" style="font-family:Georgia,serif;text-transform:none;letter-spacing:0;font-size:.62rem">x&sup2;</button>
+                <button class="key key-sq glyph" type="button" data-cmd="fmt.sub" title="Subscript" aria-label="Subscript" style="font-family:Georgia,serif;text-transform:none;letter-spacing:0;font-size:.62rem">x&#8322;</button>
+                <span style="position:relative">
+                    <button class="key key-sq swatch-key" type="button" id="inkKey" title="Text colour" aria-label="Text colour" style="--sw:#1a1c20"><svg><use href="#i-clear"/></svg><span class="bar"></span></button>
+                    <div class="pal" id="inkPal" data-target="ink"></div>
+                </span>
+                <span style="position:relative">
+                    <button class="key key-sq swatch-key" type="button" id="markKey" title="Highlight" aria-label="Highlight colour" style="--sw:#ffe14d"><svg><use href="#i-paint"/></svg><span class="bar"></span></button>
+                    <div class="pal" id="markPal" data-target="mark"></div>
+                </span>
+                <button class="key key-sq" type="button" data-cmd="fmt.clear" title="Clear formatting (Ctrl+\)" aria-label="Clear formatting"><svg><use href="#i-clear"/></svg></button>
+            </div>
+            <div class="bay-foot"><span class="bay-ix">03</span><span class="label bay-name">CHARACTER</span></div>
+        </div>
+
+        <div class="bay">
+            <div class="bay-row">
+                <button class="key key-sq" type="button" data-cmd="al.left" title="Align left" aria-label="Align left"><svg><use href="#i-al"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="al.center" title="Align centre" aria-label="Align centre"><svg><use href="#i-ac"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="al.right" title="Align right" aria-label="Align right"><svg><use href="#i-ar"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="al.justify" title="Justify" aria-label="Justify"><svg><use href="#i-aj"/></svg></button>
+                <span class="dock-sep" aria-hidden="true"></span>
+                <button class="key key-sq" type="button" data-cmd="li.ul" title="Bulleted list (Ctrl+Shift+8)" aria-label="Bulleted list"><svg><use href="#i-ul"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="li.ol" title="Numbered list (Ctrl+Shift+7)" aria-label="Numbered list"><svg><use href="#i-ol"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="li.task" title="Checklist" aria-label="Checklist"><svg><use href="#i-task"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="li.out" title="Decrease indent" aria-label="Decrease indent"><svg><use href="#i-outdent"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="li.in" title="Increase indent" aria-label="Increase indent"><svg><use href="#i-indent"/></svg></button>
+                <label class="sr-only" for="leadPick">Line spacing</label>
+                <select class="field" id="leadPick" title="Line spacing">
+                    <option value="1">1.0</option>
+                    <option value="1.15">1.15</option>
+                    <option value="1.5" selected>1.5</option>
+                    <option value="2">2.0</option>
+                    <option value="2.5">2.5</option>
+                    <option value="3">3.0</option>
+                </select>
+            </div>
+            <div class="bay-foot"><span class="bay-ix">04</span><span class="label bay-name">PARAGRAPH</span></div>
+        </div>
+
+        <div class="bay">
+            <div class="bay-row">
+                <button class="key key-sq" type="button" data-cmd="ins.link" title="Insert link (Ctrl+K)" aria-label="Insert link"><svg><use href="#i-link"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="ins.image" title="Insert image" aria-label="Insert image"><svg><use href="#i-image"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="ins.table" title="Insert table" aria-label="Insert table"><svg><use href="#i-table"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="ins.hr" title="Horizontal rule" aria-label="Horizontal rule"><svg><use href="#i-hr"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="ins.pagebreak" title="Page break" aria-label="Page break"><svg><use href="#i-break"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="ins.symbol" title="Special character" aria-label="Special character" style="text-transform:none">&Omega;</button>
+                <button class="key key-sq" type="button" data-cmd="ins.comment" title="Comment (Ctrl+Alt+M)" aria-label="Insert comment"><svg><use href="#i-comment"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="ins.toc" title="Table of contents" aria-label="Table of contents"><svg><use href="#i-toc"/></svg></button>
+            </div>
+            <div class="bay-foot"><span class="bay-ix">05</span><span class="label bay-name">INSERT</span></div>
+        </div>
+
+        <div class="bay">
+            <div class="bay-row">
+                <button class="key key-sq" type="button" data-cmd="ed.find" title="Find and replace (Ctrl+F)" aria-label="Find and replace"><svg><use href="#i-find"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="doc.print" title="Print (Ctrl+P)" aria-label="Print"><svg><use href="#i-print"/></svg></button>
+                <button class="key key-sq" type="button" data-cmd="exp.html" title="Download as web page" aria-label="Download"><svg><use href="#i-down"/></svg></button>
+            </div>
+            <div class="bay-foot"><span class="bay-ix">06</span><span class="label bay-name">REVIEW</span></div>
+        </div>
+    </div>
+
+    <!-- ── WORK ─────────────────────────────────────────────────────────── -->
+    <div class="work">
+
+        <aside class="chassis rail rail-left" id="railLeft" aria-label="Navigator">
+            <div class="rail-tabs">
+                <button class="key latched" type="button" data-tab="outline" aria-pressed="true">OUTLINE</button>
+                <button class="key" type="button" data-tab="files" aria-pressed="false">FILES</button>
+            </div>
+            <div class="rail-body" id="outlinePane">
+                <div id="outlineList"></div>
+                <p class="hint rail-empty" id="outlineEmpty">Headings appear here as you write them. Set a paragraph to Heading 1&ndash;4 in bay 02.</p>
+            </div>
+            <div class="rail-body" id="filesPane" hidden>
+                <div id="fileList"></div>
+                <div style="padding:8px 10px">
+                    <button class="key" type="button" data-cmd="doc.new" style="width:100%">NEW DOCUMENT</button>
+                </div>
+            </div>
+        </aside>
+
+        <div class="deck" id="deck">
+            <div class="zoomer" id="zoomer">
+                <div class="ruler" id="ruler" aria-hidden="true"></div>
+                <div class="leaf" id="leaf">
+                    <span class="reg tl" aria-hidden="true"></span>
+                    <span class="reg tr" aria-hidden="true"></span>
+                    <span class="reg bl" aria-hidden="true"></span>
+                    <span class="reg br" aria-hidden="true"></span>
+                    <div class="marg-frame" id="margFrame" hidden aria-hidden="true"></div>
+                    <div id="breaks" aria-hidden="true"></div>
+                    <div class="doc" id="doc" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Document body"></div>
+                </div>
+            </div>
+        </div>
+
+        <aside class="chassis rail rail-right" id="railRight" aria-label="Comments">
+            <div class="rail-head">
+                <span class="bay-ix">07</span>
+                <span class="designation" style="font-size:.74rem">COMMENTS</span>
+                <span class="spacer"></span>
+                <span class="label" id="cmtCount">0</span>
+            </div>
+            <div class="rail-body" id="cmtList">
+                <p class="hint rail-empty">Select some text and press the comment key in bay 05 to pin a note to it.</p>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ── STATUS DOCK ──────────────────────────────────────────────────── -->
+    <footer class="dock">
+        <span class="stripe dock-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <div class="dock-inner">
+            <span class="stat"><span class="label">PAGE</span><b id="stPage">1 / 1</b></span>
+            <span class="dock-sep" aria-hidden="true"></span>
+            <span class="stat"><span class="label">WORDS</span><b id="stWords">0</b></span>
+            <span class="stat opt"><span class="label">CHARS</span><b id="stChars">0</b></span>
+            <span class="stat opt"><span class="label">READ</span><b id="stRead">0 MIN</b></span>
+            <span class="dock-sep opt" aria-hidden="true"></span>
+            <span class="stat opt"><span class="label">SHEET</span><b id="stSheet">LETTER</b></span>
+            <span class="spacer"></span>
+            <div class="zoom-ctl">
+                <button class="key key-sq" type="button" data-cmd="v.zoomOut" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button>
+                <button class="key zoom-out" type="button" data-cmd="v.zoomReset" id="stZoom" title="Reset zoom">100%</button>
+                <button class="key key-sq" type="button" data-cmd="v.zoomIn" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button>
+            </div>
+        </div>
+    </footer>
+</main>
+
+<!-- ── DIALOGS ──────────────────────────────────────────────────────────── -->
+
+<div class="panel-modal" id="findModal" role="dialog" aria-modal="true" aria-label="Find and replace">
+    <div class="chassis sheet">
+        <div class="sheet-head"><span class="sheet-ix">01</span><span class="designation" style="font-size:.78rem">FIND AND REPLACE</span><span class="spacer"></span><button class="key key-sq" type="button" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+        <div class="sheet-body">
+            <div class="fld"><span class="label">FIND</span><input class="field" id="fFind" type="text" autocomplete="off" spellcheck="false"></div>
+            <div class="fld"><span class="label">REPLACE WITH</span><input class="field" id="fRepl" type="text" autocomplete="off" spellcheck="false"></div>
+            <div class="row">
+                <label class="row-tight" style="cursor:pointer"><span class="rocker"><input type="checkbox" id="fCase"><span class="rock"></span></span><span class="label">MATCH CASE</span></label>
+                <label class="row-tight" style="cursor:pointer"><span class="rocker"><input type="checkbox" id="fWhole"><span class="rock"></span></span><span class="label">WHOLE WORDS</span></label>
+            </div>
+        </div>
+        <div class="sheet-foot">
+            <span class="hit-count" id="hitCount">NO MATCHES</span>
+            <span class="spacer"></span>
+            <button class="key" type="button" id="btnPrev">PREV</button>
+            <button class="key" type="button" id="btnNext">NEXT</button>
+            <button class="key" type="button" id="btnRepl">REPLACE</button>
+            <button class="key" type="button" id="btnReplAll">ALL</button>
+        </div>
+    </div>
+</div>
+
+<div class="panel-modal" id="linkModal" role="dialog" aria-modal="true" aria-label="Insert link">
+    <div class="chassis sheet narrow">
+        <div class="sheet-head"><span class="sheet-ix">02</span><span class="designation" style="font-size:.78rem">LINK</span><span class="spacer"></span><button class="key key-sq" type="button" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+        <div class="sheet-body">
+            <div class="fld"><span class="label">TEXT</span><input class="field" id="lText" type="text" autocomplete="off"></div>
+            <div class="fld"><span class="label">ADDRESS</span><input class="field" id="lUrl" type="url" placeholder="https://" autocomplete="off" spellcheck="false"></div>
+        </div>
+        <div class="sheet-foot">
+            <button class="key key-danger" type="button" id="btnLinkRemove">REMOVE</button>
+            <span class="spacer"></span>
+            <button class="key" type="button" data-close>CANCEL</button>
+            <button class="key latched" type="button" id="btnLinkOk">APPLY</button>
+        </div>
+    </div>
+</div>
+
+<div class="panel-modal" id="tableModal" role="dialog" aria-modal="true" aria-label="Insert table">
+    <div class="chassis sheet narrow">
+        <div class="sheet-head"><span class="sheet-ix">03</span><span class="designation" style="font-size:.78rem">TABLE</span><span class="spacer"></span><button class="key key-sq" type="button" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+        <div class="sheet-body">
+            <div class="fld">
+                <span class="label">SIZE</span>
+                <div class="grid-pick" id="gridPick"></div>
+                <span class="hint" id="gridRead">2 &times; 2</span>
+            </div>
+            <label class="row-tight" style="cursor:pointer"><span class="rocker"><input type="checkbox" id="tHead" checked><span class="rock"></span></span><span class="label">HEADER ROW</span></label>
+        </div>
+        <div class="sheet-foot"><span class="spacer"></span><button class="key" type="button" data-close>CANCEL</button><button class="key latched" type="button" id="btnTableOk">INSERT</button></div>
+    </div>
+</div>
+
+<div class="panel-modal" id="imageModal" role="dialog" aria-modal="true" aria-label="Insert image">
+    <div class="chassis sheet narrow">
+        <div class="sheet-head"><span class="sheet-ix">04</span><span class="designation" style="font-size:.78rem">IMAGE</span><span class="spacer"></span><button class="key key-sq" type="button" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+        <div class="sheet-body">
+            <div class="fld"><span class="label">FROM THIS MACHINE</span><input class="field" id="imgFile" type="file" accept="image/*"></div>
+            <div class="fld"><span class="label">OR BY ADDRESS</span><input class="field" id="imgUrl" type="url" placeholder="https://" spellcheck="false"></div>
+            <div class="fld-row">
+                <div class="fld"><span class="label">WIDTH %</span><input class="field" id="imgW" type="number" min="5" max="100" value="100"></div>
+                <div class="fld"><span class="label">CAPTION</span><input class="field" id="imgCap" type="text" placeholder="optional"></div>
+            </div>
+            <div class="fld"><span class="label">ALT TEXT</span><input class="field" id="imgAlt" type="text" placeholder="describe the image"></div>
+            <p class="hint">A local file is embedded in the document itself, so it travels with the export and never uploads anywhere.</p>
+        </div>
+        <div class="sheet-foot"><span class="spacer"></span><button class="key" type="button" data-close>CANCEL</button><button class="key latched" type="button" id="btnImgOk">INSERT</button></div>
+    </div>
+</div>
+
+<div class="panel-modal" id="symModal" role="dialog" aria-modal="true" aria-label="Special characters">
+    <div class="chassis sheet">
+        <div class="sheet-head"><span class="sheet-ix">05</span><span class="designation" style="font-size:.78rem">SPECIAL CHARACTERS</span><span class="spacer"></span><button class="key key-sq" type="button" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+        <div class="sheet-body">
+            <div class="sym-tabs" id="symTabs"></div>
+            <div class="sym-grid" id="symGrid"></div>
+        </div>
+    </div>
+</div>
+
+<div class="panel-modal" id="pageModal" role="dialog" aria-modal="true" aria-label="Page setup">
+    <div class="chassis sheet">
+        <div class="sheet-head"><span class="sheet-ix">06</span><span class="designation" style="font-size:.78rem">PAGE SETUP</span><span class="spacer"></span><button class="key key-sq" type="button" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+        <div class="sheet-body">
+            <div class="fld-row">
+                <div class="fld"><span class="label">SHEET</span>
+                    <select class="field" id="pgSize">
+                        <option value="letter">Letter &middot; 8.5 &times; 11 in</option>
+                        <option value="legal">Legal &middot; 8.5 &times; 14 in</option>
+                        <option value="tabloid">Tabloid &middot; 11 &times; 17 in</option>
+                        <option value="a4">A4 &middot; 210 &times; 297 mm</option>
+                        <option value="a5">A5 &middot; 148 &times; 210 mm</option>
+                    </select>
+                </div>
+                <div class="fld"><span class="label">ORIENTATION</span>
+                    <select class="field" id="pgOrient"><option value="p">Portrait</option><option value="l">Landscape</option></select>
+                </div>
+            </div>
+            <div class="fld"><span class="label">MARGIN PRESET</span>
+                <select class="field" id="pgPreset">
+                    <option value="normal">Normal &middot; 1 in</option>
+                    <option value="narrow">Narrow &middot; 0.5 in</option>
+                    <option value="moderate">Moderate &middot; 1 in / 0.75 in</option>
+                    <option value="wide">Wide &middot; 1 in / 2 in</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </div>
+            <div class="fld-row">
+                <div class="fld"><span class="label">TOP IN</span><input class="field pg-m" id="pgMT" type="number" min="0" max="4" step="0.05" value="1"></div>
+                <div class="fld"><span class="label">RIGHT IN</span><input class="field pg-m" id="pgMR" type="number" min="0" max="4" step="0.05" value="1"></div>
+                <div class="fld"><span class="label">BOTTOM IN</span><input class="field pg-m" id="pgMB" type="number" min="0" max="4" step="0.05" value="1"></div>
+                <div class="fld"><span class="label">LEFT IN</span><input class="field pg-m" id="pgML" type="number" min="0" max="4" step="0.05" value="1"></div>
+            </div>
+            <div class="rule"></div>
+            <div class="fld-row">
+                <div class="fld"><span class="label">BODY SIZE PT</span><input class="field" id="pgSize2" type="number" min="6" max="36" step="0.5" value="11"></div>
+                <div class="fld"><span class="label">SPACE AFTER PT</span><input class="field" id="pgAfter" type="number" min="0" max="48" step="1" value="8"></div>
+            </div>
+            <p class="hint">The sheet, the ruler and the break guides all follow these numbers, and so does the printed result &mdash; print to PDF and you get exactly the page you set up here.</p>
+        </div>
+        <div class="sheet-foot"><span class="spacer"></span><button class="key" type="button" data-close>DONE</button></div>
+    </div>
+</div>
+
+<div class="panel-modal" id="docsModal" role="dialog" aria-modal="true" aria-label="Documents">
+    <div class="chassis sheet">
+        <div class="sheet-head"><span class="sheet-ix">07</span><span class="designation" style="font-size:.78rem">DOCUMENTS</span><span class="spacer"></span><button class="key key-sq" type="button" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+        <div class="sheet-body"><div class="stack" id="docList"></div></div>
+        <div class="sheet-foot"><button class="key" type="button" data-cmd="doc.new">NEW</button><button class="key" type="button" data-cmd="doc.import">IMPORT</button><span class="spacer"></span><button class="key" type="button" data-close>CLOSE</button></div>
+    </div>
+</div>
+
+<div class="panel-modal" id="countModal" role="dialog" aria-modal="true" aria-label="Word count">
+    <div class="chassis sheet narrow">
+        <div class="sheet-head"><span class="sheet-ix">08</span><span class="designation" style="font-size:.78rem">WORD COUNT</span><span class="spacer"></span><button class="key key-sq" type="button" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+        <div class="sheet-body">
+            <table class="keys">
+                <tr><td>Words</td><td id="cWords">0</td></tr>
+                <tr><td>Characters, with spaces</td><td id="cChars">0</td></tr>
+                <tr><td>Characters, without spaces</td><td id="cCharsNo">0</td></tr>
+                <tr><td>Sentences</td><td id="cSent">0</td></tr>
+                <tr><td>Paragraphs</td><td id="cParas">0</td></tr>
+                <tr><td>Pages</td><td id="cPages">1</td></tr>
+                <tr><td>Reading time</td><td id="cRead">0 min</td></tr>
+            </table>
+        </div>
+        <div class="sheet-foot"><span class="spacer"></span><button class="key" type="button" data-close>CLOSE</button></div>
+    </div>
+</div>
+
+<div class="panel-modal" id="keysModal" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+    <div class="chassis sheet wide">
+        <div class="sheet-head"><span class="sheet-ix">09</span><span class="designation" style="font-size:.78rem">KEYBOARD SHORTCUTS</span><span class="spacer"></span><button class="key key-sq" type="button" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+        <div class="sheet-body">
+            <table class="keys">
+                <tr class="grp"><td colspan="2">TEXT</td></tr>
+                <tr><td>Bold</td><td>CTRL + B</td></tr>
+                <tr><td>Italic</td><td>CTRL + I</td></tr>
+                <tr><td>Underline</td><td>CTRL + U</td></tr>
+                <tr><td>Strikethrough</td><td>CTRL + SHIFT + X</td></tr>
+                <tr><td>Superscript / subscript</td><td>CTRL + . / CTRL + ,</td></tr>
+                <tr><td>Clear formatting</td><td>CTRL + \</td></tr>
+                <tr class="grp"><td colspan="2">PARAGRAPH</td></tr>
+                <tr><td>Normal text</td><td>CTRL + ALT + 0</td></tr>
+                <tr><td>Heading 1 / 2 / 3 / 4</td><td>CTRL + ALT + 1&hellip;4</td></tr>
+                <tr><td>Bulleted list</td><td>CTRL + SHIFT + 8</td></tr>
+                <tr><td>Numbered list</td><td>CTRL + SHIFT + 7</td></tr>
+                <tr><td>Align left / centre / right / justify</td><td>CTRL + SHIFT + L / E / R / J</td></tr>
+                <tr><td>Indent / outdent</td><td>TAB / SHIFT + TAB</td></tr>
+                <tr class="grp"><td colspan="2">INSERT</td></tr>
+                <tr><td>Link</td><td>CTRL + K</td></tr>
+                <tr><td>Comment</td><td>CTRL + ALT + M</td></tr>
+                <tr><td>Page break</td><td>CTRL + ENTER</td></tr>
+                <tr><td>Next cell in a table</td><td>TAB</td></tr>
+                <tr class="grp"><td colspan="2">DOCUMENT</td></tr>
+                <tr><td>Save now</td><td>CTRL + S</td></tr>
+                <tr><td>Open documents</td><td>CTRL + O</td></tr>
+                <tr><td>Find and replace</td><td>CTRL + F</td></tr>
+                <tr><td>Word count</td><td>CTRL + SHIFT + C</td></tr>
+                <tr><td>Print</td><td>CTRL + P</td></tr>
+                <tr><td>Zoom in / out / reset</td><td>CTRL + = / &minus; / 0</td></tr>
+                <tr><td>Leave focus mode or a dialog</td><td>ESC</td></tr>
+            </table>
+        </div>
+        <div class="sheet-foot"><span class="spacer"></span><button class="key" type="button" data-close>CLOSE</button></div>
+    </div>
+</div>
+
+<input type="file" id="importFile" accept=".html,.htm,.txt,.md,.markdown,.doc" style="display:none">
+
+<script src="../assets/console.js?v=10"></script>
+<script src="editor.js?v=8"></script>
+</body>
+</html>

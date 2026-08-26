@@ -1,1171 +1,805 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <title>Enhanced Modular Notepad</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0b0d">
+<title>Node Board</title>
+<meta name="description" content="A notepad where the notes are wired together: rich text, live arithmetic, tables, plots and charts on one pannable board. Runs entirely in the browser.">
 
-    <style>
-        :root {
-            --bg-color-light: #f8f9fa;
-            --text-color-light: #212529;
-            --card-bg-light: rgba(255, 255, 255, 0.75);
-            --card-border-light: rgba(0, 0, 0, 0.1);
-            --toolbar-bg-light: rgba(255, 255, 255, 0.9);
-            --toolbar-shadow-light: 0 4px 12px rgba(0, 0, 0, 0.1);
-            --grid-color-light: rgba(0, 0, 0, 0.08);
-            --icon-color-light: #343A40;
-            --accent-color: #FFD700; /* Yellow */
-            --accent-text-color: #333;
-            --placeholder-color-light: #6c757d;
-            --danger-color: #dc3545; /* Red for delete */
-            --danger-text-color: #ffffff;
-            --info-color: #17a2b8; /* Teal for info/import */
-            --info-text-color: #ffffff;
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
-            /* "desk" = area outside the finite canvas world */
-            --desk-light: #dfe3e8;
-            --canvas-surface-light: #f8f9fa;
-            --canvas-edge-light: rgba(0,0,0,0.14);
+<link rel="stylesheet" href="../assets/vector.css?v=10">
+<link rel="stylesheet" href="../assets/console.css?v=10">
+<script src="../assets/cassette.js?v=10"></script>
 
-            --bg-color-dark: #1a1c1e;
-            --text-color-dark: #e0e0e0;
-            --card-bg-dark: rgba(40, 42, 44, 0.75);
-            --card-border-dark: rgba(255, 255, 255, 0.1);
-            --toolbar-bg-dark: rgba(30, 32, 34, 0.9);
-            --toolbar-shadow-dark: 0 4px 12px rgba(0, 0, 0, 0.3);
-            --grid-color-dark: rgba(255, 255, 255, 0.08);
-            --icon-color-dark: #E0E0E0;
-            --placeholder-color-dark: #868e96;
-            --desk-dark: #0e0f10;
-            --canvas-surface-dark: #1f2123;
-            --canvas-edge-dark: rgba(255,255,255,0.12);
-        }
+<style>
+/* ── Channel 13 runs on the amber band ───────────────────────────────────────
+   --s3, and not because amber was free — it is the loudest band on the site
+   already. The hub card for this tool is #eab308 and the notepad it replaces
+   was yellow from its first commit. A page whose swatch in the index does not
+   match the page you land on is a page that reads as somebody else's. */
+:root { --accent: var(--s3); }
 
-        html { font-family: 'Poppins', sans-serif; }
-        body {
-            background-color: var(--bg-color-light); color: var(--text-color-light);
-            transition: background-color 0.3s ease, color 0.3s ease;
-            overflow: hidden; margin: 0; padding: 0;
-        }
-        html.dark body { background-color: var(--bg-color-dark); color: var(--text-color-dark); }
+/* One extra family, for one job. Everything the machine says stays in IBM Plex
+   Mono; the text *you* write in a NOTE is set in IBM Plex Sans. The precedent
+   is docs/ putting serif on the page, and the argument is the same one: this
+   is the page where prose is the subject rather than the label on a control.
+   A mono paragraph is a fine caption and a poor page of notes. Same
+   superfamily, so the two faces share their skeleton and nothing clashes. */
+:root { --f-prose: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; }
 
-        #canvas-container {
-            width: 100vw; height: 100vh; position: relative; overflow: hidden;
-            cursor: grab; background-color: var(--desk-light);
-            transition: background-color 0.3s ease;
-        }
-        html.dark #canvas-container { background-color: var(--desk-dark); }
+/* Classes below set display, so the attribute has to outrank them. §6. */
+[hidden] { display: none !important; }
 
-        /* The canvas IS the finite world. Grid lives here so it pans/zooms
-           in lockstep with the notes and always lines up with snapping. */
-        #canvas {
-            position: absolute; left: 0; top: 0; transform-origin: 0 0;
-            background-color: var(--canvas-surface-light);
-            border-radius: 8px;
-            box-shadow: 0 0 0 1.5px var(--canvas-edge-light), 0 16px 60px rgba(0,0,0,0.18);
-            transition: background-color 0.3s ease;
-        }
-        html.dark #canvas {
-            background-color: var(--canvas-surface-dark);
-            box-shadow: 0 0 0 1.5px var(--canvas-edge-dark), 0 16px 60px rgba(0,0,0,0.5);
-        }
-        #canvas.grid-visible {
-            background-image:
-                linear-gradient(to right, var(--grid-color-light) 1px, transparent 1px),
-                linear-gradient(to bottom, var(--grid-color-light) 1px, transparent 1px);
-            background-size: 20px 20px; /* GRID_SIZE */
-        }
-        html.dark #canvas.grid-visible {
-             background-image:
-                linear-gradient(to right, var(--grid-color-dark) 1px, transparent 1px),
-                linear-gradient(to bottom, var(--grid-color-dark) 1px, transparent 1px);
-        }
+/* ══ 1. PAGE FRAME ═══════════════════════════════════════════════════════════
+   Not a rack column. The board wants every pixel, so .page loses its measure
+   and becomes a full-height flex column with the dock's clearance removed —
+   the dock is part of the column here, not floating over the end of it. */
 
-        .note {
-            position: absolute;
-            background-color: var(--card-bg-light); border: 1px solid var(--card-border-light);
-            border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            padding: 0; display: flex; flex-direction: column;
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            transition: box-shadow 0.2s ease-out, background-color 0.3s ease, border-color 0.3s ease;
-            overflow: hidden;
-        }
-        html.dark .note {
-            background-color: var(--card-bg-dark); border: 1px solid var(--card-border-dark);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-        .note:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
-        html.dark .note:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
-        .note.selected {
-            box-shadow: 0 0 0 3px var(--accent-color), 0 6px 16px rgba(0,0,0,0.15);
-            border-color: var(--accent-color);
-        }
-        html.dark .note.selected {
-            box-shadow: 0 0 0 3px var(--accent-color), 0 6px 16px rgba(0,0,0,0.35);
-        }
+html, body { height: 100%; overflow: hidden; }
 
-        .note-header {
-            display: flex; align-items: center; padding: 8px 12px;
-            border-bottom: 1px solid rgba(0,0,0,0.05); flex-shrink: 0;
-            cursor: move;
-        }
-        html.dark .note-header { border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .note-title {
-            flex-grow: 1; font-weight: 600; font-size: 16px;
-            outline: none; color: var(--text-color-light);
-            cursor: default; padding: 2px 0;
-        }
-        .note-title[contenteditable="true"] {
-            cursor: text; background-color: rgba(0,0,0,0.03); border-radius: 3px;
-        }
-        html.dark .note-title { color: var(--text-color-dark); }
-        html.dark .note-title[contenteditable="true"] { background-color: rgba(255,255,255,0.05); }
-        .note-title:empty:before {
-            content: attr(placeholder); color: var(--placeholder-color-light); font-weight: 500;
-        }
-        html.dark .note-title:empty:before { color: var(--placeholder-color-dark); }
-        .note-color-picker {
-            width: 16px; height: 16px; border-radius: 50%;
-            border: 1px solid rgba(0,0,0,0.2); cursor: pointer;
-            margin-left: 8px; opacity: 0; transition: opacity 0.2s ease; flex-shrink: 0;
-        }
-        .note:hover .note-color-picker, .note.selected .note-color-picker { opacity: 1; }
-        .note-content-wrapper { flex-grow: 1; padding: 12px; overflow-y: auto; cursor: default; }
-        .note-content {
-            outline: none; font-size: 14px; line-height: 1.7;
-            color: var(--text-color-light); min-height: 40px;
-        }
-        .note-content > div, .note-content > p { margin-top: 0; }
-        html.dark .note-content { color: var(--text-color-dark); }
-        .note-content:empty:before {
-            content: attr(placeholder); color: var(--placeholder-color-light);
-            pointer-events: none; display: block;
-        }
-        html.dark .note-content:empty:before { color: var(--placeholder-color-dark); }
+.page {
+    max-width: none;
+    height: 100dvh;
+    padding: 10px 10px 0;
+    gap: 10px;
+}
 
-        .checklist-item { display: flex; align-items: flex-start; margin-bottom: 6px; }
-        .checklist-item input[type="checkbox"] {
-            margin-right: 8px; margin-top: 5px; flex-shrink: 0;
-            width: 16px; height: 16px; accent-color: var(--accent-color);
-        }
-        .checklist-item span { flex-grow: 1; outline: none; min-height: 1.2em; }
-        .checklist-item input[type="checkbox"]:checked + span { text-decoration: line-through; color: gray; }
+.page-head { padding: 8px 12px; flex-shrink: 0; }
+.head-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; }
+.brand { min-width: 0; }
+.designation { font-size: 0.95rem; }
+.brand-stripe { margin-top: 5px; }
 
-        .note-content h1, .note-content h2, .note-content h3 { margin-top: 0.5em; margin-bottom: 0.25em; font-weight: 600; }
-        .note-content h1 { font-size: 1.5em; } .note-content h2 { font-size: 1.3em; } .note-content h3 { font-size: 1.15em; }
-        .note-content a { color: var(--accent-color); text-decoration: underline; }
-        html.dark .note-content a { color: var(--accent-color); }
-        .note-content ul, .note-content ol { margin-left: 20px; padding-left: 5px; margin-top: 0.5em; margin-bottom: 0.5em; }
-        .note-content blockquote {
-            border-left: 3px solid var(--accent-color); margin-left: 0;
-            padding-left: 1em; color: gray; font-style: italic; margin-top: 0.5em; margin-bottom: 0.5em;
-        }
-        .note-content pre {
-            background-color: rgba(0,0,0,0.05); padding: 10px; border-radius: 6px;
-            overflow-x: auto; font-family: 'Courier New', Courier, monospace;
-            font-size: 0.9em; margin: 0.5em 0; white-space: pre-wrap;
-        }
-        html.dark .note-content pre { background-color: rgba(255,255,255,0.05); }
-        .note-content code {
-            background-color: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px;
-            font-family: 'Courier New', Courier, monospace; font-size: 0.9em;
-        }
-        html.dark .note-content code { background-color: rgba(255,255,255,0.05); }
-        .note-content pre code { background-color: transparent; padding: 0; border-radius: 0; white-space: pre; }
+.head-well {
+    display: flex; align-items: center; gap: 18px;
+    justify-content: center; flex-wrap: wrap;
+    padding: 5px 12px; min-height: 30px;
+}
+.stat { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.stat b {
+    font-weight: 500; color: var(--phos);
+    font-variant-numeric: tabular-nums; font-size: 0.72rem;
+}
+.head-ctl { display: flex; align-items: center; gap: 12px; }
 
-        .note-resize-handle {
-            position: absolute; bottom: 1px; right: 1px; width: 20px; height: 20px;
-            cursor: nwse-resize; display: flex; align-items: center; justify-content: center;
-            opacity: 0; transition: opacity 0.2s ease; z-index: 10;
-        }
-        .note.selected .note-resize-handle { opacity: 0.7; }
-        .note.selected .note-resize-handle:hover { opacity: 1; }
-        .note-resize-handle .material-symbols-outlined { font-size: 18px; color: var(--icon-color-light); }
-        html.dark .note-resize-handle .material-symbols-outlined { color: var(--icon-color-dark); }
+/* ══ 2. THE BOARD CHASSIS ════════════════════════════════════════════════════ */
 
-        /* Minimap */
-        #minimap {
-            position: fixed; top: 16px; right: 16px; z-index: 1000;
-            background-color: var(--toolbar-bg-light);
-            border: 1px solid var(--card-border-light);
-            border-radius: 10px; box-shadow: var(--toolbar-shadow-light);
-            overflow: hidden; cursor: pointer;
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-        }
-        html.dark #minimap {
-            background-color: var(--toolbar-bg-dark);
-            border-color: var(--card-border-dark); box-shadow: var(--toolbar-shadow-dark);
-        }
-        #minimap-world { position: absolute; inset: 0; }
-        .minimap-note {
-            position: absolute; border-radius: 1.5px;
-            background-color: var(--accent-color); opacity: 0.85;
-        }
-        .minimap-note.selected { outline: 1.5px solid var(--accent-color); outline-offset: 0; opacity: 1; z-index: 3; }
-        #minimapViewport {
-            position: absolute; box-sizing: border-box;
-            border: 1.5px solid var(--accent-color);
-            background-color: rgba(255, 215, 0, 0.14);
-            border-radius: 2px; pointer-events: none; z-index: 4;
-        }
-        #minimapLabel {
-            position: absolute; bottom: 2px; left: 5px; z-index: 5;
-            font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
-            color: var(--placeholder-color-light); pointer-events: none; opacity: 0.7;
-        }
-        html.dark #minimapLabel { color: var(--placeholder-color-dark); }
+.board-wrap {
+    flex: 1 1 auto; min-height: 0;
+    display: flex; flex-direction: column;
+    padding: 0;
+}
 
-        #toolbar {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            background-color: var(--toolbar-bg-light); padding: 8px 10px;
-            border-radius: 16px; box-shadow: var(--toolbar-shadow-light);
-            display: flex; flex-wrap: wrap; gap: 5px;
-            align-items: center; z-index: 1000;
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            max-width: 95vw; /* Slightly more room for new buttons */
-            justify-content: center;
-        }
-        html.dark #toolbar { background-color: var(--toolbar-bg-dark); box-shadow: var(--toolbar-shadow-dark); }
-        .toolbar-button {
-            background-color: transparent; border: none; padding: 7px;
-            border-radius: 8px; cursor: pointer; display: flex;
-            align-items: center; justify-content: center;
-            color: var(--icon-color-light);
-            transition: background-color 0.2s ease, color 0.2s ease;
-            position: relative;
-        }
-        html.dark .toolbar-button { color: var(--icon-color-dark); }
-        .toolbar-button:hover { background-color: rgba(0,0,0,0.05); }
-        html.dark .toolbar-button:hover { background-color: rgba(255,255,255,0.1); }
-        .toolbar-button.active { background-color: var(--accent-color); color: var(--accent-text-color); }
-        .toolbar-button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .toolbar-button:disabled:hover { background-color: transparent; }
-        .toolbar-separator { width: 1px; height: 24px; background-color: rgba(0,0,0,0.1); margin: 0 4px; }
-        html.dark .toolbar-separator { background-color: rgba(255,255,255,0.1); }
+.stage-bar {
+    display: flex; align-items: center; gap: 6px;
+    flex-wrap: wrap;
+    padding: 7px 10px;
+    border-bottom: var(--hair) solid var(--rule);
+    flex-shrink: 0;
+}
+.stage-bar .key { min-height: 26px; padding: 0.3em 0.6em; }
+.spacer { flex: 1 1 auto; }
 
-        .material-symbols-outlined { font-size: 20px; }
+#zoomVal {
+    min-width: 46px; text-align: center;
+    font-variant-numeric: tabular-nums; color: var(--phos);
+}
 
-        .color-palette {
-            position: fixed; background-color: var(--toolbar-bg-light);
-            border: 1px solid var(--card-border-light); border-radius: 8px;
-            padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            display: flex; gap: 6px; z-index: 1001;
-        }
-        html.dark .color-palette {
-            background-color: var(--toolbar-bg-dark); border: 1px solid var(--card-border-dark);
-        }
-        .color-option {
-            width: 20px; height: 20px; border-radius: 50%; cursor: pointer;
-            border: 1px solid rgba(0,0,0,0.1);
-        }
-        html.dark .color-option { border: 1px solid rgba(255,255,255,0.1); }
+.find { display: flex; align-items: center; gap: 6px; }
+.find .field {
+    width: 148px; padding: 0.28em 0.5em; font-size: 0.7rem;
+}
+#searchStat { color: var(--phos-dim); min-width: 0; }
 
-        .note-content::-webkit-scrollbar { width: 8px; }
-        .note-content::-webkit-scrollbar-track { background: transparent; }
-        .note-content::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 4px; }
-        html.dark .note-content::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.2); }
-        .note-content::-webkit-scrollbar-thumb:hover { background-color: rgba(0,0,0,0.3); }
-        html.dark .note-content::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.3); }
+/* The three-column work area: a rail of node types, the board, an inspector.
+   The rail collapses to icons and the inspector leaves entirely on narrow
+   screens — a board is a pointing device before it is a form. */
+.work {
+    flex: 1 1 auto; min-height: 0;
+    display: grid;
+    grid-template-columns: 54px 1fr;
+}
+@media (min-width: 1080px) { .work { grid-template-columns: 118px 1fr 232px; } }
 
-        #customTooltip {
-            position: absolute; background-color: var(--text-color-light);
-            color: var(--bg-color-light); padding: 4px 8px; border-radius: 4px; font-size: 12px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1050;
-            pointer-events: none; white-space: nowrap;
-            transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
-            opacity: 0; transform: translateY(5px);
-        }
-        #customTooltip.visible { opacity: 1; transform: translateY(0); }
-        html.dark #customTooltip { background-color: var(--text-color-dark); color: var(--bg-color-dark); }
+/* ══ 3. RAIL ═════════════════════════════════════════════════════════════════ */
 
-        /* Generic Modal Styles */
-        .modal-overlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); dark:bg-opacity-70; z-index: 1040; }
-        .modal-content {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background-color: var(--card-bg-light); color: var(--text-color-light);
-            padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 100%; max-width: 24rem; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            border: 1px solid var(--card-border-light); z-index: 1045;
-        }
-        html.dark .modal-content {
-            background-color: var(--card-bg-dark); color: var(--text-color-dark);
-            border: 1px solid var(--card-border-dark);
-        }
-        .modal-content h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
-        .modal-content p { font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem; }
-        html.dark .modal-content p { color: #9ca3af; }
-        .modal-content .buttons { display: flex; justify-content: flex-end; gap: 0.75rem; }
-        .modal-content button {
-            padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500;
-            border: none; cursor: pointer; transition: background-color 0.2s ease;
-        }
-        .modal-content button.confirm-danger { background-color: var(--danger-color); color: var(--danger-text-color); }
-        .modal-content button.confirm-danger:hover { background-color: #c82333; }
-        .modal-content button.confirm-info { background-color: var(--info-color); color: var(--info-text-color); }
-        .modal-content button.confirm-info:hover { background-color: #138496; } /* Darker teal */
-        .modal-content button.cancel {
-            background-color: var(--bg-color-light); color: var(--text-color-light);
-            border: 1px solid var(--card-border-light);
-        }
-        html.dark .modal-content button.cancel {
-            background-color: var(--toolbar-bg-dark); color: var(--text-color-dark);
-            border: 1px solid var(--card-border-dark);
-        }
-        .modal-content button.cancel:hover { background-color: rgba(0,0,0,0.05); }
-        html.dark .modal-content button.cancel:hover { background-color: rgba(255,255,255,0.1); }
-    </style>
+.rail {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 8px 6px;
+    border-right: var(--hair) solid var(--rule);
+    overflow-y: auto;
+    background: var(--panel);
+}
+.rail-key {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; min-height: 32px;
+    font-family: var(--f-mono); font-size: var(--label-size);
+    font-weight: 500; letter-spacing: var(--label-track); text-transform: uppercase;
+    color: var(--ink-soft);
+    background: transparent;
+    border: var(--hair) solid transparent;
+    border-radius: var(--r);
+    cursor: pointer; text-align: left;
+    transition: color var(--snap), background var(--snap), border-color var(--snap);
+}
+.rail-key svg {
+    width: 17px; height: 17px; flex-shrink: 0;
+    fill: none; stroke: currentColor; stroke-width: 1.5;
+    stroke-linecap: square; stroke-linejoin: miter;
+}
+.rail-key:hover { color: var(--ink); background: var(--ground-2); border-color: var(--rule); }
+.rail-key:active { color: #0a0b0d; background: var(--accent); border-color: var(--accent); }
+.rail-key:focus-visible { outline: 2px solid var(--s6); outline-offset: 1px; }
+.rail-l { display: none; }
+@media (min-width: 1080px) { .rail-l { display: inline; } }
+
+/* ══ 4. VIEWPORT ═════════════════════════════════════════════════════════════ */
+
+#board {
+    position: relative; overflow: hidden;
+    background: var(--well);
+    cursor: default;
+    min-width: 0;
+    touch-action: none;
+}
+#board.grab { cursor: grab; }
+#board.panning { cursor: grabbing; }
+#board.wiring { cursor: crosshair; }
+
+#world {
+    position: absolute; left: 0; top: 0;
+    transform-origin: 0 0;
+    background: var(--well);
+    border: var(--hair) solid var(--rule-hi);
+}
+/* Two lattices: a 20px cell that snapping lands on, and a 100px major every
+   fifth line so the eye can count distance without measuring it. */
+#world.grid {
+    background-image:
+        linear-gradient(to right, var(--rule) var(--hair), transparent var(--hair)),
+        linear-gradient(to bottom, var(--rule) var(--hair), transparent var(--hair)),
+        linear-gradient(to right, var(--rule-lo) var(--hair), transparent var(--hair)),
+        linear-gradient(to bottom, var(--rule-lo) var(--hair), transparent var(--hair));
+    background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+}
+
+#wires { position: absolute; left: 0; top: 0; z-index: 5; overflow: visible; pointer-events: none; }
+.wire {
+    fill: none; stroke: var(--phos); stroke-width: 1.6;
+    vector-effect: non-scaling-stroke;
+}
+.wire[data-band="s1"] { stroke: var(--s1); } .wire[data-band="s2"] { stroke: var(--s2); }
+.wire[data-band="s3"] { stroke: var(--s3); } .wire[data-band="s4"] { stroke: var(--s4); }
+.wire[data-band="s5"] { stroke: var(--s5); } .wire[data-band="s6"] { stroke: var(--s6); }
+.wire.dead { stroke: var(--ink-faint); stroke-dasharray: 3 3; }
+.wire.sel { stroke: var(--accent); stroke-width: 3; }
+.wire.ghost { stroke: var(--accent); stroke-dasharray: 5 4; }
+.wire-hit {
+    fill: none; stroke: transparent; stroke-width: 16;
+    vector-effect: non-scaling-stroke; pointer-events: stroke; cursor: pointer;
+}
+
+#marquee {
+    position: absolute; z-index: 40; pointer-events: none;
+    border: var(--hair) solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* ══ 5. NODES ════════════════════════════════════════════════════════════════
+   A node is a chassis that happens to be draggable: panel fill, one hairline,
+   square corners, no shadow. Depth still comes only from the fill ladder — the
+   board is --well, the node is --panel, the fields inside it are --well again. */
+
+.nd {
+    position: absolute; box-sizing: border-box;
+    display: flex; flex-direction: column;
+    background: var(--panel);
+    border: var(--hair) solid var(--rule);
+    color: var(--ink);
+    overflow: hidden;
+    transition: border-color var(--snap), opacity var(--snap);
+}
+/* The colour band, as a rule rather than a shadow. --rule-hi when unbanded so
+   every node still has a left edge and banding reads as a change, not an
+   addition. */
+.nd::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--nd-band, transparent); z-index: 2;
+}
+.nd[data-band="s1"] { --nd-band: var(--s1); } .nd[data-band="s2"] { --nd-band: var(--s2); }
+.nd[data-band="s3"] { --nd-band: var(--s3); } .nd[data-band="s4"] { --nd-band: var(--s4); }
+.nd[data-band="s5"] { --nd-band: var(--s5); } .nd[data-band="s6"] { --nd-band: var(--s6); }
+
+.nd:hover { border-color: var(--rule-hi); }
+.nd.sel { border-color: var(--accent); }
+.nd.sel > .nd-head { background: var(--accent); color: #0a0b0d; }
+.nd.sel > .nd-head .nd-ix,
+.nd.sel > .nd-head .nd-title { color: #0a0b0d; }
+.nd.sel > .nd-head .nd-title[data-empty]:empty::before { color: rgba(10,11,13,0.55); }
+.nd.sel > .nd-head .nd-key { color: #0a0b0d; }
+.nd:focus-visible { outline: 2px solid var(--s6); outline-offset: 1px; }
+.nd.bad { border-color: var(--alert); }
+.nd.cyc { border-color: var(--alert); border-style: dashed; }
+.nd.dim { opacity: 0.28; }
+.nd.hit { border-color: var(--s6); }
+.nd.folded > .nd-body, .nd.folded > .nd-rail, .nd.folded > .nd-grip { display: none; }
+.nd.folded .nd-key svg { transform: rotate(-90deg); }
+
+.nd-head {
+    display: flex; align-items: center; gap: 8px;
+    height: 26px; padding: 0 6px 0 9px;
+    border-bottom: var(--hair) solid var(--rule);
+    background: var(--ground-2);
+    cursor: move; flex-shrink: 0;
+    transition: background var(--snap), color var(--snap);
+}
+.nd-ix {
+    font-family: var(--f-mono); font-size: 0.58rem; font-weight: 600;
+    letter-spacing: 0.14em; color: var(--ink-faint);
+    flex-shrink: 0; user-select: none;
+}
+.nd-title {
+    flex: 1 1 auto; min-width: 0;
+    font-family: var(--f-mono); font-size: 0.68rem; font-weight: 500;
+    color: var(--ink-soft);
+    outline: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    cursor: text;
+}
+.nd-title:focus { color: var(--ink); }
+.nd-key {
+    display: flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; padding: 0;
+    background: transparent; border: none; color: var(--ink-faint);
+    cursor: pointer; flex-shrink: 0;
+}
+.nd-key svg {
+    width: 12px; height: 12px; fill: none; stroke: currentColor;
+    stroke-width: 1.6; stroke-linecap: square; transition: transform var(--snap);
+}
+.nd-key:hover { color: var(--ink); }
+.nd-key:focus-visible { outline: 2px solid var(--s6); outline-offset: 1px; }
+
+.nd-body { flex: 1 1 auto; min-height: 0; display: flex; overflow: hidden; }
+.nd-body > * { flex: 1 1 auto; min-width: 0; min-height: 0; }
+
+.nd-grip {
+    position: absolute; right: 0; bottom: 0; width: 16px; height: 16px;
+    cursor: nwse-resize; z-index: 6;
+    background:
+        linear-gradient(135deg, transparent 0 46%, var(--ink-faint) 46% 54%, transparent 54% 72%),
+        linear-gradient(135deg, transparent 0 72%, var(--ink-faint) 72% 80%, transparent 80%);
+    opacity: 0; transition: opacity var(--snap);
+}
+.nd:hover .nd-grip, .nd.sel .nd-grip { opacity: 0.75; }
+
+[data-empty]:empty::before {
+    content: attr(data-empty);
+    color: var(--ink-faint); pointer-events: none;
+}
+
+/* ══ 6. PORTS ════════════════════════════════════════════════════════════════
+   Named chips in a rail across the foot of the node rather than bare dots on
+   its edges. A socket you cannot read is a socket you have to guess at, and a
+   MATH node's sockets are words you typed thirty seconds ago. */
+
+.nd-rail {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+    padding: 5px 7px; flex-shrink: 0;
+    border-top: var(--hair) solid var(--rule);
+    background: var(--ground-2);
+}
+.pt-side { display: flex; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+.pt-out { justify-content: flex-end; }
+.pt {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--f-mono); font-size: 0.6rem; font-weight: 500;
+    letter-spacing: 0.04em; color: var(--ink-soft);
+    cursor: crosshair; user-select: none;
+    padding: 1px 0;
+    transition: color var(--snap);
+}
+.pt:hover { color: var(--ink); }
+.pt-s {
+    width: 9px; height: 9px; flex-shrink: 0;
+    background: var(--well);
+    border: var(--hair) solid var(--rule-hi);
+    transition: background var(--snap), border-color var(--snap);
+}
+.pt:hover .pt-s { border-color: var(--accent); }
+.pt.ok .pt-s { background: var(--accent); border-color: var(--accent); }
+.pt.no { opacity: 0.3; }
+.pt-l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 92px; }
+
+/* ══ 7. NODE BODIES ══════════════════════════════════════════════════════════ */
+
+/* NOTE ------------------------------------------------------------------- */
+.nd-rich {
+    padding: 9px 11px; overflow-y: auto; outline: none;
+    font-family: var(--f-prose); font-size: 0.82rem; line-height: 1.62;
+    color: var(--ink);
+}
+.nd-rich h1 { font-size: 1.15rem; font-weight: 600; margin: 0.35em 0 0.2em; }
+.nd-rich h2 { font-size: 1rem; font-weight: 600; margin: 0.35em 0 0.2em; }
+.nd-rich h3 { font-size: 0.9rem; font-weight: 600; margin: 0.35em 0 0.2em; }
+.nd-rich ul, .nd-rich ol { margin: 0.3em 0 0.3em 1.1em; padding: 0; }
+.nd-rich li { margin: 0.1em 0; }
+.nd-rich blockquote {
+    margin: 0.4em 0; padding-left: 0.7em;
+    border-left: 2px solid var(--accent); color: var(--hint-ink);
+}
+.nd-rich a { color: var(--s6); text-underline-offset: 2px; }
+.nd-rich code {
+    font-family: var(--f-mono); font-size: 0.9em;
+    background: var(--well); padding: 0 3px;
+    border: var(--hair) solid var(--rule);
+}
+.nd-rich pre {
+    font-family: var(--f-mono); font-size: 0.75rem;
+    background: var(--well); border: var(--hair) solid var(--rule);
+    padding: 7px 9px; margin: 0.4em 0; overflow-x: auto; white-space: pre-wrap;
+}
+.nd-rich mark { background: var(--accent); color: #0a0b0d; }
+.nd-rich hr { border: none; border-top: var(--hair) solid var(--rule); margin: 0.6em 0; }
+
+/* MATH -------------------------------------------------------------------- */
+/* The source column and the result column are two scroll boxes sharing one
+   line box. Both are locked to the same 20px leading and the textarea never
+   wraps, so row n on the left is row n on the right — the only arrangement in
+   which a result gutter can be trusted at a glance. */
+.mx { display: flex; min-width: 0; --mx-lh: 20px; }
+.mx-src, .mx-line {
+    font-family: var(--f-mono); font-size: 0.74rem;
+    line-height: var(--mx-lh); letter-spacing: 0;
+}
+.mx-src {
+    flex: 1 1 auto; min-width: 0;
+    padding: 8px 8px 8px 11px; margin: 0;
+    background: transparent; color: var(--ink);
+    border: none; outline: none; resize: none;
+    white-space: pre; overflow: auto;
+    caret-color: var(--phos); tab-size: 2;
+}
+.mx-src::placeholder { color: var(--ink-faint); }
+.mx-out {
+    width: 40%; max-width: 168px; flex-shrink: 0;
+    padding: 8px 10px 8px 8px;
+    background: var(--well);
+    border-left: var(--hair) solid var(--rule);
+    overflow: hidden; text-align: right;
+}
+.mx-line {
+    height: var(--mx-lh);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--phos); font-variant-numeric: tabular-nums;
+}
+.mx-assign { color: var(--phos); }
+.mx-expr { color: var(--phos-dim); }
+.mx-pending { color: var(--ink-faint); }
+.mx-error { color: var(--alert); font-size: 0.62rem; }
+
+/* VALUE ------------------------------------------------------------------- */
+.vl { display: flex; flex-direction: column; gap: 8px; padding: 10px 11px; }
+.vl-read { display: flex; align-items: baseline; }
+.vl-num {
+    font-family: var(--f-mono); font-size: 1.5rem; font-weight: 600;
+    color: var(--phos); font-variant-numeric: tabular-nums;
+    outline: none; min-width: 1ch;
+}
+.vl-num:focus { color: var(--ink); }
+.vl-range { width: 100%; margin: 0; }
+.vl-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.vl-cell, .pl-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vl-fld {
+    padding: 0.25em 0.4em; font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+}
+.vl-fld::-webkit-outer-spin-button, .vl-fld::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.vl-fld { -moz-appearance: textfield; }
+
+/* TABLE ------------------------------------------------------------------- */
+.tb { display: flex; flex-direction: column; min-width: 0; }
+.tb-scroll { flex: 1 1 auto; overflow: auto; min-height: 0; }
+.tb-grid { border-collapse: collapse; width: 100%; font-size: 0.7rem; }
+.tb-grid th, .tb-grid td {
+    border: var(--hair) solid var(--rule);
+    padding: 3px 6px; text-align: left; outline: none;
+    font-family: var(--f-mono); font-weight: 400;
+    min-width: 52px; white-space: nowrap;
+}
+.tb-grid th {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--ground-2); color: var(--ink-soft);
+    font-size: var(--label-size); font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+}
+.tb-grid td { color: var(--ink); background: var(--well); font-variant-numeric: tabular-nums; }
+.tb-grid td:focus, .tb-grid th:focus { background: var(--ground-2); box-shadow: none; color: var(--ink); }
+.tb-x { width: 20px; min-width: 20px; border: none !important; background: transparent !important; padding: 0 !important; }
+.tb-kill {
+    width: 18px; height: 18px; padding: 0; line-height: 1;
+    background: transparent; border: none; color: var(--ink-faint);
+    font-family: var(--f-mono); font-size: 0.8rem; cursor: pointer;
+}
+.tb-kill:hover { color: var(--alert); }
+.tb-bar, .ch-bar {
+    display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+    padding: 5px 7px; border-top: var(--hair) solid var(--rule);
+}
+.tb-stat, .ch-stat { color: var(--phos-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.key-mini {
+    min-height: 20px; padding: 0.15em 0.45em; font-size: 0.58rem;
+    letter-spacing: 0.1em;
+}
+
+/* PLOT / CHART ------------------------------------------------------------ */
+.pl, .ch { display: flex; flex-direction: column; min-width: 0; }
+.pl-expr { border: none; border-bottom: var(--hair) solid var(--rule); background: var(--well); flex-shrink: 0; }
+.pl-expr:focus { border-color: var(--accent); }
+.pl-svg, .ch-svg { flex: 1 1 auto; width: 100%; min-height: 0; background: var(--well); display: block; }
+.pl-axis { stroke: var(--rule-hi); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pl-curve { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.pl-empty {
+    fill: var(--ink-faint); font-family: var(--f-mono);
+    font-size: 5px; letter-spacing: 0.1em;
+}
+.ch-bar-r { fill: var(--accent); }
+.ch-line { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.ch-area { fill: color-mix(in srgb, var(--accent) 22%, transparent); stroke: none; }
+.pl-dom {
+    display: flex; align-items: flex-end; gap: 7px; flex-shrink: 0;
+    padding: 6px 8px; border-top: var(--hair) solid var(--rule);
+}
+.pl-dom .pl-cell { max-width: 76px; }
+.pl-read { color: var(--phos-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* TASKS ------------------------------------------------------------------- */
+.tk { display: flex; flex-direction: column; min-width: 0; }
+.tk-list { flex: 1 1 auto; overflow-y: auto; padding: 8px 10px; min-height: 0; }
+.tk-item { display: flex; align-items: flex-start; gap: 8px; padding: 2px 0; }
+.tk-txt {
+    flex: 1 1 auto; outline: none; min-width: 0;
+    font-family: var(--f-prose); font-size: 0.78rem; line-height: 1.45;
+    color: var(--ink); word-break: break-word;
+}
+.tk-item.done .tk-txt { color: var(--ink-faint); text-decoration: line-through; }
+.tk-item .chk { margin-top: 2px; }
+.tk-foot {
+    display: flex; align-items: center; gap: 9px; flex-shrink: 0;
+    padding: 6px 10px; border-top: var(--hair) solid var(--rule);
+}
+.tk-meter { flex: 1 1 auto; height: 5px; background: var(--well); border: var(--hair) solid var(--rule); }
+.tk-meter i { display: block; height: 100%; background: var(--accent); transition: width var(--slide); }
+.tk-stat { color: var(--phos); font-variant-numeric: tabular-nums; }
+
+/* STICKY / FRAME / IMAGE --------------------------------------------------- */
+.st-txt {
+    padding: 10px 12px; outline: none; overflow: auto;
+    font-family: var(--f-prose); font-size: 1.05rem; font-weight: 500;
+    line-height: 1.35; color: var(--ink);
+}
+.nd-frame { background: transparent; border-style: dashed; }
+.nd-frame > .nd-head { background: var(--panel); }
+.fr-fill { background: color-mix(in srgb, var(--panel) 55%, transparent); }
+.im { position: relative; display: flex; align-items: center; justify-content: center; background: var(--well); overflow: hidden; }
+.im.over { outline: 2px dashed var(--accent); outline-offset: -4px; }
+.im-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.im-hint {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+    text-align: center; padding: 12px; cursor: pointer;
+}
+.im-hint .designation { font-size: 0.72rem; color: var(--ink-soft); }
+.im-hint .hint { font-size: 0.62rem; }
+
+/* ══ 8. MINIMAP ══════════════════════════════════════════════════════════════ */
+
+#minimap {
+    position: absolute; right: 10px; bottom: 10px; z-index: 60;
+    background: var(--panel);
+    border: var(--hair) solid var(--rule-hi);
+    overflow: hidden; cursor: crosshair;
+}
+#mmWorld { position: absolute; inset: 0; }
+.mm-n { position: absolute; background: var(--ink-faint); }
+.mm-n.fr { background: transparent; border: var(--hair) solid var(--rule-hi); }
+.mm-n[data-band="s1"] { background: var(--s1); } .mm-n[data-band="s2"] { background: var(--s2); }
+.mm-n[data-band="s3"] { background: var(--s3); } .mm-n[data-band="s4"] { background: var(--s4); }
+.mm-n[data-band="s5"] { background: var(--s5); } .mm-n[data-band="s6"] { background: var(--s6); }
+.mm-n.sel { background: var(--accent); }
+#mmView {
+    position: absolute; z-index: 3; pointer-events: none;
+    border: var(--hair) solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.mm-l {
+    position: absolute; left: 4px; bottom: 2px; z-index: 4; pointer-events: none;
+    font-family: var(--f-mono); font-size: 0.55rem; letter-spacing: 0.16em;
+    color: var(--ink-faint);
+}
+
+/* ══ 9. INSPECTOR ════════════════════════════════════════════════════════════ */
+
+.insp {
+    display: none; flex-direction: column;
+    border-left: var(--hair) solid var(--rule);
+    background: var(--panel); overflow: hidden;
+}
+@media (min-width: 1080px) { .insp { display: flex; } }
+.insp-head { padding: 7px 10px; border-bottom: var(--hair) solid var(--rule); flex-shrink: 0; }
+.insp-body {
+    flex: 1 1 auto; overflow-y: auto;
+    padding: 10px; display: flex; flex-direction: column; gap: 9px;
+}
+.insp-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.insp-row b {
+    font-family: var(--f-mono); font-size: 0.68rem; font-weight: 500;
+    color: var(--phos); font-variant-numeric: tabular-nums;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;
+}
+.insp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.insp-geo { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.insp-body .hint { font-size: 0.64rem; }
+
+.bands { display: flex; gap: 4px; margin-top: 5px; }
+.band {
+    width: 21px; height: 21px; padding: 0; cursor: pointer;
+    background: var(--well);
+    border: var(--hair) solid var(--rule);
+    transition: border-color var(--snap);
+}
+.band[data-band="s1"] { background: var(--s1); } .band[data-band="s2"] { background: var(--s2); }
+.band[data-band="s3"] { background: var(--s3); } .band[data-band="s4"] { background: var(--s4); }
+.band[data-band="s5"] { background: var(--s5); } .band[data-band="s6"] { background: var(--s6); }
+.band[data-band="none"] {
+    background:
+        linear-gradient(45deg, transparent 46%, var(--ink-faint) 46% 54%, transparent 54%);
+}
+.band:hover { border-color: var(--rule-hi); }
+.band.on { border-color: var(--ink); border-width: 2px; }
+.band:focus-visible { outline: 2px solid var(--s6); outline-offset: 1px; }
+
+/* ══ 10. FOOT AND DOCK ═══════════════════════════════════════════════════════ */
+
+.stage-foot {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 5px 10px; flex-shrink: 0;
+    border-top: var(--hair) solid var(--rule);
+}
+.stage-foot .label { color: var(--ink-faint); }
+kbd {
+    font-family: var(--f-mono); font-size: 0.6rem;
+    padding: 1px 4px; color: var(--ink-soft);
+    background: var(--well); border: var(--hair) solid var(--rule);
+}
+.foot-help { display: none; }
+@media (min-width: 860px) { .foot-help { display: flex; align-items: center; gap: 6px; } }
+
+.dock { position: static; margin: 0 -10px; }
+.page { padding-bottom: 0; }
+.dock-inner { flex-wrap: wrap; }
+#dockStat { color: var(--phos-dim); }
+
+.page-foot { display: none; }
+
+/* ══ 11. FORMAT BAR ══════════════════════════════════════════════════════════
+   Follows the note you are editing instead of living in the dock. A global
+   formatting toolbar on a board this size means a 900px round trip to make a
+   word bold. */
+
+#fmtBar {
+    position: fixed; z-index: 900;
+    display: flex; align-items: center; gap: 3px;
+    padding: 4px 5px;
+    background: var(--panel);
+    border: var(--hair) solid var(--rule-hi);
+}
+#fmtBar .key { min-height: 24px; padding: 0.2em 0.45em; font-size: 0.58rem; }
+#fmtBar .toolbar-sep { width: 1px; height: 16px; background: var(--rule); margin: 0 2px; }
+
+/* ══ 12. COMMAND PALETTE ═════════════════════════════════════════════════════ */
+
+.panel-modal .sheet { max-width: 520px; }
+.sheet-head { padding: 10px 12px; border-bottom: var(--hair) solid var(--rule); }
+.sheet-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.sheet-foot {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 10px 12px; border-top: var(--hair) solid var(--rule);
+}
+#cmdList { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; }
+.cmd {
+    display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+    width: 100%; padding: 6px 9px; text-align: left; cursor: pointer;
+    background: transparent; border: var(--hair) solid transparent;
+    transition: background var(--snap), border-color var(--snap);
+}
+.cmd-l { font-family: var(--f-mono); font-size: 0.74rem; color: var(--ink); }
+.cmd-n {
+    font-family: var(--f-mono); font-size: 0.6rem; color: var(--hint-ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+.cmd.on { background: var(--ground-2); border-color: var(--rule-hi); }
+.cmd.on .cmd-l { color: var(--phos); }
+
+/* ══ 13. REDUCED MOTION ══════════════════════════════════════════════════════
+   Nothing here animates for effect — the only motion is the grid drift the
+   sheet already stops and the meter fill, which becomes an instant jump. A
+   static frame, not a blank one. */
+@media (prefers-reduced-motion: reduce) {
+    .tk-meter i { transition: none; }
+}
+
+/* ══ 14. NARROW ══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 700px) {
+    .head-well { display: none; }
+    .page { padding: 8px 8px 0; }
+    .dock { margin: 0 -8px; }
+}
+</style>
 </head>
 <body>
 
-    <div id="canvas-container"><div id="canvas"></div></div>
-    <div id="minimap">
-        <div id="minimap-world"></div>
-        <div id="minimapViewport"></div>
-        <div id="minimapLabel">Map</div>
-    </div>
-    <div id="toolbar">
-        <button id="addNoteBtn" class="toolbar-button" data-tooltip="Add Note"><span class="material-symbols-outlined">add_circle</span></button>
-        <button id="deleteNoteBtn" class="toolbar-button" data-tooltip="Delete Selected Note" disabled><span class="material-symbols-outlined">delete</span></button>
-        <div class="toolbar-separator"></div>
-        <button id="zoomInBtn" class="toolbar-button" data-tooltip="Zoom In"><span class="material-symbols-outlined">zoom_in</span></button>
-        <button id="zoomOutBtn" class="toolbar-button" data-tooltip="Zoom Out"><span class="material-symbols-outlined">zoom_out</span></button>
-        <button id="resetZoomBtn" class="toolbar-button" data-tooltip="Reset View"><span class="material-symbols-outlined">center_focus_strong</span></button>
-        <div class="toolbar-separator"></div>
-        <button id="boldBtn" class="toolbar-button" data-tooltip="Bold (Ctrl+B)"><span class="material-symbols-outlined">format_bold</span></button>
-        <button id="italicBtn" class="toolbar-button" data-tooltip="Italic (Ctrl+I)"><span class="material-symbols-outlined">format_italic</span></button>
-        <button id="underlineBtn" class="toolbar-button" data-tooltip="Underline (Ctrl+U)"><span class="material-symbols-outlined">format_underlined</span></button>
-        <button id="strikethroughBtn" class="toolbar-button" data-tooltip="Strikethrough"><span class="material-symbols-outlined">format_strikethrough</span></button>
-        <button id="linkBtn" class="toolbar-button" data-tooltip="Create Link"><span class="material-symbols-outlined">link</span></button>
-        <div class="toolbar-separator"></div>
-        <button id="h1Btn" class="toolbar-button" data-tooltip="Heading 1"><span class="material-symbols-outlined">format_h1</span></button>
-        <button id="h2Btn" class="toolbar-button" data-tooltip="Heading 2"><span class="material-symbols-outlined">format_h2</span></button>
-        <button id="h3Btn" class="toolbar-button" data-tooltip="Heading 3"><span class="material-symbols-outlined">format_h3</span></button>
-        <button id="ulBtn" class="toolbar-button" data-tooltip="Unordered List"><span class="material-symbols-outlined">format_list_bulleted</span></button>
-        <button id="olBtn" class="toolbar-button" data-tooltip="Ordered List"><span class="material-symbols-outlined">format_list_numbered</span></button>
-        <button id="checklistBtn" class="toolbar-button" data-tooltip="Checklist Item"><span class="material-symbols-outlined">checklist</span></button>
-        <button id="quoteBtn" class="toolbar-button" data-tooltip="Blockquote"><span class="material-symbols-outlined">format_quote</span></button>
-        <button id="inlineCodeBtn" class="toolbar-button" data-tooltip="Inline Code"><span class="material-symbols-outlined">code</span></button>
-        <button id="codeBlockBtn" class="toolbar-button" data-tooltip="Code Block"><span class="material-symbols-outlined">code_blocks</span></button>
-        <div class="toolbar-separator"></div>
-        <button id="toggleGridBtn" class="toolbar-button" data-tooltip="Toggle Grid"><span class="material-symbols-outlined">grid_on</span></button>
-        <button id="toggleThemeBtn" class="toolbar-button" data-tooltip="Toggle Theme"><span class="material-symbols-outlined">brightness_6</span></button>
-        <div class="toolbar-separator"></div>
-        <button id="exportCanvasBtn" class="toolbar-button" data-tooltip="Export Canvas"><span class="material-symbols-outlined">download</span></button>
-        <button id="importCanvasBtn" class="toolbar-button" data-tooltip="Import Canvas"><span class="material-symbols-outlined">upload_file</span></button>
-    </div>
-    <input type="file" id="importFilePicker" accept=".json" class="hidden">
+<main class="page">
 
-    <div id="customTooltip" class="hidden"></div>
+    <header class="chassis page-head">
+        <div class="head-row">
+            <div class="brand">
+                <h1 class="designation">NODE BOARD</h1>
+                <span class="stripe brand-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="bezel head-well">
+                <span class="stat"><span class="label">NODES</span><b id="sNodes">0</b></span>
+                <span class="stat"><span class="label">WIRES</span><b id="sEdges">0</b></span>
+                <span class="stat"><span class="label">LAST PASS</span><b id="sEval">—</b></span>
+            </div>
+            <div class="head-ctl">
+                <div class="lamp"><span class="led on green" aria-hidden="true"></span><span class="label">LOCAL</span></div>
+                <div class="phos-sw theme-sw">
+                    <svg class="theme-ico ico-moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 10.6A5.8 5.8 0 0 1 5.4 2.8a5.8 5.8 0 1 0 7.8 7.8Z"/></svg>
+                    <label class="rocker">
+                        <input type="checkbox" id="themeSw" aria-label="Light or dark theme">
+                        <span class="rock"></span>
+                    </label>
+                    <svg class="theme-ico ico-sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.1"/><path d="M8 .8v2M8 13.2v2M.8 8h2M13.2 8h2M2.9 2.9l1.4 1.4M11.7 11.7l1.4 1.4M13.1 2.9l-1.4 1.4M4.3 11.7l-1.4 1.4"/></svg>
+                </div>
+            </div>
+        </div>
+    </header>
 
-    <div id="confirmDeleteOverlay" class="modal-overlay hidden"></div>
-    <div id="confirmDeleteModal" class="modal-content hidden">
-        <h3>Delete Note?</h3>
-        <p>Are you sure you want to permanently delete this note? This action cannot be undone.</p>
-        <div class="buttons">
-            <button id="cancelDeleteBtn" class="cancel">Cancel</button>
-            <button id="confirmDeleteFinalBtn" class="confirm-danger">Delete</button>
+    <section class="chassis board-wrap">
+
+        <div class="stage-bar">
+            <button class="key" type="button" id="cmdBtn" title="Command palette (Ctrl+K)" aria-label="Open the command palette">⌘ COMMANDS</button>
+            <span class="toolbar-sep" aria-hidden="true"></span>
+            <button class="key" type="button" id="zoomOut" title="Zoom out" aria-label="Zoom out">&minus;</button>
+            <span class="label" id="zoomVal">100%</span>
+            <button class="key" type="button" id="zoomIn" title="Zoom in" aria-label="Zoom in">+</button>
+            <button class="key" type="button" id="fitBtn" title="Fit the board, or the selection (F)">FIT</button>
+            <button class="key" type="button" id="oneBtn" title="Zoom to actual size">1:1</button>
+            <span class="toolbar-sep" aria-hidden="true"></span>
+            <button class="key" type="button" id="gridBtn" aria-pressed="true" title="Show the grid (G)">GRID</button>
+            <button class="key" type="button" id="snapBtn" aria-pressed="true" title="Snap to the grid">SNAP</button>
+            <button class="key" type="button" id="wireBtn" aria-pressed="true" title="Show the wires (W)">WIRES</button>
+            <button class="key" type="button" id="tidyBtn" title="Lay every node out in dependency order (T)">TIDY</button>
+            <span class="spacer"></span>
+            <span class="find">
+                <label class="sr-only" for="searchFld">Find a node</label>
+                <input class="field" type="search" id="searchFld" placeholder="FIND (CTRL+F)" autocomplete="off">
+                <span class="label" id="searchStat"></span>
+            </span>
+        </div>
+
+        <div class="work">
+            <nav class="rail" id="rail" aria-label="Add a node"></nav>
+
+            <div id="board">
+                <div id="world"><svg id="wires" xmlns="http://www.w3.org/2000/svg"></svg></div>
+                <div id="marquee" hidden></div>
+                <div id="minimap" title="Click or drag to move around the board">
+                    <div id="mmWorld"></div>
+                    <div id="mmView"></div>
+                    <span class="mm-l" aria-hidden="true">MAP</span>
+                </div>
+            </div>
+
+            <aside class="insp" id="insp" aria-label="Inspector">
+                <div class="insp-head"><span class="label">INSPECTOR</span></div>
+                <div class="insp-body" id="inspBody"></div>
+            </aside>
+        </div>
+
+        <div class="stage-foot">
+            <span class="stat"><span class="label">DRAG A SOCKET ONTO ANOTHER TO WIRE IT</span></span>
+            <span class="spacer"></span>
+            <span class="foot-help"><span class="label">PAN</span><kbd>SPACE</kbd><span class="label">DRAG · ZOOM</span><kbd>SCROLL</kbd><span class="label">· SELECT</span><kbd>DRAG</kbd></span>
+        </div>
+
+    </section>
+
+    <div class="dock">
+        <span class="stripe dock-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <div class="dock-inner">
+            <button class="key" type="button" id="undoBtn" title="Undo (Ctrl+Z)" disabled>&larr; UNDO</button>
+            <button class="key" type="button" id="redoBtn" title="Redo (Ctrl+Shift+Z)" disabled>REDO &rarr;</button>
+            <span class="toolbar-sep" aria-hidden="true"></span>
+            <button class="key" type="button" id="dupBtn" title="Duplicate the selection (Ctrl+D)" disabled>DUPLICATE</button>
+            <button class="key key-danger" type="button" id="delBtn" title="Delete the selection (Delete)" disabled>DELETE</button>
+            <span class="toolbar-sep" aria-hidden="true"></span>
+            <button class="key key-go" type="button" id="expBtn" title="Save the whole board to a file">EXPORT JSON &darr;</button>
+            <button class="key" type="button" id="mdBtn" title="Save the board as readable Markdown">MARKDOWN <span class="key-lbl">&darr;</span></button>
+            <button class="key" type="button" id="impBtn" title="Load a board file — replaces what is here">IMPORT</button>
+            <button class="key key-danger" type="button" id="clearBtn" title="Empty the board">CLEAR</button>
+            <span class="spacer"></span>
+            <span class="label count" id="dockStat">EMPTY BOARD</span>
         </div>
     </div>
 
-    <div id="confirmImportOverlay" class="modal-overlay hidden"></div>
-    <div id="confirmImportModal" class="modal-content hidden">
-        <h3>Import Canvas?</h3>
-        <p>Importing a canvas will overwrite your current notes and settings. Are you sure you want to proceed?</p>
-        <div class="buttons">
-            <button id="cancelImportBtn" class="cancel">Cancel</button>
-            <button id="confirmImportFinalBtn" class="confirm-info">Import</button>
+    <footer class="chassis page-foot">
+        <a class="key" href="https://isaiart.com">&larr; ISAIART.COM</a>
+    </footer>
+
+</main>
+
+<!-- The format bar rides above whichever NOTE has the caret. -->
+<div id="fmtBar" hidden>
+    <button class="key" type="button" data-cmd="bold" data-state="bold" title="Bold (Ctrl+B)" aria-label="Bold"><b>B</b></button>
+    <button class="key" type="button" data-cmd="italic" data-state="italic" title="Italic (Ctrl+I)" aria-label="Italic"><i>I</i></button>
+    <button class="key" type="button" data-cmd="underline" data-state="underline" title="Underline (Ctrl+U)" aria-label="Underline"><u>U</u></button>
+    <button class="key" type="button" data-cmd="strikeThrough" data-state="strikeThrough" title="Strike through" aria-label="Strike through"><s>S</s></button>
+    <span class="toolbar-sep" aria-hidden="true"></span>
+    <button class="key" type="button" data-cmd="block:h1" data-state="block:h1" title="Heading 1" aria-label="Heading 1">H1</button>
+    <button class="key" type="button" data-cmd="block:h2" data-state="block:h2" title="Heading 2" aria-label="Heading 2">H2</button>
+    <button class="key" type="button" data-cmd="block:blockquote" data-state="block:blockquote" title="Quote" aria-label="Quote">&rdquo;</button>
+    <button class="key" type="button" data-cmd="insertUnorderedList" data-state="insertUnorderedList" title="Bulleted list" aria-label="Bulleted list">&bull;&mdash;</button>
+    <button class="key" type="button" data-cmd="insertOrderedList" data-state="insertOrderedList" title="Numbered list" aria-label="Numbered list">1&mdash;</button>
+    <span class="toolbar-sep" aria-hidden="true"></span>
+    <button class="key" type="button" data-cmd="link" title="Add a link" aria-label="Add a link">LINK</button>
+    <button class="key" type="button" data-cmd="removeFormat" title="Strip formatting" aria-label="Strip formatting">CLEAR</button>
+</div>
+
+<div class="panel-modal" id="cmdModal" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="sheet">
+        <div class="sheet-head"><span class="label">COMMANDS</span></div>
+        <div class="sheet-body">
+            <label class="sr-only" for="cmdField">Search commands</label>
+            <input class="field" type="text" id="cmdField" placeholder="Add a node, tidy, export, go to…" autocomplete="off" spellcheck="false">
+            <div id="cmdList"></div>
         </div>
     </div>
+</div>
 
+<div class="panel-modal" id="clrModal" role="dialog" aria-modal="true" aria-label="Clear the board">
+    <div class="sheet">
+        <div class="sheet-head"><span class="label">CLEAR THE BOARD</span></div>
+        <div class="sheet-body">
+            <p class="hint">Every node and wire goes. Undo will bring them back until you close the tab — export first if this board matters.</p>
+        </div>
+        <div class="sheet-foot">
+            <button class="key" type="button" id="clrNo">CANCEL</button>
+            <button class="key key-danger" type="button" id="clrYes">CLEAR IT</button>
+        </div>
+    </div>
+</div>
 
-    <script>
-        // DOM Elements
-        const canvasContainer = document.getElementById('canvas-container');
-        const canvas = document.getElementById('canvas');
-        const toolbar = document.getElementById('toolbar');
-        const customTooltipEl = document.getElementById('customTooltip');
-        const confirmDeleteOverlay = document.getElementById('confirmDeleteOverlay');
-        const confirmDeleteModal = document.getElementById('confirmDeleteModal');
-        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-        const confirmDeleteFinalBtn = document.getElementById('confirmDeleteFinalBtn');
-        const confirmImportOverlay = document.getElementById('confirmImportOverlay');
-        const confirmImportModal = document.getElementById('confirmImportModal');
-        const cancelImportBtn = document.getElementById('cancelImportBtn');
-        const confirmImportFinalBtn = document.getElementById('confirmImportFinalBtn');
-        const importFilePicker = document.getElementById('importFilePicker');
+<input type="file" id="impFile" accept=".json,application/json" hidden>
 
-
-        const addNoteBtn = document.getElementById('addNoteBtn');
-        const deleteNoteBtn = document.getElementById('deleteNoteBtn');
-        const zoomInBtn = document.getElementById('zoomInBtn');
-        const zoomOutBtn = document.getElementById('zoomOutBtn');
-        const resetZoomBtn = document.getElementById('resetZoomBtn');
-        const toggleGridBtn = document.getElementById('toggleGridBtn');
-        const toggleThemeBtn = document.getElementById('toggleThemeBtn');
-        const exportCanvasBtn = document.getElementById('exportCanvasBtn');
-        const importCanvasBtn = document.getElementById('importCanvasBtn');
-        const formattingButtons = {};
-        Object.assign(formattingButtons, {
-            bold: document.getElementById('boldBtn'), italic: document.getElementById('italicBtn'),
-            underline: document.getElementById('underlineBtn'), strikethrough: document.getElementById('strikethroughBtn'),
-            link: document.getElementById('linkBtn'), h1: document.getElementById('h1Btn'),
-            h2: document.getElementById('h2Btn'), h3: document.getElementById('h3Btn'),
-            ul: document.getElementById('ulBtn'), ol: document.getElementById('olBtn'),
-            checklist: document.getElementById('checklistBtn'), quote: document.getElementById('quoteBtn'),
-            inlineCode: document.getElementById('inlineCodeBtn'), codeBlock: document.getElementById('codeBlockBtn'),
-        });
-
-        // State
-        let notes = [];
-        let selectedNoteId = null;
-        let noteIdToDelete = null;
-        let fileToImport = null; // For import confirmation
-        let highestZIndex = 1;
-        let zoomLevel = 1;
-        let panX = 0, panY = 0;
-        let isPanning = false, lastPanX, lastPanY;
-        let isDraggingNote = false, isResizingNote = false;
-        let dragOffsetX, dragOffsetY;
-        let initialResizeMouseX, initialResizeMouseY, initialNoteWidth, initialNoteHeight;
-
-        // Constants
-        const GRID_SIZE = 20;
-        const MIN_NOTE_WIDTH = GRID_SIZE * 5;
-        const MIN_NOTE_HEIGHT = GRID_SIZE * 4;
-        // Finite canvas world (multiples of GRID_SIZE) so you can't get lost.
-        const WORLD_WIDTH = GRID_SIZE * 300;   // 6000
-        const WORLD_HEIGHT = GRID_SIZE * 200;  // 4000
-        const PAN_MARGIN = 80;                 // small overscroll past the world edge
-        const MINIMAP_MAX = 190;               // max minimap dimension in px
-
-        // Minimap DOM
-        const minimapEl = document.getElementById('minimap');
-        const minimapWorldEl = document.getElementById('minimap-world');
-        const minimapViewportEl = document.getElementById('minimapViewport');
-        let minimapScale = 1;
-        let isMinimapDragging = false;
-        const NOTE_COLORS = ['rgba(255, 215, 0, 0.7)', 'rgba(173, 216, 230, 0.7)', 'rgba(144, 238, 144, 0.7)', 'rgba(255, 182, 193, 0.7)', 'rgba(221, 160, 221, 0.7)', 'rgba(240, 240, 240, 0.7)'];
-        const DARK_NOTE_COLORS = ['rgba(255, 215, 0, 0.6)', 'rgba(70, 130, 180, 0.6)', 'rgba(60, 179, 113, 0.6)', 'rgba(219, 112, 147, 0.6)', 'rgba(147, 112, 219, 0.6)', 'rgba(60, 60, 60, 0.7)'];
-        const EXPORT_VERSION = "1.0.0"; // For data structure versioning
-
-        function snapToGrid(value, gridSize = GRID_SIZE) { return Math.round(value / gridSize) * gridSize; }
-        function clamp(v, min, max) { return Math.max(min, Math.min(v, max)); }
-        // Keep a note fully inside the finite world.
-        function clampNoteX(x, w) { return clamp(x, 0, Math.max(0, WORLD_WIDTH - w)); }
-        function clampNoteY(y, h) { return clamp(y, 0, Math.max(0, WORLD_HEIGHT - h)); }
-
-        // --- Minimap ---
-        function layoutMinimap() {
-            const ar = WORLD_WIDTH / WORLD_HEIGHT;
-            let w = MINIMAP_MAX, h = MINIMAP_MAX / ar;
-            if (h > MINIMAP_MAX) { h = MINIMAP_MAX; w = MINIMAP_MAX * ar; }
-            minimapEl.style.width = `${w}px`; minimapEl.style.height = `${h}px`;
-            minimapScale = w / WORLD_WIDTH;
-        }
-        function updateMinimap() {
-            if (!minimapScale) layoutMinimap();
-            // notes
-            minimapWorldEl.innerHTML = '';
-            const frag = document.createDocumentFragment();
-            notes.forEach(n => {
-                const d = document.createElement('div');
-                d.className = 'minimap-note' + (n.id === selectedNoteId ? ' selected' : '');
-                d.style.left = `${n.x * minimapScale}px`;
-                d.style.top = `${n.y * minimapScale}px`;
-                d.style.width = `${Math.max(2, n.width * minimapScale)}px`;
-                d.style.height = `${Math.max(2, n.height * minimapScale)}px`;
-                if (n.color) d.style.backgroundColor = n.color;
-                frag.appendChild(d);
-            });
-            minimapWorldEl.appendChild(frag);
-            // viewport rectangle (visible region expressed in world coords)
-            const vw = canvasContainer.clientWidth, vh = canvasContainer.clientHeight;
-            const viewLeft = -panX / zoomLevel, viewTop = -panY / zoomLevel;
-            minimapViewportEl.style.left = `${viewLeft * minimapScale}px`;
-            minimapViewportEl.style.top = `${viewTop * minimapScale}px`;
-            minimapViewportEl.style.width = `${(vw / zoomLevel) * minimapScale}px`;
-            minimapViewportEl.style.height = `${(vh / zoomLevel) * minimapScale}px`;
-        }
-        function minimapPanTo(clientX, clientY) {
-            const rect = minimapEl.getBoundingClientRect();
-            const worldX = (clientX - rect.left) / minimapScale;
-            const worldY = (clientY - rect.top) / minimapScale;
-            // center the main viewport on the clicked world point
-            panX = canvasContainer.clientWidth / 2 - worldX * zoomLevel;
-            panY = canvasContainer.clientHeight / 2 - worldY * zoomLevel;
-            updateCanvasTransform(); saveState();
-        }
-        function getSelectedNoteContentElement() {
-            if (!selectedNoteId) return null;
-            const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
-            return noteEl ? noteEl.querySelector('.note-content') : null;
-        }
-
-        function init() {
-            // Size the finite world and prepare the minimap before first paint.
-            canvas.style.width = `${WORLD_WIDTH}px`;
-            canvas.style.height = `${WORLD_HEIGHT}px`;
-            layoutMinimap();
-
-            loadState(); updateCanvasTransform(); renderNotes(); updateToolbarState();
-            applyTheme(localStorage.getItem('modularNotepad_theme_v8') || 'light');
-            applyGridVisibility(localStorage.getItem('modularNotepad_gridVisible_v8') === 'true');
-
-            canvasContainer.addEventListener('mousedown', handleCanvasMouseDown);
-            canvasContainer.addEventListener('wheel', handleCanvasWheel, { passive: false });
-            document.addEventListener('mousemove', handleGlobalMouseMove);
-            document.addEventListener('mouseup', handleGlobalMouseUp);
-
-            minimapEl.addEventListener('mousedown', (e) => {
-                e.preventDefault(); e.stopPropagation();
-                isMinimapDragging = true; minimapPanTo(e.clientX, e.clientY);
-            });
-            window.addEventListener('resize', () => { updateCanvasTransform(); });
-
-            setupToolbarButtonListeners();
-            setupCustomTooltips();
-            setupDeleteConfirmation();
-            setupImportConfirmation();
-
-            document.addEventListener('selectionchange', updateFormattingButtonStates);
-            document.addEventListener('click', handleDocumentClickForDeselectionAndPalette);
-        }
-
-        function setupToolbarButtonListeners() {
-            addNoteBtn.addEventListener('click', addNote);
-            deleteNoteBtn.addEventListener('click', triggerDeleteConfirmation);
-            zoomInBtn.addEventListener('click', () => zoomViaButton(1.2));
-            zoomOutBtn.addEventListener('click', () => zoomViaButton(1 / 1.2));
-            resetZoomBtn.addEventListener('click', resetView);
-            toggleGridBtn.addEventListener('click', toggleGrid);
-            toggleThemeBtn.addEventListener('click', toggleTheme);
-            exportCanvasBtn.addEventListener('click', exportCanvasData);
-            importCanvasBtn.addEventListener('click', () => importFilePicker.click());
-            importFilePicker.addEventListener('change', handleFileImportSelection);
-
-            Object.entries(formattingButtons).forEach(([key, btn]) => {
-                switch (key) {
-                    case 'bold': btn.addEventListener('click', () => execCmd('bold')); break;
-                    case 'italic': btn.addEventListener('click', () => execCmd('italic')); break;
-                    case 'underline': btn.addEventListener('click', () => execCmd('underline')); break;
-                    case 'strikethrough': btn.addEventListener('click', () => execCmd('strikeThrough')); break;
-                    case 'link': btn.addEventListener('click', createLink); break;
-                    case 'h1': btn.addEventListener('click', () => execCmdFormatBlock('h1')); break;
-                    case 'h2': btn.addEventListener('click', () => execCmdFormatBlock('h2')); break;
-                    case 'h3': btn.addEventListener('click', () => execCmdFormatBlock('h3')); break;
-                    case 'ul': btn.addEventListener('click', () => execCmd('insertUnorderedList')); break;
-                    case 'ol': btn.addEventListener('click', () => execCmd('insertOrderedList')); break;
-                    case 'checklist': btn.addEventListener('click', insertChecklistItemFromToolbar); break;
-                    case 'quote': btn.addEventListener('click', () => execCmdFormatBlock('blockquote')); break;
-                    case 'inlineCode': btn.addEventListener('click', insertInlineCode); break;
-                    case 'codeBlock': btn.addEventListener('click', insertCodeBlock); break;
-                }
-            });
-        }
-
-        function setupCustomTooltips() {
-            const buttonsWithTooltips = toolbar.querySelectorAll('button[data-tooltip]');
-            buttonsWithTooltips.forEach(button => {
-                const tooltipText = button.dataset.tooltip;
-                button.addEventListener('mouseenter', (e) => {
-                    if (tooltipText) {
-                        customTooltipEl.textContent = tooltipText;
-                        const btnRect = button.getBoundingClientRect();
-                        customTooltipEl.style.left = `${btnRect.left + btnRect.width / 2 - customTooltipEl.offsetWidth / 2}px`;
-                        customTooltipEl.style.top = `${btnRect.top - customTooltipEl.offsetHeight - 6}px`;
-                        customTooltipEl.classList.remove('hidden'); customTooltipEl.classList.add('visible');
-                    }
-                });
-                button.addEventListener('mouseleave', () => {
-                    customTooltipEl.classList.remove('visible');
-                    setTimeout(() => { if (!customTooltipEl.classList.contains('visible')) customTooltipEl.classList.add('hidden'); }, 150);
-                });
-            });
-        }
-
-        function setupDeleteConfirmation() {
-            cancelDeleteBtn.addEventListener('click', hideConfirmDeletePopup);
-            confirmDeleteFinalBtn.addEventListener('click', () => {
-                if (noteIdToDelete) performActualDeletion(noteIdToDelete);
-                hideConfirmDeletePopup();
-            });
-            confirmDeleteOverlay.addEventListener('click', hideConfirmDeletePopup);
-        }
-        function triggerDeleteConfirmation() {
-            if (selectedNoteId) {
-                noteIdToDelete = selectedNoteId;
-                confirmDeleteOverlay.classList.remove('hidden'); confirmDeleteModal.classList.remove('hidden');
-                confirmDeleteFinalBtn.focus();
-            }
-        }
-        function hideConfirmDeletePopup() {
-            confirmDeleteOverlay.classList.add('hidden'); confirmDeleteModal.classList.add('hidden');
-            noteIdToDelete = null;
-        }
-        function performActualDeletion(idOfNoteToDelete) {
-            notes = notes.filter(note => note.id !== idOfNoteToDelete);
-            canvas.querySelector(`.note[data-id="${idOfNoteToDelete}"]`)?.remove();
-            if (selectedNoteId === idOfNoteToDelete) selectedNoteId = null;
-            updateToolbarState(); saveState(); updateMinimap();
-        }
-
-        function setupImportConfirmation() {
-            cancelImportBtn.addEventListener('click', hideConfirmImportPopup);
-            confirmImportFinalBtn.addEventListener('click', () => {
-                if (fileToImport) performActualImport(fileToImport);
-                hideConfirmImportPopup();
-            });
-            confirmImportOverlay.addEventListener('click', hideConfirmImportPopup);
-        }
-        function triggerConfirmImportPopup(file) {
-            fileToImport = file;
-            confirmImportOverlay.classList.remove('hidden');
-            confirmImportModal.classList.remove('hidden');
-            confirmImportFinalBtn.focus();
-        }
-        function hideConfirmImportPopup() {
-            confirmImportOverlay.classList.add('hidden');
-            confirmImportModal.classList.add('hidden');
-            fileToImport = null;
-            importFilePicker.value = ''; // Reset file picker
-        }
-        
-        function applyTheme(theme) {
-            document.documentElement.classList.toggle('dark', theme === 'dark');
-            toggleThemeBtn.querySelector('.material-symbols-outlined').textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
-            localStorage.setItem('modularNotepad_theme_v8', theme);
-        }
-        function toggleTheme() { applyTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark'); }
-        function applyGridVisibility(visible) {
-            canvas.classList.toggle('grid-visible', visible);
-            toggleGridBtn.classList.toggle('active', visible);
-            localStorage.setItem('modularNotepad_gridVisible_v8', visible);
-        }
-        function toggleGrid() { applyGridVisibility(!canvas.classList.contains('grid-visible')); }
-
-        function clampPan() {
-            const vw = canvasContainer.clientWidth, vh = canvasContainer.clientHeight;
-            const worldW = WORLD_WIDTH * zoomLevel, worldH = WORLD_HEIGHT * zoomLevel;
-            if (worldW <= vw) { panX = (vw - worldW) / 2; }      // world narrower than view -> center
-            else { panX = clamp(panX, vw - worldW - PAN_MARGIN, PAN_MARGIN); }
-            if (worldH <= vh) { panY = (vh - worldH) / 2; }
-            else { panY = clamp(panY, vh - worldH - PAN_MARGIN, PAN_MARGIN); }
-        }
-        function updateCanvasTransform() {
-            clampPan();
-            canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
-            updateMinimap();
-        }
-        function centerView() {
-            const vw = canvasContainer.clientWidth, vh = canvasContainer.clientHeight;
-            panX = vw / 2 - (WORLD_WIDTH / 2) * zoomLevel;
-            panY = vh / 2 - (WORLD_HEIGHT / 2) * zoomLevel;
-        }
-        function zoomAtPoint(mouseX, mouseY, factor) {
-            const mouseBeforeZoomX = (mouseX - panX) / zoomLevel;
-            const mouseBeforeZoomY = (mouseY - panY) / zoomLevel;
-            zoomLevel = Math.max(0.1, Math.min(zoomLevel * factor, 5));
-            panX = mouseX - mouseBeforeZoomX * zoomLevel;
-            panY = mouseY - mouseBeforeZoomY * zoomLevel;
-            updateCanvasTransform(); saveState();
-        }
-        function zoomViaButton(factor) {
-            const rect = canvasContainer.getBoundingClientRect();
-            zoomAtPoint(rect.width / 2, rect.height / 2, factor);
-        }
-        function resetView() { zoomLevel = 1; centerView(); updateCanvasTransform(); saveState(); }
-        function handleCanvasMouseDown(e) {
-            if (e.target === canvasContainer || e.target === canvas) {
-                isPanning = true; canvasContainer.style.cursor = 'grabbing';
-                lastPanX = e.clientX; lastPanY = e.clientY;
-            }
-        }
-        function handleCanvasWheel(e) {
-            e.preventDefault();
-            const deltaFactor = e.deltaY > 0 ? 1 / 1.1 : 1.1;
-            const rect = canvasContainer.getBoundingClientRect();
-            zoomAtPoint(e.clientX - rect.left, e.clientY - rect.top, deltaFactor);
-        }
-
-        function createNoteElement(note) {
-            const noteEl = document.createElement('div');
-            noteEl.className = 'note'; noteEl.dataset.id = note.id;
-            Object.assign(noteEl.style, {
-                left: `${note.x}px`, top: `${note.y}px`, width: `${note.width}px`,
-                height: `${note.height}px`, zIndex: note.zIndex, backgroundColor: note.color
-            });
-            if (note.id === selectedNoteId) noteEl.classList.add('selected');
-
-            const headerEl = document.createElement('div'); headerEl.className = 'note-header';
-            const titleEl = document.createElement('div'); titleEl.className = 'note-title';
-            titleEl.setAttribute('contenteditable', 'false'); titleEl.setAttribute('placeholder', 'Title');
-            titleEl.innerHTML = note.title || '';
-            titleEl.addEventListener('dblclick', () => {
-                titleEl.setAttribute('contenteditable', 'true'); titleEl.focus(); document.execCommand('selectAll', false, null);
-            });
-            titleEl.addEventListener('blur', () => {
-                titleEl.setAttribute('contenteditable', 'false'); note.title = titleEl.innerHTML; saveState();
-            });
-            titleEl.addEventListener('input', () => {
-                if (titleEl.getAttribute('contenteditable') === 'true') { note.title = titleEl.innerHTML; saveStateDebounced(); }
-            });
-            titleEl.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && titleEl.getAttribute('contenteditable') === 'true') { e.preventDefault(); titleEl.blur(); }
-            });
-
-            const colorPickerInput = document.createElement('input'); colorPickerInput.type = 'button';
-            colorPickerInput.className = 'note-color-picker'; colorPickerInput.title = "Change note color";
-            colorPickerInput.style.backgroundColor = note.color || (document.documentElement.classList.contains('dark') ? DARK_NOTE_COLORS[5] : NOTE_COLORS[5]);
-            colorPickerInput.addEventListener('click', (e) => { e.stopPropagation(); showColorPalette(e.target, note.id); });
-            
-            headerEl.appendChild(titleEl); headerEl.appendChild(colorPickerInput);
-
-            const contentWrapperEl = document.createElement('div'); contentWrapperEl.className = 'note-content-wrapper';
-            const contentEl = document.createElement('div'); contentEl.className = 'note-content';
-            contentEl.setAttribute('contenteditable', 'true'); contentEl.setAttribute('placeholder', 'Start typing...');
-            contentEl.innerHTML = note.content;
-            contentEl.addEventListener('focus', () => { selectNote(note.id); updateFormattingButtonStates(); });
-            contentEl.addEventListener('blur', () => { note.content = contentEl.innerHTML; saveState(); });
-            contentEl.addEventListener('input', () => { note.content = contentEl.innerHTML; saveStateDebounced(); });
-            contentEl.addEventListener('change', (e) => {
-                if (e.target.type === 'checkbox' && e.target.closest('.checklist-item')) { note.content = contentEl.innerHTML; saveState(); }
-            });
-            contentEl.addEventListener('keydown', handleNoteContentKeydown);
-            contentWrapperEl.appendChild(contentEl);
-
-            const resizeHandleEl = document.createElement('div'); resizeHandleEl.className = 'note-resize-handle';
-            resizeHandleEl.innerHTML = `<span class="material-symbols-outlined">aspect_ratio</span>`;
-            noteEl.append(headerEl, contentWrapperEl, resizeHandleEl);
-
-            headerEl.addEventListener('mousedown', (e) => {
-                const titleIsEditable = titleEl.getAttribute('contenteditable') === 'true';
-                if (e.target.closest('.note-color-picker') || (e.target.closest('.note-title') && titleIsEditable)) {
-                    if (e.target.closest('.note-title') && !titleIsEditable && !noteEl.classList.contains('selected')) selectNote(note.id);
-                    return; 
-                }
-                e.stopPropagation(); isDraggingNote = true; selectNote(note.id);
-                canvasContainer.style.cursor = 'grabbing';
-                const noteRect = noteEl.getBoundingClientRect();
-                dragOffsetX = (e.clientX - noteRect.left) / zoomLevel; dragOffsetY = (e.clientY - noteRect.top) / zoomLevel;
-                bringToFront(note.id);
-            });
-            resizeHandleEl.addEventListener('mousedown', (e) => {
-                e.stopPropagation(); isResizingNote = true; selectNote(note.id);
-                noteEl.style.cursor = 'nwse-resize'; canvasContainer.style.cursor = 'nwse-resize';
-                initialResizeMouseX = (e.clientX - panX) / zoomLevel; initialResizeMouseY = (e.clientY - panY) / zoomLevel;
-                initialNoteWidth = parseFloat(noteEl.style.width); initialNoteHeight = parseFloat(noteEl.style.height);
-                bringToFront(note.id);
-            });
-            return noteEl;
-        }
-
-        function handleNoteContentKeydown(e) {
-            const contentEl = e.target; const selection = window.getSelection();
-            const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-            if (e.key === 'Enter' && range) {
-                const parentNode = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
-                const parentChecklistItem = parentNode.closest('.checklist-item');
-                if (parentChecklistItem) {
-                    e.preventDefault();
-                    if (e.shiftKey) { document.execCommand('insertLineBreak'); }
-                    else {
-                        const newChecklistItemId = `chk-${Date.now()}`;
-                        const newChecklistItemHtml = `<div class="checklist-item"><input type="checkbox" id="${newChecklistItemId}"><span contenteditable="true"> </span></div>`;
-                        parentChecklistItem.insertAdjacentHTML('afterend', newChecklistItemHtml);
-                        const newSpan = parentChecklistItem.nextElementSibling.querySelector('span[contenteditable="true"]');
-                        if (newSpan) {
-                            const newRange = document.createRange(); newRange.selectNodeContents(newSpan);
-                            newRange.collapse(true); selection.removeAllRanges(); selection.addRange(newRange); newSpan.focus();
-                        }
-                    }
-                    const currentNote = notes.find(n => n.id === selectedNoteId);
-                    if (currentNote) { currentNote.content = contentEl.innerHTML; saveState(); }
-                    return;
-                }
-            }
-        }
-
-        function bringToFront(noteId) {
-            const note = notes.find(n => n.id === noteId);
-            const noteEl = canvas.querySelector(`.note[data-id="${noteId}"]`);
-            if (note && noteEl && (note.zIndex < highestZIndex || notes.filter(n => n.zIndex === note.zIndex).length > 1 && note.zIndex !== highestZIndex)) {
-                highestZIndex++; note.zIndex = highestZIndex; noteEl.style.zIndex = note.zIndex;
-            }
-        }
-        
-        function handleGlobalMouseMove(e) {
-            if (isPanning) {
-                const dx = e.clientX - lastPanX; const dy = e.clientY - lastPanY;
-                panX += dx; panY += dy; lastPanX = e.clientX; lastPanY = e.clientY;
-                updateCanvasTransform();
-            } else if (isMinimapDragging) {
-                minimapPanTo(e.clientX, e.clientY);
-            } else if (isDraggingNote && selectedNoteId) {
-                const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`); if (!noteEl) return;
-                const w = parseFloat(noteEl.style.width), h = parseFloat(noteEl.style.height);
-                // live snap-to-grid + keep inside the world
-                let newX = clampNoteX(snapToGrid((e.clientX - panX) / zoomLevel - dragOffsetX), w);
-                let newY = clampNoteY(snapToGrid((e.clientY - panY) / zoomLevel - dragOffsetY), h);
-                noteEl.style.left = `${newX}px`; noteEl.style.top = `${newY}px`;
-                updateMinimap();
-            } else if (isResizingNote && selectedNoteId) {
-                const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`); if (!noteEl) return;
-                const noteX = parseFloat(noteEl.style.left), noteY = parseFloat(noteEl.style.top);
-                const currentMouseX = (e.clientX - panX) / zoomLevel; const currentMouseY = (e.clientY - panY) / zoomLevel;
-                // live snap, clamp to minimum and to the world edge
-                let newWidth = snapToGrid(initialNoteWidth + (currentMouseX - initialResizeMouseX));
-                let newHeight = snapToGrid(initialNoteHeight + (currentMouseY - initialResizeMouseY));
-                newWidth = clamp(newWidth, MIN_NOTE_WIDTH, WORLD_WIDTH - noteX);
-                newHeight = clamp(newHeight, MIN_NOTE_HEIGHT, WORLD_HEIGHT - noteY);
-                noteEl.style.width = `${newWidth}px`; noteEl.style.height = `${newHeight}px`;
-                updateMinimap();
-            }
-        }
-        function handleGlobalMouseUp() {
-            if (isPanning) { isPanning = false; saveState(); }
-            if (isMinimapDragging) { isMinimapDragging = false; }
-            if (isDraggingNote && selectedNoteId) {
-                const note = notes.find(n => n.id === selectedNoteId);
-                const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
-                if (note && noteEl) {
-                    note.x = clampNoteX(snapToGrid(parseFloat(noteEl.style.left)), note.width);
-                    note.y = clampNoteY(snapToGrid(parseFloat(noteEl.style.top)), note.height);
-                    noteEl.style.left = `${note.x}px`; noteEl.style.top = `${note.y}px`;
-                    saveState(); updateMinimap();
-                }
-                isDraggingNote = false;
-            }
-            if (isResizingNote && selectedNoteId) {
-                const note = notes.find(n => n.id === selectedNoteId);
-                const noteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"]`);
-                if (note && noteEl) {
-                    note.width = clamp(snapToGrid(parseFloat(noteEl.style.width)), MIN_NOTE_WIDTH, WORLD_WIDTH - note.x);
-                    note.height = clamp(snapToGrid(parseFloat(noteEl.style.height)), MIN_NOTE_HEIGHT, WORLD_HEIGHT - note.y);
-                    noteEl.style.width = `${note.width}px`; noteEl.style.height = `${note.height}px`;
-                    saveState(); updateMinimap();
-                }
-                isResizingNote = false;
-            }
-            if (!isPanning && !isDraggingNote && !isResizingNote) canvasContainer.style.cursor = 'grab';
-        }
-        
-        function renderNotes() { canvas.innerHTML = ''; notes.forEach(note => canvas.appendChild(createNoteElement(note))); updateMinimap(); }
-        function addNote() {
-            highestZIndex++;
-            const viewCenterX = (canvasContainer.offsetWidth / 2 - panX) / zoomLevel;
-            const viewCenterY = (canvasContainer.offsetHeight / 2 - panY) / zoomLevel;
-            const initialWidth = snapToGrid(240); const initialHeight = snapToGrid(180);
-            const newNote = {
-                id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, title: '', content: '',
-                x: clampNoteX(snapToGrid(viewCenterX - initialWidth / 2), initialWidth),
-                y: clampNoteY(snapToGrid(viewCenterY - initialHeight / 2), initialHeight),
-                width: initialWidth, height: initialHeight,
-                color: document.documentElement.classList.contains('dark') ? DARK_NOTE_COLORS[5] : NOTE_COLORS[5],
-                zIndex: highestZIndex
-            };
-            notes.push(newNote);
-            const noteEl = createNoteElement(newNote); canvas.appendChild(noteEl);
-            selectNote(newNote.id); saveState(); updateMinimap();
-        }
-        function selectNote(noteId) {
-            if (selectedNoteId === noteId && document.querySelector(`.note[data-id="${noteId}"].selected`)) {
-                bringToFront(noteId);
-            } else {
-                deselectAllNotes(); selectedNoteId = noteId;
-                const noteEl = canvas.querySelector(`.note[data-id="${noteId}"]`);
-                if (noteEl) { noteEl.classList.add('selected'); bringToFront(noteId); }
-            }
-            updateToolbarState(); updateFormattingButtonStates(); updateMinimap();
-        }
-        function deselectAllNotes() {
-            if (selectedNoteId) {
-                const prevSelectedNoteEl = canvas.querySelector(`.note[data-id="${selectedNoteId}"].selected`);
-                if (prevSelectedNoteEl) {
-                    prevSelectedNoteEl.classList.remove('selected');
-                    const titleEl = prevSelectedNoteEl.querySelector('.note-title[contenteditable="true"]');
-                    titleEl?.blur();
-                }
-            }
-            selectedNoteId = null; updateToolbarState(); updateFormattingButtonStates(); updateMinimap();
-        }
-        function handleDocumentClickForDeselectionAndPalette(event) {
-            if ((event.target === canvasContainer || event.target === canvas) && !isPanning && !isDraggingNote && !isResizingNote) {
-                deselectAllNotes();
-            }
-            if (activeColorPalette && !activeColorPalette.contains(event.target) && !event.target.classList.contains('note-color-picker')) {
-                activeColorPalette.remove(); activeColorPalette = null;
-            }
-        }
-        
-        let activeColorPalette = null;
-        function showColorPalette(anchorElement, noteId) {
-            activeColorPalette?.remove();
-            const palette = document.createElement('div'); palette.className = 'color-palette';
-            const currentColors = document.documentElement.classList.contains('dark') ? DARK_NOTE_COLORS : NOTE_COLORS;
-            currentColors.forEach(color => {
-                const option = document.createElement('div'); option.className = 'color-option'; option.style.backgroundColor = color;
-                option.addEventListener('click', (e) => {
-                    e.stopPropagation(); updateNoteColor(noteId, color); palette.remove(); activeColorPalette = null;
-                });
-                palette.appendChild(option);
-            });
-            document.body.appendChild(palette);
-            const anchorRect = anchorElement.getBoundingClientRect();
-            Object.assign(palette.style, { top: `${anchorRect.bottom + 5}px`, left: `${anchorRect.left}px`});
-            activeColorPalette = palette;
-        }
-        function updateNoteColor(noteId, color) {
-            const note = notes.find(n => n.id === noteId);
-            const noteEl = canvas.querySelector(`.note[data-id="${noteId}"]`);
-            if (note && noteEl) {
-                note.color = color; noteEl.style.backgroundColor = color;
-                noteEl.querySelector('.note-color-picker').style.backgroundColor = color; saveState();
-            }
-        }
-
-        function updateToolbarState() {
-            const isNoteSelected = !!selectedNoteId;
-            deleteNoteBtn.disabled = !isNoteSelected;
-            Object.values(formattingButtons).forEach(btn => btn.disabled = !isNoteSelected);
-        }
-        function execCmd(command, value = null) {
-            const contentEl = getSelectedNoteContentElement();
-            if (!contentEl || document.activeElement !== contentEl) contentEl?.focus();
-            document.execCommand(command, false, value);
-            if (contentEl) {
-                const note = notes.find(n => n.id === selectedNoteId);
-                if (note) note.content = contentEl.innerHTML; saveStateDebounced();
-            }
-            updateFormattingButtonStates();
-        }
-        function execCmdFormatBlock(tagName) { execCmd('formatBlock', `<${tagName}>`); }
-        function createLink() {
-            const contentEl = getSelectedNoteContentElement(); if (!contentEl) return;
-            if (document.activeElement !== contentEl) contentEl.focus();
-            const url = prompt("Enter link URL:", "https://");
-            if (url) execCmd('createLink', url);
-        }
-        function insertChecklistItemFromToolbar() {
-            const contentEl = getSelectedNoteContentElement(); if (!contentEl) return;
-            if (document.activeElement !== contentEl) contentEl.focus();
-            const id = `chk-${Date.now()}`;
-            const html = `<div class="checklist-item"><input type="checkbox" id="${id}"><span contenteditable="true">List item</span></div>`;
-            document.execCommand('insertHTML', false, html);
-            const newSpan = contentEl.querySelector(`#${id}`)?.nextElementSibling;
-            if (newSpan) {
-                const range = document.createRange(); const sel = window.getSelection();
-                range.selectNodeContents(newSpan); range.collapse(false);
-                sel.removeAllRanges(); sel.addRange(range); newSpan.focus();
-            }
-            const note = notes.find(n => n.id === selectedNoteId);
-            if (note) note.content = contentEl.innerHTML; saveState();
-        }
-        function insertInlineCode() { surroundSelection('<code>', '</code>', true); }
-        function insertCodeBlock() { surroundSelection('<pre><code>', '</code></pre>', false); }
-        function surroundSelection(prefix, suffix, isInline) {
-            const contentEl = getSelectedNoteContentElement(); if (!contentEl) return;
-            if (document.activeElement !== contentEl) contentEl.focus();
-            const sel = window.getSelection();
-            if (sel.rangeCount > 0) {
-                const range = sel.getRangeAt(0); if (!contentEl.contains(range.commonAncestorContainer)) return;
-                const selectedText = sel.toString();
-                let replacementHTML = isInline ? `${prefix}${selectedText || "code"}${suffix}` : `${prefix}${selectedText || "\n"}${suffix}`;
-                document.execCommand('insertHTML', false, replacementHTML);
-                const note = notes.find(n => n.id === selectedNoteId);
-                if (note) note.content = contentEl.innerHTML; saveStateDebounced();
-            }
-        }
-        function updateFormattingButtonStates() {
-            if (!selectedNoteId) {
-                Object.values(formattingButtons).forEach(btn => { btn.classList.remove('active'); btn.disabled = true; }); return;
-            }
-            Object.values(formattingButtons).forEach(btn => btn.disabled = false);
-            const contentEl = getSelectedNoteContentElement();
-            if (document.activeElement === contentEl) {
-                try {
-                    formattingButtons.bold.classList.toggle('active', document.queryCommandState('bold'));
-                    formattingButtons.italic.classList.toggle('active', document.queryCommandState('italic'));
-                    formattingButtons.underline.classList.toggle('active', document.queryCommandState('underline'));
-                    formattingButtons.strikethrough.classList.toggle('active', document.queryCommandState('strikeThrough'));
-                    formattingButtons.ul.classList.toggle('active', document.queryCommandState('insertUnorderedList'));
-                    formattingButtons.ol.classList.toggle('active', document.queryCommandState('insertOrderedList'));
-                    const blockType = document.queryCommandValue('formatBlock').toLowerCase();
-                    formattingButtons.h1.classList.toggle('active', blockType === 'h1');
-                    formattingButtons.h2.classList.toggle('active', blockType === 'h2');
-                    formattingButtons.h3.classList.toggle('active', blockType === 'h3');
-                    formattingButtons.quote.classList.toggle('active', blockType === 'blockquote');
-                    ['link', 'checklist', 'inlineCode', 'codeBlock'].forEach(k => formattingButtons[k].classList.remove('active'));
-                } catch (e) { console.warn("Could not query command state:", e); }
-            } else { Object.values(formattingButtons).forEach(btn => btn.classList.remove('active')); }
-        }
-
-        // --- Import/Export ---
-        function exportCanvasData() {
-            const dataToExport = {
-                version: EXPORT_VERSION,
-                notes: notes,
-                transform: { zoomLevel, panX, panY },
-                highestZIndex: highestZIndex,
-                settings: {
-                    theme: localStorage.getItem('modularNotepad_theme_v8') || 'light',
-                    gridVisible: localStorage.getItem('modularNotepad_gridVisible_v8') === 'true'
-                }
-            };
-            const jsonString = JSON.stringify(dataToExport, null, 2); // Pretty print
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-            a.download = `notepad-canvas-backup-${timestamp}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function handleFileImportSelection(event) {
-            const file = event.target.files[0];
-            if (file && file.type === "application/json") {
-                triggerConfirmImportPopup(file);
-            } else if (file) {
-                alert("Invalid file type. Please select a .json file.");
-                importFilePicker.value = ''; // Reset
-            }
-        }
-
-        function performActualImport(file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    // Basic validation
-                    if (!importedData || typeof importedData !== 'object' || !importedData.notes || !importedData.transform || !importedData.settings) {
-                        throw new Error("Invalid JSON structure for import.");
-                    }
-                    // Could add version check here: if (importedData.version !== EXPORT_VERSION) ...
-
-                    notes = importedData.notes.map(note => { // Sanitize/default imported notes
-                        const width = snapToGrid(Math.max(parseFloat(note.width) || MIN_NOTE_WIDTH, MIN_NOTE_WIDTH));
-                        const height = snapToGrid(Math.max(parseFloat(note.height) || MIN_NOTE_HEIGHT, MIN_NOTE_HEIGHT));
-                        return {
-                            ...note,
-                            x: clampNoteX(snapToGrid(parseFloat(note.x) || 0), width),
-                            y: clampNoteY(snapToGrid(parseFloat(note.y) || 0), height),
-                            width, height,
-                            zIndex: parseInt(note.zIndex, 10) || 1,
-                            title: note.title || '',
-                            content: note.content || ''
-                        };
-                    });
-                    
-                    zoomLevel = parseFloat(importedData.transform.zoomLevel) || 1;
-                    panX = parseFloat(importedData.transform.panX) || 0;
-                    panY = parseFloat(importedData.transform.panY) || 0;
-                    highestZIndex = parseInt(importedData.highestZIndex, 10) || (notes.length > 0 ? Math.max(...notes.map(n => n.zIndex || 0), 0) + 1 : 1);
-
-                    applyTheme(importedData.settings.theme || 'light');
-                    applyGridVisibility(importedData.settings.gridVisible === true); // Ensure boolean
-
-                    selectedNoteId = null; // Deselect any current note
-                    renderNotes();
-                    updateCanvasTransform();
-                    updateToolbarState();
-                    saveState(); // Save the newly imported state to localStorage
-                    alert("Canvas imported successfully!");
-
-                } catch (error) {
-                    console.error("Error importing file:", error);
-                    alert(`Error importing file: ${error.message}`);
-                } finally {
-                    importFilePicker.value = ''; // Reset file picker
-                }
-            };
-            reader.readAsText(file);
-        }
-
-
-        const LS_APP_PREFIX = 'modularNotepad_';
-        const LS_NOTES_KEY = LS_APP_PREFIX + 'notes_v8_io';
-        const LS_TRANSFORM_KEY = LS_APP_PREFIX + 'transform_v8';
-        const LS_HIGHEST_Z_KEY = LS_APP_PREFIX + 'highestZ_v8';
-        const LS_THEME_KEY = LS_APP_PREFIX + 'theme_v8';
-        const LS_GRID_VISIBLE_KEY = LS_APP_PREFIX + 'gridVisible_v8';
-
-        let saveTimeout;
-        function saveStateDebounced() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveState, 500); }
-        function saveState() {
-            clearTimeout(saveTimeout);
-            if (notes.some(note => isNaN(note.x) || isNaN(note.y) || isNaN(note.width) || isNaN(note.height) || isNaN(note.zIndex))) {
-                console.error("Attempted to save invalid (NaN) note data. Aborting save."); return;
-            }
-            localStorage.setItem(LS_NOTES_KEY, JSON.stringify(notes));
-            localStorage.setItem(LS_TRANSFORM_KEY, JSON.stringify({ zoomLevel, panX, panY }));
-            localStorage.setItem(LS_HIGHEST_Z_KEY, highestZIndex.toString());
-            // Theme and grid are saved by their respective apply functions, which are called during import too.
-        }
-        function loadState() {
-            const storedNotes = localStorage.getItem(LS_NOTES_KEY);
-            if (storedNotes) {
-                try {
-                    notes = JSON.parse(storedNotes).map(note => {
-                        const width = snapToGrid(Math.max(parseFloat(note.width) || MIN_NOTE_WIDTH, MIN_NOTE_WIDTH));
-                        const height = snapToGrid(Math.max(parseFloat(note.height) || MIN_NOTE_HEIGHT, MIN_NOTE_HEIGHT));
-                        return {
-                            id: note.id, title: note.title || '', content: note.content || '',
-                            x: clampNoteX(snapToGrid(parseFloat(note.x) || 0), width),
-                            y: clampNoteY(snapToGrid(parseFloat(note.y) || 0), height),
-                            width, height,
-                            color: note.color, zIndex: parseInt(note.zIndex, 10) || 1
-                        };
-                    });
-                } catch (e) { console.error("Error parsing notes:", e); notes = []; }
-            }
-            const storedTransform = localStorage.getItem(LS_TRANSFORM_KEY);
-            if (storedTransform) {
-                try {
-                    const t = JSON.parse(storedTransform);
-                    zoomLevel = parseFloat(t.zoomLevel) || 1; panX = parseFloat(t.panX) || 0; panY = parseFloat(t.panY) || 0;
-                } catch (e) { centerView(); }
-            } else {
-                centerView();
-            }
-            highestZIndex = parseInt(localStorage.getItem(LS_HIGHEST_Z_KEY), 10) || (notes.length > 0 ? Math.max(...notes.map(n => n.zIndex || 0), 0) + 1 : 1);
-        }
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                if (!confirmDeleteModal.classList.contains('hidden')) { hideConfirmDeletePopup(); e.preventDefault(); return; }
-                if (!confirmImportModal.classList.contains('hidden')) { hideConfirmImportPopup(); e.preventDefault(); return; }
-                if (activeColorPalette) { activeColorPalette.remove(); activeColorPalette = null; e.preventDefault(); return; }
-                const activeTitle = document.querySelector('.note-title[contenteditable="true"]');
-                if (activeTitle) { activeTitle.blur(); e.preventDefault(); return; }
-            }
-            const activeEl = document.activeElement;
-            const isContentFocused = activeEl && activeEl.classList.contains('note-content') && activeEl.isContentEditable;
-            const isTitleFocused = activeEl && activeEl.classList.contains('note-title') && activeEl.isContentEditable;
-
-            if (isContentFocused) {
-                if (e.ctrlKey || e.metaKey) {
-                    switch (e.key.toLowerCase()) {
-                        case 'b': e.preventDefault(); execCmd('bold'); break;
-                        case 'i': e.preventDefault(); execCmd('italic'); break;
-                        case 'u': e.preventDefault(); execCmd('underline'); break;
-                    }
-                }
-                return;
-            }
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNoteId && !isContentFocused && !isTitleFocused && confirmDeleteModal.classList.contains('hidden')) {
-                e.preventDefault(); triggerDeleteConfirmation();
-            }
-        });
-        
-        init();
-    </script>
+<script src="../assets/console.js?v=10"></script>
+<script src="math.js?v=1"></script>
+<script src="board.js?v=1"></script>
+<script>
+(function () {
+    'use strict';
+    /* No clock and no trace: the head-well reports the graph instead, which is
+       the thing this page can actually be judged by. */
+    if (window.SRCH) SRCH.themeSwitch(document.getElementById('themeSw'));
+    if (window.CAS) CAS.pageTransition();
+})();
+</script>
 </body>
 </html>

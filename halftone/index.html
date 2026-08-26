@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0b0d">
+<title>Halftone Plate</title>
+<meta name="description" content="Screen an image into a real halftone: rotated lattice, equalised dot area, linear-light tone, and four-colour separation at the classic angles. Runs entirely in the browser.">
+
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../assets/vector.css?v=10">
+<link rel="stylesheet" href="../assets/console.css?v=10">
+<script src="../assets/cassette.js?v=10"></script>
+
+<style>
+/* ── The page as a printed sheet ──────────────────────────────────────────
+   vector.css grounds every page on engineering paper: a ruled square grid,
+   drifting. Correct for a console, wrong for this one — the whole subject
+   here is what happens when you stop ruling a surface and start screening
+   it. So the ground gets screened instead, at the same 45° every plate on
+   this page defaults to, and the accent stops being a UI blue and becomes
+   process cyan: the first ink down on a four-colour press.
+
+   Everything else is left alone. This is the same machine as the rest of
+   the site, pointed at ink. */
+
+:root {
+    --accent:    #00a9e0;      /* process cyan, the C of CMYK */
+    --screen-dot: var(--rule-lo);
+}
+:root[data-theme="light"] {
+    /* Cyan on paper needs to come down to clear 4.5:1 for the small tabular
+       readouts that carry it. */
+    --accent:    #006d94;
+}
+
+/* A 45° dot lattice, built as two offset square lattices rather than by
+   rotating a layer — a rotated fixed layer has to be overscanned by half the
+   viewport diagonal before its corners stop swinging into view, and this
+   costs nothing. Translating by one whole cell in each axis is a lattice
+   vector, so the drift loops seamlessly. */
+body::before {
+    background-image:
+        radial-gradient(var(--screen-dot) 1.1px, transparent 1.6px),
+        radial-gradient(var(--screen-dot) 1.1px, transparent 1.6px);
+    background-size: 20px 20px, 20px 20px;
+    background-position: 0 0, 10px 10px;
+    animation: plate-drift 46s linear infinite;
+}
+@keyframes plate-drift {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(20px, 20px, 0); }
+}
+
+/* The coarse screen over the fine one, at a pitch and a rate that never lock
+   into step — which is the moiré this tool exists to teach you to avoid, run
+   deliberately slow enough to read as texture. */
+body::after {
+    background-image:
+        radial-gradient(var(--rule) 1.6px, transparent 2.2px),
+        radial-gradient(var(--rule) 1.6px, transparent 2.2px);
+    background-size: 132px 132px, 132px 132px;
+    background-position: 0 0, 66px 66px;
+    opacity: 0.42;
+    animation: plate-drift-major 132s linear infinite;
+}
+@keyframes plate-drift-major {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(132px, 132px, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body::before, body::after { animation: none !important; transform: none !important; }
+}
+
+/* No clock, no oscilloscope, no strapline. The control strip underneath says
+   what this machine is, in ink rather than in words, and it says it about the
+   settings you are actually holding. So the header is just the mark and the
+   lamp, and the grid the shared stylesheet reserved for a readout closes up. */
+@media (min-width: 540px) {
+    .head-row { grid-template-columns: 1fr auto; }
+    .brand    { grid-area: 1 / 1; }
+    .head-ctl { grid-area: 1 / 2; justify-self: end; justify-content: flex-end; }
+}
+.page-head { padding-bottom: 15px; }
+.brand-stripe { max-width: 300px; }
+
+/* ── Printer's marks ──────────────────────────────────────────────────── */
+.reg { flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.3; }
+
+.reg-mark {
+    position: absolute;
+    width: 18px; height: 18px;
+    color: var(--ink-faint);
+    opacity: 0.55;
+    pointer-events: none;
+}
+.reg-tl { top: 8px; left: 8px; }
+.reg-tr { top: 8px; right: 8px; }
+.reg-bl { bottom: 8px; left: 8px; }
+.reg-br { bottom: 8px; right: 8px; }
+
+/* ── Control strip ────────────────────────────────────────────────────── */
+.strip-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 14px;
+    overflow-x: auto;
+    color: var(--ink-faint);
+}
+.strip-row .reg { width: 15px; height: 15px; }
+.strip-row .label { white-space: nowrap; }
+#strip {
+    display: block; flex: 0 0 auto;
+    height: 26px;
+    border: var(--hair) solid var(--rule);
+}
+
+/* ── Work area: controls beside a stage that keeps the plate as large as it
+      can be. Stacked on narrow screens, plate first. ───────────────────── */
+.work { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
+@media (min-width: 940px) { .work { grid-template-columns: 380px 1fr; } }
+
+.controls { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.controls .rack { break-inside: auto; margin: 0; }
+
+.stage { display: flex; flex-direction: column; padding: 0; min-width: 0; order: -1; }
+@media (min-width: 940px) { .stage { order: 0; position: sticky; top: 12px; } }
+
+.stage-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 9px 12px; border-bottom: var(--hair) solid var(--rule);
+}
+.stage-bar .key { min-height: 26px; }
+
+/* The viewport is a fixed box the canvas fills exactly; the plate is moved
+   around INSIDE it by a transform rather than by resizing the canvas. That is
+   what makes panning and cursor-anchored zoom possible at all. */
+.canvas-wrap {
+    position: relative;
+    min-height: 360px;
+    height: clamp(360px, 66vh, 780px);
+    overflow: hidden;
+    touch-action: none;
+    background: repeating-conic-gradient(var(--ground-2) 0% 25%, var(--well) 0% 50%) 50% / 16px 16px;
+}
+.canvas-wrap.drag { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.canvas-wrap.has-img { cursor: grab; }
+.canvas-wrap.panning { cursor: grabbing; }
+
+#view { display: block; position: absolute; inset: 0; }
+
+.drop-hint {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; text-align: center; padding: 20px; pointer-events: none;
+}
+
+.stage-foot {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px;
+    padding: 9px 12px; border-top: var(--hair) solid var(--rule);
+    font-size: 0.68rem; color: var(--ink-soft);
+}
+.stat { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; min-width: 0; }
+.stat b { font-weight: 500; color: var(--phos); font-variant-numeric: tabular-nums; }
+
+/* The interaction legend is the one nowrap item long enough to push the page
+   sideways on a phone — and it describes a mouse, so it is no loss there. */
+.stat-help { display: none; }
+@media (min-width: 760px) { .stat-help { display: flex; } }
+
+/* A thread of progress along the top of the stage while a full plate is being
+   pulled, because that render is deliberately slow and silence reads as a
+   hang. */
+.prog { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: transparent; }
+.prog i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 90ms linear; }
+
+/* ── Slider rows ──────────────────────────────────────────────────────────
+   A screening panel is mostly sliders, so they get a tighter row than the
+   generic .fld: name and live value on one line, track beneath. */
+.sl { display: flex; flex-direction: column; gap: 3px; }
+.sl-top { display: flex; align-items: baseline; gap: 8px; }
+.sl-top .val {
+    margin-left: auto;
+    font-size: 0.62rem; color: var(--phos);
+    font-variant-numeric: tabular-nums;
+}
+.sl input[type="range"] { width: 100%; }
+.rack-body.tight { gap: 11px; }
+
+/* A slider moved off the preset it came from gets a lit cap, so you can see
+   at a glance which controls you touched. */
+.sl.moved .sl-top .label { color: var(--ink); }
+.sl.moved .val { color: var(--accent); }
+
+/* Range inputs get a flat treatment so they belong to the drawing rather than
+   to the operating system. */
+input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 18px; background: transparent; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--rule-hi); border: 0; }
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 10px; height: 14px; margin-top: -6px;
+    background: var(--accent); border: 0; border-radius: 0;
+}
+input[type="range"]::-moz-range-track { height: 2px; background: var(--rule-hi); border: 0; }
+input[type="range"]::-moz-range-thumb { width: 10px; height: 14px; background: var(--accent); border: 0; border-radius: 0; }
+input[type="range"]:focus-visible { outline: 2px solid var(--s6); outline-offset: 2px; }
+input[type="range"]:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* A control that has been switched out of play should look it, not just stop
+   responding — the row is what you read, the input is only what you hit. */
+.chk:has(input:disabled) { opacity: 0.4; cursor: not-allowed; }
+.sl:has(input:disabled) .label,
+.sl:has(input:disabled) .val { opacity: 0.45; }
+
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets .key { min-height: 26px; padding: 0.3em 0.6em; }
+.presets .key.latched { color: #0a0b0d; background: var(--accent); border-color: var(--accent); }
+
+/* ── Colour ───────────────────────────────────────────────────────────── */
+.colour-row { display: flex; align-items: center; gap: 9px; }
+.colour-row .label { flex: 1 1 auto; }
+input[type="color"] {
+    width: 38px; height: 28px; padding: 0; flex: 0 0 auto;
+    border: var(--hair) solid var(--rule); background: var(--well); cursor: pointer;
+}
+input[type="color"]:focus-visible { outline: 2px solid var(--s6); outline-offset: 2px; }
+.hexo { font-size: 0.62rem; color: var(--phos-dim); font-variant-numeric: tabular-nums; min-width: 62px; }
+
+.swatches { display: flex; flex-wrap: wrap; gap: 4px; }
+.swatches .sw {
+    width: 20px; height: 20px; padding: 0; min-height: 0; flex: 0 0 auto;
+    border: var(--hair) solid var(--rule-hi); cursor: pointer;
+}
+.swatches .sw:hover { border-color: var(--ink); }
+
+/* ── Readouts ─────────────────────────────────────────────────────────── */
+.gridout {
+    display: grid; grid-template-columns: auto 1fr; gap: 6px 10px;
+    align-items: baseline; font-size: 0.72rem;
+}
+.gridout b { font-weight: 500; color: var(--phos); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* The four separation angles, each in its own ink. */
+.angles { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.66rem; }
+.angles span { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.angles i { width: 9px; height: 9px; display: inline-block; }
+
+[hidden] { display: none !important; }
+.busy { opacity: 0.5; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<main class="page">
+
+    <header class="chassis page-head">
+        <div class="head-row">
+            <div class="brand">
+                <h1 class="designation">HALFTONE PLATE</h1>
+                <span class="stripe brand-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="head-ctl">
+                <div class="lamp"><span class="led on green" aria-hidden="true"></span><span class="label">PWR</span></div>
+                <div class="phos-sw theme-sw">
+                    <svg class="theme-ico ico-moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 10.6A5.8 5.8 0 0 1 5.4 2.8a5.8 5.8 0 1 0 7.8 7.8Z"/></svg>
+                    <label class="rocker">
+                        <input type="checkbox" id="themeSw" aria-label="Light or dark theme">
+                        <span class="rock"></span>
+                    </label>
+                    <svg class="theme-ico ico-sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.1"/><path d="M8 .8v2M8 13.2v2M.8 8h2M13.2 8h2M2.9 2.9l1.4 1.4M11.7 11.7l1.4 1.4M13.1 2.9l-1.4 1.4M4.3 11.7l-1.4 1.4"/></svg>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="chassis strip-row" aria-label="Press control strip">
+        <svg class="reg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 0v6M12 18v6M0 12h6M18 12h6"/></svg>
+        <span class="label">CONTROL STRIP</span>
+        <canvas id="strip" height="26" aria-hidden="true"></canvas>
+        <span class="label">100 &middot; 75 &middot; 50 &middot; 25 &middot; 10 %</span>
+        <span class="spacer"></span>
+        <svg class="reg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 0v6M12 18v6M0 12h6M18 12h6"/></svg>
+    </section>
+
+    <div class="work">
+
+        <!-- ══ CONTROLS ══════════════════════════════════════════════ -->
+        <div class="controls">
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">01</span>
+                    <span class="designation rack-name">SOURCE</span>
+                </div>
+                <div class="rack-body">
+                    <input type="file" id="file" accept="image/*" class="sr-only">
+                    <button class="key" type="button" id="pickBtn">CHOOSE AN IMAGE</button>
+                    <span class="hint">Or drop one on the plate, or paste from the clipboard. Nothing is uploaded — the whole thing runs in this tab.</span>
+                    <div class="rule" aria-hidden="true"></div>
+                    <span class="label">SCREEN PRESET</span>
+                    <div class="presets" id="presets"></div>
+                    <span class="hint">Starting points taken from what the process actually was. Move anything afterwards — a preset is a seed, not a lock.</span>
+                    <div class="rule" aria-hidden="true"></div>
+                    <div class="gridout">
+                        <span class="label">FILE</span><b id="sName">—</b>
+                        <span class="label">SIZE</span><b id="sSize">—</b>
+                    </div>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">02</span>
+                    <span class="designation rack-name">SCREEN</span>
+                </div>
+                <div class="rack-body tight">
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">DOT PITCH</span><span class="val"></span></span>
+                        <input type="range" id="uPitch" min="2" max="48" step="0.5" value="7" data-u data-fmt="px">
+                    </label>
+                    <span class="hint">The distance between dot centres, measured in source pixels. Everything else is a consequence of this: coarser means fewer, larger dots and less of the picture surviving. Newsprint sat around a tenth of the plate width; a comic screen is finer than that; manga tone finer again.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">SCREEN ANGLE</span><span class="val"></span></span>
+                        <input type="range" id="uAngle" min="0" max="90" step="1" value="45" data-u data-fmt="deg">
+                    </label>
+                    <span class="hint">45&deg; is not a style choice. The eye resolves horizontal and vertical structure far better than diagonal, so a lattice turned to 45&deg; disappears into tone while the same lattice at 0&deg; reads as a grid. In four-colour work this becomes the black angle and the other three are placed around it.</span>
+
+                    <div class="fld">
+                        <label class="label" for="uShape">DOT SHAPE</label>
+                        <select class="field" id="uShape" data-u></select>
+                        <span class="hint"><strong>ROUND</strong> is the default and steps visibly at 50%, where four dots touch at once. <strong>ELLIPTICAL</strong> and <strong>EUCLIDEAN</strong> both exist to remove that step — Euclidean by inverting into a white dot past the midpoint. <strong>LINE</strong> and <strong>CROSS-HATCH</strong> stop being print and start being drawing.</span>
+                    </div>
+
+                    <div class="fld">
+                        <span class="label" id="ssLbl">SMOOTHING</span>
+                        <div class="seg-ctl" role="radiogroup" aria-labelledby="ssLbl">
+                            <label><input type="radio" name="ss" value="1"><span>OFF</span></label>
+                            <label><input type="radio" name="ss" value="2"><span>2&times;</span></label>
+                            <label><input type="radio" name="ss" value="3" checked><span>3&times;</span></label>
+                            <label><input type="radio" name="ss" value="4"><span>4&times;</span></label>
+                        </div>
+                        <span class="hint">A halftone is a one-bit image: every point is ink or paper, nothing between. OFF is that image, and it is what you want if the plate is going anywhere near a printer. The others supersample the dot edge so it survives being looked at on a screen at less than 1:1 — at the cost of that many times the render.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">03</span>
+                    <span class="designation rack-name">TONE</span>
+                </div>
+                <div class="rack-body tight">
+
+                    <div class="fld">
+                        <span class="label" id="smLbl">SAMPLING</span>
+                        <div class="seg-ctl" role="radiogroup" aria-labelledby="smLbl">
+                            <label><input type="radio" name="samp" value="area" checked><span>AREA</span></label>
+                            <label><input type="radio" name="samp" value="detail"><span>DETAIL</span></label>
+                        </div>
+                        <span class="hint"><strong>AREA</strong> rotates every source pixel into screen space and averages the ones that fall in each cell, so a dot's size is the true mean tone underneath it. That is what a process camera did, and it is why the result still reads correctly when the dots are coarser than the detail.<br><br><strong>DETAIL</strong> compares the screen against the picture where it stands. Dots deform around edges and keep far more of the drawing, but the tone is only honest where the picture is smooth. Use AREA for photographs and coarse screens, DETAIL for line art and fine ones.</span>
+                    </div>
+
+                    <div class="rule" aria-hidden="true"></div>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">BLACK POINT</span><span class="val"></span></span>
+                        <input type="range" id="uBlack" min="0" max="60" step="1" value="0" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">WHITE POINT</span><span class="val"></span></span>
+                        <input type="range" id="uWhite" min="40" max="100" step="1" value="100" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">Where the tone stops being a dot and becomes solid. These clip before anything else runs, so a black point of 12% means "anything darker than this prints as flat ink" — which is how inked artwork keeps its blacks instead of dissolving into 95% dots, and how highlights stay bare paper instead of collecting stray specks.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">MIDTONES</span><span class="val"></span></span>
+                        <input type="range" id="uGamma" min="35" max="250" step="1" value="100" data-u data-fmt="gamma">
+                    </label>
+                    <span class="hint">Coverage is 1&nbsp;&minus;&nbsp;linear&nbsp;luminance by default, which is the physically right answer and darker than most filters give you. This bends it.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">DOT GAIN</span><span class="val"></span></span>
+                        <input type="range" id="uGain" min="-50" max="50" step="1" value="0" data-u data-fmt="signed">
+                    </label>
+                    <span class="hint">Ink spreads where it meets paper, so a 50% dot prints nearer 60% — and only the midtones move, because a cell with no dot in it has no edge to spread from. Positive simulates the press; negative is the compensation a prepress operator would have applied to cancel it.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">TONE STEPS</span><span class="val"></span></span>
+                        <input type="range" id="uSteps" min="0" max="16" step="1" value="0" data-u data-fmt="steps">
+                    </label>
+                    <span class="hint">Screentone came on sheets, and a sheet has exactly one density. Snapping coverage to a ladder of densities is what turns a photograph into something that could plausibly have been cut and laid down by hand.</span>
+
+                    <label class="chk"><input type="checkbox" id="uInvert" data-u><span class="box"></span><span class="label">INVERT</span></label>
+                    <span class="hint">Ink the highlights instead — a negative plate, or white line on a dark field.</span>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">04</span>
+                    <span class="designation rack-name">INK</span>
+                </div>
+                <div class="rack-body tight">
+
+                    <div class="fld">
+                        <span class="label" id="imLbl">PLATES</span>
+                        <div class="seg-ctl" role="radiogroup" aria-labelledby="imLbl">
+                            <label><input type="radio" name="ink" value="mono" checked><span>MONO</span></label>
+                            <label><input type="radio" name="ink" value="duo"><span>DUOTONE</span></label>
+                            <label><input type="radio" name="ink" value="cmyk"><span>CMYK</span></label>
+                        </div>
+                    </div>
+
+                    <div class="rule" aria-hidden="true"></div>
+
+                    <label class="chk"><input type="checkbox" id="uOver" data-u><span class="box"></span><span class="label">PRINT OVER THE IMAGE</span></label>
+                    <span class="hint">Normally the screen <em>replaces</em> the picture: ink on bare stock, and everything the dots do not cover is paper. Turn this on and the picture becomes the stock — the same dots, in the same places, laid over the original instead of standing in for it. That is how tone was actually applied to artwork: the drawing stays, the screen goes on top of it.</span>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">INK STRENGTH</span><span class="val"></span></span>
+                        <input type="range" id="uStrength" min="0" max="100" step="1" value="100" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">How much of what is underneath a dot actually hides it. Not the same control as dot size — coverage decides how much of the surface the ink lands on, this decides how opaque it is once it gets there. At 100% the ink is solid, which over a picture means the dark end goes flat black; pull it back and the dots read as a screen sitting on top.</span>
+
+                    <div class="rule" aria-hidden="true"></div>
+
+                    <div data-when="mono duo">
+                        <div class="colour-row">
+                            <span class="label">INK</span>
+                            <span class="hexo" id="inkHex">#141414</span>
+                            <input type="color" id="uInk" value="#141414" data-u aria-label="Ink colour">
+                        </div>
+                        <div class="swatches" id="inkSw" style="margin-top:8px"></div>
+                    </div>
+
+                    <div data-when="duo">
+                        <div class="colour-row" style="margin-top:11px">
+                            <span class="label">SECOND INK</span>
+                            <span class="hexo" id="ink2Hex">#0f5fd0</span>
+                            <input type="color" id="uInk2" value="#0f5fd0" data-u aria-label="Second ink colour">
+                        </div>
+                        <label class="sl" data-sl style="margin-top:11px">
+                            <span class="sl-top"><span class="label">SPLIT</span><span class="val"></span></span>
+                            <input type="range" id="uSplit" min="0" max="90" step="1" value="45" data-u data-fmt="pct">
+                        </label>
+                        <span class="hint">A duotone is one photograph on two plates: the first ink carries the whole range, the second is dropped in below this point to give the shadows a colour the first ink cannot reach. The two screens sit 30&deg; apart so they interleave instead of beating against each other.</span>
+                    </div>
+
+                    <div data-when="cmyk">
+                        <label class="sl" data-sl>
+                            <span class="sl-top"><span class="label">BLACK GENERATION</span><span class="val"></span></span>
+                            <input type="range" id="uGcr" min="0" max="100" step="1" value="70" data-u data-fmt="pct">
+                        </label>
+                        <span class="hint">Grey component replacement. Wherever all three colours are called for at once they make a muddy grey, so that common amount is pulled out and given to the black plate instead — less ink, cleaner neutrals, and registration errors stop turning grey into a rainbow. At zero there is no black plate at all.</span>
+                        <div class="fld" style="margin-top:11px">
+                            <span class="label">SEPARATION ANGLES</span>
+                            <div class="angles" id="angleOut"></div>
+                            <span class="hint">Each plate gets its own angle, 30&deg; apart, because two identical lattices laid over each other beat into a moir&eacute; pattern coarse enough to see. Yellow is the exception — it sits 15&deg; from its neighbours, which it can get away with because yellow on white is the hardest ink to see at all.</span>
+                        </div>
+                    </div>
+
+                    <div class="rule" aria-hidden="true"></div>
+
+                    <div class="colour-row">
+                        <span class="label">PAPER</span>
+                        <span class="hexo" id="paperHex">#f4f1e8</span>
+                        <input type="color" id="uPaper" value="#f4f1e8" data-u aria-label="Paper colour">
+                    </div>
+                    <div class="swatches" id="paperSw"></div>
+                    <label class="chk"><input type="checkbox" id="uAlpha" data-u><span class="box"></span><span class="label">TRANSPARENT PAPER</span></label>
+                    <span class="hint">Export the ink alone, with the paper knocked out to alpha. That is the file you want if the screen is going over something else in an editor rather than being the finished picture.</span>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">05</span>
+                    <span class="designation rack-name">LINEWORK</span>
+                </div>
+                <div class="rack-body tight">
+                    <label class="chk"><input type="checkbox" id="uEdge" data-u><span class="box"></span><span class="label">HOLD THE OUTLINES</span></label>
+                    <span class="hint">Screening destroys thin lines: an eyelash a pixel wide becomes a dot the size of a cell, or nothing. This finds the edges first and draws them at full resolution over the screen, the way an inker lays line over tone rather than under it. Off by default — on a photograph it invents outlines that were never drawn.</span>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">LINE WEIGHT</span><span class="val"></span></span>
+                        <input type="range" id="uEdgeAmt" min="0" max="100" step="1" value="80" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">THRESHOLD</span><span class="val"></span></span>
+                        <input type="range" id="uEdgeThr" min="2" max="90" step="1" value="30" data-u data-fmt="pct">
+                    </label>
+                    <span class="hint">How much local contrast counts as a line. Low picks up texture and noise; high keeps only the drawn edges.</span>
+                </div>
+            </section>
+
+            <section class="chassis rack">
+                <div class="rack-head">
+                    <span class="rack-ix" aria-hidden="true">06</span>
+                    <span class="designation rack-name">OUTPUT</span>
+                </div>
+                <div class="rack-body tight">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">PLATE SCALE</span><span class="val"></span></span>
+                        <input type="range" id="uScale" min="1" max="4" step="1" value="1" data-u data-fmt="mult">
+                    </label>
+                    <span class="hint">1&times; is one output pixel per source pixel. Larger renders the same screen onto a bigger sheet, which is the only way to get a clean dot edge out of a fine pitch — at 7px pitch and 1&times; there are only seven pixels to draw each dot with.</span>
+                    <div class="rule" aria-hidden="true"></div>
+                    <div class="gridout">
+                        <span class="label">PLATE SIZE</span><b id="oDim">—</b>
+                        <span class="label">DOT PITCH</span><b id="oPitch">—</b>
+                        <span class="label">CELLS</span><b id="oCells">—</b>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ══ STAGE ═════════════════════════════════════════════════ -->
+        <section class="chassis stage">
+            <div class="stage-bar">
+                <span class="row-tight"><span class="led" id="vLed" aria-hidden="true"></span><span class="label" id="vStat">IDLE</span></span>
+                <span class="spacer"></span>
+                <button class="key" type="button" id="cmpBtn" aria-pressed="false">SHOW SOURCE</button>
+                <button class="key" type="button" id="latBtn" aria-pressed="false">LATTICE</button>
+                <button class="key" type="button" id="zoomOut" aria-label="Zoom out">&minus;</button>
+                <span class="label" id="zoomVal">FIT</span>
+                <button class="key" type="button" id="zoomIn" aria-label="Zoom in">+</button>
+                <button class="key" type="button" id="fitBtn">FIT</button>
+                <button class="key" type="button" id="oneBtn">1:1</button>
+            </div>
+            <div class="canvas-wrap" id="wrap">
+                <canvas id="view"></canvas>
+                <svg class="reg reg-mark reg-tl" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><path d="M12 0v6M12 18v6M0 12h6M18 12h6"/></svg>
+                <svg class="reg reg-mark reg-tr" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><path d="M12 0v6M12 18v6M0 12h6M18 12h6"/></svg>
+                <svg class="reg reg-mark reg-bl" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><path d="M12 0v6M12 18v6M0 12h6M18 12h6"/></svg>
+                <svg class="reg reg-mark reg-br" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><path d="M12 0v6M12 18v6M0 12h6M18 12h6"/></svg>
+                <span class="prog" aria-hidden="true"><i id="progBar"></i></span>
+                <div class="drop-hint" id="hint">
+                    <span class="designation">DROP AN IMAGE</span>
+                    <span class="hint">PNG, JPG or WEBP &middot; or paste from the clipboard</span>
+                </div>
+            </div>
+            <div class="stage-foot">
+                <span class="stat"><span class="label">SOURCE</span><b id="fSrc">—</b></span>
+                <span class="stat"><span class="label">SCREEN</span><b id="fScreen">—</b></span>
+                <span class="stat"><span class="label">PLATE</span><b id="fOut">—</b></span>
+                <span class="stat"><span class="label">TIME</span><b id="fMs">—</b></span>
+                <span class="spacer"></span>
+                <span class="stat stat-help"><span class="label">DRAG TO PAN &middot; SCROLL TO ZOOM &middot; DOUBLE-CLICK TO FIT</span></span>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="chassis page-foot">
+        <a class="key" href="https://isaiart.com">&larr; ISAIART.COM</a>
+        <div class="foot-right">
+            <span class="row-tight"><span class="led on green" aria-hidden="true"></span><span class="label">NO BACKEND &middot; NOTHING LEAVES THE BROWSER</span></span>
+        </div>
+    </footer>
+
+</main>
+
+<div class="dock">
+    <span class="stripe dock-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <div class="dock-inner">
+        <button class="key key-go" type="button" id="saveBtn" disabled>EXPORT PNG &darr;</button>
+        <button class="key" type="button" id="quickBtn" title="Export now under a random eight-character name">QUICK <span class="key-lbl">&darr;</span></button>
+        <button class="key" type="button" id="copyBtn">COPY <span class="key-lbl">IMAGE</span></button>
+        <button class="key key-danger" type="button" id="resetBtn">CLEAR</button>
+        <span class="spacer"></span>
+        <span class="label count" id="dockStat">NO IMAGE</span>
+    </div>
+</div>
+
+<script src="../assets/console.js?v=10"></script>
+<script src="screen.js?v=3"></script>
+<script src="plate.js?v=4"></script>
+</body>
+</html>
