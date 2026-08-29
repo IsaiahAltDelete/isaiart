@@ -1857,7 +1857,7 @@ function spawnNpcs(map, id, st) {
       clearStanding(map, n.x, n.y);
       const at = safeTile(map, n.x, n.y);
       const e = new NPCEntity({
-        id: `npc-${n.id}`, npcId: n.id, name: n.name,
+        id: `npc-${n.id}`, npcId: n.id, name: n.name, title: n.title || '',
         x: at.x, y: at.y, dir: n.dir || 'down',
         sprite: n.sprite, colorway: n.colorway,
         solid: n.solid !== false,

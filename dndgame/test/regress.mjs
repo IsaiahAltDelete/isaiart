@@ -153,6 +153,82 @@ const crime = await page.evaluate(() => {
 });
 check('crime: children cannot be attacked', crime.childBlocked !== false);
 
+// --- the hotbar ------------------------------------------------------------
+// The whole point of it: every verb the overworld has should be on screen with
+// the key that does it, and none of it should need to be read in the source.
+const bar = await page.evaluate(() => {
+  const ow = SC.Game.top;
+  const ch = SC.Party.members[0];
+  ch.spells = ch.spells || {};
+  ch.spells.known = Array.from(new Set([...(ch.spells.known || []), 'mage-armor', 'blade-ward']));
+  ch.spells.prepared = Array.from(new Set([...(ch.spells.prepared || []), 'mage-armor']));
+  ch.spells.cantrips = Array.from(new Set([...(ch.spells.cantrips || []), 'blade-ward']));
+  SC.Party.addItem('potion-healing', 2);
+  ow._rebuildSlots();
+
+  const out = { slots: ow._slots.map((x) => x.name) };
+
+  // Facing nothing: both verbs greyed, and each says why.
+  ow.player.setTile(ow.map.spawn.x, ow.map.spawn.y, 'up');
+  const empty = ow._hotbarModel();
+  out.idleAction = { on: empty.action.enabled, why: empty.action.why };
+  out.idleAttack = { on: empty.attack.enabled, why: empty.attack.why };
+
+  // Facing a townsfolk: Talk and Attack both light up.
+  const t = ow.entities.list.find((e) => e.kind === 'npc'
+    && String(e.sprite || '').startsWith('npc-') && e.sprite !== 'npc-child');
+  if (t) {
+    ow.player.setTile(t.x, t.y + 1, 'up');
+    const m = ow._hotbarModel();
+    out.npcAction = { label: m.action.label, on: m.action.enabled };
+    out.npcAttack = { on: m.attack.enabled };
+  }
+
+  // Facing a child: Talk lights, Attack refuses with a reason.
+  const kid = ow.entities.list.find((e) => e.kind === 'npc' && e.sprite === 'npc-child');
+  if (kid) {
+    ow.player.setTile(kid.x, kid.y + 1, 'up');
+    const m = ow._hotbarModel();
+    out.childAttack = { on: m.attack.enabled, why: m.attack.why };
+  }
+
+  // Every button is hit-testable where it is drawn.
+  const c = document.getElementById('game').getContext('2d');
+  ow.hotbar.draw(c, ow._hotbarModel());
+  out.hitRects = ow.hotbar.hot.length;
+  return out;
+});
+check('hotbar: fills slots, longest ward first', bar.slots[0] === 'Mage Armor', bar.slots.join(', '));
+check('hotbar: idle verbs grey out with a reason',
+  !bar.idleAction.on && !bar.idleAttack.on && !!bar.idleAttack.why, bar.idleAttack.why);
+check('hotbar: facing a townsfolk lights Talk and Attack',
+  bar.npcAction && bar.npcAction.label === 'Talk' && bar.npcAction.on && bar.npcAttack.on,
+  JSON.stringify(bar.npcAction));
+check('hotbar: attacking a child is refused, in words',
+  !bar.childAttack || (!bar.childAttack.on && !!bar.childAttack.why),
+  bar.childAttack && bar.childAttack.why);
+check('hotbar: every button is clickable', bar.hitRects >= 10, `${bar.hitRects} hit rects`);
+
+// --- portrait captions -----------------------------------------------------
+// The caption under a dialogue bust read `role`, an internal enum whose default
+// is 'flavor' — so half the town was captioned with the word "flavor". It reads
+// the authored title now, and every NPC in the game has one.
+const caps = await page.evaluate(async () => {
+  const ow = SC.Game.top;
+  const mod = await import('/dndgame/src/ui/dialogue.js');
+  const probe = new mod.DialogueScene('none', null, {});
+  const rows = ow.entities.list.filter((e) => e.kind === 'npc')
+    .map((e) => ({ name: e.name, caption: probe._captionFor(e) }));
+  return {
+    total: rows.length,
+    bad: rows.filter((r) => !r.caption || /flavor|questgiver|innkeep\b/i.test(r.caption)),
+    sample: rows.slice(0, 3).map((r) => `${r.name}: ${r.caption}`),
+  };
+});
+check('dialogue: every portrait caption is prose, not an enum',
+  caps.total > 0 && caps.bad.length === 0,
+  caps.bad.length ? JSON.stringify(caps.bad[0]) : caps.sample[0]);
+
 // --- the battle screen -----------------------------------------------------
 const fight = await page.evaluate(async () => {
   const ow = SC.Game.top;

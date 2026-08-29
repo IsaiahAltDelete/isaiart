@@ -162,9 +162,11 @@ function badgeFor(id) {
 
 const PARTY = { x: 3, y: 3, w: 128, row: 20, pad: 3 };
 const TR = { w: 116, h: 27, x: VIEW_W - 3 - 116, y: 3 };
-const QUEST = { x: 3, w: 168, h: 32, y: VIEW_H - 50 };
+// The bottom strip belongs to ui/hotbar.js (BAR sits at VIEW_H - 15), so the
+// quest tracker and the log ribbon stack above it rather than under it.
+const QUEST = { x: 3, w: 168, h: 32, y: VIEW_H - 66 };
 const MAP = { cx: VIEW_W - 33, cy: VIEW_H - 33, r: 27, px: 2 };
-const RIBBON = { x: 3, w: 334, h: 12, y: VIEW_H - 14 };
+const RIBBON = { x: 3, w: 334, h: 12, y: VIEW_H - 29 };
 
 const TOAST_MAX = 4;
 const TOAST_LIFE = 3.0;

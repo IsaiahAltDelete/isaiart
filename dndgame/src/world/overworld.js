@@ -49,12 +49,15 @@ import { FX } from '../render/fx.js';
 import { drawTile, tileGroup, tileKey as tileKeyOf, T } from '../render/tiles.js';
 import { UI } from '../ui/kit.js';
 import { HUD } from '../ui/hud.js';
+import { Hotbar, SLOT_COUNT } from '../ui/hotbar.js';
 import { TileMap, TF, isStepTrigger } from './tilemap.js';
 import { Entity, EntityList, ChestEntity, makeEntity, spawnFromTriggers } from './entity.js';
 import { Party } from './party.js';
 import { buildBattleMap } from './battlemap.js';
 import { rollEncounter, makeMonster } from '../rules/scaling.js';
-import { expireFieldBuffs, fieldBuffsToRounds } from '../rules/fieldcast.js';
+import {
+  expireFieldBuffs, fieldBuffsToRounds, fieldCastable, fieldCast, fieldTargeting, minutesFor,
+} from '../rules/fieldcast.js';
 import {
   advanceTime, tickWeather, isChestLooted, markChestLooted, progressQuests, failQuest,
 } from '../state.js';
@@ -65,6 +68,9 @@ import {
   bountyIn, isOutlawIn,
 } from '../rules/crime.js';
 import { resolveItem } from '../data/items.js';
+import { getSpell } from '../data/spells.js';
+import { heal as healMember, isDead as isDeadMember } from '../rules/character.js';
+import { rollExpr } from '../core/dice.js';
 
 // ---------------------------------------------------------------------------
 // 0. TUNING
@@ -120,6 +126,7 @@ function safe(fn, fallback = null) {
 }
 
 const state = () => Game.state || null;
+const arrOf = (v) => (Array.isArray(v) ? v : []);
 const flagsOf = () => (Game.state && Game.state.flags) || {};
 
 // ---------------------------------------------------------------------------
@@ -270,7 +277,7 @@ function npcSpawnDef(npcId) {
   const n = safe(() => getNPC(npcId), null);
   if (!n) return null;
   return {
-    cls: 'npc', npcId: n.id, name: n.name, sprite: n.sprite, colorway: n.colorway,
+    cls: 'npc', npcId: n.id, name: n.name, title: n.title || '', sprite: n.sprite, colorway: n.colorway,
     dialogueId: n.dialogue || n.id, shopId: n.shop || null, questIds: n.quests || [],
     faction: n.faction || null, role: n.role || 'flavor', greeting: n.greeting || null,
     tag: n.tag || null, essential: !!n.essential, noCombat: !!n.noCombat, npc: n,
@@ -612,6 +619,9 @@ export class OverworldScene {
     this.banner = null;     // { text, sub, t }
     this._weatherKind = null;
     this.spellLight = null;       // Light / Dancing Lights, cast from the spellbook
+    this.hotbar = new Hotbar();   // the bottom strip: every verb, visible, clickable
+    this._slots = [];             // quick-slot model, rebuilt a couple of times a second
+    this._slotT = 0;
     this._restOff = null;
   }
 
@@ -805,6 +815,9 @@ export class OverworldScene {
     // Spells cast out of combat run on the world clock, not on rounds — a Mage
     // Armor put up at dawn is gone by dusk whether or not you ever drew a blade.
     // Checked twice a second rather than every frame; the clock moves in minutes.
+    this._slotT += dt;
+    if (this._slotT >= 0.5) { this._slotT = 0; safe(() => this._rebuildSlots()); }
+
     this._buffT = (this._buffT || 0) + dt;
     if (this._buffT >= 0.5) {
       this._buffT = 0;
@@ -823,12 +836,31 @@ export class OverworldScene {
   _updateInput(dt) {
     if (Game.transitioning || this.popup) return;
 
+    // The hotbar gets first refusal on the pointer, and swallows the click so
+    // it never also lands on the world underneath.
+    const m = safe(() => Input.mouse, null);
+    if (m && m.over) {
+      if (this.hotbar.contains(m.x, m.y)) {
+        this.hotbar.hover(m.x, m.y);
+        if (m.clicked) { m.clicked = false; this.hotbar.click(m.x, m.y); return; }
+      }
+    }
+
     // Menus first: they swallow the press so nothing below reacts to it too.
     if (Input.consume('menu')) { this._openMenu('pause'); return; }
     if (Input.consume('party')) { this._openMenu('party'); return; }
     if (Input.consume('journal')) { this._openMenu('journal'); return; }
     if (Input.consume('map')) { this._openMenu('map'); return; }
     if (Input.consume('inventory')) { this._openMenu('inventory'); return; }
+
+    // 1..4 fire the quick slots. They were unbound in the overworld.
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      if (!safe(() => Input.consume('tab' + (i + 1)), false)) continue;
+      const s = this._slots[i];
+      if (s && s.fn) safe(() => s.fn());
+      else { safe(() => Audio.sfx('error')); this.hotbar.say('Nothing in that slot yet.'); }
+      return;
+    }
 
     if (Input.consume('interact') || Input.consume('confirm')) {
       if (safe(() => Input.down('run'), false) && this._attackFacing()) return;
@@ -1279,6 +1311,200 @@ export class OverworldScene {
   }
 
   // =========================================================================
+  // 6.2a THE HOTBAR
+  // =========================================================================
+  //
+  // Every verb the overworld has, on screen, with the key that does it. Before
+  // this, talking was E, attacking was an unadvertised Shift+E, and casting
+  // Mage Armor meant opening the pause menu and walking a cursor through the
+  // spellbook — all real, none of it discoverable.
+
+  /** What the two contextual buttons on the left say right now. */
+  _hotbarModel() {
+    const front = this.player.frontTile();
+    const e = this.entities
+      ? safe(() => this.entities.interactableAt(front.x, front.y), null) : null;
+    const t = e ? null : (this.map ? this.map.triggerAt(front.x, front.y, { flags: flagsOf() }) : null);
+    const usableTrigger = t && !isStepTrigger(t.kind) ? t : null;
+
+    // --- the E verb, named after whatever is in front of you ---------------
+    let action = null;
+    if (e) {
+      const verb = e.kind === 'npc' ? 'Talk'
+        : e.kind === 'chest' ? (e.opened ? 'Empty' : 'Open')
+          : e.kind === 'door' ? 'Enter'
+            : e.kind === 'monster' ? 'Fight'
+              : e.kind === 'sign' ? 'Read' : 'Look';
+      action = {
+        label: verb,
+        enabled: !(e.kind === 'chest' && e.opened),
+        why: 'Already emptied.',
+        tip: `${verb}${e.name ? ' ' + e.name : ''}`,
+        fn: () => this._interact(),
+      };
+    } else if (usableTrigger) {
+      const verb = usableTrigger.kind === 'sign' ? 'Read'
+        : usableTrigger.kind === 'shop' ? 'Shop'
+          : usableTrigger.kind === 'inn' || usableTrigger.kind === 'rest' ? 'Rest'
+            : usableTrigger.kind === 'chest' ? 'Open'
+              : usableTrigger.kind === 'warp' || usableTrigger.kind === 'door' ? 'Enter' : 'Look';
+      action = { label: verb, enabled: true, tip: verb, fn: () => this._interact() };
+    } else {
+      action = { label: 'Look', enabled: false, why: 'Nothing in front of you.' };
+    }
+
+    // --- the Shift+E verb --------------------------------------------------
+    let attack = { label: 'Attack', enabled: false, why: 'No one in front of you.' };
+    if (e && e.kind === 'npc') {
+      const npc = e.npc || safe(() => getNPC(e.npcId), null) || {};
+      const gate = safe(() => crimeCanAttack(npc, e), { ok: false, why: 'Not someone you can fight.' });
+      attack = gate.ok
+        ? {
+          label: 'Attack', enabled: true,
+          tip: `Draw steel on ${e.name || 'them'} — this has consequences.`,
+          fn: () => this.attackNPC(e),
+        }
+        : { label: 'Attack', enabled: false, why: gate.why };
+    } else if (e && e.kind === 'monster') {
+      attack = { label: 'Attack', enabled: true, tip: `Attack ${e.name || 'it'}`, fn: () => this._interact() };
+    }
+
+    return {
+      action,
+      attack,
+      slots: this._slots,
+      menus: [
+        { key: 'I', icon: 'bag', label: 'Pack', fn: () => this._openMenu('inventory') },
+        { key: 'K', icon: 'wand', label: 'Spells', fn: () => this._openMenu('spells') },
+        { key: 'M', icon: 'map', label: 'Map', fn: () => this._openMenu('map') },
+        { key: 'ESC', icon: 'book', label: 'Menu', fn: () => this._openMenu('pause') },
+      ],
+    };
+  }
+
+  /**
+   * Fill the four quick slots with the most useful things the party can do
+   * standing here: healing first, then wards, then the world verbs, then a
+   * healing potion if one is in the pack. Rebuilt twice a second rather than
+   * every frame — fieldCastable walks the spell list for every caster.
+   */
+  _rebuildSlots() {
+    const out = [];
+    const st = state();
+
+    // Heals first, then wards by how long they last, then the world verbs. A
+    // one-minute cantrip like Blade Ward is a combat spell wearing a buff's
+    // clothes; an eight-hour Mage Armor is the thing you actually want a key for.
+    const rank = { heal: 0, buff: 1, world: 2 };
+    const found = [];
+    for (const m of Party.members) {
+      if (!m || !m.spells) continue;
+      const ids = new Set([
+        ...arrOf(m.spells.prepared), ...arrOf(m.spells.cantrips), ...arrOf(m.spells.known),
+      ]);
+      for (const id of ids) {
+        const gate = safe(() => fieldCastable(m, id), null);
+        if (!gate || !gate.ok) continue;
+        const sp = safe(() => getSpell(id), null) || {};
+        const mins = safe(() => minutesFor(sp.duration), null);
+        found.push({
+          m, id, role: gate.role,
+          rank: rank[gate.role] != null ? rank[gate.role] : 3,
+          lasts: mins == null ? Infinity : mins,
+        });
+      }
+    }
+    found.sort((a, b) => a.rank - b.rank
+      || b.lasts - a.lasts
+      || String(a.id).localeCompare(String(b.id)));
+
+    const seen = new Set();
+    for (const f of found) {
+      if (out.length >= SLOT_COUNT - 1) break;      // keep one for a potion
+      if (seen.has(f.id)) continue;
+      seen.add(f.id);
+      const sp = safe(() => getSpell(f.id), null) || { name: f.id };
+      out.push({
+        kind: 'spell', id: f.id, caster: f.m, name: sp.name || f.id, ready: true, role: f.role,
+        tip: `${sp.name} — ${f.m.name}`,
+        fn: () => this._castFromHotbar(f.m, f.id, out.length),
+      });
+    }
+
+    // A healing potion, because it is the thing you reach for most.
+    const bag = Array.isArray(Party.inventory) ? Party.inventory : [];
+    const potion = bag.find((row) => {
+      const it = safe(() => resolveItem(row.id), null);
+      return it && it.use && it.use.kind === 'heal';
+    });
+    if (potion && out.length < SLOT_COUNT) {
+      const it = safe(() => resolveItem(potion.id), null) || {};
+      out.push({
+        kind: 'item', id: potion.id, name: it.name || potion.id, ready: true,
+        count: potion.qty || 1, tip: `${it.name || potion.id} — heals the most hurt of you`,
+        fn: () => this._drinkFromHotbar(potion.id, out.length),
+      });
+    }
+
+    void st;
+    this._slots = out;
+  }
+
+  /** Cast a quick-slot spell, choosing the sensible target for you. */
+  _castFromHotbar(caster, spellId, slotIndex) {
+    const sp = safe(() => getSpell(spellId), null) || {};
+    // A heal goes to whoever needs it most; a self buff to the caster; anything
+    // else that touches an ally goes to the party leader.
+    let target = caster;
+    const aim = safe(() => fieldTargeting(sp), 'self');
+    if (aim === 'ally') {
+      const hurt = Party.members
+        .filter((m) => m && m.hp > 0)
+        .sort((a, b) => (a.hp / Math.max(1, a.maxHp)) - (b.hp / Math.max(1, b.maxHp)))[0];
+      target = sp.heal ? (hurt || caster) : (Party.members[0] || caster);
+    }
+    const res = safe(() => fieldCast(caster, spellId, {
+      target, party: Party, state: state(), world: this.spellHooks(),
+    }), null);
+    if (!res || !res.ok) {
+      safe(() => Audio.sfx('error'));
+      this.hotbar.say((res && res.text) || 'It will not come.');
+      return;
+    }
+    if (res.minutes) safe(() => advanceTime(state(), res.minutes));
+    safe(() => bus.emit(EV.SPELL_CAST, { ch: caster, spellId, field: true }));
+    safe(() => Audio.sfx('spell'));
+    safe(() => FX.ring(this.player.px, this.player.py - 8, 12, '#a9c6ff', 0.4));
+    this.hotbar.pulse(slotIndex);
+    this.hotbar.say(res.lines[0]);
+    this._rebuildSlots();
+  }
+
+  /** Drink a quick-slot potion, giving it to whoever is worst off. */
+  _drinkFromHotbar(itemId, slotIndex) {
+    const hurt = Party.members
+      .filter((m) => m && !isDeadMember(m))
+      .sort((a, b) => (a.hp / Math.max(1, a.maxHp)) - (b.hp / Math.max(1, b.maxHp)))[0];
+    if (!hurt) { this.hotbar.say('No one to drink it.'); return; }
+    if (hurt.hp >= hurt.maxHp) {
+      safe(() => Audio.sfx('error'));
+      this.hotbar.say('Nobody is hurt.');
+      return;
+    }
+    const it = safe(() => resolveItem(itemId), null) || {};
+    const dice = (it.use && it.use.dice) || '2d4+2';
+    const rolled = safe(() => rollExpr(dice).total, 5) || 5;
+    const got = safe(() => healMember(hurt, rolled), 0) || 0;
+    if (!got) { this.hotbar.say('Nothing happens.'); return; }
+    safe(() => Party.removeItem(itemId, 1));
+    safe(() => Audio.sfx('heal'));
+    safe(() => FX.floater(this.player.px, this.player.py - 18, `+${got}`, '#7ad07a', { size: 1.2 }));
+    this.hotbar.pulse(slotIndex);
+    this.hotbar.say(`${hurt.name} drinks the ${(it.name || 'potion').toLowerCase()} — +${got} hp.`);
+    this._rebuildSlots();
+  }
+
+  // =========================================================================
   // 6.3a DRAWING STEEL ON PEOPLE WHO ARE NOT MONSTERS
   // =========================================================================
   //
@@ -1476,8 +1702,7 @@ export class OverworldScene {
   _failQuestsOf(npcId) {
     const st = state();
     if (!st || !npcId) return;
-    const active = (st.quests && Array.isArray(st.quests.active)) ? st.quests.active.slice() : [];
-    const doomed = active.filter((q) => {
+    const doomed = arrOf(st.quests && st.quests.active).slice().filter((q) => {
       const def = q && (q.def || q);
       return def && (def.giver === npcId || def.turnIn === npcId);
     });
@@ -1855,7 +2080,7 @@ export class OverworldScene {
     if (!mod) { safe(() => Audio.sfx('error')); return; }
     const Scene = {
       pause: mod.PauseMenuScene, party: mod.PartyScene, journal: mod.JournalScene,
-      map: mod.MapScene, inventory: mod.InventoryScene,
+      map: mod.MapScene, inventory: mod.InventoryScene, spells: mod.SpellbookScene,
     }[which];
     if (!Scene) { safe(() => Audio.sfx('error')); return; }
     safe(() => Audio.sfx('open'));
@@ -1925,6 +2150,8 @@ export class OverworldScene {
     if (!this.map) return;
     this._drawExitLabel(ctx);
     this.hud.draw(ctx);
+    this.hotbar.update(Game.dt || 0);
+    safe(() => this.hotbar.draw(ctx, this._hotbarModel()));
     this._drawBanner(ctx);
     this._drawPopup(ctx);
   }
