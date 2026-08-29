@@ -54,6 +54,7 @@ import { Entity, EntityList, ChestEntity, makeEntity, spawnFromTriggers } from '
 import { Party } from './party.js';
 import { buildBattleMap } from './battlemap.js';
 import { rollEncounter, makeMonster } from '../rules/scaling.js';
+import { expireFieldBuffs, fieldBuffsToRounds } from '../rules/fieldcast.js';
 import {
   advanceTime, tickWeather, isChestLooted, markChestLooted, progressQuests, failQuest,
 } from '../state.js';
@@ -610,6 +611,7 @@ export class OverworldScene {
     this.popup = null;      // { title, lines, t, life }
     this.banner = null;     // { text, sub, t }
     this._weatherKind = null;
+    this.spellLight = null;       // Light / Dancing Lights, cast from the spellbook
     this._restOff = null;
   }
 
@@ -797,6 +799,21 @@ export class OverworldScene {
     if (!st || !this.map) return;
     if (!this.map.indoor) safe(() => tickWeather(st, dt, this.map.biome));
     this._applyWeather(false);
+
+    // Spells cast out of combat run on the world clock, not on rounds — a Mage
+    // Armor put up at dawn is gone by dusk whether or not you ever drew a blade.
+    // Checked twice a second rather than every frame; the clock moves in minutes.
+    this._buffT = (this._buffT || 0) + dt;
+    if (this._buffT >= 0.5) {
+      this._buffT = 0;
+      const lapsed = safe(() => expireFieldBuffs(Party.all(), st), []) || [];
+      for (const line of lapsed) toast(line);
+      const now = st.day * 1440 + st.time;
+      if (this.spellLight && this.spellLight.until != null && now >= this.spellLight.until) {
+        this.spellLight = null;
+        toast('The light gutters out.');
+      }
+    }
   }
 
   // --- input ---------------------------------------------------------------
@@ -1093,6 +1110,7 @@ export class OverworldScene {
     }
 
     if (st) st.stats.battles = (st.stats.battles || 0) + 1;
+    for (const m of Party.all()) safe(() => fieldBuffsToRounds(m, st));
     const source = opts.source || null;
     const prevMusic = mapTrack(this.map, Game.state);
 
@@ -1350,6 +1368,103 @@ export class OverworldScene {
       },
       ...opts,
     });
+  }
+
+  // =========================================================================
+  // 6.3b WHAT A SPELL CAN REACH OUT AND TOUCH
+  // =========================================================================
+  //
+  // rules/fieldcast.js decides what a spell DOES; these are the few verbs it
+  // cannot do on its own because they need the map. ui/menus.js asks the
+  // overworld for this bundle when the spellbook casts, and fieldcast falls
+  // back to prose for any hook that is missing (cast from a rest, say).
+
+  spellHooks() {
+    return {
+      light: (radius, spellId, minutes) => this._spellLight(radius, spellId, minutes),
+      unlock: () => this._spellUnlock(),
+      detect: (what) => this._spellDetect(what),
+      reach: (limitLb) => this._spellReach(limitLb),
+      identify: () => this._spellIdentify(),
+    };
+  }
+
+  /** Light / Dancing Lights / Faerie Fire: a pool that follows the party. */
+  _spellLight(radius, spellId, minutes) {
+    const st = state();
+    const feet = Math.max(5, Number(radius) || 20);
+    this.spellLight = {
+      radius: feet / 5 * TILE,               // five feet to the tile
+      spellId: spellId || 'light',
+      until: st && minutes != null ? (st.day * 1440 + st.time) + minutes : null,
+    };
+    safe(() => FX.ring(this.player.px, this.player.py - 8, 14, '#ffe9a6', 0.5));
+    return { ok: true };
+  }
+
+  /** Knock: the nearest locked thing within sixty feet gives up. */
+  _spellUnlock() {
+    if (!this.entities) return { ok: false, text: 'Nothing within reach is locked.' };
+    const range = 12;                        // sixty feet, in tiles
+    let best = null, bestD = 99;
+    for (const e of this.entities.list || []) {
+      if (!e || e.removed || !e.locked || e.opened) continue;
+      const d = Math.max(Math.abs(e.x - this.player.x), Math.abs(e.y - this.player.y));
+      if (d <= range && d < bestD) { best = e; bestD = d; }
+    }
+    if (!best) return { ok: false, text: 'Nothing within reach is locked.' };
+    best.locked = false;
+    best.keyId = null;
+    safe(() => Audio.sfx('chest'));
+    safe(() => FX.ring(best.x * TILE + TILE / 2, best.y * TILE + TILE / 2, 18, '#ffd24a', 0.5));
+    // Loud enough to be heard three hundred feet away, as advertised.
+    for (const e of this.entities.list || []) {
+      if (e && e.kind === 'npc' && Math.max(Math.abs(e.x - best.x), Math.abs(e.y - best.y)) <= 8) {
+        safe(() => e.faceToward(best.x, best.y));
+      }
+    }
+    return { ok: true, text: `${best.name || 'A lock'} springs open with a loud metallic knock.` };
+  }
+
+  /** Detect Magic: how many enchanted things are within thirty feet. */
+  _spellDetect() {
+    if (!this.entities) return { count: 0 };
+    const range = 6;
+    let count = 0;
+    for (const e of this.entities.list || []) {
+      if (!e || e.removed) continue;
+      const d = Math.max(Math.abs(e.x - this.player.x), Math.abs(e.y - this.player.y));
+      if (d > range) continue;
+      if (e.kind === 'chest' && !e.opened) { count++; e.detected = true; }
+    }
+    if (count) safe(() => FX.ring(this.player.px, this.player.py - 8, 40, '#b07af0', 0.7));
+    return { count };
+  }
+
+  /** Mage Hand: fetch the contents of an unlocked chest from thirty feet. */
+  _spellReach() {
+    if (!this.entities) return { ok: false };
+    const range = 6;
+    let best = null, bestD = 99;
+    for (const e of this.entities.list || []) {
+      if (!e || e.removed || e.kind !== 'chest' || e.opened || e.locked) continue;
+      const d = Math.max(Math.abs(e.x - this.player.x), Math.abs(e.y - this.player.y));
+      if (d <= range && d < bestD) { best = e; bestD = d; }
+    }
+    if (!best) return { ok: false };
+    const payload = safe(() => best.interact({ player: this.player }), null);
+    if (payload) this._dispatch(payload);
+    return { ok: true, text: 'The spectral hand lifts the lid and brings back what it finds.' };
+  }
+
+  /** Identify: name the first unidentified thing in the pack. */
+  _spellIdentify() {
+    const bag = safe(() => Party.inventory && Party.inventory.all && Party.inventory.all(), null);
+    const row = (Array.isArray(bag) ? bag : []).find((it) => it && it.unidentified);
+    if (!row) return { text: 'Nothing in the pack is a mystery.' };
+    row.unidentified = false;
+    const item = safe(() => resolveItem(row.id), null);
+    return { text: `${(item && item.name) || 'It'} gives up its name.` };
   }
 
   /**
@@ -2109,7 +2224,8 @@ export class OverworldScene {
   _drawDarkness(ctx, cam, amount) {
     const cx = Math.round(this.player.px - cam.x);
     const cy = Math.round(this.player.py - cam.y) - 8;
-    const r = 84;
+    // A cast Light spell is the one thing that genuinely pushes a cave back.
+    const r = 84 + (this.spellLight ? this.spellLight.radius : 0);
     const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, r);
     g.addColorStop(0, 'rgba(2,3,8,0)');
     g.addColorStop(0.55, `rgba(2,3,8,${(amount * 0.45).toFixed(3)})`);

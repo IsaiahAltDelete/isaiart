@@ -2606,8 +2606,12 @@ export class SpellbookScene extends MenuScene {
     if (Game.state) Game.state.stats.spellsCast = num(Game.state.stats.spellsCast, 0) + 1;
     safe(() => bus.emit(EV.SPELL_CAST, { ch, spellId: row.id, field: true }));
     sfx('spell');
-    this.say(res.lines.join('   '), false, 3.4);
-    this.float(VIEW_W / 2, 96, res.ritual ? 'ritual' : res.slot ? `slot ${res.slot} spent` : 'cantrip', C.gold);
+    // The status line shares a row with the key hints, so keep it to one clause.
+    this.say(res.lines[0], false, 3.4);
+    // …and float the cost over the slot pips, which is where the eye goes to
+    // check what it just cost.
+    this.float(40, 196, res.ritual ? 'ritual' : res.slot ? `-1 slot ${res.slot}` : 'cantrip',
+      res.ritual ? C.cyan : C.gold);
   }
 
   /**
