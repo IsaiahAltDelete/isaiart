@@ -1,0 +1,1826 @@
+// world/overworld.js — the walking-around game: the scene you spend most of Sword
+// Coast Chronicles inside. Grid-locked GBA-style movement, a party that snakes along
+// behind you, townsfolk to talk to, doors to push open, chests to prise up, ledges to
+// hop down, and goblins in the tall grass off the Triboar Trail.
+//
+// The rules of the road, in one place:
+//   * The leader owns a tile. Movement commits to the destination immediately and
+//     tweens the sprite across it (see Entity.step), so occupancy is never ambiguous.
+//   * A direction tapped for less than TURN_DELAY turns you in place. Held, you walk.
+//     The next input is buffered so a held key never stutters between tiles.
+//   * Followers retrace Party.trail. Two trail entries are pushed per step (the tile
+//     left and the tile entered), which makes Party.trailFor(i) — trail[i*2-1] — land
+//     exactly one tile behind the member in front.
+//   * Everything the player can touch answers with the same little payload shape:
+//     { kind:'dialogue'|'shop'|'sign'|'chest'|'warp'|'battle'|'inn'|'rest', data }.
+//     entity.js already speaks it; map triggers are translated into it here.
+//
+// Optional modules (maps.js, the battle UI, the menus) are pulled in softly: if one
+// has not been written yet the overworld degrades — a fallback meadow, a toast — but
+// it never throws and never strands the player.
+
+import {
+  TILE, VIEW_W, VIEW_H, DIR_VEC, dirFrom,
+  WALK_TIME, RUN_TIME, PARTY_MAX, clamp, timeOfDay, titleCase,
+} from '../constants.js';
+import { Game } from '../engine.js';
+import { Input } from '../core/input.js';
+import { Audio } from '../core/audio.js';
+import { trackForBiome } from '../core/music.js';
+
+/**
+ * Which loop belongs to a map right now. A map may name its own track; otherwise
+ * the biome decides, and open country swaps to the night theme after dark.
+ */
+function mapTrack(map, st) {
+  if (!map) return 'field';
+  const night = !map.indoor && !map.safe && st && (st.time < 300 || st.time >= 1200);
+  if (map.music) {
+    // Only the generic outdoor loop yields to nightfall; a named theme stands.
+    if (night && map.music === 'field') return 'night';
+    return map.music;
+  }
+  return trackForBiome(map.biome, { night, indoor: map.indoor });
+}
+import { bus, EV, toast } from '../core/events.js';
+import { rng, makeRNG } from '../core/rng.js';
+import { FX } from '../render/fx.js';
+import { drawTile, tileGroup, tileKey as tileKeyOf, T } from '../render/tiles.js';
+import { UI } from '../ui/kit.js';
+import { HUD } from '../ui/hud.js';
+import { TileMap, TF, isStepTrigger } from './tilemap.js';
+import { Entity, EntityList, ChestEntity, makeEntity, spawnFromTriggers } from './entity.js';
+import { Party } from './party.js';
+import { buildBattleMap } from './battlemap.js';
+import { rollEncounter } from '../rules/scaling.js';
+import {
+  advanceTime, tickWeather, isChestLooted, markChestLooted, progressQuests,
+} from '../state.js';
+import { spawnableOnMap, getNPC } from '../data/npcs.js';
+import { resolveItem } from '../data/items.js';
+
+// ---------------------------------------------------------------------------
+// 0. TUNING
+// ---------------------------------------------------------------------------
+
+/** Hold a new direction this long before you actually walk; shorter is a turn. */
+const TURN_DELAY = 0.085;
+/** Difficult terrain (TF.SLOW) multiplies the step time. */
+const SLOW_FACTOR = 1.75;
+/** Seconds of peace after a fight before the wilds may ambush you again. */
+const ENCOUNTER_GRACE = 7;
+/** How far a step reveals the minimap. */
+const REVEAL_R = 7;
+/** Camera catch-up per second (1 - e^-k dt is applied below). */
+const CAM_LERP = 11;
+/** Town ids that are always safe to autosave in, even if maps.js says nothing. */
+const CANON_TOWNS = new Set(['phandalin', 'leilon', 'neverwinter', 'waterdeep', 'triboar']);
+
+// ---------------------------------------------------------------------------
+// 1. SOFT MODULE LOADING
+// ---------------------------------------------------------------------------
+//
+// Nothing below is allowed to be fatal. maps.js in particular is authored by a
+// sibling module; until it lands the overworld builds its own meadow so the game
+// is still walkable.
+
+const LATE = {
+  maps: null, mapgen: null, dialogue: null, shop: null, menus: null,
+  combat: null, combatui: null, loot: null, main: null,
+};
+
+function pull(key, path) {
+  return import(path)
+    .then((m) => { LATE[key] = m; return m; })
+    .catch((e) => { console.warn(`[overworld] optional module ${path} unavailable`, e && e.message); return null; });
+}
+
+/** maps.js is special: travelTo waits on it exactly once, then never again. */
+let mapsSettled = false;
+const mapsReady = pull('maps', './maps.js').then((m) => { mapsSettled = true; return m; });
+
+pull('mapgen', './mapgen.js');
+pull('dialogue', '../ui/dialogue.js');
+pull('shop', '../ui/shop.js');
+pull('menus', '../ui/menus.js');
+pull('combat', '../rules/combat.js');
+pull('combatui', '../ui/combatui.js');
+pull('loot', '../data/items_magic.js');
+
+/** Run a thing that touches an optional module; never let it kill the frame. */
+function safe(fn, fallback = null) {
+  try { return fn(); } catch (e) { console.warn('[overworld]', e); return fallback; }
+}
+
+const state = () => Game.state || null;
+const flagsOf = () => (Game.state && Game.state.flags) || {};
+
+// ---------------------------------------------------------------------------
+// 2. MAP CACHE
+// ---------------------------------------------------------------------------
+
+/** mapId -> TileMap. Keeps chests open and NPCs where you left them this session. */
+const mapCache = new Map();
+
+/** Drop everything (new campaign, or a load from the title screen). */
+export function clearMapCache() { mapCache.clear(); cacheStamp = null; }
+
+/**
+ * The cache holds live maps — chests you opened, NPCs mid-stroll. That is exactly
+ * right inside one campaign and exactly wrong across two, so every trip checks
+ * whose campaign it belongs to and empties the cache when the answer changes.
+ */
+let cacheStamp = null;
+function checkCampaign() {
+  const st = state();
+  const stamp = st ? `${st.seed}|${st.createdAt}` : null;
+  if (stamp === cacheStamp) return;
+  mapCache.clear();
+  cacheStamp = stamp;
+}
+
+function worldSeed() {
+  const st = state();
+  return st ? (st.worldSeed || st.seed || 'sword-coast') : 'sword-coast';
+}
+
+/**
+ * Copy a map's fog of war into the save state — but only when it actually grew.
+ * Rebuilding the array is O(tiles seen), so the guard keeps a fully-explored
+ * region map from stuttering the frame every time a menu opens.
+ */
+function syncDiscovered(map) {
+  const st = state();
+  if (!st || !map || !map.discovered) return;
+  if (map._discSynced === map.discovered.size) return;
+  map._discSynced = map.discovered.size;
+  st.discovered = st.discovered || {};
+  st.discovered[map.id] = Array.from(map.discovered);
+}
+
+/**
+ * The last-resort map: a small walkable meadow with a pond, a stand of oaks and a
+ * signpost, built deterministically from the id. Only ever seen if maps.js is
+ * missing — but seeing this beats seeing a black screen.
+ */
+function buildFallbackMap(id, opts = {}) {
+  const r = makeRNG(`fallback:${id}:${worldSeed()}`);
+  const indoor = /inn|shop|hall|house|manor|coster|exchange|shrine|provisions|giant/.test(id);
+  const w = indoor ? 20 : 40;
+  const h = indoor ? 15 : 34;
+  const map = new TileMap({
+    id, w, h,
+    name: titleCase(String(id).replace(/-/g, ' ')),
+    biome: indoor ? 'city' : 'plains',
+    indoor,
+    music: indoor ? 'town' : 'field',
+    encounterRate: indoor ? 0 : 0.05,
+    ground: indoor ? (T.WOOD_FLOOR || T.STONE_FLOOR || 1) : (T.GRASS || 1),
+  });
+
+  if (indoor) {
+    map.border('deco', T.WATTLE_WALL || T.STONE_WALL || 0, { addFlags: TF.SOLID });
+    map.spawn = { x: w >> 1, y: h - 3 };
+  } else {
+    // A dirt track down the middle, tall grass either side, a pond, some oaks.
+    for (let y = 0; y < h; y++) map.set('ground', w >> 1, y, T.DIRT_PATH || T.DIRT || 1, true);
+    for (let i = 0; i < (w * h) / 9; i++) {
+      const x = r.int(1, w - 2), y = r.int(1, h - 2);
+      if (Math.abs(x - (w >> 1)) < 2) continue;
+      map.set('ground', x, y, T.GRASS_TALL || T.GRASS || 1, true);
+    }
+    const px = r.int(4, w - 8), py = r.int(4, h - 8);
+    for (let y = py; y < py + 4; y++) {
+      for (let x = px; x < px + 5; x++) {
+        if (Math.hypot(x - (px + 2), y - (py + 1.5)) > 2.4) continue;
+        map.set('ground', x, y, T.WATER || 0, true);
+      }
+    }
+    for (let i = 0; i < 26; i++) {
+      const x = r.int(1, w - 2), y = r.int(1, h - 2);
+      if (Math.abs(x - (w >> 1)) < 3) continue;
+      if (map.flagAt(x, y) & (TF.SOLID | TF.WATER)) continue;
+      map.set('deco', x, y, r.chance(0.5) ? (T.TREE_OAK || 0) : (T.BUSH || 0), true);
+    }
+    map.border('deco', T.TREE_PINE || T.TREE_OAK || 0, { addFlags: TF.SOLID });
+    map.spawn = { x: w >> 1, y: h - 4 };
+    map.addTrigger({
+      x: (w >> 1) + 1, y: h - 5, kind: 'sign',
+      data: { title: 'Waymarker', text: 'The Triboar Trail runs east. Phandalin lies south of it.' },
+    });
+    safe(() => map.recomputeFlags());
+  }
+  map.meta = { ...(map.meta || {}), fallback: true };
+  return map;
+}
+
+/** Ask maps.js for a map; fall back to mapgen, then to the meadow above. */
+function buildMap(id, opts = {}) {
+  const seed = `${worldSeed()}:${id}:${opts.depth || 0}`;
+  let map = null;
+
+  if (LATE.maps && typeof LATE.maps.loadMap === 'function') {
+    map = safe(() => LATE.maps.loadMap(id, { seed, ...opts }), null);
+  }
+
+  // A procedural floor of an endless dungeon, when maps.js has no opinion.
+  if (!map && opts.depth != null && LATE.mapgen && typeof LATE.mapgen.generateDungeon === 'function') {
+    map = safe(() => LATE.mapgen.generateDungeon({
+      seed, depth: opts.depth, theme: opts.theme || 'dungeon',
+      biome: opts.biome || 'dungeon', size: 'medium',
+    }), null);
+  }
+
+  if (!map) map = buildFallbackMap(id, opts);
+  if (!map.id) map.id = id;
+  return map;
+}
+
+/** Load (or recall) a map, fully wired: triggers indexed, entities live, cast in place. */
+function loadMapById(id, opts = {}) {
+  const key = opts.depth != null ? `${id}@${opts.depth}` : id;
+  if (mapCache.has(key) && !opts.fresh) return mapCache.get(key);
+
+  const map = buildMap(id, opts);
+  if (!map) return null;
+  map.mapId = key;
+
+  // mapgen pushes triggers straight onto the array, so the tile index may be cold.
+  safe(() => map.reindexTriggers());
+
+  // One EntityList per map; it adopts map.entities so the HUD minimap keeps working.
+  if (!map.entityList) safe(() => new EntityList(map));
+  safe(() => spawnFromTriggers(map, (npcId) => npcSpawnDef(npcId)));
+  populateCast(map, id);
+  hydrateTriggerEntities(map, key);
+
+  mapCache.set(key, map);
+  return map;
+}
+
+/** The NPCS entry, flattened into the shape NPCEntity wants. */
+function npcSpawnDef(npcId) {
+  const n = safe(() => getNPC(npcId), null);
+  if (!n) return null;
+  return {
+    cls: 'npc', npcId: n.id, name: n.name, sprite: n.sprite, colorway: n.colorway,
+    dialogueId: n.dialogue || n.id, shopId: n.shop || null, questIds: n.quests || [],
+    faction: n.faction || null, role: n.role || 'flavor', greeting: n.greeting || null,
+    dir: n.dir || 'down', wander: n.wander != null ? n.wander : 1,
+    solid: n.solid !== false, schedule: n.schedule || null, patrol: n.patrol || null,
+  };
+}
+
+/**
+ * Put the written cast on the map. data/npcs.js is authoritative about who lives
+ * where; if maps.js already placed someone we leave them alone, so this is safe to
+ * run whichever module got there first.
+ */
+function populateCast(map, mapId) {
+  const cast = safe(() => spawnableOnMap(mapId, (f) => !!flagsOf()[f]), []) || [];
+  if (!cast.length) return 0;
+  const present = new Set();
+  for (const e of map.entities) if (e && e.npcId) present.add(e.npcId);
+
+  let placed = 0;
+  for (const n of cast) {
+    if (present.has(n.id)) continue;
+    const def = npcSpawnDef(n.id);
+    if (!def) continue;
+    let x = n.x | 0, y = n.y | 0;
+    if (!map.inBounds(x, y) || map.solidAt(x, y)) {
+      const spot = map.nearestWalkable(x, y, 8) || map.spawn;
+      x = spot.x; y = spot.y;
+    }
+    const e = safe(() => makeEntity({ ...def, x, y, home: { x, y } }), null);
+    if (!e) continue;
+    safe(() => map.addEntity(e));
+    placed++;
+  }
+  return placed;
+}
+
+/**
+ * Turn the map's authored triggers into real entities where an entity does the job
+ * better — chests especially, which need to remember they were opened.
+ */
+function hydrateTriggerEntities(map, mapId) {
+  const have = new Set();
+  for (const e of map.entities) if (e) have.add(`${e.kind}:${e.x},${e.y}`);
+
+  for (const t of map.triggers) {
+    if (!t || t.kind !== 'chest') continue;
+    if (have.has(`chest:${t.x},${t.y}`)) continue;
+    const d = t.data || {};
+    const e = safe(() => new ChestEntity({
+      x: t.x, y: t.y, mapId,
+      loot: d.loot || d.items || [],
+      gold: d.gold || 0,
+      lootTable: d.table || d.lootTable || null,
+      locked: !!d.locked, keyId: d.keyId || null, dc: d.dc || 0,
+      trapped: d.trapped || null,
+      data: { ...d },
+    }), null);
+    if (e) safe(() => map.addEntity(e));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 3. TRAVEL
+// ---------------------------------------------------------------------------
+
+/** The live OverworldScene, so travel and dialogue can find it. */
+let activeScene = null;
+
+function findScene() {
+  if (activeScene) return activeScene;
+  for (let i = Game.scenes.length - 1; i >= 0; i--) {
+    const s = Game.scenes[i];
+    if (s instanceof OverworldScene) return s;
+  }
+  return null;
+}
+
+function resolveSpawn(map, x, y) {
+  let tx = Number.isFinite(x) ? x | 0 : null;
+  let ty = Number.isFinite(y) ? y | 0 : null;
+  if (tx == null || ty == null || !map.inBounds(tx, ty)) {
+    tx = map.spawn ? map.spawn.x : map.w >> 1;
+    ty = map.spawn ? map.spawn.y : map.h >> 1;
+  }
+  if (map.solidAt(tx, ty)) {
+    const near = map.nearestWalkable(tx, ty, 10);
+    if (near) { tx = near.x; ty = near.y; }
+  }
+  return { x: tx, y: ty };
+}
+
+function isTownMap(map, id) {
+  if (!map) return false;
+  if (map.kind === 'town' || map.town || (map.meta && map.meta.town)) return true;
+  if (CANON_TOWNS.has(id)) return true;
+  return false;
+}
+
+/**
+ * Move the party to another map.
+ *
+ * Loads it (via maps.js when that module exists), stands the party on the spot,
+ * resets the follow trail, updates the campaign state, starts the map's music,
+ * emits MAP_ENTER and lights up the minimap around the arrival point.
+ *
+ * Safe to call before maps.js has finished loading — the trip is queued and runs
+ * the moment it settles.
+ */
+export function travelTo(mapId, x, y, dir) {
+  if (!mapsSettled) {
+    mapsReady.then(() => _travel(mapId, x, y, dir, {}));
+    return null;
+  }
+  return _travel(mapId, x, y, dir, {});
+}
+
+function _travel(mapId, x, y, dir, opts = {}) {
+  checkCampaign();
+  const st = state();
+  const id = mapId || (st && st.mapId) || 'phandalin';
+  const map = loadMapById(id, opts);
+  if (!map) { toast('That road goes nowhere yet.'); return null; }
+
+  const spot = resolveSpawn(map, x, y);
+  const facing = dir || (st && st.dir) || 'down';
+  const scene = findScene();
+
+  // --- fog of war: remember what we had already seen here --------------------
+  if (st && !map._discLoaded) {
+    st.discovered = st.discovered || {};
+    map._discLoaded = true;
+    safe(() => map.loadDiscovered(st.discovered[id] || []));
+  }
+  safe(() => map.revealAround(spot.x, spot.y, REVEAL_R));
+  syncDiscovered(map);
+
+  // --- campaign state -------------------------------------------------------
+  if (st) {
+    if (st.mapId && st.mapId !== id) bus.emit(EV.MAP_EXIT, { mapId: st.mapId });
+    st.mapId = id;
+    st.x = spot.x; st.y = spot.y; st.dir = facing;
+    st.visited = st.visited || {};
+    st.visited[id] = true;
+    if (opts.depth != null) {
+      st.depth = st.depth || {};
+      st.depth[opts.theme || id] = opts.depth;
+      st.stats.deepestFloor = Math.max(st.stats.deepestFloor || 0, opts.depth);
+    }
+    if (isTownMap(map, id)) {
+      st.lastTown = id;
+      st.lastSafe = { mapId: id, x: spot.x, y: spot.y };
+    } else if (map.safe || map.indoor) {
+      st.lastSafe = { mapId: id, x: spot.x, y: spot.y };
+    }
+  }
+
+  // --- the party ------------------------------------------------------------
+  Party.resetTrail(spot.x, spot.y, facing);
+  if (scene) scene.bindMap(map, spot.x, spot.y, facing);
+
+  Game.map = map;
+  safe(() => Audio.music(mapTrack(map, Game.state)));
+  bus.emit(EV.MAP_ENTER, { mapId: id, map, x: spot.x, y: spot.y, dir: facing });
+  bus.emit(EV.WARP, { mapId: id, x: spot.x, y: spot.y });
+
+  if (isTownMap(map, id)) autosave();
+  return map;
+}
+
+/** Autosave through main.js, which owns the save slots. Never blocks. */
+function autosave() {
+  const run = (m) => { if (m && typeof m.autosave === 'function') safe(() => m.autosave()); };
+  if (LATE.main) { run(LATE.main); return; }
+  import('../main.js').then((m) => { LATE.main = m; run(m); }).catch(() => { /* standalone test page */ });
+}
+
+// ---------------------------------------------------------------------------
+// 4. DAY / NIGHT AND LIGHT
+// ---------------------------------------------------------------------------
+
+/** Colour-grade keyframes across the 1440-minute day. `a` is multiply strength. */
+const TINT_KEYS = [
+  { t: 0, c: [0.36, 0.42, 0.74], a: 0.60 },   // deep night, moonlit blue
+  { t: 285, c: [0.42, 0.44, 0.74], a: 0.55 },
+  { t: 360, c: [0.98, 0.72, 0.52], a: 0.36 }, // dawn, warm gold on the mud
+  { t: 450, c: [1.00, 0.93, 0.82], a: 0.12 },
+  { t: 720, c: [1.00, 1.00, 1.00], a: 0.00 }, // noon, no grade at all
+  { t: 1000, c: [1.00, 0.92, 0.76], a: 0.10 },
+  { t: 1090, c: [1.00, 0.60, 0.33], a: 0.36 }, // dusk, long orange light
+  { t: 1210, c: [0.48, 0.44, 0.76], a: 0.50 },
+  { t: 1440, c: [0.36, 0.42, 0.74], a: 0.60 },
+];
+
+function dayTint(minutes) {
+  const m = ((minutes % 1440) + 1440) % 1440;
+  let a = TINT_KEYS[0], b = TINT_KEYS[TINT_KEYS.length - 1];
+  for (let i = 0; i < TINT_KEYS.length - 1; i++) {
+    if (m >= TINT_KEYS[i].t && m <= TINT_KEYS[i + 1].t) { a = TINT_KEYS[i]; b = TINT_KEYS[i + 1]; break; }
+  }
+  const span = Math.max(1, b.t - a.t);
+  const k = clamp((m - a.t) / span, 0, 1);
+  return {
+    r: Math.round(255 * (a.c[0] + (b.c[0] - a.c[0]) * k)),
+    g: Math.round(255 * (a.c[1] + (b.c[1] - a.c[1]) * k)),
+    b: Math.round(255 * (a.c[2] + (b.c[2] - a.c[2]) * k)),
+    a: a.a + (b.a - a.a) * k,
+  };
+}
+
+/** Tiles that throw light, and how much. */
+const GLOW_TILES = {
+  TORCH: { r: 30, c: [255, 176, 80], flick: 1 },
+  BRAZIER: { r: 34, c: [255, 150, 60], flick: 1 },
+  CANDLE: { r: 16, c: [255, 216, 140], flick: 0.6 },
+  CHANDELIER: { r: 32, c: [255, 206, 130], flick: 0.4 },
+  HEARTH: { r: 34, c: [255, 140, 60], flick: 1 },
+  FORGE: { r: 32, c: [255, 106, 44], flick: 1 },
+  COOKING_POT: { r: 20, c: [255, 150, 70], flick: 0.8 },
+  LAVA: { r: 24, c: [255, 90, 44], flick: 0.7 },
+  CRYSTAL: { r: 22, c: [128, 216, 255], flick: 0.25 },
+  PORTAL: { r: 28, c: [176, 122, 224], flick: 0.5 },
+  WINDOW_LIT: { r: 22, c: [255, 214, 138], flick: 0.2 },
+  WINDOW: { r: 18, c: [255, 206, 130], flick: 0.15, nightOnly: true },
+  SHRINE: { r: 22, c: [255, 232, 168], flick: 0.2 },
+};
+
+/** Scan a map once for light sources; the result rides on the map. */
+function glowsFor(map) {
+  if (map._glows) return map._glows;
+  const byId = new Map();
+  for (const [name, def] of Object.entries(GLOW_TILES)) {
+    const id = T[name];
+    if (id != null) byId.set(id, def);
+  }
+  const out = [];
+  for (let y = 0; y < map.h; y++) {
+    for (let x = 0; x < map.w; x++) {
+      const i = y * map.w + x;
+      const def = byId.get(map.deco[i]) || byId.get(map.over[i]) || byId.get(map.ground[i]);
+      if (!def) continue;
+      out.push({ x, y, def, phase: ((x * 7 + y * 13) % 32) / 32 });
+    }
+  }
+  map._glows = out;
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// 4b. SCRIPT MARKERS
+// ---------------------------------------------------------------------------
+
+/**
+ * mapgen drops bare `script` triggers into procedural floors — a seam in a wall, a
+ * barred vault, Halaster amusing himself. They carry a `kind` and no dialogue tree,
+ * so give each one a line rather than handing the player a stranger's small talk.
+ */
+const SCRIPT_LINES = {
+  'secret-door': 'A seam runs down the stonework, too straight to be a crack. Something opens here.',
+  'locked-door': 'The door is barred from the far side. Iron, and recently oiled.',
+  'halaster-taunt': 'A voice comes up out of the rock, delighted and entirely mad. "Deeper," says Halaster Blackcloak. "Do go deeper."',
+  default: 'Nothing here but old stone and older air.',
+};
+
+// ---------------------------------------------------------------------------
+// 5. FOOTSTEPS
+// ---------------------------------------------------------------------------
+
+const STONE_KEYS = new Set([
+  'COBBLE', 'FLAGSTONE', 'STONE_FLOOR', 'STONE_FLOOR_CRACKED', 'DUNGEON_FLOOR',
+  'MOSAIC', 'CAVE_FLOOR', 'CAVE_FLOOR_RUBBLE', 'BONE_FLOOR', 'BRIDGE_STONE',
+  'GRAVEL', 'RUBBLE', 'ICE',
+]);
+const WOOD_KEYS = new Set(['WOOD_FLOOR', 'WOOD_FLOOR_H', 'BRIDGE_WOOD']);
+const SOFT_KEYS = new Set(['SAND', 'SNOW', 'SNOW_GRASS', 'ASH_GROUND', 'ASH_DRIFT']);
+const WET_KEYS = new Set(['MUD', 'SWAMP_WATER', 'WATER', 'FARMLAND']);
+
+/** A footfall that sounds like the ground it lands on. */
+function footstepFor(map, x, y) {
+  const id = map.at('ground', x, y);
+  const key = safe(() => tileKeyOf(id), 'GRASS') || 'GRASS';
+  const group = safe(() => tileGroup(id), null);
+  if (WOOD_KEYS.has(key)) return ['footstep-stone', { vol: 0.85, pitch: 5 }];
+  if (STONE_KEYS.has(key) || group === 'road') return ['footstep-stone', { vol: 1, pitch: 0 }];
+  if (WET_KEYS.has(key)) return ['footstep-grass', { vol: 1.25, pitch: -7 }];
+  if (SOFT_KEYS.has(key)) return ['footstep-grass', { vol: 0.7, pitch: -3 }];
+  return ['footstep-grass', { vol: 1, pitch: 0 }];
+}
+
+// ---------------------------------------------------------------------------
+// 6. THE SCENE
+// ---------------------------------------------------------------------------
+
+export class OverworldScene {
+  /**
+   * @param {string}  mapId  where to start; omit to use Game.state.mapId
+   * @param {object}  spawn  { x, y, dir }
+   */
+  constructor(mapId = null, spawn = null) {
+    this.id = 'overworld';
+    this.opaque = true;
+    this.pausesBelow = true;
+
+    this.t = 0;
+    this.map = null;
+    this.entities = null;
+    this.hud = new HUD();
+
+    this._startMapId = mapId || null;
+    this._startSpawn = spawn || null;
+    this._entered = false;
+
+    // Camera: float target, integer draw offset.
+    this.cam = { x: 0, y: 0 };
+    this.camDraw = { x: 0, y: 0 };
+
+    // The walking party. The leader is solid so townsfolk step around you; the
+    // followers are not, so you can turn around and walk back through your own line.
+    this.player = new Entity({ kind: 'party', solid: true, moveTime: WALK_TIME, shadow: true });
+    this.followers = [];
+    this._syncPartySprites();
+
+    // Movement bookkeeping.
+    this.heldDir = null;
+    this.turnT = 0;
+    this.running = false;
+    this._wasMoving = false;
+    this._bumpSfxT = 0;
+
+    // Encounters.
+    this.stepsToEncounter = 12;
+    this.encounterGrace = 2;
+    this.pendingBattleFrom = null;
+
+    // Presentation.
+    this.popup = null;      // { title, lines, t, life }
+    this.banner = null;     // { text, sub, t }
+    this._weatherKind = null;
+    this._restOff = null;
+  }
+
+  // =========================================================================
+  // 6.1 LIFECYCLE
+  // =========================================================================
+
+  enter(prev) {
+    activeScene = this;
+    Input.flush();
+    this._syncPartySprites();
+
+    if (!this._entered) {
+      this._entered = true;
+      const st = state();
+      const id = this._startMapId || (st && st.mapId) || 'phandalin';
+      const sp = this._startSpawn || (st ? { x: st.x, y: st.y, dir: st.dir } : null);
+      travelTo(id, sp ? sp.x : undefined, sp ? sp.y : undefined, sp ? sp.dir : 'down');
+      return;
+    }
+
+    // Coming back from a menu, a shop or a fight.
+    if (this.map) {
+      safe(() => Audio.music(mapTrack(this.map, Game.state)));
+      this._applyWeather(true);
+      this.hud.setMap(this.map);
+    }
+  }
+
+  exit(next) {
+    if (this.map) this._syncDiscovered();
+  }
+
+  /** Called by travelTo once the destination map is built. */
+  bindMap(map, x, y, dir) {
+    if (!map) return;
+    const old = this.map;
+    if (old && old !== map) {
+      this._detachParty(old);
+      this._syncDiscovered(old);
+    }
+
+    this.map = map;
+    this.entities = map.entityList || safe(() => new EntityList(map)) || null;
+
+    this._syncPartySprites();
+    this._attachParty(map, x, y, dir);
+
+    this.heldDir = null;
+    this.turnT = 0;
+    this._wasMoving = false;
+    this.popup = null;
+    this.encounterGrace = Math.max(this.encounterGrace, 1.2);
+    this._resetEncounterCounter();
+
+    this.hud.setMap(map);
+    this._applyWeather(true);
+    this._snapCamera();
+
+    const name = map.name || titleCase(String(map.id || '').replace(/-/g, ' '));
+    this.banner = { text: name, sub: map.indoor ? null : this._regionSub(map), t: 0 };
+    map._glows = null;     // rescan lights for the new map
+  }
+
+  _regionSub(map) {
+    const st = state();
+    if (!st) return null;
+    const phase = timeOfDay(st.time);
+    return phase === 'night' ? 'Night' : phase === 'dawn' ? 'Dawn' : phase === 'dusk' ? 'Dusk' : null;
+  }
+
+  // --- party sprites --------------------------------------------------------
+
+  /** Keep the walking sprites pointed at the current roster. */
+  _syncPartySprites() {
+    const members = Party.members || [];
+    this.player.char = members[0] || null;
+    this.player.name = members[0] ? members[0].name : 'Adventurer';
+
+    const want = Math.min(PARTY_MAX - 1, Math.max(0, members.length - 1));
+    while (this.followers.length > want) {
+      const f = this.followers.pop();
+      if (f && f.list) safe(() => f.list.remove(f));
+      else if (f && f.map) safe(() => f.map.removeEntity(f));
+    }
+    while (this.followers.length < want) {
+      const i = this.followers.length;
+      const f = new Entity({
+        kind: 'party', solid: false, moveTime: WALK_TIME, shadow: true,
+        zBias: -0.05 * (i + 1),     // ties go to the leader, so they walk on top
+      });
+      this.followers.push(f);
+      if (this.map && this.entities) {
+        f.setTile(this.player.x, this.player.y, this.player.dir);
+        safe(() => this.entities.add(f));
+      }
+    }
+    for (let i = 0; i < this.followers.length; i++) {
+      this.followers[i].char = members[i + 1] || null;
+      this.followers[i].name = members[i + 1] ? members[i + 1].name : '';
+    }
+  }
+
+  _attachParty(map, x, y, dir) {
+    const list = this.entities;
+    this.player.map = map;
+    this.player.setTile(x, y, dir);
+    if (list) safe(() => list.add(this.player));
+    for (const f of this.followers) {
+      f.map = map;
+      f.setTile(x, y, dir);
+      if (list) safe(() => list.add(f));
+    }
+    if (list) list.player = { x, y };
+  }
+
+  _detachParty(map) {
+    const list = map && map.entityList;
+    if (!list) return;
+    for (const e of [this.player, ...this.followers]) {
+      const i = list.list.indexOf(e);
+      if (i >= 0) list.list.splice(i, 1);
+      safe(() => list.unindex(e));
+      e.removed = false;      // they live on; they just moved house
+      e.list = null;
+    }
+  }
+
+  // =========================================================================
+  // 6.2 UPDATE
+  // =========================================================================
+
+  update(dt) {
+    this.t += dt;
+    this.hud.update(dt);
+    if (!this.map) return;
+
+    // A recruit joined at the inn, or someone was benched: re-cast the walking line.
+    if (this.player.char !== (Party.members[0] || null)
+      || this.followers.length !== Math.min(PARTY_MAX - 1, Math.max(0, Party.members.length - 1))) {
+      this._syncPartySprites();
+    }
+
+    this._updateTimers(dt);
+    this._updateEntities(dt);
+
+    // A finished step is where the world reacts: triggers, encounters, sounds.
+    const busy = this._settleStep();
+
+    if (!busy) this._updateInput(dt);
+
+    this._updateFollowers();
+    this._updateCamera(dt);
+    this._updateWorldClock(dt);
+    this._checkRoamers();
+  }
+
+  _updateTimers(dt) {
+    if (this.encounterGrace > 0) this.encounterGrace -= dt;
+    if (this._bumpSfxT > 0) this._bumpSfxT -= dt;
+    if (this.banner) { this.banner.t += dt; if (this.banner.t > 3.2) this.banner = null; }
+    if (this.popup) {
+      this.popup.t += dt;
+      const done = Input.consume('confirm') || Input.consume('cancel') || Input.consume('interact');
+      if (done || this.popup.t > (this.popup.life || 4.5)) {
+        this.popup = null;
+        Input.consumeAll();
+      }
+    }
+  }
+
+  _updateEntities(dt) {
+    if (!this.entities) return;
+    this.entities.update(dt, {
+      player: { x: this.player.x, y: this.player.y },
+      dir: this.player.dir,
+      phase: state() ? timeOfDay(state().time) : 'morning',
+    });
+  }
+
+  _updateWorldClock(dt) {
+    const st = state();
+    if (!st || !this.map) return;
+    if (!this.map.indoor) safe(() => tickWeather(st, dt, this.map.biome));
+    this._applyWeather(false);
+  }
+
+  // --- input ---------------------------------------------------------------
+
+  _updateInput(dt) {
+    if (Game.transitioning || this.popup) return;
+
+    // Menus first: they swallow the press so nothing below reacts to it too.
+    if (Input.consume('menu')) { this._openMenu('pause'); return; }
+    if (Input.consume('party')) { this._openMenu('party'); return; }
+    if (Input.consume('journal')) { this._openMenu('journal'); return; }
+    if (Input.consume('map')) { this._openMenu('map'); return; }
+    if (Input.consume('inventory')) { this._openMenu('inventory'); return; }
+
+    if (Input.consume('interact') || Input.consume('confirm')) {
+      if (this._interact()) return;
+    }
+
+    this.running = Input.down('run');
+    this._updateWalk(dt);
+  }
+
+  /**
+   * Grid walking. A direction newly pressed only turns you until it has been held
+   * for TURN_DELAY; after that — or immediately, if you were already facing that
+   * way — you walk. The held direction is re-read every frame, so a step chains
+   * straight into the next one with no gap.
+   */
+  _updateWalk(dt) {
+    const want = Input.dirName();
+
+    if (!want) { this.heldDir = null; this.turnT = 0; return; }
+
+    if (want !== this.heldDir) {
+      this.heldDir = want;
+      // Turning to face a new way costs a beat; continuing the way you look does not.
+      this.turnT = want === this.player.dir ? 0 : TURN_DELAY;
+      this.player.dir = want;
+      const st = state();
+      if (st) st.dir = want;
+    } else if (this.turnT > 0) {
+      this.turnT -= dt;
+    }
+
+    if (this.player.moving || this.turnT > 0) return;
+    this._tryStep(want);
+  }
+
+  /** Commit one tile of movement, honouring locks, terrain and ledges. */
+  _tryStep(dir) {
+    const map = this.map;
+    const v = DIR_VEC[dir];
+    if (!v) return false;
+    const tx = this.player.x + v.x, ty = this.player.y + v.y;
+
+    // A locked door blocks before the collision check, so you get told why.
+    if (this._blockedByLock(tx, ty)) return false;
+
+    const fromX = this.player.x, fromY = this.player.y;
+    const time = this._stepTime(tx, ty);
+    const moved = this.player.step(dir, map, { time, run: this.running });
+
+    if (!moved) {
+      // Walking into a wall: a dull thud, throttled so holding the key isn't a drum.
+      if (this._bumpSfxT <= 0) {
+        this._bumpSfxT = 0.35;
+        safe(() => Audio.sfx('footstep-stone', { vol: 0.5, pitch: -9 }));
+      }
+      return false;
+    }
+
+    // Two trail entries per step is what makes Party.trailFor() line the party up
+    // nose-to-tail instead of leaving gaps: push the tile left, then the tile entered.
+    Party.pushTrail(fromX, fromY, dir);
+    Party.pushTrail(this.player.x, this.player.y, dir);
+    this._advanceFollowers(this.player.stepTime || time);
+
+    const [sfx, opts] = footstepFor(map, this.player.x, this.player.y);
+    safe(() => Audio.sfx(sfx, opts));
+    if (this.player.hopping) safe(() => Audio.sfx('shove', { vol: 0.4 }));
+    return true;
+  }
+
+  /** Difficult terrain drags; running is quick; a ledge hop is handled by Entity. */
+  _stepTime(tx, ty) {
+    let time = this.running ? RUN_TIME : WALK_TIME;
+    const f = this.map.flagAt(tx, ty);
+    if (f & TF.SLOW) time *= SLOW_FACTOR;
+    if (f & TF.WATER) time *= SLOW_FACTOR;   // wading, if anything ever lets you
+    return time;
+  }
+
+  /** True if a locked door or gate stands in the way (and says so). */
+  _blockedByLock(x, y) {
+    const map = this.map;
+    const t = map.triggerAt(x, y, { flags: flagsOf() });
+    if (!t) return false;
+    const d = t.data || {};
+    const locked = d.locked || t.kind === 'locked-door' || d.kind === 'locked-door';
+    if (!locked) return false;
+    const keyId = d.keyId || null;
+    if (keyId && Party.hasItem(keyId)) {
+      const item = safe(() => resolveItem(keyId), null);
+      d.locked = false;
+      safe(() => Audio.sfx('door'));
+      toast(`${(item && item.name) || 'The key'} turns in the lock.`);
+      return false;
+    }
+    if (this._bumpSfxT <= 0) {
+      this._bumpSfxT = 0.6;
+      safe(() => Audio.sfx('error'));
+      this._say(d.lockedText || (keyId ? 'It is locked. Something opens this.' : 'It is locked fast.'));
+    }
+    this.player.bump();
+    return true;
+  }
+
+  // --- the moment a step lands ---------------------------------------------
+
+  /**
+   * Detect the frame the leader arrives on a new tile and run everything the world
+   * owes it. Returns true if something took over (a scene was pushed, a fight
+   * started) and input should sit this frame out.
+   */
+  _settleStep() {
+    const moving = this.player.moving;
+    const landed = this._wasMoving && !moving;
+    this._wasMoving = moving;
+    if (!landed) return !!(this.popup || Game.transitioning);
+
+    const map = this.map;
+    const x = this.player.x, y = this.player.y;
+    const st = state();
+
+    if (st) {
+      st.x = x; st.y = y; st.dir = this.player.dir;
+      st.stats.steps = (st.stats.steps || 0) + 1;
+    }
+    if (this.entities) this.entities.player = { x, y };
+
+    safe(() => map.revealAround(x, y, map.indoor ? 5 : REVEAL_R));
+    bus.emit(EV.STEP, { x, y, mapId: map.id, dir: this.player.dir });
+
+    if ((st ? st.stats.steps : 0) % 24 === 0) this._syncDiscovered();
+
+    // Hazard tiles hurt, quietly, once per step.
+    if (map.flagAt(x, y) & TF.DAMAGE) this._hazardDamage(x, y);
+
+    // 1. anything you can walk onto: warp pads, unlocked doors.
+    if (this._runStepTriggers(x, y)) return true;
+
+    // 2. the wilds.
+    if (this._tickEncounter(x, y)) return true;
+
+    return !!(this.popup || Game.transitioning);
+  }
+
+  _hazardDamage(x, y) {
+    const dmg = Math.max(1, Math.round(Party.levelAvg() / 2));
+    for (const m of Party.members) {
+      if (!m || m.hp <= 0) continue;
+      m.hp = Math.max(0, m.hp - dmg);
+    }
+    safe(() => FX.floater(x * TILE + TILE / 2, y * TILE, `-${dmg}`, FX.COLORS.fire || '#f07a2a'));
+    safe(() => Audio.sfx('fire', { vol: 0.5 }));
+    safe(() => FX.shake(0.15, 0.2));
+
+    // Never let the lava soft-lock the campaign: drag the survivors home on one hp.
+    if (Party.wiped()) {
+      const st = state();
+      const safeSpot = (st && st.lastSafe) || { mapId: (st && st.lastTown) || 'phandalin' };
+      for (const m of Party.members) if (m) m.hp = Math.max(1, m.hp);
+      toast('Dragged from the burn, barely breathing.');
+      Game.transition('fade', () => _travel(safeSpot.mapId, safeSpot.x, safeSpot.y, 'down', {}));
+    }
+  }
+
+  /** Warps, scripted spots and battle tiles fire by standing on them. */
+  _runStepTriggers(x, y) {
+    const list = this.entities;
+    if (list) {
+      const e = safe(() => list.touchableAt(x, y), null);
+      if (e) {
+        const payload = safe(() => e.onTouch({ x, y, dir: this.player.dir, player: this.player }), null);
+        if (payload && this._dispatch(payload)) return true;
+      }
+    }
+
+    const t = this.map.triggerAt(x, y, { flags: flagsOf() });
+    if (!t || !isStepTrigger(t.kind)) return false;
+    if (t.once && t.done) return false;
+
+    const payload = this._payloadForTrigger(t, x, y);
+    if (!payload) return false;
+    if (t.once) t.done = true;
+    return this._dispatch(payload);
+  }
+
+  // --- encounters ----------------------------------------------------------
+
+  _resetEncounterCounter(rate) {
+    const r = clamp(rate != null ? rate : (this.map ? this.map.encounterRate : 0.06), 0.004, 0.9);
+    this.stepsToEncounter = Math.max(4, Math.round(rng.float(0.55, 1.8) / r));
+  }
+
+  /** Count down on encounter tiles; at zero, the tall grass rustles. */
+  _tickEncounter(x, y) {
+    if (this.encounterGrace > 0) return false;
+    const map = this.map;
+    const info = safe(() => map.encounterAt(x, y), null);
+    if (!info || !info.rate) return false;
+
+    this.stepsToEncounter--;
+    if (this.stepsToEncounter > 0) return false;
+
+    this._resetEncounterCounter(info.rate);
+    return this._startWildEncounter(info, x, y);
+  }
+
+  _startWildEncounter(info, x, y) {
+    const st = state();
+    const seed = `${worldSeed()}:${this.map.id}:${x},${y}:${(st && st.stats.battles) || 0}`;
+    const biome = info.biome || this.map.biome || 'plains';
+    const level = info.level || Party.levelAvg();
+    const depth = (st && st.depth && st.depth[this.map.id]) || 0;
+
+    const roll = safe(() => rollEncounter({
+      biome, level, size: Math.max(1, Party.members.length), seed, depth,
+      difficulty: info.difficulty || undefined,
+    }), null);
+    if (!roll || !roll.monsters || !roll.monsters.length) return false;
+
+    // The grass rustles on the tile first — the fight only arrives at the midpoint
+    // of the transition, so this reads as the cause rather than the aftermath.
+    const px = x * TILE + TILE / 2, py = y * TILE + TILE - 4;
+    safe(() => FX.burst(px, py, this.map.indoor ? '#9a9aa4' : '#8fd07a', 12, {
+      shape: 'leaf', speed: 34, life: 0.7, spread: Math.PI,
+    }));
+    safe(() => FX.ring(px, py, 10, '#cfe8a8', 0.35));
+    safe(() => Audio.sfx('encounter'));
+
+    // Being jumped from behind: an ambush ring instead of two ranks.
+    const ambush = rng.chance(0.12);
+    return this._pushBattle(roll.monsters, {
+      seed, biome, depth, ambush, boss: !!roll.boss,
+      difficulty: roll.difficulty, table: info.table,
+    });
+  }
+
+  /** Visible monsters that walked into the party. */
+  _checkRoamers() {
+    if (!this.entities || Game.transitioning || this.popup) return;
+    const m = safe(() => this.entities.pendingBattle(), null);
+    if (!m) return;
+    const payload = safe(() => m.takeBattle(), null);
+    if (payload) this._dispatch(payload);
+  }
+
+  _pushBattle(enemies, opts = {}) {
+    const combat = LATE.combat, cui = LATE.combatui;
+    if (!combat || typeof combat.buildEncounter !== 'function' || !cui || !cui.BattleScene) {
+      toast('They think better of it and slink away.');
+      this.encounterGrace = ENCOUNTER_GRACE;
+      return false;
+    }
+
+    const st = state();
+    const arena = safe(() => buildBattleMap({
+      biome: opts.biome || this.map.biome || 'plains',
+      seed: opts.seed, indoor: this.map.indoor, ambush: !!opts.ambush,
+      boss: !!opts.boss, depth: opts.depth || 0,
+      sourceMap: this.map, sourceX: this.player.x, sourceY: this.player.y,
+    }), null);
+
+    const enc = safe(() => combat.buildEncounter({
+      party: Party,
+      enemies,
+      map: arena,
+      seed: opts.seed,
+      biome: opts.biome || this.map.biome,
+      ambush: !!opts.ambush,
+      boss: !!opts.boss,
+      depth: opts.depth || 0,
+      difficulty: opts.difficulty,
+      bag: Party.inventory,
+      onLog: (entry) => { if (entry && entry.text) bus.emit(EV.LOG, { text: entry.text, kind: entry.kind }); },
+    }), null);
+
+    if (!enc) {
+      toast('The fight never comes.');
+      this.encounterGrace = ENCOUNTER_GRACE;
+      return false;
+    }
+
+    if (st) st.stats.battles = (st.stats.battles || 0) + 1;
+    const source = opts.source || null;
+    const prevMusic = mapTrack(this.map, Game.state);
+
+    Game.transition('battle', () => {
+      // Dragons and the very largest things get their own theme.
+      const huge = safe(() => (enc.units || []).some((u) => u.side !== 'party'
+        && (u.type === 'dragon' || (u.cr || 0) >= 10)), false);
+      safe(() => Audio.music(huge ? 'dragon' : opts.boss ? 'boss' : 'battle'));
+      safe(() => Game.push(new cui.BattleScene(enc, {
+        fromMapId: this.map.id,
+        onEnd: (res) => this._onBattleEnd(res, source, prevMusic),
+      })));
+    });
+    return true;
+  }
+
+  _onBattleEnd(res, source, prevMusic) {
+    this.encounterGrace = ENCOUNTER_GRACE;
+    this._resetEncounterCounter();
+    safe(() => Audio.music(prevMusic || (this.map && this.map.music) || 'field'));
+
+    const victory = !!(res && res.victory);
+    if (source && source.defeat) {
+      if (victory) safe(() => source.defeat());
+      else safe(() => source.scatter && source.scatter(10));
+    }
+    if (victory) {
+      safe(() => advanceTime(state(), 10));
+      autosave();
+    }
+    Input.flush();
+  }
+
+  // --- followers -----------------------------------------------------------
+
+  /**
+   * Walk each follower onto the trail entry two behind the member in front. Called
+   * the instant the leader commits, so the whole line tweens together.
+   */
+  _advanceFollowers(time) {
+    for (let i = 0; i < this.followers.length; i++) {
+      const f = this.followers[i];
+      if (!f.char) continue;
+      const target = Party.trailFor(i + 1);
+      if (!target) continue;
+      const dx = target.x - f.x, dy = target.y - f.y;
+      if (!dx && !dy) { if (target.dir) f.dir = target.dir; continue; }
+      const dist = Math.abs(dx) + Math.abs(dy);
+      const dir = dirFrom(dx, dy);
+      if (dist === 1 && !f.moving) {
+        f.step(dir, this.map, { force: true, time });
+      } else if (dist === 1) {
+        this._moveTo(f, target.x, target.y, dir, time, 0);      // flat catch-up slide
+      } else if (dist === 2) {
+        this._moveTo(f, target.x, target.y, dir, time * 1.5, 8); // follow the ledge hop
+      } else {
+        f.setTile(target.x, target.y, target.dir || dir);
+      }
+    }
+  }
+
+  /**
+   * A forced move of any length, ignoring collision — the party line retraces ground
+   * the leader has already proved walkable. `arc` above zero vaults (ledge hops).
+   */
+  _moveTo(ent, tx, ty, dir, time, arc = 0) {
+    const ox = ent.x, oy = ent.y;
+    ent.fromX = ent.x; ent.fromY = ent.y;
+    ent.x = tx | 0; ent.y = ty | 0;
+    if (dir) ent.dir = dir;
+    ent.moving = true;
+    ent.moveT = 0;
+    ent.stepTime = Math.max(0.05, time || WALK_TIME);
+    ent.hopping = arc > 0 ? { h: arc } : null;
+    if (ent.list) safe(() => ent.list.moved(ent, ox, oy));
+  }
+
+  /** Idle correction: if the line drifted (a warp, a roster change), close the gap. */
+  _updateFollowers() {
+    for (let i = 0; i < this.followers.length; i++) {
+      const f = this.followers[i];
+      if (!f.char || f.moving) continue;
+      const target = Party.trailFor(i + 1);
+      if (!target) continue;
+      const dist = Math.abs(target.x - f.x) + Math.abs(target.y - f.y);
+      if (dist > 2) f.setTile(target.x, target.y, target.dir || f.dir);
+    }
+  }
+
+  // --- camera --------------------------------------------------------------
+
+  _cameraTarget() {
+    const map = this.map;
+    const worldW = map.w * TILE, worldH = map.h * TILE;
+    let tx = this.player.px - VIEW_W / 2;
+    let ty = (this.player.py - TILE / 2) - VIEW_H / 2;   // aim at the chest, not the feet
+    // A map narrower than the screen centres instead of clamping to a corner.
+    tx = worldW <= VIEW_W ? (worldW - VIEW_W) / 2 : clamp(tx, 0, worldW - VIEW_W);
+    ty = worldH <= VIEW_H ? (worldH - VIEW_H) / 2 : clamp(ty, 0, worldH - VIEW_H);
+    return { x: tx, y: ty };
+  }
+
+  _updateCamera(dt) {
+    const target = this._cameraTarget();
+    const k = 1 - Math.exp(-CAM_LERP * Math.max(0, dt));
+    this.cam.x += (target.x - this.cam.x) * k;
+    this.cam.y += (target.y - this.cam.y) * k;
+    // Snap out the last sub-pixel so a stationary camera never shimmers.
+    if (Math.abs(target.x - this.cam.x) < 0.12) this.cam.x = target.x;
+    if (Math.abs(target.y - this.cam.y) < 0.12) this.cam.y = target.y;
+  }
+
+  _snapCamera() {
+    const target = this._cameraTarget();
+    this.cam.x = target.x; this.cam.y = target.y;
+    this.camDraw.x = Math.round(target.x); this.camDraw.y = Math.round(target.y);
+  }
+
+  // --- weather -------------------------------------------------------------
+
+  _applyWeather(force) {
+    const st = state();
+    const kind = (!this.map || this.map.indoor) ? 'none'
+      : (this.map.weather || (st && st.weather) || 'clear');
+    const mapped = { clear: 'none', rain: 'rain', snow: 'snow', fog: 'fog', ash: 'ash', leaves: 'leaves' }[kind] || 'none';
+    if (!force && mapped === this._weatherKind) return;
+    this._weatherKind = mapped;
+    safe(() => FX.weather(mapped, mapped === 'fog' ? 0.4 : 0.6));
+  }
+
+  _syncDiscovered(mapArg) { syncDiscovered(mapArg || this.map); }
+
+  // =========================================================================
+  // 6.3 INTERACTION
+  // =========================================================================
+
+  /** Press A: look at the tile you are facing, then the one under your boots. */
+  _interact() {
+    if (!this.map || this.player.moving) return false;
+    const front = this.player.frontTile();
+    const ctx = { x: this.player.x, y: this.player.y, dir: this.player.dir, player: this.player };
+
+    if (this.entities) {
+      const e = safe(() => this.entities.interactableAt(front.x, front.y), null)
+        || safe(() => this.entities.interactableAt(this.player.x, this.player.y), null);
+      if (e) {
+        const payload = safe(() => e.interact(ctx), null);
+        if (payload) { this._dispatch(payload); return true; }
+      }
+    }
+
+    for (const p of [front, { x: this.player.x, y: this.player.y }]) {
+      const t = this.map.triggerAt(p.x, p.y, { flags: flagsOf() });
+      if (!t || isStepTrigger(t.kind)) continue;
+      if (t.facing && t.facing !== this.player.dir) continue;
+      if (t.once && t.done) continue;
+      const payload = this._payloadForTrigger(t, p.x, p.y);
+      if (!payload) continue;
+      if (t.once) t.done = true;
+      this._dispatch(payload);
+      return true;
+    }
+    return false;
+  }
+
+  /** Translate a map trigger into the same payload shape entities speak. */
+  _payloadForTrigger(t, x, y) {
+    const d = t.data || {};
+    switch (t.kind) {
+      case 'sign':
+        return { kind: 'sign', data: { title: d.title || null, text: d.text || d.lines || '…', pages: d.pages || null } };
+      case 'shop':
+        return { kind: 'shop', data: { shopId: d.shopId || d.shop || d.id, npcId: d.npcId || null } };
+      case 'inn':
+      case 'rest':
+        return { kind: 'inn', data: { cost: d.cost != null ? d.cost : (t.kind === 'inn' ? 5 : 0), name: d.name || null, hours: d.hours } };
+      case 'chest':
+        return { kind: 'chest', data: { ...d, x, y, trigger: t } };
+      case 'warp':
+      case 'door':
+        return { kind: 'warp', data: { ...d, map: d.map || d.mapId || null, transition: d.transition || 'fade' } };
+      case 'battle':
+        return { kind: 'battle', data: { ...d } };
+      case 'quest':
+      case 'script': {
+        // Only a real dialogue id opens a tree; anything else speaks a line, so a
+        // mapgen script marker never puts a stranger's small talk in a crypt.
+        const did = d.dialogueId || d.dialogue || d.tree || null;
+        const text = d.text || (did ? null : SCRIPT_LINES[d.kind] || SCRIPT_LINES.default);
+        return { kind: 'dialogue', data: { dialogueId: did, npcId: d.npcId || null, text, script: d } };
+      }
+      default:
+        return null;
+    }
+  }
+
+  /** Act on a payload. Returns true if it took over the frame. */
+  _dispatch(payload) {
+    if (!payload || !payload.kind) return false;
+    const d = payload.data || {};
+    switch (payload.kind) {
+      case 'dialogue': return this._openDialogue(d);
+      case 'shop': return this._openShop(d);
+      case 'sign': return this._openSign(d);
+      case 'chest': return this._openChest(d);
+      case 'inn':
+      case 'rest': return this._openInn(d);
+      case 'warp': return this._doWarp(d);
+      case 'battle': return this._doTriggerBattle(d);
+      default: return false;
+    }
+  }
+
+  // --- dispatch targets -----------------------------------------------------
+
+  _openDialogue(d) {
+    const mod = LATE.dialogue;
+    if (!mod || !mod.DialogueScene) {
+      this._say(d.text || (d.greeting) || 'They have nothing to say just now.');
+      return true;
+    }
+    const npc = d.npc || (d.npcId ? safe(() => getNPC(d.npcId), null) : null);
+    if (d.entity && d.entity.pauseAndFace) safe(() => d.entity.pauseAndFace(this.player.x, this.player.y, 3));
+    if (d.entity) d.entity.busy = true;
+
+    // A scripted trigger with only literal text does not need a dialogue tree.
+    if (!d.dialogueId && d.text) { this._say(d.text); return true; }
+
+    safe(() => Game.push(new mod.DialogueScene(d.dialogueId || d.npcId, npc, {
+      shopId: d.shopId || null,
+      speaker: d.name || (npc && npc.name) || null,
+      onClose: () => { if (d.entity) d.entity.busy = false; },
+    })));
+    if (d.npcId) safe(() => progressQuests(state(), 'talk', d.npcId, 1));
+    return true;
+  }
+
+  _openShop(d) {
+    const mod = LATE.shop;
+    const shopId = d.shopId || d.shop || d.id;
+    if (!mod || !mod.ShopScene || !shopId) { this._say('The counter is shut.'); return true; }
+    safe(() => Audio.sfx('open'));
+    safe(() => Game.push(new mod.ShopScene(shopId, {
+      npc: d.npc || (d.npcId ? safe(() => getNPC(d.npcId), null) : null),
+    })));
+    return true;
+  }
+
+  _openSign(d) {
+    const pages = d.pages && d.pages.length ? d.pages : [d.text || '…'];
+    const mod = LATE.dialogue;
+    if (mod && typeof mod.say === 'function') {
+      safe(() => mod.say(pages, { speaker: d.title || null }));
+      return true;
+    }
+    this._say(Array.isArray(pages) ? pages.join(' ') : String(pages), d.title);
+    return true;
+  }
+
+  /** Chests: open, roll the loot into the pack, and pop a little tally window. */
+  _openChest(d) {
+    const st = state();
+    const chest = d.chest || d.entity || null;
+
+    // ChestEntity.open() already lifted the lid and handed us the contents.
+    if (d.opened) return this._grantChest(d);
+
+    // A locked chest wants a key.
+    if (d.locked && !(chest && chest.opened)) {
+      const keyId = d.keyId || null;
+      if (!keyId || !Party.hasItem(keyId)) {
+        safe(() => Audio.sfx('error'));
+        this._say('The lid will not lift. It is locked.');
+        return true;
+      }
+      const item = safe(() => resolveItem(keyId), null);
+      toast(`${(item && item.name) || 'A key'} fits the lock.`);
+      if (chest) { chest.locked = false; }
+      const opened = chest ? safe(() => chest.open(), null) : null;
+      return this._grantChest(opened ? opened.data : d);
+    }
+
+    if (chest && !chest.opened) {
+      const res = safe(() => chest.open(), null);
+      return this._grantChest(res ? res.data : d);
+    }
+    if (chest && chest.opened && !d.opened) {
+      this._say('Empty. Someone got here first — probably you.');
+      return true;
+    }
+
+    // A bare trigger chest with no entity behind it.
+    if (st && isChestLooted(st, this.map.id, d.x, d.y)) {
+      this._say('The chest is empty.');
+      return true;
+    }
+    if (st && d.x != null) safe(() => markChestLooted(st, this.map.id, d.x, d.y));
+    safe(() => Audio.sfx('chest'));
+    return this._grantChest(d);
+  }
+
+  _grantChest(d) {
+    const lines = [];
+    let gold = d.gold || 0;
+    const items = [];
+
+    for (const entry of (d.loot || d.items || [])) {
+      const id = Array.isArray(entry) ? entry[0] : (entry && entry.id) || entry;
+      const qty = Array.isArray(entry) ? (entry[1] || 1) : ((entry && entry.qty) || 1);
+      if (id) items.push([id, qty]);
+    }
+
+    // A CR-banded table (mapgen's chestPlan) rolls its own contents.
+    if (!items.length && (d.lootTable || d.rolls || d.cr != null)) {
+      const rolled = this._rollLootTable(d);
+      for (const it of rolled.items) items.push(it);
+      if (!gold) gold = rolled.gold;
+    }
+
+    if (gold > 0) {
+      Party.addGold(gold);
+      const st = state();
+      if (st) st.stats.goldEarned = (st.stats.goldEarned || 0) + gold;
+      lines.push(`${gold} gp`);
+      safe(() => Audio.sfx('coin'));
+    }
+    for (const [id, qty] of items) {
+      const item = safe(() => resolveItem(id), null);
+      if (!item) continue;
+      Party.addItem(id, qty);
+      lines.push(qty > 1 ? `${item.name} x${qty}` : item.name);
+    }
+
+    if (!lines.length) {
+      this._say('Nothing but dust and a dead spider.');
+      return true;
+    }
+    safe(() => Audio.sfx('item'));
+    safe(() => FX.burst(this.player.px, this.player.py - 8, '#e3b34a', 14, { shape: 'spark', speed: 60 }));
+    this.popup = { title: 'You found', lines, t: 0, life: 4.5 };
+    return true;
+  }
+
+  /** Roll a chest's contents off data/items_magic.js LOOT_TABLES. */
+  _rollLootTable(d) {
+    const out = { gold: 0, items: [] };
+    const mod = LATE.loot;
+    const r = makeRNG(`chest:${this.map ? this.map.id : 'map'}:${d.x || 0},${d.y || 0}:${d.seed || 0}`);
+    out.gold = d.gold || Math.max(3, Math.round(r.int(6, 24) * (1 + (d.depth || 0) * 0.5)));
+    if (!mod || typeof mod.lootTableFor !== 'function') return out;
+
+    const table = (d.lootTable && mod.LOOT_TABLES && mod.LOOT_TABLES[d.lootTable])
+      || safe(() => mod.lootTableFor(d.cr != null ? d.cr : Party.levelAvg() * 0.5), null);
+    if (!table || !Array.isArray(table.items)) return out;
+
+    const rolls = Math.max(1, Math.min(5, d.rolls || 1));
+    const seen = new Map();
+    for (let i = 0; i < rolls; i++) {
+      const pick = r.pickWeighted(table.items, (e) => Math.max(0.01, e[1] > 1 ? e[1] / 100 : e[1]));
+      if (!pick) continue;
+      const id = pick[0];
+      if (!safe(() => resolveItem(id), null)) continue;
+      seen.set(id, (seen.get(id) || 0) + 1);
+    }
+    for (const [id, qty] of seen) out.items.push([id, qty]);
+    return out;
+  }
+
+  /**
+   * The inn: a bed, a price, and eight hours of the Calendar of Harptos.
+   * The prompt is a real dialogue window whose "Rest" branch runs dialogue.js's own
+   * `do:{ rest }` action, so the purse, the long rest and the clock all move through
+   * the same code the written NPC scripts use.
+   */
+  _openInn(d) {
+    const cost = Math.max(0, d.cost != null ? d.cost : 5);
+    const hours = d.hours != null ? d.hours : 8;
+    const mod = LATE.dialogue;
+    const name = d.name || 'The Innkeeper';
+
+    // Whatever route the rest takes, the campaign is worth writing down afterwards.
+    if (this._restOff) { safe(() => this._restOff()); this._restOff = null; }
+    const armedAt = this.t;
+    this._restOff = bus.once(EV.REST, () => {
+      this._restOff = null;
+      // Only claim the morning if this really was the room we just paid for.
+      if (this.t - armedAt < 30) {
+        const st = state();
+        if (st && (st.time < 360 || st.time > 660)) st.time = 420;
+        this.banner = { text: 'Morning', sub: null, t: 0 };
+        safe(() => Audio.music(mapTrack(this.map, Game.state)));
+      }
+      autosave();
+    });
+
+    if (!mod || typeof mod.say !== 'function') {
+      // No dialogue module: rest anyway rather than leaving the player stuck.
+      if (cost > 0 && !Party.spendGold(cost)) {
+        safe(() => Audio.sfx('error'));
+        this._say(`You cannot cover ${cost} gp.`);
+        return true;
+      }
+      Game.transition('fade', () => {
+        safe(() => Party.longRest());
+        safe(() => Party.healAll());
+        safe(() => advanceTime(state(), hours * 60));
+        safe(() => Audio.sfx('heal'));
+        toast('Rested. The party is whole again.');
+      }, { dur: 1.0 });
+      return true;
+    }
+
+    safe(() => mod.say([cost > 0
+      ? `A bed and a hot meal, ${cost} gp the night.`
+      : 'Rest here a while, and let the road wait.'], {
+      speaker: name,
+      choices: [
+        { text: cost > 0 ? `Take a room (${cost} gp)` : 'Rest', do: { rest: { cost, hours } } },
+        { text: 'Not tonight', cancel: true, leave: true },
+      ],
+    }));
+    return true;
+  }
+
+  _doWarp(d) {
+    if (!d) return false;
+    const st = state();
+    const kind = d.transition || 'fade';
+    const target = d.map || d.mapId || null;
+
+    // A dungeon stair carries a depth instead of a map id.
+    const opts = {};
+    if (d.depth != null) {
+      opts.depth = Math.max(0, d.depth | 0);
+      opts.theme = d.theme || null;
+      opts.biome = d.biome || (this.map ? this.map.biome : null);
+    }
+
+    let id = target;
+    if (!id && opts.depth != null) {
+      if (d.exit) {
+        id = (st && st.lastTown) || 'phandalin';
+        delete opts.depth;
+      } else {
+        const base = String((this.map && this.map.id) || 'undermountain').replace(/@\d+$/, '').replace(/-\d+$/, '');
+        id = base;
+      }
+    }
+    if (!id) { this._say('The way is barred.'); return false; }
+
+    safe(() => Audio.sfx(d.sfx || 'door'));
+    Game.transition(kind, () => {
+      _travel(id, d.x, d.y, d.dir || this.player.dir, opts);
+    });
+    return true;
+  }
+
+  _doTriggerBattle(d) {
+    const enemies = [];
+    for (const e of (d.monsters || d.enemies || [])) {
+      if (!e) continue;
+      if (typeof e === 'string') enemies.push({ id: e, count: 1 });
+      else enemies.push({ id: e.id || e.monsterId, count: e.count || 1, level: e.level, elite: e.elite, boss: e.boss });
+    }
+    if (!enemies.length && d.monsterId) {
+      enemies.push({
+        id: d.monsterId,
+        count: Math.max(1, d.count || rng.int(1, 3)),
+        level: d.level || null, elite: !!d.elite, boss: !!d.boss,
+      });
+    }
+
+    const seed = d.seed != null ? String(d.seed)
+      : `${worldSeed()}:${this.map.id}:${this.player.x},${this.player.y}:trig`;
+
+    if (!enemies.length) {
+      const roll = safe(() => rollEncounter({
+        biome: d.biome || this.map.biome, level: d.level || Party.levelAvg(),
+        size: Math.max(1, Party.members.length), seed, depth: d.depth || 0,
+        difficulty: d.boss ? 'deadly' : undefined,
+      }), null);
+      if (roll && roll.monsters) enemies.push(...roll.monsters);
+    }
+    if (!enemies.length) return false;
+
+    return this._pushBattle(enemies, {
+      seed, biome: d.biome || this.map.biome, depth: d.depth || 0,
+      ambush: !!d.ambush, boss: !!d.boss, source: d.entity || null,
+    });
+  }
+
+  // --- menus ---------------------------------------------------------------
+
+  _openMenu(which) {
+    const mod = LATE.menus;
+    if (!mod) { safe(() => Audio.sfx('error')); return; }
+    const Scene = {
+      pause: mod.PauseMenuScene, party: mod.PartyScene, journal: mod.JournalScene,
+      map: mod.MapScene, inventory: mod.InventoryScene,
+    }[which];
+    if (!Scene) { safe(() => Audio.sfx('error')); return; }
+    safe(() => Audio.sfx('open'));
+    this._syncDiscovered();
+    safe(() => Game.push(new Scene()));
+  }
+
+  /** A one-line message in the standard window; falls back to a toast. */
+  _say(text, title) {
+    const mod = LATE.dialogue;
+    if (mod && typeof mod.say === 'function') { safe(() => mod.say([text], { speaker: title || null })); return; }
+    toast(String(text));
+  }
+
+  // =========================================================================
+  // 6.4 DRAW
+  // =========================================================================
+
+  draw(ctx) {
+    ctx.fillStyle = '#07060a';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+    if (!this.map) { this._drawLoading(ctx); return; }
+
+    // Round the camera (shake included) once, here, so nothing shimmers.
+    const sh = safe(() => FX.shakeOffset(), { x: 0, y: 0 }) || { x: 0, y: 0 };
+    this.camDraw.x = Math.round(this.cam.x + sh.x);
+    this.camDraw.y = Math.round(this.cam.y + sh.y);
+    const cam = this.camDraw;
+
+    this._drawLayer(ctx, 'ground', cam);
+    this._drawLayer(ctx, 'deco', cam);
+
+    // Entities and the party in one feet-Y sort, so villagers pass in front of and
+    // behind you correctly.
+    if (this.entities) {
+      safe(() => this.entities.draw(ctx, cam, { viewW: VIEW_W, viewH: VIEW_H, pad: 48 }));
+    }
+    safe(() => FX.draw(ctx, cam.x, cam.y));
+
+    // Canopies, roof edges and archways you walk behind.
+    this._drawLayer(ctx, 'over', cam);
+
+    // Grade first, then the hint: the "you can talk to this" chevron has to stay
+    // readable at midnight, and the HUD above it likewise.
+    this._drawGrade(ctx, cam);
+    this._drawInteractHint(ctx, cam);
+
+    this.hud.setPlayerScreen(
+      Math.round(this.player.px - cam.x),
+      Math.round(this.player.py - cam.y),
+      this.player.moving,
+    );
+    this.hud.draw(ctx);
+
+    this._drawBanner(ctx);
+    this._drawPopup(ctx);
+  }
+
+  /** Only tiles in view plus a one-tile margin, so big maps cost nothing extra. */
+  _drawLayer(ctx, layer, cam) {
+    const map = this.map;
+    const plane = layer === 'ground' ? map.ground : layer === 'deco' ? map.deco : map.over;
+    if (!plane) return;
+    const x0 = Math.floor(cam.x / TILE) - 1;
+    const y0 = Math.floor(cam.y / TILE) - 1;
+    const x1 = x0 + Math.ceil(VIEW_W / TILE) + 2;
+    const y1 = y0 + Math.ceil(VIEW_H / TILE) + 2;
+    const t = this.t;
+
+    for (let y = y0; y <= y1; y++) {
+      if (y < 0 || y >= map.h) continue;
+      const row = y * map.w;
+      const py = y * TILE - cam.y;
+      for (let x = x0; x <= x1; x++) {
+        if (x < 0 || x >= map.w) continue;
+        const id = plane[row + x];
+        if (!id) continue;
+        drawTile(ctx, id, x * TILE - cam.x, py, x, y, t);
+      }
+    }
+  }
+
+  /**
+   * Day/night grading, cave darkness, and the warm pools of light that torches and
+   * lit windows throw once the sun is down. Drawn over the world and under the HUD,
+   * so the interface stays readable at midnight.
+   */
+  _drawGrade(ctx, cam) {
+    const map = this.map;
+    const st = state();
+    const graded = map.dayNight !== false && !map.indoor && st;
+    const tint = graded ? dayTint(st.time) : null;
+    const dark = map.dark || 0;
+
+    if (tint && tint.a > 0.005) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = tint.a;
+      ctx.fillStyle = `rgb(${tint.r},${tint.g},${tint.b})`;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.restore();
+    }
+
+    // A map-authored ambient wash (crypts, the Redbrand cellar).
+    if (map.ambient && map.ambient.color) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = clamp(map.ambient.alpha != null ? map.ambient.alpha : 0.3, 0, 1);
+      ctx.fillStyle = map.ambient.color;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.restore();
+    }
+
+    if (dark > 0) this._drawDarkness(ctx, cam, dark);
+
+    const night = tint ? clamp((tint.a - 0.07) / 0.42, 0, 1) : (map.indoor || map.dark ? 0.85 : 0);
+    if (night > 0.04) this._drawLights(ctx, cam, night);
+  }
+
+  _drawDarkness(ctx, cam, amount) {
+    const cx = Math.round(this.player.px - cam.x);
+    const cy = Math.round(this.player.py - cam.y) - 8;
+    const r = 84;
+    const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, r);
+    g.addColorStop(0, 'rgba(2,3,8,0)');
+    g.addColorStop(0.55, `rgba(2,3,8,${(amount * 0.45).toFixed(3)})`);
+    g.addColorStop(1, `rgba(2,3,8,${clamp(amount, 0, 0.97).toFixed(3)})`);
+    ctx.save();
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.restore();
+  }
+
+  _drawLights(ctx, cam, night) {
+    const glows = safe(() => glowsFor(this.map), []) || [];
+    if (!glows.length) return;
+    const nightOnly = night > 0.25;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    let drawn = 0;
+    for (const gl of glows) {
+      if (drawn > 26) break;
+      const sx = gl.x * TILE + TILE / 2 - cam.x;
+      const sy = gl.y * TILE + TILE / 2 - cam.y;
+      const rad = gl.def.r;
+      if (sx < -rad || sy < -rad || sx > VIEW_W + rad || sy > VIEW_H + rad) continue;
+      if (gl.def.nightOnly && !nightOnly) continue;
+      drawn++;
+      const flick = gl.def.flick
+        ? 1 + Math.sin((this.t * 6.5) + gl.phase * 12) * 0.07 * gl.def.flick
+        : 1;
+      const a = clamp(0.42 * night * flick, 0, 0.7);
+      const c = gl.def.c;
+      const g = ctx.createRadialGradient(sx, sy, 1, sx, sy, rad * flick);
+      g.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`);
+      g.addColorStop(0.5, `rgba(${c[0]},${c[1]},${c[2]},${(a * 0.35).toFixed(3)})`);
+      g.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+      ctx.fillStyle = g;
+      ctx.fillRect(sx - rad, sy - rad, rad * 2, rad * 2);
+    }
+    ctx.restore();
+  }
+
+  /** A small bouncing chevron over whatever pressing A would talk to. */
+  _drawInteractHint(ctx, cam) {
+    if (this.player.moving || this.popup || !this.entities) return;
+    const f = this.player.frontTile();
+    const e = safe(() => this.entities.interactableAt(f.x, f.y), null);
+    const t = e ? null : this.map.triggerAt(f.x, f.y, { flags: flagsOf() });
+    if (!e && (!t || isStepTrigger(t.kind))) return;
+
+    const wx = (e ? e.px : f.x * TILE + TILE / 2) - cam.x;
+    const wy = (e ? e.py - (e.char || e.sprite ? 26 : 18) : f.y * TILE - 4) - cam.y;
+    const bob = Math.round(Math.sin(this.t * 6) * 1.5);
+    const x = Math.round(wx), y = Math.round(wy) + bob;
+
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = '#1a1014';
+    ctx.beginPath();
+    ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + 4, y - 4); ctx.lineTo(x, y + 2);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e3b34a';
+    ctx.beginPath();
+    ctx.moveTo(x - 3, y - 4); ctx.lineTo(x + 3, y - 4); ctx.lineTo(x, y + 1);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  _drawBanner(ctx) {
+    const b = this.banner;
+    if (!b) return;
+    const fade = b.t < 0.3 ? b.t / 0.3 : b.t > 2.6 ? clamp((3.2 - b.t) / 0.6, 0, 1) : 1;
+    if (fade <= 0.01) return;
+    const w = Math.max(96, safe(() => UI.measure(b.text, 'md'), 80) + 28);
+    const x = Math.round((VIEW_W - w) / 2), y = 18;
+    const h = b.sub ? 28 : 20;
+    ctx.save();
+    ctx.globalAlpha = fade;
+    safe(() => UI.panel(ctx, x, y, w, h, { style: 'dark', alpha: 0.9 }));
+    safe(() => UI.text(ctx, Math.round(VIEW_W / 2), y + 5, b.text, {
+      size: 'md', color: UI.COLORS.gold, align: 'center', shadow: true,
+    }));
+    if (b.sub) {
+      safe(() => UI.text(ctx, Math.round(VIEW_W / 2), y + 16, b.sub, {
+        size: 'sm', color: UI.COLORS.dim, align: 'center',
+      }));
+    }
+    ctx.restore();
+  }
+
+  _drawPopup(ctx) {
+    const p = this.popup;
+    if (!p) return;
+    const rows = p.lines.length;
+    const w = 150, h = 22 + rows * 10;
+    const x = Math.round((VIEW_W - w) / 2), y = Math.round((VIEW_H - h) / 2) - 20;
+    const pop = clamp(p.t / 0.14, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = p.t > (p.life || 4.5) - 0.4 ? clamp(((p.life || 4.5) - p.t) / 0.4, 0, 1) : 1;
+    safe(() => UI.window(ctx, x, y, w, h, p.title || 'Found', { style: 'window' }));
+    for (let i = 0; i < rows; i++) {
+      safe(() => UI.text(ctx, x + 10, y + 9 + i * 10, p.lines[i], {
+        size: 'sm', color: UI.COLORS.ink, maxWidth: w - 20,
+      }));
+    }
+    if (pop >= 1) {
+      safe(() => UI.text(ctx, x + w - 8, y + h - 10, 'A', {
+        size: 'sm', color: UI.COLORS.goldDim, align: 'right',
+      }));
+    }
+    ctx.restore();
+  }
+
+  _drawLoading(ctx) {
+    const dots = '.'.repeat(1 + (Math.floor(this.t * 2) % 3));
+    safe(() => UI.text(ctx, VIEW_W / 2, VIEW_H / 2 - 6, `The road unfolds${dots}`, {
+      size: 'md', color: UI.COLORS.dim, align: 'center',
+    }));
+  }
+}
+
+export default OverworldScene;

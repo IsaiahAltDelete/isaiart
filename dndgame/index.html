@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Sword Coast Chronicles</title>
+<meta name="description" content="A top-down Forgotten Realms RPG running a full D&amp;D 5.5e rules engine." />
+<style>
+  :root {
+    --bg-deep: #07060a;
+    --bg: #0d0b10;
+    --glow: #2a1c10;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    background: var(--bg-deep);
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+    color: #cbb894;
+  }
+  #shell {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(ellipse at 50% 42%, #17121a 0%, #0a080c 55%, #050407 100%);
+  }
+  /* Faint parchment vignette behind the frame */
+  #shell::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 45%, rgba(227,179,74,0.05), transparent 62%);
+  }
+  canvas#game {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #000;
+    box-shadow:
+      0 0 0 2px #3a2c18,
+      0 0 0 4px #16110c,
+      0 0 34px 6px rgba(0,0,0,0.85),
+      0 0 90px 18px rgba(227,179,74,0.06);
+    position: relative;
+    z-index: 2;
+  }
+  /* Boot / loading screen */
+  #boot {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px;
+    background: #07060a;
+    transition: opacity .5s ease;
+  }
+  #boot.hide { opacity: 0; pointer-events: none; }
+  #boot h1 {
+    margin: 0; font-size: 26px; letter-spacing: 6px; font-weight: 400;
+    color: #e3b34a; text-shadow: 0 0 18px rgba(227,179,74,.35);
+    text-transform: uppercase;
+  }
+  #boot .sub { font-size: 11px; letter-spacing: 3px; color: #6d5c40; }
+  #boot .bar { width: 260px; height: 6px; background: #191219; border: 1px solid #3a2c18; }
+  #boot .bar i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg,#8a6a2a,#e3b34a); transition: width .25s ease; }
+  #boot .msg { font-size: 10px; color: #55482f; height: 12px; letter-spacing: 1px; }
+  #boot .err { color: #d4574a; font-size: 11px; max-width: 70ch; white-space: pre-wrap; text-align: left; line-height: 1.5; }
+  /* Click-to-start overlay (browsers need a gesture before audio) */
+  #gate {
+    position: fixed; inset: 0; z-index: 40;
+    display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+    background: rgba(5,4,7,.86); cursor: pointer;
+  }
+  #gate.show { display: flex; }
+  #gate .t { color: #e3b34a; letter-spacing: 4px; font-size: 15px; text-transform: uppercase; }
+  #gate .s { color: #6d5c40; font-size: 11px; letter-spacing: 2px; }
+  #gate .pulse { animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:.45 } 50% { opacity:1 } }
+</style>
+</head>
+<body>
+  <div id="shell">
+    <canvas id="game" width="400" height="240"></canvas>
+  </div>
+
+  <div id="gate">
+    <div class="t">Sword Coast Chronicles</div>
+    <div class="s pulse">Click or press any key to begin</div>
+  </div>
+
+  <div id="boot">
+    <h1>Sword Coast</h1>
+    <div class="sub">CHRONICLES</div>
+    <div class="bar"><i id="bootbar"></i></div>
+    <div class="msg" id="bootmsg">mustering the company&hellip;</div>
+    <div class="err" id="booterr"></div>
+  </div>
+
+<script type="module">
+  // Surface module errors on the boot screen instead of a silent black canvas.
+  const errEl = document.getElementById('booterr');
+  const msgEl = document.getElementById('bootmsg');
+  function fail(what, e) {
+    const boot = document.getElementById('boot');
+    boot.classList.remove('hide');
+    boot.style.opacity = '1';
+    boot.style.pointerEvents = 'auto';
+    msgEl.textContent = what;
+    errEl.textContent = (e && (e.stack || e.message)) || String(e);
+    console.error(what, e);
+  }
+  window.addEventListener('error', (ev) => fail('a spell fizzled', ev.error || ev.message));
+  window.addEventListener('unhandledrejection', (ev) => fail('a spell fizzled', ev.reason));
+
+  try {
+    const { boot } = await import('./src/main.js');
+    await boot({
+      progress(pct, message) {
+        document.getElementById('bootbar').style.width = Math.round(pct * 100) + '%';
+        if (message) msgEl.textContent = message;
+      },
+      done() {
+        const b = document.getElementById('boot');
+        b.classList.add('hide');
+        setTimeout(() => { b.style.display = 'none'; }, 550);
+      },
+      gate: document.getElementById('gate'),
+    });
+  } catch (e) {
+    fail('the company never mustered', e);
+  }
+</script>
+</body>
+</html>

@@ -5,3 +5,6 @@
 *.log
 update_repos.log
 .DS_Store
+
+# source zip for /dndgame — unpacked, no need to ship it
+DND GAME.zip
