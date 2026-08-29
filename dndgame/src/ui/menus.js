@@ -336,6 +336,7 @@ class MenuScene {
     this.id = id;
     this.opaque = true;
     this.pausesBelow = true;
+    this.uiLayer = true;      // weather and day/night grading stop below this
     this.t = 0;
     this.prompt = null;       // { title, body, options, index, onPick, rects }
     this.msg = '';

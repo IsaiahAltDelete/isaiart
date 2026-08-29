@@ -173,6 +173,7 @@ export class TitleScene {
     this.id = 'title';
     this.opaque = true;
     this.pausesBelow = true;
+    this.uiLayer = true;
     this.opts = opts || {};
     this.t = 0;
     this.index = 0;
@@ -985,6 +986,7 @@ export class GameOverScene {
     this.id = 'gameover';
     this.opaque = true;
     this.pausesBelow = true;
+    this.uiLayer = true;
     this.reason = String(reason || 'The company was overwhelmed.');
     this.opts = opts || {};
     this.t = 0;

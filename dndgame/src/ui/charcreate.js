@@ -843,6 +843,7 @@ export class CharCreateScene {
     this.mode = this.opts.mode || 'new-hero';
     this.opaque = true;
     this.pausesBelow = true;
+    this.uiLayer = true;
     this.id = 'charcreate';
 
     this.t = 0;
@@ -856,6 +857,18 @@ export class CharCreateScene {
     this.message = '';
     this.messageT = 0;
     this.messageBad = false;
+
+    // Feedback for a refused action: which widget to rattle, and for how long.
+    // Nothing in this wizard fails silently — every dead end says so and points
+    // at the step that owes a choice.
+    this.shakeT = 0;
+    this.shakeWhat = '';          // 'next' | 'tabs' | 'row'
+    this.blameStep = -1;          // step the current complaint is about
+    this.blameT = 0;
+
+    // Choices parked when you switch species/class/subclass/background, so
+    // browsing the catalogue never destroys work. See the setters.
+    this._stash = {};
 
     this._hot = [];               // hit rects registered during draw
     this._version = 0;            // bumped on every draft change
@@ -967,6 +980,8 @@ export class CharCreateScene {
   update(dt) {
     this.t += (dt || 0);
     if (this.messageT > 0) this.messageT -= (dt || 0);
+    if (this.shakeT > 0) this.shakeT -= (dt || 0);
+    if (this.blameT > 0) { this.blameT -= (dt || 0); if (this.blameT <= 0) this.blameStep = -1; }
 
     this._handleMouse();
 
@@ -1032,6 +1047,8 @@ export class CharCreateScene {
     if (safe(() => Input.consume('prev'), false)) { this.goPrev(); return; }
     if (safe(() => Input.consume('cancel'), false)) { this.goBackOut(); return; }
     if (safe(() => Input.consume('menu'), false)) { this.goBackOut(); return; }
+    // E — "take me to whatever is still missing".
+    if (safe(() => Input.consume('interact'), false)) { this.gotoIssue(); return; }
 
     // --- sub-section tabs --------------------------------------------------
     // Tab walks EVERY sub-section (Shift+Tab backwards) so the warlock's ninth
@@ -1067,10 +1084,24 @@ export class CharCreateScene {
 
     // --- confirm -----------------------------------------------------------
     if (safe(() => Input.consume('confirm'), false)) {
+      if (row && row.disabled) {
+        this.warn(row.lockedWhy || 'That choice is not open to you.', 'row');
+        return;
+      }
       if (row && row.onConfirm) { safe(() => row.onConfirm()); return; }
       if (row && row.onRight) { sfx('cursor'); safe(() => row.onRight()); return; }
+      // Nothing to activate on this row, so Enter means the same thing the NEXT
+      // button means. It never silently re-applies a choice you already made.
       this.goNext();
     }
+  }
+
+  /** Click/confirm on a row, honouring `disabled` so nothing fails silently. */
+  activateRow(row) {
+    if (!row || row.header) return;
+    if (row.disabled) { this.warn(row.lockedWhy || 'That choice is not open to you.', 'row'); return; }
+    if (row.onConfirm) { safe(() => row.onConfirm()); return; }
+    if (row.onRight) { sfx('cursor'); safe(() => row.onRight()); }
   }
 
   moveCursor(dir) {
@@ -1088,8 +1119,10 @@ export class CharCreateScene {
     this.cursor = c;
     sfx('cursor');
     const row = this._rows[c];
-    // Single-choice catalogues preview live as the cursor moves.
-    if (row && row.onFocus) safe(() => row.onFocus());
+    // Single-choice catalogues preview live as the cursor moves. This is only
+    // safe because the setters stash whatever the switch displaces (see below):
+    // browsing the list must never cost you a choice you already made.
+    if (row && row.onFocus && !row.disabled) safe(() => row.onFocus());
     this.docScroll[this.rowKey()] = 0;
   }
 
@@ -1140,7 +1173,7 @@ export class CharCreateScene {
       this.sub = 1; sfx('select'); return;
     }
     const why = this.issue(this.step);
-    if (why) { this.focusIssueBucket(this.step); this.warn(why); return; }
+    if (why) { this.focusIssueBucket(this.step); this.warn(why, 'next', this.step); return; }
     if (STEPS[this.step].id === 'summary') { this.finish(); return; }
     let i = this.step + 1;
     while (i < STEPS.length && !this.stepEnabled(i)) i++;
@@ -1175,7 +1208,7 @@ export class CharCreateScene {
         if (why) {
           this.step = k; this.sub = 0; this.bucket = 0; this._rowsKey = '';
           this.focusIssueBucket(k);
-          this.warn(STEPS[k].title + ': ' + why);
+          this.warn(STEPS[k].title + ': ' + why, 'tabs', k);
           return;
         }
       }
@@ -1189,8 +1222,68 @@ export class CharCreateScene {
     }
   }
 
-  warn(msg) { this.message = String(msg); this.messageT = 3.2; this.messageBad = true; sfx('error'); }
+  /**
+   * Refuse something out loud. `what` names the widget to rattle ('next',
+   * 'tabs', 'row') and `blame` the step that is actually at fault, which the tab
+   * strip then pulses red. A silent no is the one thing this screen must never do.
+   */
+  warn(msg, what = 'next', blame = -1) {
+    this.message = String(msg);
+    this.messageT = 3.2;
+    this.messageBad = true;
+    this.shakeT = 0.42;
+    this.shakeWhat = what;
+    if (blame >= 0) { this.blameStep = blame; this.blameT = 3.2; }
+    sfx('error');
+  }
+
   note(msg) { this.message = String(msg); this.messageT = 2.2; this.messageBad = false; }
+
+  /** Horizontal wobble in pixels for `what`, zero when nothing is complaining. */
+  shakeX(what) {
+    if (this.shakeT <= 0 || this.shakeWhat !== what) return 0;
+    return Math.round(Math.sin(this.shakeT * 52) * this.shakeT * 7);
+  }
+
+  /** Why step `i` cannot be opened at all, in words. */
+  lockedReason(i) {
+    const id = STEPS[i] && STEPS[i].id;
+    const cls = obj(getClass(this.draft.classId)).name || 'This class';
+    if (id === 'spells') return cls + ' has no spells to choose at level ' + this.draft.level + '.';
+    if (id === 'features') return cls + ' has no further choices at level ' + this.draft.level + '.';
+    return 'That step is not available.';
+  }
+
+  /** The first step still owing a choice, or -1 when the sheet is finished. */
+  firstIncomplete() {
+    for (let i = 0; i < STEPS.length; i++) {
+      if (!this.stepEnabled(i)) continue;
+      if (this.issue(i)) return i;
+    }
+    return -1;
+  }
+
+  /** Jump straight to whatever is still missing (the 'E' key and the footer chip). */
+  gotoIssue() {
+    const i = this.firstIncomplete();
+    if (i < 0) {
+      this.note(STEPS[this.step].id === 'summary' ? 'Everything is in order — press Create.' : 'Nothing left to choose. Skip to the summary?');
+      sfx('select');
+      return;
+    }
+    if (i === this.step) {
+      this.focusIssueBucket(i);
+      this.warn(this.issue(i) || 'Something is missing here.', 'row', i);
+      return;
+    }
+    this.step = clamp(i, 0, STEPS.length - 1);
+    this.sub = 0;
+    this.bucket = 0;
+    this._rowsKey = '';
+    this.focusIssueBucket(i);
+    this.note(STEPS[i].title + ': ' + this.issue(i));
+    sfx('select');
+  }
 
   finish() {
     for (let i = 0; i < STEPS.length; i++) {
@@ -1199,12 +1292,12 @@ export class CharCreateScene {
       if (why) {
         this.gotoStep(i);
         this.focusIssueBucket(i);
-        this.warn(STEPS[i].title + ': ' + why);
+        this.warn(STEPS[i].title + ': ' + why, 'tabs', i);
         return;
       }
     }
     const ch = this.buildFinal();
-    if (!ch) { this.warn('Something is missing — check the summary.'); return; }
+    if (!ch) { this.warn('Something is missing — check the summary.', 'next'); return; }
     sfx('levelup');
     this.onDone(ch);
     if (Game.top === this) safe(() => Game.pop());
@@ -1220,13 +1313,68 @@ export class CharCreateScene {
   // DRAFT MUTATORS
   // =========================================================================
 
+  // --- the stash -----------------------------------------------------------
+  //
+  // Every one of the four setters below has to throw work away: a fighter's
+  // skills mean nothing to a wizard, and a dragonborn's horn colour is not a
+  // halfling's. That is correct — but the row lists call these on FOCUS so the
+  // preview panel stays live as you arrow through the catalogue, which used to
+  // mean that merely *reading* about Rogue silently deleted the spells, kit and
+  // skills you had already chosen as a Wizard. Ten minutes of work, gone, and no
+  // warning until the wizard bounced you back four pages.
+  //
+  // So nothing is thrown away any more: it is stashed under the choice that
+  // owned it, and handed straight back if you return. Browsing is free, and
+  // switching for real still gives you a clean slate.
+
+  /** Deep-ish copy of the pick map ({ bucketKey: [optionId] }). */
+  _copyPicks(src) {
+    const out = {};
+    for (const k in obj(src)) out[k] = arr(obj(src)[k]).slice();
+    return out;
+  }
+
+  _stashOf(kind) {
+    if (!this._stash) this._stash = {};
+    if (!this._stash[kind]) this._stash[kind] = {};
+    return this._stash[kind];
+  }
+
+  /** Everything a class switch would destroy. */
+  _saveClassState(classId) {
+    const d = this.draft;
+    if (!classId) return;
+    this._stashOf('class')[classId] = {
+      subclassId: d.subclassId, skills: arr(d.skills).slice(), picks: this._copyPicks(d.picks),
+      kitId: d.kitId, takeGold: !!d.takeGold, goldRolled: d.goldRolled,
+    };
+  }
+
+  /** Everything a subclass switch would destroy. */
+  _saveSubclassState(classId, subclassId) {
+    if (!classId || !subclassId) return;
+    this._stashOf('sub')[classId + '/' + subclassId] = { picks: this._copyPicks(this.draft.picks) };
+  }
+
+  /** The look, which a species or lineage swap snaps back into legal range. */
+  _saveLookState(speciesId, lineageId) {
+    if (!speciesId) return;
+    this._stashOf('look')[speciesId + '/' + (lineageId || '-')] = {
+      lineageId: lineageId || null,
+      appearance: Object.assign({}, obj(this.draft.appearance)),
+    };
+  }
+
   setSpecies(id) {
     const d = this.draft;
     if (this.lockSpecies || d.speciesId === id) return;
+    this._saveLookState(d.speciesId, d.lineageId);
+    this._stashOf('species')[d.speciesId] = { lineageId: d.lineageId };
     d.speciesId = id;
-    d.lineageId = null;
-    const lin = lineagesFor(id);
-    if (lin.length) d.lineageId = null;
+    const back = this._stashOf('species')[id];
+    d.lineageId = back && getLineage(id, back.lineageId) ? back.lineageId : null;
+    const look = this._stashOf('look')[id + '/' + (d.lineageId || '-')];
+    if (look) d.appearance = Object.assign({}, look.appearance);
     this._reskin();
     this._touch();
   }
@@ -1234,7 +1382,11 @@ export class CharCreateScene {
   setLineage(id) {
     const d = this.draft;
     if (d.lineageId === id) return;
+    this._saveLookState(d.speciesId, d.lineageId);
     d.lineageId = id;
+    this._stashOf('species')[d.speciesId] = { lineageId: id };
+    const look = this._stashOf('look')[d.speciesId + '/' + (id || '-')];
+    if (look) d.appearance = Object.assign({}, look.appearance);
     this._reskin();
     this._touch();
   }
@@ -1242,27 +1394,60 @@ export class CharCreateScene {
   setClass(id) {
     const d = this.draft;
     if (this.lockClass || d.classId === id) return;
+    this._saveSubclassState(d.classId, d.subclassId);
+    this._saveClassState(d.classId);
     d.classId = id;
-    d.subclassId = null;
-    d.skills = [];
-    d.picks = {};
-    d.kitId = null;
-    d.takeGold = false;
-    const kits = this.kits();
-    if (kits.length) d.kitId = kits[0].id;
-    d.goldRolled = rollStartingGold(getClass(id), this.rng);
+
+    const back = this._stashOf('class')[id];
+    if (back) {
+      d.subclassId = back.subclassId;
+      d.skills = arr(back.skills).slice();
+      d.picks = this._copyPicks(back.picks);
+      d.kitId = back.kitId;
+      d.takeGold = !!back.takeGold;
+      d.goldRolled = back.goldRolled || rollStartingGold(getClass(id), this.rng);
+    } else {
+      d.subclassId = null;
+      d.skills = [];
+      d.picks = {};
+      d.kitId = null;
+      d.takeGold = false;
+      const kits = this.kits();
+      if (kits.length) d.kitId = kits[0].id;
+      d.goldRolled = rollStartingGold(getClass(id), this.rng);
+    }
     this._defaultBackgroundAsi();
     this._touch();
   }
 
-  setSubclass(id) { if (this.draft.subclassId !== id) { this.draft.subclassId = id; this.draft.picks = {}; this._touch(); } }
+  setSubclass(id) {
+    const d = this.draft;
+    if (d.subclassId === id) return;
+    this._saveSubclassState(d.classId, d.subclassId);
+    d.subclassId = id;
+    const back = this._stashOf('sub')[d.classId + '/' + id];
+    d.picks = back ? this._copyPicks(back.picks) : {};
+    this._touch();
+  }
 
   setBackground(id) {
     const d = this.draft;
     if (d.backgroundId === id) return;
+    this._stashOf('bg')[d.backgroundId] = {
+      bond: d.bond, bgMode: d.bgMode, bgPlus2: d.bgPlus2, bgPlus1: d.bgPlus1,
+    };
     d.backgroundId = id;
-    d.bond = 0;
-    this._defaultBackgroundAsi();
+    const back = this._stashOf('bg')[id];
+    if (back) {
+      d.bond = back.bond || 0;
+      d.bgMode = back.bgMode || '2-1';
+      d.bgPlus2 = back.bgPlus2 || null;
+      d.bgPlus1 = back.bgPlus1 || null;
+      if (!d.bgPlus2) this._defaultBackgroundAsi();
+    } else {
+      d.bond = 0;
+      this._defaultBackgroundAsi();
+    }
     this._touch();
   }
 
@@ -2159,6 +2344,7 @@ export class CharCreateScene {
         selected: id === d.classId,
         color: id === d.classId ? C.goldB : C.ink,
         disabled: this.lockClass && id !== d.classId,
+        lockedWhy: 'A companion keeps the class they already have.',
         data: cls,
         onFocus: () => this.setClass(id),
         onConfirm: () => { this.setClass(id); this.goNext(); },
@@ -2663,29 +2849,50 @@ export class CharCreateScene {
   }
 
   drawTabs(ctx) {
+    const shake = this.shakeX('tabs');
     const items = STEPS.map((s, i) => {
       const on = this.stepEnabled(i);
       const done = on && !this.issue(i);
       return {
         label: s.tab,
         disabled: !on,
-        badge: on && i < this.step && !done,
+        // A red pip on ANY unfinished step, not just the ones already walked
+        // past: the strip should read as a checklist at a glance.
+        badge: on && !done,
         color: done ? C.green : undefined,
       };
     });
+    ctx.save();
+    ctx.translate(shake, 0);
     safe(() => UI.tabs(ctx, TAB_X, TAB_Y, TAB_W, items, this.step, { h: TAB_H }));
     const tw1 = Math.floor(TAB_W / STEPS.length);
     for (let i = 0; i < STEPS.length; i++) {
       const tx = TAB_X + i * tw1;
+      const on = this.stepEnabled(i);
+      const why = on ? this.issue(i) : null;
+
+      // A finished step gets a green underline; an unfinished one an amber
+      // dashed underline, so the strip works for a colour-blind player too.
+      if (i !== this.step) {
+        if (on && !why) fill(ctx, tx + 2, TAB_Y + TAB_H - 2, tw1 - 4, 1, C.green);
+        else if (on) {
+          for (let dx = 2; dx < tw1 - 3; dx += 3) fill(ctx, tx + dx, TAB_Y + TAB_H - 2, 2, 1, C.orange);
+        }
+      }
+      // The step a refusal named pulses red for a few seconds.
+      if (i === this.blameStep && this.blameT > 0 && Math.floor(this.t * 8) % 2 === 0) {
+        frame(ctx, tx, TAB_Y - 1, tw1 - 1, TAB_H + 1, C.red);
+      }
+    }
+    ctx.restore();
+
+    for (let i = 0; i < STEPS.length; i++) {
+      const tx = TAB_X + i * tw1;
       this.hit(tx, TAB_Y, tw1, TAB_H, () => {
-        if (!this.stepEnabled(i)) { sfx('error'); return; }
-        if (i === this.step) return;
+        if (!this.stepEnabled(i)) { this.warn(this.lockedReason(i), 'tabs'); return; }
+        if (i === this.step) { this.note(STEPS[i].title + ' — you are here.'); return; }
         this.gotoStep(i); sfx('select');
       });
-      // a small tick under a finished step
-      if (this.stepEnabled(i) && !this.issue(i) && i !== this.step) {
-        fill(ctx, tx + 2, TAB_Y + TAB_H - 2, tw1 - 4, 1, C.green);
-      }
     }
   }
 
@@ -2759,6 +2966,7 @@ export class CharCreateScene {
       if (!row || row.header) continue;
       const ry = listY + i * ROW_H;
       this.hit(LC_X, ry, LC_W, ROW_H - 1, () => {
+        if (row.disabled) { this.warn(row.lockedWhy || 'That choice is not open to you.', 'row'); return; }
         if (this.cursor !== ix) {
           this.cursor = ix;
           if (row.onFocus) safe(() => row.onFocus());
@@ -2766,8 +2974,7 @@ export class CharCreateScene {
           this.docScroll[this.rowKey()] = 0;
           if (row.onFocus) return;          // focus-select rows: one click previews
         }
-        if (row.onConfirm) safe(() => row.onConfirm());
-        else if (row.onRight) { sfx('cursor'); safe(() => row.onRight()); }
+        this.activateRow(row);
       });
     }
   }
@@ -2853,8 +3060,15 @@ export class CharCreateScene {
 
     const last = STEPS[this.step].id === 'summary';
     const why = this.issue(this.step);
+    const gap = this.firstIncomplete();
+    // CREATE is only truly ready when the WHOLE sheet is; a green button over an
+    // unfinished skills page is exactly the lie that made this screen feel broken.
+    const ready = last ? gap < 0 : !why;
     const nextLabel = last ? 'CREATE' : 'NEXT';
-    safe(() => UI.button(ctx, 344, y - 1, 50, 14, nextLabel, { selected: !why, disabled: !!why, t: this.t }));
+    const nx = 344 + this.shakeX('next');
+    safe(() => UI.button(ctx, nx, y - 1, 50, 14, nextLabel, {
+      selected: ready, disabled: !ready, t: this.t,
+    }));
     this.hit(344, y - 1, 50, 14, () => this.goNext());
 
     // message / validation / hint
@@ -2863,12 +3077,24 @@ export class CharCreateScene {
     let color = C.dim;
     if (showMsg) { line = this.message; color = this.messageBad ? C.red : C.green; }
     else if (why) { line = why; color = C.orange; }
+    else if (last && gap >= 0) { line = 'Still to do — ' + STEPS[gap].title + ': ' + this.issue(gap); color = C.orange; }
     else { line = this.hintLine(); color = C.dim; }
+
+    // When something is outstanding the line doubles as a button: click it (or
+    // press E) and the wizard takes you to the step that owes a choice.
+    const jumpable = !!(why || (gap >= 0 && !showMsg));
+    const lineW = Math.min(286, tw(line, 'sm') + 2);
+    if (jumpable) {
+      fill(ctx, 53, y - 1, lineW + 2, 9, 'rgba(232,134,58,0.14)');
+      this.hit(53, y - 1, lineW + 2, 9, () => this.gotoIssue());
+    }
     txt(ctx, 54, y, ellip(line, 286, 'sm'), { size: 'sm', color, shadow: true });
 
-    const keys = this.bucketCount() > 1
-      ? 'Q/R Step   TAB Section   ↑↓ Pick   ←→ Adjust   Z Confirm   X Back'
-      : 'Q/R Step   ↑↓ Pick   ←→ Adjust/Scroll   Z Confirm   X Back';
+    const keys = jumpable
+      ? 'E jumps to what\'s missing   Q/R Step   ↑↓ Pick   Z Confirm'
+      : this.bucketCount() > 1
+        ? 'Q/R Step   TAB Section   ↑↓ Pick   ←→ Adjust   Z Confirm   X Back'
+        : 'Q/R Step   ↑↓ Pick   ←→ Adjust/Scroll   Z Confirm   X Back';
     txt(ctx, 54, y + 9, ellip(keys, 286, 'sm'), { size: 'sm', color: 'rgba(150,140,115,0.65)', shadow: true });
   }
 

@@ -1372,6 +1372,32 @@ ALL.push(
     faction: 'lords-alliance',
   }),
 
+  // The people you are not supposed to draw steel on. They exist because you can,
+  // and because the town watch needs something to avenge.
+  mon('commoner', 'Commoner', {
+    desc: "A farmhand, a potter, a woman carrying water. They own one knife and it is for bread. Kill one in Phandalin and the whole street remembers your face.",
+    cr: 0, type: 'humanoid', size: 'medium', ac: 10, hpDice: '1d8',
+    speed: 30, abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+    skills: {}, languages: ['Common'],
+    actions: [melee('Club', 2, '1d4', 'bludgeoning', { desc: "Held wrong, swung in panic." })],
+    ai: { archetype: 'skirmisher', aggression: 0.1, selfPreserve: 0.95, preferredRange: 5 },
+    loot: { gold: '1d6', table: [['rations', 0.2], ['torch', 0.2]] },
+    sprite: 'commoner', biomes: ['city', 'road', 'plains'], groupSize: [1, 3],
+    faction: 'townsfolk',
+  }),
+
+  mon('noble', 'Noble', {
+    desc: "Rings worth more than the house behind them, and a rapier they have actually been taught to use. They will scream for the watch before they parry.",
+    cr: 0.125, type: 'humanoid', size: 'medium', ac: 15, acNote: 'breastplate',
+    hpDice: '2d8', speed: 30, abilities: { str: 11, dex: 12, con: 11, int: 12, wis: 14, cha: 16 },
+    skills: { deception: 5, insight: 4, persuasion: 5 }, languages: ['Common', 'Elvish'],
+    actions: [melee('Rapier', 3, '1d8+1', 'piercing')],
+    ai: { archetype: 'skirmisher', aggression: 0.35, selfPreserve: 0.85, preferredRange: 5 },
+    loot: { gold: '4d6', table: [['rapier', 0.2], ['signet-ring', 0.3], ['clothes-fine', 0.2]] },
+    sprite: 'noble', biomes: ['city'], groupSize: [1, 2],
+    faction: 'townsfolk',
+  }),
+
   mon('scout', 'Scout', {
     desc: "A tracker who reads the Triboar Trail the way a clerk reads a ledger. It shoots first from cover and is somewhere else before the second arrow lands.",
     cr: 0.5, type: 'humanoid', size: 'medium', ac: 13, acNote: 'leather armor',

@@ -2006,6 +2006,15 @@ export class BattleScene {
     if (!enc) return;
 
     this._drawField(ctx);
+  }
+
+  /**
+   * The battle interface. Drawn after FX.drawAmbient so a downpour on the field
+   * never streaks across the initiative ribbon or the action menu.
+   */
+  drawUI(ctx) {
+    const enc = this.enc;
+    if (!enc) return;
     this._drawRibbon(ctx);
     if (this.boss && !isDead(this.boss)) this._drawBossBar(ctx);
 

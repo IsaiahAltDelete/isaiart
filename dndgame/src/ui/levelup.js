@@ -385,6 +385,7 @@ class AdvanceScene {
     this.id = 'levelup';
     this.opaque = true;
     this.pausesBelow = true;
+    this.uiLayer = true;
 
     this.chars = arr(chars).filter(Boolean);
     this.opts = opts || {};

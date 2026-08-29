@@ -3,6 +3,10 @@
 // Scenes are plain objects (or class instances) with optional hooks:
 //   enter(prev)  exit(next)  update(dt)  draw(ctx)  drawOver(ctx)
 //   opaque:bool (default true)  pausesBelow:bool (default true)
+//   uiLayer:bool (default false) — an interface screen rather than a piece of the
+//     world. FX weather/grading stops at the first uiLayer scene, so a blizzard
+//     never blows through the inventory.
+//   drawUI(ctx) — a world scene's own interface, painted after the weather.
 // The stack lets menus, dialogue and battles layer over the overworld without
 // any of them knowing about each other.
 
@@ -185,11 +189,34 @@ export const Game = {
     const stack = this.scenes.slice();
     let start = stack.length - 1;
     while (start > 0 && stack[start] && stack[start].opaque === false) start--;
+
+    // The atmosphere layer (rain, snow, day/night grading, vignette) belongs to the
+    // world, so it is painted after the last world scene and BEFORE the first UI
+    // scene. Without this the storm outside falls across the open inventory.
+    let uiStart = stack.length;
     for (let i = start; i < stack.length; i++) {
+      if (stack[i] && stack[i].uiLayer) { uiStart = i; break; }
+    }
+
+    for (let i = start; i < uiStart; i++) {
       const s = stack[i];
       if (s && s.draw) { ctx.save(); s.draw(ctx); ctx.restore(); }
     }
-    // Overlays that draw even when covered (HUD toasts, weather).
+    // Nothing of the world is visible under a full-screen menu — do not paint a
+    // storm onto the black behind it.
+    if (uiStart > start) FX.drawAmbient(ctx);
+    // A world scene's own interface (the overworld HUD, the battle ribbon) goes up
+    // after the weather for the same reason the menus do.
+    for (let i = start; i < uiStart; i++) {
+      const s = stack[i];
+      if (s && s.drawUI) { ctx.save(); s.drawUI(ctx); ctx.restore(); }
+    }
+    for (let i = uiStart; i < stack.length; i++) {
+      const s = stack[i];
+      if (s && s.draw) { ctx.save(); s.draw(ctx); ctx.restore(); }
+    }
+
+    // Overlays that draw even when covered (HUD toasts).
     const top = stack[stack.length - 1];
     for (const s of stack) {
       if (s && s.drawOver && s !== top) { ctx.save(); s.drawOver(ctx); ctx.restore(); }
