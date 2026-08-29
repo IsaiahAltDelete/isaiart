@@ -2468,6 +2468,7 @@ export class BattleScene {
       ctx.fillRect(bx + 1, by + 1, Math.max(1, Math.round((bw - 2) * clamp(u.tempHp / Math.max(1, maxHpOf(u)), 0, 1))), 1);
     }
 
+
     if (u.hp <= 0 && !isDead(u)) {
       UI.icon(ctx, 'skull', bx + bw / 2 - 4, by - 9, 8, UI.COLORS.inkDim);
       const ds = u.deathSaves || { success: 0, fail: 0 };
@@ -2476,24 +2477,50 @@ export class BattleScene {
       return;
     }
 
+    // Everything above the bar stacks upward from here, so nothing collides.
+    let top = by;
+
     // Condition dots — colour only, so a stack of five still fits over a sprite.
     const badges = safe(() => conditionBadges(u), []) || [];
     if (badges.length) {
       let cx = bx;
       for (let i = 0; i < Math.min(6, badges.length); i++) {
         ctx.fillStyle = '#0a0708';
-        ctx.fillRect(cx, by - 4, 3, 3);
+        ctx.fillRect(cx, top - 4, 3, 3);
         ctx.fillStyle = badges[i].color || UI.COLORS.purple;
-        ctx.fillRect(cx, by - 4, 2, 2);
+        ctx.fillRect(cx, top - 4, 2, 2);
         cx += 4;
       }
+      top -= 5;
     }
     if (u.concentration) {
       UI.icon(ctx, 'rune', bx + bw + 1, by - 3, 7, UI.COLORS.purple);
     }
+
+    // Twenty pixels of bar tells you "hurt". It does not tell you whether one
+    // more hit finishes them, which is the only thing you actually want to know
+    // when deciding where to spend an action — so the unit you are looking at,
+    // aiming at, or acting as gets the numbers.
+    const focused = this.inspect === u
+      || this.enc.currentUid === u.uid
+      || (this.phase === 'target' && this.targets.units[this.targetIndex] === u);
+    if (focused) {
+      const max = safe(() => maxHpOf(u), u.maxHp || 1) || 1;
+      const label = `${Math.max(0, u.hp)}/${max}`;
+      const lw = UI.measure(label, 'sm') + 4;
+      const lx = R(x - lw / 2);
+      ctx.fillStyle = 'rgba(6,7,13,0.82)';
+      ctx.fillRect(lx - 1, top - 10, lw + 2, 9);
+      UI.text(ctx, lx + lw / 2, top - 9, label, {
+        size: 'sm', align: 'center',
+        color: p <= 0.25 ? UI.COLORS.bad : p <= 0.5 ? UI.COLORS.warn : UI.COLORS.ink,
+      });
+      top -= 11;
+    }
+
     if (this.enc.currentUid === u.uid) {
       const bob = Math.round(Math.sin(this.t * 5) * 1.5);
-      UI.text(ctx, x, by - 13 + bob, UI.G.chevDown, { size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true });
+      UI.text(ctx, x, top - 9 + bob, UI.G.chevDown, { size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true });
     }
   }
 

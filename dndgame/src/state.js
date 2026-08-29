@@ -40,6 +40,9 @@ export function newGameState(seed) {
     chests: {},                // "mapId:x,y" -> true once looted
     defeated: {},              // unique/boss ids already killed
     npcState: {},              // npcId -> { met, talkCount, node }
+    // The bill for drawing steel on people who are not monsters. See rules/crime.js.
+    // Reads are guarded, so a save written before this field existed still loads.
+    crime: { bounty: {}, slain: {}, outlaw: {}, witnessed: 0, lastCrimeDay: 0, watchDue: {} },
     bestiary: {},              // monsterId -> kills (unlocks stat blocks)
     depth: {},                 // endless dungeon progress, e.g. { undermountain: 0 }
     unlocked: { undermountain: false, neverwinter: false, waterdeep: false },

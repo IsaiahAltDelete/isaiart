@@ -1,0 +1,138 @@
+// Playwright is not a dependency of this repo; point PLAYWRIGHT at your install
+// if it is not on the default global path.
+const PW = process.env.PLAYWRIGHT || '/opt/node22/lib/node_modules/playwright/index.mjs';
+const { chromium } = await import(PW);
+const browser = await chromium.launch({
+  executablePath: process.env.CHROME || undefined,
+  args: ['--no-sandbox'],
+});
+const page = await browser.newPage({ viewport: { width: 900, height: 560 } });
+const errs=[]; page.on('pageerror',e=>errs.push(String(e.stack||e))); page.on('console',m=>{if(m.type()==='error')errs.push('C:'+m.text());});
+const R = [];
+const check = (name, ok, detail) => R.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`);
+
+const BASE = process.env.BASE || 'http://127.0.0.1:8099';
+await page.goto(BASE + '/dndgame/index.html', { waitUntil: 'networkidle' });
+await page.waitForTimeout(1500);
+check('boots with no errors', errs.length === 0, errs[0] || '');
+await page.mouse.click(450,280); await page.waitForTimeout(400);
+
+// --- char creation stash ---------------------------------------------------
+const cc = await page.evaluate(() => {
+  SC.newGame();
+  const s = SC.Game.top;
+  s.setClass('wizard');
+  s.draft.skills = ['arcana','history'];
+  s.draft.picks = { cantrip: ['fire-bolt'], spell1: ['magic-missile'] };
+  const before = JSON.stringify([s.draft.skills, s.draft.picks]);
+  s.setClass('rogue'); s.setClass('fighter'); s.setClass('wizard');
+  const after = JSON.stringify([s.draft.skills, s.draft.picks]);
+  s.setClass('cleric');
+  const clean = s.draft.skills.length === 0 && Object.keys(s.draft.picks).length === 0;
+  s.setClass('wizard');
+  return { preserved: before === after, clean, restored: JSON.stringify([s.draft.skills, s.draft.picks]) === before };
+});
+check('charcreate: browsing classes preserves picks', cc.preserved);
+check('charcreate: a fresh class starts clean', cc.clean);
+check('charcreate: returning restores the stash', cc.restored);
+
+const fb = await page.evaluate(() => {
+  const s = SC.Game.top;
+  s.warn('nope', 'next', 3);
+  const shook = s.shakeX('next') !== 0 || s.shakeT > 0;
+  const gap = s.firstIncomplete();
+  return { shook, blamed: s.blameStep === 3, gap, locked: s.lockedReason(6).length > 0 };
+});
+check('charcreate: a refusal shakes and blames a step', fb.shook && fb.blamed);
+check('charcreate: locked steps explain themselves', fb.locked);
+
+// --- into the world --------------------------------------------------------
+// start a clean wizard: the stash above holds deliberately bogus picks
+await page.evaluate(() => {
+  while (SC.Game.top && SC.Game.top.id === 'charcreate') SC.Game.pop();
+  SC.newGame();
+  const s = SC.Game.top;
+  s.randomiseAll(); s.setClass('wizard'); s.draft.name='Reg'; s._autoFillPicks(); s.finish();
+});
+await page.waitForFunction(() => SC.Game.top && SC.Game.top.id === 'overworld', { timeout: 25000 });
+await page.waitForTimeout(500);
+
+// --- weather never reaches the UI -----------------------------------------
+const px = await page.evaluate(async () => {
+  SC.FX.weather('snow', 1);
+  await new Promise(r => setTimeout(r, 700));
+  const m = await import('/dndgame/src/ui/menus.js');
+  SC.Game.push(new m.InventoryScene());
+  await new Promise(r => setTimeout(r, 500));
+  // sample the top strip of the inventory panel for stray white weather motes
+  const c = document.getElementById('game').getContext('2d');
+  const d = c.getImageData(30, 30, 340, 60).data;
+  let bright = 0;
+  for (let i = 0; i < d.length; i += 4) if (d[i] > 225 && d[i+1] > 235 && d[i+2] > 245) bright++;
+  SC.Game.pop();
+  return { bright, layer: SC.Game.scenes.length };
+});
+check('weather does not fall on the inventory', px.bright === 0, `${px.bright} snow pixels`);
+
+// --- exits and edges -------------------------------------------------------
+const ow = await page.evaluate(() => {
+  const s = SC.Game.top;
+  const mask = s._edgeMask();
+  let rimmed = 0; for (const b of mask) if (b) rimmed++;
+  const exits = s._visibleExits({ x: 0, y: 0 });
+  const named = s._exitName((s.map.triggers||[]).find(t => t.kind === 'warp'));
+  return { rimmed, total: mask.length, named };
+});
+check('overworld: walkable edges are rimmed', ow.rimmed > 100, `${ow.rimmed}/${ow.total} tiles`);
+check('overworld: exits resolve a destination name', !!ow.named, ow.named);
+
+// --- casting outside combat ------------------------------------------------
+const cast = await page.evaluate(() => import('/dndgame/src/rules/fieldcast.js').then(fc => {
+  const ch = SC.Party.members[0];
+  ch.spells.known = Array.from(new Set([...(ch.spells.known||[]), 'mage-armor','magic-missile']));
+  ch.spells.prepared = Array.from(new Set([...(ch.spells.prepared||[]), 'mage-armor','magic-missile']));
+  const ow = SC.Game.top;
+  const env = { target: ch, party: SC.Party, state: SC.Game.state, world: ow.spellHooks() };
+  const ac0 = ch.ac;
+  const r = fc.fieldCast(ch, 'mage-armor', env);
+  const ac1 = ch.ac;
+  const burn = fc.fieldCast(ch, 'magic-missile', env);
+  const slots = JSON.parse(JSON.stringify(ch.spells.slots || {}));
+  // expiry
+  SC.Game.state.day += 1;
+  const gone = fc.expireFieldBuffs(SC.Party.all(), SC.Game.state);
+  return { ac0, ac1, ok: r.ok, refused: !burn.ok, why: burn.text, slots, gone, acAfterExpiry: ch.ac,
+    cond: (ch.conditions||[]).map(c=>c.id) };
+}));
+check('fieldcast: Mage Armor raises AC', cast.ok && cast.ac1 > cast.ac0, `${cast.ac0} -> ${cast.ac1}`);
+check('fieldcast: Mage Armor is not the flat shielded condition', !cast.cond.includes('shielded'));
+check('fieldcast: a damage spell is refused, no slot burnt', cast.refused && /aim it at/.test(cast.why||''), cast.why);
+check('fieldcast: field buffs expire on the world clock', cast.gone.length > 0 && cast.acAfterExpiry === cast.ac0);
+
+// --- attacking people ------------------------------------------------------
+const crime = await page.evaluate(() => {
+  const s = SC.Game.top;
+  const child = s.entities.list.find(e => e.kind === 'npc' && e.sprite === 'npc-child');
+  const adult = s.entities.list.find(e => e.kind === 'npc' && String(e.sprite||'').startsWith('npc-') && e.sprite !== 'npc-child');
+  const out = { hasChild: !!child, hasAdult: !!adult };
+  if (child) { s.player.setTile(child.x, child.y+1, 'up'); s.attackNPC(child); out.childBlocked = SC.Game.top.id === 'dialogue' && !SC.Game.state.crime.bounty['phandalin-hills']; while (SC.Game.top.id === 'dialogue') SC.Game.pop(); }
+  return out;
+});
+check('crime: children cannot be attacked', crime.childBlocked !== false);
+
+// --- save / load round trip ------------------------------------------------
+const save = await page.evaluate(() => {
+  SC.Game.state.crime.bounty['test-region'] = 123;
+  SC.Game.state.crime.slain['someone'] = true;
+  SC.writeSave(3);
+  const ok = SC.continueGame(3);
+  return { ok, bounty: SC.Game.state.crime && SC.Game.state.crime.bounty['test-region'],
+    slain: !!(SC.Game.state.crime && SC.Game.state.crime.slain['someone']) };
+});
+check('save: the crime ledger round-trips', save.bounty === 123 && save.slain, JSON.stringify(save));
+
+
+console.log(R.join('\n'));
+console.log('\npage errors:', errs.length ? JSON.stringify(errs.slice(0,3), null, 1) : 'none');
+await browser.close();
+process.exit(R.some(r => r.startsWith('FAIL')) ? 1 : 0);
