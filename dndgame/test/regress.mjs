@@ -306,6 +306,73 @@ check('battle: threat ignores spent reactions', (fight.threatWithSpentReactions 
 check('battle: an unreachable target is explained', /ft/.test(fight.noTargetHint || ''), fight.noTargetHint);
 check('battle: animation beats can be skipped', !!fight.skipped);
 
+// --- fleeing ---------------------------------------------------------------
+// A fight ends three ways and the results screen only ever branched two. A
+// successful escape fell through to the defeat arm, so outrunning a fight
+// showed "The company falls." and then a Game Over naming the creature you had
+// escaped as your killer, with the whole party still at full hp.
+const esc = await page.evaluate(async () => {
+  // The battle checks above leave a scene on the stack; get back to the world.
+  for (let i = 0; i < 12 && SC.Game.top && SC.Game.top.id !== 'overworld'; i++) SC.Game.pop();
+  const ow = SC.Game.top;
+  if (!ow || ow.id !== 'overworld') return { skip: 'not in the overworld: ' + (ow && ow.id) };
+  const before = ow.id;
+
+  ow._pushBattle(['goblin'], {});
+  for (let i = 0; i < 60 && SC.Game.top.id !== 'battle'; i++) await new Promise((r) => setTimeout(r, 50));
+  const battle = SC.Game.top;
+  if (!battle || battle.id !== 'battle') return { skip: 'no battle started (' + (battle && battle.id) + ')' };
+
+  const enc = battle.enc;
+  const runner = () => enc.units.find((u) => u.side === 'party' && u.hp > 0);
+  // A Dexterity contest, so retry until it lands; a failure leaves the fight
+  // active and only spends the caller's action.
+  let ok = false, tries = 0;
+  while (!ok && tries++ < 60 && enc.state === 'active') {
+    ok = !!(enc.fleeCheck(runner()) || {}).success;
+  }
+  if (!ok) return { skip: 'never won the escape contest in ' + tries + ' tries' };
+
+  const hpBefore = enc.units.filter((u) => u.side === 'party').map((u) => u.hp);
+  battle._checkOver();
+  const kind = battle.results && battle.results.kind;
+
+  // _leaveDefeat never called opts.onEnd, so nothing downstream of a flee ran:
+  // the creatures did not scatter and the field music never came back. Spy on
+  // the callback directly rather than on a side effect that was already set.
+  let told = false;
+  const realEnd = battle.opts.onEnd;
+  battle.opts.onEnd = (res) => { told = true; return realEnd && realEnd(res); };
+
+  // Walk off the results screen the way a player would.
+  battle.results.t = 5;
+  if (kind === 'escape') battle._leaveEscape();
+  else if (kind === 'victory') battle._leaveVictory();
+  else battle._leaveDefeat();
+  for (let i = 0; i < 40 && SC.Game.top.id === 'battle'; i++) await new Promise((r) => setTimeout(r, 50));
+
+  return {
+    from: before,
+    state: enc.state,
+    kind,
+    landedOn: SC.Game.top && SC.Game.top.id,
+    alive: hpBefore.every((h) => h > 0),
+    told,
+  };
+});
+
+if (esc.skip) {
+  check('flee: a successful escape is not a defeat', false, 'could not set up — ' + esc.skip);
+} else {
+  check('flee: a successful escape shows Escaped, not Defeat', esc.kind === 'escape',
+    `state=${esc.state} kind=${esc.kind}`);
+  check('flee: escaping does not end the run', esc.landedOn !== 'gameover',
+    `landed on ${esc.landedOn}`);
+  check('flee: it returns to the world you left', esc.landedOn === 'overworld', esc.landedOn);
+  check('flee: nobody dies of running away', esc.alive);
+  check('flee: the world is told the fight ended', esc.told, 'onEnd fired');
+}
+
 // --- save / load round trip ------------------------------------------------
 const save = await page.evaluate(() => {
   SC.Game.state.crime.bounty['test-region'] = 123;
