@@ -37,6 +37,7 @@ import {
   CONDITIONS, activeConditions, conditionText, removeCondition, exhaustionLevel,
 } from '../rules/conditions.js';
 import { className, subclassName, xpToNext, xpProgress } from '../rules/progression.js';
+import { fieldCastable, fieldCast, fieldTargeting } from '../rules/fieldcast.js';
 import { Party } from '../world/party.js';
 import {
   saveState, loadState, stateSummary, advanceTime, timeInfo, REP_RANKS, repRank,
@@ -2557,9 +2558,68 @@ export class SpellbookScene extends MenuScene {
       }
     }
 
-    if (Input.consume('interact')) { this.alpha = { index: 0 }; sfx('open'); return; }
-    if (Input.consume('confirm')) { this._togglePrepare(); return; }
+    if (Input.consume('interact')) { this._togglePrepare(); return; }
+    if (Input.consume('confirm')) { this._castHere(); return; }
     if (Input.consume('cancel')) this.close();
+  }
+
+  // -------------------------------------------------------------------------
+  // CASTING, STANDING HERE
+  // -------------------------------------------------------------------------
+  //
+  // Mage Armor lasts eight hours. Light lasts one. Longstrider, Aid, Goodberry,
+  // Knock — none of them are combat spells, and until now the only place a spell
+  // could be cast was the battle screen, which made half the book decoration.
+  // rules/fieldcast.js does the work; this only asks who it lands on.
+
+  _castHere() {
+    const ch = this.ch;
+    const row = this.rows[this.index];
+    if (!ch || !row || row.head) { sfx('error'); return; }
+
+    const gate = safe(() => fieldCastable(ch, row.id), { ok: false, why: 'It will not come.' });
+    if (!gate.ok) { sfx('error'); this.say(gate.why || 'Not here.', true, 2.6); return; }
+
+    if (fieldTargeting(row.spell) === 'ally' && Party.members.length > 1) {
+      const options = Party.members.map((m, i) => ({
+        label: `${m.name}  ${m.hp}/${num(m.maxHp, m.hp)}`, value: i,
+      }));
+      this.ask(row.spell.name, 'On whom?', options, (v) => {
+        if (v == null) return;
+        this._doCast(ch, row, Party.members[v] || ch);
+      });
+      return;
+    }
+    this._doCast(ch, row, ch);
+  }
+
+  _doCast(ch, row, target) {
+    const res = safe(() => fieldCast(ch, row.id, {
+      target,
+      party: Party,
+      state: Game.state,
+      world: this._worldHooks(),
+    }), null);
+    if (!res || !res.ok) { sfx('error'); this.say((res && res.text) || 'Nothing happens.', true, 2.6); return; }
+
+    if (res.minutes) safe(() => advanceTime(Game.state, res.minutes));
+    if (Game.state) Game.state.stats.spellsCast = num(Game.state.stats.spellsCast, 0) + 1;
+    safe(() => bus.emit(EV.SPELL_CAST, { ch, spellId: row.id, field: true }));
+    sfx('spell');
+    this.say(res.lines.join('   '), false, 3.4);
+    this.float(VIEW_W / 2, 96, res.ritual ? 'ritual' : res.slot ? `slot ${res.slot} spent` : 'cantrip', C.gold);
+  }
+
+  /**
+   * What the spellbook can reach out and touch. The overworld beneath us owns
+   * the map, so ask it; when the spellbook was opened from somewhere else (a
+   * rest, the title screen) the hooks are simply absent and fieldcast falls
+   * back to prose.
+   */
+  _worldHooks() {
+    const ow = safe(() => Game.scenes.find((sc) => sc && sc.id === 'overworld'), null);
+    if (!ow || typeof ow.spellHooks !== 'function') return {};
+    return safe(() => ow.spellHooks(), {}) || {};
   }
 
   /** Move the cursor past group headers. */
@@ -2694,8 +2754,8 @@ export class SpellbookScene extends MenuScene {
 
     this._drawSlots(ctx, ch, 2, 206);
     hintBar(ctx, HINT_Y, [
-      [keyFor('cancel'), 'Back'], [keyFor('confirm'), 'Prepare'],
-      [keyFor('interact'), 'A-Z'], [`${keyFor('prev')}/${keyFor('next')}`, 'Filter'],
+      [keyFor('cancel'), 'Back'], [keyFor('confirm'), 'Cast'],
+      [keyFor('interact'), 'Prepare'], [`${keyFor('prev')}/${keyFor('next')}`, 'Filter'],
     ]);
     this.drawStatusRight(ctx);
     if (this.alpha) this._drawAlpha(ctx);

@@ -1955,9 +1955,27 @@ export function applyEffect(ctx, source, target, eff, env = {}) {
       return { kind: 'temphp', amount: gained, target: target.uid };
     }
 
-    case 'shield':
+    case 'shield': {
+      // Two very different spells share this kind. The Shield reaction is a flat
+      // +5 for one round and is modelled as the `shielded` condition. Mage Armor
+      // hands over an AC *formula* that lasts eight hours — routing that through
+      // `shielded` threw the formula away and left the wizard in an AC 10 robe,
+      // so anything carrying a `mech` block is applied as the buff it really is.
+      if (eff.mech) {
+        if (!Array.isArray(target.effects)) target.effects = [];
+        target.effects.push({
+          id: eff.id || 'shield', name: eff.name || 'Magical ward',
+          dur: eff.rounds ?? roundsFor(eff.duration),
+          mech: eff.mech, source: source?.uid || null,
+          concentration: !!eff.concentration, spellId: eff.spellId || null,
+        });
+        target._mech = null;
+        pushLog(log, ctx, `${tName} is warded by ${eff.name || 'a spell'}.`, 'buff');
+        return { kind: 'buff', target: target.uid, id: eff.id || 'shield' };
+      }
       addCondition(target, 'shielded', { source: source?.uid || null, rounds: num(eff.rounds, 1) });
       return { kind: 'shield', target: target.uid, ac: num(eff.ac, 5) };
+    }
 
     case 'push': {
       const moved = pushCreature(ctx, source, target, num(eff.distance, 10));
