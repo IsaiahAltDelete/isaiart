@@ -663,7 +663,12 @@ export class BattleScene {
     this.beats.length = 0;
     this.phase = 'over';
     const r = safe(() => enc.result(), null) || { state: enc.state };
+    // A fight ends three ways and this only ever branched two. `fled` fell
+    // through to the defeat arm, so outrunning a fight announced "The company
+    // falls" and then a Game Over naming, as your killer, the creature you had
+    // just escaped from.
     if (r.victory) this._openVictory(r);
+    else if (r.fled || r.state === 'fled') this._openEscape(r);
     else this._openDefeat(r);
     return true;
   }
@@ -2138,6 +2143,23 @@ export class BattleScene {
     sfx('defeat');
   }
 
+  /**
+   * A successful escape. Not a win — no xp, no spoils — but emphatically not a
+   * defeat: everyone who ran is alive, and the run continues.
+   */
+  _openEscape(result) {
+    const enc = this.enc;
+    const chasers = (enc?.units || []).filter((u) => u && u.side === 'foe' && !isDead(u));
+    this.results = {
+      kind: 'escape',
+      rounds: result?.rounds || enc?.round || 1,
+      chasers: chasers.map((u) => u.name || 'something'),
+      t: 0, index: 0,
+    };
+    safe(() => Audio.music(null));
+    sfx('back');
+  }
+
   _updateResults() {
     const r = this.results;
     if (!r) return;
@@ -2147,6 +2169,7 @@ export class BattleScene {
     const m = Input.mouse;
     if (Input.consume('confirm') || Input.consume('cancel') || (m.clicked && m.over)) {
       if (r.kind === 'victory') this._leaveVictory();
+      else if (r.kind === 'escape') this._leaveEscape();
       else this._leaveDefeat();
     }
   }
@@ -2177,6 +2200,19 @@ export class BattleScene {
       return;
     }
     finish();
+  }
+
+  /**
+   * Hand the result back to whoever started the fight, then leave. The overworld
+   * uses it to scatter what chased you, reset the encounter counter and restore
+   * the field music — none of which ran while this path went to the Game Over
+   * screen instead.
+   */
+  _leaveEscape() {
+    sfx('select');
+    const enc = this.enc;
+    if (this.opts.onEnd) safe(() => this.opts.onEnd(safe(() => enc.result(), null)));
+    if (Game.top === this) Game.pop();
   }
 
   _leaveDefeat() {
@@ -3301,6 +3337,18 @@ export class BattleScene {
   _drawResults(ctx) {
     const r = this.results;
     UI.scrim(ctx, 0.72);
+    if (r.kind === 'escape') {
+      const W = 248, H = 84, X = R((VIEW_W - W) / 2), Y = 72;
+      UI.window(ctx, X, Y, W, H, 'Escaped', { style: 'dark', shadow: 0.6 });
+      UI.text(ctx, VIEW_W / 2, Y + 14, 'You break away.', { size: 'lg', color: UI.COLORS.gold, align: 'center', shadow: true });
+      const who = r.chasers.length === 1 ? r.chasers[0]
+        : r.chasers.length ? `${r.chasers.length} pursuers` : 'the field';
+      UI.text(ctx, VIEW_W / 2, Y + 32, `${UI.fit(who, W - 30, 'sm')} left behind after ${r.rounds} round${r.rounds === 1 ? '' : 's'}.`,
+        { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
+      UI.text(ctx, VIEW_W / 2, Y + 46, 'No spoils — and they are still out there.', { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
+      UI.text(ctx, VIEW_W / 2, Y + H - 11, 'Press Confirm', { size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true });
+      return;
+    }
     if (r.kind === 'defeat') {
       const W = 240, H = 78, X = R((VIEW_W - W) / 2), Y = 74;
       UI.window(ctx, X, Y, W, H, 'Defeat', { style: 'dark', shadow: 0.6 });

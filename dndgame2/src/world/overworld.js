@@ -1424,10 +1424,14 @@ export class OverworldScene {
       if (seen.has(f.id)) continue;
       seen.add(f.id);
       const sp = safe(() => getSpell(f.id), null) || { name: f.id };
+      // Capture the index now. `out.length` inside the closure is read when the
+      // key is pressed, by which time the bar is full, so every slot pulsed the
+      // last one — or nothing at all.
+      const at = out.length;
       out.push({
         kind: 'spell', id: f.id, caster: f.m, name: sp.name || f.id, ready: true, role: f.role,
         tip: `${sp.name} — ${f.m.name}`,
-        fn: () => this._castFromHotbar(f.m, f.id, out.length),
+        fn: () => this._castFromHotbar(f.m, f.id, at),
       });
     }
 
@@ -1439,10 +1443,11 @@ export class OverworldScene {
     });
     if (potion && out.length < SLOT_COUNT) {
       const it = safe(() => resolveItem(potion.id), null) || {};
+      const at = out.length;
       out.push({
         kind: 'item', id: potion.id, name: it.name || potion.id, ready: true,
         count: potion.qty || 1, tip: `${it.name || potion.id} — heals the most hurt of you`,
-        fn: () => this._drinkFromHotbar(potion.id, out.length),
+        fn: () => this._drinkFromHotbar(potion.id, at),
       });
     }
 
