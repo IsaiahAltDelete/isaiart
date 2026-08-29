@@ -676,6 +676,35 @@ export class BattleScene {
     const enc = this.enc;
     const unit = enc?.current;
     this.options = unit ? (safe(() => enc.availableActions(unit), []) || []) : [];
+
+    // The engine decides `enabled` from the action budget and the creature's
+    // conditions; it never asks whether there is anything to point the action
+    // AT. So "Attack" read as available, a single-weapon character dropped
+    // straight into targeting, and the refusal only arrived two presses later.
+    // Ask once, here, and let the row say so before it is chosen.
+    if (unit) {
+      const foes = (enc.units || []).filter((u) => u && !isDead(u) && u.side !== unit.side);
+      let nearest = null, nearFt = 0;
+      for (const f of foes) {
+        const ft = safe(() => distanceFt(unit, f), 0) || 0;
+        if (!nearest || ft < nearFt) { nearest = f; nearFt = ft; }
+      }
+      for (const o of this.options) {
+        if (!o || !o.enabled) continue;
+        const kind = lower(o.targeting && o.targeting.kind);
+        // Only creature-targeted actions can run out of targets; a self buff,
+        // a point-blank area or Dodge always has somewhere to go.
+        if (kind !== 'creature') continue;
+        if (o.targeting && o.targeting.allowAllies) continue;
+        const n = safe(() => (enc.targetsFor(unit, o).units || []).length, 1);
+        if (n > 0) continue;
+        o.enabled = false;
+        o.reason = nearest
+          ? `${UI.fit(nearest.name || 'Nearest foe', 40, 'sm')} is ${nearFt}ft away`
+          : 'Nothing to aim at';
+      }
+    }
+
     this.menuDirty = false;
   }
 
@@ -1576,6 +1605,40 @@ export class BattleScene {
     }
   }
 
+  /**
+   * Make a hit land at the screen level, scaled to how much of the creature it
+   * took. A nine-point graze and a blow that halves you produced exactly the
+   * same nothing; and a party member being opened up should feel different
+   * from a goblin being opened up.
+   */
+  _damageFelt(target, dealt) {
+    if (!target || !dealt) return;
+    if (Save?.settings?.screenShake === false) return;
+    const max = safe(() => maxHpOf(target), target.maxHp || 1) || 1;
+    const frac = clamp(dealt / max, 0, 1);
+    safe(() => FX.shake(0.14 + frac * 0.6, 0.18 + frac * 0.28));
+    if (target.side === 'party') {
+      safe(() => FX.vignette(0.2 + frac * 0.4, '#3a0006', 0.45));
+      if (target.hp > 0 && target.hp / max <= 0.25) safe(() => sfx('lowhp'));
+    }
+  }
+
+  /**
+   * A camera beat framing two combatants: their midpoint if both will fit in
+   * the field at this zoom, otherwise the one being hit — the target is the one
+   * you need to see, because that is where the damage lands.
+   */
+  _framePair(a, b) {
+    const pa = posOf(a), pb = posOf(b);
+    const spanX = Math.abs(pa.x - pb.x) * TILE * this.zoom;
+    const spanY = Math.abs(pa.y - pb.y) * TILE * this.zoom;
+    const fits = spanX < FIELD.w - 48 && spanY < FIELD.h - 48;
+    if (fits) {
+      return { k: 'camera', dur: 0.14, point: { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 } };
+    }
+    return { k: 'camera', dur: 0.14, unit: b };
+  }
+
   _beatDone(b) {
     switch (b.k) {
       case 'walk': {
@@ -1717,7 +1780,13 @@ export class BattleScene {
       },
     });
 
-    // 2. the d20
+    // 1b. frame BOTH of them. The camera sits on whoever is acting, so an
+    //     enemy shooting an ally across the field resolved entirely off-screen:
+    //     you read that someone took nine damage and never saw it happen.
+    this.beats.push(this._framePair(attacker, target));
+
+    // 2. the d20 — captioned, because a die with no name on it is a number
+    //    with no story attached.
     if (roll) {
       this.beats.push({
         k: 'dice', silent: !showRolls,
@@ -1728,6 +1797,9 @@ export class BattleScene {
           hit,
           crit,
           fumble,
+          who: attacker.name || null,
+          vs: target.name || null,
+          what: (spell && spell.name) || null,
           label: crit ? 'CRITICAL' : fumble ? 'FUMBLE' : hit ? 'HIT' : 'MISS',
           labelColor: crit ? UI.COLORS.goldBright : fumble ? '#ff7a60' : hit ? UI.COLORS.good : UI.COLORS.inkDim,
         },
@@ -1748,14 +1820,14 @@ export class BattleScene {
             color: style.color || (spell ? UI.COLORS.purple : '#cfc7b4'),
             shape: spell ? 'bolt' : 'arrow',
             speed: 320, arc: spell ? 0 : 14, trail: true,
-            onHit: () => { if (hit) this._impact(target, crit, spell); },
+            onHit: () => { if (hit) this._impact(target, crit, spell, res.applied && res.applied.dealt); },
           });
           sfx(spell ? 'spell' : 'arrow');
         } else {
           const s = this._uiOf(attacker);
           FX.slash(p.x, p.y, s?.dir || 'right', spell?.vfx?.color || '#ffffff');
           sfx(hit ? (crit ? 'hitcrit' : 'hit') : 'miss');
-          if (hit) this._impact(target, crit, spell);
+          if (hit) this._impact(target, crit, spell, res.applied && res.applied.dealt);
         }
         if (!hit) FX.floater(p.x, p.y - 4, 'MISS', UI.COLORS.inkDim, { size: 'sm' });
       },
@@ -1809,13 +1881,16 @@ export class BattleScene {
   }
 
   /** Flash the target, shake it, and throw the right sparks for the damage type. */
-  _impact(target, crit, spell) {
+  _impact(target, crit, spell, dealt) {
     const s = this._uiOf(target, true);
     if (s) s.flash = 1;
     const p = this._fxAt(target);
     const col = spell?.vfx?.color || '#e0604a';
     FX.burst(p.x, p.y, col, crit ? 16 : 8, { shape: 'blood', speed: crit ? 120 : 80, life: 0.35, gravity: 90 });
-    if (!crit) FX.shake(0.22, 0.2);
+    // A flat 0.22 shake for every hit told you a blow had landed and nothing
+    // about its size. Scale it, and let a party member's blood tint the screen.
+    if (dealt) this._damageFelt(target, dealt);
+    else if (!crit) FX.shake(0.22, 0.2);
   }
 
   // --- saves ---------------------------------------------------------------
@@ -1824,6 +1899,10 @@ export class BattleScene {
     if (!res || !target) return;
     const showRolls = Save?.settings?.showRolls !== false;
     const ok = !!res.success;
+
+    // Frame the creature making the save before it rolls; a saving throw is
+    // resolved at the target's feet, not the caster's.
+    if (source) this.beats.push(this._framePair(source, target));
 
     if (res.roll) {
       this.beats.push({
@@ -1836,6 +1915,9 @@ export class BattleScene {
           labelColor: ok ? UI.COLORS.good : UI.COLORS.bad,
           saveOf: target.name,
           ability: res.ability,
+          who: target.name || null,
+          what: `${String(res.ability || '').toUpperCase()} save`
+            + (spell && spell.name ? ` vs ${spell.name}` : ''),
         },
       });
     }
@@ -1855,6 +1937,7 @@ export class BattleScene {
           if (s) s.flash = 1;
           if (Save?.settings?.showDamageNumbers !== false) FX.floater(p.x, p.y - 6, String(dealt), '#ff8a70', { size: 1.2 });
           FX.burst(p.x, p.y, spell?.vfx?.color || '#e0604a', 8, { shape: 'ember', speed: 70, life: 0.32 });
+          this._damageFelt(target, dealt);
         },
       });
     } else if (ok) {
@@ -2195,7 +2278,10 @@ export class BattleScene {
 
     this._drawLogTail(ctx);
     if (this.rollLines) this._drawRollLines(ctx);
-    if (this.dice) UI.diceRoll(ctx, DICE.x, DICE.y, this.dice.roll, this.dice.t);
+    if (this.dice) {
+      UI.diceRoll(ctx, DICE.x, DICE.y, this.dice.roll, this.dice.t);
+      this._drawDiceCaption(ctx);
+    }
     if (this.banner) this._drawBanner(ctx);
     if (this.showLog) this._drawLogPanel(ctx);
     if (this.prompt) this._drawPrompt(ctx);
@@ -3148,6 +3234,24 @@ export class BattleScene {
       });
     }
     ctx.restore();
+  }
+
+  /** Who is rolling, at whom, with what — a plate above the tumbling die. */
+  _drawDiceCaption(ctx) {
+    const r = this.dice && this.dice.roll;
+    if (!r || !r.who) return;
+    const parts = [r.who];
+    if (r.vs) parts.push('\u2192 ' + r.vs);
+    let label = parts.join(' ');
+    if (r.what) label += ' \u00b7 ' + r.what;
+    label = UI.fit(label, 168, 'sm');
+    const w = UI.measure(label, 'sm') + 10;
+    const x = clamp(R(DICE.x - w / 2), 2, VIEW_W - w - 2);
+    const y = Math.max(RIBBON.h + 2, DICE.y - 34);
+    UI.panel(ctx, x, y, w, 11, { style: 'dark', shadow: 0.5, studs: false });
+    UI.text(ctx, x + w / 2, y + 2, label, {
+      size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true,
+    });
   }
 
   /** The damage arithmetic, under the die: "1d8 [6] +3 = 9 slashing". */
