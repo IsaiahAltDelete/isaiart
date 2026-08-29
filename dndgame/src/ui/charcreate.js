@@ -905,6 +905,7 @@ export class CharCreateScene {
       bgMode: '2-1',              // '2-1' | '1-1-1'
       bgPlus2: null,              // ability id that gets the +2
       bgPlus1: null,              // ability id that gets the +1
+      bgAsiManual: false,         // true once the player has set the spread themselves
       method: 'array',            // 'array' | 'pointbuy' | 'roll'
       array: STANDARD_ARRAY.slice(),
       arrayAssign: {},            // ability -> index into `array`
@@ -1334,6 +1335,49 @@ export class CharCreateScene {
     return out;
   }
 
+  /**
+   * Every pick-bucket key that is legal for the draft as it stands.
+   *
+   * `d.picks` is one flat map shared by four owners: class spells, class and
+   * subclass feature choices, species trait choices, and the background's
+   * origin feat. They are told apart by which buckets currently exist, not by
+   * their key, so this is the only honest way to ask "does this pick still
+   * belong to anything".
+   */
+  _validPickKeys() {
+    const out = new Set();
+    for (const b of safe(() => this.spellBuckets(), []) || []) if (b && b.key) out.add(b.key);
+    for (const b of safe(() => this.featureBuckets(), []) || []) if (b && b.key) out.add(b.key);
+    for (const b of safe(() => this.skillBuckets(), []) || []) if (b && b.key) out.add(b.key);
+    return out;
+  }
+
+  /**
+   * Drop the picks that no longer have a bucket, and keep every one that does.
+   *
+   * This replaces wiping `d.picks` wholesale on a class switch. Wiping was
+   * over-broad in both directions: it threw away the species trait and origin
+   * feat choices the class had nothing to do with, and restoring a stash put
+   * a stale copy of those same choices back over whatever the player had since
+   * chosen. Pruning is exactly right — a wizard's cantrips lose their bucket
+   * the moment you become a fighter, and a tiefling's legacy does not.
+   */
+  _prunePicks() {
+    const ok = this._validPickKeys();
+    const d = this.draft;
+    for (const k of Object.keys(obj(d.picks))) if (!ok.has(k)) delete d.picks[k];
+  }
+
+  /** Layer a stash back on, never clobbering a pick another owner holds now. */
+  _restorePicks(saved) {
+    const d = this.draft;
+    if (!d.picks) d.picks = {};
+    for (const [k, v] of Object.entries(obj(saved))) {
+      if (k in d.picks) continue;
+      d.picks[k] = arr(v).slice();
+    }
+  }
+
   _stashOf(kind) {
     if (!this._stash) this._stash = {};
     if (!this._stash[kind]) this._stash[kind] = {};
@@ -1350,10 +1394,10 @@ export class CharCreateScene {
     };
   }
 
-  /** Everything a subclass switch would destroy. */
+  /** Everything a subclass switch would destroy. `-` stands for "none yet". */
   _saveSubclassState(classId, subclassId) {
-    if (!classId || !subclassId) return;
-    this._stashOf('sub')[classId + '/' + subclassId] = { picks: this._copyPicks(this.draft.picks) };
+    if (!classId) return;
+    this._stashOf('sub')[classId + '/' + (subclassId || '-')] = { picks: this._copyPicks(this.draft.picks) };
   }
 
   /** The look, which a species or lineage swap snaps back into legal range. */
@@ -1376,6 +1420,7 @@ export class CharCreateScene {
     const look = this._stashOf('look')[id + '/' + (d.lineageId || '-')];
     if (look) d.appearance = Object.assign({}, look.appearance);
     this._reskin();
+    this._prunePicks();                    // a dwarf has no elf trait choices
     this._touch();
   }
 
@@ -1388,6 +1433,7 @@ export class CharCreateScene {
     const look = this._stashOf('look')[d.speciesId + '/' + (id || '-')];
     if (look) d.appearance = Object.assign({}, look.appearance);
     this._reskin();
+    this._prunePicks();
     this._touch();
   }
 
@@ -1402,31 +1448,38 @@ export class CharCreateScene {
     if (back) {
       d.subclassId = back.subclassId;
       d.skills = arr(back.skills).slice();
-      d.picks = this._copyPicks(back.picks);
       d.kitId = back.kitId;
       d.takeGold = !!back.takeGold;
       d.goldRolled = back.goldRolled || rollStartingGold(getClass(id), this.rng);
+      this._prunePicks();                 // the old class's picks lose their buckets
+      this._restorePicks(back.picks);     // …and this class's come back
     } else {
       d.subclassId = null;
       d.skills = [];
-      d.picks = {};
       d.kitId = null;
       d.takeGold = false;
       const kits = this.kits();
       if (kits.length) d.kitId = kits[0].id;
       d.goldRolled = rollStartingGold(getClass(id), this.rng);
+      this._prunePicks();
     }
-    this._defaultBackgroundAsi();
+    // Only re-derive the background bonus if the player has not set it by hand.
+    // Browsing the class list used to silently undo a deliberate +2 CON.
+    if (!d.bgAsiManual) this._defaultBackgroundAsi();
     this._touch();
   }
 
   setSubclass(id) {
     const d = this.draft;
     if (d.subclassId === id) return;
-    this._saveSubclassState(d.classId, d.subclassId);
+    // Stash under the outgoing subclass even when there is not one yet: a
+    // level-1 character walks past a preview-only subclass step with picks
+    // already made, and those have to survive the first selection.
+    this._saveSubclassState(d.classId, d.subclassId || '-');
     d.subclassId = id;
-    const back = this._stashOf('sub')[d.classId + '/' + id];
-    d.picks = back ? this._copyPicks(back.picks) : {};
+    const back = this._stashOf('sub')[d.classId + '/' + (id || '-')];
+    this._prunePicks();
+    if (back) this._restorePicks(back.picks);
     this._touch();
   }
 
@@ -1435,6 +1488,7 @@ export class CharCreateScene {
     if (d.backgroundId === id) return;
     this._stashOf('bg')[d.backgroundId] = {
       bond: d.bond, bgMode: d.bgMode, bgPlus2: d.bgPlus2, bgPlus1: d.bgPlus1,
+      manual: !!d.bgAsiManual,
     };
     d.backgroundId = id;
     const back = this._stashOf('bg')[id];
@@ -1443,11 +1497,16 @@ export class CharCreateScene {
       d.bgMode = back.bgMode || '2-1';
       d.bgPlus2 = back.bgPlus2 || null;
       d.bgPlus1 = back.bgPlus1 || null;
+      d.bgAsiManual = !!back.manual;
       if (!d.bgPlus2) this._defaultBackgroundAsi();
     } else {
       d.bond = 0;
+      d.bgAsiManual = false;               // a new background gets a fresh default
       this._defaultBackgroundAsi();
     }
+    // A different background offers different abilities; the origin feat's own
+    // choice buckets change with it, so anything orphaned goes.
+    this._prunePicks();
     this._touch();
   }
 
@@ -1884,6 +1943,11 @@ export class CharCreateScene {
   randomiseAll() {
     const d = this.draft;
     const r = this.rng;
+    // Everything below writes the draft directly rather than going through the
+    // setters, so the stash now describes a character that no longer exists.
+    // Keeping it would let a later class switch restore the old one's picks.
+    this._stash = {};
+    d.bgAsiManual = false;
     if (!this.lockSpecies) {
       const sp = allSpecies();
       const pick = safe(() => r.pick(sp), null);
@@ -1921,17 +1985,40 @@ export class CharCreateScene {
     this._touch();
   }
 
-  /** Fill every outstanding multi-pick bucket with sensible defaults. */
+  /**
+   * Fill every outstanding multi-pick bucket with sensible defaults.
+   *
+   * This has to cover EVERY bucket that issue() validates, or "Randomise
+   * everything" hands back a sheet the wizard then refuses to finish — which
+   * is precisely the sort of silent dead end this screen is not allowed to
+   * have. Skills are the trap: the class list is only one of them, and a
+   * species trait or an origin feat can add more.
+   */
   _autoFillPicks() {
     const d = this.draft;
-    const sc = this.classSkillChoice();
-    const granted = this.grantedSkills();
-    const pool = sc.from.filter((s) => !granted[s]);
     const priority = CLASS_PRIORITY[d.classId] || ABILITIES;
-    d.skills = pool.slice().sort((a, b) => priority.indexOf(SKILLS[a].ability) - priority.indexOf(SKILLS[b].ability)).slice(0, sc.count);
+    const byPriority = (a, b) => priority.indexOf(SKILLS[a].ability) - priority.indexOf(SKILLS[b].ability);
+
+    for (const b of this.skillBuckets()) {
+      if (!b || !b.count) continue;
+      // Never pick something the character already has for free — the wizard
+      // rejects those, so auto-fill must not choose them either.
+      const granted = this.grantedSkills();
+      const taken = new Set(arr(d.skills));
+      for (const other of this.skillBuckets()) {
+        if (other === b) continue;
+        for (const id of arr(this.skillPicksOf(other))) taken.add(id);
+      }
+      const pool = arr(b.from).filter((sk) => SKILLS[sk] && !granted[sk] && !taken.has(sk));
+      const chosen = pool.slice().sort(byPriority).slice(0, b.count);
+      if (b.kind === 'class') d.skills = chosen;
+      else d.picks[b.key] = chosen;
+    }
+
     for (const b of this.spellBuckets().concat(this.featureBuckets())) {
-      const opts = b.options.map((o) => (typeof o === 'string' ? o : o.id));
-      this.draft.picks[b.key] = opts.slice(0, b.count);
+      if (!b || !b.count) continue;
+      const opts = arr(b.options).map((o) => (typeof o === 'string' ? o : o.id));
+      d.picks[b.key] = opts.slice(0, b.count);
     }
   }
 
@@ -2407,8 +2494,8 @@ export class CharCreateScene {
     rows.push({
       label: 'Spread',
       value: d.bgMode === '2-1' ? '+2 / +1' : '+1 / +1 / +1',
-      onLeft: () => { d.bgMode = modes[(modes.indexOf(d.bgMode) + 1) % 2]; this._touch(); },
-      onRight: () => { d.bgMode = modes[(modes.indexOf(d.bgMode) + 1) % 2]; this._touch(); },
+      onLeft: () => { d.bgMode = modes[(modes.indexOf(d.bgMode) + 1) % 2]; d.bgAsiManual = true; this._touch(); },
+      onRight: () => { d.bgMode = modes[(modes.indexOf(d.bgMode) + 1) % 2]; d.bgAsiManual = true; this._touch(); },
     });
     if (d.bgMode === '2-1') {
       const cyc = (field, skip) => (dir) => {
@@ -2417,6 +2504,7 @@ export class CharCreateScene {
         let i = pool.indexOf(d[field]);
         i = (i + dir + pool.length) % pool.length;
         d[field] = pool[i];
+        d.bgAsiManual = true;              // never re-derive over a deliberate pick
         this._touch();
       };
       rows.push({
@@ -2950,11 +3038,15 @@ export class CharCreateScene {
     const rows = Math.max(1, Math.floor(listH / ROW_H));
     const rk = this.rowKey();
     const self = this;
+    // A refusal aimed at the list rattles the list.
+    const rowShake = this.shakeX('row');
+    if (rowShake) { ctx.save(); ctx.translate(rowShake, 0); }
     const res = safe(() => UI.list(ctx, LC_X, listY, LC_W, this._rows, this.cursor, {
       rows, rowH: ROW_H, top: this.tops[rk] || 0, t: this.t, cursor: false,
       empty: 'Nothing to choose',
       render: (c, it, ix, x, ry, rw, rh, sel) => self.drawRow(c, it, ix, x, ry, rw, rh, sel),
     }), null);
+    if (rowShake) ctx.restore();
     if (res) this.tops[rk] = res.top;
 
     // hit rects for every visible row
@@ -3081,8 +3173,12 @@ export class CharCreateScene {
     else { line = this.hintLine(); color = C.dim; }
 
     // When something is outstanding the line doubles as a button: click it (or
-    // press E) and the wizard takes you to the step that owes a choice.
-    const jumpable = !!(why || (gap >= 0 && !showMsg));
+    // press E) and the wizard takes you to the step that owes a choice. Only
+    // when THIS step is the problem, or on the summary — `gap` is non-negative
+    // for almost the whole wizard (the name is empty until the second-to-last
+    // step), and letting that drive the footer replaced every per-step hint
+    // with the same nag.
+    const jumpable = !showMsg && (!!why || (last && gap >= 0));
     const lineW = Math.min(286, tw(line, 'sm') + 2);
     if (jumpable) {
       fill(ctx, 53, y - 1, lineW + 2, 9, 'rgba(232,134,58,0.14)');

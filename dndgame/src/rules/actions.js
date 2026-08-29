@@ -28,7 +28,7 @@ import {
   hasProf, hasPassive, hasFeat, mechOf, classLevel,
   armorOf, equipped, equippedDef, removeItem,
   damage as characterDamage, heal as characterHeal, addTempHp,
-  isDead, isAlive,
+  isDead, isAlive, recalc,
 } from './character.js';
 import {
   conditionMech, addCondition, removeCondition, hasCondition, consumeCondition,
@@ -1969,7 +1969,10 @@ export function applyEffect(ctx, source, target, eff, env = {}) {
           mech: eff.mech, source: source?.uid || null,
           concentration: !!eff.concentration, spellId: eff.spellId || null,
         });
+        // A condition is read live through conditionMech; a pushed effect is
+        // not. Without this the ward sits in the list granting nothing.
         target._mech = null;
+        try { recalc(target); } catch (e) { /* a stat block without a sheet */ }
         pushLog(log, ctx, `${tName} is warded by ${eff.name || 'a spell'}.`, 'buff');
         return { kind: 'buff', target: target.uid, id: eff.id || 'shield' };
       }
@@ -1993,6 +1996,7 @@ export function applyEffect(ctx, source, target, eff, env = {}) {
         concentration: !!eff.concentration, spellId: eff.spellId || null,
       });
       target._mech = null;                     // force the merge to rebuild
+      try { recalc(target); } catch (e) { /* a stat block without a sheet */ }
       pushLog(log, ctx, `${tName} is affected by ${eff.name || 'a spell'}.`, 'buff');
       return { kind: 'buff', target: target.uid, id: eff.id || 'buff' };
     }

@@ -356,6 +356,7 @@ export class NPCEntity extends Entity {
     this.hostile = false;              // set once they have seen you swing
     this.fleeT = 0;                    // seconds left running from what they saw
     this.fleeFrom = null;
+    this.ambleTime = null;             // their own pace, restored when they stop
 
     this.home = opts.home ? { x: opts.home.x | 0, y: opts.home.y | 0 } : { x: this.x, y: this.y };
     this.homeDir = opts.dir || 'down';
@@ -420,6 +421,8 @@ export class NPCEntity extends Entity {
     this.busy = false;
     this.pauseT = 0;
     this.path = null;
+    // Remember their own pace: a deliberately fast or slow townsfolk keeps it.
+    if (this.ambleTime == null) this.ambleTime = this.moveTime;
     this.moveTime = WALK_TIME * 1.1;      // a townsfolk running is still no athlete
     return this;
   }
@@ -430,7 +433,10 @@ export class NPCEntity extends Entity {
   think(dt, map) {
     if (this.fleeT > 0) {
       this.fleeT -= dt;
-      if (this.fleeT <= 0) { this.moveTime = WALK_TIME * 1.9; this.fleeFrom = null; }
+      if (this.fleeT <= 0) {
+        this.moveTime = this.ambleTime != null ? this.ambleTime : WALK_TIME * 1.9;
+        this.fleeFrom = null;
+      }
       else if (!this.moving && map) { this._stepAway(map); return; }
     }
     if (this.busy) return;

@@ -597,7 +597,10 @@ function interiorMap(o) {
     w: o.w, h: o.h, id: o.id, name: o.name, biome: 'city', indoor: true,
     music: o.music || 'town', safe: true, encounterRate: 0,
     ambient: o.ambient || { color: '#2a1e14', alpha: 0.14 },
-    region: 'phandalin',
+    // The same region string the town outside uses. A shop and the street it
+    // opens onto share one watch, so rules/crime.js must book a killing in
+    // either to the same ledger.
+    region: o.region || 'phandalin-hills',
   });
 }
 
@@ -1843,7 +1846,12 @@ function spawnNpcs(map, id, st) {
   const flagFn = (name) => flagOn(st, name);
   let list = [];
   try { list = spawnableOnMap(id, flagFn) || []; } catch (e) { list = []; }
+  const slain = (st && st.crime && st.crime.slain) || {};
   for (const n of list) {
+    // Someone the party killed does not open the shop again tomorrow. This is
+    // the authoritative spawn for every hand-built map, so the check has to be
+    // here — the overworld's own populateCast only ever sees what this missed.
+    if (slain[n.id]) continue;
     try {
       // Never let a decoration bury somebody.
       clearStanding(map, n.x, n.y);
@@ -1861,6 +1869,11 @@ function spawnNpcs(map, id, st) {
         role: n.role || 'flavor',
         greeting: n.greeting || null,
         schedule: n.schedule || null,
+        // rules/crime.js reads these to decide whether steel may be drawn.
+        tag: n.tag || null,
+        essential: !!n.essential,
+        noCombat: !!n.noCombat,
+        npc: n,
         home: { x: at.x, y: at.y },
         data: { tag: n.tag || null, species: n.species || 'human', title: n.title || '' },
       });

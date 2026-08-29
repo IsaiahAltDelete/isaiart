@@ -193,6 +193,9 @@ export const Game = {
     // The atmosphere layer (rain, snow, day/night grading, vignette) belongs to the
     // world, so it is painted after the last world scene and BEFORE the first UI
     // scene. Without this the storm outside falls across the open inventory.
+    // INVARIANT: a scene with opaque:false must also set uiLayer, or the world
+    // beneath it will be graded after it draws rather than before. Every scene
+    // that layers over the world today (dialogue) does both.
     let uiStart = stack.length;
     for (let i = start; i < stack.length; i++) {
       if (stack[i] && stack[i].uiLayer) { uiStart = i; break; }

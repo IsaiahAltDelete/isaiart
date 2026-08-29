@@ -72,6 +72,9 @@ export function crimeState(st) {
  */
 export function regionOf(map) {
   const m = obj(map);
+  // `region` is the settlement's ledger key and every interior shares the one
+  // the street outside uses, so stabbing the innkeeper in his taproom and
+  // stabbing him on his doorstep are the same crime to the same watch.
   return String(m.region || m.parent || m.id || 'wilds');
 }
 

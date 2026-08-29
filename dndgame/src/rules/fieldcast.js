@@ -31,10 +31,11 @@
 // Refusing is as important as casting: a spell that cannot do anything useful
 // here must not silently eat a slot.
 
-import { getSpell } from '../data/spells.js';
-import { roundsFor } from './conditions.js';
-import { applyEffect } from './actions.js';
-import { recalc, maxHpOf, isDead } from './character.js';
+import { getSpell, spellHealDice } from '../data/spells.js';
+import { resolveItem } from '../data/items.js';
+import { roundsFor, conditionInstance, removeCondition } from './conditions.js';
+import { applyEffect, healTarget } from './actions.js';
+import { recalc, isDead, abilityMod } from './character.js';
 import {
   availableSlots, hasSlot, spendSlot, spellDC, knownSpells,
   alwaysPreparedSpells, startConcentration, isConcentrating,
@@ -188,9 +189,21 @@ export function fieldCast(ch, spellId, env = {}) {
   const ctx = fieldCtx(log);
   const level = gate.slot || sp.level;
 
-  // Concentration out of combat behaves as it does in it: one at a time.
-  if (sp.concentration && isConcentrating(ch)) {
-    lines.push(`${ch.name} lets their previous spell go.`);
+  // --- the world verbs go FIRST -------------------------------------------
+  // A spell that turns out to have nothing to act on must not cost a slot, and
+  // fieldCastable cannot know: whether there is a locked chest within sixty
+  // feet is a question only the map can answer. So ask the map before paying.
+  const worldLines = [];
+  let worldDidSomething = false;
+  for (const eff of arr(sp.effects)) {
+    if (lower(eff && eff.kind) !== 'utility') continue;
+    const res = castWorldEffect(ch, sp, eff, env);
+    if (!res) continue;
+    worldLines.push(res.text);
+    if (res.ok) worldDidSomething = true;
+  }
+  if (gate.role === 'world' && !worldDidSomething) {
+    return { ok: false, text: worldLines[0] || 'Nothing comes of it.', lines: [], slot: 0, ritual: false };
   }
 
   // --- the slot ------------------------------------------------------------
@@ -200,43 +213,44 @@ export function fieldCast(ch, spellId, env = {}) {
     }
   }
 
-  // --- time ----------------------------------------------------------------
   // Rituals take ten minutes; everything else is over in six seconds.
   const minutes = gate.ritual ? 10 : 0;
 
-  // --- healing -------------------------------------------------------------
-  if (sp.heal && !arr(sp.effects).some((e) => lower(e && e.tag) === 'create-item')) {
-    const healed = healWith(ch, target, sp, level);
-    lines.push(healed > 0
-      ? `${target.name} recovers ${healed} hit points.`
-      : `${target.name} is already whole.`);
+  // --- concentration, BEFORE the effects it protects ------------------------
+  // startConcentration drops whatever came before it, and dropping a spell
+  // strips the effects that spell applied. Re-casting the same ward on the same
+  // ally would otherwise remove the ward you just put up.
+  if (sp.concentration) {
+    if (isConcentrating(ch)) lines.push(`${ch.name} lets their previous spell go.`);
+    safe(() => startConcentration(ch, spellId, [target], { dur: roundsFor(sp.duration) }));
   }
 
-  // --- buffs, wards and temp hp -------------------------------------------
+  // --- healing -------------------------------------------------------------
+  if (sp.heal && !arr(sp.effects).some((e) => lower(e && e.tag) === 'create-item')) {
+    const healed = healWith(ctx, ch, target, sp, level, log);
+    lines.push(healed > 0
+      ? `${target.name} recovers ${healed} hit points.`
+      : `${target.name} is no better for it.`);
+  }
+
+  // --- buffs, wards, temp hp and helpful conditions -------------------------
   const dc = safe(() => spellDC(ch), 10);
   for (const eff of arr(sp.effects)) {
     const k = lower(eff && eff.kind);
     if (k !== 'buff' && k !== 'shield' && k !== 'temphp' && k !== 'condition') continue;
+    if (!Array.isArray(target.effects)) target.effects = [];
+    const before = target.effects.length;
     const applied = safe(() => applyEffect(ctx, ch, target, {
       ...eff, dc, spellId, concentration: !!sp.concentration,
     }, { r: rng, log }), null);
     if (!applied) continue;
-    // Out here, duration is measured on the world clock rather than in rounds:
-    // an eight-hour ward should not evaporate because the party took ten steps.
-    stampExpiry(target, eff, sp, st);
+    stampExpiry(target, eff, sp, st, before, applied);
     lines.push(`${target.name}: ${eff.name || sp.name} takes hold.`);
   }
 
-  // --- world verbs ---------------------------------------------------------
-  for (const eff of arr(sp.effects)) {
-    if (lower(eff && eff.kind) !== 'utility') continue;
-    const said = castWorldEffect(ch, sp, eff, env);
-    if (said) lines.push(said);
-  }
+  for (const l of worldLines) lines.push(l);
 
-  if (sp.concentration) safe(() => startConcentration(ch, spellId, [target], { rounds: roundsFor(sp.duration) }));
   safe(() => recalc(target));
-
   for (const l of log) if (l && l.text && lines.indexOf(l.text) < 0) lines.push(l.text);
   if (!lines.length) lines.push(`${ch.name} casts ${sp.name}.`);
 
@@ -250,52 +264,67 @@ export function fieldCast(ch, spellId, env = {}) {
   };
 }
 
-/** Roll the spell's heal block at `level` and apply it. */
-function healWith(caster, target, sp, level) {
+/**
+ * Roll and apply the spell's heal block. This mirrors what rules/combat.js does
+ * for the same spell in a fight — same dice, same scaling, same "does this add
+ * the caster's spellcasting modifier" rule — and goes through healTarget so the
+ * dying, the stabilised and the dead are treated correctly rather than having
+ * their hp poked directly.
+ */
+function healWith(ctx, caster, target, sp, level, log) {
   const h = obj(sp.heal);
-  const mod = h.addSpellMod === false ? 0 : spellMod(caster);
-  let dice = h.dice || '0';
-  const per = obj(h.scale).perSlot;
-  const up = Math.max(0, level - Math.max(1, sp.level));
-  if (per && up > 0) dice = `${dice}+${repeatDice(per, up)}`;
-  const rolled = safe(() => rollExpr(String(dice), rng).total, 0) || 0;
-  const flat = Number(h.flat) || 0;
-  const amount = Math.max(0, rolled + flat + (h.dice ? mod : 0));
-  const before = target.hp || 0;
-  const max = safe(() => maxHpOf(target), target.maxHp || before) || before;
-  target.hp = Math.min(max, before + amount);
-  return target.hp - before;
-}
-
-function repeatDice(expr, times) {
-  const out = [];
-  for (let i = 0; i < times; i++) out.push(expr);
-  return out.join('+');
-}
-
-function spellMod(ch) {
-  const m = Number(ch && ch.spellMod);
-  if (Number.isFinite(m)) return m;
-  const ab = safe(() => ch.spells && ch.spells.ability, null);
-  const score = ab && ch.abilities ? Number(ch.abilities[ab]) : NaN;
-  return Number.isFinite(score) ? Math.floor((score - 10) / 2) : 0;
+  const dice = safe(() => spellHealDice(sp, level), h.dice) || h.dice || null;
+  const rolled = dice ? (safe(() => rollExpr(String(dice), rng).total, 0) || 0) : 0;
+  const bonus = h.mod === 'spell'
+    ? safe(() => abilityMod(caster, (caster.spells && caster.spells.ability) || 'wis'), 0)
+    : 0;
+  const total = Math.max(0, rolled + bonus);
+  if (total <= 0) return 0;
+  const res = safe(() => healTarget(ctx, target, total), null);
+  if (res && Array.isArray(res.log)) log.push(...res.log);
+  return res ? res.healed : 0;
 }
 
 /**
- * Give the freshly-applied effect a world-clock expiry. combat.js ticks `dur`
- * in rounds; out here nothing does, so a numeric `dur` would simply freeze. We
- * clear it and record `until` in absolute minutes instead — expireFieldBuffs
- * sweeps it, and combat converts it back to rounds when a fight starts.
+ * Give the freshly-applied effect a world-clock expiry.
+ *
+ * combat.js ticks `dur` in rounds; out here nothing does, so a numeric `dur`
+ * would simply freeze. We clear it and record `until` in absolute minutes
+ * instead — expireFieldBuffs sweeps it, and fieldBuffsToRounds converts it back
+ * when a fight starts.
+ *
+ * `before` is the length of target.effects prior to applyEffect. applyEffect
+ * only pushes there for buffs and mech-carrying wards: temp hp and conditions
+ * go elsewhere entirely. Without that check this stamped — and mangled — an
+ * unrelated effect that happened to be last in the list.
  */
-function stampExpiry(target, eff, sp, st) {
-  if (!target || !Array.isArray(target.effects)) return;
-  const inst = target.effects[target.effects.length - 1];
-  if (!inst) return;
+function stampExpiry(target, eff, sp, st, before, applied) {
+  if (!target || !st) return;
   const mins = minutesFor(eff.duration || sp.duration);
-  inst.field = true;
-  inst.dur = null;                             // no longer ticks per round
-  inst.until = mins == null || !st ? null : clockMinutes(st) + mins;
-  inst.name = inst.name || eff.name || sp.name;
+  const until = mins == null ? null : clockMinutes(st) + mins;
+
+  if (Array.isArray(target.effects) && target.effects.length > before) {
+    const inst = target.effects[target.effects.length - 1];
+    if (inst) {
+      inst.field = true;
+      inst.dur = null;                       // no longer ticks per round
+      inst.until = until;
+      inst.name = inst.name || eff.name || sp.name;
+    }
+    return;
+  }
+
+  // A helpful condition (Invisibility, Heroism's fright immunity). Conditions
+  // live in their own list and are ticked by combat's turn boundaries, which
+  // never come around out here — so they get the same world-clock treatment.
+  if (applied && applied.kind === 'condition' && applied.id) {
+    const inst = safe(() => conditionInstance(target, applied.id), null);
+    if (inst) {
+      inst.field = true;
+      inst.dur = null;
+      inst.until = until;
+    }
+  }
 }
 
 /**
@@ -307,15 +336,32 @@ export function expireFieldBuffs(members, st) {
   const now = clockMinutes(st);
   const gone = [];
   for (const ch of arr(members)) {
-    if (!ch || !Array.isArray(ch.effects) || !ch.effects.length) continue;
-    const before = ch.effects.length;
-    ch.effects = ch.effects.filter((e) => {
-      if (!e || !e.field || e.until == null) return true;
-      if (now < e.until) return true;
-      gone.push(`${ch.name}: ${e.name || 'a spell'} fades.`);
-      return false;
-    });
-    if (ch.effects.length !== before) { ch._mech = null; safe(() => recalc(ch)); }
+    if (!ch) continue;
+    let changed = false;
+
+    if (Array.isArray(ch.effects) && ch.effects.length) {
+      const before = ch.effects.length;
+      ch.effects = ch.effects.filter((e) => {
+        if (!e || !e.field || e.until == null) return true;
+        if (now < e.until) return true;
+        gone.push(`${ch.name}: ${e.name || 'a spell'} fades.`);
+        return false;
+      });
+      changed = changed || ch.effects.length !== before;
+    }
+
+    // Conditions applied out of combat expire the same way: nothing else will
+    // ever tick them, because their clock is the turn boundary.
+    if (Array.isArray(ch.conditions) && ch.conditions.length) {
+      for (const c of ch.conditions.slice()) {
+        if (!c || !c.field || c.until == null || now < c.until) continue;
+        safe(() => removeCondition(ch, c.id, { source: c.source ?? null }));
+        gone.push(`${ch.name}: ${c.id} fades.`);
+        changed = true;
+      }
+    }
+
+    if (changed) { ch._mech = null; safe(() => recalc(ch)); }
   }
   return gone;
 }
@@ -326,13 +372,15 @@ export function expireFieldBuffs(members, st) {
  * whole battle.
  */
 export function fieldBuffsToRounds(ch, st) {
-  if (!ch || !Array.isArray(ch.effects)) return;
+  if (!ch) return;
   const now = clockMinutes(st);
-  for (const e of ch.effects) {
-    if (!e || !e.field) continue;
-    if (e.until == null) { e.dur = null; continue; }
+  const convert = (e) => {
+    if (!e || !e.field) return;
+    if (e.until == null) { e.dur = null; return; }
     e.dur = Math.max(1, Math.round((e.until - now) * 10));
-  }
+  };
+  if (Array.isArray(ch.effects)) for (const e of ch.effects) convert(e);
+  if (Array.isArray(ch.conditions)) for (const c of ch.conditions) convert(c);
 }
 
 // ---------------------------------------------------------------------------
@@ -349,41 +397,56 @@ function castWorldEffect(ch, sp, eff, env) {
   const w = obj(env.world);
   const tag = lower(eff.tag);
   const mech = obj(eff.mech);
+  const said = (ok, text) => ({ ok, text });
 
   switch (tag) {
     case 'light': {
       const r = Number(mech.lightRadius) || 20;
-      if (typeof w.light === 'function') { safe(() => w.light(r, sp.id, minutesFor(sp.duration))); }
-      return `A ${r}-foot pool of light follows ${ch.name}.`;
+      if (typeof w.light === 'function') safe(() => w.light(r, sp.id, minutesFor(sp.duration)));
+      return said(true, `A ${r}-foot pool of light follows ${ch.name}.`);
     }
     case 'unlock': {
       const done = typeof w.unlock === 'function' ? safe(() => w.unlock(), null) : null;
-      if (done && done.ok) return done.text || 'The lock springs open with a loud metallic knock.';
-      return done && done.text ? done.text : 'Nothing within reach is locked.';
+      if (done && done.ok) return said(true, done.text || 'The lock springs open with a loud metallic knock.');
+      return said(false, (done && done.text) || 'Nothing within reach is locked.');
     }
     case 'detect-magic': {
       const found = typeof w.detect === 'function' ? safe(() => w.detect('magic'), null) : null;
-      if (found && found.count) return `The Weave answers: ${found.count} enchanted thing${found.count === 1 ? '' : 's'} nearby.`;
-      return 'Nothing nearby carries an enchantment.';
+      if (found && found.count) {
+        return said(true, `The Weave answers: ${found.count} enchanted thing${found.count === 1 ? '' : 's'} nearby.`);
+      }
+      // Learning that there is nothing here IS the answer a divination gives,
+      // so this one has done its job even when the count is zero.
+      return said(true, 'Nothing nearby carries an enchantment.');
     }
     case 'create-item': {
-      const id = mech.itemId;
+      // Spell data names the fiction ('goodberry'); the catalogue names the
+      // item ('goodberry-preserve'). Try the spell's id, then the nearest thing
+      // the pack can actually hold, rather than silently conjuring nothing.
+      const wanted = [mech.itemId, mech.item, `${mech.itemId}-preserve`].filter(Boolean);
       const qty = Number(mech.qty) || 1;
       const party = env.party;
-      if (id && party && typeof party.addItem === 'function' && safe(() => party.addItem(id, qty), false)) {
-        return `${qty} ${id.replace(/-/g, ' ')} appear in cupped hands.`;
+      if (!party || typeof party.addItem !== 'function') return said(false, 'The conjuring will not hold.');
+      for (const id of wanted) {
+        if (!safe(() => !!resolveItem(id), false)) continue;
+        if (!safe(() => party.addItem(id, qty), false)) continue;
+        const nm = safe(() => resolveItem(id).name, null) || String(id).replace(/-/g, ' ');
+        return said(true, `${qty} ${nm} in cupped hands.`);
       }
-      return 'The conjuring will not hold.';
+      return said(false, 'The conjuring will not hold.');
     }
     case 'telekinesis': {
       const done = typeof w.reach === 'function' ? safe(() => w.reach(Number(mech.carryLimit) || 10), null) : null;
-      if (done && done.ok) return done.text || 'The spectral hand fetches it back.';
-      return 'The spectral hand drifts, finds nothing worth fetching, and fades.';
+      if (done && done.ok) return said(true, done.text || 'The spectral hand fetches it back.');
+      return said(false, 'The spectral hand drifts, finds nothing worth fetching, and fades.');
     }
-    case 'identify':
-      return typeof w.identify === 'function'
-        ? (safe(() => w.identify(), null) || {}).text || 'Nothing unidentified in the pack.'
-        : 'Nothing unidentified in the pack.';
+    case 'identify': {
+      const done = typeof w.identify === 'function' ? safe(() => w.identify(), null) : null;
+      if (done && done.ok) return said(true, done.text || 'It gives up its name.');
+      return said(false, (done && done.text) || 'Nothing in the pack is a mystery.');
+    }
+    // Flavour verbs with no world state behind them yet. They still cost the
+    // slot, because in the fiction they still happen.
     case 'purify':
     case 'water':
     case 'clean':
@@ -391,7 +454,7 @@ function castWorldEffect(ch, sp, eff, env) {
     case 'comprehend':
     case 'disguise':
     case 'alarm':
-      return `${sp.name} takes hold.`;
+      return said(true, `${sp.name} takes hold.`);
     default:
       return null;
   }

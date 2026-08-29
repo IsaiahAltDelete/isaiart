@@ -2558,6 +2558,9 @@ export class SpellbookScene extends MenuScene {
       }
     }
 
+    // Z casts, E prepares, and the A-Z jump strip moves to Tab — it lost its
+    // key to Prepare and would otherwise have become unreachable dead code.
+    if (Input.consume('party')) { this.alpha = { index: 0 }; sfx('open'); return; }
     if (Input.consume('interact')) { this._togglePrepare(); return; }
     if (Input.consume('confirm')) { this._castHere(); return; }
     if (Input.consume('cancel')) this.close();
@@ -2603,7 +2606,8 @@ export class SpellbookScene extends MenuScene {
     if (!res || !res.ok) { sfx('error'); this.say((res && res.text) || 'Nothing happens.', true, 2.6); return; }
 
     if (res.minutes) safe(() => advanceTime(Game.state, res.minutes));
-    if (Game.state) Game.state.stats.spellsCast = num(Game.state.stats.spellsCast, 0) + 1;
+    // main.js already counts EV.SPELL_CAST; counting it here too double-billed
+    // every out-of-combat cast in the end-of-game statistics.
     safe(() => bus.emit(EV.SPELL_CAST, { ch, spellId: row.id, field: true }));
     sfx('spell');
     // The status line shares a row with the key hints, so keep it to one clause.
@@ -2651,7 +2655,7 @@ export class SpellbookScene extends MenuScene {
       else this.say(`No spell in this book begins with ${letter}.`, true);
       return;
     }
-    if (Input.consume('cancel') || Input.consume('interact')) { this.alpha = null; sfx('back'); }
+    if (Input.consume('cancel') || Input.consume('party')) { this.alpha = null; sfx('back'); }
   }
 
   _togglePrepare() {
@@ -2760,6 +2764,7 @@ export class SpellbookScene extends MenuScene {
     hintBar(ctx, HINT_Y, [
       [keyFor('cancel'), 'Back'], [keyFor('confirm'), 'Cast'],
       [keyFor('interact'), 'Prepare'], [`${keyFor('prev')}/${keyFor('next')}`, 'Filter'],
+      [keyFor('party'), 'A-Z'],
     ]);
     this.drawStatusRight(ctx);
     if (this.alpha) this._drawAlpha(ctx);
@@ -3657,6 +3662,8 @@ const OPT_GROUPS = [
 ];
 
 const SETTING_DESC = {
+  showEdges: 'Shade the lip of every wall, hedge and cliff so the ground you can actually walk on reads at a glance.',
+  showExits: 'Mark the ways out of a place with a lit threshold and the name of where it leads.',
   volMaster: 'Overall loudness of everything the game plays.',
   volMusic: 'The chiptune score: town themes, field marches, battle music.',
   volSfx: 'Blips, blades, spells and the clatter of dice.',

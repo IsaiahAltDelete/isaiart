@@ -636,7 +636,13 @@ export class DialogueScene {
     if (!this.npc) return false;
     // The NPCS record carries `tag`/`essential`; the entity may only be a sprite
     // that maps.js placed, so fall back to the catalogue before deciding.
-    const record = (this.npc && this.npc.npc) || NPCS()[this.npcId] || this.npc;
+    // The entity may be `this.npc`, and its own catalogue record may hang off
+    // `.npc`. Fall back to the catalogue keyed on the ENTITY's npcId — this.npcId
+    // is derived from `id` first, which for an entity is 'npc-toblen', not a key.
+    const record = (this.npc && this.npc.npc)
+      || NPCS()[(this.npc && this.npc.npcId) || this.npcId]
+      || NPCS()[this.npcId]
+      || this.npc;
     const gate = safe(() => canAttack(record, this.npc), { ok: false });
     return !!(gate && gate.ok);
   }

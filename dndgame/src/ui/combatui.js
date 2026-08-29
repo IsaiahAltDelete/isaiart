@@ -963,13 +963,17 @@ export class BattleScene {
     for (const f of enc.units || []) {
       if (!f || f === unit || isDead(f) || f.hp <= 0) continue;
       if (f.side === unit.side) continue;
-      if (f._reactionUsed) continue;
+
       const set = new Set();
       for (const t of safe(() => enc.threatTiles(f), []) || []) set.add(key(t.x, t.y));
-      // The union is what the player actually needs to see: the squares where
-      // something can reach you. It was already being computed and thrown away.
+
+      // Two different questions, two different filters. "Where can something
+      // reach me" is about next turn and does not care about reactions, so the
+      // red keyline counts every living enemy. "Will running from here draw an
+      // opportunity attack" needs an unspent reaction, so only those go into
+      // the provoke pass below.
       for (const k of set) this.threat.add(k);
-      if (set.size) threats.push({ set, at: key(posOf(f).x, posOf(f).y) });
+      if (set.size && !f._reactionUsed) threats.push({ set, at: key(posOf(f).x, posOf(f).y) });
     }
     if (!threats.length) return;
 
@@ -3073,8 +3077,29 @@ export class BattleScene {
   // --- key hints -----------------------------------------------------------
 
   /** Two key hints, right-aligned inside the log strip so nothing overlaps. */
-  /** A three-swatch key for the movement overlay, tucked under the budget strip. */
+  /**
+   * A three-swatch key for the movement overlay, tucked under the budget strip —
+   * unless the square under the cursor is about to cost you something, in which
+   * case the slot says that instead. The colours are only worth explaining while
+   * the answer is still "any of these will do".
+   */
   _drawMoveLegend(ctx) {
+    const k = key(this.cursor.x, this.cursor.y);
+    const provokes = this.provoke.has(k);
+    const threatened = this.threat.has(k);
+    if ((provokes || threatened) && this.reach.has(k)) {
+      const label = provokes
+        ? 'Running from here draws an opportunity attack.'
+        : 'You will be standing in reach.';
+      const w = UI.measure(label, 'sm') + 8;
+      const x = MENU.x - 2, y = BUDGET.y - 13;
+      UI.panel(ctx, x, y, w, 11, { style: 'dark', shadow: 0.45, studs: false });
+      UI.text(ctx, x + 4, y + 2, label, {
+        size: 'sm', color: provokes ? UI.COLORS.bad : UI.COLORS.warn, shadow: true,
+      });
+      return;
+    }
+
     const items = [
       ['rgba(90,160,240,0.9)', 'reach'],
       ['rgba(200,60,45,0.9)', 'provokes'],

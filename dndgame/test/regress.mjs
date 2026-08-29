@@ -47,6 +47,25 @@ check('charcreate: a refusal shakes and blames a step', fb.shook && fb.blamed);
 check('charcreate: locked steps explain themselves', fb.locked);
 
 // --- into the world --------------------------------------------------------
+// "Randomise everything" must hand back a sheet the wizard will actually
+// finish. It used to fill only the CLASS skill bucket, so any species trait or
+// origin feat that added a second one left the player on a page they had never
+// visited, with a CREATE button that refused.
+const roll = await page.evaluate(() => {
+  const out = [];
+  for (let i = 0; i < 12; i++) {
+    while (SC.Game.top && SC.Game.top.id === 'charcreate') SC.Game.pop();
+    SC.newGame();
+    const s = SC.Game.top;
+    s.randomiseAll();
+    const gap = s.firstIncomplete();
+    if (gap >= 0) out.push(s.constructor.name + ' step ' + gap + ': ' + s.issue(gap));
+  }
+  while (SC.Game.top && SC.Game.top.id === 'charcreate') SC.Game.pop();
+  return out;
+});
+check('charcreate: a randomised character is always complete', roll.length === 0, roll[0] || '12 rolls');
+
 // start a clean wizard: the stash above holds deliberately bogus picks
 await page.evaluate(() => {
   while (SC.Game.top && SC.Game.top.id === 'charcreate') SC.Game.pop();
@@ -54,7 +73,21 @@ await page.evaluate(() => {
   const s = SC.Game.top;
   s.randomiseAll(); s.setClass('wizard'); s.draft.name='Reg'; s._autoFillPicks(); s.finish();
 });
-await page.waitForFunction(() => SC.Game.top && SC.Game.top.id === 'overworld', { timeout: 25000 });
+try {
+  await page.waitForFunction(() => SC.Game.top && SC.Game.top.id === 'overworld', { timeout: 25000 });
+} catch (e) {
+  // A bare timeout tells you nothing; say what the wizard is actually stuck on.
+  const why = await page.evaluate(() => {
+    const s = SC.Game.top;
+    if (!s || s.id !== 'charcreate') return 'top scene is ' + (s && s.id);
+    const gap = s.firstIncomplete();
+    return 'charcreate stuck on step ' + gap + ': ' + (gap >= 0 ? s.issue(gap) : s.message);
+  });
+  console.log('FAIL  reached the overworld  ' + why);
+  console.log('page errors:', JSON.stringify(errs.slice(0, 3), null, 1));
+  await browser.close();
+  process.exit(1);
+}
 await page.waitForTimeout(500);
 
 // --- weather never reaches the UI -----------------------------------------

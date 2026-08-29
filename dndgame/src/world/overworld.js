@@ -671,6 +671,8 @@ export class OverworldScene {
     this._applyWeather(true);
     this._snapCamera();
     map._edgeMask = null;   // rebuilt lazily by _drawEdges for the new place
+    this._exitNames = null; // destination names belong to the map we just left
+    this._exitLabel = null;
 
     const name = map.name || titleCase(String(map.id || '').replace(/-/g, ' '));
     this.banner = { text: name, sub: map.indoor ? null : this._regionSub(map), t: 0 };
@@ -1306,18 +1308,12 @@ export class OverworldScene {
     const st = state();
     const witnesses = witnessesNear(this.entities, entity.x, entity.y, 7, entity);
     const guards = guardsAmong(witnesses);
-
-    // Everyone who can see it is now in this: the watch wades in, the potters run.
     const joining = guards.slice(0, 3);
-    for (const w of witnesses) {
-      w.hostile = true;
-      if (joining.indexOf(w) < 0) safe(() => w.flee && w.flee(this.player.x, this.player.y, 14));
-    }
 
-    const report = st ? reportAssault(st, {
-      map: this.map, npc, entity, witnesses: witnesses.length,
-    }) : { bounty: 0, outlaw: false };
-
+    // Build the fight BEFORE booking the crime. Everything below this line is
+    // irreversible — a bounty, a lost reputation, a street full of people who
+    // saw — and none of it should happen for a swing the game then refuses to
+    // stage because a module has not finished loading.
     const level = Math.max(1, Party.levelAvg());
     const enemies = [];
     const push = (id, n) => {
@@ -1326,8 +1322,7 @@ export class OverworldScene {
         if (mob) enemies.push(mob);
       }
     };
-    const block = statBlockFor(npc, entity);
-    push(block, 1);
+    push(statBlockFor(npc, entity), 1);
     if (enemies.length && npc.name) {
       // The person you actually swung at keeps their own name over the health bar.
       enemies[0].name = npc.name;
@@ -1337,6 +1332,13 @@ export class OverworldScene {
       push(statBlockFor(gnpc, g), 1);
     }
     if (!enemies.length) { this._say('Nothing comes of it.'); return true; }
+
+    // Everyone who can see it is now in this: the watch wades in, the potters run.
+    for (const w of witnesses) {
+      w.hostile = true;
+      if (joining.indexOf(w) < 0) safe(() => w.flee && w.flee(this.player.x, this.player.y, 14));
+    }
+    if (st) reportAssault(st, { map: this.map, npc, entity, witnesses: witnesses.length });
 
     if (witnesses.length) {
       toast(guards.length ? 'The watch has seen you!' : 'Someone saw that.');
@@ -1459,12 +1461,12 @@ export class OverworldScene {
 
   /** Identify: name the first unidentified thing in the pack. */
   _spellIdentify() {
-    const bag = safe(() => Party.inventory && Party.inventory.all && Party.inventory.all(), null);
-    const row = (Array.isArray(bag) ? bag : []).find((it) => it && it.unidentified);
-    if (!row) return { text: 'Nothing in the pack is a mystery.' };
+    const bag = Array.isArray(Party.inventory) ? Party.inventory : [];
+    const row = bag.find((it) => it && it.unidentified);
+    if (!row) return { ok: false, text: 'Nothing in the pack is a mystery.' };
     row.unidentified = false;
     const item = safe(() => resolveItem(row.id), null);
-    return { text: `${(item && item.name) || 'It'} gives up its name.` };
+    return { ok: true, text: `${(item && item.name) || 'It'} gives up its name.` };
   }
 
   /**
@@ -1496,7 +1498,6 @@ export class OverworldScene {
     if (this.encounterGrace > 0) return false;
     if (watchOwed(st, this.map) <= 0) return false;
 
-    clearWatch(st, this.map, 1);
     const level = Math.max(1, Party.levelAvg());
     const enemies = [];
     for (const g of watchPatrol(st, this.map, level)) {
@@ -1509,10 +1510,15 @@ export class OverworldScene {
 
     toast('"That one! Take them!"');
     safe(() => Audio.sfx('encounter'));
-    return this._pushBattle(enemies, {
+    const staged = this._pushBattle(enemies, {
       seed: `${worldSeed()}:watch:${this.map.id}:${(st && st.stats.battles) || 0}`,
       biome: this.map.biome, crime: true,
     });
+    // Spend the debt only once the patrol is really on its way. Clearing it
+    // first meant a push that failed — or a battle module still loading — wrote
+    // the killing off permanently and the watch never came at all.
+    if (staged) clearWatch(st, this.map, 1);
+    return staged;
   }
 
   /** Translate a map trigger into the same payload shape entities speak. */
@@ -1917,6 +1923,7 @@ export class OverworldScene {
    */
   drawUI(ctx) {
     if (!this.map) return;
+    this._drawExitLabel(ctx);
     this.hud.draw(ctx);
     this._drawBanner(ctx);
     this._drawPopup(ctx);
@@ -2126,24 +2133,30 @@ export class OverworldScene {
       ctx.restore();
     }
 
-    // Name the way out once you are close enough to take it.
-    if (nearest && nearestD <= 5) {
-      const name = this._exitName(nearest.tr);
-      if (name) {
-        const label = '\u2192 ' + name;
-        const w = safe(() => UI.measure(label, 'sm'), label.length * 4) + 8;
-        const lx = clamp(Math.round(nearest.px + TILE / 2 - w / 2), 2, VIEW_W - w - 2);
-        const ly = clamp(nearest.py - 13, 2, VIEW_H - 14);
-        const a = clamp(1.2 - nearestD / 5, 0.25, 1);
-        ctx.save();
-        ctx.globalAlpha = a;
-        safe(() => UI.panel(ctx, lx, ly, w, 11, { style: 'dark', shadow: 0.4, studs: false }));
-        safe(() => UI.text(ctx, lx + w / 2, ly + 2, label, {
-          size: 'sm', color: UI.COLORS.goldBright, align: 'center', shadow: true,
-        }));
-        ctx.restore();
-      }
-    }
+    // Which exit to name is decided here (the geometry is to hand), but the
+    // label itself is a readout and goes up with the HUD in drawUI — drawn here
+    // it was dimmed by the night grade and walked behind by the party.
+    this._exitLabel = (nearest && nearestD <= 5)
+      ? { name: this._exitName(nearest.tr), px: nearest.px, py: nearest.py, d: nearestD }
+      : null;
+  }
+
+  /** The "→ The Triboar Trail" plate. Called from drawUI, above the grading. */
+  _drawExitLabel(ctx) {
+    const e = this._exitLabel;
+    if (!e || !e.name) return;
+    const label = '\u2192 ' + e.name;
+    const w = safe(() => UI.measure(label, 'sm'), label.length * 4) + 8;
+    const lx = clamp(Math.round(e.px + TILE / 2 - w / 2), 2, VIEW_W - w - 2);
+    const ly = clamp(e.py - 13, 2, VIEW_H - 14);
+    const a = clamp(1.2 - e.d / 5, 0.25, 1);
+    ctx.save();
+    ctx.globalAlpha = a;
+    safe(() => UI.panel(ctx, lx, ly, w, 11, { style: 'dark', shadow: 0.4, studs: false }));
+    safe(() => UI.text(ctx, lx + w / 2, ly + 2, label, {
+      size: 'sm', color: UI.COLORS.goldBright, align: 'center', shadow: true,
+    }));
+    ctx.restore();
   }
 
   /**
@@ -2153,9 +2166,12 @@ export class OverworldScene {
   _exitArrowDir(tr) {
     const d = (tr && tr.data) || {};
     if (d.arrow && DIR_VEC[d.arrow]) return d.arrow;
-    // `dir` is the way you are facing when you arrive, which is also the way you
-    // walked to get there — exactly the direction the arrow should point.
-    if (d.dir && DIR_VEC[d.dir]) return d.dir;
+    // For a door in a wall, `dir` is the way you face on arrival, which is also
+    // the way you walked to get there. For stairs and wells it means DESCEND,
+    // and pointing an arrow south because you are going down a hole is worse
+    // than pointing nowhere — so those fall through to the geometry below.
+    const vertical = d.kind === 'stairs' || d.kind === 'well' || d.kind === 'ladder';
+    if (!vertical && d.dir && DIR_VEC[d.dir]) return d.dir;
     if (tr.facing && DIR_VEC[tr.facing]) return tr.facing;
     const map = this.map;
     const dx = tr.x - map.w / 2, dy = tr.y - map.h / 2;
@@ -2174,10 +2190,13 @@ export class OverworldScene {
       ctx.fillStyle = pass === 0
         ? `rgba(26,16,6,${(alpha * 0.75).toFixed(3)})`
         : `rgba(255,240,196,${alpha.toFixed(3)})`;
+      // The outline runs one pixel ahead of the core and one wider, so the tip
+      // — the pixel the keyline exists to protect — is genuinely enclosed.
       const rows = pass === 0 ? 5 : 4;
       for (let i = 0; i < rows; i++) {
         const span = pass === 0 ? i : Math.max(0, i - 1);
-        const bx = x - v.x * i, by = y - v.y * i;
+        const lead = pass === 0 ? 1 : 0;
+        const bx = x - v.x * (i - lead), by = y - v.y * (i - lead);
         if (v.x) ctx.fillRect(bx, by - span, 1, span * 2 + 1);
         else ctx.fillRect(bx - span, by, span * 2 + 1, 1);
       }

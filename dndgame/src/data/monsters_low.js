@@ -1382,7 +1382,10 @@ ALL.push(
     actions: [melee('Club', 2, '1d4', 'bludgeoning', { desc: "Held wrong, swung in panic." })],
     ai: { archetype: 'skirmisher', aggression: 0.1, selfPreserve: 0.95, preferredRange: 5 },
     loot: { gold: '1d6', table: [['rations', 0.2], ['torch', 0.2]] },
-    sprite: 'commoner', biomes: ['city', 'road', 'plains'], groupSize: [1, 3],
+    // No `biomes`: data/monsters.js indexes anything with one into the random
+    // encounter pool, and a potter should never come howling out of the tall
+    // grass. These two exist to be stood in for by townsfolk you attack.
+    sprite: 'commoner', biomes: [], groupSize: [1, 3],
     faction: 'townsfolk',
   }),
 
@@ -1394,7 +1397,7 @@ ALL.push(
     actions: [melee('Rapier', 3, '1d8+1', 'piercing')],
     ai: { archetype: 'skirmisher', aggression: 0.35, selfPreserve: 0.85, preferredRange: 5 },
     loot: { gold: '4d6', table: [['rapier', 0.2], ['signet-ring', 0.3], ['clothes-fine', 0.2]] },
-    sprite: 'noble', biomes: ['city'], groupSize: [1, 2],
+    sprite: 'noble', biomes: [], groupSize: [1, 2],
     faction: 'townsfolk',
   }),
 
