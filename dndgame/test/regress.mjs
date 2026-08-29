@@ -153,6 +153,57 @@ const crime = await page.evaluate(() => {
 });
 check('crime: children cannot be attacked', crime.childBlocked !== false);
 
+// --- the battle screen -----------------------------------------------------
+const fight = await page.evaluate(async () => {
+  const ow = SC.Game.top;
+  for (const m of SC.Party.members) { m.maxHp = 300; m.hp = 300; }
+  const t = ow.entities.list.find(e => e.kind === 'npc'
+    && String(e.sprite || '').startsWith('npc-') && e.sprite !== 'npc-child');
+  if (!t) return { err: 'no adult npc to fight' };
+  ow.player.setTile(t.x, t.y + 1, 'up');
+  ow.attackNPC(t);
+  for (let i = 0; i < 200 && (!SC.Game.top || SC.Game.top.id !== 'battle'); i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  const b = SC.Game.top;
+  if (!b || b.id !== 'battle') return { err: 'never reached battle' };
+  for (let i = 0; i < 300 && b.phase !== 'menu'; i++) await new Promise(r => setTimeout(r, 50));
+
+  const out = { phase: b.phase };
+  // Off-screen markers must be able to draw in the gutter beside the menu, not
+  // under it — the whole point of them.
+  const foes = b.enc.units.filter(u => u.side !== 'party');
+  b._scanIndex = -1;
+  b._scanFoes(1);
+  out.scanHint = b.hint;
+  out.scanPinned = !!b.inspectPinned;
+
+  // The threat union must not be filtered by spent reactions.
+  for (const f of foes) f._reactionUsed = true;
+  b._recomputeReach(b.enc.current);
+  out.threatWithSpentReactions = b.threat.size;
+
+  // Aiming something out of range must name the creature and the reach.
+  const atk = (b.options || []).find(o => o && o.kind === 'attack')
+    || ((b.options || []).flatMap(o => o.sub || []).find(o => o && o.kind === 'attack'));
+  if (atk) { b._explainNoTarget(b.enc.current, atk); out.noTargetHint = b.hint; }
+
+  // A beat can be skipped.
+  b.beats.push({ k: 'banner', dur: 99, text: 'x', sub: 'y' });
+  b._updateBeats(0.016);
+  const before = b.beats.length;
+  b._skipBeat();
+  b._updateBeats(0.016);
+  out.skipped = b.beats.length < before;
+  return out;
+});
+check('battle: scanning names a foe and pins the card',
+  !fight.err && /\d+ft away/.test(fight.scanHint || '') && fight.scanPinned, fight.err || fight.scanHint);
+check('battle: threat ignores spent reactions', (fight.threatWithSpentReactions || 0) > 0,
+  `${fight.threatWithSpentReactions} tiles`);
+check('battle: an unreachable target is explained', /ft/.test(fight.noTargetHint || ''), fight.noTargetHint);
+check('battle: animation beats can be skipped', !!fight.skipped);
+
 // --- save / load round trip ------------------------------------------------
 const save = await page.evaluate(() => {
   SC.Game.state.crime.bounty['test-region'] = 123;
