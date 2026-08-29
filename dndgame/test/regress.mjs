@@ -8,13 +8,39 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 900, height: 560 } });
 const errs=[]; page.on('pageerror',e=>errs.push(String(e.stack||e))); page.on('console',m=>{if(m.type()==='error')errs.push('C:'+m.text());});
+// Every module the browser actually asks for, so we can prove the import map in
+// index.html is being honoured rather than silently ignored.
+const asked = [];
+page.on('request', (r) => { const u = r.url(); if (/\/src\/.*\.js(\?|$)/.test(u)) asked.push(u); });
 const R = [];
 const check = (name, ok, detail) => R.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`);
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8099';
-await page.goto(BASE + '/dndgame/index.html', { waitUntil: 'networkidle' });
+// GAME lets the same suite run against a copy of the game at another path, so a
+// duplicate deployed to dodge a stale CDN is proved working rather than assumed.
+const GAME = process.env.GAME || 'dndgame';
+await page.goto(`${BASE}/${GAME}/index.html`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
 check('boots with no errors', errs.length === 0, errs[0] || '');
+
+// --- cache busting ---------------------------------------------------------
+// A relative import does not inherit the query string of the module importing
+// it, so a deploy can otherwise leave a browser running some modules from the
+// new build and some from the old. index.html carries an import map pinning
+// every module to a hash of its contents; these two checks are the difference
+// between having written that map and having it actually take effect.
+{
+  const bare = asked.filter((u) => !/\?v=[0-9a-f]{8}$/.test(u));
+  check('cache: every module is fetched content-hashed', bare.length === 0 && asked.length > 20,
+    bare.length ? `unstamped: ${bare[0]}` : `${asked.length} modules`);
+
+  const { spawnSync } = await import('node:child_process');
+  // stamp.mjs owns dndgame/; a copy at another path carries the map it was copied with.
+  const r = spawnSync(process.execPath, [new URL('../tools/stamp.mjs', import.meta.url).pathname, '--check'],
+    { encoding: 'utf8' });
+  check('cache: index.html import map is up to date', r.status === 0,
+    (r.stderr || r.stdout || '').trim().split('\n')[0]);
+}
 await page.mouse.click(450,280); await page.waitForTimeout(400);
 
 // --- char creation stash ---------------------------------------------------
