@@ -209,6 +209,26 @@ check('hotbar: attacking a child is refused, in words',
   bar.childAttack && bar.childAttack.why);
 check('hotbar: every button is clickable', bar.hitRects >= 10, `${bar.hitRects} hit rects`);
 
+// --- portrait captions -----------------------------------------------------
+// The caption under a dialogue bust read `role`, an internal enum whose default
+// is 'flavor' — so half the town was captioned with the word "flavor". It reads
+// the authored title now, and every NPC in the game has one.
+const caps = await page.evaluate(async () => {
+  const ow = SC.Game.top;
+  const mod = await import('/dndgame/src/ui/dialogue.js');
+  const probe = new mod.DialogueScene('none', null, {});
+  const rows = ow.entities.list.filter((e) => e.kind === 'npc')
+    .map((e) => ({ name: e.name, caption: probe._captionFor(e) }));
+  return {
+    total: rows.length,
+    bad: rows.filter((r) => !r.caption || /flavor|questgiver|innkeep\b/i.test(r.caption)),
+    sample: rows.slice(0, 3).map((r) => `${r.name}: ${r.caption}`),
+  };
+});
+check('dialogue: every portrait caption is prose, not an enum',
+  caps.total > 0 && caps.bad.length === 0,
+  caps.bad.length ? JSON.stringify(caps.bad[0]) : caps.sample[0]);
+
 // --- the battle screen -----------------------------------------------------
 const fight = await page.evaluate(async () => {
   const ow = SC.Game.top;

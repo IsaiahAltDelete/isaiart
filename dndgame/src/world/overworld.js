@@ -277,7 +277,7 @@ function npcSpawnDef(npcId) {
   const n = safe(() => getNPC(npcId), null);
   if (!n) return null;
   return {
-    cls: 'npc', npcId: n.id, name: n.name, sprite: n.sprite, colorway: n.colorway,
+    cls: 'npc', npcId: n.id, name: n.name, title: n.title || '', sprite: n.sprite, colorway: n.colorway,
     dialogueId: n.dialogue || n.id, shopId: n.shop || null, questIds: n.quests || [],
     faction: n.faction || null, role: n.role || 'flavor', greeting: n.greeting || null,
     tag: n.tag || null, essential: !!n.essential, noCombat: !!n.noCombat, npc: n,

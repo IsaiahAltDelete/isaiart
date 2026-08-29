@@ -1234,14 +1234,47 @@ export class DialogueScene {
       });
     }
 
-    // Role / faction caption under the bust — free characterisation, zero words.
-    const role = (ch && (ch.role || ch.title))
-      || (ch && ch.faction ? factionName(ch.faction) : null);
-    if (role) {
-      UI.text(ctx, x + size / 2, y + size + 3, String(role).replace(/-/g, ' '), {
-        size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: 'rgba(0,0,0,0.8)', maxWidth: size + 8,
-      });
+    // Caption under the bust — free characterisation, zero words. It reads the
+    // AUTHORED title ("The Inn Cat", "Master of Barthen's Provisions"), never
+    // `role`, which is an internal enum: every townsfolk defaults to 'flavor'
+    // and the game was captioning half the cast with the word "flavor".
+    const caption = this._captionFor(ch);
+    if (caption) {
+      // It cannot grow sideways — the caption row sits level with the fifth
+      // line of dialogue, so anything past the portrait column would run into
+      // the text. It wraps instead: "Gate Watch" over two lines beats "Gate Wa…".
+      const room = (TEXT_X - BOX_X) - 8;
+      const lines = safe(() => UI.wrapLines(caption, room, 'sm'), [caption]) || [caption];
+      for (let i = 0; i < Math.min(2, lines.length); i++) {
+        UI.text(ctx, x + size / 2, y + size + 3 + i * 8, lines[i], {
+          size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: 'rgba(0,0,0,0.8)',
+        });
+      }
     }
+  }
+
+  /**
+   * What to print under a portrait. The authored title first; failing that a
+   * readable name for the handful of roles that mean something to a player;
+   * failing that the faction. `flavor` and `questgiver` are bookkeeping, not
+   * characterisation, so they say nothing at all.
+   */
+  _captionFor(ch) {
+    if (!ch) return '';
+    const record = (ch.npc && typeof ch.npc === 'object' ? ch.npc : null)
+      || NPCS()[ch.npcId || ch.id] || null;
+    const title = ch.title || (record && record.title) || '';
+    if (title) return String(title);
+
+    const ROLE_LABEL = {
+      shopkeeper: 'Shopkeeper', innkeep: 'Innkeeper',
+      guard: 'Town Guard', priest: 'Priest',
+    };
+    const role = ch.role || (record && record.role) || '';
+    if (ROLE_LABEL[role]) return ROLE_LABEL[role];
+
+    const faction = ch.faction || (record && record.faction) || null;
+    return faction ? String(factionName(faction)).replace(/-/g, ' ') : '';
   }
 
   _drawChoices(ctx) {

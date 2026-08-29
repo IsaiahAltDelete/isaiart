@@ -341,6 +341,7 @@ export class NPCEntity extends Entity {
   constructor(opts = {}) {
     super({ kind: 'npc', solid: true, ...opts });
     this.npcId = opts.npcId || opts.id || this.id;
+    this.title = opts.title || '';       // the authored caption, e.g. "The Inn Cat"
     this.dialogueId = opts.dialogueId || opts.dialogue || null;
     this.shopId = opts.shopId || opts.shop || null;
     this.questIds = opts.questIds || opts.quests || [];
