@@ -429,6 +429,8 @@ export const SETTING_SPEC = Object.freeze({
   showRolls: { kind: 'bool', def: true, name: 'Show Dice Rolls', group: 'display' },
   screenShake: { kind: 'bool', def: true, name: 'Screen Shake', group: 'display' },
   reducedMotion: { kind: 'bool', def: false, name: 'Reduced Motion', group: 'display' },
+  showEdges: { kind: 'bool', def: true, name: 'Path Edges', group: 'display' },
+  showExits: { kind: 'bool', def: true, name: 'Exit Markers', group: 'display' },
   colorblind: { kind: 'enum', def: 'none', options: ['none', 'protanopia', 'deuteranopia', 'tritanopia'], name: 'Colour Filter', group: 'display' },
 
   autoEndTurn: { kind: 'bool', def: true, name: 'Auto End Turn', group: 'combat' },

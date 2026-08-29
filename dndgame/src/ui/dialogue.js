@@ -31,6 +31,7 @@ import {
   createCharacter, recalc, skillMod, abilityMod, abilityScore,
 } from '../rules/character.js';
 import { recomputeSpells } from '../rules/spellcasting.js';
+import { canAttack } from '../rules/crime.js';
 import { grantXp } from '../rules/progression.js';
 import { getSpell } from '../data/spells.js';
 import { resolveItem, itemName as catalogueItemName } from '../data/items.js';
@@ -439,6 +440,7 @@ export class DialogueScene {
   constructor(dialogueId, npc = null, opts = {}) {
     this.opaque = false;         // Phandalin keeps showing through
     this.pausesBelow = true;
+    this.uiLayer = true;         // …but the rain does not fall on the text box
     this.id = 'dialogue';
 
     this.dialogueId = typeof dialogueId === 'string' ? dialogueId : (opts.id || 'inline');
@@ -598,9 +600,63 @@ export class DialogueScene {
         reason: spent ? 'already tried' : gate.reason,
       });
     });
+    // --- the option that is always on the table -----------------------------
+    //
+    // Baldur's Gate 3's rule: you may always draw steel. It is a terrible idea
+    // and the game lets you find that out yourself. Only the root node carries
+    // it, so it never interrupts a scripted exchange mid-flow, and never on a
+    // node that is already a fight or a shop.
+    if (this._canOfferAttack(node)) {
+      out.push({
+        raw: { attack: true },
+        index: -1,
+        label: 'Draw your weapon.',
+        tag: null,
+        check: null,
+        spentKey: null,
+        attack: true,
+        disabled: false,
+        reason: null,
+      });
+    }
+
     this.choices = out;
     this.index = out.findIndex((c) => !c.disabled);
     if (this.index < 0) this.index = 0;
+  }
+
+  /** Is "Draw your weapon" a legal thing to offer on this node? */
+  _canOfferAttack(node) {
+    if (!node || node !== (this.tree && this.tree.nodes && this.tree.nodes[this.tree.start])) {
+      // Only the opening node, unless the writer explicitly asked for it.
+      if (!node || !node.allowAttack) return false;
+    }
+    if (this.tree && this.tree.noCombat) return false;
+    if (node && node.noCombat) return false;
+    if (!this.npc) return false;
+    // The NPCS record carries `tag`/`essential`; the entity may only be a sprite
+    // that maps.js placed, so fall back to the catalogue before deciding.
+    // The entity may be `this.npc`, and its own catalogue record may hang off
+    // `.npc`. Fall back to the catalogue keyed on the ENTITY's npcId — this.npcId
+    // is derived from `id` first, which for an entity is 'npc-toblen', not a key.
+    const record = (this.npc && this.npc.npc)
+      || NPCS()[(this.npc && this.npc.npcId) || this.npcId]
+      || NPCS()[this.npcId]
+      || this.npc;
+    const gate = safe(() => canAttack(record, this.npc), { ok: false });
+    return !!(gate && gate.ok);
+  }
+
+  /** The player chose violence. Hand it to the overworld, which owns the crime. */
+  _doAttack() {
+    const ow = LATE.overworld;
+    const target = this.opts.entity || (this.npc && this.npc.kind === 'npc' ? this.npc : null);
+    this._closed = true;
+    if (Game.top === this) Game.pop();
+    if (!ow || !target) { safe(() => toast('There is no one here to fight.')); return; }
+    const scene = Game.top;
+    if (scene && typeof scene.attackNPC === 'function') safe(() => scene.attackNPC(target));
+    else safe(() => toast('The moment passes.'));
   }
 
   // --- update ------------------------------------------------------------
@@ -743,6 +799,7 @@ export class DialogueScene {
       this._say(c.reason ? `You need ${c.reason}.` : 'Not just now.');
       return;
     }
+    if (c.attack) { sfx('select'); this._doAttack(); return; }
     if (c.check) { this._beginRoll(c); return; }
     sfx('select');
     this._resolveChoice(c, true);
@@ -1197,10 +1254,12 @@ export class DialogueScene {
         : (c.tag || '');
       return {
         label: c.label,
-        hint,
-        hintColor: c.disabled ? UI.COLORS.bad : UI.COLORS.gold,
+        hint: c.attack ? 'ATTACK' : hint,
+        hintColor: c.disabled ? UI.COLORS.bad : c.attack ? UI.COLORS.red : UI.COLORS.gold,
         disabled: c.disabled,
-        color: c.disabled ? UI.COLORS.disabled : undefined,
+        icon: c.attack ? 'sword' : undefined,
+        // Violence is offered in red so it is never picked by accident.
+        color: c.disabled ? UI.COLORS.disabled : c.attack ? UI.COLORS.red : undefined,
       };
     });
 

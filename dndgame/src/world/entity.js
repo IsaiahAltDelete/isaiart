@@ -347,6 +347,16 @@ export class NPCEntity extends Entity {
     this.faction = opts.faction || null;
     this.role = opts.role || 'flavor';
     this.greeting = opts.greeting || null;
+    // Kept so rules/crime.js can decide whether the player may draw steel here,
+    // and which bestiary entry stands in for this person if they do.
+    this.tag = opts.tag || null;
+    this.essential = !!opts.essential;
+    this.noCombat = !!opts.noCombat;
+    this.npc = opts.npc || null;
+    this.hostile = false;              // set once they have seen you swing
+    this.fleeT = 0;                    // seconds left running from what they saw
+    this.fleeFrom = null;
+    this.ambleTime = null;             // their own pace, restored when they stop
 
     this.home = opts.home ? { x: opts.home.x | 0, y: opts.home.y | 0 } : { x: this.x, y: this.y };
     this.homeDir = opts.dir || 'down';
@@ -400,7 +410,35 @@ export class NPCEntity extends Entity {
     return true;
   }
 
+  /**
+   * Someone drew a blade in the street. Townsfolk get out of it — they drop
+   * their schedule, their patrol and their errand and put distance between
+   * themselves and (x, y) for `seconds`.
+   */
+  flee(x, y, seconds = 10) {
+    this.fleeT = Math.max(this.fleeT || 0, seconds);
+    this.fleeFrom = { x: x | 0, y: y | 0 };
+    this.busy = false;
+    this.pauseT = 0;
+    this.path = null;
+    // Remember their own pace: a deliberately fast or slow townsfolk keeps it.
+    if (this.ambleTime == null) this.ambleTime = this.moveTime;
+    this.moveTime = WALK_TIME * 1.1;      // a townsfolk running is still no athlete
+    return this;
+  }
+
+  /** MonsterEntity's name for the same idea, so callers need not care which. */
+  scatter(seconds = 10) { return this.flee(this.x, this.y - 1, seconds); }
+
   think(dt, map) {
+    if (this.fleeT > 0) {
+      this.fleeT -= dt;
+      if (this.fleeT <= 0) {
+        this.moveTime = this.ambleTime != null ? this.ambleTime : WALK_TIME * 1.9;
+        this.fleeFrom = null;
+      }
+      else if (!this.moving && map) { this._stepAway(map); return; }
+    }
     if (this.busy) return;
     if (this.pauseT > 0) { this.pauseT -= dt; return; }
     if (this.moving || !map) return;
@@ -422,6 +460,27 @@ export class NPCEntity extends Entity {
 
     if (this.patrol && this.patrol.length) { this.doPatrol(dt, map); return; }
     if (this.wanderRadius > 0) this.doWander(dt, map);
+  }
+
+  /** One panicked pace directly away from whatever they are running from. */
+  _stepAway(map) {
+    const from = this.fleeFrom || { x: this.x, y: this.y };
+    const dx = this.x - from.x, dy = this.y - from.y;
+    const order = Math.abs(dx) >= Math.abs(dy)
+      ? [dx >= 0 ? 'right' : 'left', dy >= 0 ? 'down' : 'up', dy >= 0 ? 'up' : 'down', dx >= 0 ? 'left' : 'right']
+      : [dy >= 0 ? 'down' : 'up', dx >= 0 ? 'right' : 'left', dx >= 0 ? 'left' : 'right', dy >= 0 ? 'up' : 'down'];
+    for (const d of order) {
+      const v = DIR_VEC[d];
+      const nx = this.x + v.x, ny = this.y + v.y;
+      if (!map.inBounds(nx, ny)) continue;
+      if (map.flagAt(nx, ny) & (TF.TRIGGER | TF.DAMAGE)) continue;
+      if (!this.canEnter(map, nx, ny)) continue;
+      if (map.entityBlocks(nx, ny, this)) continue;
+      this.step(d, map);
+      return true;
+    }
+    this.dir = order[0];
+    return false;
   }
 
   doPatrol(dt, map) {

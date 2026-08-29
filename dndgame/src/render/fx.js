@@ -835,7 +835,10 @@ export const FX = {
 
   update(dt) { updateAll(dt); },
   draw(ctx, cx = 0, cy = 0) { drawWorld(ctx, cx, cy); },
-  drawScreen(ctx) { drawOverlay(ctx); },
+  /** Weather + grading + vignette. Engine draws this UNDER the UI scenes. */
+  drawAmbient(ctx) { drawAmbient(ctx); },
+  /** The screen flash only. Engine draws this OVER everything. */
+  drawScreen(ctx) { drawFlash(ctx); },
 };
 
 // ---------------------------------------------------------------------------
@@ -1439,7 +1442,12 @@ function drawFloaters(ctx) {
 // DRAW — screen overlay (weather, tint, vignette, flash)
 // ---------------------------------------------------------------------------
 
-function drawOverlay(ctx) {
+/**
+ * The atmosphere layer: weather, colour grading and the vignette. These belong to
+ * the WORLD, so engine.js paints them straight after the last world-space scene and
+ * before any UI scene draws — rain must fall behind the inventory, not over it.
+ */
+function drawAmbient(ctx) {
   if (FX.enabled) drawWeather(ctx);
 
   if (tintFx) {
@@ -1484,6 +1492,13 @@ function drawOverlay(ctx) {
     }
   }
 
+}
+
+/**
+ * The one overlay that genuinely belongs on top of everything: a screen flash is a
+ * lightning strike or a fireball going off, and it lights the interface too.
+ */
+function drawFlash(ctx) {
   if (flashFx) {
     const t = flashFx.age / flashFx.dur;
     // Instant attack, quadratic decay — a struck-flint pop rather than a fade-in.

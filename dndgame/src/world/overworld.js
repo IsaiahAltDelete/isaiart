@@ -26,6 +26,7 @@ import {
 import { Game } from '../engine.js';
 import { Input } from '../core/input.js';
 import { Audio } from '../core/audio.js';
+import { Save } from '../core/save.js';
 import { trackForBiome } from '../core/music.js';
 
 /**
@@ -52,11 +53,17 @@ import { TileMap, TF, isStepTrigger } from './tilemap.js';
 import { Entity, EntityList, ChestEntity, makeEntity, spawnFromTriggers } from './entity.js';
 import { Party } from './party.js';
 import { buildBattleMap } from './battlemap.js';
-import { rollEncounter } from '../rules/scaling.js';
+import { rollEncounter, makeMonster } from '../rules/scaling.js';
+import { expireFieldBuffs, fieldBuffsToRounds } from '../rules/fieldcast.js';
 import {
-  advanceTime, tickWeather, isChestLooted, markChestLooted, progressQuests,
+  advanceTime, tickWeather, isChestLooted, markChestLooted, progressQuests, failQuest,
 } from '../state.js';
 import { spawnableOnMap, getNPC } from '../data/npcs.js';
+import {
+  canAttack as crimeCanAttack, statBlockFor, witnessesNear, guardsAmong,
+  reportAssault, reportDeath, isSlain, watchOwed, clearWatch, watchPatrol,
+  bountyIn, isOutlawIn,
+} from '../rules/crime.js';
 import { resolveItem } from '../data/items.js';
 
 // ---------------------------------------------------------------------------
@@ -266,6 +273,7 @@ function npcSpawnDef(npcId) {
     cls: 'npc', npcId: n.id, name: n.name, sprite: n.sprite, colorway: n.colorway,
     dialogueId: n.dialogue || n.id, shopId: n.shop || null, questIds: n.quests || [],
     faction: n.faction || null, role: n.role || 'flavor', greeting: n.greeting || null,
+    tag: n.tag || null, essential: !!n.essential, noCombat: !!n.noCombat, npc: n,
     dir: n.dir || 'down', wander: n.wander != null ? n.wander : 1,
     solid: n.solid !== false, schedule: n.schedule || null, patrol: n.patrol || null,
   };
@@ -285,6 +293,8 @@ function populateCast(map, mapId) {
   let placed = 0;
   for (const n of cast) {
     if (present.has(n.id)) continue;
+    // Someone you killed does not open the shop again tomorrow.
+    if (safe(() => isSlain(state(), n.id), false)) continue;
     const def = npcSpawnDef(n.id);
     if (!def) continue;
     let x = n.x | 0, y = n.y | 0;
@@ -601,6 +611,7 @@ export class OverworldScene {
     this.popup = null;      // { title, lines, t, life }
     this.banner = null;     // { text, sub, t }
     this._weatherKind = null;
+    this.spellLight = null;       // Light / Dancing Lights, cast from the spellbook
     this._restOff = null;
   }
 
@@ -659,6 +670,9 @@ export class OverworldScene {
     this.hud.setMap(map);
     this._applyWeather(true);
     this._snapCamera();
+    map._edgeMask = null;   // rebuilt lazily by _drawEdges for the new place
+    this._exitNames = null; // destination names belong to the map we just left
+    this._exitLabel = null;
 
     const name = map.name || titleCase(String(map.id || '').replace(/-/g, ' '));
     this.banner = { text: name, sub: map.indoor ? null : this._regionSub(map), t: 0 };
@@ -756,6 +770,7 @@ export class OverworldScene {
     this._updateCamera(dt);
     this._updateWorldClock(dt);
     this._checkRoamers();
+    this._checkWatch();
   }
 
   _updateTimers(dt) {
@@ -786,6 +801,21 @@ export class OverworldScene {
     if (!st || !this.map) return;
     if (!this.map.indoor) safe(() => tickWeather(st, dt, this.map.biome));
     this._applyWeather(false);
+
+    // Spells cast out of combat run on the world clock, not on rounds — a Mage
+    // Armor put up at dawn is gone by dusk whether or not you ever drew a blade.
+    // Checked twice a second rather than every frame; the clock moves in minutes.
+    this._buffT = (this._buffT || 0) + dt;
+    if (this._buffT >= 0.5) {
+      this._buffT = 0;
+      const lapsed = safe(() => expireFieldBuffs(Party.all(), st), []) || [];
+      for (const line of lapsed) toast(line);
+      const now = st.day * 1440 + st.time;
+      if (this.spellLight && this.spellLight.until != null && now >= this.spellLight.until) {
+        this.spellLight = null;
+        toast('The light gutters out.');
+      }
+    }
   }
 
   // --- input ---------------------------------------------------------------
@@ -801,6 +831,7 @@ export class OverworldScene {
     if (Input.consume('inventory')) { this._openMenu('inventory'); return; }
 
     if (Input.consume('interact') || Input.consume('confirm')) {
+      if (safe(() => Input.down('run'), false) && this._attackFacing()) return;
       if (this._interact()) return;
     }
 
@@ -1081,6 +1112,7 @@ export class OverworldScene {
     }
 
     if (st) st.stats.battles = (st.stats.battles || 0) + 1;
+    for (const m of Party.all()) safe(() => fieldBuffsToRounds(m, st));
     const source = opts.source || null;
     const prevMusic = mapTrack(this.map, Game.state);
 
@@ -1246,6 +1278,249 @@ export class OverworldScene {
     return false;
   }
 
+  // =========================================================================
+  // 6.3a DRAWING STEEL ON PEOPLE WHO ARE NOT MONSTERS
+  // =========================================================================
+  //
+  // Shift+E on someone you are facing, or the "Attack" line at the bottom of any
+  // conversation. Both land here. The fight is real, the loot is real, and so is
+  // the bill: rules/crime.js keeps the ledger and the watch collects.
+
+  /** Shift + interact: swing at whoever you are facing. */
+  _attackFacing() {
+    if (!this.map || this.player.moving || !this.entities) return false;
+    const front = this.player.frontTile();
+    const e = safe(() => this.entities.interactableAt(front.x, front.y), null);
+    if (!e || e.kind !== 'npc') return false;
+    return this.attackNPC(e);
+  }
+
+  /**
+   * Start a fight with a townsfolk. Returns true if the fight (or the refusal)
+   * consumed the frame.
+   */
+  attackNPC(entity, opts = {}) {
+    if (!entity) return false;
+    const npc = entity.npc || safe(() => getNPC(entity.npcId), null) || {};
+    const allowed = crimeCanAttack(npc, entity);
+    if (!allowed.ok) { safe(() => Audio.sfx('error')); this._say(allowed.why); return true; }
+
+    const st = state();
+    const witnesses = witnessesNear(this.entities, entity.x, entity.y, 7, entity);
+    const guards = guardsAmong(witnesses);
+    const joining = guards.slice(0, 3);
+
+    // Build the fight BEFORE booking the crime. Everything below this line is
+    // irreversible — a bounty, a lost reputation, a street full of people who
+    // saw — and none of it should happen for a swing the game then refuses to
+    // stage because a module has not finished loading.
+    const level = Math.max(1, Party.levelAvg());
+    const enemies = [];
+    const push = (id, n) => {
+      for (let i = 0; i < n; i++) {
+        const mob = safe(() => makeMonster(id, { level }), null);
+        if (mob) enemies.push(mob);
+      }
+    };
+    push(statBlockFor(npc, entity), 1);
+    if (enemies.length && npc.name) {
+      // The person you actually swung at keeps their own name over the health bar.
+      enemies[0].name = npc.name;
+    }
+    for (const g of joining) {
+      const gnpc = g.npc || safe(() => getNPC(g.npcId), null) || {};
+      push(statBlockFor(gnpc, g), 1);
+    }
+    if (!enemies.length) { this._say('Nothing comes of it.'); return true; }
+
+    // Everyone who can see it is now in this: the watch wades in, the potters run.
+    for (const w of witnesses) {
+      w.hostile = true;
+      if (joining.indexOf(w) < 0) safe(() => w.flee && w.flee(this.player.x, this.player.y, 14));
+    }
+    if (st) reportAssault(st, { map: this.map, npc, entity, witnesses: witnesses.length });
+
+    if (witnesses.length) {
+      toast(guards.length ? 'The watch has seen you!' : 'Someone saw that.');
+    }
+    safe(() => Audio.sfx('encounter'));
+
+    const victims = [entity].concat(joining);
+    return this._pushBattle(enemies, {
+      seed: `${worldSeed()}:crime:${this.map.id}:${entity.npcId}:${(st && st.stats.battles) || 0}`,
+      biome: this.map.biome,
+      crime: true,
+      source: {
+        defeat: () => {
+          // Won: the bodies stay dead and the bill comes due.
+          let found = false;
+          for (const v of victims) {
+            if (st && v.npcId) {
+              const r = reportDeath(st, v.npcId, { map: this.map, witnessed: witnesses.length > 0 });
+              found = found || !!(r && r.found);
+              this._failQuestsOf(v.npcId);
+            }
+            safe(() => v.remove());
+          }
+          const owed = st ? bountyIn(st, this.map) : 0;
+          if (found && owed > 0) toast(`Bounty on your head: ${owed} gp.`);
+          else if (!found) toast('No one saw. No one is looking.');
+        },
+        scatter: () => { for (const v of victims) safe(() => v.scatter && v.scatter(10)); },
+      },
+      ...opts,
+    });
+  }
+
+  // =========================================================================
+  // 6.3b WHAT A SPELL CAN REACH OUT AND TOUCH
+  // =========================================================================
+  //
+  // rules/fieldcast.js decides what a spell DOES; these are the few verbs it
+  // cannot do on its own because they need the map. ui/menus.js asks the
+  // overworld for this bundle when the spellbook casts, and fieldcast falls
+  // back to prose for any hook that is missing (cast from a rest, say).
+
+  spellHooks() {
+    return {
+      light: (radius, spellId, minutes) => this._spellLight(radius, spellId, minutes),
+      unlock: () => this._spellUnlock(),
+      detect: (what) => this._spellDetect(what),
+      reach: (limitLb) => this._spellReach(limitLb),
+      identify: () => this._spellIdentify(),
+    };
+  }
+
+  /** Light / Dancing Lights / Faerie Fire: a pool that follows the party. */
+  _spellLight(radius, spellId, minutes) {
+    const st = state();
+    const feet = Math.max(5, Number(radius) || 20);
+    this.spellLight = {
+      radius: feet / 5 * TILE,               // five feet to the tile
+      spellId: spellId || 'light',
+      until: st && minutes != null ? (st.day * 1440 + st.time) + minutes : null,
+    };
+    safe(() => FX.ring(this.player.px, this.player.py - 8, 14, '#ffe9a6', 0.5));
+    return { ok: true };
+  }
+
+  /** Knock: the nearest locked thing within sixty feet gives up. */
+  _spellUnlock() {
+    if (!this.entities) return { ok: false, text: 'Nothing within reach is locked.' };
+    const range = 12;                        // sixty feet, in tiles
+    let best = null, bestD = 99;
+    for (const e of this.entities.list || []) {
+      if (!e || e.removed || !e.locked || e.opened) continue;
+      const d = Math.max(Math.abs(e.x - this.player.x), Math.abs(e.y - this.player.y));
+      if (d <= range && d < bestD) { best = e; bestD = d; }
+    }
+    if (!best) return { ok: false, text: 'Nothing within reach is locked.' };
+    best.locked = false;
+    best.keyId = null;
+    safe(() => Audio.sfx('chest'));
+    safe(() => FX.ring(best.x * TILE + TILE / 2, best.y * TILE + TILE / 2, 18, '#ffd24a', 0.5));
+    // Loud enough to be heard three hundred feet away, as advertised.
+    for (const e of this.entities.list || []) {
+      if (e && e.kind === 'npc' && Math.max(Math.abs(e.x - best.x), Math.abs(e.y - best.y)) <= 8) {
+        safe(() => e.faceToward(best.x, best.y));
+      }
+    }
+    return { ok: true, text: `${best.name || 'A lock'} springs open with a loud metallic knock.` };
+  }
+
+  /** Detect Magic: how many enchanted things are within thirty feet. */
+  _spellDetect() {
+    if (!this.entities) return { count: 0 };
+    const range = 6;
+    let count = 0;
+    for (const e of this.entities.list || []) {
+      if (!e || e.removed) continue;
+      const d = Math.max(Math.abs(e.x - this.player.x), Math.abs(e.y - this.player.y));
+      if (d > range) continue;
+      if (e.kind === 'chest' && !e.opened) { count++; e.detected = true; }
+    }
+    if (count) safe(() => FX.ring(this.player.px, this.player.py - 8, 40, '#b07af0', 0.7));
+    return { count };
+  }
+
+  /** Mage Hand: fetch the contents of an unlocked chest from thirty feet. */
+  _spellReach() {
+    if (!this.entities) return { ok: false };
+    const range = 6;
+    let best = null, bestD = 99;
+    for (const e of this.entities.list || []) {
+      if (!e || e.removed || e.kind !== 'chest' || e.opened || e.locked) continue;
+      const d = Math.max(Math.abs(e.x - this.player.x), Math.abs(e.y - this.player.y));
+      if (d <= range && d < bestD) { best = e; bestD = d; }
+    }
+    if (!best) return { ok: false };
+    const payload = safe(() => best.interact({ player: this.player }), null);
+    if (payload) this._dispatch(payload);
+    return { ok: true, text: 'The spectral hand lifts the lid and brings back what it finds.' };
+  }
+
+  /** Identify: name the first unidentified thing in the pack. */
+  _spellIdentify() {
+    const bag = Array.isArray(Party.inventory) ? Party.inventory : [];
+    const row = bag.find((it) => it && it.unidentified);
+    if (!row) return { ok: false, text: 'Nothing in the pack is a mystery.' };
+    row.unidentified = false;
+    const item = safe(() => resolveItem(row.id), null);
+    return { ok: true, text: `${(item && item.name) || 'It'} gives up its name.` };
+  }
+
+  /**
+   * A dead quest-giver cannot be turned in to. Whatever they set you is over —
+   * this is the cost the player is really trading away when they draw steel.
+   */
+  _failQuestsOf(npcId) {
+    const st = state();
+    if (!st || !npcId) return;
+    const active = (st.quests && Array.isArray(st.quests.active)) ? st.quests.active.slice() : [];
+    const doomed = active.filter((q) => {
+      const def = q && (q.def || q);
+      return def && (def.giver === npcId || def.turnIn === npcId);
+    });
+    for (const q of doomed) {
+      if (safe(() => failQuest(st, q.id), false)) {
+        toast(`Failed: ${q.title || q.id}`, { kind: 'quest' });
+      }
+    }
+  }
+
+  /**
+   * The watch catching up with you. Called on map entry, once per killing you
+   * are owed, and never in the same breath as the crime itself.
+   */
+  _checkWatch() {
+    const st = state();
+    if (!st || !this.map || Game.transitioning || this.popup) return false;
+    if (this.encounterGrace > 0) return false;
+    if (watchOwed(st, this.map) <= 0) return false;
+
+    const level = Math.max(1, Party.levelAvg());
+    const enemies = [];
+    for (const g of watchPatrol(st, this.map, level)) {
+      for (let i = 0; i < (g.count || 1); i++) {
+        const mob = safe(() => makeMonster(g.id, { level }), null);
+        if (mob) enemies.push(mob);
+      }
+    }
+    if (!enemies.length) return false;
+
+    toast('"That one! Take them!"');
+    safe(() => Audio.sfx('encounter'));
+    const staged = this._pushBattle(enemies, {
+      seed: `${worldSeed()}:watch:${this.map.id}:${(st && st.stats.battles) || 0}`,
+      biome: this.map.biome, crime: true,
+    });
+    // Spend the debt only once the patrol is really on its way. Clearing it
+    // first meant a push that failed — or a battle module still loading — wrote
+    // the killing off permanently and the watch never came at all.
+    if (staged) clearWatch(st, this.map, 1);
+    return staged;
+  }
+
   /** Translate a map trigger into the same payload shape entities speak. */
   _payloadForTrigger(t, x, y) {
     const d = t.data || {};
@@ -1312,6 +1587,7 @@ export class OverworldScene {
     safe(() => Game.push(new mod.DialogueScene(d.dialogueId || d.npcId, npc, {
       shopId: d.shopId || null,
       speaker: d.name || (npc && npc.name) || null,
+      entity: d.entity || null,          // so "Draw your weapon" knows who to swing at
       onClose: () => { if (d.entity) d.entity.busy = false; },
     })));
     if (d.npcId) safe(() => progressQuests(state(), 'talk', d.npcId, 1));
@@ -1611,7 +1887,12 @@ export class OverworldScene {
     const cam = this.camDraw;
 
     this._drawLayer(ctx, 'ground', cam);
+    // The lip of every blocked tile, drawn between the floor and the scenery so
+    // the walkable ground reads as a carved-out shape rather than a flat texture.
+    this._drawEdges(ctx, cam);
     this._drawLayer(ctx, 'deco', cam);
+    // Ways out of this place, under the party so you can stand on one.
+    this._drawExits(ctx, cam);
 
     // Entities and the party in one feet-Y sort, so villagers pass in front of and
     // behind you correctly.
@@ -1633,8 +1914,17 @@ export class OverworldScene {
       Math.round(this.player.py - cam.y),
       this.player.moving,
     );
-    this.hud.draw(ctx);
+  }
 
+  /**
+   * The overworld's own interface. engine.js calls this AFTER FX.drawAmbient, so
+   * rain, snow and the night grade fall on the world and not on the HUD, the
+   * location banner or the loot tally.
+   */
+  drawUI(ctx) {
+    if (!this.map) return;
+    this._drawExitLabel(ctx);
+    this.hud.draw(ctx);
     this._drawBanner(ctx);
     this._drawPopup(ctx);
   }
@@ -1659,6 +1949,256 @@ export class OverworldScene {
         const id = plane[row + x];
         if (!id) continue;
         drawTile(ctx, id, x * TILE - cam.x, py, x, y, t);
+      }
+    }
+  }
+
+  // =========================================================================
+  // 6.4a WHERE YOU MAY WALK, AND WHERE YOU MAY LEAVE
+  // =========================================================================
+  //
+  // A tile-painted town is a beautiful thing and a confusing one: grass, path and
+  // the two-pixel strip of grass that is actually a garden wall all read the same
+  // from above. These two passes fix that without repainting a single tileset.
+  //
+  //   _drawEdges — every boundary between somewhere you can stand and somewhere
+  //     you cannot gets a contact shadow on the walkable side and a hairline on
+  //     the blocked side. The effect is a soft trench around the play area, so
+  //     the path you are meant to follow is legible at a glance.
+  //   _drawExits — every warp out of this map gets an animated chevron pointing
+  //     the way out, plus the name of the place it leads to once you are close.
+  //
+  // Both are switchable in Options (Path Edges / Exit Markers) for anyone who
+  // prefers the plain tileset.
+
+  /**
+   * Bitmask per tile: which SIDES of this walkable tile touch something blocked.
+   * 1 north, 2 east, 4 south, 8 west. Built once per map — a 60x50 town is 3000
+   * cheap lookups, and it never changes while you are standing in it.
+   */
+  _edgeMask() {
+    const map = this.map;
+    if (map._edgeMask && map._edgeMask.length === map.w * map.h) return map._edgeMask;
+    const w = map.w, h = map.h;
+    const mask = new Uint8Array(w * h);
+    const blocked = (x, y) => {
+      if (x < 0 || y < 0 || x >= w || y >= h) return true;      // off-map counts
+      const f = map.flagAt(x, y);
+      return (f & TF.SOLID) !== 0 || (f & TF.WATER) !== 0;
+    };
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (blocked(x, y)) continue;                            // only rim the floor
+        let b = 0;
+        if (blocked(x, y - 1)) b |= 1;
+        if (blocked(x + 1, y)) b |= 2;
+        if (blocked(x, y + 1)) b |= 4;
+        if (blocked(x - 1, y)) b |= 8;
+        mask[y * w + x] = b;
+      }
+    }
+    map._edgeMask = mask;
+    return mask;
+  }
+
+  _drawEdges(ctx, cam) {
+    if (Save && Save.settings && Save.settings.showEdges === false) return;
+    const map = this.map;
+    const mask = safe(() => this._edgeMask(), null);
+    if (!mask) return;
+
+    const x0 = Math.max(0, Math.floor(cam.x / TILE) - 1);
+    const y0 = Math.max(0, Math.floor(cam.y / TILE) - 1);
+    const x1 = Math.min(map.w - 1, x0 + Math.ceil(VIEW_W / TILE) + 2);
+    const y1 = Math.min(map.h - 1, y0 + Math.ceil(VIEW_H / TILE) + 2);
+
+    // Two passes so the whole rim shares one fillStyle each time: the soft
+    // contact shadow first, then the crisp 1px line that gives it an edge.
+    ctx.save();
+    for (let pass = 0; pass < 2; pass++) {
+      ctx.fillStyle = pass === 0 ? 'rgba(8,7,12,0.30)' : 'rgba(232,214,168,0.10)';
+      const t = pass === 0 ? 3 : 1;                 // shadow depth, then hairline
+      for (let y = y0; y <= y1; y++) {
+        const row = y * map.w;
+        const py = y * TILE - cam.y;
+        for (let x = x0; x <= x1; x++) {
+          const b = mask[row + x];
+          if (!b) continue;
+          const px = x * TILE - cam.x;
+          if (b & 1) ctx.fillRect(px, py, TILE, t);
+          if (b & 4) ctx.fillRect(px, py + TILE - t, TILE, t);
+          if (b & 8) ctx.fillRect(px, py, t, TILE);
+          if (b & 2) ctx.fillRect(px + TILE - t, py, t, TILE);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  /** Warps out of this map that are currently on screen. */
+  _visibleExits(cam) {
+    const map = this.map;
+    if (!map || !Array.isArray(map.triggers)) return [];
+    const out = [];
+    for (const tr of map.triggers) {
+      if (!tr || (tr.kind !== 'warp' && tr.kind !== 'door')) continue;
+      const px = tr.x * TILE - cam.x, py = tr.y * TILE - cam.y;
+      if (px < -TILE || py < -TILE || px > VIEW_W || py > VIEW_H) continue;
+      out.push({ tr, px, py });
+    }
+    return out;
+  }
+
+  /** The readable name of wherever a warp leads. */
+  _exitName(tr) {
+    const d = (tr && tr.data) || {};
+    const id = d.map || d.mapId || null;
+    if (!id) return null;
+    if (this._exitNames && this._exitNames[id]) return this._exitNames[id];
+    const meta = LATE.maps && typeof LATE.maps.mapMeta === 'function'
+      ? safe(() => LATE.maps.mapMeta(id), null) : null;
+    const name = (meta && meta.name) || titleCase(String(id).replace(/-/g, ' '));
+    if (!this._exitNames) this._exitNames = {};
+    this._exitNames[id] = name;
+    return name;
+  }
+
+  _drawExits(ctx, cam) {
+    if (Save && Save.settings && Save.settings.showExits === false) return;
+    const list = this._visibleExits(cam);
+    if (!list.length) return;
+
+    const t = this.t;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 2.6);
+    let nearest = null, nearestD = 99;
+
+    for (const { tr, px, py } of list) {
+      const d = Math.max(Math.abs(tr.x - this.player.x), Math.abs(tr.y - this.player.y));
+      if (d < nearestD) { nearestD = d; nearest = { tr, px, py }; }
+
+      // A door in a wall already looks like a door. A gap in a hedge where the
+      // road leaves town looks like grass, so that is the one that needs shouting.
+      const link = (tr.data && tr.data.kind) || '';
+      const isRoad = link === 'road' || link === 'path';
+      const dir = this._exitArrowDir(tr);
+      const v = DIR_VEC[dir] || DIR_VEC.down;
+      const lit = 0.55 + 0.45 * pulse;
+
+      ctx.save();
+
+      // 1. The threshold: a bright bar laid across the way out, like the lintel
+      //    of a gate, perpendicular to the direction you leave in.
+      const barA = (isRoad ? 0.85 : 0.55) * lit;
+      if (v.x) {
+        const bx = px + (v.x > 0 ? TILE - 2 : 0);
+        ctx.fillStyle = 'rgba(24,16,6,0.60)';
+        ctx.fillRect(bx + (v.x > 0 ? -1 : 2), py + 1, 1, TILE - 2);
+        ctx.fillStyle = `rgba(255,226,150,${barA.toFixed(3)})`;
+        ctx.fillRect(bx, py + 1, 2, TILE - 2);
+      } else {
+        const by = py + (v.y > 0 ? TILE - 2 : 0);
+        ctx.fillStyle = 'rgba(24,16,6,0.60)';
+        ctx.fillRect(px + 1, by + (v.y > 0 ? -1 : 2), TILE - 2, 1);
+        ctx.fillStyle = `rgba(255,226,150,${barA.toFixed(3)})`;
+        ctx.fillRect(px + 1, by, TILE - 2, 2);
+      }
+
+      // 2. Gateposts either side of the opening, so a gap in a hedge reads as a
+      //    way through rather than a hole someone forgot to paint.
+      const postA = (isRoad ? 0.70 : 0.40) * lit;
+      ctx.fillStyle = `rgba(255,214,120,${postA.toFixed(3)})`;
+      if (v.x) {
+        ctx.fillRect(px + 2, py, TILE - 4, 2);
+        ctx.fillRect(px + 2, py + TILE - 2, TILE - 4, 2);
+      } else {
+        ctx.fillRect(px, py + 2, 2, TILE - 4);
+        ctx.fillRect(px + TILE - 2, py + 2, 2, TILE - 4);
+      }
+
+      // 3. A warm pool on the ground under the threshold.
+      ctx.fillStyle = `rgba(240,196,110,${((isRoad ? 0.22 : 0.13) * lit).toFixed(3)})`;
+      ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+
+      // 4. Chevrons marching the way you would leave. A road gets three, a door
+      //    the one — and each is outlined so it survives any tileset under it.
+      const n = isRoad ? 3 : 1;
+      const cycle = n * 4;
+      for (let i = 0; i < n; i++) {
+        const march = ((t * 11 + i * 4) % cycle) - cycle / 2;
+        const fade = 1 - Math.abs(march) / (cycle / 2 + 1);
+        this._drawChevron(ctx,
+          px + TILE / 2 + v.x * march, py + TILE / 2 + v.y * march, dir,
+          clamp((0.35 + 0.5 * pulse) * fade, 0, 1));
+      }
+      ctx.restore();
+    }
+
+    // Which exit to name is decided here (the geometry is to hand), but the
+    // label itself is a readout and goes up with the HUD in drawUI — drawn here
+    // it was dimmed by the night grade and walked behind by the party.
+    this._exitLabel = (nearest && nearestD <= 5)
+      ? { name: this._exitName(nearest.tr), px: nearest.px, py: nearest.py, d: nearestD }
+      : null;
+  }
+
+  /** The "→ The Triboar Trail" plate. Called from drawUI, above the grading. */
+  _drawExitLabel(ctx) {
+    const e = this._exitLabel;
+    if (!e || !e.name) return;
+    const label = '\u2192 ' + e.name;
+    const w = safe(() => UI.measure(label, 'sm'), label.length * 4) + 8;
+    const lx = clamp(Math.round(e.px + TILE / 2 - w / 2), 2, VIEW_W - w - 2);
+    const ly = clamp(e.py - 13, 2, VIEW_H - 14);
+    const a = clamp(1.2 - e.d / 5, 0.25, 1);
+    ctx.save();
+    ctx.globalAlpha = a;
+    safe(() => UI.panel(ctx, lx, ly, w, 11, { style: 'dark', shadow: 0.4, studs: false }));
+    safe(() => UI.text(ctx, lx + w / 2, ly + 2, label, {
+      size: 'sm', color: UI.COLORS.goldBright, align: 'center', shadow: true,
+    }));
+    ctx.restore();
+  }
+
+  /**
+   * Which way the chevron points: whatever the warp declares, else away from the
+   * middle of the map (an exit on the east edge points east).
+   */
+  _exitArrowDir(tr) {
+    const d = (tr && tr.data) || {};
+    if (d.arrow && DIR_VEC[d.arrow]) return d.arrow;
+    // For a door in a wall, `dir` is the way you face on arrival, which is also
+    // the way you walked to get there. For stairs and wells it means DESCEND,
+    // and pointing an arrow south because you are going down a hole is worse
+    // than pointing nowhere — so those fall through to the geometry below.
+    const vertical = d.kind === 'stairs' || d.kind === 'well' || d.kind === 'ladder';
+    if (!vertical && d.dir && DIR_VEC[d.dir]) return d.dir;
+    if (tr.facing && DIR_VEC[tr.facing]) return tr.facing;
+    const map = this.map;
+    const dx = tr.x - map.w / 2, dy = tr.y - map.h / 2;
+    if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
+    return dy > 0 ? 'down' : 'up';
+  }
+
+  /** A little arrowhead with a dark keyline, drawn axis-aligned so it stays crisp. */
+  _drawChevron(ctx, cx, cy, dir, alpha) {
+    if (alpha <= 0.02) return;
+    const v = DIR_VEC[dir] || DIR_VEC.down;
+    const x = Math.round(cx), y = Math.round(cy);
+    // Outline first (a pixel fatter), then the bright core over it, so the arrow
+    // reads on grass, flagstone and mud alike.
+    for (let pass = 0; pass < 2; pass++) {
+      ctx.fillStyle = pass === 0
+        ? `rgba(26,16,6,${(alpha * 0.75).toFixed(3)})`
+        : `rgba(255,240,196,${alpha.toFixed(3)})`;
+      // The outline runs one pixel ahead of the core and one wider, so the tip
+      // — the pixel the keyline exists to protect — is genuinely enclosed.
+      const rows = pass === 0 ? 5 : 4;
+      for (let i = 0; i < rows; i++) {
+        const span = pass === 0 ? i : Math.max(0, i - 1);
+        const lead = pass === 0 ? 1 : 0;
+        const bx = x - v.x * (i - lead), by = y - v.y * (i - lead);
+        if (v.x) ctx.fillRect(bx, by - span, 1, span * 2 + 1);
+        else ctx.fillRect(bx - span, by, span * 2 + 1, 1);
       }
     }
   }
@@ -1703,7 +2243,8 @@ export class OverworldScene {
   _drawDarkness(ctx, cam, amount) {
     const cx = Math.round(this.player.px - cam.x);
     const cy = Math.round(this.player.py - cam.y) - 8;
-    const r = 84;
+    // A cast Light spell is the one thing that genuinely pushes a cave back.
+    const r = 84 + (this.spellLight ? this.spellLight.radius : 0);
     const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, r);
     g.addColorStop(0, 'rgba(2,3,8,0)');
     g.addColorStop(0.55, `rgba(2,3,8,${(amount * 0.45).toFixed(3)})`);
@@ -1757,17 +2298,30 @@ export class OverworldScene {
     const bob = Math.round(Math.sin(this.t * 6) * 1.5);
     const x = Math.round(wx), y = Math.round(wy) + bob;
 
+    // Holding Shift over a person turns the "talk" chevron red: that press
+    // starts a fight instead of a conversation, and you should know before you
+    // make it. It never appears over someone the game will not let you attack.
+    const armed = !!e && e.kind === 'npc'
+      && safe(() => Input.down('run'), false)
+      && safe(() => crimeCanAttack(e.npc || getNPC(e.npcId) || e, e).ok, false);
+
     ctx.save();
     ctx.globalAlpha = 0.9;
     ctx.fillStyle = '#1a1014';
     ctx.beginPath();
     ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + 4, y - 4); ctx.lineTo(x, y + 2);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#e3b34a';
+    ctx.fillStyle = armed ? '#d4553f' : '#e3b34a';
     ctx.beginPath();
     ctx.moveTo(x - 3, y - 4); ctx.lineTo(x + 3, y - 4); ctx.lineTo(x, y + 1);
     ctx.closePath(); ctx.fill();
     ctx.restore();
+
+    if (armed) {
+      safe(() => UI.text(ctx, x, y - 15, 'ATTACK', {
+        size: 'sm', color: '#e8735c', align: 'center', shadow: true,
+      }));
+    }
   }
 
   _drawBanner(ctx) {

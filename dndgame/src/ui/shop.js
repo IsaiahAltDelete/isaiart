@@ -35,6 +35,7 @@ import {
 } from '../data/items.js';
 import { Party } from '../world/party.js';
 import { advanceTime } from '../state.js';
+import { priceMultiplierIn, shopsRefuse } from '../rules/crime.js';
 
 // ===========================================================================
 // 0. SAFETY
@@ -434,9 +435,12 @@ export class ShopScene {
   constructor(shopId, opts = {}) {
     this.opaque = true;
     this.pausesBelow = true;
+    this.uiLayer = true;
     this.id = 'shop';
 
     this.shopId = String(shopId || 'barthens-provisions');
+    this.outlawMult = 1;          // markup a bounty on your head earns you
+    this.refused = false;         // …and the point past which they stop selling
     this.opts = opts || {};
     this.onClose = opts.onClose || null;
     this.shop = shopDefinition(this.shopId, opts);
@@ -465,12 +469,26 @@ export class ShopScene {
 
   enter() {
     safe(() => Input.flush());
+
+    // A known killer does not get the friendly price. Past a point the door is
+    // simply shut — rules/crime.js decides where that point is.
+    const st = Game.state;
+    // The bounty ledger is keyed on the map's region, so ask the overworld
+    // underneath us for the real map rather than guessing from the id.
+    const map = safe(() => (Game.scenes.find((sc) => sc && sc.id === 'overworld') || {}).map, null)
+      || (st ? { id: st.mapId } : null);
+    this.outlawMult = safe(() => priceMultiplierIn(st, map), 1) || 1;
+    this.refused = safe(() => shopsRefuse(st, map), false);
+    if (this.outlawMult > 1) this.shop = { ...this.shop, markup: this.shop.markup * this.outlawMult };
+
     this._shopState();                       // runs the restock check
     this._cmp.clear();
     this._buildRows();                       // so the first frame draws real stock
     safe(() => Audio.music(this.shop.music || 'shop'));
     safe(() => bus.emit(EV.SHOP_OPEN, { id: this.shopId }));
-    if (this._restocked) this._say('Fresh stock came up the High Road.', false);
+    if (this.refused) this._say('"I know what you did. Get out."', true, 6);
+    else if (this.outlawMult > 1) this._say('"Your coin spends. It just spends harder."', true, 6);
+    else if (this._restocked) this._say('Fresh stock came up the High Road.', false);
     else if (!this.msg) this._say(this.shop.greeting, false, 6);
   }
 
@@ -751,6 +769,11 @@ export class ShopScene {
   _activate() {
     const row = this._row();
     if (!row) { sfx('error'); return; }
+    if (this.refused) {
+      sfx('error');
+      this._say('"I said get out. Before I call the watch."', true);
+      return;
+    }
     if (this.tab === 0) this._buy(row);
     else if (this.tab === 1) this._sell(row);
     else this._service(row);

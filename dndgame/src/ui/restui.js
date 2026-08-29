@@ -877,6 +877,7 @@ export class RestScene {
     this.id = 'rest';
     this.opaque = true;
     this.pausesBelow = true;
+    this.uiLayer = true;
 
     this.kind = kind === 'long' ? 'long' : 'short';
     this.opts = opts || {};
@@ -2118,6 +2119,7 @@ export class CampScene {
     this.id = 'camp';
     this.opaque = true;
     this.pausesBelow = true;
+    this.uiLayer = true;
 
     this.opts = opts || {};
     this.where = placeInfo(this.opts);

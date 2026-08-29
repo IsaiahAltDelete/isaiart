@@ -116,6 +116,8 @@ function safe(fn, fallback) {
 
 const key = (x, y) => `${x},${y}`;
 const posOf = (u) => (u && u.pos ? u.pos : { x: 0, y: 0 });
+const arr = (v) => (Array.isArray(v) ? v : []);
+const lower = (v) => String(v == null ? '' : v).toLowerCase();
 
 /** Feet at the bottom of the tile, centred horizontally — world pixels. */
 function feetOf(u) {
@@ -218,6 +220,7 @@ export class BattleScene {
     this.targets = { units: [], tiles: [] };
     this.reach = new Map();           // reachableTiles for the current unit
     this.provoke = new Set();         // reachable tiles whose path provokes an OA
+    this.threat = new Set();          // every tile some hostile can reach you on
     this.areaCells = [];
     this.areaVictims = [];
 
@@ -571,6 +574,7 @@ export class BattleScene {
     this.menuIndex = 0;
     this.menuTop = 0;
     this.hint = '';
+    this._scanIndex = -1;         // Q/R field scan starts from the acting unit
     this.cursor = { ...posOf(unit) };
     this._focusUnit(unit);
     this._recomputeReach(unit);
@@ -672,6 +676,35 @@ export class BattleScene {
     const enc = this.enc;
     const unit = enc?.current;
     this.options = unit ? (safe(() => enc.availableActions(unit), []) || []) : [];
+
+    // The engine decides `enabled` from the action budget and the creature's
+    // conditions; it never asks whether there is anything to point the action
+    // AT. So "Attack" read as available, a single-weapon character dropped
+    // straight into targeting, and the refusal only arrived two presses later.
+    // Ask once, here, and let the row say so before it is chosen.
+    if (unit) {
+      const foes = (enc.units || []).filter((u) => u && !isDead(u) && u.side !== unit.side);
+      let nearest = null, nearFt = 0;
+      for (const f of foes) {
+        const ft = safe(() => distanceFt(unit, f), 0) || 0;
+        if (!nearest || ft < nearFt) { nearest = f; nearFt = ft; }
+      }
+      for (const o of this.options) {
+        if (!o || !o.enabled) continue;
+        const kind = lower(o.targeting && o.targeting.kind);
+        // Only creature-targeted actions can run out of targets; a self buff,
+        // a point-blank area or Dodge always has somewhere to go.
+        if (kind !== 'creature') continue;
+        if (o.targeting && o.targeting.allowAllies) continue;
+        const n = safe(() => (enc.targetsFor(unit, o).units || []).length, 1);
+        if (n > 0) continue;
+        o.enabled = false;
+        o.reason = nearest
+          ? `${UI.fit(nearest.name || 'Nearest foe', 40, 'sm')} is ${nearFt}ft away`
+          : 'Nothing to aim at';
+      }
+    }
+
     this.menuDirty = false;
   }
 
@@ -827,6 +860,13 @@ export class BattleScene {
 
     if (inSub) this.subIndex = idx; else this.menuIndex = idx;
 
+    // --- scan the field ---------------------------------------------------
+    // The camera follows whoever is acting, and a 400px window at 2x zoom shows
+    // about twelve tiles. Q and R walk the enemies so you can actually go and
+    // look at what you are about to be told is out of range.
+    if (Input.consume('next')) { this._scanFoes(1); return; }
+    if (Input.consume('prev')) { this._scanFoes(-1); return; }
+
     // --- shortcuts --------------------------------------------------------
     if (!inSub) {
       const jump = (gid) => {
@@ -852,14 +892,71 @@ export class BattleScene {
     }
 
     if (Input.consume('confirm')) { this._chooseRow(rows[idx]); return; }
-    if (Input.consume('cancel')) {
+    // Right-click is the universal "back" of every game with a mouse; Input has
+    // been tracking it all along and nothing in the battle ever read it.
+    if (Input.consume('cancel') || this._rightClick()) {
       if (inSub) { this.menuPath = []; this.subIndex = 0; this.subTop = 0; sfx('back'); }
       else { this.inspect = null; this.inspectPinned = false; sfx('back'); }
     }
   }
 
+  /** True once per frame if the pointer was right-clicked; consumes the flag. */
+  _rightClick() {
+    const m = Input.mouse;
+    if (!m || !m.rightClicked) return false;
+    m.rightClicked = false;
+    return true;
+  }
+
+  /**
+   * Step the camera to the next living enemy (or back to the acting unit), pin
+   * their stat card, and say how far off they are. `dir` walks the list.
+   */
+  _scanFoes(dir) {
+    const enc = this.enc;
+    const cur = enc?.current;
+    const foes = (enc?.units || []).filter((u) => u && !isDead(u) && u.side !== (cur?.side || 'party'));
+    if (!foes.length) { sfx('error'); this.hint = 'Nothing left to look at.'; return; }
+
+    // Nearest first, so the first press lands on whoever matters most.
+    if (cur) foes.sort((a, b) => safe(() => distanceFt(cur, a), 0) - safe(() => distanceFt(cur, b), 0));
+
+    const at = this._scanIndex == null ? -1 : this._scanIndex;
+    let next = at + dir;
+    if (next >= foes.length || next < -1) next = next >= foes.length ? -1 : foes.length - 1;
+    this._scanIndex = next;
+
+    if (next < 0) {
+      // Back to the acting unit — always one press away, never a hunt.
+      this.inspect = null;
+      this.inspectPinned = false;
+      if (cur) this._lookAt(cur);
+      this.hint = '';
+      sfx('cursor');
+      return;
+    }
+
+    const u = foes[next];
+    this.inspect = u;
+    this.inspectPinned = true;
+    this._lookAt(u);
+    const ft = cur ? safe(() => distanceFt(cur, u), 0) : 0;
+    this.hint = `${u.name} — ${ft}ft away, ${Math.max(0, u.hp)}/${safe(() => maxHpOf(u), u.maxHp || 1)} hp.`;
+    sfx('cursor');
+  }
+
+  /** Pan the camera onto a unit without changing whose turn it is. */
+  _lookAt(u) {
+    if (!u) return;
+    const f = feetOf(u);
+    this.camTo.x = f.x;
+    this.camTo.y = f.y - TILE / 2;
+    this.cursor = { ...posOf(u) };
+  }
+
   _chooseRow(row) {
     if (!row) return;
+    this._scanIndex = -1;
     const enc = this.enc;
     const unit = enc?.current;
     if (!unit) return;
@@ -897,6 +994,7 @@ export class BattleScene {
     const enc = this.enc;
     this.reach = new Map();
     this.provoke = new Set();
+    this.threat = new Set();
     if (!enc || !unit) return;
     this.reach = safe(() => enc.reachableTiles(unit), new Map()) || new Map();
 
@@ -906,10 +1004,17 @@ export class BattleScene {
     for (const f of enc.units || []) {
       if (!f || f === unit || isDead(f) || f.hp <= 0) continue;
       if (f.side === unit.side) continue;
-      if (f._reactionUsed) continue;
+
       const set = new Set();
       for (const t of safe(() => enc.threatTiles(f), []) || []) set.add(key(t.x, t.y));
-      if (set.size) threats.push({ set, at: key(posOf(f).x, posOf(f).y) });
+
+      // Two different questions, two different filters. "Where can something
+      // reach me" is about next turn and does not care about reactions, so the
+      // red keyline counts every living enemy. "Will running from here draw an
+      // opportunity attack" needs an unspent reaction, so only those go into
+      // the provoke pass below.
+      for (const k of set) this.threat.add(k);
+      if (set.size && !f._reactionUsed) threats.push({ set, at: key(posOf(f).x, posOf(f).y) });
     }
     if (!threats.length) return;
 
@@ -967,7 +1072,7 @@ export class BattleScene {
       this._commitMove(unit, node);
       return;
     }
-    if (Input.consume('cancel')) { this.phase = 'menu'; this.hint = ''; sfx('back'); }
+    if (Input.consume('cancel') || this._rightClick()) { this.phase = 'menu'; this.hint = ''; sfx('back'); }
   }
 
   _commitMove(unit, node) {
@@ -1050,7 +1155,7 @@ export class BattleScene {
       if (!this.targets.units.length) {
         this.pending = null;
         sfx('error');
-        this.hint = 'No legal target in range.';
+        this._explainNoTarget(unit, option);
         return;
       }
       this.targetIndex = 0;
@@ -1059,6 +1164,38 @@ export class BattleScene {
     this.phase = 'target';
     this._recomputeArea();
     sfx('select');
+  }
+
+  /**
+   * "No legal target in range." was true, useless, and — with the enemy off
+   * camera — indistinguishable from the game being broken. Say which creature,
+   * how far, how far the thing in your hand actually reaches, and then LOOK at
+   * them, so the sentence and the screen agree.
+   */
+  _explainNoTarget(unit, option) {
+    const enc = this.enc;
+    const foes = (enc.units || []).filter((u) => u && !isDead(u) && u.side !== unit.side);
+    if (!foes.length) { this.hint = 'Nothing left to aim at.'; return; }
+
+    foes.sort((a, b) => safe(() => distanceFt(unit, a), 0) - safe(() => distanceFt(unit, b), 0));
+    const near = foes[0];
+    const ft = safe(() => distanceFt(unit, near), 0) || 0;
+    // targeting.range is feet, or a [normal, long] band for a thrown/ranged weapon.
+    const raw = option && option.targeting ? option.targeting.range : null;
+    const reach = Array.isArray(raw) ? Number(raw[1] || raw[0]) || 0 : Number(raw) || 0;
+    const name = near.name || 'the enemy';
+
+    if (reach && ft > reach) {
+      this.hint = `${name} is ${ft}ft away — ${option.name || 'that'} reaches ${reach}ft.`;
+    } else {
+      // In range but rejected: the engine's other refusal is line of sight.
+      this.hint = `No clear line to ${name}, ${ft}ft away.`;
+    }
+
+    // Put the camera where the sentence is pointing.
+    this.inspect = near;
+    this.inspectPinned = true;
+    this._lookAt(near);
   }
 
   _isAreaOption(option) {
@@ -1139,7 +1276,7 @@ export class BattleScene {
     }
 
     if (Input.consume('confirm') || (m.clicked && onField)) { this._confirmTarget(); return; }
-    if (Input.consume('cancel')) {
+    if (Input.consume('cancel') || this._rightClick()) {
       this.pending = null;
       this.areaCells = [];
       this.phase = 'menu';
@@ -1372,6 +1509,15 @@ export class BattleScene {
   // =========================================================================
 
   _updateBeats(dt) {
+    // A press skips the beat in front of you. Holding Shift already runs the
+    // sequence faster, but "faster" is no help when you have read the line and
+    // just want the next turn — and a mouse player had no lever at all.
+    if (this.beats.length) {
+      let skip = Input.consume('confirm') || Input.consume('cancel') || this._rightClick();
+      if (!skip && Input.mouse.clicked) { Input.mouse.clicked = false; skip = true; }
+      if (skip) this._skipBeat();
+    }
+
     let guard = 0;
     while (this.beats.length && guard++ < 64) {
       const b = this.beats[0];
@@ -1385,6 +1531,36 @@ export class BattleScene {
       if (this._beatDone(b)) { this.beats.shift(); continue; }
       break;
     }
+  }
+
+  /**
+   * Force the head beat to its end state: the die has landed, the walk has
+   * arrived, the banner has been read. Never skips an 'fn' beat, which is where
+   * the rules actually happen.
+   */
+  _skipBeat() {
+    const b = this.beats[0];
+    // 'fn' is where the rules actually happen and 'prompt' is a decision the
+    // player still owes; neither is a beat to hurry past.
+    if (!b || b.k === 'fn' || b.k === 'prompt') return;
+    if (!b._started) return;                   // let it run once so it has effect
+    b.t = (b.dur || 0) + 1;
+    // An fx beat also waits on FX.busy(), so the effects have to go with it.
+    if (b.k === 'fx') safe(() => FX.clear());
+    if (b.k === 'walk') {
+      // Snap the sprite to the end of its path rather than leaving it mid-tile.
+      const st = b.unit ? this._uiOf(b.unit) : null;
+      if (st) {
+        const last = st.wp && st.wp.length ? st.wp[st.wp.length - 1] : null;
+        if (last) { st.x = last.x; st.y = last.y; }
+        st.wp = [];
+        st.moving = false;
+      }
+    }
+    this.dice = null;
+    this.rollLines = null;
+    this.banner = null;
+    sfx('cursor');
   }
 
   _startBeat(b) {
@@ -1427,6 +1603,40 @@ export class BattleScene {
       default:
         break;
     }
+  }
+
+  /**
+   * Make a hit land at the screen level, scaled to how much of the creature it
+   * took. A nine-point graze and a blow that halves you produced exactly the
+   * same nothing; and a party member being opened up should feel different
+   * from a goblin being opened up.
+   */
+  _damageFelt(target, dealt) {
+    if (!target || !dealt) return;
+    if (Save?.settings?.screenShake === false) return;
+    const max = safe(() => maxHpOf(target), target.maxHp || 1) || 1;
+    const frac = clamp(dealt / max, 0, 1);
+    safe(() => FX.shake(0.14 + frac * 0.6, 0.18 + frac * 0.28));
+    if (target.side === 'party') {
+      safe(() => FX.vignette(0.2 + frac * 0.4, '#3a0006', 0.45));
+      if (target.hp > 0 && target.hp / max <= 0.25) safe(() => sfx('lowhp'));
+    }
+  }
+
+  /**
+   * A camera beat framing two combatants: their midpoint if both will fit in
+   * the field at this zoom, otherwise the one being hit — the target is the one
+   * you need to see, because that is where the damage lands.
+   */
+  _framePair(a, b) {
+    const pa = posOf(a), pb = posOf(b);
+    const spanX = Math.abs(pa.x - pb.x) * TILE * this.zoom;
+    const spanY = Math.abs(pa.y - pb.y) * TILE * this.zoom;
+    const fits = spanX < FIELD.w - 48 && spanY < FIELD.h - 48;
+    if (fits) {
+      return { k: 'camera', dur: 0.14, point: { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 } };
+    }
+    return { k: 'camera', dur: 0.14, unit: b };
   }
 
   _beatDone(b) {
@@ -1570,7 +1780,13 @@ export class BattleScene {
       },
     });
 
-    // 2. the d20
+    // 1b. frame BOTH of them. The camera sits on whoever is acting, so an
+    //     enemy shooting an ally across the field resolved entirely off-screen:
+    //     you read that someone took nine damage and never saw it happen.
+    this.beats.push(this._framePair(attacker, target));
+
+    // 2. the d20 — captioned, because a die with no name on it is a number
+    //    with no story attached.
     if (roll) {
       this.beats.push({
         k: 'dice', silent: !showRolls,
@@ -1581,6 +1797,9 @@ export class BattleScene {
           hit,
           crit,
           fumble,
+          who: attacker.name || null,
+          vs: target.name || null,
+          what: (spell && spell.name) || null,
           label: crit ? 'CRITICAL' : fumble ? 'FUMBLE' : hit ? 'HIT' : 'MISS',
           labelColor: crit ? UI.COLORS.goldBright : fumble ? '#ff7a60' : hit ? UI.COLORS.good : UI.COLORS.inkDim,
         },
@@ -1601,14 +1820,14 @@ export class BattleScene {
             color: style.color || (spell ? UI.COLORS.purple : '#cfc7b4'),
             shape: spell ? 'bolt' : 'arrow',
             speed: 320, arc: spell ? 0 : 14, trail: true,
-            onHit: () => { if (hit) this._impact(target, crit, spell); },
+            onHit: () => { if (hit) this._impact(target, crit, spell, res.applied && res.applied.dealt); },
           });
           sfx(spell ? 'spell' : 'arrow');
         } else {
           const s = this._uiOf(attacker);
           FX.slash(p.x, p.y, s?.dir || 'right', spell?.vfx?.color || '#ffffff');
           sfx(hit ? (crit ? 'hitcrit' : 'hit') : 'miss');
-          if (hit) this._impact(target, crit, spell);
+          if (hit) this._impact(target, crit, spell, res.applied && res.applied.dealt);
         }
         if (!hit) FX.floater(p.x, p.y - 4, 'MISS', UI.COLORS.inkDim, { size: 'sm' });
       },
@@ -1662,13 +1881,16 @@ export class BattleScene {
   }
 
   /** Flash the target, shake it, and throw the right sparks for the damage type. */
-  _impact(target, crit, spell) {
+  _impact(target, crit, spell, dealt) {
     const s = this._uiOf(target, true);
     if (s) s.flash = 1;
     const p = this._fxAt(target);
     const col = spell?.vfx?.color || '#e0604a';
     FX.burst(p.x, p.y, col, crit ? 16 : 8, { shape: 'blood', speed: crit ? 120 : 80, life: 0.35, gravity: 90 });
-    if (!crit) FX.shake(0.22, 0.2);
+    // A flat 0.22 shake for every hit told you a blow had landed and nothing
+    // about its size. Scale it, and let a party member's blood tint the screen.
+    if (dealt) this._damageFelt(target, dealt);
+    else if (!crit) FX.shake(0.22, 0.2);
   }
 
   // --- saves ---------------------------------------------------------------
@@ -1677,6 +1899,10 @@ export class BattleScene {
     if (!res || !target) return;
     const showRolls = Save?.settings?.showRolls !== false;
     const ok = !!res.success;
+
+    // Frame the creature making the save before it rolls; a saving throw is
+    // resolved at the target's feet, not the caster's.
+    if (source) this.beats.push(this._framePair(source, target));
 
     if (res.roll) {
       this.beats.push({
@@ -1689,6 +1915,9 @@ export class BattleScene {
           labelColor: ok ? UI.COLORS.good : UI.COLORS.bad,
           saveOf: target.name,
           ability: res.ability,
+          who: target.name || null,
+          what: `${String(res.ability || '').toUpperCase()} save`
+            + (spell && spell.name ? ` vs ${spell.name}` : ''),
         },
       });
     }
@@ -1708,6 +1937,7 @@ export class BattleScene {
           if (s) s.flash = 1;
           if (Save?.settings?.showDamageNumbers !== false) FX.floater(p.x, p.y - 6, String(dealt), '#ff8a70', { size: 1.2 });
           FX.burst(p.x, p.y, spell?.vfx?.color || '#e0604a', 8, { shape: 'ember', speed: 70, life: 0.32 });
+          this._damageFelt(target, dealt);
         },
       });
     } else if (ok) {
@@ -1972,7 +2202,7 @@ export class BattleScene {
     if (Input.repeat('down', 0.25, 0.05)) this.logScroll = Math.max(0, this.logScroll - 1);
     const w = Input.mouse.wheel;
     if (w) this.logScroll = clamp(this.logScroll + (w > 0 ? 2 : -2), 0, max);
-    if (Input.consume('cancel') || Input.consume('confirm')) { this.showLog = false; sfx('close'); }
+    if (Input.consume('cancel') || Input.consume('confirm') || this._rightClick()) { this.showLog = false; sfx('close'); }
   }
 
   /** Is the pointer over open battlefield, rather than a floating panel? */
@@ -1980,8 +2210,13 @@ export class BattleScene {
     const m = Input.mouse;
     if (!m.over || m.y <= FIELD.y) return false;
     const inRect = (r) => m.x >= r.x && m.x <= r.x + r.w && m.y >= r.y && m.y <= r.y + r.h;
-    const menuUp = this.phase === 'menu' || this.phase === 'move' || this.phase === 'target';
-    if (menuUp && (inRect(MENU) || inRect(BUDGET) || inRect(DETAIL))) return false;
+    // Only exclude the menu rect while the menu is really there: during move and
+    // target it is not drawn, and a 122x114 invisible dead zone was eating
+    // clicks on open battlefield.
+    const menuUp = this.phase === 'menu';
+    const panelUp = menuUp || this.phase === 'move' || this.phase === 'target';
+    if (menuUp && inRect(MENU)) return false;
+    if (panelUp && (inRect(BUDGET) || inRect(DETAIL))) return false;
     if (inRect(LOGTAIL)) return false;
     return true;
   }
@@ -2006,13 +2241,27 @@ export class BattleScene {
     if (!enc) return;
 
     this._drawField(ctx);
+  }
+
+  /**
+   * The battle interface. Drawn after FX.drawAmbient so a downpour on the field
+   * never streaks across the initiative ribbon or the action menu.
+   */
+  drawUI(ctx) {
+    const enc = this.enc;
+    if (!enc) return;
     this._drawRibbon(ctx);
     if (this.boss && !isDead(this.boss)) this._drawBossBar(ctx);
 
     const menuUp = this.phase === 'menu' || this.phase === 'target' || this.phase === 'move';
     if (menuUp) {
       this._drawBudget(ctx);
-      this._drawMenu(ctx);
+      // While you are choosing a SQUARE or a TARGET, the list of actions is
+      // noise sitting on top of the thing you are reading. The budget strip and
+      // the detail panel stay; the 122x114 menu gets out of the way, replaced
+      // while aiming by a one-line plate naming the verb you picked.
+      if (this.phase === 'menu') this._drawMenu(ctx);
+      else if (this.phase === 'target' && this.pending) this._drawPendingChip(ctx);
       this._drawDetail(ctx);
     }
 
@@ -2021,9 +2270,18 @@ export class BattleScene {
       this._drawStatCard(ctx);
     }
 
+    // Markers for everyone the camera left behind. They go up AFTER the panels
+    // and hug the gutter the panels leave, because pinned to the raw field edge
+    // a foe due west drew its chevron dead centre of the action menu — invisible,
+    // which is the exact failure the markers exist to fix.
+    this._drawOffscreen(ctx);
+
     this._drawLogTail(ctx);
     if (this.rollLines) this._drawRollLines(ctx);
-    if (this.dice) UI.diceRoll(ctx, DICE.x, DICE.y, this.dice.roll, this.dice.t);
+    if (this.dice) {
+      UI.diceRoll(ctx, DICE.x, DICE.y, this.dice.roll, this.dice.t);
+      this._drawDiceCaption(ctx);
+    }
     if (this.banner) this._drawBanner(ctx);
     if (this.showLog) this._drawLogPanel(ctx);
     if (this.prompt) this._drawPrompt(ctx);
@@ -2160,6 +2418,25 @@ export class BattleScene {
     const enc = this.enc;
     const unit = enc.current;
 
+    // --- where something can reach you -------------------------------------
+    // Drawn in menu and target too, faintly: "should I attack from here or step
+    // back first" is the same question as "where is it safe to stand", and it
+    // was only ever answered while the move cursor happened to be up.
+    if (unit && this.threat && this.threat.size
+      && (this.phase === 'menu' || this.phase === 'target')) {
+      for (const k of this.threat) {
+        const c = k.split(',');
+        const tx = +c[0], ty = +c[1];
+        const sc = this._tileScreen(tx, ty);
+        const w = R(TILE * this.zoom);
+        ctx.fillStyle = 'rgba(232,110,90,0.28)';
+        for (let i = 0; i < w; i += 4) {
+          ctx.fillRect(sc.x + i, sc.y, 2, 1);
+          ctx.fillRect(sc.x + i, sc.y + w - 1, 2, 1);
+        }
+      }
+    }
+
     // --- movement range ----------------------------------------------------
     if (this.phase === 'move' && unit) {
       for (const [k, node] of this.reach) {
@@ -2171,6 +2448,20 @@ export class BattleScene {
           const w = R(TILE * this.zoom);
           ctx.fillStyle = 'rgba(230,200,120,0.22)';
           for (let i = 0; i < w; i += 4) ctx.fillRect(s.x + i, s.y, 1, w);
+        }
+        // A square inside something's reach gets a red keyline. Fill answers
+        // "can I get there"; the keyline answers "will I be in melee when I
+        // arrive" — the question that actually decides where you stand.
+        if (this.threat.has(k)) {
+          const s = this._tileScreen(node.x, node.y);
+          const w = R(TILE * this.zoom);
+          ctx.fillStyle = 'rgba(232,110,90,0.75)';
+          for (let i = 0; i < w; i += 3) {
+            ctx.fillRect(s.x + i, s.y, 2, 1);
+            ctx.fillRect(s.x + i, s.y + w - 1, 2, 1);
+            ctx.fillRect(s.x, s.y + i, 1, 2);
+            ctx.fillRect(s.x + w - 1, s.y + i, 1, 2);
+          }
         }
       }
       this._drawPath(ctx, unit);
@@ -2291,13 +2582,95 @@ export class BattleScene {
     }
   }
 
+  /**
+   * Combatants the camera cannot show you.
+   *
+   * The camera pans to whoever is acting, and a wide arena at 2x zoom fits about
+   * twelve tiles across. So it is entirely possible — it happened — to open
+   * Attack, be told "no legal target in range", and have nothing on screen to
+   * explain it: the enemy was thirty feet off the left edge and the game never
+   * said so. A pinned arrow with a distance is the whole fix.
+   */
+  _drawOffscreen(ctx) {
+    const enc = this.enc;
+    if (!enc || !Array.isArray(enc.units)) return;
+    const pad = 9;
+    // Shrink the box past whatever is currently covering the battlefield, so a
+    // chevron slides along visible gutter instead of hiding under a panel.
+    const menuUp = this.phase === 'menu' || this.phase === 'target';
+    const L = FIELD.x + pad + (menuUp ? MENU.w + 2 : 0);
+    const R2 = FIELD.x + FIELD.w - pad - (this.inspect ? 120 : 0);
+    const T = FIELD.y + pad + (this.boss ? 12 : 0);
+    const B = FIELD.y + FIELD.h - pad - (LOGTAIL.h + (menuUp ? DETAIL.h - 26 : 0));
+    if (R2 - L < 24 || B - T < 24) return;      // nowhere left to draw one
+    const cx = (L + R2) / 2, cy = (T + B) / 2;
+    const cur = enc.current || null;
+
+    for (const u of enc.units) {
+      if (!u || isDead(u)) continue;
+      const st = this.ui.get(u.uid);
+      if (!st || st.alpha <= 0.05) continue;
+      const sx = this._sx(st.x), sy = this._sy(st.y);
+      // On screen (with a margin for the sprite's own height)? Nothing to do.
+      if (sx >= FIELD.x - 8 && sx <= FIELD.x + FIELD.w + 8
+        && sy >= FIELD.y - 4 && sy <= FIELD.y + FIELD.h + 24) continue;
+
+      // Where the line from the middle of the field to the unit leaves the field.
+      const dx = sx - cx, dy = sy - cy;
+      const tx = dx === 0 ? Infinity : Math.max((L - cx) / dx, (R2 - cx) / dx);
+      const ty = dy === 0 ? Infinity : Math.max((T - cy) / dy, (B - cy) / dy);
+      const k = Math.min(tx, ty);
+      if (!Number.isFinite(k)) continue;
+      const ex = R(cx + dx * k), ey = R(cy + dy * k);
+
+      const foe = u.side !== 'party';
+      const col = foe ? SIDE_COLOR.foe : SIDE_COLOR.party;
+      const pulse = 0.65 + 0.35 * Math.sin(this.t * 4 + (hashStr(u.uid) % 100) / 16);
+
+      // A chevron pointing outward, dark-keyed so it reads over any terrain.
+      const ang = Math.atan2(dy, dx);
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(ang);
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = '#0a0708';
+      ctx.beginPath();
+      ctx.moveTo(6, 0); ctx.lineTo(-5, -5); ctx.lineTo(-5, 5);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(4, 0); ctx.lineTo(-3, -3.5); ctx.lineTo(-3, 3.5);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+
+      // How far, in feet, from whoever is acting — the number the player needs
+      // to know whether it is worth walking over there at all.
+      if (cur && cur !== u) {
+        const ft = safe(() => distanceFt(cur, u), 0) || 0;
+        // A distance alone still leaves "which one is that?" unanswered.
+        const label = `${UI.fit(u.name || '?', 40, 'sm')} ${ft}ft`;
+        const lw = UI.measure(label, 'sm') + 4;
+        const lx = clamp(ex - lw / 2, FIELD.x + 1, FIELD.x + FIELD.w - lw - 1);
+        const ly = clamp(ey + (dy > 0 ? -12 : 7), FIELD.y + 1, FIELD.y + FIELD.h - 9);
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = 'rgba(6,7,13,0.8)';
+        ctx.fillRect(R(lx) - 1, R(ly) - 1, R(lw) + 2, 9);
+        UI.text(ctx, R(lx) + lw / 2, R(ly), label, { size: 'sm', color: col, align: 'center' });
+        ctx.restore();
+      }
+    }
+  }
+
   /** The floating HP sliver, conditions and marker above a combatant. */
   _drawUnitTag(ctx, u, x, y, scale) {
     const h = 22 * scale;
     const bw = 20;
     const bx = R(x - bw / 2);
-    const by = R(y - h - 7);
-    if (by < FIELD.y) return;
+    // Anyone standing in the top rows used to lose their tag entirely — health,
+    // conditions, death saves, all of it — because the stack would have run off
+    // the top of the field. Pack it downward instead.
+    const by = Math.max(FIELD.y + 12, R(y - h - 7));
 
     const p = hpPct(u);
     const col = u.side === 'party' ? UI.COLORS.hp : '#c05040';
@@ -2307,6 +2680,7 @@ export class BattleScene {
       ctx.fillRect(bx + 1, by + 1, Math.max(1, Math.round((bw - 2) * clamp(u.tempHp / Math.max(1, maxHpOf(u)), 0, 1))), 1);
     }
 
+
     if (u.hp <= 0 && !isDead(u)) {
       UI.icon(ctx, 'skull', bx + bw / 2 - 4, by - 9, 8, UI.COLORS.inkDim);
       const ds = u.deathSaves || { success: 0, fail: 0 };
@@ -2315,24 +2689,52 @@ export class BattleScene {
       return;
     }
 
+    // Everything above the bar stacks upward from here, so nothing collides —
+    // and never past the top of the field.
+    let top = by;
+    const lift = (n) => { top = Math.max(FIELD.y + 1 + n, top - n); };
+
     // Condition dots — colour only, so a stack of five still fits over a sprite.
     const badges = safe(() => conditionBadges(u), []) || [];
     if (badges.length) {
       let cx = bx;
       for (let i = 0; i < Math.min(6, badges.length); i++) {
         ctx.fillStyle = '#0a0708';
-        ctx.fillRect(cx, by - 4, 3, 3);
+        ctx.fillRect(cx, top - 4, 3, 3);
         ctx.fillStyle = badges[i].color || UI.COLORS.purple;
-        ctx.fillRect(cx, by - 4, 2, 2);
+        ctx.fillRect(cx, top - 4, 2, 2);
         cx += 4;
       }
+      lift(5);
     }
     if (u.concentration) {
       UI.icon(ctx, 'rune', bx + bw + 1, by - 3, 7, UI.COLORS.purple);
     }
+
+    // Twenty pixels of bar tells you "hurt". It does not tell you whether one
+    // more hit finishes them, which is the only thing you actually want to know
+    // when deciding where to spend an action — so the unit you are looking at,
+    // aiming at, or acting as gets the numbers.
+    const focused = this.inspect === u
+      || this.enc.currentUid === u.uid
+      || (this.phase === 'target' && this.targets.units[this.targetIndex] === u);
+    if (focused) {
+      const max = safe(() => maxHpOf(u), u.maxHp || 1) || 1;
+      const label = `${Math.max(0, u.hp)}/${max}`;
+      const lw = UI.measure(label, 'sm') + 4;
+      const lx = R(x - lw / 2);
+      ctx.fillStyle = 'rgba(6,7,13,0.82)';
+      ctx.fillRect(lx - 1, top - 10, lw + 2, 9);
+      UI.text(ctx, lx + lw / 2, top - 9, label, {
+        size: 'sm', align: 'center',
+        color: p <= 0.25 ? UI.COLORS.bad : p <= 0.5 ? UI.COLORS.warn : UI.COLORS.ink,
+      });
+      lift(11);
+    }
+
     if (this.enc.currentUid === u.uid) {
       const bob = Math.round(Math.sin(this.t * 5) * 1.5);
-      UI.text(ctx, x, by - 13 + bob, UI.G.chevDown, { size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true });
+      UI.text(ctx, x, top - 9 + bob, UI.G.chevDown, { size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true });
     }
   }
 
@@ -2509,6 +2911,26 @@ export class BattleScene {
   }
 
   /** The right-hand panel: what the highlighted thing does, and the maths. */
+  /**
+   * While aiming, the action menu is replaced by a single plate naming the verb
+   * you chose — you still know what you are casting, and you can see the ground
+   * you are casting it at.
+   */
+  _drawPendingChip(ctx) {
+    const o = this.pending;
+    if (!o) return;
+    const h = 15;
+    UI.panel(ctx, MENU.x, MENU.y, MENU.w, h, { style: 'dark', shadow: 0.45, studs: false });
+    let tx = MENU.x + 4;
+    if (o.icon) { safe(() => UI.icon(ctx, o.icon, tx, MENU.y + 3, 9, UI.COLORS.gold)); tx += 12; }
+    UI.text(ctx, tx, MENU.y + 4, UI.fit(o.name || 'Aiming', MENU.w - (tx - MENU.x) - 20, 'md'), {
+      size: 'md', color: UI.COLORS.goldBright, shadow: true,
+    });
+    UI.text(ctx, MENU.x + MENU.w - 4, MENU.y + 5, costTag(o.cost), {
+      size: 'sm', color: UI.COLORS.inkDim, align: 'right',
+    });
+  }
+
   _drawDetail(ctx) {
     const enc = this.enc;
     const unit = enc.current;
@@ -2606,16 +3028,36 @@ export class BattleScene {
         dmg = avgOf(dice, 0);
       }
 
-      const line = `${signed(atk)} vs AC ${ac}${cover ? ` (+${cover} cover)` : ''} · ${Math.round(p * 100)}% · ~${dmg} dmg`;
+      // A raw average is a lie against a skeleton or a fire elemental. Resolve
+      // the damage type against the target's own resistances first — and say so
+      // when the number is big enough to finish them, which is the one fact
+      // that actually decides where the action goes.
+      const dtype = lower((o.damage && o.damage.type) || (spell && spell.damage && spell.damage.type) || '');
+      const soak = this._soakOf(tgt, dtype);
+      const adj = soak.mult === 0 ? 0 : Math.round(dmg * soak.mult);
+
+      const dmgTxt = soak.mult === 0 ? 'IMMUNE' : `~${adj}${soak.tag ? ` ${soak.tag}` : ''}`;
+      const line = `${signed(atk)} vs AC ${ac}${cover ? ` (+${cover} cover)` : ''} · ${Math.round(p * 100)}% · ${dmgTxt}`;
+      const lethal = soak.mult > 0 && adj >= Math.max(1, tgt.hp || 1);
       UI.text(ctx, x, y, UI.fit(line, w, 'sm'), {
-        size: 'sm', color: ad.dis && !ad.adv ? UI.COLORS.bad : ad.adv ? UI.COLORS.good : UI.COLORS.ink, shadow: true,
+        size: 'sm', shadow: true,
+        color: soak.mult === 0 ? UI.COLORS.bad
+          : lethal ? UI.COLORS.goldBright
+            : ad.dis && !ad.adv ? UI.COLORS.bad : ad.adv ? UI.COLORS.good : UI.COLORS.ink,
       });
+
       const tail = [];
-      if (ad.adv) tail.push('ADVANTAGE');
-      if (ad.dis) tail.push('DISADVANTAGE');
+      if (lethal) tail.push('KILLS');
+      // Advantage without its cause tells you the odds moved but not whether
+      // moving your feet would move them back. computeAdvantage already knows.
+      if (ad.adv && !ad.dis) tail.push('ADV: ' + (arr(ad.advReasons)[0] || 'advantage'));
+      else if (ad.dis && !ad.adv) tail.push('DIS: ' + (arr(ad.disReasons)[0] || 'disadvantage'));
+      else if (ad.cancelled) tail.push('adv/dis cancel');
       tail.push(`${dist} ft`);
       if (Array.isArray(o.levels) && o.levels.length > 1) tail.push(`slot ${this.slotLevel}`);
-      UI.text(ctx, x, y + 9, UI.fit(tail.join(' · '), w, 'sm'), { size: 'sm', color: UI.COLORS.inkDim, shadow: true });
+      UI.text(ctx, x, y + 9, UI.fit(tail.join(' · '), w, 'sm'), {
+        size: 'sm', color: lethal ? UI.COLORS.gold : UI.COLORS.inkDim, shadow: true,
+      });
       return;
     }
 
@@ -2629,6 +3071,21 @@ export class BattleScene {
     tail.push(`${dist} ft`);
     if (Array.isArray(o.levels) && o.levels.length > 1) tail.push(`slot ${this.slotLevel}`);
     UI.text(ctx, x, y + 9, UI.fit(tail.join(' · '), w, 'sm'), { size: 'sm', color: UI.COLORS.inkDim, shadow: true });
+  }
+
+  /**
+   * How much of `type` this creature actually takes: a multiplier and a short
+   * tag for the maths panel. Immunity is zero, resistance halves, vulnerability
+   * doubles — the same three cases rules/combat.js applies when the blow lands.
+   */
+  _soakOf(u, type) {
+    const t = lower(type);
+    if (!u || !t) return { mult: 1, tag: '' };
+    const has = (list) => arr(list).some((x) => lower(x) === t);
+    if (has(u.immune)) return { mult: 0, tag: 'immune' };
+    if (has(u.vuln)) return { mult: 2, tag: '(x2 vuln)' };
+    if (has(u.resist)) return { mult: 0.5, tag: '(resisted)' };
+    return { mult: 1, tag: '' };
   }
 
   // --- inspect card --------------------------------------------------------
@@ -2755,8 +3212,12 @@ export class BattleScene {
     // slide in, hold, slide out
     const a = p < 0.15 ? p / 0.15 : p > 0.85 ? (1 - p) / 0.15 : 1;
     const size = b.big ? 'xl' : 'lg';
+    // Size the plate from the type it holds. Two magic numbers (30 and h - 10)
+    // put a boss's subtitle straight through the middle of its name at 'xl'.
+    const tm = safe(() => UI.metrics(size), { capH: 10, lineH: 12 });
+    const capH = tm.capH || tm.lineH || 10;
     const w = Math.max(UI.measure(b.text || '', size), UI.measure(b.sub || '', 'sm')) + 24;
-    const h = b.sub ? 30 : 20;
+    const h = 9 + capH + (b.sub ? 11 : 0);
     const x = R((VIEW_W - w) / 2);
     const y = b.big ? 74 : 46;
 
@@ -2767,8 +3228,30 @@ export class BattleScene {
     ctx.fillRect(x, y, w, 1);
     ctx.fillRect(x, y + h - 1, w, 1);
     UI.text(ctx, VIEW_W / 2, y + 4, b.text || '', { size, color: b.color || UI.COLORS.gold, align: 'center', shadow: true });
-    if (b.sub) UI.text(ctx, VIEW_W / 2, y + h - 10, UI.fit(b.sub, w - 12, 'sm'), { size: 'sm', color: UI.COLORS.ink, align: 'center', shadow: true });
+    if (b.sub) {
+      UI.text(ctx, VIEW_W / 2, y + 5 + capH + 2, UI.fit(b.sub, w - 12, 'sm'), {
+        size: 'sm', color: UI.COLORS.ink, align: 'center', shadow: true,
+      });
+    }
     ctx.restore();
+  }
+
+  /** Who is rolling, at whom, with what — a plate above the tumbling die. */
+  _drawDiceCaption(ctx) {
+    const r = this.dice && this.dice.roll;
+    if (!r || !r.who) return;
+    const parts = [r.who];
+    if (r.vs) parts.push('\u2192 ' + r.vs);
+    let label = parts.join(' ');
+    if (r.what) label += ' \u00b7 ' + r.what;
+    label = UI.fit(label, 168, 'sm');
+    const w = UI.measure(label, 'sm') + 10;
+    const x = clamp(R(DICE.x - w / 2), 2, VIEW_W - w - 2);
+    const y = Math.max(RIBBON.h + 2, DICE.y - 34);
+    UI.panel(ctx, x, y, w, 11, { style: 'dark', shadow: 0.5, studs: false });
+    UI.text(ctx, x + w / 2, y + 2, label, {
+      size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true,
+    });
   }
 
   /** The damage arithmetic, under the die: "1d8 [6] +3 = 9 slashing". */
@@ -2885,6 +3368,50 @@ export class BattleScene {
   // --- key hints -----------------------------------------------------------
 
   /** Two key hints, right-aligned inside the log strip so nothing overlaps. */
+  /**
+   * A three-swatch key for the movement overlay, tucked under the budget strip —
+   * unless the square under the cursor is about to cost you something, in which
+   * case the slot says that instead. The colours are only worth explaining while
+   * the answer is still "any of these will do".
+   */
+  _drawMoveLegend(ctx) {
+    const k = key(this.cursor.x, this.cursor.y);
+    const provokes = this.provoke.has(k);
+    const threatened = this.threat.has(k);
+    if ((provokes || threatened) && this.reach.has(k)) {
+      const label = provokes
+        ? 'Running from here draws an opportunity attack.'
+        : 'You will be standing in reach.';
+      const w = UI.measure(label, 'sm') + 8;
+      const x = MENU.x - 2, y = BUDGET.y - 13;
+      UI.panel(ctx, x, y, w, 11, { style: 'dark', shadow: 0.45, studs: false });
+      UI.text(ctx, x + 4, y + 2, label, {
+        size: 'sm', color: provokes ? UI.COLORS.bad : UI.COLORS.warn, shadow: true,
+      });
+      return;
+    }
+
+    const items = [
+      ['rgba(90,160,240,0.9)', 'reach'],
+      ['rgba(200,60,45,0.9)', 'provokes'],
+      ['rgba(232,110,90,0.95)', 'in melee'],
+    ];
+    let w = 6;
+    for (const [, label] of items) w += 7 + UI.measure(label, 'sm') + 7;
+    const x = MENU.x - 2, y = BUDGET.y - 13;
+    UI.panel(ctx, x, y, w, 11, { style: 'dark', shadow: 0.45, studs: false });
+    let cx = x + 4;
+    for (const [col, label] of items) {
+      ctx.fillStyle = '#0a0708';
+      ctx.fillRect(cx - 1, y + 2, 6, 6);
+      ctx.fillStyle = col;
+      ctx.fillRect(cx, y + 3, 4, 4);
+      cx += 7;
+      UI.text(ctx, cx, y + 2, label, { size: 'sm', color: UI.COLORS.inkDim, shadow: true });
+      cx += UI.measure(label, 'sm') + 7;
+    }
+  }
+
   _drawHints(ctx) {
     if (this.results || this.prompt) return;
     const y = LOGTAIL.y + 8;
@@ -2897,18 +3424,26 @@ export class BattleScene {
     };
 
     if (this.phase === 'move') { hint('X', 'Back'); hint('Z', 'Go'); }
+    // The move overlay speaks in three colours; say what they mean rather than
+    // making the player infer it from one bad opportunity attack.
+    if (this.phase === 'move') this._drawMoveLegend(ctx);
     else if (this.phase === 'target') {
       hint('X', 'Back');
       if (Array.isArray(this.pending?.levels) && this.pending.levels.length > 1) hint('5', 'Slot');
       else hint('Z', 'Cast');
-    } else if (this.phase === 'menu') { hint('J', 'Log'); hint('Z', 'Pick'); }
+    } else if (this.phase === 'menu') { hint('J', 'Log'); hint('Q/R', 'Scan'); hint('Z', 'Pick'); }
+    else if (this.beats.length) { hint('Sh', 'Fast'); hint('Z', 'Skip'); }
     else { hint('J', 'Log'); hint('Sh', 'Fast'); }
 
-    // The "why not" line sits above the budget strip, clear of every panel.
-    if (this.hint && this.phase === 'menu') {
-      UI.text(ctx, MENU.x, BUDGET.y - 11, UI.fit(this.hint, 240, 'sm'), {
-        size: 'sm', color: UI.COLORS.warn, shadow: true,
-      });
+    // The "why not" line sits above the budget strip. It used to be bare text
+    // laid straight over the battlefield, which at 5px tall on grass was close
+    // to unreadable; it gets its own plate now.
+    if (this.hint && (this.phase === 'menu' || this.phase === 'target')) {
+      const label = UI.fit(this.hint, 250, 'sm');
+      const w = UI.measure(label, 'sm') + 8;
+      const hx = MENU.x - 2, hy = BUDGET.y - 13;
+      UI.panel(ctx, hx, hy, w, 11, { style: 'dark', shadow: 0.45, studs: false });
+      UI.text(ctx, hx + 4, hy + 2, label, { size: 'sm', color: UI.COLORS.warn, shadow: true });
     }
   }
 }
