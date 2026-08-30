@@ -42,6 +42,22 @@ function tw(s, size) {
 }
 function txtC(ctx, cx, y, s, o) { txt(ctx, cx - tw(s, (o || {}).size) / 2, y, s, o); }
 function txtR(ctx, rx, y, s, o) { txt(ctx, rx - tw(s, (o || {}).size), y, s, o); }
+/**
+ * The ink a panel style can actually carry, by role
+ * ('title' | 'body' | 'dim' | 'accent'). Ask the kit; the literals are only a
+ * floor for the case where the kit has not finished loading. The `gold` style
+ * is a LIGHT brass fill, so its ink is near-black — hard-coding a bright colour
+ * onto it is how a selected row becomes less readable than an idle one.
+ */
+const PLATE_INK_FALLBACK = {
+  gold: { title: '#2a1c07', body: '#2a1c07', dim: '#5a4318', accent: '#7a2010' },
+  dark: { title: K.gold, body: K.ink, dim: K.dim, accent: '#f7dc92' },
+};
+function plateInk(style, role) {
+  try { if (UI && UI.inkFor) return UI.inkFor(style, role); } catch (e) { /* below */ }
+  const set = PLATE_INK_FALLBACK[style] || PLATE_INK_FALLBACK.dark;
+  return set[role] || set.body;
+}
 function panel(ctx, x, y, w, h, o) {
   try { UI.panel(ctx, Math.round(x), Math.round(y), Math.round(w), Math.round(h), o || {}); return; } catch (e) { /* below */ }
   ctx.fillStyle = 'rgba(10,12,20,0.92)'; ctx.fillRect(x | 0, y | 0, w | 0, h | 0);
@@ -158,7 +174,7 @@ const MENU_ITEMS = [
   { id: 'continue', label: 'Continue', hint: 'Resume your most recent save.' },
   { id: 'load', label: 'Load Game', hint: 'Choose from your saved campaigns.' },
   { id: 'settings', label: 'Settings', hint: 'Sound, text speed, difficulty, controls.' },
-  { id: 'bestiary', label: 'Bestiary', hint: 'Creatures your company has put down.' },
+  { id: 'bestiary', label: 'Bestiary', hint: 'Creatures your party has put down.' },
   { id: 'credits', label: 'Credits', hint: 'Who built this, and out of what.' },
 ];
 
@@ -782,41 +798,58 @@ export class TitleScene {
       const s = this.slots[i];
       const cy = 40 + i * 35;
       const on = i === this.slotIndex;
-      panel(ctx, 38, cy, 324, 33, { style: on ? 'gold' : 'dark' });
+      // `gold` is a genuinely LIGHT brass plate. Every field below used to keep
+      // its dark-panel colour when the row was selected — name at 1.12:1, level
+      // and purse at 1.04:1, map at 1.04:1, date at 1.20:1 — so HIGHLIGHTING a
+      // save made it less readable than the three around it. This is the first
+      // screen of every returning session; the ink follows the plate now.
+      const style = on ? 'gold' : 'dark';
+      panel(ctx, 38, cy, 324, 33, { style });
+      // Dark ink on a light plate wants a light shadow, or the drop shadow just
+      // thickens every stroke into a smear.
+      const sh = on ? 'rgba(255,228,168,0.40)' : true;
+      const ink = (role, dark) => (on ? plateInk(style, role) : dark);
       if (on) cursor(ctx, 31, cy + 13, this.t);
 
       // Biome swatch, so slots read apart at a glance.
       ctx.fillStyle = BIOME_SWATCH[s.biome] || '#4a4438';
       ctx.fillRect(43, cy + 5, 5, 23);
 
-      txt(ctx, 52, cy + 4, s.label, { size: 'sm', color: on ? C('gold') : C('dim') });
+      txt(ctx, 52, cy + 4, s.label, { size: 'sm', color: ink('title', C('dim')), shadow: sh });
 
       if (s.empty) {
-        txt(ctx, 52, cy + 15, '— Empty —', { size: 'md', color: 'rgba(154,145,127,0.55)' });
+        txt(ctx, 52, cy + 15, '— Empty —', { size: 'md', color: ink('dim', 'rgba(154,145,127,0.55)'), shadow: sh });
         continue;
       }
       if (s.corrupt) {
-        txt(ctx, 52, cy + 15, 'Corrupt Save', { size: 'md', color: C('red') });
-        txtR(ctx, 356, cy + 16, 'cannot be read', { size: 'sm', color: C('dim') });
+        txt(ctx, 52, cy + 15, 'Corrupt Save', { size: 'md', color: ink('accent', C('red')), shadow: sh });
+        txtR(ctx, 356, cy + 16, 'cannot be read', { size: 'sm', color: ink('dim', C('dim')), shadow: sh });
         continue;
       }
       if (s.future) {
-        txt(ctx, 52, cy + 15, s.name || 'Adventurer', { size: 'md', color: C('dim') });
-        txtR(ctx, 356, cy + 16, 'newer version', { size: 'sm', color: C('red') });
+        txt(ctx, 52, cy + 15, s.name || 'Adventurer', { size: 'md', color: ink('body', C('dim')), shadow: sh });
+        txtR(ctx, 356, cy + 16, 'newer version', { size: 'sm', color: ink('accent', C('red')), shadow: sh });
         continue;
       }
 
-      const nameW = Math.min(120, tw(s.name || 'Adventurer', 'md'));
-      txt(ctx, 100, cy + 4, fit(s.name || 'Adventurer', 120, 'md'), { size: 'md', color: C('ink') });
-      txt(ctx, 100 + nameW + 6, cy + 5, `Lv ${s.level || s.avgLevel || 1}`, { size: 'sm', color: C('gold') });
-      txtR(ctx, 356, cy + 5, s.playtimeText || playtimeText(s.playtime || 0), { size: 'sm', color: C('dim') });
+      // Right column first, so the left column can be told what is left of the row.
+      const play = s.playtimeText || playtimeText(s.playtime || 0);
+      const purse = `${s.gold || 0} gp`;
+      const when = `Day ${s.day || 1}${s.ago ? ` · ${s.ago}` : ''}`;
+      const rightW = Math.min(96, Math.max(tw(play, 'sm'), tw(purse, 'sm'), tw(when, 'sm')));
+      const leftW = 356 - rightW - 6 - 100;
+
+      const nameW = Math.min(leftW - 34, tw(s.name || 'Adventurer', 'md'));
+      txt(ctx, 100, cy + 4, s.name || 'Adventurer', { size: 'md', color: ink('body', C('ink')), shadow: sh, maxWidth: nameW });
+      txt(ctx, 100 + nameW + 6, cy + 5, `Lv ${s.level || s.avgLevel || 1}`, { size: 'sm', color: ink('dim', C('gold')), shadow: sh });
+      txt(ctx, 356, cy + 5, play, { size: 'sm', color: ink('dim', C('dim')), align: 'right', shadow: sh, maxWidth: rightW });
 
       const names = (s.partyNames || []).slice(0, 4).join(', ') || 'Alone on the road';
-      txt(ctx, 100, cy + 14, fit(names, 168, 'sm'), { size: 'sm', color: 'rgba(154,145,127,0.9)' });
-      txtR(ctx, 356, cy + 14, `${s.gold || 0} gp`, { size: 'sm', color: C('gold') });
+      txt(ctx, 100, cy + 14, names, { size: 'sm', color: ink('dim', 'rgba(154,145,127,0.9)'), shadow: sh, maxWidth: leftW });
+      txt(ctx, 356, cy + 14, purse, { size: 'sm', color: ink('dim', C('gold')), align: 'right', shadow: sh, maxWidth: rightW });
 
-      txt(ctx, 100, cy + 23, fit(s.mapName || 'The Sword Coast', 150, 'sm'), { size: 'sm', color: C('blue') });
-      txtR(ctx, 356, cy + 23, fit(`Day ${s.day || 1}${s.ago ? ` · ${s.ago}` : ''}`, 110, 'sm'), { size: 'sm', color: C('dim') });
+      txt(ctx, 100, cy + 23, s.mapName || 'The Sword Coast', { size: 'sm', color: ink('title', C('blue')), shadow: sh, maxWidth: leftW });
+      txt(ctx, 356, cy + 23, when, { size: 'sm', color: ink('dim', C('dim')), align: 'right', shadow: sh, maxWidth: rightW });
     }
   }
 
@@ -880,7 +913,7 @@ export class TitleScene {
 
     if (!known) {
       txtC(ctx, cx, 92, '— UNKNOWN —', { size: 'md', color: 'rgba(154,145,127,0.6)' });
-      txtC(ctx, cx, 106, 'No member of your company has', { size: 'sm', color: C('dim') });
+      txtC(ctx, cx, 106, 'No member of your party has', { size: 'sm', color: C('dim') });
       txtC(ctx, cx, 116, 'yet laid one of these low.', { size: 'sm', color: C('dim') });
       txtC(ctx, cx, 136, 'Entries unlock on the kill.', { size: 'sm', color: 'rgba(154,145,127,0.5)' });
     } else {
@@ -977,6 +1010,12 @@ const GAMEOVER_ITEMS = [
   { id: 'title', label: 'Return to Title' },
 ];
 
+// Button geometry for the death screen, shared by the hit test and the draw so
+// the two can never drift apart. "Return to Title" is 104px at md, and an 84px
+// plate has a 76px face — BOTH choices used to read "… to …".
+const GO_BTN = { w: 114, h: 16, gap: 10, y: 212 };
+const goBtnX = (i) => Math.round((VIEW_W - GO_BTN.w * 2 - GO_BTN.gap) / 2) + i * (GO_BTN.w + GO_BTN.gap);
+
 export class GameOverScene {
   /**
    * reason: short line explaining the wipe ("Slain by Klarg at Cragmaw Hideout").
@@ -987,7 +1026,7 @@ export class GameOverScene {
     this.opaque = true;
     this.pausesBelow = true;
     this.uiLayer = true;
-    this.reason = String(reason || 'The company was overwhelmed.');
+    this.reason = String(reason || 'The party was overwhelmed.');
     this.opts = opts || {};
     this.t = 0;
     this.index = 0;
@@ -1055,8 +1094,8 @@ export class GameOverScene {
     if (m && m.over) {
       for (let i = 0; i < n; i++) {
         // Must match the rects drawn in draw() below, or the buttons are click-deaf.
-        const bx = 118 + i * 92, by = 212;
-        if (m.x >= bx && m.x <= bx + 84 && m.y >= by && m.y <= by + 16) {
+        const bx = goBtnX(i), by = GO_BTN.y;
+        if (m.x >= bx && m.x <= bx + GO_BTN.w && m.y >= by && m.y <= by + GO_BTN.h) {
           if (this.index !== i && this._enabled(i)) { this.index = i; sfx('cursor'); }
           if (m.clicked) { m.clicked = false; this._activate(); }
           break;
@@ -1118,16 +1157,20 @@ export class GameOverScene {
     glyphRun(ctx, 'YOUR COMPANY', VIEW_W / 2, 44, 3, '#9d3a30', 2);
     glyphRun(ctx, 'HAS FALLEN', VIEW_W / 2, 68, 3, '#9d3a30', 2);
 
-    txtC(ctx, VIEW_W / 2, 92, fit(this.reason, 340, 'sm'), { size: 'sm', color: C('dim') });
+    // 340px cut "Cut down by the Bugbear Chief in the ruins of Cragmaw Castle."
+    // (359px) two words short of the fact it exists to state.
+    txt(ctx, VIEW_W / 2, 92, this.reason, { size: 'sm', color: C('dim'), align: 'center', maxWidth: 384 });
 
     // --- the roll of the dead ---
-    panel(ctx, 20, 106, 176, 92, { style: 'dark' });
+    panel(ctx, 20, 106, 180, 92, { style: 'dark' });
     txt(ctx, 27, 112, 'THE FALLEN', { size: 'sm', color: C('gold') });
     let y = 125;
     for (const f of this.fallen.slice(0, 4)) {
       drawSkull(ctx, 28, y, 'rgba(200,190,170,0.75)');
-      txt(ctx, 40, y, fit(f.name, 96, 'sm'), { size: 'sm', color: C('ink') });
-      txtR(ctx, 189, y, `Lv ${f.level}${f.cls ? ' ' + f.cls.slice(0, 3) : ''}`, { size: 'sm', color: C('dim') });
+      const lv = `Lv ${f.level}${f.cls ? ' ' + f.cls.slice(0, 3) : ''}`;
+      const lvW = Math.min(tw(lv, 'sm'), 60);
+      txt(ctx, 40, y, f.name, { size: 'sm', color: C('ink'), maxWidth: 153 - lvW - 4 });
+      txt(ctx, 193, y, lv, { size: 'sm', color: C('dim'), align: 'right', maxWidth: lvW });
       y += 12;
     }
     if (this.fallen.length > 4) txt(ctx, 40, y, `and ${this.fallen.length - 4} more`, { size: 'sm', color: C('dim') });
@@ -1137,8 +1180,10 @@ export class GameOverScene {
     txt(ctx, 211, 112, 'FINAL TALLY', { size: 'sm', color: C('gold') });
     let ty = 125;
     for (const [k, v] of this.tally) {
-      txt(ctx, 212, ty, k, { size: 'sm', color: 'rgba(154,145,127,0.85)' });
-      txtR(ctx, 373, ty, String(v), { size: 'sm', color: C('ink') });
+      const val = String(v);
+      const vw = Math.min(tw(val, 'sm'), 76);
+      txt(ctx, 212, ty, k, { size: 'sm', color: 'rgba(154,145,127,0.85)', maxWidth: 161 - vw - 4 });
+      txt(ctx, 373, ty, val, { size: 'sm', color: C('ink'), align: 'right', maxWidth: vw });
       ty += 11;
     }
 
@@ -1149,16 +1194,23 @@ export class GameOverScene {
     // --- choices ---
     for (let i = 0; i < GAMEOVER_ITEMS.length; i++) {
       const it = GAMEOVER_ITEMS[i];
-      const bx = 118 + i * 92, by = 212;
+      const bx = goBtnX(i), by = GO_BTN.y;
       const on = i === this.index;
       const off = !this._enabled(i);
       let drewButton = false;
       try {
-        if (UI && UI.button) { UI.button(ctx, bx, by, 84, 16, it.label, { selected: on, disabled: off }); drewButton = true; }
+        if (UI && UI.button) { UI.button(ctx, bx, by, GO_BTN.w, GO_BTN.h, it.label, { selected: on, disabled: off }); drewButton = true; }
       } catch (e) { drewButton = false; }
       if (!drewButton) {
-        panel(ctx, bx, by, 84, 16, { style: on ? 'gold' : 'dark' });
-        txtC(ctx, bx + 42, by + 5, it.label, { size: 'sm', color: off ? 'rgba(154,145,127,0.4)' : (on ? C('gold') : C('ink')) });
+        // Same rule as the load slots: a selected `gold` plate is a LIGHT plate,
+        // so C('gold') on it is 1.04:1. Ask the style what ink it carries.
+        const st = on ? 'gold' : 'dark';
+        panel(ctx, bx, by, GO_BTN.w, GO_BTN.h, { style: st });
+        txt(ctx, bx + GO_BTN.w / 2, by + 5, it.label, {
+          size: 'sm', align: 'center', maxWidth: GO_BTN.w - 6,
+          shadow: on ? 'rgba(255,228,168,0.40)' : true,
+          color: off ? 'rgba(154,145,127,0.4)' : plateInk(st, on ? 'title' : 'body'),
+        });
       }
       if (on) cursor(ctx, bx - 8, by + 5, this.t);
     }

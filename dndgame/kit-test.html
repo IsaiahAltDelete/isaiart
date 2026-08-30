@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Sword Coast — UI Kit Preview</title>
+<style>
+  body { background:#0a0810; margin:0; padding:16px; font:12px ui-monospace,Consolas,monospace; color:#8a7a5c; }
+  canvas { image-rendering:pixelated; display:block; border:1px solid #3a2c18; background:#0d0b10; margin-bottom:10px; }
+  #err { color:#e2564a; white-space:pre-wrap; }
+  h2 { color:#e3b34a; font-size:12px; letter-spacing:2px; margin:14px 0 6px; }
+</style>
+</head>
+<body>
+<h2>UI KIT PREVIEW — 400x240 logical, drawn at 3x</h2>
+<canvas id="c" width="400" height="240" style="width:1200px;height:720px"></canvas>
+<div id="err"></div>
+<script type="module">
+const err = document.getElementById('err');
+try {
+  const { UI, drawGlyphs, FONT } = await import('./src/ui/kit.js');
+  const c = document.getElementById('c');
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const C = UI.COLORS || {};
+  ctx.fillStyle = C.bgDeep || '#0d0b10';
+  ctx.fillRect(0, 0, 400, 240);
+
+  // Panels in each style
+  const styles = ['window','dark','gold','inset','parchment','danger','magic','plain'];
+  styles.forEach((s, i) => {
+    const x = 6 + (i % 4) * 98, y = 6 + Math.floor(i / 4) * 40;
+    UI.panel(ctx, x, y, 92, 34, { style: s });
+    UI.text(ctx, x + 5, y + 5, s, { color: C.gold, size: 'sm' });
+    UI.text(ctx, x + 5, y + 15, 'Phandalin', { color: C.ink, size: 'sm' });
+  });
+
+  // Font sample: every size, plus lowercase descenders and punctuation
+  UI.panel(ctx, 6, 90, 388, 62, { style: 'window' });
+  UI.text(ctx, 12, 95, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', { color: C.ink, size: 'sm' });
+  UI.text(ctx, 12, 104, 'abcdefghijklmnopqrstuvwxyz  gjpqy', { color: C.ink, size: 'sm' });
+  UI.text(ctx, 12, 113, '0123456789 .,:;!?\'"-+/()[]%&*#<>=@$', { color: C.inkDim || C.ink, size: 'sm' });
+  UI.text(ctx, 12, 123, 'Sildar Hallwinter', { color: C.gold, size: 'md' });
+  UI.text(ctx, 150, 121, 'CRAGMAW', { color: C.gold, size: 'lg' });
+  UI.text(ctx, 260, 118, 'HIT!', { color: C.red, size: 'xl' });
+  UI.text(ctx, 12, 136, 'd20 [17] +5 = 22 vs AC 15 — hit for 1d8+3 = 8 slashing.', { color: C.ink, size: 'sm' });
+
+  // Bars
+  UI.panel(ctx, 6, 156, 190, 46, { style: 'dark' });
+  UI.bar(ctx, 12, 162, 120, 7, 0.72, { color: C.hp, label: 'HP 26/36' });
+  UI.bar(ctx, 12, 174, 120, 5, 0.40, { color: C.mp });
+  UI.bar(ctx, 12, 184, 120, 4, 0.85, { color: C.xp });
+  UI.cursor(ctx, 140, 165, performance.now() / 1000);
+  UI.frameSel(ctx, 150, 160, 40, 36, performance.now() / 1000);
+
+  // Icons
+  UI.panel(ctx, 202, 156, 192, 46, { style: 'dark' });
+  const icons = ['sword','axe','bow','dagger','staff','shield','helm','armor','potion','scroll',
+                 'coin','key','chest','heart','flame','frost','bolt','skull','d20','star','quest','map'];
+  icons.forEach((n, i) => {
+    const x = 208 + (i % 11) * 17, y = 162 + Math.floor(i / 11) * 18;
+    UI.icon(ctx, n, x, y, 10, C.gold);
+  });
+
+  // Dice roll popup
+  UI.diceRoll(ctx, 300, 60, { natural: 20, total: 25, mod: 5, crit: true, dc: 15, hit: true, ac: 15 }, 1.0);
+
+  // Buttons
+  UI.button(ctx, 6, 206, 70, 14, 'Attack', { selected: true });
+  UI.button(ctx, 80, 206, 70, 14, 'Cast', {});
+  UI.button(ctx, 154, 206, 70, 14, 'Dodge', { disabled: true });
+
+  const glyphs = Object.keys(FONT || {}).length;
+  err.style.color = '#5fd07a';
+  err.textContent = `OK — ${glyphs} glyphs authored, ${Object.keys(UI).length} UI members.`;
+} catch (e) {
+  err.textContent = (e && (e.stack || e.message)) || String(e);
+}
+</script>
+</body>
+</html>

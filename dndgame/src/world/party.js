@@ -1,4 +1,4 @@
-// world/party.js — the adventuring company: up to four active members, a reserve
+// world/party.js — the adventuring party: up to four active members, a reserve
 // bench of hirelings, and the shared purse and pack.
 
 import { PARTY_MAX, RESERVE_MAX } from '../constants.js';

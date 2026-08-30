@@ -50,6 +50,19 @@ const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const S = () => Game.state || null;
 
+/**
+ * A companion's name in `w` pixels. An ellipsis inside a person's name reads as
+ * a rendering fault rather than a truncation, so a name that will not fit falls
+ * back to its first word — "Sildar", not "Sildar Ha…".
+ */
+function shortName(name, w) {
+  const s = String(name == null || name === '' ? '—' : name);
+  if (safe(() => UI.measure(s, 'sm'), 0) <= w) return s;
+  const first = s.split(/[\s,]+/)[0];
+  if (first && first !== s && safe(() => UI.measure(first, 'sm'), 999) <= w) return first;
+  return s;
+}
+
 // data/npcs.js may not exist yet: it only supplies the keeper's sprite.
 const LATE = { npcs: null };
 safe(() => import(/* @vite-ignore */ '../data/npcs.js')
@@ -145,7 +158,7 @@ const TABS = [
 const SERVICE_LIB = {
   heal: {
     id: 'heal', name: 'Healing Touch', cost: 15, icon: 'plus', effect: 'heal',
-    desc: 'Hands laid on every wound in the company. Hit points restored in full.',
+    desc: 'Hands laid on every wound in the party. Hit points restored in full.',
   },
   'lesser-restoration': {
     id: 'lesser-restoration', name: 'Lesser Restoration', cost: 40, icon: 'holy', effect: 'cure',
@@ -166,7 +179,7 @@ const SERVICE_LIB = {
   },
   'room-common': {
     id: 'room-common', name: 'Common Room', cost: 5, icon: 'candle', effect: 'rest',
-    desc: 'Straw pallets by the hearth. A long rest for the whole company.',
+    desc: 'Straw pallets by the hearth. A long rest for the whole party.',
   },
   'room-private': {
     id: 'room-private', name: 'Private Room', cost: 12, icon: 'candle', effect: 'rest',
@@ -872,7 +885,7 @@ export class ShopScene {
         safe(() => Party.healAll());
         if (st) { safe(() => advanceTime(st, num(sv.minutes, 480))); st.stats.longRests = num(st.stats.longRests, 0) + 1; }
         sfx('heal');
-        return 'The company sleeps sound and wakes whole.';
+        return 'The party sleeps sound and wakes whole.';
       }
       case 'heal': {
         safe(() => Party.healAll());
@@ -1119,12 +1132,15 @@ export class ShopScene {
       const ico = row.kind === 'service' ? (row.service.icon || 'star') : iconFor(row.def);
       UI.icon(ctx, ico, LX + 7, ry + 2, 9, row.disabled ? UI.COLORS.disabled : null);
 
-      // price, right-aligned
+      // price, right-aligned. Measured rather than given a flat 40px reserve:
+      // "1g" is 11px, and the 29px difference is 5 characters of item name.
       const priceCol = row.disabled ? UI.COLORS.disabled
         : row.kind === 'sell' ? (row.premium ? UI.COLORS.goldBright : UI.COLORS.green)
           : Party.canAfford(row.price) ? UI.COLORS.gold : UI.COLORS.red;
-      UI.text(ctx, LX + LW, ry + 3, row.price > 0 ? goldText(row.price) : 'free', {
-        size: 'sm', color: priceCol, align: 'right', shadow: true,
+      const priceTxt = row.price > 0 ? goldText(row.price) : 'free';
+      const priceW = Math.min(safe(() => UI.measure(priceTxt, 'sm'), 24) || 24, 46);
+      UI.text(ctx, LX + LW, ry + 3, priceTxt, {
+        size: 'sm', color: priceCol, align: 'right', shadow: true, maxWidth: priceW,
       });
 
       // "have: N" (buy) / "×N" (sell) / stock remaining
@@ -1139,10 +1155,21 @@ export class ShopScene {
         if (row.disabled) midCol = UI.COLORS.bad;
       } else if (row.disabled) { mid = row.reason; midCol = UI.COLORS.bad; }
 
+      // The middle tag ("sold out", "nothing to cure", "have 3") was drawn
+      // right-aligned with no maxWidth, so a long refusal walked left out of the
+      // panel AND the name was billed for its full width — "nothing to cure"
+      // (89px) left a service 33px of name, five characters. The tag takes at
+      // most 42% of what the price leaves; the name keeps the rest.
+      const rowW = LW - 19;
+      const priceCell = priceW + 4;
       let midW = 0;
       if (mid) {
-        midW = safe(() => UI.measure(mid, 'sm'), 30) + 5;
-        UI.text(ctx, LX + LW - 40, ry + 3, mid, { size: 'sm', color: midCol, align: 'right', shadow: true });
+        const want = safe(() => UI.measure(mid, 'sm'), 40) || 40;
+        const cap = Math.max(0, Math.round((rowW - priceCell) * 0.42));
+        midW = Math.min(want, cap) + 5;
+        UI.text(ctx, LX + LW - priceCell, ry + 3, mid, {
+          size: 'sm', color: midCol, align: 'right', shadow: true, maxWidth: midW - 5,
+        });
       }
 
       const nameCol = row.disabled ? UI.COLORS.disabled
@@ -1150,7 +1177,7 @@ export class ShopScene {
           : colorOfItem(row.id, row.def);
       UI.text(ctx, LX + 19, ry + 3, label, {
         size: on ? 'md' : 'sm', color: nameCol, shadow: true,
-        maxWidth: Math.max(20, LW - 19 - 40 - midW),
+        maxWidth: Math.max(20, rowW - priceCell - midW),
       });
 
       if (on && !row.disabled) UI.cursor(ctx, LX - 1, ry + 3, this.t);
@@ -1205,25 +1232,46 @@ export class ShopScene {
     const d = row.def;
 
     UI.icon(ctx, iconFor(d), ix, D_TOP, 14, null);
-    UI.text(ctx, ix + 18, D_TOP + 1, d.name, {
-      size: 'md', color: colorOfItem(row.id, d), shadow: true, maxWidth: iw - 18,
-    });
-    UI.text(ctx, ix, D_META, `${titleCase(String(d.kind || 'item'))} · ${rarityName(d)}${d.weight ? ` · ${d.weight} lb` : ''}`, {
+    // "Amulet of Proof against Detection and Location" is 321px bold and 275px
+    // small in a 166px slot, so a single line cannot hold the catalogue's long
+    // tail whatever face it is set in. Bold when it fits, small when that is
+    // enough, and two small lines when it is not — the rules band gives up its
+    // last line for the second, which is the cheaper thing to lose. Knowing
+    // WHAT is on the counter is the whole job of this panel.
+    const nameStr = String(d.name || '');
+    const nameW = iw - 18;
+    const mw = safe(() => UI.measure(nameStr, 'md'), 999);
+    const sw = safe(() => UI.measure(nameStr, 'sm'), 999);
+    let extra = 0;
+    if (mw <= nameW || sw <= nameW) {
+      UI.text(ctx, ix + 18, D_TOP + 1, nameStr, {
+        size: mw <= nameW ? 'md' : 'sm', color: colorOfItem(row.id, d), shadow: true, maxWidth: nameW,
+      });
+    } else {
+      UI.textWrapped(ctx, ix + 18, D_TOP, nameW, nameStr, {
+        size: 'sm', color: colorOfItem(row.id, d), shadow: true, maxLines: 2, lineHeight: 8,
+      });
+      extra = 8;
+    }
+
+    UI.text(ctx, ix, D_META + extra, `${titleCase(String(d.kind || 'item'))} · ${rarityName(d)}${d.weight ? ` · ${d.weight} lb` : ''}`, {
       size: 'sm', color: UI.COLORS.inkDim, shadow: true, maxWidth: iw,
     });
-    UI.divider(ctx, ix, D_RULE, iw);
+    UI.divider(ctx, ix, D_RULE + extra, iw);
 
     // --- rules text, then flavour, sharing a four-line band ----------------
     const stats = statLines(d);
+    const infoTop = D_INFO + extra;
+    const infoLines = D_INFO_LINES - (extra ? 1 : 0);
     let line = 0;
     for (const s of stats) {
-      if (line >= D_INFO_LINES - 1) break;
-      UI.text(ctx, ix, D_INFO + line * 9, s, { size: 'sm', color: UI.COLORS.ink, shadow: true, maxWidth: iw });
+      if (line >= infoLines - 1) break;
+      UI.text(ctx, ix, infoTop + line * 9, s, { size: 'sm', color: UI.COLORS.ink, shadow: true, maxWidth: iw });
       line++;
     }
-    if (d.desc && line < D_INFO_LINES) {
-      UI.textWrapped(ctx, ix, D_INFO + line * 9, iw, String(d.desc), {
-        size: 'sm', color: UI.COLORS.inkDim, shadow: true, maxLines: D_INFO_LINES - line,
+    if (d.desc && line < infoLines) {
+      UI.textWrapped(ctx, ix, infoTop + line * 9, iw, String(d.desc), {
+        size: 'sm', color: UI.COLORS.inkDim, shadow: true, maxLines: infoLines - line,
       });
     }
 
@@ -1290,13 +1338,15 @@ export class ShopScene {
     });
 
     // Party health readout, so the value of a rest, a heal or a revivify is plain.
-    UI.divider(ctx, ix, D_CMP, iw, { label: 'the company', size: 'sm', bg: '#231a13' });
+    UI.divider(ctx, ix, D_CMP, iw, { label: 'the party', size: 'sm', bg: '#231a13' });
     let cy = D_CMP_BODY;
     for (const m of Party.members.slice(0, 4)) {
       if (!m) continue;
       const maxHp = Math.max(1, num(m.maxHp, 1));
       const pct = clamp(num(m.hp, 0) / maxHp, 0, 1);
-      UI.text(ctx, ix, cy, m.name, { size: 'sm', color: UI.COLORS.ink, shadow: true, maxWidth: 62 });
+      // 62px is ten glyphs. An ellipsis in a name reads as a bug, so a name
+      // that will not fit falls back to its first word instead of "Sildar Ha…".
+      UI.text(ctx, ix, cy, shortName(m.name, 62), { size: 'sm', color: UI.COLORS.ink, shadow: true, maxWidth: 62 });
       UI.bar(ctx, ix + 66, cy + 1, iw - 108, 5, pct, { color: UI.COLORS.hp, bg: UI.COLORS.hpDark });
       UI.text(ctx, ix + iw, cy, `${Math.max(0, m.hp | 0)}/${maxHp}`, {
         size: 'sm', color: pct <= 0 ? UI.COLORS.bad : UI.COLORS.inkDim, align: 'right', shadow: true,
@@ -1331,8 +1381,9 @@ export class ShopScene {
     }
     const sel = this._member();
     if (sel) {
-      UI.text(ctx, strip.x + 4 * (strip.size + strip.gap) + 2, strip.y + 5, sel.name, {
-        size: 'sm', color: UI.COLORS.gold, shadow: true, maxWidth: DET_W - 4 * (strip.size + strip.gap) - 20,
+      const w = DET_W - 4 * (strip.size + strip.gap) - 20;
+      UI.text(ctx, strip.x + 4 * (strip.size + strip.gap) + 2, strip.y + 5, shortName(sel.name, w), {
+        size: 'sm', color: UI.COLORS.gold, shadow: true, maxWidth: w,
       });
     }
   }
@@ -1344,9 +1395,13 @@ export class ShopScene {
     const total = row.price * qty;
     const afford = this.tab === 1 || Party.canAfford(total);
 
+    // The unit price stops short of the quantity stepper at ix+66, and the
+    // total stops short of the stepper's right end — a five-figure purse used
+    // to print both straight through the ◀ ×2 ▶ control between them.
     const verb = this.tab === 0 ? 'Buy' : this.tab === 1 ? 'Sell' : 'Cost';
     UI.text(ctx, ix, y + 5, `${verb} ${goldText(row.price)}`, {
       size: 'sm', color: UI.COLORS.inkDim, shadow: true,
+      maxWidth: this.tab === 2 ? iw - 60 : 62,
     });
 
     if (this.tab !== 2) {
@@ -1358,17 +1413,18 @@ export class ShopScene {
       UI.text(ctx, qx + 28, y + 5, '▶', { size: 'sm', color: qty < maxQ ? UI.COLORS.gold : UI.COLORS.disabled, shadow: true });
     }
 
+    const totalW = this.tab === 2 ? iw - 60 : iw - 100;
     UI.text(ctx, ix + iw, y + 4, goldText(total), {
       size: 'md', color: afford ? (this.tab === 1 ? UI.COLORS.green : UI.COLORS.goldBright) : UI.COLORS.red,
-      align: 'right', shadow: true,
+      align: 'right', shadow: true, maxWidth: totalW,
     });
     if (!afford) {
       UI.text(ctx, ix + iw, y + 15, `${total - Party.gold} gp short`, {
-        size: 'sm', color: UI.COLORS.red, align: 'right', shadow: true,
+        size: 'sm', color: UI.COLORS.red, align: 'right', shadow: true, maxWidth: iw - 4,
       });
     } else if (row.premium) {
       UI.text(ctx, ix + iw, y + 15, 'Exchange premium', {
-        size: 'sm', color: UI.COLORS.goldBright, align: 'right', shadow: true,
+        size: 'sm', color: UI.COLORS.goldBright, align: 'right', shadow: true, maxWidth: iw - 4,
       });
     }
   }

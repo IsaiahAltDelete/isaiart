@@ -15,6 +15,7 @@ import {
   MAX_ABILITY, MAX_ABILITY_EPIC, PHYSICAL_TYPES, SIZES, clamp,
 } from '../constants.js';
 import { rng, makeRNG } from '../core/rng.js';
+import { CHEATS } from '../core/cheatflags.js';
 import { roll } from '../core/dice.js';
 import { bus, EV } from '../core/events.js';
 import { ABILITIES, SKILLS, CLASS_PRIORITY, mod as abMod } from './abilities.js';
@@ -1565,6 +1566,13 @@ function listCovers(list, type, opts) {
  */
 export function damage(ch, amount, type = 'bludgeoning', opts = {}) {
   const res = { dealt: 0, resisted: 0, absorbed: 0, dead: false, downed: false, overkill: 0, hp: ch?.hp ?? 0, type, immune: false };
+
+  // Testing god mode: the roll still happened and the log still tells the truth,
+  // the party simply never falls. Applied here so every damage source obeys it.
+  if (ch && ch.kind === 'pc' && CHEATS.god) {
+    res.dealt = 0; res.godded = true; res.hp = ch.hp;
+    return res;
+  }
   if (!ch) return res;
 
   let amt = Math.max(0, Math.floor(Number(amount) || 0));

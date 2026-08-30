@@ -166,6 +166,23 @@ class MinHeap {
 
 let mapSerial = 0;
 
+/**
+ * Which trigger wins when several share a tile. Anything the player deliberately
+ * walks into (a warp, a door, a chest) must outrank the ambient region markers
+ * that get painted across whole areas.
+ */
+const TRIGGER_RANK = {
+  warp: 100, door: 100, stairs: 100, 'locked-door': 100, ladder: 100,
+  chest: 90, shop: 85, inn: 85, rest: 85, quest: 80, npc: 80,
+  script: 70, battle: 70, sign: 60, ledge: 50,
+  'encounter-zone': 10, encounter: 10, region: 5, ambient: 5,
+};
+function TRIGGER_PRIORITY(t) {
+  if (!t) return 0;
+  if (Number.isFinite(t.priority) && t.priority > 0) return t.priority;
+  return TRIGGER_RANK[t.kind] != null ? TRIGGER_RANK[t.kind] : 40;
+}
+
 export class TileMap {
   /**
    * opts: { w, h, name, id, biome, indoor, music, ambient, dark, spawn,
@@ -687,10 +704,20 @@ export class TileMap {
    * The trigger covering (x, y), or null. O(1).
    * opts: { kind, flags (state.flags for `flag`/`notFlag` gating), includeDone }
    */
+  /**
+   * The trigger that should act on this tile.
+   *
+   * More than one can share a square — an encounter zone is painted across whole
+   * regions and will happily cover the road out of town. Taking them in insertion
+   * order let an ambient zone shadow the warp underneath it, and the exit out of
+   * Phandalin silently stopped working. Actionable triggers win; ties keep
+   * insertion order.
+   */
   triggerAt(x, y, opts = {}) {
     if (!this.inBounds(x, y)) return null;
     const arr = this._trigIndex.get(y * this.w + x);
     if (!arr || !arr.length) return null;
+    let best = null, bestRank = -Infinity;
     for (const t of arr) {
       if (opts.kind && t.kind !== opts.kind) continue;
       if (t.done && t.once && !opts.includeDone) continue;
@@ -698,9 +725,10 @@ export class TileMap {
         if (t.flag && !opts.flags[t.flag]) continue;
         if (t.notFlag && opts.flags[t.notFlag]) continue;
       }
-      return t;
+      const rank = TRIGGER_PRIORITY(t);
+      if (rank > bestRank) { best = t; bestRank = rank; }
     }
-    return null;
+    return best;
   }
 
   /** Everything covering a tile, unfiltered. */

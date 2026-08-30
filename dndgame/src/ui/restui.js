@@ -1,4 +1,4 @@
-// ui/restui.js — RestScene and CampScene: the fire the company sits at between fights.
+// ui/restui.js — RestScene and CampScene: the fire the party sits at between fights.
 //
 // Two screens, one hearth:
 //
@@ -99,12 +99,24 @@ function txt(ctx, x, y, s, o) { return UI.text(ctx, R(x), R(y), s, o || {}); }
 function txtR(ctx, x, y, s, o) { return UI.text(ctx, R(x), R(y), s, { ...(o || {}), align: 'right' }); }
 function txtC(ctx, x, y, s, o) { return UI.text(ctx, R(x), R(y), s, { ...(o || {}), align: 'center' }); }
 
-/** A dim label left, a bright value hard against the right edge. */
+/**
+ * A dim label left, a bright value hard against the right edge.
+ *
+ * This was byte-identical to the broken copy in menus.js: the value was drawn
+ * right-aligned with NO `maxWidth`, so a value wider than the column started at
+ * `x + w - vw` — outside the panel — and the `Math.max(8, …)` floor was 3px
+ * under what fitText can actually emit, so the label silently overflowed too.
+ * The kit owns this arithmetic now; both halves are bounded and neither can
+ * cross the other or leave [x, x + w].
+ */
 function kv(ctx, x, y, w, label, value, o = {}) {
-  const v = String(value);
-  const vw = UI.measure(v, o.size || 'sm');
-  txt(ctx, x, y, label, { size: 'sm', color: o.labelColor || C.inkDim, shadow: true, maxWidth: Math.max(8, w - vw - 4) });
-  txtR(ctx, x + w, y, v, { size: o.size || 'sm', color: o.color || C.ink, shadow: true });
+  return UI.kvRow(ctx, x, y, w, label, value, {
+    size: 'sm',
+    valueSize: o.size || 'sm',
+    color: o.color || C.ink,
+    labelColor: o.labelColor || C.inkDim,
+    shadow: true,
+  });
 }
 
 /** Gold caption with a rule running out to the right of it. Returns the next y. */
@@ -1588,7 +1600,11 @@ export class RestScene {
     this._drawLedger(ctx, 210, 19, VIEW_W - 216, 92, ch);
 
     // --- the dial ---------------------------------------------------------
-    const p = UI.panel(ctx, 6, 115, VIEW_W - 12, 36, { style: 'window' });
+    // 36 tall put the third line's baseline ON the panel's own bottom ring, so
+    // "Spend nothing and keep the dice for a worse day." was drawn with its
+    // descenders sheared off. The cards above stop at y=111 and the button
+    // below starts at 155, so the plate takes the two spare pixels.
+    const p = UI.panel(ctx, 6, 113, VIEW_W - 12, 39, { style: 'window' });
     const ix = p.ix + 5, iw = p.iw - 10;
     const free = hdFree(ch);
     const pools = hitDicePools(ch);
@@ -1627,9 +1643,12 @@ export class RestScene {
       size: 'sm', color: C.inkDim, maxWidth: iw - 4,
     });
 
-    const bx = VIEW_W - 100;
-    UI.button(ctx, bx, 155, 92, 15, this.spend ? 'Roll them' : 'Rest anyway', { selected: true, t: this.t, icon: 'dice' });
-    this.rowRects.push({ x: bx, y: 155, w: 92, h: 15, act: 'go' });
+    // "Rest anyway" is 76px at md and a 92px plate carrying a 10px icon has a
+    // 71px face, so the default label read "Rest anyw…".
+    const bw = 104;
+    const bx = VIEW_W - bw - 8;
+    UI.button(ctx, bx, 155, bw, 15, this.spend ? 'Roll them' : 'Rest anyway', { selected: true, t: this.t, icon: 'dice' });
+    this.rowRects.push({ x: bx, y: 155, w: bw, h: 15, act: 'go' });
 
     hintBar(ctx, 224, [['←→', 'Dice'], ['Z', 'Confirm'], ['X', 'Skip them'], ['M', 'End the rest']]);
   }
@@ -1688,10 +1707,12 @@ export class RestScene {
     } else {
       for (const row of led.now.slice(0, 4)) {
         safe(() => UI.icon(ctx, row.icon, ix, ry - 1, 8, C.good));
-        txt(ctx, ix + 11, ry, row.name, { size: 'sm', color: C.goldBright, maxWidth: iw - 60 });
-        txtR(ctx, ix + iw, ry, row.spent > 0 ? `${row.spent} spent → ${row.max}` : row.text, {
-          size: 'sm', color: row.spent > 0 ? C.good : C.inkDim, maxWidth: 96,
-        });
+        // `iw - 60` for the name and a flat 96 for the value add up to 206 in a
+        // 159px row: a long feature name and a long "n spent → m" printed
+        // through each other. kv() splits the row instead of guessing at it.
+        kv(ctx, ix + 11, ry, iw - 11, row.name,
+          row.spent > 0 ? `${row.spent} spent → ${row.max}` : row.text,
+          { color: row.spent > 0 ? C.good : C.inkDim, labelColor: C.goldBright });
         ry += 9;
       }
     }
@@ -1706,10 +1727,9 @@ export class RestScene {
         const show = led.later.slice(0, room);
         for (const row of show) {
           safe(() => UI.icon(ctx, row.icon, ix, ry - 1, 8, C.disabled));
-          txt(ctx, ix + 11, ry, row.name, { size: 'sm', color: C.disabled, maxWidth: iw - 60 });
-          txtR(ctx, ix + iw, ry, row.spent > 0 ? `${row.spent} spent` : row.text, {
-            size: 'sm', color: C.disabled, maxWidth: 90,
-          });
+          kv(ctx, ix + 11, ry, iw - 11, row.name,
+            row.spent > 0 ? `${row.spent} spent` : row.text,
+            { color: C.disabled, labelColor: C.disabled });
           ry += 9;
         }
         if (led.later.length > show.length) {
@@ -1882,8 +1902,8 @@ export class RestScene {
       let ry = p.iy + 3;
       ry = head(ctx, ix, ry, iw, good ? 'ROUSED IN TIME' : 'CAUGHT IN THE BLANKETS');
       const body = good
-        ? `${(e.watcher && e.watcher.name) || 'The watch'} has the company up and armed before they reach the fire. You are not surprised.`
-        : `They are inside the firelight before anyone stirs. The company fights at a disadvantage on the first exchange.`;
+        ? `${(e.watcher && e.watcher.name) || 'The watch'} has the party up and armed before they reach the fire. You are not surprised.`
+        : `They are inside the firelight before anyone stirs. The party fights at a disadvantage on the first exchange.`;
       const wr = UI.textWrapped(ctx, ix, ry, iw, body, { size: 'sm', color: good ? C.ink : C.bad, maxLines: 3 });
       ry += wr.height + 3;
       UI.divider(ctx, ix, ry, iw, { color: C.border });
@@ -2052,7 +2072,7 @@ const CAMP_ITEMS = [
   },
   {
     id: 'talk', label: 'Talk', icon: 'scroll',
-    desc: 'Sit a while with the company. You learn more at a fire than on a road.',
+    desc: 'Sit a while with the party. You learn more at a fire than on a road.',
   },
   {
     id: 'leave', label: 'Leave', icon: 'foot', desc: 'Kick out the fire and get moving.',
@@ -2426,7 +2446,7 @@ export class CampScene {
       this.rowRects.push({ x: lx, y, w: lw, h: rowH, i });
     });
 
-    // The description, plus a quick read of the company's state.
+    // The description, plus a quick read of the party's state.
     const p = UI.panel(ctx, 144, 20, VIEW_W - 150, CAMP_ITEMS.length * rowH + 6, { style: 'window' });
     const ix = p.ix + 5, iw = p.iw - 10;
     const it = CAMP_ITEMS[this.index] || CAMP_ITEMS[0];
@@ -2463,7 +2483,7 @@ export class CampScene {
       ry += 9;
       kv(ctx, ix, ry, iw, 'You have their measure', `${named} of ${this.members.length}`, { color: named ? C.good : C.inkDim });
     } else if (it.id === 'party') {
-      kv(ctx, ix, ry, iw, 'In the company', String(this.members.length), {});
+      kv(ctx, ix, ry, iw, 'In the party', String(this.members.length), {});
       ry += 9;
       kv(ctx, ix, ry, iw, 'On the bench', String(arr(Party.reserve).length), {});
       ry += 9;
@@ -2544,7 +2564,7 @@ export class CampScene {
     const ix = p.ix + 6, iw = p.iw - 12;
     let ry = p.iy + 4;
     const note = c.utensils
-      ? "Somebody in this company can actually cook. The pot is a d8 tonight."
+      ? "Somebody in this party can actually cook. The pot is a d8 tonight."
       : "Nobody here owns a proper pan, so it is boiled ration and a d6.";
     const kitNote = c.kit ? " The healer's kit comes out afterwards for the day's small cuts: +2 each." : '';
     const wr = UI.textWrapped(ctx, ix, ry, iw, note + kitNote, { size: 'sm', color: C.inkDim, maxLines: 2 });
@@ -2569,7 +2589,7 @@ export class CampScene {
       UI.divider(ctx, ix, ry, iw, { color: C.border });
       ry += 5;
       UI.textWrapped(ctx, ix, ry, iw, total > 0
-        ? `${total} hit points across the company, and nobody has to chew cold biscuit tonight.`
+        ? `${total} hit points across the party, and nobody has to chew cold biscuit tonight.`
         : 'Everyone was already whole. It was still a good meal.', {
         size: 'sm', color: total > 0 ? C.good : C.inkDim, maxLines: 2,
       });

@@ -20,13 +20,14 @@
 // it never throws and never strands the player.
 
 import {
-  TILE, VIEW_W, VIEW_H, DIR_VEC, dirFrom,
+  TILE, VIEW_W, VIEW_H, DIR_VEC, dirFrom, SPRITE_W,
   WALK_TIME, RUN_TIME, PARTY_MAX, clamp, timeOfDay, titleCase,
 } from '../constants.js';
 import { Game } from '../engine.js';
 import { Input } from '../core/input.js';
 import { Audio } from '../core/audio.js';
 import { Save } from '../core/save.js';
+import { CHEATS } from '../core/cheatflags.js';
 import { trackForBiome } from '../core/music.js';
 
 /**
@@ -46,7 +47,18 @@ function mapTrack(map, st) {
 import { bus, EV, toast } from '../core/events.js';
 import { rng, makeRNG } from '../core/rng.js';
 import { FX } from '../render/fx.js';
-import { drawTile, tileGroup, tileKey as tileKeyOf, T } from '../render/tiles.js';
+import { drawTile, tileGroup, tileKey as tileKeyOf, tileLayer, tileFlags, tileHash, isAnimated, T } from '../render/tiles.js';
+// THE TWO CONTRACTED EXPORTS, IMPORTED THE ONLY WAY THAT CANNOT BREAK THE GAME.
+// `tileSubgroup` (a finer material key than `group`) and `isleTileFor` (the
+// soft-edged lone-patch tile for a material) belong to render/tiles.js and may
+// not have landed yet. A NAMED import of an export that does not exist is a
+// LINK-TIME failure — the module graph refuses to instantiate and the whole game
+// goes white — so they arrive through the namespace object, where a missing name
+// is simply `undefined`, and are resolved once in initFringe() behind a fallback
+// that is always safe. This file therefore works identically whether the other
+// half of the contract is on disk or not; it only does more when it is.
+import * as TILESET from '../render/tiles.js';
+import { hasSprite, spriteSize } from '../render/sprites.js';
 import { UI } from '../ui/kit.js';
 import { HUD } from '../ui/hud.js';
 import { Hotbar, SLOT_COUNT } from '../ui/hotbar.js';
@@ -490,6 +502,26 @@ function dayTint(minutes) {
   };
 }
 
+/**
+ * How hard the sun is throwing shadows, 0..1, without allocating anything —
+ * `dayTint` builds an object and the draw loop must not.
+ *
+ * This is the one knob that stops the depth passes double-darkening at night.
+ * The day/night grade in `_drawGrade` is a full-screen multiply laid over the
+ * finished world, so a contact shadow painted at midday strength would be
+ * crushed twice: once by its own black, once by the blue of midnight. Scaling
+ * every shadow by the sun means noon gets a crisp shadow, dusk a long soft one
+ * and midnight only the ambient occlusion that a wall owes you regardless of
+ * where the sun is.
+ */
+function sunStrength(minutes) {
+  const m = ((minutes % 1440) + 1440) % 1440;
+  if (m >= 450 && m <= 1000) return 1;                       // full day
+  if (m > 1000 && m < 1150) return clamp(1 - (m - 1000) / 150, 0, 1);   // into dusk
+  if (m > 300 && m < 450) return clamp((m - 300) / 150, 0, 1);          // out of dawn
+  return 0;                                                  // night: ambient only
+}
+
 /** Tiles that throw light, and how much. */
 const GLOW_TILES = {
   TORCH: { r: 30, c: [255, 176, 80], flick: 1 },
@@ -526,6 +558,663 @@ function glowsFor(map) {
   }
   map._glows = out;
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// 4a. DEPTH — CONTACT SHADOWS, WALL-BASE OCCLUSION, ROOF OVERHANGS
+// ---------------------------------------------------------------------------
+//
+// A flat tileset seen from above has no way to say "this is a thing standing on
+// the ground" versus "this is a thing painted on the ground". Three cheap passes
+// fix that, and all three obey the same rule: they are painted onto the GROUND,
+// under everything they are supposed to be under, and never onto the thing that
+// casts them.
+//
+//   1. contact shadows — a soft two-tone ellipse under the feet of every actor,
+//      painted in one sweep BEFORE any sprite so no shadow ever lands on a
+//      neighbour's face.
+//   2. wall-base occlusion — a graded ramp on the walkable side of every
+//      wall/water boundary, deepest where it touches, plus a dab in every
+//      concave corner. Replaces the old 3px slab + hairline, which read as an
+//      outline rather than as light failing to reach a crevice.
+//   3. roof overhangs — an over-layer tile (thatch, canopy) drops a short band
+//      onto whatever is directly south of it, so a house has an eave and a wall
+//      face rather than a roof pasted on grass.
+//
+// Everything derived from the map is cached on the map and invalidated in
+// bindMap; the per-frame work is a bounded scan of the visible window into
+// pre-allocated scratch arrays and a run of fillRects grouped by alpha.
+
+/** Alpha ramps, from the pixel that touches the wall outwards. */
+const AO_N = [0.30, 0.20, 0.12, 0.06];   // wall to the north: deepest, light comes from above
+const AO_X = [0.26, 0.15, 0.07];         // wall east or west
+const AO_S = [0.20, 0.11, 0.05];         // wall to the south: the shallow side
+const AO_STEPS = 4;                      // max of the three above
+const AO_CORNER = 0.13;                  // extra dab where two blocked sides meet
+const AO_DIAG = 0.15;                    // a blocked diagonal with both sides open
+
+/** The band an over-layer tile drops onto the tile below it. */
+const OVERHANG_N = [0.44, 0.34, 0.24, 0.15, 0.07];   // rows down from the eave
+const OVERHANG_W = [0.26, 0.16, 0.08];               // columns in from the west side
+const OVERHANG_STEPS = 5;
+
+/** Contact shadow: half-width as a fraction of sprite width, then the two tones. */
+const SHADOW_SPREAD = 0.38;
+const SHADOW_CORE = 0.28;
+const SHADOW_PENUMBRA = 0.14;
+
+/** Mask bits. Sides first so `b & 15` is still "which sides are blocked". */
+const M_N = 1, M_E = 2, M_S = 4, M_W = 8;
+const M_NE = 16, M_SE = 32, M_SW = 64, M_NW = 128;
+
+/** Passed to EntityList.draw so sprites skip their own built-in shadow. */
+const NO_SPRITE_SHADOW = Object.freeze({ shadow: false });
+
+// ---------------------------------------------------------------------------
+// 4b. THE VERGE — ground autotiling at draw time
+// ---------------------------------------------------------------------------
+//
+// A road painted as flat DIRT_PATH squares changes its grass/path boundary only
+// where two tiles meet, so a road on a diagonal is a staircase: measured, 13 of
+// 13 edge changes landed exactly on a 16px tile border. render/tiles.js has
+// carried the cure for a while — DIRT_PATH_N…NW and DIRT_N…NW, each an irregular
+// dithered verge — and `autotileEdges()` already resolves the family by name.
+// Nothing ever called it, so all sixteen tiles had zero placements.
+//
+// This resolves them HERE, in the draw path, rather than baking variants into
+// world/maps.js: the hand-authored maps and the procedurally generated ones both
+// get a verge with no map edits, and no tile id is renumbered.
+//
+// THREE RULES, all learned from watching it go wrong:
+//
+//   1. ONLY FRINGE A DIFFERENT FAMILY, AND ONLY A CARDINAL ONE. autotileEdges
+//      falls back to an inner corner when a tile has no differing side but one
+//      differing DIAGONAL — which puts two full verges on a tile sitting in the
+//      middle of the road. Phandalin has 57 such tiles and the Triboar Trail 13;
+//      obeying that fallback erodes a three-wide road into disconnected brown
+//      squares. A tile whose four cardinal neighbours are all the same family
+//      keeps the solid core tile, so the road core never thins.
+//   2. ONLY FRINGE WHAT THE VERGE IS PAINTED IN. The verge is turf, so it is
+//      only drawn where the neighbour is grass. A dirt planter in a flagstone
+//      plaza — Neverwinter has 49 of them — must not sprout a lawn. Stated as a
+//      standing rule rather than a fact about today's tileset: two PAVED
+//      families never verge into one another, whatever else the invader set
+//      grows to hold, because a cobble/flagstone join is a change of masonry,
+//      not a change of terrain.
+//   3. NEVER LET A FOREIGN MATERIAL EAT AN ISLAND. A tile with no same-family
+//      cardinal neighbour at all gets all four sides verged, and four verges eat
+//      16px inward from every edge: the Triboar Trail's 9 lone trail tiles kept
+//      41.97% of their soil and Conyberry's 64 kept 62.18%, so an authored
+//      single-tile marker dissolved into a smudge and Conyberry's largest road
+//      component fell from 57.05% to 32.55%. Authored map data gets the benefit
+//      of the doubt — one tile on its own is a thing the author drew.
+//      See ISLANDS below for the two things that changed about this rule.
+//
+// WHAT "A DIFFERENT FAMILY" MEANS, AND WHY IT HAD TO GET FINER. Rule 1 asked
+// `group`, and `group` is coarse on purpose: GRAVEL, DIRT, DIRT_PATH, MUD and
+// FARMLAND all answer 'dirt' so that a path beside bare soil grows no grass
+// verge between them. The cost, measured over the 17 maps, was 1,623 joins that
+// autotileEdges reported as no edge at all and this pass therefore never looked
+// at — 809 of them involving GRAVEL, whose join with the rest of the dirt family
+// measured a mean |dL*| of 9.22 across the seam against 3.64 inside a tile: a
+// grid-visibility ratio of 2.54, HARDER than the worst boundary in the original
+// audit. On the Triboar Trail they are dark rectangles scattered through the
+// road; at the Wave Echo cave mouth they are a chequerboard of tan and grey
+// squares sitting a few pixels from a grass boundary that now looks excellent.
+//
+// So the "is this a different material?" question is now asked of
+// tileSubgroup() — 'gravel' / 'dirt' / 'path' / 'mud' / 'farmland' — and only
+// falls back to tileGroup() when render/tiles.js does not export one. Rule 2 is
+// unchanged in effect and is still judged so that a cobble/flagstone join stays
+// unverged however finely the key splits 'road': PAVED is consulted with BOTH
+// the coarse group and the fine key, so a new 'cobble' subgroup cannot sneak a
+// verge past a rule that was only ever written down as 'road'.
+//
+// WHO INVADES WHOM, WITHIN ONE GROUP. Grass invading soil is one-directional
+// because the verge is painted in turf; a soil/soil join has no such asymmetry
+// handed to it, and if BOTH tiles invade each other the two independent tongues
+// interleave and the boundary turns to mush instead of wandering. SOFT_RANK
+// therefore fixes a total order inside a group and only the higher rank invades:
+// mud > dirt > path > gravel > farmland. It is ordered so the thing that reads
+// as a PATCH is the thing that gets the soft edge — gravel scattered through a
+// road, a ploughed field's headland — which is exactly the defect being fixed.
+//
+// ISLANDS, twice amended:
+//   3a. Rule 3 protects a tile from being eroded by a DIFFERENT COARSE MATERIAL.
+//       Erosion by the same coarse group — dirt lapping into gravel — neither
+//       turns a marker into a smudge (it is still soil) nor breaks road
+//       connectivity (the invader is road too), so it is allowed on an island.
+//       Without this, 857 of the 1,623 joins would still be refused, because
+//       more than half the dirt-family joins have an island on one side; the
+//       chequerboard IS the islands.
+//   3b. A lone patch with nothing but grass around it gets a TILE, not a nibble.
+//       125 SNOW_GRASS squares in Neverwinter Wood, and 57 DIRT + 16 GRAVEL on
+//       the trails, are hard-edged 16px squares because rule 3 rightly refuses
+//       to nibble four sides off them. isleTileFor() answers with a purpose-drawn
+//       patch — soft on all four sides INSIDE its own 16x16 — and where it does,
+//       that tile is drawn instead. Where it does not, the square stays, because
+//       a wrong patch is worse than a hard edge. It is only used where every
+//       cardinal neighbour is turf, since that is the ground the patch is drawn
+//       sitting on; anything else would paint grass where the map says soil.
+//
+// WHICH FAMILIES. Nothing here is a list of names. Every GROUND family that owns
+// all eight members under the names autotileEdges resolves (`BASE_N` … `BASE_NW`)
+// is registered on first use, so the whole cost of giving GRAVEL a verge is
+// adding GRAVEL_N…GRAVEL_NW to render/tiles.js — this file does not change.
+// Deco/solid families are skipped: CAVE_WALL and CLIFF carry a full eight-member
+// set too, and they are masonry, not turf.
+//
+// THE WATERLINE, and this was measured rather than assumed. SHORE_N…NW is a
+// beach: a full tile of PAL.sand with a 2-8px strip of water along the named
+// edge. Wiring water into this same pass gave the right GEOMETRY and the wrong
+// VALUE — the mean |dL*| across the Neverwinter quay went 5.42 -> 34.15 and
+// Neverwinter Wood's 7.92 -> 27.76, because sand sits at L* 80 against cobble at
+// 48 and grass at 47. Worse, the shore leaves only ~6px of water on a 16px tile,
+// so Neverwinter Wood's one-and-two-tile-wide river broke into disconnected
+// pools inside yellow rectangles. No map in the game puts water beside SAND.
+//
+// So the waterline is wired to a BANK TONE KEYED TO THE GROUND THE WATER MEETS
+// (SHORE_BANK below): grass bank against turf, stone quay against paving. The
+// raw sand SHORE_* is offered to `sand` and to nothing else, which is why the
+// shore stays switched off on every map in the game until render/tiles.js grows
+// a keyed set. A wrong bank is worse than no bank — that is the whole lesson of
+// the version that was backed out.
+//
+// A family has at most eight members, so a tile needing three or four verges is
+// drawn again with the extra members clipped to the half or quadrant they own.
+// That is a few dozen tiles per map, all resolved once at map load.
+//
+// Everything is cached per map in a Uint16Array built on first draw and dropped
+// in bindMap with the other derived masks. One 16-bit word per tile:
+//
+//   bits 0-3    the cardinal mask the MEMBER SET draws (the hand-painted verge)
+//   bits 4-7    which member set: 0 = the tile's own family, 1-14 = a named base
+//               in FRINGE_BASES (the waterline's bank), 15 = SYN_SLOT, meaning
+//               there is no member set and bits 0-3 are the synthetic mask
+//   bits 8-11   sides invaded SYNTHETICALLY ON TOP of whatever bits 0-3 drew.
+//               This is the one genuinely new field: a DIRT_PATH tile can carry
+//               a hand-painted grass verge on its north side AND a composited
+//               tongue of dirt on its east, which the old single-nibble byte had
+//               no way to say. Zero on every tile that behaved before.
+//   bit 12      FR_ISLE: draw isleTileFor() instead of any of the above.
+//
+// A word of zero still means "nothing to do", which is most of the map. The draw
+// loop reads that word and walks a pre-built plan: no allocation, no autotile
+// query, no string built per frame.
+
+/** Cardinal bits, in the order autotileEdges packs them. */
+const FR_SIDES = ['N', 'E', 'S', 'W'];
+const FR_DX = [0, 1, 0, -1];
+const FR_DY = [-1, 0, 1, 0];
+
+/** The half of a tile a given side owns, as [x, y, w, h] inside the 16px tile. */
+const FR_BAND = { N: [0, 0, 16, 8], E: [8, 0, 8, 16], S: [0, 8, 16, 8], W: [0, 0, 8, 16] };
+/** Quadrants, for the one case that needs all four verges at once. */
+const FR_QUAD = { NW: [0, 0, 8, 8], NE: [8, 0, 8, 8], SE: [8, 8, 8, 8], SW: [0, 8, 8, 8] };
+
+/** A verge is painted in grass, so grass is the only thing that may cross a
+ *  GROUP boundary to invade. Everything else stays inside its own group. */
+const VERGE_INVADER = new Set(['grass']);
+
+/**
+ * Built surface. Rule 2: two of these never verge into one another.
+ *
+ * Held as both the COARSE groups and the fine keys a subgroup split is likely to
+ * produce, and tested against both, so that the day tileSubgroup() starts
+ * answering 'cobble' and 'flagstone' instead of 'road' a masonry join does not
+ * quietly become eligible for a verge. Missing a name here is a visible bug —
+ * a lawn growing along a flagstone seam — so the list is deliberately generous.
+ */
+const PAVED = new Set([
+  'road', 'floor',
+  'cobble', 'flagstone', 'stone-floor', 'wood-floor', 'mosaic',
+  'dungeon-floor', 'bone-floor', 'cave-floor', 'bridge', 'plank',
+]);
+/** Rule 2's predicate, asked with the fine key AND the coarse group. */
+function isPaved(sub, grp) { return PAVED.has(grp) || PAVED.has(sub); }
+
+/**
+ * WHO INVADES WHOM INSIDE ONE COARSE GROUP. Higher rank paints into lower.
+ *
+ * Two tiles of the same group differ only in surface — gravel scattered over a
+ * dirt road, a ploughed headland beside a track — so neither is "the terrain the
+ * other one interrupts" the way grass is. Something has to break the tie, and it
+ * has to break it ONE WAY: a synthetic verge composites the neighbour's real
+ * pixels over a ragged tongue, so if both sides did it to each other the two
+ * independent tongues would interleave into 4px of scrambled material instead of
+ * a boundary that wanders.
+ *
+ * The order puts the material that reads as a PATCH at the bottom, so the patch
+ * is the thing that gets the soft edge: gravel loses its 90-degree corners
+ * against both the dirt and the path it is scattered through, and a furrowed
+ * field softens where a track runs past it.
+ *
+ * A subgroup with no entry here never soft-verges, which is the safety property
+ * that matters most: if tileSubgroup() splits a family this file has never heard
+ * of — 'clover' out of grass, say — the split changes nothing, rather than
+ * quietly starting to verge every meadow in the game.
+ */
+const SOFT_RANK = { mud: 60, dirt: 52, path: 46, gravel: 40, farmland: 36 };
+
+/**
+ * The ground an _ISLE patch is drawn sitting on. isleTileFor() hands back one
+ * tile per material, so the tile has to assume a surround, and the surround it
+ * assumes is turf — every island the audit named is a patch in grass. Used only
+ * where EVERY cardinal neighbour matches, because the alternative is painting
+ * grass on a tile the map says is soil, and a wrong patch is worse than a hard
+ * edge (the same lesson as the sand shore that was backed out).
+ */
+const ISLE_SURROUND = new Set(['grass']);
+
+/** id -> the soft-edged lone-patch tile for it, or 0. Filled in initFringe. */
+const ISLE_OF = [];
+
+/** Mask bit 12: this cell draws its island patch tile and nothing else. */
+const FR_ISLE = 1 << 12;
+
+/** The eight suffixes a complete family carries. */
+const FR_SUFFIX = ['N', 'E', 'S', 'W', 'NE', 'SE', 'SW', 'NW'];
+
+/**
+ * tileSubgroup() once render/tiles.js exports it, tileGroup() until then. Both
+ * are pure id -> string, so every call site reads the same either way and the
+ * only difference is how finely the game can tell two materials apart. Resolved
+ * once, in initFringe(), rather than at module scope: nothing here runs before
+ * the first map is drawn, and a late-arriving export is then still picked up.
+ */
+let subOf = tileGroup;
+
+/** isleTileFor() when it exists. Null means "no island patches available". */
+let isleOfId = null;
+
+/**
+ * Same material? Mirrors autotileEdges()'s own test exactly — identical id, or a
+ * shared non-empty key — so that with subOf === tileGroup this pass sees the
+ * same edges it saw before the finer key existed, VOID's null group included.
+ */
+function sameMaterial(a, b) {
+  if (a === b) return true;
+  const sa = subOf(a);
+  return !!(sa && sa === subOf(b));
+}
+
+/**
+ * Ground ids owning a full eight-member verge set: 1 for a family that names its
+ * own members, 2 for water, whose member set is chosen per tile from the bank it
+ * meets. Filled on first use.
+ */
+const FRINGE_KIND = [];
+
+/**
+ * Member-set names other than "the tile's own family key", indexed by the high
+ * nibble of a mask byte. Slot 0 is unused so a zero byte still means "no verge".
+ */
+const FRINGE_BASES = [null];
+
+/**
+ * The bank the waterline is drawn in, keyed by the GROUP the water meets, most
+ * specific first. Nothing here has to exist; the first entry whose eight members
+ * are actually defined wins, and water is not registered at all when none does.
+ */
+const SHORE_BANK = {
+  grass: ['SHORE_GRASS', 'SHORE_TURF', 'SHORE_BANK', 'SHORE'],
+  snow: ['SHORE_SNOW', 'SHORE_GRASS', 'SHORE_BANK', 'SHORE'],
+  dirt: ['SHORE_DIRT', 'SHORE_SILT', 'SHORE_MUD', 'SHORE_BANK', 'SHORE'],
+  sand: ['SHORE_SAND', 'SHORE'],
+  road: ['QUAY', 'SHORE_QUAY', 'SHORE_STONE'],
+  floor: ['QUAY', 'SHORE_QUAY', 'SHORE_STONE'],
+};
+
+/**
+ * THE ONE NAME THAT PROVES NOTHING, AND THE GATE THAT FIXES THAT.
+ *
+ * The waterline rework in render/tiles.js keeps the name SHORE_* for the soft
+ * bank — so the mere existence of SHORE_N…NW says nothing about which art is
+ * behind it, and the old art is the sand beach whose L* 80 took the Neverwinter
+ * waterline from 5.42 to 34.15. A generic name is therefore accepted ONLY once
+ * the masonry set exists, because that set is new: it has no old meaning to be
+ * confused with, and it only appears when the waterline has actually been
+ * regraded. Until then water is never registered and the waterline draws exactly
+ * as it did before this file was touched. A wrong bank is worse than no bank.
+ */
+const SHORE_GENERIC = 'SHORE';
+const SHORE_MASONRY = ['QUAY', 'SHORE_QUAY', 'SHORE_STONE'];
+
+/** group -> index into FRINGE_BASES, or 0 when that bank has no art. */
+const SHORE_SLOT = Object.create(null);
+
+let fringeReady = false;
+
+/** True when every one of a family's eight members is defined. */
+function familyComplete(base) {
+  for (let i = 0; i < FR_SUFFIX.length; i++) if (T[`${base}_${FR_SUFFIX[i]}`] == null) return false;
+  return true;
+}
+
+/** True for DIRT_PATH_NE and friends: a member of a set, not a family of its own. */
+function isFamilyMember(key) {
+  const m = /^(.+)_(N|E|S|W|NE|SE|SW|NW)$/.exec(key);
+  return !!m && familyComplete(m[1]);
+}
+
+/** Reserve (or reuse) a high-nibble slot for a named member set. */
+function fringeSlot(base) {
+  let i = FRINGE_BASES.indexOf(base);
+  // 15 belongs to the synthetic verge (section 4c), so named sets get 1-14.
+  if (i < 0) { if (FRINGE_BASES.length >= SYN_SLOT) return 0; i = FRINGE_BASES.push(base) - 1; }
+  return i;
+}
+
+function initFringe() {
+  if (fringeReady) return;
+  fringeReady = true;
+  // THE CONTRACT, RESOLVED ONCE. Both names are optional and both have a safe
+  // answer when they are absent: the coarse group, and no island patches. A
+  // thrown getter or a non-function under the right name is treated as absent
+  // rather than allowed to take the ground layer down.
+  try { if (typeof TILESET.tileSubgroup === 'function') subOf = TILESET.tileSubgroup; } catch { /* keep tileGroup */ }
+  try { if (typeof TILESET.isleTileFor === 'function') isleOfId = TILESET.isleTileFor; } catch { /* keep null */ }
+  // Discovered, never listed. A family qualifies when it is a walkable GROUND
+  // tile and all eight of its members exist under the names autotileEdges
+  // resolves, so DIRT and DIRT_PATH register today and GRAVEL, COBBLE,
+  // SNOW_GRASS, MUD or FARMLAND register the moment their art lands.
+  // The same sweep marks everything else that meets turf as kind 3: no member
+  // set of its own, so section 4c builds the verge out of the neighbour.
+  for (const key of Object.keys(T)) {
+    const id = T[key];
+    if (id == null || FRINGE_KIND[id]) continue;
+    if (tileLayer(id) !== 'ground' || (tileFlags(id) & TF.SOLID)) continue;
+    if (familyComplete(key)) FRINGE_KIND[id] = 1;
+    // A synthetic verge is composited once and then blitted, so an animated
+    // tile would freeze on the frame it was built. CROP_WHEAT sways; it keeps
+    // its hard edge rather than stopping in the wind.
+    else if (!isFamilyMember(key) && !isAnimated(id) && SYN_GROUPS.has(tileGroup(id))) FRINGE_KIND[id] = 3;
+  }
+  // The waterline, keyed to the bank it meets. See SHORE_GENERIC above for why
+  // the reworked-shore gate is the arrival of the MASONRY set and not the
+  // presence of SHORE_*, which has carried a sand beach for as long as it has
+  // existed.
+  const regraded = SHORE_MASONRY.some(familyComplete);
+  let banks = 0;
+  for (const grp of Object.keys(SHORE_BANK)) {
+    const base = SHORE_BANK[grp].find((b) => (b !== SHORE_GENERIC || regraded) && familyComplete(b));
+    if (!base) continue;
+    const slot = fringeSlot(base);
+    if (!slot) continue;
+    SHORE_SLOT[grp] = slot;
+    banks++;
+  }
+  // Open water only: SHORE_* are already members of a set and RIVER_BEND is a
+  // hand-drawn corner that carries its own bank.
+  if (banks) {
+    for (const key of ['WATER', 'WATER_DEEP', 'SWAMP_WATER']) {
+      const id = T[key];
+      if (id != null && !FRINGE_KIND[id]) FRINGE_KIND[id] = 2;
+    }
+  }
+  // The island patches, resolved per id so the draw loop never calls out. A
+  // lookup that answers 0, an unknown id, or something that is not ground gets
+  // no entry, which puts that tile straight back on today's behaviour. Deliber-
+  // ately NOT gated on FRINGE_KIND: COBBLE has neither a member set nor a group
+  // this pass composites, so its 4 lone squares are only reachable this way.
+  if (isleOfId) {
+    for (const key of Object.keys(T)) {
+      const id = T[key];
+      if (id == null || tileLayer(id) !== 'ground' || (tileFlags(id) & TF.SOLID)) continue;
+      let isle = 0;
+      try { isle = isleOfId(id) | 0; } catch { isle = 0; }
+      if (!isle || isle === id) continue;
+      if (tileKeyOf(isle) === 'VOID' || tileLayer(isle) !== 'ground') continue;
+      if (isAnimated(isle)) continue;         // a patch that stops in the wind
+      ISLE_OF[id] = isle;
+    }
+  }
+}
+
+/**
+ * Rule 2 and the within-group order, as one predicate: may a tile of `theirs`
+ * paint a verge into a tile of `mine`? `mineGrp` / `theirGrp` are the coarse
+ * groups, which rule 2 still needs — masonry is a property of the group, not of
+ * however finely the key happens to split it today.
+ */
+function vergeAccepts(mine, theirs, mineGrp, theirGrp) {
+  if (!theirs || theirs === mine) return false;
+  if (isPaved(mine, mineGrp) && isPaved(theirs, theirGrp)) return false;
+  // Turf. The only invader that crosses a group boundary, exactly as before.
+  if (VERGE_INVADER.has(theirs)) return true;
+  // Two surfaces of one material. Same group, both ranked, higher rank wins —
+  // and SYN_GROUPS because this verge is composited, so it may only be asked for
+  // on ground the compositor is allowed to touch.
+  if (!mineGrp || mineGrp !== theirGrp || !SYN_GROUPS.has(mineGrp)) return false;
+  const a = SOFT_RANK[mine], b = SOFT_RANK[theirs];
+  return a !== undefined && b !== undefined && b > a;
+}
+
+/** True when `theirs` invading `mine` is a change of surface, not of terrain. */
+function sameFamilyVerge(mine, theirs, mineGrp, theirGrp) {
+  return !!mineGrp && mineGrp === theirGrp && !VERGE_INVADER.has(theirs);
+}
+
+// ---------------------------------------------------------------------------
+// 4c. THE SYNTHETIC VERGE — the same idea for a family with no member set
+// ---------------------------------------------------------------------------
+//
+// Only DIRT and DIRT_PATH have hand-painted verge members, which left 815 ground
+// tiles across the 17 maps meeting grass at a ruler-straight tile edge: GRAVEL
+// 424, SNOW_GRASS 160, COBBLE 34, MUD 33, FARMLAND 14, and the crops. The snow
+// patches in Neverwinter Wood are the loudest — stark white 16x16 squares on
+// green, more obviously tile-shaped than anything else outdoors.
+//
+// The verge those families need is not a new SURFACE, it is the neighbour's turf
+// reaching in over the boundary. That does not need art: draw the tile, then
+// draw the GRASS TILE THAT IS ACTUALLY NEXT DOOR clipped to a ragged tongue
+// along the shared edge. The invading pixels are the real neighbouring tile, so
+// the colour is right by construction and stays right if the grass is ever
+// regraded, and the boundary now wanders 1-7px instead of sitting on the 16px
+// line.
+//
+// The tongue profile is the same wander render/tiles.js uses in verge(): a depth
+// that steps by a pixel now and then, clamped to 1-7, plus tufts one and two
+// pixels further in that break the line into stipple rather than ending it in a
+// crease. Eight profiles per side are built once as Path2D and picked by
+// tileHash(wx, wy) — a pure function of world position, so a tile's verge is
+// identical in every frame and between runs, and nothing shimmers.
+//
+// This is strictly a FALLBACK. A family that owns real members (FRINGE_KIND 1)
+// never reaches it, so hand-painted art always wins and adding GRAVEL_N…NW to
+// render/tiles.js retires the synthetic version for gravel automatically.
+//
+// Water is deliberately excluded. A river 1-2 tiles wide cannot afford to lose
+// 1-7px of channel to each bank — that is how the backed-out shore broke
+// Neverwinter Wood into disconnected pools. The waterline stays with SHORE_BANK.
+//
+// AND IT IS COMPOSITED ONCE, NOT PER FRAME. Clipping to a ragged path is not a
+// rect clip, so Skia takes the slow route through a mask layer: measured live in
+// Chrome on the Wave Echo cave mouth (240 synthetic tiles, ~40 in view) it cost
+// 57.7 -> 41.3 fps. So each verged cell is drawn once into its own 16x16 canvas
+// and afterwards blitted like any other tile — exactly what render/tiles.js does
+// with its own rasters. The cache hangs on the map beside _fringeMask and is
+// dropped in bindMap; a cell is only built when it is first actually drawn, so
+// the far side of a big map costs nothing until you walk there.
+
+/** Groups that plausibly take a turf verge. Floors, bridges and water do not. */
+const SYN_GROUPS = new Set(['dirt', 'road', 'snow', 'sand', 'crop']);
+
+/**
+ * Reserved high nibble meaning "no member set — build the verge from the
+ * neighbour". Rule 3 still applies here: an island gets no verge at all. A
+ * shallower one was tried and measured — even a 1-3px nibble on all four sides
+ * of a 16px tile leaves 58.85% of it, which is inside the 42-62% band the audit
+ * flagged as the defect in the first place. A lone snow patch that should not
+ * read as a square wants a tile of its own in render/tiles.js, not a clip path.
+ */
+const SYN_SLOT = 15;
+
+const SYN_BUCKETS = 8;
+/** [side * SYN_BUCKETS + bucket] -> Path2D. Built once, never per frame. */
+const SYN_PATHS = [];
+let synReady = false;
+
+/** Small deterministic LCG. Never Math.random: a verge may not change per frame. */
+function synRng(seed) {
+  let s = (seed * 2654435761) >>> 0;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+/**
+ * One rect of the tongue, in tile-local pixels. `along` runs down the shared
+ * edge, `from` is the distance already eaten inwards and `depth` how much more.
+ */
+function synRect(p, side, along, from, depth) {
+  if (side === 0) p.rect(along, from, 1, depth);                 // N
+  else if (side === 1) p.rect(16 - from - depth, along, depth, 1); // E
+  else if (side === 2) p.rect(along, 16 - from - depth, 1, depth); // S
+  else p.rect(from, along, depth, 1);                            // W
+}
+
+function initSynPaths() {
+  if (synReady) return;
+  synReady = true;
+  if (typeof Path2D === 'undefined') return;   // no Path2D: the fallback stays off
+  for (let side = 0; side < 4; side++) {
+    for (let b = 0; b < SYN_BUCKETS; b++) {
+      const p = new Path2D();
+      const r = synRng(side * 131 + b * 17 + 7);
+      let d = 3 + Math.floor(r() * 3);
+      for (let a = 0; a < 16; a++) {
+        if (r() < 0.38) d += r() < 0.5 ? 1 : -1;
+        d = Math.max(1, Math.min(7, d));
+        synRect(p, side, a, 0, d);                       // the solid tongue
+        if (r() < 0.34) synRect(p, side, a, d, 1);       // a tuft one deeper
+        if (r() < 0.14) synRect(p, side, a, d + 1, 1);   // and one further still
+      }
+      SYN_PATHS[side * SYN_BUCKETS + b] = p;
+    }
+  }
+}
+
+/** Ceiling on composited cells per map. ~1KB each; no map comes near it. */
+const SYN_CACHE_CAP = 1024;
+
+/** One step of a plan: a family member, optionally clipped to part of the tile. */
+function fringeStep(base, sides, clip) {
+  const t = T[`${base}_${sides}`];
+  return t == null ? null : { id: t, clip: clip || null };
+}
+
+/**
+ * Turn a cardinal mask into the list of draws that fringes every differing side.
+ *
+ * One side, or two adjacent, is a single family member. Two opposite sides or
+ * three split the tile down the middle: the first draw carries the verges of one
+ * half, the second is clipped to the other half and carries the rest. Four sides
+ * — an island of dirt in a field — draws the four corner members, each clipped
+ * to the quadrant whose two edges it owns, so no verge is overpainted. Every
+ * member paints the same road surface from the same recipe, so a split leaves no
+ * seam: only the verges differ.
+ */
+function buildFringePlan(base, card) {
+  const on = [];
+  for (let i = 0; i < 4; i++) if (card & (1 << i)) on.push(FR_SIDES[i]);
+  const has = (s) => on.indexOf(s) >= 0;
+  const steps = [];
+  const push = (sides, clip) => { const s = fringeStep(base, sides, clip); if (s) steps.push(s); };
+
+  if (on.length === 1) push(on[0]);
+  else if (on.length === 2) {
+    if (has('N') && has('S')) { push('N'); push('S', FR_BAND.S); }
+    else if (has('E') && has('W')) { push('W'); push('E', FR_BAND.E); }
+    else push((has('N') ? 'N' : 'S') + (has('E') ? 'E' : 'W'));   // NE SE SW NW
+  } else if (on.length === 3) {
+    // The odd side out pairs with each end of the opposite pair; the second
+    // pairing is clipped to the half of the tile its end of the pair faces.
+    const odd = has('N') && has('S') ? (has('E') ? 'E' : 'W') : (has('N') ? 'N' : 'S');
+    const [a, b] = (odd === 'E' || odd === 'W') ? ['N', 'S'] : ['E', 'W'];
+    push(odd === 'N' || odd === 'S' ? odd + a : a + odd);
+    push(odd === 'N' || odd === 'S' ? odd + b : b + odd, FR_BAND[b]);
+  } else if (on.length === 4) {
+    push('NW', FR_QUAD.NW); push('NE', FR_QUAD.NE);
+    push('SE', FR_QUAD.SE); push('SW', FR_QUAD.SW);
+  }
+  return steps.length ? steps : null;
+}
+
+/**
+ * plan[memberSetName][card], built once per (set, mask) and then only ever read.
+ * Keyed by the member-set NAME rather than the tile id, so water drawing from
+ * SHORE_GRASS and water drawing from SHORE_STONE share nothing and neither
+ * rebuilds. A plain object: the draw loop only ever does a property read.
+ */
+const FRINGE_PLANS = Object.create(null);
+function fringePlan(base, card) {
+  let byCard = FRINGE_PLANS[base];
+  if (!byCard) {
+    byCard = FRINGE_PLANS[base] = new Array(16).fill(null);
+    for (let c = 1; c < 16; c++) byCard[c] = buildFringePlan(base, c);
+  }
+  return byCard[card];
+}
+
+/** rgba('0,0,0') strings, built once — the draw loop never makes a string. */
+const INK = [];
+function ink(a) {
+  const k = Math.round(clamp(a, 0, 1) * 200);
+  let s = INK[k];
+  if (!s) { s = INK[k] = `rgba(6,5,10,${(k / 200).toFixed(3)})`; }
+  return s;
+}
+
+/**
+ * Half-widths of a filled pixel ellipse, one entry per row, memoised by size.
+ * Rows run from -ry to ry-1 relative to the centre, so a 2-high shadow is two
+ * rows and not three-and-a-half.
+ */
+const ELLIPSES = new Map();
+function ellipseRows(rx, ry) {
+  const key = rx * 64 + ry;
+  let rows = ELLIPSES.get(key);
+  if (rows) return rows;
+  rows = new Int16Array(ry * 2);
+  for (let i = 0; i < ry * 2; i++) {
+    const dy = i - ry + 0.5;
+    const k = 1 - (dy * dy) / (ry * ry);
+    rows[i] = k <= 0 ? 0 : Math.max(1, Math.round(rx * Math.sqrt(k)));
+  }
+  ELLIPSES.set(key, rows);
+  return rows;
+}
+
+/** One filled pixel ellipse as horizontal runs. Caller owns fillStyle. */
+function fillEllipse(ctx, cx, cy, rx, ry) {
+  const rows = ellipseRows(rx, ry);
+  for (let i = 0; i < rows.length; i++) {
+    const hw = rows[i];
+    if (hw > 0) ctx.fillRect(cx - hw, cy - ry + i, hw * 2, 1);
+  }
+}
+
+/**
+ * How wide a footprint an entity has, in pixels, memoised per sprite family.
+ * `spriteSize` allocates, so it is called once per sprite name in the whole run
+ * and never again.
+ */
+const FOOT_W = new Map();
+function footWidth(e) {
+  const ch = e.char;
+  const name = (ch && ch.sprite) || e.sprite || null;
+  let w;
+  if (name) {
+    w = FOOT_W.get(name);
+    if (w === undefined) {
+      w = hasSprite(name) ? spriteSize(name).w : (ch ? SPRITE_W : 0);
+      FOOT_W.set(name, w);
+    }
+  } else if (ch) {
+    w = SPRITE_W;                    // a layered actor composites to 16 wide
+  } else {
+    w = TILE - 3;                    // a chest, a barrel: drawn from tile art
+  }
+  return w || SPRITE_W;
 }
 
 // ---------------------------------------------------------------------------
@@ -623,6 +1312,14 @@ export class OverworldScene {
     this._slots = [];             // quick-slot model, rebuilt a couple of times a second
     this._slotT = 0;
     this._restOff = null;
+
+    // Depth passes. `_sun` is refreshed once per frame in draw(); the scratch
+    // buffers below are grown on first use and then reused forever, so the
+    // per-tile and per-entity loops never allocate.
+    this._sun = 1;                // cast-shadow strength, refreshed each frame
+    this._ao = 1;                 // ambient-occlusion strength, ditto
+    this._mx = null; this._my = null; this._mb = null;   // visible masked tiles
+    this._sx = null; this._sy = null; this._sr = null;   // contact shadow centres
   }
 
   // =========================================================================
@@ -681,6 +1378,11 @@ export class OverworldScene {
     this._applyWeather(true);
     this._snapCamera();
     map._edgeMask = null;   // rebuilt lazily by _drawEdges for the new place
+    map._overMask = null;   // ditto, for what the roofs of this place overhang
+    map._overAny = false;
+    map._fringeMask = null; // and the road verges of the new place's ground
+    map._synTiles = null;   // and the tiles those verges were composited into
+    map._synBuilt = 0;
     this._exitNames = null; // destination names belong to the map we just left
     this._exitLabel = null;
 
@@ -904,6 +1606,23 @@ export class OverworldScene {
     if (!v) return false;
     const tx = this.player.x + v.x, ty = this.player.y + v.y;
 
+    // Testing noclip: glide through walls, water and locks. Reuses the ordinary
+    // post-step bookkeeping so the party still trails correctly behind you.
+    if (CHEATS.noclip) {
+      if (!map.inBounds(tx, ty)) return false;
+      const fx = this.player.x, fy = this.player.y;
+      const t = this.running ? RUN_TIME : WALK_TIME;
+      this.player.setTile(tx, ty, dir);
+      Party.pushTrail(fx, fy, dir);
+      Party.pushTrail(tx, ty, dir);
+      this._advanceFollowers(t);
+      // setTile arrives instantly, so the tween never transitions moving->still and
+      // _settleStep would skip the tile entirely: no warp, no encounter, no step
+      // count. Tell it a landing just happened so noclip still triggers the world.
+      this._wasMoving = true;
+      return true;
+    }
+
     // A locked door blocks before the collision check, so you get told why.
     if (this._blockedByLock(tx, ty)) return false;
 
@@ -1049,18 +1768,40 @@ export class OverworldScene {
 
   // --- encounters ----------------------------------------------------------
 
+  /**
+   * How much the player's "Random Ambushes" setting scales the map's own rate.
+   * `off` disables grass ambushes entirely — the wilds are then populated by
+   * visible wandering foes you can see coming and walk around instead.
+   */
+  _encounterScale() {
+    if (CHEATS.noEncounters) return 0;
+    const mode = safe(() => Save.settings.wildEncounters, 'off');
+    switch (mode) {
+      case 'off': return 0;
+      case 'rare': return 0.22;
+      case 'frequent': return 1.0;
+      case 'normal': default: return 0.5;
+    }
+  }
+
   _resetEncounterCounter(rate) {
-    const r = clamp(rate != null ? rate : (this.map ? this.map.encounterRate : 0.06), 0.004, 0.9);
-    this.stepsToEncounter = Math.max(4, Math.round(rng.float(0.55, 1.8) / r));
+    const scale = this._encounterScale();
+    if (scale <= 0) { this.stepsToEncounter = Infinity; return; }
+    const base = clamp(rate != null ? rate : (this.map ? this.map.encounterRate : 0.06), 0.004, 0.9);
+    const r = clamp(base * scale, 0.002, 0.9);
+    // Even at 'frequent' this is a good deal calmer than it used to be.
+    this.stepsToEncounter = Math.max(18, Math.round(rng.float(0.9, 2.6) / r));
   }
 
   /** Count down on encounter tiles; at zero, the tall grass rustles. */
   _tickEncounter(x, y) {
     if (this.encounterGrace > 0) return false;
+    if (this._encounterScale() <= 0) return false;      // ambushes switched off
     const map = this.map;
     const info = safe(() => map.encounterAt(x, y), null);
     if (!info || !info.rate) return false;
 
+    if (!Number.isFinite(this.stepsToEncounter)) this._resetEncounterCounter(info.rate);
     this.stepsToEncounter--;
     if (this.stepsToEncounter > 0) return false;
 
@@ -1108,6 +1849,15 @@ export class OverworldScene {
   }
 
   _pushBattle(enemies, opts = {}) {
+    // Peaceful mode: every route into a fight comes through here — random
+    // ambushes, roaming monsters and scripted encounters alike — so one check
+    // covers all of them. The foes simply decline.
+    if (CHEATS.noCombat) {
+      toast('They size you up, and decide against it.');
+      this.encounterGrace = ENCOUNTER_GRACE;
+      return false;
+    }
+
     const combat = LATE.combat, cui = LATE.combatui;
     if (!combat || typeof combat.buildEncounter !== 'function' || !cui || !cui.BattleScene) {
       toast('They think better of it and slink away.');
@@ -2111,18 +2861,33 @@ export class OverworldScene {
     this.camDraw.y = Math.round(this.cam.y + sh.y);
     const cam = this.camDraw;
 
+    // How hard the sun casts right now. Every depth pass is scaled by it so the
+    // world does not double-darken once _drawGrade multiplies midnight over it.
+    this._updateLight();
+
     this._drawLayer(ctx, 'ground', cam);
-    // The lip of every blocked tile, drawn between the floor and the scenery so
-    // the walkable ground reads as a carved-out shape rather than a flat texture.
+    // Light failing to reach the foot of every wall, drawn between the floor and
+    // the scenery so the walkable ground reads as a carved-out shape rather than
+    // a flat texture.
     this._drawEdges(ctx, cam);
     this._drawLayer(ctx, 'deco', cam);
+    // The eave: what the roofs and canopies overhead drop onto the wall face and
+    // the ground below them. After deco, so it lands on the wall it belongs to.
+    this._drawOverhangs(ctx, cam);
     // Ways out of this place, under the party so you can stand on one.
     this._drawExits(ctx, cam);
+
+    // Every contact shadow in one sweep BEFORE any sprite, so a villager's
+    // shadow can never darken the face of the villager standing in front.
+    const shadowed = safe(() => this._drawEntityShadows(ctx, cam), false);
 
     // Entities and the party in one feet-Y sort, so villagers pass in front of and
     // behind you correctly.
     if (this.entities) {
-      safe(() => this.entities.draw(ctx, cam, { viewW: VIEW_W, viewH: VIEW_H, pad: 48 }));
+      safe(() => this.entities.draw(ctx, cam, {
+        viewW: VIEW_W, viewH: VIEW_H, pad: 48,
+        drawOpts: shadowed ? NO_SPRITE_SHADOW : undefined,
+      }));
     }
     safe(() => FX.draw(ctx, cam.x, cam.y));
 
@@ -2166,6 +2931,12 @@ export class OverworldScene {
     const x1 = x0 + Math.ceil(VIEW_W / TILE) + 2;
     const y1 = y0 + Math.ceil(VIEW_H / TILE) + 2;
     const t = this.t;
+    // Which visible ground tiles owe a verge or a waterline. One byte per tile,
+    // resolved once per map; null on the deco and over layers, and on any map
+    // whose ground carries no autotiled family at all. Called as a method rather
+    // than through safe(): a `() => …` here would be one closure allocated on
+    // every layer of every frame, which is 180 a second for nothing.
+    const fringe = layer === 'ground' ? this._fringeMaskSafe() : null;
 
     for (let y = y0; y <= y1; y++) {
       if (y < 0 || y >= map.h) continue;
@@ -2175,9 +2946,263 @@ export class OverworldScene {
         if (x < 0 || x >= map.w) continue;
         const id = plane[row + x];
         if (!id) continue;
-        drawTile(ctx, id, x * TILE - cam.x, py, x, y, t);
+        const px = x * TILE - cam.x;
+        const cell = fringe ? fringe[row + x] : 0;
+        if (cell) this._drawFringed(ctx, id, cell, px, py, x, y, t);
+        else drawTile(ctx, id, px, py, x, y, t);
       }
     }
+  }
+
+  /**
+   * One ground tile that borders a different material. `cell` is the mask word
+   * laid out at the end of section 4b. Four shapes, cheapest first:
+   *
+   *   FR_ISLE       one blit of the purpose-drawn island patch.
+   *   syn === 0     one blit of the member carrying the hand-painted verge —
+   *                 byte for byte what this method did before it learned the
+   *                 other two cases, and still what the overwhelming majority
+   *                 of verged tiles take.
+   *   SYN_SLOT      one blit of the 16x16 composited for this cell.
+   *   otherwise     ditto, but the composite starts from the member art rather
+   *                 than the flat tile.
+   *
+   * Only the three- and four-sided member cases clip, and there are a few dozen
+   * of those on the largest map.
+   */
+  _drawFringed(ctx, id, cell, px, py, wx, wy, t) {
+    if (cell & FR_ISLE) { drawTile(ctx, ISLE_OF[id] || id, px, py, wx, wy, t); return; }
+    const slot = (cell >> 4) & 15;
+    if (slot === SYN_SLOT || (cell >> 8) & 15) { this._drawSynthVerge(ctx, id, cell, px, py, wx, wy, t); return; }
+    const plan = fringePlan(slot ? FRINGE_BASES[slot] : tileKeyOf(id), cell & 15);
+    if (!plan) { drawTile(ctx, id, px, py, wx, wy, t); return; }
+    this._drawFringePlan(ctx, plan, px, py, wx, wy, t);
+  }
+
+  /** A member-set plan, drawn with its origin at (ox, oy). */
+  _drawFringePlan(ctx, plan, ox, oy, wx, wy, t) {
+    for (let i = 0; i < plan.length; i++) {
+      const step = plan[i], clip = step.clip;
+      if (!clip) { drawTile(ctx, step.id, ox, oy, wx, wy, t); continue; }
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(ox + clip[0], oy + clip[1], clip[2], clip[3]);
+      ctx.clip();
+      drawTile(ctx, step.id, ox, oy, wx, wy, t);
+      ctx.restore();
+    }
+  }
+
+  /**
+   * Section 4c: a tile whose verge is built out of the neighbour rather than out
+   * of member art, drawn from the 16x16 that was composited for this cell the
+   * first time it came into view. That is one blit, exactly like any other tile.
+   * The live path below it only runs where there is no canvas to composite into
+   * — the headless renderer, or a map past the cache ceiling — and is
+   * pixel-identical, which is asserted in the harness.
+   */
+  _drawSynthVerge(ctx, id, cell, px, py, wx, wy, t) {
+    const cv = this._synCell(id, cell, wx, wy, t);
+    if (cv) { ctx.drawImage(cv, px | 0, py | 0); return; }
+    // No canvas to composite into (or the map is over the cap): paint it live.
+    ctx.save();
+    ctx.translate(px | 0, py | 0);
+    this._paintSynthVerge(ctx, id, cell, wx, wy, t);
+    ctx.restore();
+  }
+
+  /** The tile and its verges, drawn at 0,0 into whatever ctx is handed over. */
+  _paintSynthVerge(ctx, id, cell, wx, wy, t) {
+    const slot = (cell >> 4) & 15;
+    const syn = slot === SYN_SLOT ? (cell & 15) : ((cell >> 8) & 15);
+    // The ground this cell starts from: the flat tile, or — when the family owns
+    // member art and some of its sides meet turf — that art, so a path can carry
+    // a painted grass verge on one side and a composited soil verge on another.
+    const base = slot === SYN_SLOT ? 0 : (cell & 15);
+    const plan = base ? fringePlan(slot ? FRINGE_BASES[slot] : tileKeyOf(id), base) : null;
+    if (plan) this._drawFringePlan(ctx, plan, 0, 0, wx, wy, t);
+    else drawTile(ctx, id, 0, 0, wx, wy, t);
+    const map = this.map;
+    const bucket = tileHash(wx, wy, 91) & (SYN_BUCKETS - 1);
+    for (let s = 0; s < 4; s++) {
+      if (!(syn & (1 << s))) continue;
+      const path = SYN_PATHS[s * SYN_BUCKETS + ((bucket + s) & (SYN_BUCKETS - 1))];
+      if (!path) continue;
+      const nx = wx + FR_DX[s], ny = wy + FR_DY[s];
+      if (nx < 0 || ny < 0 || nx >= map.w || ny >= map.h) continue;
+      const nid = map.ground[ny * map.w + nx];
+      if (!nid) continue;
+      ctx.save();
+      ctx.clip(path);
+      // The neighbour keeps its OWN world position, so it picks the same grass
+      // variant it is drawn with next door and the turf reads as continuous.
+      drawTile(ctx, nid, 0, 0, nx, ny, t);
+      ctx.restore();
+    }
+  }
+
+  /**
+   * The composited 16x16 for one verged cell, built the first time that cell is
+   * drawn and kept on the map until bindMap drops it. `null` is remembered too,
+   * so a headless or over-cap map does not retry every frame.
+   */
+  _synCell(id, cell, wx, wy, t) {
+    const map = this.map;
+    const i = wy * map.w + wx;
+    let store = map._synTiles;
+    if (!store) store = map._synTiles = [];
+    const hit = store[i];
+    if (hit !== undefined) return hit;
+    let cv = null;
+    if (typeof document !== 'undefined' && (map._synBuilt || 0) < SYN_CACHE_CAP) {
+      const c = document.createElement('canvas');
+      c.width = TILE; c.height = TILE;
+      const cx = c.getContext && c.getContext('2d');
+      if (cx) {
+        cx.imageSmoothingEnabled = false;
+        this._paintSynthVerge(cx, id, cell, wx, wy, t);
+        cv = c;
+        map._synBuilt = (map._synBuilt || 0) + 1;
+      }
+    }
+    store[i] = cv;
+    return cv;
+  }
+
+  /** _fringeMask() without the per-frame `() => …`. See _drawLayer. */
+  _fringeMaskSafe() {
+    try { return this._fringeMask(); } catch (e) { console.warn('[overworld]', e); return null; }
+  }
+
+  /**
+   * One 16-bit word per ground tile, laid out at the end of section 4b: the
+   * member-set sides, which member set, the sides invaded synthetically on top,
+   * and the island-patch bit. Zero everywhere else, which is most of the map —
+   * a solid road core, a field of grass, a flagstone floor.
+   *
+   * The raw "is my neighbour a different material?" answer is taken from
+   * sameMaterial(), which asks tileSubgroup() where render/tiles.js exports one
+   * and tileGroup() where it does not. That is the whole of the dirt-family fix:
+   * autotileEdges() cannot see the 1,623 GRAVEL/DIRT/PATH/MUD/FARMLAND joins
+   * because they all answer 'dirt', and a pass that is never told about an edge
+   * cannot soften it. Everything else it reports is unchanged, and with no finer
+   * key exported this loop sees exactly the edges autotileEdges() saw.
+   *
+   * That raw answer is then narrowed by the rules at the top of section 4b:
+   * cardinal sides only, so a differing diagonal cannot verge a tile whose four
+   * neighbours are all road; only against a material the verge is actually
+   * painted in, with two paved surfaces never verging into each other; and no
+   * FOREIGN material may eat an island, because four turf verges leave 42-62% of
+   * one standing — an island either gets its purpose-drawn patch tile or stays
+   * the solid square the author painted.
+   *
+   * Built once per map and hung on the map, like _edgeMask and _overMask.
+   */
+  _fringeMask() {
+    const map = this.map;
+    const cached = map._fringeMask;
+    if (cached === false) return null;                                // scanned: nothing to verge
+    if (cached && cached.length === map.w * map.h) return cached;
+    map._synTiles = null; map._synBuilt = 0;   // the mask is being rebuilt; so is anything composited from it
+    initFringe();
+    const w = map.w, h = map.h, ground = map.ground;
+    let any = false;
+    const mask = new Uint16Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        const id = ground[i];
+        const kind = FRINGE_KIND[id];
+        const isle = ISLE_OF[id] || 0;
+        // A tile with neither a verge kind nor a patch tile is not our business.
+        // COBBLE reaches this loop on the second test alone.
+        if (!kind && !isle) continue;
+        const grp = tileGroup(id), sub = subOf(id);
+        // Walk the four sides once: collect the sides that may be verged, split
+        // by whether the invader is a foreign material or another surface of the
+        // same one, count the neighbours of this tile's own material, note how
+        // many of them are the turf an island patch is drawn on, and — for water
+        // — pick the bank the shore is drawn in from the first land it meets.
+        let hard = 0, soft = 0, kin = 0, kinGrp = 0, nbrs = 0, turf = 0, slot = 0;
+        for (let s = 0; s < 4; s++) {
+          const nx = x + FR_DX[s], ny = y + FR_DY[s];
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;  // off-map is not a neighbour
+          nbrs++;
+          const nid = ground[ny * w + nx];
+          const ng = tileGroup(nid);
+          // TWO COUNTS OF KIN, AND THE DIFFERENCE MATTERS. `kin` is the finest
+          // one — same surface exactly — and decides whether this is the lone
+          // patch an _ISLE tile was drawn for. `kinGrp` is the coarse one rule 3
+          // has always used, and decides whether a FOREIGN material is allowed to
+          // eat into the tile. Splitting the dirt group without splitting this
+          // too costs 144 tiles their grass verge: a gravel square beside a dirt
+          // road has no kin at the fine key, so rule 3 would suddenly refuse the
+          // turf boundary it has been softening correctly all along.
+          if (nid === id || (grp && grp === ng)) kinGrp++;
+          if (sameMaterial(id, nid)) { kin++; continue; }
+          const nsub = subOf(nid);
+          if (ISLE_SURROUND.has(nsub)) turf++;
+          if (kind === 2) {
+            const bank = SHORE_SLOT[ng];                          // water: keyed to the bank
+            if (!bank) continue;
+            if (!slot) slot = bank;
+            else if (slot !== bank) continue;                     // two banks: verge the first only
+            hard |= 1 << s;
+            continue;
+          }
+          if (!kind || !vergeAccepts(sub, nsub, grp, ng)) continue;
+          if (sameFamilyVerge(sub, nsub, grp, ng)) soft |= 1 << s;
+          else hard |= 1 << s;
+        }
+        // RULE 3, and its two amendments. An island is a thing the author drew
+        // on its own, and four verges eat 16px inward from every edge.
+        //
+        // 3b: a lone patch — judged on the FINE key, and with nothing but turf
+        // around it — gets the tile that was drawn for exactly this, soft on all
+        // four sides inside its own 16x16 instead of nibbled from outside.
+        if (nbrs && !kin && isle && turf === nbrs) { mask[i] = FR_ISLE; any = true; continue; }
+        // 3/3a: with no neighbour of its own COARSE material, no foreign one may
+        // eat it. Another surface of the same material still may — soil lapping
+        // into gravel leaves soil, so nothing dissolves into a smudge and no road
+        // loses a link, and that is where the chequerboard actually lives.
+        if (nbrs && !kinGrp) hard = 0;
+        if (!hard && !soft) continue;
+        // A family with no member set of its own composites every side it owns;
+        // one that has member art keeps it for the turf sides and composites
+        // only the same-material ones, which is the case the old single-nibble
+        // byte could not express: DIRT_PATH_N is a path with GRASS painted along
+        // its north edge, so it is exactly the wrong tile to draw at a join with
+        // dirt, and the two have to be able to coexist on one tile.
+        let card = 0, syn = 0;
+        if (kind === 3) syn = hard | soft;
+        else { card = hard; syn = soft; }
+        // Anything composited needs Path2D and a neighbour that will hold still:
+        // the cell is drawn once and blitted thereafter, so an animated invader
+        // would freeze on the frame it was built. CROP_WHEAT sways.
+        if (syn) {
+          initSynPaths();
+          let still = SYN_PATHS.length > 0;
+          for (let s = 0; s < 4 && still; s++) {
+            if (!(syn & (1 << s))) continue;
+            if (isAnimated(ground[(y + FR_DY[s]) * w + x + FR_DX[s]])) still = false;
+          }
+          if (!still) syn = 0;
+        }
+        if (kind === 3) {
+          if (!syn) continue;
+          mask[i] = syn | (SYN_SLOT << 4);
+        } else {
+          if (card && !fringePlan(slot ? FRINGE_BASES[slot] : tileKeyOf(id), card)) card = 0;
+          if (!card && !syn) continue;
+          mask[i] = card | (slot << 4) | (syn << 8);
+        }
+        any = true;
+      }
+    }
+    // `false` records "this map has no verges" so a cave or an inn never pays
+    // for the scan twice, and the draw loop skips the lookup entirely.
+    map._fringeMask = any ? mask : false;
+    return any ? mask : null;
   }
 
   // =========================================================================
@@ -2186,22 +3211,56 @@ export class OverworldScene {
   //
   // A tile-painted town is a beautiful thing and a confusing one: grass, path and
   // the two-pixel strip of grass that is actually a garden wall all read the same
-  // from above. These two passes fix that without repainting a single tileset.
+  // from above. These passes fix that without repainting a single tileset.
   //
-  //   _drawEdges — every boundary between somewhere you can stand and somewhere
-  //     you cannot gets a contact shadow on the walkable side and a hairline on
-  //     the blocked side. The effect is a soft trench around the play area, so
-  //     the path you are meant to follow is legible at a glance.
+  //   _drawEdges — ambient occlusion. Every boundary between somewhere you can
+  //     stand and somewhere you cannot gets a graded ramp on the walkable side,
+  //     deepest in the pixel that actually touches the wall, plus a dab in each
+  //     concave corner. Light failing to reach a crevice, not an outline.
+  //   _drawOverhangs — an over-layer roof or canopy drops a short band onto the
+  //     tile below it, so a building has an eave and a lit wall face.
+  //   _drawEntityShadows — a contact shadow under everything that stands on the
+  //     ground, painted before any sprite.
   //   _drawExits — every warp out of this map gets an animated chevron pointing
   //     the way out, plus the name of the place it leads to once you are close.
   //
-  // Both are switchable in Options (Path Edges / Exit Markers) for anyone who
-  // prefers the plain tileset.
+  // The occlusion and the exit markers are switchable in Options (Path Edges /
+  // Exit Markers) for anyone who prefers the plain tileset.
 
   /**
-   * Bitmask per tile: which SIDES of this walkable tile touch something blocked.
-   * 1 north, 2 east, 4 south, 8 west. Built once per map — a 60x50 town is 3000
-   * cheap lookups, and it never changes while you are standing in it.
+   * Refresh the two strengths the depth passes are scaled by. Called once per
+   * frame from draw(); allocates nothing.
+   *
+   * `_sun` drives the CAST shadows — a body's contact shadow, a roof's eave.
+   * Those are the sun's doing, so they fade towards a floor after dark and the
+   * night grade is not asked to darken them a second time.
+   *
+   * `_ao` drives the ambient occlusion at wall bases, which is not the sun's
+   * doing at all: the strip of ground jammed against a wall sees less of the sky
+   * whatever the hour, and the option that turns it on ("Path Edges") exists so
+   * you can read where you may walk. It stays nearly constant so that legibility
+   * does not evaporate at midnight.
+   */
+  _updateLight() {
+    const map = this.map;
+    let sun = 1;
+    if (map) {
+      if (map.dark > 0) sun = 0;                     // a cave: torchlight, no sun
+      else if (map.indoor) sun = 0.35;               // window light, soft and flat
+      else {
+        const st = state();
+        sun = (map.dayNight === false || !st) ? 1 : sunStrength(st.time);
+      }
+    }
+    this._sun = 0.30 + 0.70 * sun;
+    this._ao = 0.78 + 0.22 * sun;
+  }
+
+  /**
+   * Bitmask per tile: which NEIGHBOURS of this walkable tile are blocked.
+   * Sides in the low nibble (N E S W), diagonals in the high (NE SE SW NW), so
+   * `b & 15` is still "which sides". Built once per map — a 60x50 town is 3000
+   * cheap lookups — and it never changes while you are standing in it.
    */
   _edgeMask() {
     const map = this.map;
@@ -2217,10 +3276,14 @@ export class OverworldScene {
       for (let x = 0; x < w; x++) {
         if (blocked(x, y)) continue;                            // only rim the floor
         let b = 0;
-        if (blocked(x, y - 1)) b |= 1;
-        if (blocked(x + 1, y)) b |= 2;
-        if (blocked(x, y + 1)) b |= 4;
-        if (blocked(x - 1, y)) b |= 8;
+        if (blocked(x, y - 1)) b |= M_N;
+        if (blocked(x + 1, y)) b |= M_E;
+        if (blocked(x, y + 1)) b |= M_S;
+        if (blocked(x - 1, y)) b |= M_W;
+        if (blocked(x + 1, y - 1)) b |= M_NE;
+        if (blocked(x + 1, y + 1)) b |= M_SE;
+        if (blocked(x - 1, y + 1)) b |= M_SW;
+        if (blocked(x - 1, y - 1)) b |= M_NW;
         mask[y * w + x] = b;
       }
     }
@@ -2228,38 +3291,251 @@ export class OverworldScene {
     return mask;
   }
 
-  _drawEdges(ctx, cam) {
-    if (Save && Save.settings && Save.settings.showEdges === false) return;
+  /**
+   * Which tiles receive a cast band from an over-layer tile above or beside them.
+   * M_N: a roof/canopy directly north drops onto our top edge.
+   * M_W: one directly west drops onto our left edge (the sun sits up and left).
+   * M_NW: only the diagonal, so just the corner pixel.
+   * A tile that is itself under a roof receives nothing — it is already in shade.
+   */
+  _overMask() {
     const map = this.map;
-    const mask = safe(() => this._edgeMask(), null);
-    if (!mask) return;
+    if (map._overMask && map._overMask.length === map.w * map.h) return map._overMask;
+    const w = map.w, h = map.h;
+    const over = map.over;
+    const mask = new Uint8Array(w * h);
+    map._overAny = false;
+    if (!over) { map._overMask = mask; return mask; }
 
+    // An over tile only casts if it is opaque: thatch and canopy are SOLID,
+    // cobwebs and stalactites are not and must not paint a band on the floor.
+    const solidOver = new Uint8Array(1024);        // 0 unknown, 1 no, 2 yes
+    const casts = (i) => {
+      const id = over[i];
+      if (!id) return 0;
+      if (id >= solidOver.length) return (tileFlags(id) & TF.SOLID) !== 0 ? 1 : 0;
+      const s = solidOver[id];
+      if (s) return s - 1;
+      const v = (tileFlags(id) & TF.SOLID) !== 0 ? 1 : 0;
+      solidOver[id] = v + 1;
+      return v;
+    };
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (casts(i)) continue;                       // already in shade
+        let b = 0;
+        if (y > 0 && casts(i - w)) b |= M_N;
+        if (x > 0 && casts(i - 1)) b |= M_W;
+        if (x > 0 && y > 0 && casts(i - w - 1)) b |= M_NW;
+        mask[i] = b;
+        if (b) map._overAny = true;
+      }
+    }
+    map._overMask = mask;
+    return mask;
+  }
+
+  /**
+   * Collect the on-screen tiles carrying a non-zero mask into scratch arrays, so
+   * the alpha-grouped passes below iterate over ~100 edges instead of ~460 tiles
+   * four times over. The buffers are grown once and reused for the life of the
+   * scene: the draw loop allocates nothing.
+   */
+  _gatherMask(mask, cam) {
+    const map = this.map;
     const x0 = Math.max(0, Math.floor(cam.x / TILE) - 1);
     const y0 = Math.max(0, Math.floor(cam.y / TILE) - 1);
     const x1 = Math.min(map.w - 1, x0 + Math.ceil(VIEW_W / TILE) + 2);
     const y1 = Math.min(map.h - 1, y0 + Math.ceil(VIEW_H / TILE) + 2);
 
-    // Two passes so the whole rim shares one fillStyle each time: the soft
-    // contact shadow first, then the crisp 1px line that gives it an edge.
-    ctx.save();
-    for (let pass = 0; pass < 2; pass++) {
-      ctx.fillStyle = pass === 0 ? 'rgba(8,7,12,0.30)' : 'rgba(232,214,168,0.10)';
-      const t = pass === 0 ? 3 : 1;                 // shadow depth, then hairline
-      for (let y = y0; y <= y1; y++) {
-        const row = y * map.w;
-        const py = y * TILE - cam.y;
-        for (let x = x0; x <= x1; x++) {
-          const b = mask[row + x];
-          if (!b) continue;
-          const px = x * TILE - cam.x;
-          if (b & 1) ctx.fillRect(px, py, TILE, t);
-          if (b & 4) ctx.fillRect(px, py + TILE - t, TILE, t);
-          if (b & 8) ctx.fillRect(px, py, t, TILE);
-          if (b & 2) ctx.fillRect(px + TILE - t, py, t, TILE);
-        }
+    const cap = Math.max(64, (x1 - x0 + 1) * (y1 - y0 + 1));
+    if (!this._mx || this._mx.length < cap) {
+      this._mx = new Int16Array(cap);
+      this._my = new Int16Array(cap);
+      this._mb = new Uint8Array(cap);
+    }
+    const mx = this._mx, my = this._my, mb = this._mb;
+    let n = 0;
+    for (let y = y0; y <= y1; y++) {
+      const row = y * map.w;
+      const py = y * TILE - cam.y;
+      for (let x = x0; x <= x1; x++) {
+        const b = mask[row + x];
+        if (!b) continue;
+        mx[n] = x * TILE - cam.x;
+        my[n] = py;
+        mb[n] = b;
+        n++;
       }
     }
+    return n;
+  }
+
+  /**
+   * Ambient occlusion at the foot of every wall, hedge, cliff and waterline.
+   *
+   * Three ramps rather than one slab: north deepest (the sun is overhead and a
+   * little to the left, so the strip under a north wall never sees it), east and
+   * west a shade less, south shallowest because that lip is the top of the wall
+   * face and does catch light. Then a dab in every concave corner and on every
+   * blocked diagonal, which is the part that actually makes it read as a corner
+   * rather than as two lines that happen to meet.
+   */
+  _drawEdges(ctx, cam) {
+    if (Save && Save.settings && Save.settings.showEdges === false) return;
+    const mask = safe(() => this._edgeMask(), null);
+    if (!mask) return;
+    const n = this._gatherMask(mask, cam);
+    if (!n) return;
+
+    const mx = this._mx, my = this._my, mb = this._mb;
+    const k = this._ao;                    // occlusion, not sunlight: barely dims
+    ctx.save();
+
+    // One pass per (step, side-group) so a whole ramp level shares one fillStyle.
+    for (let s = 0; s < AO_STEPS; s++) {
+      const an = AO_N[s] || 0, ax = AO_X[s] || 0, as = AO_S[s] || 0;
+      if (an > 0) {
+        ctx.fillStyle = ink(an * k);
+        for (let i = 0; i < n; i++) if (mb[i] & M_N) ctx.fillRect(mx[i], my[i] + s, TILE, 1);
+      }
+      if (ax > 0) {
+        ctx.fillStyle = ink(ax * k);
+        for (let i = 0; i < n; i++) {
+          const b = mb[i];
+          if (b & M_W) ctx.fillRect(mx[i] + s, my[i], 1, TILE);
+          if (b & M_E) ctx.fillRect(mx[i] + TILE - 1 - s, my[i], 1, TILE);
+        }
+      }
+      if (as > 0) {
+        ctx.fillStyle = ink(as * k);
+        for (let i = 0; i < n; i++) if (mb[i] & M_S) ctx.fillRect(mx[i], my[i] + TILE - 1 - s, TILE, 1);
+      }
+    }
+
+    // Concave corners: two blocked sides meeting means twice as little light.
+    ctx.fillStyle = ink(AO_CORNER * k);
+    for (let i = 0; i < n; i++) {
+      const b = mb[i], px = mx[i], py = my[i];
+      if ((b & (M_N | M_W)) === (M_N | M_W)) ctx.fillRect(px, py, 3, 3);
+      if ((b & (M_N | M_E)) === (M_N | M_E)) ctx.fillRect(px + TILE - 3, py, 3, 3);
+      if ((b & (M_S | M_W)) === (M_S | M_W)) ctx.fillRect(px, py + TILE - 3, 3, 3);
+      if ((b & (M_S | M_E)) === (M_S | M_E)) ctx.fillRect(px + TILE - 3, py + TILE - 3, 3, 3);
+    }
+
+    // An outside corner — the diagonal is blocked but both sides are open — is a
+    // single pinched pixel of shade, which is what stops a jetty or a doorway
+    // reveal from looking like it was cut out with scissors.
+    ctx.fillStyle = ink(AO_DIAG * k);
+    for (let i = 0; i < n; i++) {
+      const b = mb[i], px = mx[i], py = my[i];
+      if ((b & M_NW) && !(b & (M_N | M_W))) ctx.fillRect(px, py, 2, 2);
+      if ((b & M_NE) && !(b & (M_N | M_E))) ctx.fillRect(px + TILE - 2, py, 2, 2);
+      if ((b & M_SW) && !(b & (M_S | M_W))) ctx.fillRect(px, py + TILE - 2, 2, 2);
+      if ((b & M_SE) && !(b & (M_S | M_E))) ctx.fillRect(px + TILE - 2, py + TILE - 2, 2, 2);
+    }
     ctx.restore();
+  }
+
+  /**
+   * The eave. A thatched roof sits on the `over` plane, above the actors; the
+   * wall face and the street below it sit on `deco` and `ground`. Without a cast
+   * band between them the roof looks pasted onto the grass. One five-row ramp
+   * along the top of whatever is directly south of a roof tile, and a three-column
+   * one down its left, is enough to give the whole town a third dimension.
+   */
+  _drawOverhangs(ctx, cam) {
+    const mask = safe(() => this._overMask(), null);
+    if (!mask || !this.map._overAny) return;      // a map with no roofs costs nothing
+    const n = this._gatherMask(mask, cam);
+    if (!n) return;
+
+    const mx = this._mx, my = this._my, mb = this._mb;
+    const k = this._sun;
+    ctx.save();
+    for (let s = 0; s < OVERHANG_STEPS; s++) {
+      const an = OVERHANG_N[s] || 0, aw = OVERHANG_W[s] || 0;
+      if (an > 0) {
+        ctx.fillStyle = ink(an * k);
+        for (let i = 0; i < n; i++) if (mb[i] & M_N) ctx.fillRect(mx[i], my[i] + s, TILE, 1);
+      }
+      if (aw > 0) {
+        ctx.fillStyle = ink(aw * k);
+        for (let i = 0; i < n; i++) if (mb[i] & M_W) ctx.fillRect(mx[i] + s, my[i], 1, TILE);
+      }
+    }
+    // Only the corner of the roof clips us: a small wedge, nothing more.
+    ctx.fillStyle = ink(OVERHANG_N[1] * k);
+    for (let i = 0; i < n; i++) {
+      const b = mb[i];
+      if ((b & M_NW) && !(b & (M_N | M_W))) ctx.fillRect(mx[i], my[i], 4, 3);
+    }
+    ctx.restore();
+  }
+
+  /**
+   * A contact shadow under everything that stands on the ground: the party, the
+   * townsfolk, the goblins in the grass, the barrels and the chests.
+   *
+   * Painted in one sweep before ANY sprite goes down, which is the whole point —
+   * `drawSprite` would otherwise lay each shadow immediately before its own
+   * sprite, so the villager drawn second would have the first one's shadow
+   * across her boots. Two nested ellipses at the feet anchor (px, py), not the
+   * sprite centre, sized from the sprite's own width so an ogre casts an ogre's
+   * shadow. Returns true if it ran, which is what tells the entity pass to skip
+   * its built-in shadows.
+   */
+  _drawEntityShadows(ctx, cam) {
+    const list = this.entities && this.entities.list;
+    if (!list || !list.length) return false;
+    const map = this.map;
+    const camX = cam.x, camY = cam.y;
+    const k = this._sun;
+
+    if (!this._sx || this._sx.length < list.length) {
+      const cap = Math.max(64, list.length + 16);
+      this._sx = new Int16Array(cap);
+      this._sy = new Int16Array(cap);
+      this._sr = new Uint8Array(cap);
+    }
+    const sx = this._sx, sy = this._sy, sr = this._sr;
+    let n = 0;
+
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.removed || e.hidden || e.shadow === false) continue;
+      if (e.alpha != null && e.alpha < 0.85) continue;      // fading in or out
+      const px = e.px - camX, py = e.py - camY;
+      if (px < -24 || py < -24 || px > VIEW_W + 24 || py > VIEW_H + 24) continue;
+      // Nothing standing in the water leaves a shadow on it.
+      if (map && (map.flagAt(e.x, e.y) & TF.WATER)) continue;
+      const rx = clamp(Math.round(footWidth(e) * (e.scale || 1) * SHADOW_SPREAD), 3, 16);
+      sx[n] = Math.round(px);
+      // Centred ON the feet anchor, not the sprite centre: the top half falls
+      // under the boots where nobody sees it, the bottom half is the shadow.
+      sy[n] = Math.round(py);
+      sr[n] = rx;
+      n++;
+      if (n >= sx.length) break;
+    }
+    // Nothing to paint still counts as "this pass owns the shadows" — otherwise
+    // the entity pass would put back the very shadows we deliberately skipped.
+    if (!n) return true;
+
+    ctx.save();
+    // The penumbra first, then the core, both under every sprite in the scene.
+    ctx.fillStyle = ink(SHADOW_PENUMBRA * k);
+    for (let i = 0; i < n; i++) {
+      const rx = sr[i] + 2;
+      fillEllipse(ctx, sx[i], sy[i], rx, Math.max(3, Math.round(sr[i] * 0.40) + 1));
+    }
+    ctx.fillStyle = ink(SHADOW_CORE * k);
+    for (let i = 0; i < n; i++) {
+      fillEllipse(ctx, sx[i], sy[i], sr[i], Math.max(2, Math.round(sr[i] * 0.40)));
+    }
+    ctx.restore();
+    return true;
   }
 
   /** Warps out of this map that are currently on screen. */
