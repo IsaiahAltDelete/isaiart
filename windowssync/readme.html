@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Sync for Windows — Documentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#16181d;--soft:#666e7a;--line:#e6e9ee;--bg:#fff;--accent:#111}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Poppins',-apple-system,BlinkMacSystemFont,sans-serif;
+       font-size:16px;line-height:1.7;color:var(--ink);background:var(--bg);
+       padding:56px 24px 90px}
+  .wrap{max-width:720px;margin:0 auto}
+  h1{font-size:34px;font-weight:600;letter-spacing:-.02em;margin-bottom:10px}
+  .lede{color:var(--soft);font-size:17px;margin-bottom:34px}
+  h2{font-size:21px;font-weight:600;margin:46px 0 6px;padding-top:26px;border-top:1px solid var(--line)}
+  h3{font-size:16px;font-weight:600;margin:26px 0 6px}
+  p{margin-bottom:12px}
+  ul,ol{margin:0 0 16px 20px}
+  li{margin-bottom:8px}
+  code{font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;font-size:14px;
+       background:#f4f5f7;border-radius:4px;padding:2px 6px}
+  table{width:100%;border-collapse:collapse;margin:18px 0 24px;font-size:15px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--soft);font-weight:500}
+  td:first-child{white-space:nowrap;font-weight:500}
+  .wide td:first-child{white-space:normal}
+  .callout{border-left:3px solid var(--accent);background:#fafbfc;padding:13px 18px;margin:18px 0;font-size:15px}
+  .callout b{font-weight:600}
+  pre{background:#16181d;color:#e6e9ee;border-radius:9px;padding:16px 18px;overflow-x:auto;
+      font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;font-size:13.5px;line-height:1.55;margin:16px 0}
+  pre .g{color:#7ee787}.d{color:#8b949e}
+  footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);color:var(--soft);font-size:14px;
+         display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+  footer a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+  footer a:hover{border-bottom-color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>GitHub Sync for Windows</h1>
+<p class="lede">Keeps every repository on a GitHub account mirrored to a folder on your PC, driven by three double-clickable scripts instead of the command line.</p>
+
+<table>
+  <tr><th style="width:210px">Script</th><th>What it does</th></tr>
+  <tr><td><code>Pull.cmd</code></td><td>Fast-forwards every local repository from its remote</td></tr>
+  <tr><td><code>Push.cmd</code></td><td>Stages, commits, rebases onto the remote, and pushes every repository</td></tr>
+  <tr><td><code>Clone New Repos.cmd</code></td><td>Clones any repository on the account that isn't local yet</td></tr>
+</table>
+
+<p>No global installs, no configuration files to edit by hand, and nothing that requires an administrator password.</p>
+
+<h2>Installation</h2>
+<p><b>Requirements:</b> Windows 10 or 11, a GitHub account, an internet connection. Roughly five minutes, most of it unattended.</p>
+
+<ol>
+  <li><b>Right-click</b> <code>WindowsGitHubSync.zip</code>, choose <b>Properties</b>, tick <b>Unblock</b> at the bottom of the General tab, and click <b>OK</b>. Then extract the zip.
+    <div class="callout"><b>Unblock before extracting.</b> Windows marks everything inside a downloaded zip as untrusted, and that mark is copied to each file as it is extracted. Clearing it once on the zip saves clearing it on every script.</div>
+  </li>
+  <li>Open the extracted folder and double-click <code>Install.cmd</code>.</li>
+  <li>If a blue <b>"Windows protected your PC"</b> panel appears, click <b>More info</b>, then <b>Run anyway</b>.
+    <p style="font-size:15px;color:var(--soft);margin-top:8px">This is SmartScreen reacting to a script it has not seen before, not a virus warning. It appears once. If you skipped the Unblock step above it may appear for each of the three scripts as well.</p>
+  </li>
+  <li>A console window opens and the installer runs through five steps.</li>
+  <li>On completion, File Explorer opens the projects folder and <code>Pull</code> and <code>Push</code> have shortcuts on the Desktop.</li>
+</ol>
+
+<table class="wide">
+  <tr><th style="width:170px">Step</th><th>What happens</th></tr>
+  <tr><td>1 — Git for Windows</td><td>Skipped if Git is already installed. Otherwise <code>winget</code> installs it into your user folder; if winget is unavailable or refuses, the portable build is downloaded into <code>%USERPROFILE%\.githubsync\git</code> instead. Neither route asks for an administrator password.</td></tr>
+  <tr><td>2 — GitHub CLI</td><td>Downloads the official release into <code>%USERPROFILE%\.githubsync\bin</code> and adds that folder to your user <code>PATH</code>.</td></tr>
+  <tr><td>3 — GitHub sign-in</td><td>Runs <code>gh auth login</code> with the browser device flow. Copy the one-time code, approve it in the browser, return to the console. Then confirm which account to sync.</td></tr>
+  <tr><td>4 — Projects folder</td><td>Defaults to <code>Documents\GitHub</code>. Press Enter to accept, or type another path.</td></tr>
+  <tr><td>5 — Cloning</td><td>Clones every non-archived repository on the account.</td></tr>
+</table>
+
+<div class="callout"><b>If your Documents folder syncs to OneDrive,</b> choose somewhere else at step 4 — <code>C:\GitHub</code>, for instance. A file-sync client and Git both want to manage the same files, and they interfere with each other.</div>
+
+<p>The installer is idempotent — re-run it any time to change the account, move the projects folder, or repair a broken setup.</p>
+
+<h2>Daily use</h2>
+<p><b>Pull before you start. Push when you're done.</b></p>
+
+<pre><span class="d">────────────────────────────────────────────────────────</span>
+  <b>GitHub Sync  ·  Pull</b>
+  <span class="d">Update every local repository with the latest changes</span>
+<span class="d">────────────────────────────────────────────────────────</span>
+
+  <span class="d">Folder        </span>C:\Users\you\Documents\GitHub
+  <span class="d">Account       </span>your-account
+  <span class="d">Repositories  </span>4
+
+  <b>Updating</b>
+
+  <span class="d">[1/4]</span>  api-gateway <span class="d">......................</span> <span class="d">up to date</span>
+  <span class="d">[2/4]</span>  design-tokens <span class="d">....................</span> <span class="g">updated (3 file(s))</span>
+  <span class="d">[3/4]</span>  internal-docs <span class="d">....................</span> <span class="d">up to date</span>
+  <span class="d">[4/4]</span>  marketing-site <span class="d">...................</span> <span class="g">updated (1 file(s))</span>
+
+<span class="d">────────────────────────────────────────────────────────</span>
+  <b>Summary</b>     <span class="g">2 updated</span>   ·   2 already current   ·   0 failed
+  <b>Log</b>         C:\Users\you\Documents\GitHub\pull.log
+<span class="d">────────────────────────────────────────────────────────</span></pre>
+
+<h3>Pull.cmd</h3>
+<p>Runs <code>git pull --ff-only</code> in each repository. If local changes block the fast-forward, it retries with <code>--rebase --autostash</code> and notes that it set your changes aside. Each repository reports <code>up to date</code>, <code>updated (n file(s))</code>, <code>empty repository</code>, or <code>failed</code> with the Git error underneath.</p>
+
+<h3>Push.cmd</h3>
+<p>Prompts for a commit message — press Enter for a computer-and-timestamp default — then, per repository: <code>git add -A</code>, commit, <code>git pull --rebase --autostash</code>, and push. Repositories with nothing to publish report <code>no changes</code> and are skipped.</p>
+<p>The rebase step exists so a push can't be rejected for being behind. If it hits a genuine conflict the rebase is aborted and the repository is reported as <code>conflict — needs manual merge</code>, leaving the working tree intact. Repositories without an upstream branch are pushed with <code>-u origin &lt;branch&gt;</code>; repositories with no <code>origin</code> remote at all are reported as <code>skipped</code> rather than attempted.</p>
+
+<h3>Clone New Repos.cmd</h3>
+<p>Lists the account's non-archived repositories via <code>gh repo list</code> and clones anything missing. Existing repositories are left untouched. If the GitHub session has expired it starts the sign-in flow first.</p>
+
+<h2>What goes where</h2>
+<table>
+  <tr><td>Repositories</td><td><code>Documents\GitHub</code>, or wherever you chose</td></tr>
+  <tr><td>Settings</td><td><code>%USERPROFILE%\.githubsync.conf</code> — two lines: <code>REPO_DIR</code> and <code>GH_OWNER</code></td></tr>
+  <tr><td>GitHub CLI</td><td><code>%USERPROFILE%\.githubsync\bin\gh.exe</code>, unless already installed elsewhere</td></tr>
+  <tr><td>Portable Git</td><td><code>%USERPROFILE%\.githubsync\git</code>, only if winget was unavailable</td></tr>
+  <tr><td>Scripts</td><td><code>Pull.cmd</code>, <code>Push.cmd</code>, <code>Clone New Repos.cmd</code> and a <code>lib</code> folder, in the projects folder</td></tr>
+  <tr><td>Logs</td><td><code>pull.log</code> and <code>push.log</code> in the projects folder</td></tr>
+  <tr><td>Desktop shortcuts</td><td><code>Pull</code>, <code>Push</code></td></tr>
+</table>
+<p>Credentials are handled entirely by <code>gh auth</code> and the Git credential helper. Nothing in this package stores a token.</p>
+
+<h2>Troubleshooting</h2>
+<table class="wide">
+  <tr><th style="width:255px">Symptom</th><th>Resolution</th></tr>
+  <tr><td>"Windows protected your PC"</td><td><b>More info</b> → <b>Run anyway</b>. Once per file. Unblocking the zip before extracting avoids it for the three scripts the installer copies.</td></tr>
+  <tr><td>The window flashes and closes</td><td>Open the projects folder in Terminal or Command Prompt and run <code>Pull.cmd</code> from there — the error stays on screen. The scripts already run with <code>-ExecutionPolicy Bypass</code>, so a restrictive policy is not the cause.</td></tr>
+  <tr><td>Boxes or question marks instead of lines</td><td>The console is using a legacy font. Right-click the title bar → <b>Properties</b> → <b>Font</b> and pick <i>Consolas</i> or <i>Cascadia Mono</i>. Windows Terminal shows them correctly by default.</td></tr>
+  <tr><td><code>git</code> or <code>gh</code> is not recognised</td><td>The user <code>PATH</code> changed during install and this window predates it. Close and reopen it. If it persists, run <code>Install.cmd</code> again.</td></tr>
+  <tr><td><code>failed to push</code> / <code>authentication failed</code></td><td>The GitHub session expired. Run <code>Clone New Repos.cmd</code>, which re-runs <code>gh auth login</code> when it detects a signed-out state, then push again.</td></tr>
+  <tr><td><code>conflict — needs manual merge</code></td><td>The same file diverged locally and remotely. Nothing was lost or committed over. Resolve that repository by hand, then push again.</td></tr>
+  <tr><td>Changing account or folder</td><td>Re-run <code>Install.cmd</code>, or edit <code>%USERPROFILE%\.githubsync.conf</code> directly.</td></tr>
+</table>
+
+<h2>Uninstalling</h2>
+<p>Nothing is installed system-wide. Delete the projects folder, the two Desktop shortcuts, <code>%USERPROFILE%\.githubsync.conf</code>, and <code>%USERPROFILE%\.githubsync</code>. Remove <code>%USERPROFILE%\.githubsync\bin</code> from your user <code>PATH</code> under <b>Settings → System → About → Advanced system settings → Environment Variables</b>. Run <code>gh auth logout</code> to revoke the GitHub session. If Git was installed by winget, remove it with <code>winget uninstall Git.Git</code>.</p>
+
+<footer>
+  <span>GitHub Sync for Windows — documentation</span>
+  <a href="../macsync/readme.html">Using a Mac? →</a>
+</footer>
+
+</div>
+</body>
+</html>

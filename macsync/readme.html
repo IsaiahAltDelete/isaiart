@@ -31,7 +31,10 @@
   pre{background:#16181d;color:#e6e9ee;border-radius:9px;padding:16px 18px;overflow-x:auto;
       font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px;line-height:1.55;margin:16px 0}
   pre .g{color:#7ee787}.d{color:#8b949e}
-  footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);color:var(--soft);font-size:14px}
+  footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);color:var(--soft);font-size:14px;
+         display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+  footer a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+  footer a:hover{border-bottom-color:var(--ink)}
 </style>
 </head>
 <body>
@@ -133,7 +136,10 @@
 <h2>Uninstalling</h2>
 <p>Nothing is installed system-wide. Delete the projects folder, the two Desktop aliases, <code>~/.githubsync.conf</code>, and <code>~/.githubsync</code>. Run <code>gh auth logout</code> to revoke the GitHub session.</p>
 
-<footer>GitHub Sync for Mac — documentation</footer>
+<footer>
+  <span>GitHub Sync for Mac — documentation</span>
+  <a href="../windowssync/readme.html">Using Windows? →</a>
+</footer>
 
 </div>
 </body>
