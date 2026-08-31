@@ -152,36 +152,30 @@
       text-transform: uppercase;
     }
 
-    /* The digits are pixel art like everything else on this page: glyphs from
-       timer/sprites/digits.pxa, blitted at a whole-number scale so a pixel is
-       always a square block of screen pixels, never a smeared one. */
     #countdown {
       position: relative;
-      display: block;
-      line-height: 0;
-    }
-
-    #countdown canvas {
-      display: block;
-      margin: 0 auto;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-    }
-
-    /* If sprites.js never arrives there are no glyphs to blit, so the time is
-       set as text instead. The scene goes empty; the clock still reads. */
-    #countdown.as-text {
       color: var(--cream);
       font-family: "Silkscreen", ui-monospace, monospace;
-      font-size: clamp(3rem, 10vw, 8rem);
+      font-size: clamp(3.25rem, 11vw, 9.5rem);
       font-weight: 700;
-      line-height: 1.05;
-      letter-spacing: -.04em;
+      line-height: .92;
+      letter-spacing: -.07em;
       white-space: nowrap;
-      text-shadow: 0 4px 0 var(--ink), 4px 0 0 var(--ink), -4px 0 0 var(--ink), 0 -4px 0 var(--ink);
+      text-shadow:
+        0 5px 0 var(--ink),
+        5px 0 0 var(--ink),
+        -5px 0 0 var(--ink),
+        0 -5px 0 var(--ink),
+        6px 8px 0 rgba(10, 31, 46, .3);
     }
 
-    #countdown.as-text canvas { display: none; }
+    #countdown .colon {
+      display: inline-block;
+      margin: 0 .03em;
+      color: var(--accent);
+      transform: translateY(-.07em);
+      animation: blink 1.5s steps(1) infinite;
+    }
 
     .timer-status {
       min-height: 22px;
@@ -487,6 +481,7 @@
       border: 0;
     }
 
+    @keyframes blink { 50% { opacity: .42; } }
     @keyframes pop-in { from { opacity: 0; transform: scale(.88) translateY(16px); } to { opacity: 1; transform: none; } }
     @keyframes sparkle { to { transform: scale(1.8); background: var(--accent); } }
 
@@ -496,6 +491,7 @@
       .pixel-chip { font-size: .54rem; }
       .progress-note { display: none; }
       .timer-stage { padding-bottom: 62px; }
+      #countdown { font-size: clamp(3rem, 15vw, 6rem); text-shadow: 0 4px 0 var(--ink), 4px 0 0 var(--ink), -4px 0 0 var(--ink), 0 -4px 0 var(--ink), 5px 6px 0 rgba(10, 31, 46, .3); }
       .open-timer { width: 100%; min-width: 0; }
       .bottombar { justify-content: stretch; }
       .presets { grid-template-columns: repeat(2, 1fr); }
@@ -507,6 +503,7 @@
     @media (max-height: 560px) and (orientation: landscape) {
       .timer-stage { padding: 4px 10px 40px; }
       .timer-label, .timer-status { margin-top: 7px; margin-bottom: 6px; }
+      #countdown { font-size: clamp(3rem, 13vh, 5.8rem); }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -528,7 +525,7 @@
       <section class="timer-stage" aria-label="Countdown timer">
         <div class="timer-wrap">
           <div class="timer-label" id="timerLabel">Ready when you are</div>
-          <div id="countdown" role="timer" aria-live="off" aria-label="25 minutes 0 seconds remaining"><canvas id="countdownFace"></canvas></div>
+          <div id="countdown" role="timer" aria-live="off">25<span class="colon">:</span>00</div>
           <div class="timer-status" id="timerStatus">The tide rises as time passes</div>
         </div>
       </section>
@@ -621,7 +618,6 @@
       const canvas = document.getElementById("scene");
       const ctx = canvas.getContext("2d", { alpha: false });
       const countdown = document.getElementById("countdown");
-      const countdownFace = document.getElementById("countdownFace");
       const timerLabel = document.getElementById("timerLabel");
       const timerStatus = document.getElementById("timerStatus");
       const progressNote = document.getElementById("progressNote");
@@ -1188,9 +1184,9 @@
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
         const pair = value => String(value).padStart(2, "0");
-        if (days > 0) return `${days}:${pair(hours)}:${pair(minutes)}:${pair(seconds)}`;
-        if (hours > 0) return `${pair(hours)}:${pair(minutes)}:${pair(seconds)}`;
-        return `${pair(minutes)}:${pair(seconds)}`;
+        if (days > 0) return `${days}<span class="colon">:</span>${pair(hours)}<span class="colon">:</span>${pair(minutes)}<span class="colon">:</span>${pair(seconds)}`;
+        if (hours > 0) return `${pair(hours)}<span class="colon">:</span>${pair(minutes)}<span class="colon">:</span>${pair(seconds)}`;
+        return `${pair(minutes)}<span class="colon">:</span>${pair(seconds)}`;
       }
 
       function spokenTime(ms) {
@@ -1204,131 +1200,11 @@
         return parts.map(([value, unit]) => `${value} ${unit}${value === 1 ? "" : "s"}`).join(" ") + " remaining";
       }
 
-      /* ── the countdown face ────────────────────────────────────────────────
-         Glyphs come from timer/sprites/digits.pxa. Digits are set on a fixed
-         advance so the reading never jitters as the numbers change; the colon
-         gets a narrower one. The whole run is drawn at an integer scale chosen
-         to fit the stage, so every pixel stays a clean square. */
-      const glyphNames = { "0": "d0", "1": "d1", "2": "d2", "3": "d3", "4": "d4",
-                           "5": "d5", "6": "d6", "7": "d7", "8": "d8", "9": "d9", ":": "colon" };
-      const glyphInk = new Map();
-      const DIGIT_GAP = 2;
-      const COLON_GAP = 4;
-      let faceText = "";
-      let faceScale = 0;
-      let faceBlink = -1;
-
-      function inkBounds(frameName) {
-        if (glyphInk.has(frameName)) return glyphInk.get(frameName);
-        const def = spriteData.digits;
-        const rows = def && def.frames[frameName];
-        if (!rows) return null;
-        let left = def.w;
-        let right = -1;
-        rows.forEach(row => {
-          for (let x = 0; x < row.length; x++) {
-            if (row[x] === ".") continue;
-            if (x < left) left = x;
-            if (x > right) right = x;
-          }
-        });
-        const bounds = right < 0 ? null : { left, width: right - left + 1 };
-        glyphInk.set(frameName, bounds);
-        return bounds;
-      }
-
-      /* -> [{ frame, ink, cell }], plus the run width, in sprite pixels. */
-      function layoutFace(text) {
-        const cells = [];
-        let width = 0;
-        let digitCell = 0;
-        for (const ch of text) {
-          const frame = glyphNames[ch];
-          const ink = frame && inkBounds(frame);
-          if (!ink) continue;
-          if (frame !== "colon") digitCell = Math.max(digitCell, ink.width + DIGIT_GAP);
-        }
-        for (const ch of text) {
-          const frame = glyphNames[ch];
-          const ink = frame && inkBounds(frame);
-          if (!ink) continue;
-          const cell = frame === "colon" ? ink.width + COLON_GAP : digitCell;
-          cells.push({ frame, ink, cell });
-          width += cell;
-        }
-        return { cells, width: Math.max(0, width - DIGIT_GAP) };
-      }
-
-      function faceFits(runWidth) {
-        const stage = document.querySelector(".timer-stage");
-        const room = stage ? stage.clientWidth : window.innerWidth;
-        const maxWidth = Math.max(120, Math.min(room - 12, window.innerWidth * .94, 1120));
-        const maxHeight = Math.max(45, Math.min(window.innerHeight * .17, 124));
-        const glyphHeight = spriteData.digits ? spriteData.digits.h : 15;
-        return Math.max(2, Math.min(12,
-          Math.floor(maxWidth / Math.max(1, runWidth)),
-          Math.floor(maxHeight / glyphHeight)));
-      }
-
-      function renderFace(text, blink) {
-        const def = spriteData.digits;
-        if (!def || !countdownFace) {                 // no glyphs: set the time as text
-          countdown.classList.add("as-text");
-          countdown.textContent = text;
-          faceText = text;
-          return;
-        }
-
-        const run = layoutFace(text);
-        if (!run.cells.length) return;
-        const scale = faceFits(run.width);
-
-        if (countdownFace.width !== run.width || countdownFace.height !== def.h) {
-          countdownFace.width = run.width;
-          countdownFace.height = def.h;
-        }
-        countdownFace.style.width = `${run.width * scale}px`;
-        countdownFace.style.height = `${def.h * scale}px`;
-
-        const face = countdownFace.getContext("2d");
-        face.imageSmoothingEnabled = false;
-        face.clearRect(0, 0, run.width, def.h);
-
-        let pen = 0;
-        run.cells.forEach(cell => {
-          const baked = bakeSprite("digits", cell.frame, cell.frame === "colon" ? "accent" : "-",
-            cell.frame === "colon" ? { W: "#ffbd5b" } : null, false);
-          if (baked) {
-            const x = Math.round(pen + (cell.cell - DIGIT_GAP - cell.ink.width) / 2 - cell.ink.left);
-            const dim = cell.frame === "colon" && blink;
-            if (dim) {
-              face.save();
-              face.globalAlpha = .42;
-            }
-            face.drawImage(baked, x, 0);
-            if (dim) face.restore();
-          }
-          pen += cell.cell;
-        });
-
-        faceText = text;
-        faceScale = scale;
-      }
-
-      function paintFace(force) {
-        const text = formatTime(remainingMs);
-        // The colon blinks once a second, as it did when this was CSS.
-        const blink = running && Math.floor(Date.now() / 750) % 2 === 1;
-        if (!force && text === faceText && blink === faceBlink) return;
-        faceBlink = blink;
-        renderFace(text, blink);
-      }
-
       function updateDisplay(force = false) {
         const shownSecond = Math.ceil(remainingMs / 1000);
         if (force || shownSecond !== lastShownSecond) {
           lastShownSecond = shownSecond;
-          paintFace(true);
+          countdown.innerHTML = formatTime(remainingMs);
           countdown.setAttribute("aria-label", spokenTime(remainingMs));
         }
         const progress = totalMs > 0 ? Math.min(1, Math.max(0, 1 - remainingMs / totalMs)) : 0;
@@ -1472,7 +1348,6 @@
           updateDisplay();
           if (remainingMs <= 0) finishTimer();
         }
-        paintFace(false);
         drawScene(timestamp, dt);
         requestAnimationFrame(tick);
       }
@@ -1540,10 +1415,7 @@
         }
       });
 
-      window.addEventListener("resize", () => {
-        resizeCanvas();
-        paintFace(true);
-      });
+      window.addEventListener("resize", resizeCanvas);
       document.addEventListener("visibilitychange", () => {
         if (!document.hidden && running) {
           remainingMs = Math.max(0, deadline - Date.now());
@@ -1553,7 +1425,6 @@
       });
 
       resizeCanvas();
-      paintFace(true);
       paintCompletionArt();
       setDefaultEndTime();
       updateDisplay(true);
