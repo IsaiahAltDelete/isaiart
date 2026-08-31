@@ -1,0 +1,71 @@
+@name  grass
+@scale 10
+@fps   8
+@size  16x11
+
+@palette
+K #0e2233  outline
+k #1b3d52  shade
+A #2a6f7a  body dark
+B #4fb7b1  body mid
+C #9fe7d8  body light
+D #d9803f  fin dark
+E #ffbd5b  fin light
+W #fff5cf  highlight
+e #0e2233  eye
+G #2f6b48  plant dark
+g #57a45f  plant mid
+H #8fce6a  plant light
+n #6b4326  wood dark
+N #a9713d  wood mid
+u #ffd166  gold
+S #ffe27a  sun light
+s #f7a94b  sun mid
+M #f4ecc6  moon light
+m #cbbf94  moon shade
+P #8f6bb5  violet
+p #c79ada  violet light
+R #ef7267  coral red
+F #f8f3df  foam
+t #2b3d4f  stone dark
+T #55708a  stone mid
+U #8ea8bd  stone light
+
+@frame a
+.....K..........
+....KKK...K.....
+.K.KKgKK.KKK....
+KKKKKgKKKKgKK.K.
+KgKKKgKKKKgKKKKK
+KHKKKgKGKKgKKKgK
+KKGgKHKGKGgKKKgK
+KKggKKgGKGKKggKG
+KKHgKKHGKgKKggKG
+.KKGgKHGKHGggKGK
+.KKggKgGKgGggKGK
+
+@frame b
+......K.........
+.....KKK.K......
+..K.KKgKKKK.....
+.KKKKKgKKgKK.K..
+KKgKKKgKKgKKKKK.
+KKgKKKgKgHKKKgKK
+KKgKgKgKggGKKgKK
+KKHKgKHKggGgKgGK
+.KKGgKHGKgGggKGK
+.KKggKHGKHGggKGK
+.KKggKgGKgGggKGK
+
+@frame c
+.......K........
+......KKK.......
+...K.KKHKK......
+..KKKKKHGKK.K...
+.KKgKKKHGKKKKK..
+.KKgKKgHGKKKgKK.
+.KKgKgGGgKKggKK.
+.KKgKggKKGggGGK.
+.KKgKgHGKHggGGK.
+.KKggKHGKHGgGKGK
+.KKggKgGKgGggKGK

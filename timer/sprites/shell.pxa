@@ -1,3 +1,8 @@
+@name  shell
+@scale 10
+@fps   8
+@size  13x10
+
 @palette
 K #0e2233  outline
 k #1b3d52  shade
@@ -25,3 +30,39 @@ F #f8f3df  foam
 t #2b3d4f  stone dark
 T #55708a  stone mid
 U #8ea8bd  stone light
+
+@frame scallop
+.............
+....KKKKK....
+..KKEEEEEKK..
+.KEEEMmMMMEK.
+KEEMMmmmMMMmK
+KEMMmmmmmMMmK
+KEMmmMmMmmMmK
+KEmMmMmMmMmmK
+KMMmMMmMMmmmK
+.KmmmmmmmmmK.
+
+@frame cone
+.........KEK.
+........KEDK.
+.......KEDMK.
+......KEDEMK.
+.....KEEDEDK.
+....KEEDEDMK.
+...KEEDEEDMK.
+..KEEEDEDEMK.
+.KEEEDEEDEMK.
+KEEMMMMDMMMK.
+
+@frame clam
+.............
+.............
+....KKKKK....
+..KKMMMMMKK..
+.KMMMmMmmmMK.
+KMMmmMMMmmmmK
+KMmmMmMmMmmmK
+KMmmMmMmMmmmK
+.KmMmmMmmMmK.
+.KMmmmmmmmmK.

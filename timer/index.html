@@ -802,28 +802,46 @@
         { name: "seagrass", tint: { A: "#3f6b2a", B: "#8fc740", C: "#e8ffb0", D: "#9c6b18", E: "#ffd166" } },
         { name: "violetgoby", tint: { A: "#4a2d80", B: "#9160d8", C: "#e4d3ff", D: "#1f8f86", E: "#5fdac6" } }
       ];
+      /* Three depth bands. A fish reads as further away because it is fainter,
+         slower, and painted behind the reef rather than in front of it -- the
+         water showing through a low-alpha sprite does the colour work for us. */
+      const shoalLayers = [
+        { name: "far", alpha: .34, pace: .55 },
+        { name: "mid", alpha: .72, pace: .85 },
+        { name: "near", alpha: 1, pace: 1.15 }
+      ];
+
       const species = [
-        { sprite: "fish-small", cycle: ["a", "b", "c", "b"], beat: 130, slow: .0012, fast: .0032, scales: [1, 1, 2] },
-        { sprite: "fish-long", cycle: ["a", "b", "c", "b"], beat: 170, slow: .0018, fast: .0040, scales: [1, 1, 1] },
-        { sprite: "fish-round", cycle: ["a", "b"], beat: 250, slow: .0009, fast: .0019, scales: [1, 1, 2] },
-        { sprite: "fish-fancy", cycle: ["a", "b"], beat: 310, slow: .0008, fast: .0016, scales: [1, 1] }
+        { sprite: "fish-small", cycle: ["a", "b", "c", "b"], beat: 130, slow: .0012, fast: .0032 },
+        { sprite: "fish-long", cycle: ["a", "b", "c", "b"], beat: 170, slow: .0018, fast: .0040 },
+        { sprite: "fish-round", cycle: ["a", "b"], beat: 250, slow: .0009, fast: .0019 },
+        { sprite: "fish-fancy", cycle: ["a", "b"], beat: 310, slow: .0008, fast: .0016 }
       ];
 
       const drifters = [
-        { sprite: "jelly", cycle: ["a", "b", "c", "b"], beat: 430, x: .24, depth: .26, speed: .00035, phase: 1.1 },
-        { sprite: "jelly", cycle: ["a", "b", "c", "b"], beat: 560, x: .76, depth: .58, speed: -.00026, phase: 2.7 },
-        { sprite: "turtle", cycle: ["a", "b"], beat: 620, x: .5, depth: .42, speed: .00072, phase: .4 }
+        { sprite: "jelly", cycle: ["a", "b", "c", "b"], beat: 430, x: .24, depth: .26, speed: .00035, phase: 1.1, alpha: .8 },
+        { sprite: "jelly", cycle: ["a", "b", "c", "b"], beat: 560, x: .76, depth: .58, speed: -.00026, phase: 2.7, alpha: .62 },
+        { sprite: "turtle", cycle: ["a", "b"], beat: 620, x: .5, depth: .42, speed: .00072, phase: .4, alpha: 1 }
       ];
 
-      /* Anchored to the sea floor. `at` is a fraction of the scene width. */
-      const seabed = [
-        { sprite: "seaweed", cycle: ["a", "b", "c", "b"], beat: 620, offset: 0, at: .07 },
-        { sprite: "coral", frame: "branch", at: .34 },
-        { sprite: "starfish", frame: "idle", at: .45 },
-        { sprite: "seaweed", cycle: ["a", "b", "c", "b"], beat: 780, offset: 310, at: .57 },
-        { sprite: "coral", frame: "fan", at: .69 },
-        { sprite: "coral", frame: "brain", at: .84 },
-        { sprite: "seaweed", cycle: ["a", "b", "c", "b"], beat: 700, offset: 520, at: .95 }
+      /* What can grow on the sea floor, and how often. `weight` is relative. */
+      const flora = [
+        { sprite: "seaweed", cycle: ["a", "b", "c", "b"], beat: 640, weight: 7, back: true },
+        { sprite: "kelp", cycle: ["a", "b", "c", "b"], beat: 820, weight: 6, back: true },
+        { sprite: "grass", cycle: ["a", "b", "c", "b"], beat: 520, weight: 7, back: true },
+        { sprite: "anemone", cycle: ["a", "b", "c", "b"], beat: 700, weight: 4, back: false },
+        { sprite: "coral", frame: "branch", weight: 4, back: true },
+        { sprite: "coral", frame: "fan", weight: 3, back: true },
+        { sprite: "coral", frame: "brain", weight: 3, back: false },
+        { sprite: "rock", frame: "big", weight: 3, back: true },
+        { sprite: "rock", frame: "mid", weight: 3, back: true },
+        { sprite: "rock", frame: "small", weight: 3, back: false },
+        { sprite: "urchin", frame: "big", weight: 2, back: false },
+        { sprite: "urchin", frame: "small", weight: 2, back: false },
+        { sprite: "shell", frame: "scallop", weight: 2, back: false },
+        { sprite: "shell", frame: "cone", weight: 2, back: false },
+        { sprite: "shell", frame: "clam", weight: 2, back: false },
+        { sprite: "starfish", frame: "idle", weight: 2, back: false }
       ];
 
       const clouds = [
@@ -841,7 +859,8 @@
       const boat = { x: .32, speed: .00006, direction: 1, phase: .8 };
       const crab = { x: .62, speed: .0009, direction: -1 };
 
-      const fish = Array.from({ length: 11 }, (_, i) => createFish(i));
+      const SHOAL = 11;
+      const fish = Array.from({ length: SHOAL }, (_, i) => createFish(i));
       const rain = Array.from({ length: 48 }, () => ({
         x: Math.random(),
         y: Math.random(),
@@ -859,17 +878,65 @@
 
       function createFish(i) {
         const kind = species[i % species.length];
+        const layer = shoalLayers[i % shoalLayers.length];
+        // Each fish keeps its own slice of the water column. Random depths clump,
+        // and spacing by i/SHOAL puts every fish on the left once the shoal is
+        // trimmed for a narrow screen -- the golden-ratio sequence is even for
+        // any number of them, which is the property this needs.
+        const band = .06 + goldenAt(i * 3 + 5) * .88;
         return {
           kind,
-          colorway: colorways[(i * 3 + Math.floor(Math.random() * 3)) % colorways.length],
-          x: Math.random(),
-          depth: .08 + Math.random() * .84,
-          speed: kind.slow + Math.random() * (kind.fast - kind.slow),
-          scale: kind.scales[Math.floor(Math.random() * kind.scales.length)],
+          layer,
+          band,
+          colorway: colorways[(i * 5 + Math.floor(Math.random() * 3)) % colorways.length],
+          x: goldenAt(i * 2 + 1),
+          depth: band,
+          speed: (kind.slow + Math.random() * (kind.fast - kind.slow)) * layer.pace,
           direction: Math.random() > .5 ? 1 : -1,
           phase: Math.random() * Math.PI * 2,
           beatOffset: Math.random() * 1200
         };
+      }
+
+      /* A low-discrepancy sequence: any prefix of it is evenly spread, so the
+         reef can grow or shrink with the scene width without reshuffling. */
+      function goldenAt(i) { return (i * .6180339887 + .13) % 1; }
+
+      function hashUnit(i, salt) {
+        let h = Math.imul(i + salt * 977 + 1, 2654435761) >>> 0;
+        h ^= h >>> 15;
+        h = Math.imul(h, 2246822519) >>> 0;
+        return (h >>> 8) / 16777216;
+      }
+
+      /* Item i of the reef, always the same item for the same i and headroom.
+         Headroom is bucketed so the cache stays small and the reef only changes
+         when the tide has risen enough to actually fit something taller. */
+      const reefCache = new Map();
+      function reefItem(i, backLayer, headroom) {
+        const bucket = Math.max(0, Math.floor(headroom / 8));
+        const id = `${i}|${backLayer ? 1 : 0}|${bucket}`;
+        if (reefCache.has(id)) return reefCache.get(id);
+        const ceiling = bucket * 8 + 8;
+        let pool = flora.filter(item =>
+          (backLayer ? item.back : true) && spriteSize(item.sprite).h <= ceiling);
+        if (!pool.length) pool = flora.filter(item => backLayer ? item.back : true);
+        const total = pool.reduce((sum, item) => sum + item.weight, 0);
+        let roll = hashUnit(i, backLayer ? 3 : 1) * total;
+        let pick = pool[pool.length - 1];
+        for (const candidate of pool) {
+          roll -= candidate.weight;
+          if (roll <= 0) { pick = candidate; break; }
+        }
+        const item = {
+          plant: pick,
+          at: goldenAt(backLayer ? i + 41 : i),
+          sink: Math.floor(hashUnit(i, backLayer ? 7 : 5) * 3),
+          offset: Math.floor(hashUnit(i, 11) * 900),
+          flip: hashUnit(i, 13) > .5
+        };
+        reefCache.set(id, item);
+        return item;
       }
 
       function resizeCanvas() {
@@ -1055,44 +1122,109 @@
         ctx.restore();
       }
 
-      function drawSeabed(dt, time) {
+      function drawSand(time) {
+        const crest = sceneHeight - 8;
+        ctx.fillStyle = "#b8905f";
+        ctx.fillRect(0, crest, sceneWidth, sceneHeight - crest);
         ctx.fillStyle = "#d5a765";
-        for (let x = 0; x < sceneWidth; x += 17) {
-          ctx.fillRect(x + ((x * 3) % 8), sceneHeight - 2 - ((x * 5) % 3), 4, 2);
+        for (let x = 0; x < sceneWidth; x++) {
+          const dune = 2 + Math.round(Math.sin(x * .085) * 1.4 + Math.sin(x * .027 + 2.1) * 1.6);
+          ctx.fillRect(x, crest + 3 - dune, 1, sceneHeight - crest);
         }
+        ctx.fillStyle = "#e6c691";
+        for (let i = 0; i < Math.ceil(sceneWidth / 14); i++) {
+          const x = Math.round(goldenAt(i * 3 + 1) * sceneWidth);
+          ctx.fillRect(x, sceneHeight - 3 - Math.floor(hashUnit(i, 2) * 3), 2, 1);
+        }
+        ctx.fillStyle = "#9d7748";
+        for (let i = 0; i < Math.ceil(sceneWidth / 20); i++) {
+          const x = Math.round(goldenAt(i * 5 + 7) * sceneWidth);
+          ctx.fillRect(x, sceneHeight - 2 - Math.floor(hashUnit(i, 4) * 2), 2, 2);
+        }
+      }
 
-        seabed.forEach(item => {
-          const size = spriteSize(item.sprite);
-          if (!size.h) return;
-          const frame = item.cycle
-            ? cycleFrame(item.cycle, time, item.beat, item.offset || 0)
-            : item.frame;
-          drawSprite(item.sprite, frame, item.at * sceneWidth, sceneHeight - size.h + 1, { center: true });
-        });
+      /* One band of the reef. `back` sits behind the far fish and is painted
+         down toward the water so it recedes; the front band is full strength. */
+      function drawReef(time, back, headroom) {
+        const spacing = back ? 44 : 30;
+        const count = Math.max(3, Math.round(sceneWidth / spacing));
+        const alpha = back ? .44 : 1;
+        for (let i = 0; i < count; i++) {
+          const item = reefItem(i, back, headroom);
+          const size = spriteSize(item.plant.sprite);
+          if (!size.h) continue;
+          const frame = item.plant.cycle
+            ? cycleFrame(item.plant.cycle, time, item.plant.beat, item.offset)
+            : item.plant.frame;
+          drawSprite(item.plant.sprite, frame, item.at * sceneWidth,
+            sceneHeight - size.h + 1 + item.sink + (back ? 2 : 0),
+            { center: true, flip: item.flip, alpha });
+        }
+      }
 
+      function drawChest(time) {
         const chest = spriteSize("chest");
-        if (chest.h) {
-          const x = sceneWidth * .21;
-          drawSprite("chest", completed ? "open" : "closed", x, sceneHeight - chest.h + 1, { center: true });
-          if (completed) {
-            ctx.fillStyle = "#fff5cf";
-            for (let i = 0; i < 5; i++) {
-              if (Math.sin(time * .004 + i * 1.7) < .3) continue;
-              const sx = Math.round(x - 10 + i * 5);
-              const sy = Math.round(sceneHeight - chest.h - 3 - ((i * 3) % 5) - Math.sin(time * .0016 + i) * 2);
-              ctx.fillRect(sx, sy, 1, 1);
-            }
-          }
+        if (!chest.h) return;
+        const x = sceneWidth * .21;
+        drawSprite("chest", completed ? "open" : "closed", x, sceneHeight - chest.h + 1, { center: true });
+        if (!completed) return;
+        ctx.fillStyle = "#fff5cf";
+        for (let i = 0; i < 5; i++) {
+          if (Math.sin(time * .004 + i * 1.7) < .3) continue;
+          const sx = Math.round(x - 10 + i * 5);
+          const sy = Math.round(sceneHeight - chest.h - 3 - ((i * 3) % 5) - Math.sin(time * .0016 + i) * 2);
+          ctx.fillRect(sx, sy, 1, 1);
         }
+      }
 
+      function drawCrab(dt, time) {
         const shell = spriteSize("crab");
-        if (shell.h) {
-          crab.x += crab.speed * crab.direction * dt / 60;
-          if (crab.x > .93) { crab.x = .93; crab.direction = -1; }
-          if (crab.x < .05) { crab.x = .05; crab.direction = 1; }
-          drawSprite("crab", frameAt("crab", Math.floor(time / 210)), crab.x * sceneWidth,
-            sceneHeight - shell.h + 1, { center: true, flip: crab.direction < 0 });
-        }
+        if (!shell.h) return;
+        crab.x += crab.speed * crab.direction * dt / 60;
+        if (crab.x > .93) { crab.x = .93; crab.direction = -1; }
+        if (crab.x < .05) { crab.x = .05; crab.direction = 1; }
+        drawSprite("crab", frameAt("crab", Math.floor(time / 210)), crab.x * sceneWidth,
+          sceneHeight - shell.h + 1, { center: true, flip: crab.direction < 0 });
+      }
+
+      function moveShoal(dt) {
+        fish.forEach(item => {
+          item.x += item.speed * item.direction * dt / 60;
+          // On a lap the fish stays in its own band, only nudged, so the shoal
+          // keeps its spacing instead of drifting into a clump.
+          if (item.direction > 0 && item.x > 1.22) {
+            item.x = -.22;
+            item.depth = Math.min(.96, Math.max(.04, item.band + (Math.random() - .5) * .1));
+          }
+          if (item.direction < 0 && item.x < -.22) {
+            item.x = 1.22;
+            item.depth = Math.min(.96, Math.max(.04, item.band + (Math.random() - .5) * .1));
+          }
+        });
+      }
+
+      function drawShoal(time, surface, depth, layerName) {
+        // Shallow or narrow water holds fewer fish; the shoal fills in as the
+        // tide rises, so a phone in portrait does not read as a packed tank.
+        const room = Math.max(3, Math.min(fish.length,
+          3 + Math.round(depth / 15), 2 + Math.round(sceneWidth / 30)));
+        fish.forEach((item, index) => {
+          if (index >= room || item.layer.name !== layerName) return;
+          const size = spriteSize(item.kind.sprite);
+          if (!size.h) return;
+          const lane = Math.max(6, depth - size.h - 8);
+          const y = surface + 4 + size.h / 2 + item.depth * lane
+            + Math.sin(time * .00032 + item.phase) * 1.4;
+          drawSprite(item.kind.sprite, cycleFrame(item.kind.cycle, time, item.kind.beat, item.beatOffset),
+            item.x * sceneWidth, y, {
+              center: true,
+              middle: true,
+              alpha: item.layer.alpha,
+              flip: item.direction < 0,
+              tintName: item.colorway.name,
+              tint: item.colorway.tint
+            });
+        });
       }
 
       function drawUnderwaterLife(dt, time) {
@@ -1103,16 +1235,16 @@
         ctx.rect(0, Math.max(0, surface + 3), sceneWidth, depth);
         ctx.clip();
 
-        drawSeabed(dt, time);
-
-        bubbles.forEach(bubble => {
-          bubble.y -= bubble.speed * dt;
-          if (bubble.y < 0) { bubble.y = 1 + Math.random() * .18; bubble.x = Math.random(); }
-          const x = Math.floor(bubble.x * sceneWidth + Math.sin(time * .00035 + bubble.phase) * 1.5);
-          const y = Math.floor(surface + bubble.y * depth);
-          ctx.fillStyle = hexAlpha(currentTheme.shine, .55);
-          ctx.fillRect(x, y, bubble.size, bubble.size);
-        });
+        // Back to front, so overlap reads as distance rather than as a jumble.
+        // What can grow here depends on how deep the water is, so the reef
+        // fills upward as the tide comes in.
+        const headroom = Math.max(8, depth - 6);
+        drawSand(time);
+        drawReef(time, true, headroom);
+        drawShoal(time, surface, depth, "far");
+        drawReef(time, false, headroom);
+        drawChest(time);
+        drawCrab(dt, time);
 
         drifters.forEach(item => {
           const size = spriteSize(item.sprite);
@@ -1124,36 +1256,20 @@
           const y = surface + 4 + size.h / 2 + item.depth * lane + Math.sin(time * .00041 + item.phase) * 2;
           drawSprite(item.sprite, cycleFrame(item.cycle, time, item.beat, item.phase * 400),
             item.x * sceneWidth + Math.sin(time * .00022 + item.phase) * 2.5, y,
-            { center: true, middle: true, flip: item.speed < 0 });
+            { center: true, middle: true, flip: item.speed < 0, alpha: item.alpha });
         });
 
-        // Shallow or narrow water holds fewer fish; the shoal fills in as the
-        // tide rises, so a phone in portrait does not read as a packed tank.
-        const shoal = Math.max(3, Math.min(fish.length,
-          3 + Math.round(depth / 12), 2 + Math.round(sceneWidth / 26)));
-        fish.forEach((item, index) => {
-          item.x += item.speed * item.direction * dt / 60;
-          if (item.direction > 0 && item.x > 1.22) { item.x = -.22; item.depth = .08 + Math.random() * .84; }
-          if (item.direction < 0 && item.x < -.22) { item.x = 1.22; item.depth = .08 + Math.random() * .84; }
+        drawShoal(time, surface, depth, "mid");
+        drawShoal(time, surface, depth, "near");
+        moveShoal(dt);
 
-          if (index >= shoal) return;
-
-          const size = spriteSize(item.kind.sprite);
-          if (!size.h) return;
-          // Big variants need room: shallow water or a narrow scene keeps them small.
-          const scale = sceneWidth < 210 || depth < size.h * item.scale + 26 ? 1 : item.scale;
-          const lane = Math.max(6, depth - size.h * scale - 8);
-          const y = surface + 4 + (size.h * scale) / 2 + item.depth * lane
-            + Math.sin(time * .00032 + item.phase) * 1.4;
-          drawSprite(item.kind.sprite, cycleFrame(item.kind.cycle, time, item.kind.beat, item.beatOffset),
-            item.x * sceneWidth, y, {
-              center: true,
-              middle: true,
-              scale,
-              flip: item.direction < 0,
-              tintName: item.colorway.name,
-              tint: item.colorway.tint
-            });
+        bubbles.forEach(bubble => {
+          bubble.y -= bubble.speed * dt;
+          if (bubble.y < 0) { bubble.y = 1 + Math.random() * .18; bubble.x = Math.random(); }
+          const x = Math.floor(bubble.x * sceneWidth + Math.sin(time * .00035 + bubble.phase) * 1.5);
+          const y = Math.floor(surface + bubble.y * depth);
+          ctx.fillStyle = hexAlpha(currentTheme.shine, .55);
+          ctx.fillRect(x, y, bubble.size, bubble.size);
         });
 
         ctx.restore();

@@ -15,6 +15,12 @@ the source; the image is a build artifact.
 | `crab.pxa` | a b | crab, walks the sea floor |
 | `seaweed.pxa` | a b c | kelp, sways |
 | `coral.pxa` | branch fan brain | three sea-floor variants |
+| `kelp.pxa` | a b c | tall stipe with blades, sways |
+| `grass.pxa` | a b c | sea-grass tufts, sway |
+| `anemone.pxa` | a b c | bulb with waving tendrils |
+| `rock.pxa` | big mid small | boulders |
+| `urchin.pxa` | big small | sea urchins |
+| `shell.pxa` | scallop cone clam | shells on the sand |
 | `starfish.pxa` | idle | sea star |
 | `chest.pxa` | closed open | opens when the timer lands |
 | `boat.pxa` | a b | sailboat on the waterline |
@@ -30,6 +36,17 @@ the source; the image is a build artifact.
 semantic, which is what lets one grid produce a whole shoal: the page swaps
 `A`/`B`/`C` (body dark → light) and `D`/`E` (fin dark → light) at bake time, so
 `fish-small.pxa` ships in fourteen tropical colourways without fourteen files.
+
+## The reef
+
+The sea floor is not a fixed list. `flora` in `timer/index.html` is a weighted
+pool, and item *i* of the reef is picked from it by a hash of *i*, so the same
+slot always grows the same thing. Positions come from a golden-ratio sequence,
+which is evenly spread for *any* prefix of it — that is what lets the reef add
+or drop items with the scene width without reshuffling.
+
+The pool is filtered by headroom, so a shallow tide grows shells, urchins and
+grass, and the kelp only appears once the water is deep enough to hold it.
 
 ## Editing
 
