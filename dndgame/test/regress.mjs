@@ -16,8 +16,8 @@ const R = [];
 const check = (name, ok, detail) => R.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`);
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8099';
-// GAME lets the same suite run against a copy of the game at another path, so a
-// duplicate deployed to dodge a stale CDN is proved working rather than assumed.
+// GAME lets the same suite run against the game at another path, so a copy
+// deployed somewhere else is proved working rather than assumed.
 const GAME = process.env.GAME || 'dndgame';
 await page.goto(`${BASE}/${GAME}/index.html`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
