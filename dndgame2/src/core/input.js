@@ -374,13 +374,16 @@ export const Input = {
     const c = this._canvas;
     if (!c) return { x: clientX, y: clientY };
     const r = c.getBoundingClientRect();
-    // The canvas element may be displayed at a different size than its backing store
-    // (e.g. `width:100%` on a 400x240 buffer); undo that first, then the pixel scale.
+    // The rect already carries both the canvas's on-screen position AND its
+    // displayed size, so scaling by (backing store / displayed size) lands
+    // straight in logical canvas pixels. Applying the engine's scale/offset on
+    // top of that would correct for the same thing twice — which is exactly the
+    // bug that made every click land tens of pixels up and to the left.
     const cssX = r.width > 0 ? (c.width / r.width) : 1;
     const cssY = r.height > 0 ? (c.height / r.height) : 1;
     return {
-      x: ((clientX - r.left) * cssX - this._ox) / this._scale,
-      y: ((clientY - r.top) * cssY - this._oy) / this._scale,
+      x: (clientX - r.left) * cssX,
+      y: (clientY - r.top) * cssY,
     };
   },
 

@@ -59,16 +59,44 @@ import { GameOverScene } from './title.js';
 const R = Math.round;
 
 /** The battlefield viewport. Menus float over it rather than shrinking it. */
-const FIELD = { x: 0, y: 26, w: VIEW_W, h: VIEW_H - 26 };
+const FIELD = { x: 0, y: 26, w: VIEW_W, h: VIEW_H - 26 - 28 };
 
 const RIBBON = { x: 0, y: 0, w: VIEW_W, h: 26 };
-const MENU = { x: 3, y: 96, w: 122, h: 114 };
-const BUDGET = { x: 3, y: 82, w: 122, h: 12 };
-const DETAIL = { x: 129, y: 150, w: 268, h: 60 };
-const LOGTAIL = { x: 0, y: 214, w: VIEW_W, h: 26 };
+// The action bar runs along the bottom rather than down the left, so it never
+// stands between you and your own party. Icon buttons, left to right, the way
+// every modern party RPG does it.
+const MENU = { x: 2, y: VIEW_H - 26, w: VIEW_W - 58, h: 24 };
+// The End Turn plate, the way every party tactics game puts it: big, round-ish,
+// unmissable, at the right end of the bar and never anywhere else.
+const ENDBTN = { x: VIEW_W - 54, y: VIEW_H - 26, w: 52, h: 24 };
+const MENU_CELL_W = 26;
+// A 7px lead-in on the left (the submenu back chevron) and a reserved column on
+// the right for the paging chevrons and the "3/17" counter. The counter used to
+// be drawn right-aligned into a 14px gap, which put it straight across the last
+// button — 23px of text in 14px of gutter.
+const MENU_PAD_L = 7;
+const MENU_GUTTER = 26;
+const MENU_VISIBLE = Math.floor((MENU.w - MENU_PAD_L - MENU_GUTTER) / MENU_CELL_W);
+/**
+ * The bottom stack, read upward: bar, budget strip, detail plate, note strip.
+ * These four used to be laid out independently and three of them collided —
+ * DETAIL (y 160..210) was drawn after BUDGET (200..212) and simply painted over
+ * it, so the action/bonus/reaction pips and the movement counter were invisible
+ * for the whole fight, and the "why not" note landed on top of DETAIL as well.
+ * Every rect below is now derived from the one under it, so they cannot overlap.
+ */
+const BUDGET = { x: 3, y: MENU.y - 14, w: 150, h: 12 };
+const LOGTAIL = { x: VIEW_W - 122, y: 46, w: 120, h: 110 };
+// As wide as the log's left edge allows: a spell name is the single most
+// important string in the fight and it was losing 22px of free screen.
+const DETAIL = { x: 2, y: BUDGET.y - 52, w: LOGTAIL.x - 6, h: 50 };
+/** The one-line contextual note (a refusal, or the movement colour key). */
+const NOTE = { x: 0, y: DETAIL.y - 13, w: DETAIL.w + 2, h: 11 };
+/** The inspect card. On the LEFT: the log owns the right-hand edge. */
+const STAT = { x: 3, w: 116, h: 104 };
 const DICE = { x: 200, y: 80 };
 
-const MENU_ROWS = 8;
+const MENU_ROWS = MENU_VISIBLE;   // legacy alias: the bar's visible button count
 const MENU_ROW_H = 12;
 
 /** Movement speed of a walking sprite, in world pixels per second. */
@@ -179,6 +207,140 @@ function costTag(cost) {
   return cost === 'bonus' ? 'B' : cost === 'reaction' ? 'R' : cost === 'free' ? '-' : 'A';
 }
 
+// ---------------------------------------------------------------------------
+// 1.1 VERB ICONS
+// ---------------------------------------------------------------------------
+
+/**
+ * The action bar is icon-only, so the icon IS the label — and eleven of them
+ * were the same grey ring.
+ *
+ * rules/combat.js names its icons for a set the kit does not have ('boot',
+ * 'shield-half', 'hide', 'hand', 'speech', 'spell', 'claw', 'rage', 'fist',
+ * 'music', and the literal fallback 'dot'). `UI.icon` silently substitutes
+ * 'rune' for every unknown name, so Dash, Disengage, Dodge, Hide, Help, Shove,
+ * Grapple, Search, Ready, Retreat, Reactions and End Turn all drew the SAME
+ * glyph — twelve identical buttons on a bar whose whole premise is that you
+ * read it at a glance. The rules module is not ours to edit, so the translation
+ * lives here, next to the bar that needs it.
+ */
+const ICON_ALIAS = {
+  boot: 'boots', 'shield-half': 'dodge', hide: 'shadow', hand: 'hammer',
+  speech: 'scroll', spell: 'rune', claw: 'dagger', rage: 'flame',
+  fist: 'hammer', music: 'wind', grab: 'lock', stun: 'psychic',
+  fear: 'skull', ghost: 'shadow', 'eye-off': 'eye', dot: '',
+};
+
+/** Per-verb icons, keyed by the engine's own option ids. */
+const VERB_ICONS = {
+  '@attack': 'sword', '@cast': 'staff', '@class': 'star', '@item': 'potion',
+  '@move': 'foot', '@flee': 'run', '@reactions': 'shield',
+  dash: 'dash', dodge: 'dodge', disengage: 'boots', hide: 'shadow',
+  help: 'plus', shove: 'wind', grapple: 'lock', search: 'eye',
+  ready: 'hourglass', end: 'hourglass', 'use-object': 'key', influence: 'scroll',
+  'special:rage': 'flame', 'special:second-wind': 'heart',
+  'special:action-surge': 'bolt', 'special:channel-divinity': 'holy',
+  'special:lay-on-hands': 'plus', 'special:bardic-inspiration': 'wind',
+  'special:sneak-attack': 'dagger', 'special:divine-smite': 'radiant',
+  'special:wild-shape': 'leaf', 'special:arcane-recovery': 'rune',
+  'special:font-of-magic': 'gem', 'special:eldritch-invocation': 'necrotic',
+};
+
+/** School -> icon, for any spell whose damage type does not name one. */
+const SCHOOL_ICONS = {
+  abjuration: 'shield', conjuration: 'rune', divination: 'eye',
+  enchantment: 'psychic', evocation: 'bolt', illusion: 'shadow',
+  necromancy: 'necrotic', transmutation: 'gem',
+};
+
+/** Weapon-name -> icon, so a submenu of six attacks is six different pictures. */
+const WEAPON_ICON_WORDS = [
+  [/\b(bow|crossbow|sling|dart)\b/, 'bow'],
+  [/\b(dagger|knife|kris|stiletto)\b/, 'dagger'],
+  [/\b(axe|hatchet|halberd|glaive)\b/, 'axe'],
+  [/\b(mace|maul|club|flail|morningstar|warhammer|hammer)\b/, 'mace'],
+  [/\b(spear|pike|lance|javelin|trident)\b/, 'spear'],
+  [/\b(staff|quarterstaff|rod|wand)\b/, 'staff'],
+  [/\b(shield|bash)\b/, 'shield'],
+  [/\b(claw|bite|talon|fang|slam|tail|gore|sting)\b/, 'dagger'],
+];
+
+/** Item-name -> icon, same idea for a pack full of things. */
+const ITEM_ICON_WORDS = [
+  [/\bscroll\b/, 'scroll'],
+  [/\b(potion|elixir|philter|draught)\b/, 'potion'],
+  [/\b(oil|flask|vial|alchemist)\b/, 'flask'],
+  [/\b(bomb|fire|flame|torch)\b/, 'flame'],
+  [/\b(wand|rod)\b/, 'wand'],
+  [/\b(ring|band)\b/, 'ring'],
+  [/\b(amulet|pendant|periapt|talisman)\b/, 'amulet'],
+  [/\b(gem|stone|crystal|pearl)\b/, 'gem'],
+  [/\b(book|tome|grimoire|manual)\b/, 'book'],
+  [/\b(rope|kit|tools|caltrops|net)\b/, 'bag'],
+  [/\b(holy|water|blessed)\b/, 'holy'],
+  [/\b(key|lockpick)\b/, 'key'],
+  [/\b(food|ration|bread)\b/, 'leaf'],
+];
+
+const ICON_FALLBACK = { attack: 'sword', spell: 'rune', item: 'bag', special: 'star' };
+
+function matchWord(list, name) {
+  const s = lower(name);
+  for (const [re, id] of list) if (re.test(s)) return id;
+  return '';
+}
+
+/**
+ * The icon this action deserves. Explicit id first, then the damage school or
+ * weapon/item name, then the kit alias for whatever the rules asked for, then a
+ * per-kind fallback. Never returns '' — a missing icon is a grey ring, and grey
+ * rings are the bug.
+ */
+function verbIcon(row) {
+  if (!row) return 'rune';
+  const id = String(row.id || '');
+  if (VERB_ICONS[id]) return VERB_ICONS[id];
+  if (id.startsWith('@stance:')) return 'shield';
+
+  const kind = lower(row.kind);
+
+  if (kind === 'attack') {
+    const w = matchWord(WEAPON_ICON_WORDS, row.name);
+    if (w) return w;
+    const dt = lower(row.damage && row.damage.type);
+    if (dt && UI.DAMAGE_ICONS[dt]) return UI.DAMAGE_ICONS[dt];
+    if (row.ranged) return 'bow';
+    return 'sword';
+  }
+
+  if (row.spellId || kind === 'spell' || id.startsWith('spell:')) {
+    const sp = row.spellId ? safe(() => getSpell(row.spellId), null) : null;
+    // A healing spell is the one a player hunts for under pressure, so it gets
+    // its own mark before the school ever gets a look in — otherwise Cure
+    // Wounds, Counterspell and Shield are three identical abjuration shields.
+    if (sp && sp.heal) return 'plus';
+    const dt = lower((sp && sp.damage && sp.damage.type) || (row.damage && row.damage.type));
+    if (dt && UI.DAMAGE_ICONS[dt]) return UI.DAMAGE_ICONS[dt];
+    if (sp && SCHOOL_ICONS[lower(sp.school)]) return SCHOOL_ICONS[lower(sp.school)];
+    const w = matchWord(ITEM_ICON_WORDS, row.name);
+    if (w) return w;
+    return 'rune';
+  }
+
+  if (kind === 'item') {
+    const w = matchWord(ITEM_ICON_WORDS, row.name);
+    if (w) return w;
+  }
+
+  // Whatever the rules module asked for, translated into a name the kit knows.
+  const want = String(row.icon || '');
+  if (want) {
+    const mapped = Object.prototype.hasOwnProperty.call(ICON_ALIAS, want) ? ICON_ALIAS[want] : want;
+    if (mapped && UI.iconNames.includes(mapped)) return mapped;
+  }
+  return ICON_FALLBACK[kind] || 'rune';
+}
+
 // ===========================================================================
 // 2. THE SCENE
 // ===========================================================================
@@ -198,7 +360,11 @@ export class BattleScene {
     this.t = 0;
 
     // --- presentation ------------------------------------------------------
-    this.zoom = 2;
+    // A 22x15 arena is 352x240px; the field is 400x214. At 1x you see the whole
+    // battlefield and can actually read the tactical picture, which is the point
+    // of a grid game. 'close' keeps the old 2x for anyone who prefers the sprites
+    // big. Integer zooms only — pixel art at 1.5x looks like a mistake.
+    this.zoom = safe(() => (Save.settings.battleZoom === 'close' ? 2 : 1), 1);
     this.cam = { x: 0, y: 0 };
     this.camTo = { x: 0, y: 0 };
     this.ui = new Map();              // uid -> render state { x, y, dir, phase, ... }
@@ -704,8 +870,10 @@ export class BattleScene {
         const n = safe(() => (enc.targetsFor(unit, o).units || []).length, 1);
         if (n > 0) continue;
         o.enabled = false;
+        // 40px is six glyphs — "Bugbe… is 45ft away" named nobody. The plate
+        // that shows this reason is 240px wide and the note strip is wider.
         o.reason = nearest
-          ? `${UI.fit(nearest.name || 'Nearest foe', 40, 'sm')} is ${nearFt}ft away`
+          ? `${UI.fit(nearest.name || 'Nearest foe', 108, 'sm')} is ${nearFt}ft away`
           : 'Nothing to aim at';
       }
     }
@@ -824,30 +992,55 @@ export class BattleScene {
     idx = clamp(idx, 0, rows.length - 1);
 
     // --- keyboard ---------------------------------------------------------
+    // The bar runs left-to-right, so left/right walk it. Up/down still work for
+    // anyone with the old habit (and for the d-pad).
     let moved = 0;
-    if (Input.repeat('up', 0.3, 0.08)) moved = -1;
-    else if (Input.repeat('down', 0.3, 0.08)) moved = 1;
+    if (Input.repeat('right', 0.3, 0.08) || Input.repeat('down', 0.3, 0.08)) moved = 1;
+    else if (Input.repeat('left', 0.3, 0.08) || Input.repeat('up', 0.3, 0.08)) moved = -1;
     if (moved) {
       idx = (idx + moved + rows.length) % rows.length;
       this.hint = '';
       sfx('cursor');
     }
 
-    // Left/right pages through a long submenu.
-    if (inSub && rows.length > MENU_ROWS) {
-      if (Input.pressed('right')) { idx = Math.min(rows.length - 1, idx + MENU_ROWS); sfx('cursor'); }
-      if (Input.pressed('left')) { idx = Math.max(0, idx - MENU_ROWS); sfx('cursor'); }
-    }
-
     // --- mouse ------------------------------------------------------------
     const m = Input.mouse;
-    const listY = MENU.y + 14;
     const top = inSub ? this.subTop : this.menuTop;
-    if (m.over && m.x >= MENU.x && m.x <= MENU.x + MENU.w && m.y >= listY && m.y < listY + MENU_ROWS * MENU_ROW_H) {
-      const hovered = top + Math.floor((m.y - listY) / MENU_ROW_H);
-      if (hovered >= 0 && hovered < rows.length) {
-        if (hovered !== idx) { idx = hovered; sfx('cursor'); }
-        if (m.clicked) { this._chooseRow(rows[idx]); return; }
+
+    // End Turn: its own plate, always in the same place, one click.
+    this.endHover = m.over && m.x >= ENDBTN.x && m.x <= ENDBTN.x + ENDBTN.w
+      && m.y >= ENDBTN.y && m.y <= ENDBTN.y + ENDBTN.h;
+    if (this.endHover) {
+      this.hint = 'End this creature’s turn';
+      if (m.clicked) { sfx('select'); this._endTurn(); return; }
+    }
+
+    const onBar = m.over && m.y >= MENU.y && m.y <= MENU.y + MENU.h
+      && m.x >= MENU.x && m.x <= MENU.x + MENU.w;
+    if (onBar) {
+      // Clicking the back chevron at the left of the bar leaves a submenu.
+      const gx = MENU.x + MENU_PAD_L + MENU_VISIBLE * MENU_CELL_W;
+      if (inSub && m.x < MENU.x + MENU_PAD_L) {
+        if (m.clicked) { this.menuPath = []; this.subIndex = 0; this.subTop = 0; sfx('back'); }
+      } else if (rows.length > MENU_VISIBLE && m.x >= gx) {
+        // The paging gutter: its two chevrons step the window a page at a time.
+        if (m.clicked) {
+          const back = m.x < gx + (MENU.x + MENU.w - gx) / 2;
+          idx = clamp(idx + (back ? -MENU_VISIBLE : MENU_VISIBLE), 0, rows.length - 1);
+          if (inSub) this.subIndex = idx; else this.menuIndex = idx;
+          sfx('cursor');
+        }
+      } else {
+        const cell = Math.floor((m.x - (MENU.x + MENU_PAD_L)) / MENU_CELL_W);
+        const hovered = top + cell;
+        if (cell >= 0 && cell < MENU_VISIBLE && hovered >= 0 && hovered < rows.length) {
+          if (hovered !== idx) { idx = hovered; sfx('cursor'); }
+          if (m.clicked) {
+            if (inSub) this.subIndex = idx; else this.menuIndex = idx;
+            this._chooseRow(rows[idx]);
+            return;
+          }
+        }
       }
     } else if (this._mouseOnField()) {
       // Hovering the field inspects whoever is standing there; a click pins the card.
@@ -2221,7 +2414,7 @@ export class BattleScene {
     const killer = (enc?.units || []).find((u) => u && u.side === 'foe' && !isDead(u));
     const reason = killer
       ? `Slain by ${killer.name} after ${enc.round} round${enc.round === 1 ? '' : 's'}.`
-      : 'The company was overwhelmed.';
+      : 'The party was overwhelmed.';
     if (Game.top === this) Game.pop();
     safe(() => Game.push(new GameOverScene(reason)));
   }
@@ -2253,7 +2446,14 @@ export class BattleScene {
     const panelUp = menuUp || this.phase === 'move' || this.phase === 'target';
     if (menuUp && inRect(MENU)) return false;
     if (panelUp && (inRect(BUDGET) || inRect(DETAIL))) return false;
+    // The note strip is only a panel while there is a note on it; excluding it
+    // unconditionally would leave an invisible dead zone across the field.
+    const noteUp = this.phase === 'move' || (!!this.hint && panelUp);
+    if (noteUp && inRect(NOTE)) return false;
     if (inRect(LOGTAIL)) return false;
+    // The inspect card is a solid panel too: clicking it must not re-target the
+    // battlefield tile underneath.
+    if (this.inspect && inRect(this._statRect())) return false;
     return true;
   }
 
@@ -2296,7 +2496,7 @@ export class BattleScene {
       // noise sitting on top of the thing you are reading. The budget strip and
       // the detail panel stay; the 122x114 menu gets out of the way, replaced
       // while aiming by a one-line plate naming the verb you picked.
-      if (this.phase === 'menu') this._drawMenu(ctx);
+      if (this.phase === 'menu') { this._drawMenu(ctx); this._drawEndButton(ctx); }
       else if (this.phase === 'target' && this.pending) this._drawPendingChip(ctx);
       this._drawDetail(ctx);
     }
@@ -2633,11 +2833,13 @@ export class BattleScene {
     const pad = 9;
     // Shrink the box past whatever is currently covering the battlefield, so a
     // chevron slides along visible gutter instead of hiding under a panel.
-    const menuUp = this.phase === 'menu' || this.phase === 'target';
-    const L = FIELD.x + pad + (menuUp ? MENU.w + 2 : 0);
-    const R2 = FIELD.x + FIELD.w - pad - (this.inspect ? 120 : 0);
+    const menuUp = this.phase === 'menu' || this.phase === 'target' || this.phase === 'move';
+    // The card is on the left now and the log owns the right, so the free gutter
+    // is the band between them, above whichever bottom plate is up.
+    const L = FIELD.x + pad + (this.inspect ? STAT.x + STAT.w + 2 : 0);
+    const R2 = FIELD.x + FIELD.w - pad - LOGTAIL.w - 2;
     const T = FIELD.y + pad + (this.boss ? 12 : 0);
-    const B = FIELD.y + FIELD.h - pad - (LOGTAIL.h + (menuUp ? DETAIL.h - 26 : 0));
+    const B = (menuUp ? NOTE.y : FIELD.y + FIELD.h) - pad;
     if (R2 - L < 24 || B - T < 24) return;      // nowhere left to draw one
     const cx = (L + R2) / 2, cy = (T + B) / 2;
     const cur = enc.current || null;
@@ -2893,57 +3095,88 @@ export class BattleScene {
     const inSub = this.menuPath.length > 0;
     const idx = clamp(inSub ? this.subIndex : this.menuIndex, 0, Math.max(0, rows.length - 1));
 
-    UI.panel(ctx, MENU.x, MENU.y, MENU.w, MENU.h, { style: 'window', shadow: 0.5 });
+    UI.panel(ctx, MENU.x, MENU.y, MENU.w, MENU.h, { style: 'window', shadow: 0.55 });
 
-    const title = inSub
-      ? (this._rootMenu().find((r) => r.id === this.menuPath[0])?.name || 'Actions')
-      : UI.fit(unit.name || 'Actions', MENU.w - 10, 'md');
-    UI.text(ctx, MENU.x + 4, MENU.y + 3, title, { size: 'md', color: UI.COLORS.gold, shadow: true, maxWidth: MENU.w - 24 });
-    if (rows.length > MENU_ROWS) {
-      UI.text(ctx, MENU.x + MENU.w - 4, MENU.y + 3, `${idx + 1}/${rows.length}`, { size: 'sm', color: UI.COLORS.inkDim, align: 'right' });
-    }
-
-    // scroll window
+    // Keep the selected button inside the visible window.
     let top = inSub ? this.subTop : this.menuTop;
     if (idx < top) top = idx;
-    if (idx > top + MENU_ROWS - 1) top = idx - MENU_ROWS + 1;
-    top = clamp(top, 0, Math.max(0, rows.length - MENU_ROWS));
+    if (idx > top + MENU_VISIBLE - 1) top = idx - MENU_VISIBLE + 1;
+    top = clamp(top, 0, Math.max(0, rows.length - MENU_VISIBLE));
     if (inSub) this.subTop = top; else this.menuTop = top;
 
-    const listY = MENU.y + 14;
-    for (let i = 0; i < MENU_ROWS; i++) {
+    // A back chevron on the left whenever we are inside a submenu, so the mouse
+    // has somewhere to click that means "up a level".
+    if (inSub) {
+      UI.text(ctx, MENU.x + 2, MENU.y + 7, UI.G.chevLeft || '<', { size: 'sm', color: UI.COLORS.goldBright });
+    }
+
+    for (let i = 0; i < MENU_VISIBLE; i++) {
       const r = rows[top + i];
       if (!r) break;
-      const ry = listY + i * MENU_ROW_H;
+      const c = this._menuCellRect(i);
       const sel = (top + i) === idx;
-      if (sel) UI.highlight(ctx, MENU.x + 2, ry - 1, MENU.w - 4, MENU_ROW_H);
+      const on = r.enabled !== false;
 
-      const ink = !r.enabled ? UI.COLORS.disabled : sel ? UI.COLORS.goldBright : UI.COLORS.ink;
-      UI.icon(ctx, r.icon || 'dot', MENU.x + 5, ry + 1, 8, r.enabled ? null : UI.COLORS.disabled);
-
-      const tag = r.group ? UI.G.chevRight : (r.cost ? costTag(r.cost) : '');
-      const tagW = tag ? UI.measure(tag, 'sm') + 3 : 0;
-      UI.text(ctx, MENU.x + 16, ry + 2, r.name || r.id, {
-        size: 'sm', color: ink, shadow: true, maxWidth: MENU.w - 22 - tagW,
+      // The button plate: gold for the highlighted verb, sunken for the rest.
+      UI.panel(ctx, c.x, c.y, c.w, c.h, {
+        style: sel ? 'gold' : 'inset', shadow: sel ? 0.35 : 0.15, studs: false,
       });
+
+      // The cell is a 23x20 plate read as two rows: keycap and cost on top, the
+      // icon below. The cost tag used to sit at `c.y - 1`, half of it on the
+      // bar's own border ring — an 'A' with a rule through its crossbar reads
+      // as an 'H'. Both markers are inside the plate now, and neither touches
+      // the icon.
+      // Icon only: the full name and its maths are on the plate above, which is
+      // how a bar stays readable once a caster has twenty things to click. The
+      // icon has to actually differ per verb for that to work: see verbIcon().
+      UI.icon(ctx, verbIcon(r), c.x + 6, c.y + 8, 11,
+        on ? (sel ? '#2a1c07' : null) : UI.COLORS.disabled);
+
+      // Cost pip (A / B / R), or a chevron when the button opens a submenu.
+      const tag = r.group ? (UI.G.chevRight || '>') : (r.cost ? costTag(r.cost) : '');
       if (tag) {
-        UI.text(ctx, MENU.x + MENU.w - 5, ry + 2, tag, {
+        UI.text(ctx, c.x + c.w - 2, c.y + 1, tag, {
           size: 'sm', align: 'right',
-          color: !r.enabled ? UI.COLORS.disabled : tag === 'B' ? UI.COLORS.green : tag === 'R' ? UI.COLORS.blue : UI.COLORS.goldDim,
+          // Dark ink on the gold plate wants a LIGHT shadow; the default black
+          // one just smears it.
+          shadow: sel ? 'rgba(255,225,160,0.45)' : true,
+          color: !on ? UI.COLORS.disabled
+            : sel ? '#5a4318'
+              : tag === 'B' ? UI.COLORS.green : tag === 'R' ? UI.COLORS.blue : UI.COLORS.goldBright,
         });
       }
-      if (sel) UI.cursor(ctx, MENU.x - 4, ry + 2, this.t);
+      // The number key that fires this button, for the first five.
+      if (!inSub && i < 5) {
+        UI.text(ctx, c.x + 2, c.y + 1, String(i + 1), {
+          size: 'sm', color: sel ? '#5a4318' : UI.COLORS.gold,
+          shadow: sel ? 'rgba(255,225,160,0.45)' : true,
+        });
+      }
     }
 
-    if (rows.length > MENU_ROWS) {
-      const trackH = MENU_ROWS * MENU_ROW_H;
-      const kh = Math.max(6, Math.round(trackH * MENU_ROWS / rows.length));
-      const ky = listY + Math.round((trackH - kh) * (top / Math.max(1, rows.length - MENU_ROWS)));
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(MENU.x + MENU.w - 3, listY, 2, trackH);
-      ctx.fillStyle = UI.COLORS.goldDim;
-      ctx.fillRect(MENU.x + MENU.w - 3, ky, 2, kh);
+    // Paging control, in the gutter the cells deliberately leave free. The
+    // counter used to be right-aligned into a 14px gap and printed straight
+    // across the last button.
+    if (rows.length > MENU_VISIBLE) {
+      const gx = MENU.x + MENU_PAD_L + MENU_VISIBLE * MENU_CELL_W;
+      const gw = MENU.x + MENU.w - gx;
+      const mid = R(gx + gw / 2);
+      UI.text(ctx, mid - 6, MENU.y + 3, UI.G.chevLeft || '<', {
+        size: 'sm', align: 'center', color: top > 0 ? UI.COLORS.gold : UI.COLORS.disabled,
+      });
+      UI.text(ctx, mid + 6, MENU.y + 3, UI.G.chevRight || '>', {
+        size: 'sm', align: 'center',
+        color: top + MENU_VISIBLE < rows.length ? UI.COLORS.gold : UI.COLORS.disabled,
+      });
+      UI.text(ctx, mid, MENU.y + 13, UI.fit(`${idx + 1}/${rows.length}`, gw - 2, 'sm'),
+        { size: 'sm', align: 'center', color: UI.COLORS.inkDim, shadow: true });
     }
+  }
+
+  /** Screen rect of action-bar button `i` (index into the visible window). */
+  _menuCellRect(i) {
+    return { x: MENU.x + MENU_PAD_L + i * MENU_CELL_W, y: MENU.y + 2, w: MENU_CELL_W - 3, h: MENU.h - 4 };
   }
 
   /** The right-hand panel: what the highlighted thing does, and the maths. */
@@ -2958,9 +3191,11 @@ export class BattleScene {
     const h = 15;
     UI.panel(ctx, MENU.x, MENU.y, MENU.w, h, { style: 'dark', shadow: 0.45, studs: false });
     let tx = MENU.x + 4;
-    if (o.icon) { safe(() => UI.icon(ctx, o.icon, tx, MENU.y + 3, 9, UI.COLORS.gold)); tx += 12; }
-    UI.text(ctx, tx, MENU.y + 4, UI.fit(o.name || 'Aiming', MENU.w - (tx - MENU.x) - 20, 'md'), {
+    safe(() => UI.icon(ctx, verbIcon(o), tx, MENU.y + 3, 9, UI.COLORS.gold));
+    tx += 12;
+    UI.text(ctx, tx, MENU.y + 4, o.name || 'Aiming', {
       size: 'md', color: UI.COLORS.goldBright, shadow: true,
+      maxWidth: MENU.w - (tx - MENU.x) - 20,
     });
     UI.text(ctx, MENU.x + MENU.w - 4, MENU.y + 5, costTag(o.cost), {
       size: 'sm', color: UI.COLORS.inkDim, align: 'right',
@@ -2981,10 +3216,7 @@ export class BattleScene {
     let y = DETAIL.y + 4;
     const w = DETAIL.w - 10;
 
-    const head = row.name || row.id;
-    UI.text(ctx, ix, y, UI.fit(head, w - 60, 'md'), { size: 'md', color: row.enabled ? UI.COLORS.gold : UI.COLORS.disabled, shadow: true });
-
-    // Cost / range / slot on the right of the header.
+    // Cost / range / concentration, on the right of the header.
     const bits = [];
     if (row.cost) bits.push(row.cost === 'action' ? 'Action' : row.cost === 'bonus' ? 'Bonus' : row.cost === 'reaction' ? 'Reaction' : 'Free');
     const rng = row.targeting?.range;
@@ -2993,8 +3225,38 @@ export class BattleScene {
       if (far) bits.push(`${far} ft`);
     }
     if (row.concentration) bits.push('Conc.');
-    if (bits.length) UI.text(ctx, DETAIL.x + DETAIL.w - 5, y + 1, bits.join(' · '), { size: 'sm', color: UI.COLORS.inkDim, align: 'right' });
+    const tail = bits.join(' · ');
+
+    // The name used to be handed a flat `w - 60` no matter what the tail really
+    // measured, so "Otiluke's Resilient Sphere" (181px at md) printed 23px
+    // straight through "Action · 30 ft". Measure both halves and split the row.
+    const head = String(row.name || row.id || '');
+    let headSize = 'md';
+    let split = UI.splitRow(w, head, tail, { size: 'md', valueSize: 'sm', gap: 6, valueMax: 0.46 });
+    // A name that will not fit bold drops to the small face rather than losing
+    // its own last syllable: "Otiluke's Resilient Sphere" is 181px at md and
+    // 155px at sm, and knowing WHICH spell is about to go off matters more than
+    // the weight of the type it is set in.
+    if (!split.fits) {
+      const alt = UI.splitRow(w, head, tail, { size: 'sm', valueSize: 'sm', gap: 6, valueMax: 0.46 });
+      if (alt.fits) { headSize = 'sm'; split = alt; }
+    }
+    UI.text(ctx, ix, y, head, {
+      size: headSize, color: row.enabled ? UI.COLORS.gold : UI.COLORS.disabled,
+      shadow: true, maxWidth: split.labelW,
+    });
+    if (tail && split.valueW > 0) {
+      UI.text(ctx, ix + w, y + 1, tail, {
+        size: 'sm', color: UI.COLORS.inkDim, align: 'right', maxWidth: split.valueW,
+      });
+    }
     y += 10;
+
+    // Everything below the header shares what is left above the maths strip, so
+    // a long description can never run into the to-hit line or off the plate.
+    const mathTop = DETAIL.y + DETAIL.h - 22;
+    const aiming = this.phase === 'target' && !!this.pending;
+    const floorY = aiming ? mathTop - 1 : DETAIL.y + DETAIL.h - 6;
 
     if (!row.enabled && row.reason) {
       UI.text(ctx, ix, y, UI.fit(`Cannot: ${row.reason}`, w, 'sm'), { size: 'sm', color: UI.COLORS.bad, shadow: true });
@@ -3002,14 +3264,15 @@ export class BattleScene {
     }
 
     const desc = row.desc || '';
-    if (desc) {
-      const lines = UI.wrapLines(desc, w, 'sm').slice(0, 2);
-      for (const l of lines) { UI.text(ctx, ix, y, l, { size: 'sm', color: UI.COLORS.ink, shadow: true }); y += 8; }
+    if (desc && y + 7 <= floorY) {
+      const room = Math.max(0, Math.min(2, Math.floor((floorY - y) / 8)));
+      UI.textWrapped(ctx, ix, y, w, desc, { size: 'sm', color: UI.COLORS.ink, shadow: true, maxLines: room, lineHeight: 8 });
+      y += room * 8;
     }
 
     // --- live maths for the highlighted target ------------------------------
-    if (this.phase === 'target' && this.pending) this._drawTargetMath(ctx, unit, ix, DETAIL.y + DETAIL.h - 20, w);
-    else if (Array.isArray(row.levels) && row.levels.length > 1) {
+    if (aiming) this._drawTargetMath(ctx, unit, ix, mathTop, w);
+    else if (Array.isArray(row.levels) && row.levels.length > 1 && y + 7 <= DETAIL.y + DETAIL.h - 4) {
       UI.text(ctx, ix, DETAIL.y + DETAIL.h - 11, `Slots: ${row.levels.join(', ')}`, { size: 'sm', color: UI.COLORS.mp, shadow: true });
     }
   }
@@ -3029,16 +3292,23 @@ export class BattleScene {
       if (Array.isArray(o.levels) && o.levels.length > 1) line += ` · slot ${this.slotLevel}`;
       UI.text(ctx, x, y, line, { size: 'sm', color: UI.COLORS.gold, shadow: true });
 
+      // Share the row between however many are caught rather than giving each a
+      // flat 44px and letting the fourth chip walk off the plate.
       let cx = x;
       const cy = y + 9;
-      for (const v of this.areaVictims.slice(0, 4)) {
+      const shown = this.areaVictims.slice(0, 4);
+      const per = shown.length ? Math.floor((w - (shown.length - 1) * 3) / shown.length) : w;
+      for (const v of shown) {
+        const room = x + w - cx;
+        if (room < 26) break;
         const sm = safe(() => saveMod(v, ab), 0) || 0;
-        const label = `${UI.fit(v.name || '?', 44, 'sm')} ${signed(sm)}`;
+        const tag = ` ${signed(sm)}`;
+        const cap = Math.min(per, room) - 8 - UI.measure(tag, 'sm');
+        const label = `${UI.fit(v.name || '?', Math.max(12, cap), 'sm')}${tag}`;
         const cw = UI.chip(ctx, cx, cy, label, {
           color: v.side === 'party' ? UI.COLORS.blue : UI.COLORS.red,
         });
         cx += cw + 3;
-        if (cx > x + w - 40) break;
       }
       return;
     }
@@ -3126,30 +3396,64 @@ export class BattleScene {
 
   // --- inspect card --------------------------------------------------------
 
+  /**
+   * Screen rect of the inspect card. Its floor is the note strip, not a fixed
+   * height: a boss bar pushes the card down 11px, and at a flat 104 tall that
+   * put its last two rows under the movement legend.
+   */
+  _statRect() {
+    const y = RIBBON.h + (this.boss ? 15 : 4);
+    return { x: STAT.x, y, w: STAT.w, h: Math.min(STAT.h, NOTE.y - y - 2) };
+  }
+
+  /**
+   * The inspect card. It used to be pinned to the right edge, which is where the
+   * running log now lives — the two drew on top of each other and neither could
+   * be read. The log keeps the right-hand column; the card moved left.
+   */
   _drawStatCard(ctx) {
     const u = this.inspect;
     if (!u) return;
-    const W = 116, H = 108;
-    const X = VIEW_W - W - 3;
-    const Y = RIBBON.h + (this.boss ? 15 : 4);
+    const r = this._statRect();
+    const W = r.w, H = r.h, X = r.x, Y = r.y;
     UI.panel(ctx, X, Y, W, H, { style: 'dark', shadow: 0.5 });
 
     safe(() => UI.portrait(ctx, u, X + 4, Y + 4, 26, { style: u.side === 'party' ? 'window' : 'danger' }));
-    UI.text(ctx, X + 33, Y + 5, UI.fit(u.name || '?', W - 38, 'md'), { size: 'md', color: SIDE_COLOR[u.side] || UI.COLORS.ink, shadow: true });
+    // "Bugbear Chief" is 90px bold in a 79px slot. Drop to the small face rather
+    // than truncating a creature's name on the card that exists to identify it.
+    const nm = String(u.name || '?');
+    const nmW = W - 38;
+    UI.text(ctx, X + 33, Y + 5, nm, {
+      size: UI.measure(nm, 'md') <= nmW ? 'md' : 'sm', maxWidth: nmW,
+      color: SIDE_COLOR[u.side] || UI.COLORS.ink, shadow: true,
+    });
 
     const def = this._monsterDef(u);
     const known = !def || !u.monsterId || !!(Game.state?.bestiary?.[u.monsterId]);
     const sub = def
       ? `${titleCase(u.size || 'medium')} ${def.type || 'creature'}${def.cr != null ? ` · CR ${def.cr}` : ''}`
       : `Level ${u.level || 1} ${titleCase((u.classes?.[0]?.id) || 'adventurer')}`;
-    UI.text(ctx, X + 33, Y + 14, UI.fit(sub, W - 38, 'sm'), { size: 'sm', color: UI.COLORS.inkDim, shadow: true });
+    UI.text(ctx, X + 33, Y + 14, sub, { size: 'sm', color: UI.COLORS.inkDim, shadow: true, maxWidth: nmW });
 
+    // AC sat at a fixed X+43 and ran to X+72; the speed icon started at X+70,
+    // so the shoe was printed through the "6" of "AC 16". Both pairs are packed
+    // by measurement now, and the speed drops its unit before it drops a digit.
     const ac = safe(() => acOf(u), 10);
-    UI.icon(ctx, 'shield', X + 33, Y + 22, 8, UI.COLORS.silver);
-    UI.text(ctx, X + 43, Y + 23, `AC ${ac}`, { size: 'sm', color: UI.COLORS.ink, shadow: true });
     const spd = safe(() => speedOf(u), 30);
-    UI.icon(ctx, 'foot', X + 70, Y + 22, 8, UI.COLORS.inkDim);
-    UI.text(ctx, X + 80, Y + 23, `${spd} ft`, { size: 'sm', color: UI.COLORS.ink, shadow: true });
+    const right = X + W - 5;
+    let cx = X + 32;
+    UI.icon(ctx, 'shield', cx, Y + 22, 8, UI.COLORS.silver);
+    cx += 9;
+    const acTxt = `AC ${ac}`;
+    UI.text(ctx, cx, Y + 23, acTxt, { size: 'sm', color: UI.COLORS.ink, shadow: true, maxWidth: right - cx });
+    cx += UI.measure(acTxt, 'sm') + 3;
+    const spdFull = `${spd} ft`;
+    const spdTxt = right - cx >= 9 + UI.measure(spdFull, 'sm') ? spdFull : String(spd);
+    if (right - cx >= 9 + UI.measure(spdTxt, 'sm')) {
+      UI.icon(ctx, 'foot', cx, Y + 22, 8, UI.COLORS.inkDim);
+      cx += 9;
+      UI.text(ctx, cx, Y + 23, spdTxt, { size: 'sm', color: UI.COLORS.ink, shadow: true, maxWidth: right - cx });
+    }
 
     let y = Y + 34;
     const max = safe(() => maxHpOf(u), u.maxHp || 1) || 1;
@@ -3200,22 +3504,69 @@ export class BattleScene {
 
   // --- log -----------------------------------------------------------------
 
+  /**
+   * The running log, down the right-hand edge rather than in a strip under the
+   * action bar. Newest at the bottom, older lines fading out at the top, over a
+   * scrim faint enough to read the battlefield through.
+   */
   _drawLogTail(ctx) {
-    const lines = (this.enc?.log || []).slice(-2);
-    if (!lines.length) return;
-    ctx.fillStyle = 'rgba(5,6,12,0.80)';
-    ctx.fillRect(LOGTAIL.x, LOGTAIL.y, LOGTAIL.w, LOGTAIL.h);
-    ctx.fillStyle = 'rgba(140,110,50,0.55)';
-    ctx.fillRect(LOGTAIL.x, LOGTAIL.y, LOGTAIL.w, 1);
+    const all = (this.enc?.log || []);
+    if (!all.length) return;
 
-    // Truncated well short of the right edge: the key hints live over there.
-    let y = LOGTAIL.y + 4;
-    for (const l of lines) {
-      UI.text(ctx, 5, y, UI.fit(l.text || '', VIEW_W - 150, 'sm'), {
-        size: 'sm', color: LOG_COLORS[l.kind] || UI.COLORS.ink, shadow: true,
-      });
-      y += 9;
+    const rowH = 8;
+    const pad = 4;
+    const maxRows = Math.floor((LOGTAIL.h - pad * 2) / rowH);
+
+    // Wrap from the newest backwards until the panel is full.
+    const wrapped = [];
+    for (let i = all.length - 1; i >= 0 && wrapped.length < maxRows; i--) {
+      const l = all[i];
+      const txt = (l && l.text) || '';
+      if (!txt) continue;
+      const parts = UI.wrapLines(txt, LOGTAIL.w - pad * 2, 'sm') || [txt];
+      for (let j = parts.length - 1; j >= 0 && wrapped.length < maxRows; j--) {
+        wrapped.push({ text: parts[j], kind: l.kind, age: all.length - 1 - i });
+      }
     }
+    if (!wrapped.length) return;
+    wrapped.reverse();
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(5,6,12,0.58)';
+    ctx.fillRect(LOGTAIL.x, LOGTAIL.y, LOGTAIL.w, LOGTAIL.h);
+    ctx.fillStyle = 'rgba(140,110,50,0.40)';
+    ctx.fillRect(LOGTAIL.x, LOGTAIL.y, 1, LOGTAIL.h);
+
+    let y = LOGTAIL.y + LOGTAIL.h - pad - wrapped.length * rowH;
+    for (const w of wrapped) {
+      // Older lines recede so the eye lands on what just happened.
+      ctx.globalAlpha = w.age === 0 ? 1 : w.age < 3 ? 0.82 : 0.55;
+      UI.text(ctx, LOGTAIL.x + pad, y, w.text, {
+        size: 'sm', color: LOG_COLORS[w.kind] || UI.COLORS.ink, shadow: true,
+      });
+      y += rowH;
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /** The End Turn plate at the right end of the bar. */
+  _drawEndButton(ctx) {
+    const enc = this.enc;
+    const unit = enc && enc.current;
+    const live = this.phase === 'menu' && unit && unit.side === 'party';
+    const hot = this.endHover && live;
+    UI.panel(ctx, ENDBTN.x, ENDBTN.y, ENDBTN.w, ENDBTN.h, {
+      style: hot ? 'gold' : live ? 'window' : 'inset',
+      shadow: live ? 0.45 : 0.15, studs: false,
+    });
+    const ink = !live ? UI.COLORS.disabled : hot ? '#2a1c07' : UI.COLORS.goldBright;
+    UI.text(ctx, ENDBTN.x + ENDBTN.w / 2, ENDBTN.y + 4, 'END', {
+      size: 'md', color: ink, align: 'center', shadow: !hot,
+    });
+    UI.text(ctx, ENDBTN.x + ENDBTN.w / 2, ENDBTN.y + 13, 'TURN', {
+      size: 'sm', color: ink, align: 'center', shadow: !hot,
+    });
   }
 
   _drawLogPanel(ctx) {
@@ -3316,16 +3667,27 @@ export class BattleScene {
     const p = this.prompt;
     if (!p) return;
     UI.scrim(ctx, 0.45);
-    const W = 220, H = 62, X = R((VIEW_W - W) / 2), Y = 92;
-    UI.window(ctx, X, Y, W, H, 'Reaction', { style: 'gold', shadow: 0.6 });
-    UI.text(ctx, X + 6, Y + 8, UI.fit(`${p.reactor?.name || 'You'} — ${p.title}`, W - 12, 'md'), { size: 'md', color: UI.COLORS.goldBright, shadow: true });
-    const lines = UI.wrapLines(p.body || '', W - 12, 'sm').slice(0, 2);
-    let y = Y + 19;
-    for (const l of lines) { UI.text(ctx, X + 6, y, l, { size: 'sm', color: UI.COLORS.ink, shadow: true }); y += 8; }
+    // `style:'gold'` painted a LIGHT brass plate and then wrote goldBright and
+    // ink on it — 1.03:1 and 1.12:1, on a modal the player has six seconds to
+    // read. `window_()` already draws the title as a dark-ink gold nameplate.
+    const W = 248, H = 62, X = R((VIEW_W - W) / 2), Y = 92;
+    UI.window(ctx, X, Y, W, H, 'Reaction', { style: 'window', shadow: 0.6 });
+    // "Sildar Hallwinter — Opportunity Attack" is 265px bold and 227px small;
+    // the whole point of the modal is knowing who is being offered what.
+    const who = `${p.reactor?.name || 'You'} — ${p.title}`;
+    UI.text(ctx, X + 6, Y + 8, who, {
+      size: UI.measure(who, 'md') <= W - 12 ? 'md' : 'sm',
+      color: UI.COLORS.goldBright, shadow: true, maxWidth: W - 12,
+    });
+    UI.textWrapped(ctx, X + 6, Y + 19, W - 12, p.body || '', {
+      size: 'sm', color: UI.COLORS.ink, shadow: true, maxLines: 2, lineHeight: 8,
+    });
 
-    const bw = 60, by = 128;
-    UI.button(ctx, 118, by, bw, 14, p.yes, { selected: p.index === 0, t: this.t });
-    UI.button(ctx, 222, by, bw, 14, p.no, { selected: p.index === 1, t: this.t });
+    // "Let it go" is 62px at md; the old 60px face cut it to "Let it…".
+    const bw = 84, by = 128, gap = 12;
+    const bx = R((VIEW_W - bw * 2 - gap) / 2);
+    UI.button(ctx, bx, by, bw, 14, p.yes, { selected: p.index === 0, t: this.t });
+    UI.button(ctx, bx + bw + gap, by, bw, 14, p.no, { selected: p.index === 1, t: this.t });
 
     // the timer bar drains; running out keeps the useful default
     const left = clamp(1 - p.t / p.dur, 0, 1);
@@ -3352,35 +3714,50 @@ export class BattleScene {
     if (r.kind === 'defeat') {
       const W = 240, H = 78, X = R((VIEW_W - W) / 2), Y = 74;
       UI.window(ctx, X, Y, W, H, 'Defeat', { style: 'dark', shadow: 0.6 });
-      UI.text(ctx, VIEW_W / 2, Y + 14, 'The company falls.', { size: 'lg', color: UI.COLORS.red, align: 'center', shadow: true });
+      UI.text(ctx, VIEW_W / 2, Y + 14, 'The party falls.', { size: 'lg', color: UI.COLORS.red, align: 'center', shadow: true });
       UI.text(ctx, VIEW_W / 2, Y + 32, `The fight lasted ${r.rounds} round${r.rounds === 1 ? '' : 's'}.`, { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
       UI.text(ctx, VIEW_W / 2, Y + 46, 'Tymora turns her face away.', { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
       UI.text(ctx, VIEW_W / 2, Y + H - 11, 'Press Confirm', { size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true });
       return;
     }
 
-    const W = 268, H = 152, X = R((VIEW_W - W) / 2), Y = 40;
-    UI.window(ctx, X, Y, W, H, 'Victory', { style: 'gold', shadow: 0.6 });
+    // This panel used to be `style:'gold'` — a genuinely LIGHT brass plate —
+    // with COLORS.ink body (1.12:1), COLORS.xp on the shares (1.04:1),
+    // COLORS.gold on the coin (1.04:1) and goldBright on "LEVEL n!" (1.03:1).
+    // The screen shown after every won fight was, in practice, blank. The
+    // Defeat branch above already gets this right: a dark plate, and
+    // `window_()` draws the title itself as a dark-ink gold nameplate.
+    const W = 268, H = 130, X = R((VIEW_W - W) / 2), Y = 46;
+    UI.window(ctx, X, Y, W, H, 'Victory', { style: 'window', shadow: 0.6 });
 
     UI.text(ctx, X + 8, Y + 8, `The field is yours after ${r.rounds} round${r.rounds === 1 ? '' : 's'}.`,
-      { size: 'sm', color: UI.COLORS.ink, shadow: true });
+      { size: 'sm', color: UI.COLORS.ink, shadow: true, maxWidth: W - 16 });
 
     UI.divider(ctx, X + 6, Y + 20, W - 12, { label: 'Experience' });
 
+    // Three columns that actually reach the panel edge: the name had a 96px cap
+    // while the next column did not start until X+120, so "Sildar Hallwinter"
+    // (101px) was cut to "Sildar Hallwint…" with 24px standing empty beside it.
+    const nameW = 108, xpX = X + 124, lastR = X + W - 10;
     let y = Y + 26;
     for (const m of r.members.slice(0, 4)) {
       const lv = r.leveled.find((l) => l.uid === m.uid);
       const dead = isDead(m);
-      UI.text(ctx, X + 10, y, UI.fit(m.name || '?', 96, 'sm'), {
-        size: 'sm', color: dead ? UI.COLORS.disabled : UI.COLORS.ink, shadow: true,
+      UI.text(ctx, X + 10, y, m.name || '?', {
+        size: 'sm', color: dead ? UI.COLORS.disabled : UI.COLORS.ink, shadow: true, maxWidth: nameW,
       });
-      UI.text(ctx, X + 120, y, dead ? '—' : `+${r.share} xp`, { size: 'sm', color: dead ? UI.COLORS.disabled : UI.COLORS.xp, shadow: true });
+      UI.text(ctx, xpX, y, dead ? '—' : `+${r.share} xp`, {
+        size: 'sm', color: dead ? UI.COLORS.disabled : UI.COLORS.xp, shadow: true, maxWidth: 48,
+      });
       if (lv) {
-        UI.text(ctx, X + 170, y, `LEVEL ${lv.level}!`, {
-          size: 'sm', color: Math.floor(this.t * 5) % 2 ? UI.COLORS.goldBright : UI.COLORS.gold, shadow: true,
+        UI.text(ctx, lastR, y, `LEVEL ${lv.level}!`, {
+          size: 'sm', align: 'right', maxWidth: lastR - xpX - 52,
+          color: Math.floor(this.t * 5) % 2 ? UI.COLORS.goldBright : UI.COLORS.gold, shadow: true,
         });
       } else if (!dead) {
-        UI.text(ctx, X + 170, y, `${Math.max(0, m.hp)}/${safe(() => maxHpOf(m), m.maxHp || 1)} HP`, { size: 'sm', color: UI.COLORS.inkDim });
+        UI.text(ctx, lastR, y, `${Math.max(0, m.hp)}/${safe(() => maxHpOf(m), m.maxHp || 1)} HP`, {
+          size: 'sm', color: UI.COLORS.inkDim, align: 'right', maxWidth: lastR - xpX - 52,
+        });
       }
       y += 10;
     }
@@ -3390,17 +3767,20 @@ export class BattleScene {
     y += 7;
 
     UI.icon(ctx, 'coin', X + 10, y, 8, null);
-    UI.text(ctx, X + 21, y + 1, `${r.gold} gp`, { size: 'sm', color: UI.COLORS.gold, shadow: true });
-    UI.text(ctx, X + 70, y + 1, `${r.xp} xp total`, { size: 'sm', color: UI.COLORS.xp, shadow: true });
+    UI.text(ctx, X + 21, y + 1, `${r.gold} gp`, { size: 'sm', color: UI.COLORS.gold, shadow: true, maxWidth: 46 });
+    UI.text(ctx, X + 70, y + 1, `${r.xp} xp total`, { size: 'sm', color: UI.COLORS.xp, shadow: true, maxWidth: W - 80 });
     y += 11;
 
     if (r.loot.length) {
       let cx = X + 10;
       for (const id of r.loot.slice(0, 6)) {
-        const name = safe(() => itemName(id), null) || titleCase(String(id).replace(/-/g, ' '));
-        const cw = UI.chip(ctx, cx, y, UI.fit(name, 70, 'sm'), { color: UI.COLORS.green, icon: 'bag' });
+        const raw = safe(() => itemName(id), null);
+        const name = raw && raw !== id ? raw : titleCase(String(id).replace(/-/g, ' '));
+        const room = X + W - 12 - cx;
+        if (room < 34) break;
+        const cw = UI.chip(ctx, cx, y, UI.fit(name, Math.min(96, room - 14), 'sm'),
+          { color: UI.COLORS.green, icon: 'bag' });
         cx += cw + 3;
-        if (cx > X + W - 30) break;
       }
       y += 12;
     } else {
@@ -3422,20 +3802,31 @@ export class BattleScene {
    * case the slot says that instead. The colours are only worth explaining while
    * the answer is still "any of these will do".
    */
+  /**
+   * The contextual one-liner, in the strip the layout reserves for it directly
+   * above the detail plate. All three callers used to draw at `BUDGET.y - 13`,
+   * which is 13px INSIDE the detail plate — the refusal reason and the movement
+   * key both landed on top of the verb they were explaining.
+   */
+  _drawNote(ctx, label, color) {
+    const txt = UI.fit(label, NOTE.w - 8, 'sm');
+    if (!txt) return;
+    const w = Math.min(NOTE.w, UI.measure(txt, 'sm') + 8);
+    UI.panel(ctx, NOTE.x, NOTE.y, w, NOTE.h, { style: 'dark', shadow: 0.45, studs: false });
+    UI.text(ctx, NOTE.x + 4, NOTE.y + 2, txt, { size: 'sm', color: color || UI.COLORS.warn, shadow: true });
+  }
+
   _drawMoveLegend(ctx) {
     const k = key(this.cursor.x, this.cursor.y);
     const provokes = this.provoke.has(k);
     const threatened = this.threat.has(k);
     if ((provokes || threatened) && this.reach.has(k)) {
-      const label = provokes
-        ? 'Running from here draws an opportunity attack.'
-        : 'You will be standing in reach.';
-      const w = UI.measure(label, 'sm') + 8;
-      const x = MENU.x - 2, y = BUDGET.y - 13;
-      UI.panel(ctx, x, y, w, 11, { style: 'dark', shadow: 0.45, studs: false });
-      UI.text(ctx, x + 4, y + 2, label, {
-        size: 'sm', color: provokes ? UI.COLORS.bad : UI.COLORS.warn, shadow: true,
-      });
+      // 45 characters is 269px and the strip holds 266. "provokes" is the
+      // rules' own word for it and is what the colour key beside it says.
+      this._drawNote(ctx, provokes
+        ? 'Running from here provokes an attack.'
+        : 'You will be standing in reach.',
+      provokes ? UI.COLORS.bad : UI.COLORS.warn);
       return;
     }
 
@@ -3446,8 +3837,9 @@ export class BattleScene {
     ];
     let w = 6;
     for (const [, label] of items) w += 7 + UI.measure(label, 'sm') + 7;
-    const x = MENU.x - 2, y = BUDGET.y - 13;
-    UI.panel(ctx, x, y, w, 11, { style: 'dark', shadow: 0.45, studs: false });
+    w = Math.min(w, NOTE.w);
+    const x = NOTE.x, y = NOTE.y;
+    UI.panel(ctx, x, y, w, NOTE.h, { style: 'dark', shadow: 0.45, studs: false });
     let cx = x + 4;
     for (const [col, label] of items) {
       ctx.fillStyle = '#0a0708';
@@ -3462,7 +3854,8 @@ export class BattleScene {
 
   _drawHints(ctx) {
     if (this.results || this.prompt) return;
-    const y = LOGTAIL.y + 8;
+    // Just above the action bar, tucked against the right edge under the log.
+    const y = MENU.y - 11;
     let x = VIEW_W - 4;
     const hint = (k, label) => {
       const w = Math.max(9, UI.measure(k, 'sm') + 6) + 3 + UI.measure(label, 'sm');
@@ -3483,15 +3876,10 @@ export class BattleScene {
     else if (this.beats.length) { hint('Sh', 'Fast'); hint('Z', 'Skip'); }
     else { hint('J', 'Log'); hint('Sh', 'Fast'); }
 
-    // The "why not" line sits above the budget strip. It used to be bare text
-    // laid straight over the battlefield, which at 5px tall on grass was close
-    // to unreadable; it gets its own plate now.
+    // The "why not" line, on its own plate in the note strip above the detail
+    // panel — bare text laid straight over grass at 5px tall was unreadable.
     if (this.hint && (this.phase === 'menu' || this.phase === 'target')) {
-      const label = UI.fit(this.hint, 250, 'sm');
-      const w = UI.measure(label, 'sm') + 8;
-      const hx = MENU.x - 2, hy = BUDGET.y - 13;
-      UI.panel(ctx, hx, hy, w, 11, { style: 'dark', shadow: 0.45, studs: false });
-      UI.text(ctx, hx + 4, hy + 2, label, { size: 'sm', color: UI.COLORS.warn, shadow: true });
+      this._drawNote(ctx, this.hint, UI.COLORS.warn);
     }
   }
 }

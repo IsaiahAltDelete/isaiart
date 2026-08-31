@@ -1010,10 +1010,10 @@ export class DialogueScene {
     if (entry.personality) ch.notes = entry.personality;
     safe(() => recalc(ch));
 
-    if (!Party.add(ch)) return 'Your company is already full.';
+    if (!Party.add(ch)) return 'Your party is already full.';
     Party.spendGold(cost);
     sfx('levelup');
-    safe(() => toast(`${entry.name} joins the company.`, { kind: 'party' }));
+    safe(() => toast(`${entry.name} joins the party.`, { kind: 'party' }));
     return `${entry.name} joins you for ${cost} gp.`;
   }
 
@@ -1243,13 +1243,15 @@ export class DialogueScene {
       // It cannot grow sideways — the caption row sits level with the fifth
       // line of dialogue, so anything past the portrait column would run into
       // the text. It wraps instead: "Gate Watch" over two lines beats "Gate Wa…".
+      // Two lines is all the floor allows, but the overflow must SAY it
+      // overflowed: "The Mad Mage of Undermountain" used to stop dead after
+      // "The Mad / Mage of", which is a different (and wrong) title. wrapped()
+      // ellipsises the last line it can show.
       const room = (TEXT_X - BOX_X) - 8;
-      const lines = safe(() => UI.wrapLines(caption, room, 'sm'), [caption]) || [caption];
-      for (let i = 0; i < Math.min(2, lines.length); i++) {
-        UI.text(ctx, x + size / 2, y + size + 3 + i * 8, lines[i], {
-          size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: 'rgba(0,0,0,0.8)',
-        });
-      }
+      UI.textWrapped(ctx, x + size / 2 - room / 2, y + size + 3, room, caption, {
+        size: 'sm', color: UI.COLORS.gold, align: 'center',
+        shadow: 'rgba(0,0,0,0.8)', maxLines: 2, lineHeight: 8,
+      });
     }
   }
 

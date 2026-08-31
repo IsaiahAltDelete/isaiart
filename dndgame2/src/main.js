@@ -11,6 +11,7 @@ import { FX } from './render/fx.js';
 import { Party } from './world/party.js';
 import { newGameState, loadState, saveState, stateSummary, recordKill, progressQuests, advanceTime } from './state.js';
 import { VERSION } from './constants.js';
+import { cheat, Cheats, installCheatKeys } from './core/cheats.js';
 
 // Registries that must run before anything draws.
 import { registerCharacterSprites } from './render/spritedata_chars.js';
@@ -174,6 +175,11 @@ export async function boot(hooks = {}) {
   }
 
   // Handy console access while developing.
-  window.SC = { Game, Party, Save, Audio, Input, FX, bus, EV, newGame, continueGame, writeSave, awardPartyXp, createCharacter, VERSION };
-  console.info(`Sword Coast Chronicles v${VERSION} — type SC in the console for debug handles.`);
+  installCheatKeys();
+  window.SC = { Game, Party, Save, Audio, Input, FX, bus, EV, newGame, continueGame, writeSave,
+                awardPartyXp, createCharacter, VERSION, cheat, Cheats };
+  window.cheat = cheat;   // short alias; `cheat.help()` lists everything
+  console.info(`Sword Coast Chronicles v${VERSION}`);
+  console.info('%cTesting: type  cheat.help()  — or type "xyzzy" in the game window for explore mode.',
+    'color:#e3b34a');
 }

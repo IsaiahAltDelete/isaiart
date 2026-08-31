@@ -173,54 +173,139 @@ function reservedFor(id) {
 // ---------------------------------------------------------------------------
 // 1. BUILDINGS
 // ---------------------------------------------------------------------------
+//
+// ELEVATION. A house has to be read from the top down as five bands, and if any
+// of them is missing the whole thing flattens into a sticker printed on the
+// grass — which is exactly what Phandalin used to look like: a rectangle of
+// roof with a single row of windows glued to the bottom of it.
+//
+//     ridge        the crest, capped by THATCH_RIDGE (thatch caps itself; a
+//                  shingle or tile roof already paints a lit ridge course)
+//     pitch        one or two more courses of roof
+//     eave         the last roof course, on the `over` plane. overworld.js
+//                  reads that plane in `_drawOverhangs` and drops a five-row
+//                  ramp onto whatever is directly south of it, which is what
+//                  turns the eave into a visible overhang — so the row below an
+//                  eave must be WALL, not more roof, or the shadow lands on the
+//                  roof and the building stays flat
+//     wall face    one to three storeys of wall, with the windows and the sign
+//     base course  a stone footing where the wall meets the ground, with the
+//                  door punched through it
+//
+// and then, on the ground in front, a flagged step at the threshold and a beaten
+// approach out to the road. Nothing here paints a shadow tile: `_drawEdges`
+// already ramps the foot of every solid edge and `_drawOverhangs` the underside
+// of every eave, and a ROOF_SHADOW laid on the same rows composites with them
+// into a black bar. The map's job is to give those passes the right geometry.
+//
+// Only the base-course row is nailed down: the door has to stay on it, because
+// WORLD_NODES warps to those exact coordinates and data/npcs.js spawns against
+// them. Everything above it is free, so `roofRows` decides how much of a
+// building is roof and how much is wall — that one number is what makes the inn
+// read as two storeys and Barthen's as a long low shed.
+//
+// The `over` plane is drawn above the actors but contributes nothing to
+// `recomputeFlags` (which reads ground and deco only), so a roof is pure paint
+// and can never brick anybody in.
 
 const ROOFS = {
   thatch: { ridge: 'THATCH_RIDGE', l: 'THATCH_L', m: 'THATCH_M', r: 'THATCH_R' },
-  shingle: { ridge: 'ROOF_PEAK', l: 'SHINGLE_ROOF', m: 'SHINGLE_ROOF', r: 'SHINGLE_ROOF' },
-  tile: { ridge: 'ROOF_PEAK', l: 'TILE_ROOF', m: 'TILE_ROOF', r: 'TILE_ROOF' },
+  // These two used to cap themselves with ROOF_PEAK, which is straw-coloured:
+  // it dropped a zigzag thatch fringe along the top of every red roof in town.
+  // Both tiles paint their own lit ridge course, so they are their own ridge.
+  shingle: { ridge: 'SHINGLE_ROOF', l: 'SHINGLE_ROOF', m: 'SHINGLE_ROOF', r: 'SHINGLE_ROOF' },
+  tile: { ridge: 'TILE_ROOF', l: 'TILE_ROOF', m: 'TILE_ROOF', r: 'TILE_ROOF' },
 };
 
 /**
- * A real enterable house, drawn the GBA way: the whole footprint is solid, the
- * bottom row is the timber facade you see from the street (door, windows, sign),
- * and everything above it is roof on the `over` plane so the party walks behind
- * it and disappears.
+ * What a wall stands on. Timber gets a fieldstone footing with its own lit cap,
+ * stone gets a flatter, heavier course — either way the bottom row of a facade
+ * is a different material from the wall above it, which is what stops a house
+ * from looking like it was pushed into the grass up to its knees.
+ */
+const BASE_COURSE = {
+  WATTLE_WALL: 'STONE_WALL', LOG_WALL: 'STONE_WALL', PALISADE: 'STONE_WALL',
+  STONE_WALL: 'WALL_TOP_SHADE', BRICK_WALL: 'WALL_TOP_SHADE', RUINED_WALL: 'WALL_TOP_SHADE',
+};
+
+/**
+ * A real enterable house. The whole footprint is solid; the roof sits on the
+ * `over` plane so the party walks behind it and disappears.
  *
- * b: { x, y, w, h, wall, roof:'thatch'|'shingle'|'tile', door, windows:[dx],
- *      sign:dx, chimney:dx, base }
+ * b: { x, y, w, h, wall, roof:'thatch'|'shingle'|'tile', base,
+ *      roofRows, peak:dx, chimney:dx, chimney2:dx, roofPatch:[[dx,dy]], patchTile,
+ *      door:dx, windows:[dx], upper:[dx], shutters:[dx], loading:[dx],
+ *      sign:dx, lit, course, approach }
  * Returns { door:{x,y}, front:{x,y} }.
  */
 function building(map, b, res) {
   const { x, y, w, h } = b;
-  const wall = tid(b.wall || 'WATTLE_WALL', 'STONE_WALL');
+  const wallKey = b.wall || 'WATTLE_WALL';
+  const wall = tid(wallKey, 'STONE_WALL');
   const base = tid(b.base || 'DIRT', 'DIRT');
   const rk = ROOFS[b.roof] || ROOFS.thatch;
+  const course = tid(b.course || BASE_COURSE[wallKey] || 'STONE_WALL', wallKey);
 
   // Solid mass first: ground under it, wall through it.
   grect(map, x, y, w, h, base);
   drect(map, x, y, w, h, wall);
   orect(map, x, y, w, h, 0);
 
-  // Roof over everything but the facade row.
-  const rh = Math.max(0, h - 1);
-  for (let j = 0; j < rh; j++) {
+  // How much of the elevation is roof. The default leaves two rows of wall on a
+  // five-high house and three on the inn; never so much roof that the wall
+  // disappears, and never so little that the ridge lands on the windows.
+  const want = b.roofRows != null ? b.roofRows : Math.min(3, h - 3);
+  const roofRows = Math.max(1, Math.min(want, h - 2));
+  const fy = y + h - 1;                            // base course; the door row
+  const wallTop = y + roofRows;                    // the row the eave shadows
+  const gy = Math.max(wallTop, fy - 1);            // the ground-floor wall row
+
+  // --- roof ---------------------------------------------------------------
+  // Roof goes on `over` *and* on `deco` underneath it. CHIMNEY and ROOF_PEAK
+  // only paint part of their tile, and with a wall under them the gaps used to
+  // show lime plaster — a chimney with a cream halo round it. Doubling the
+  // course underneath means any hole in an over-tile falls through onto more
+  // roof. Roof tiles are SOLID, so the footprint is exactly as solid as before.
+  for (let j = 0; j < roofRows; j++) {
     for (let i = 0; i < w; i++) {
       let name;
       if (j === 0) name = rk.ridge;
       else if (i === 0) name = rk.l;
       else if (i === w - 1) name = rk.r;
       else name = rk.m;
-      oset(map, x + i, y + j, tid(name, 'THATCH_M'));
+      const id = tid(name, 'THATCH_M');
+      oset(map, x + i, y + j, id);
+      dset(map, x + i, y + j, id);
     }
   }
-  if (b.chimney != null && rh > 0) oset(map, x + b.chimney, y, tid('CHIMNEY', 'THATCH_RIDGE'));
+  // A single gable over the door, for a shrine or a porch. One tile only —
+  // a whole row of ROOF_PEAK reads as a sawtooth, not as a roof.
+  if (b.peak != null) oset(map, x + b.peak, y, tid('ROOF_PEAK', 'THATCH_RIDGE'));
+  // Courses somebody patched with whatever was in the yard and never mended.
+  for (const [px, py] of b.roofPatch || []) oset(map, x + px, y + py, tid(b.patchTile || 'SHINGLE_ROOF', 'THATCH_RIDGE'));
+  if (b.chimney != null) oset(map, x + b.chimney, y, tid('CHIMNEY', 'THATCH_RIDGE'));
+  if (b.chimney2 != null) oset(map, x + b.chimney2, y, tid('CHIMNEY', 'THATCH_RIDGE'));
 
-  // The facade.
-  const fy = y + h - 1;
-  for (const dx of b.windows || []) {
-    if (dx > 0 && dx < w - 1) dset(map, x + dx, fy, tid(b.lit ? 'WINDOW_LIT' : 'WINDOW', 'WINDOW'));
-  }
-  if (b.sign != null) dset(map, x + b.sign, fy, tid('SIGN', 'WINDOW'));
+  // Row `wallTop` is deliberately left clear of `over`. That is the signal
+  // overworld.js `_drawOverhangs` reads: it ramps the eave's shadow down the
+  // first wall row, which is the whole overhang. Paint a ROOF_SHADOW there as
+  // well and the two composite into a black bar across every building in town.
+
+  // --- the footing the wall stands on -------------------------------------
+  for (let i = 0; i < w; i++) dset(map, x + i, fy, course);
+  // A jetty beam between two storeys: the dark course of floor timbers a
+  // Sword Coast upper storey is built out on. Without it a three-row facade is
+  // just the same braced panel printed three times.
+  if (b.band != null) for (let i = 0; i < w; i++) dset(map, x + i, y + b.band, tid(b.bandTile || 'LOG_WALL', wallKey));
+
+  // --- the facade ---------------------------------------------------------
+  const win = tid(b.lit ? 'WINDOW_LIT' : 'WINDOW', 'WINDOW');
+  for (const dx of b.windows || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, gy, win);
+  if (wallTop < gy) for (const dx of b.upper || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, wallTop, win);
+  for (const dx of b.shutters || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, gy, tid('SHUTTER', 'WINDOW'));
+  // A wagon door in the base course, for a shed you back a cart up to.
+  for (const dx of b.loading || []) if (dx >= 0 && dx < w) dset(map, x + dx, fy, tid('SHUTTER', 'DOOR_CLOSED'));
+  if (b.sign != null) dset(map, x + b.sign, gy, tid('SIGN', 'WINDOW'));
 
   let door = null, front = null;
   if (b.door != null) {
@@ -229,17 +314,34 @@ function building(map, b, res) {
     dset(map, dx, fy, tid('DOOR_CLOSED', 'DOOR_OPEN'));
     door = { x: dx, y: fy };
     front = { x: dx, y: fy + 1 };
-    // Trodden earth on the doorstep.
-    if (map.inBounds(dx, fy + 1) && !map.deco[(fy + 1) * map.w + dx]) gset(map, dx, fy + 1, tid('DIRT_PATH', 'DIRT'));
   }
+
+  // --- the ground the building sits on ------------------------------------
+  // The street row keeps its bare deco on purpose too: `_drawEdges` ramps the
+  // foot of every solid edge onto the walkable tile beside it, so the shadow
+  // the building throws across the street comes for free and never doubles.
+  if (door) {
+    // A flagged step at the threshold, trodden earth either side of it, and a
+    // beaten approach running out to whatever road is nearest.
+    const sy = fy + 1;
+    const worn = tid('DIRT_PATH', 'DIRT');
+    for (let i = -1; i <= 1; i++) gset(map, door.x + i, sy, worn);
+    gset(map, door.x, sy, tid('FLAGSTONE', 'DIRT_PATH'));
+    const run = b.approach != null ? b.approach : 2;
+    for (let k = 1; k <= run; k++) {
+      const py = sy + k;
+      if (!map.inBounds(door.x, py) || map.deco[py * map.w + door.x]) break;
+      gset(map, door.x, py, worn);
+    }
+  }
+
   if (res) for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) res.add(KEY(i, j));
   return { door, front };
 }
 
 /** A house nobody can enter — shuttered, boarded, still part of the skyline. */
 function shell(map, b, res) {
-  const spec = { ...b, door: null };
-  const out = building(map, spec, res);
+  const out = building(map, { ...b, door: null, windows: [], shutters: b.windows || [] }, res);
   if (b.door != null) dset(map, b.x + b.door, b.y + b.h - 1, tid('SHUTTER', 'WINDOW'));
   return out;
 }
@@ -247,19 +349,40 @@ function shell(map, b, res) {
 /**
  * A four-walled interior room: floor, wall ring, and an exit door punched in the
  * bottom wall. Returns { exit, spawn }.
+ *
+ * The ring is not one undifferentiated band of wall any more. You are looking
+ * *at* the north wall, so it keeps its face; you are looking *down on* the south
+ * wall, so it shows the same footing course the outside of the building stands
+ * on, and the door is punched through that footing exactly as it is outside. The
+ * corners get posts. The shadow the north wall throws onto the boards is not
+ * painted here — overworld.js `_drawEdges` ramps the foot of every solid edge
+ * already, and a second one laid on top of it just makes a black bar.
  */
 function room(map, o) {
   const w = o.w != null ? o.w : map.w;
   const h = o.h != null ? o.h : map.h;
   const x = o.x || 0, y = o.y || 0;
   const fl = tid(o.floor || 'WOOD_FLOOR', 'STONE_FLOOR');
-  const wall = tid(o.wall || 'WATTLE_WALL', 'STONE_WALL');
+  const wallKey = o.wall || 'WATTLE_WALL';
+  const wall = tid(wallKey, 'STONE_WALL');
+  const course = tid(o.course || BASE_COURSE[wallKey] || 'STONE_WALL', wallKey);
+  const stony = wallKey === 'STONE_WALL' || wallKey === 'BRICK_WALL';
+  const post = tid(o.post || (stony ? 'PILLAR' : 'LOG_WALL'), wallKey);
+
   floorRect(map, x, y, w, h, fl);
   dframe(map, x, y, w, h, wall);
+  for (let i = x; i < x + w; i++) dset(map, i, y + h - 1, course);
+  for (const [px, py] of [[x, y], [x + w - 1, y], [x, y + h - 1], [x + w - 1, y + h - 1]]) dset(map, px, py, post);
+
   const ex = o.exit != null ? o.exit : (x + (w >> 1));
   const ey = y + h - 1;
   gset(map, ex, ey, tid('WOOD_FLOOR_H', 'DIRT'));
   dset(map, ex, ey, tid('DOOR_CLOSED', 'DOOR_OPEN'));
+  // The threshold: three tiles inside the door, of whatever the floor is not —
+  // flags in a boarded room, boards in a flagged one. A stone step on a stone
+  // floor is a step nobody can see.
+  const step = tid(o.step || (/^WOOD/.test(o.floor || 'WOOD_FLOOR') ? 'FLAGSTONE' : 'WOOD_FLOOR_H'), 'FLAGSTONE');
+  for (let i = -1; i <= 1; i++) gset(map, ex + i, ey - 1, step);
   return { exit: { x: ex, y: ey }, spawn: { x: ex, y: ey - 1 } };
 }
 
@@ -368,17 +491,41 @@ export function arrivalFor(fromId, toId) {
   return n ? { x: n.toXY.x, y: n.toXY.y, dir: n.dir } : null;
 }
 
+/**
+ * How wide the mouth of an exit is, in tiles. A door is a door — one tile, you
+ * aim for it. But a road leaving town is a road: threading a single square at
+ * the end of a sixty-tile map feels like a bug even when it isn't, so roads and
+ * cave mouths get a three-tile span you can hit at a walk.
+ */
+const EXIT_SPAN = { road: 3, cave: 3, well: 1, stairs: 1, door: 1 };
+
 /** Lay every declared warp trigger onto a freshly built map. */
 function applyWarpNodes(map, mapId) {
   for (const n of warpsFrom(mapId)) {
     if (!n.auto || !n.toXY) continue;
     const { x, y } = n.fromXY;
     if (!map.inBounds(x, y)) continue;
-    openDoorway(map, x, y);
-    map.addTrigger({
-      id: n.id, kind: 'warp', x, y, facing: n.facing || null,
-      data: { map: n.to, x: n.toXY.x, y: n.toXY.y, dir: n.dir, kind: n.kind },
-    });
+
+    const span = EXIT_SPAN[n.kind] || 1;
+    const half = (span - 1) / 2;
+    // Widen across the road, not along it: a warp on the left/right edge spreads
+    // vertically, one on the top/bottom edge spreads horizontally.
+    const vertical = n.dir === 'left' || n.dir === 'right';
+
+    for (let o = -half; o <= half; o++) {
+      const tx = vertical ? x : x + o;
+      const ty = vertical ? y + o : y;
+      if (!map.inBounds(tx, ty)) continue;
+      // Never carve a mouth through something solid that was placed deliberately;
+      // the centre tile is always opened, the shoulders only if they are clear.
+      if (o !== 0 && map.solidAt(tx, ty)) continue;
+      openDoorway(map, tx, ty);
+      map.addTrigger({
+        id: o === 0 ? n.id : `${n.id}#${o}`, kind: 'warp', x: tx, y: ty,
+        facing: n.facing || null,
+        data: { map: n.to, x: n.toXY.x, y: n.toXY.y, dir: n.dir, kind: n.kind },
+      });
+    }
     map.exits[n.to] = { x, y, dir: n.dir };
   }
   return map;
@@ -450,42 +597,55 @@ function buildPhandalin(root) {
   for (const [px, py] of [[26, 27], [28, 27], [26, 29], [28, 29]]) if (rd.chance(0.5)) gset(map, px, py, tid('FLAGSTONE', 'COBBLE'));
 
   // --- 4. the buildings ----------------------------------------------------
+  // Nine buildings and not one of them the same shape. Every footprint, door
+  // offset and door row here is load-bearing — LINKS warps to them and
+  // data/npcs.js stands people in front of them — so the variation is all in
+  // roofRows, materials and what hangs off the front.
   building(map, {
     x: 14, y: 20, w: 8, h: 7, wall: 'WATTLE_WALL', roof: 'thatch', lit: true,
-    door: 3, windows: [1, 5, 6], sign: 2, chimney: 6,
-  }, res);                                                     // Stonehill Inn
+    roofRows: 3, door: 3, windows: [1, 5, 6], upper: [1, 3, 6], sign: 2, band: 4,
+    chimney: 6, chimney2: 1, approach: 3,
+  }, res);                            // Stonehill Inn — the tall one: two rows
+                                      // of lit windows under a deep thatch roof
   building(map, {
     x: 29, y: 24, w: 7, h: 5, wall: 'WATTLE_WALL', roof: 'thatch',
-    door: 3, windows: [1, 5], sign: 4, chimney: 1,
-  }, res);                                                     // Barthen's Provisions
+    roofRows: 2, door: 3, windows: [1, 5], sign: 4, chimney: 1,
+    loading: [5, 6], approach: 1,
+  }, res);                            // Barthen's Provisions — a long low shed
+                                      // with a wagon door in the footing
   building(map, {
-    x: 33, y: 33, w: 7, h: 5, wall: 'STONE_WALL', roof: 'tile',
-    door: 3, windows: [1, 5], sign: 2, chimney: 5,
-  }, res);                                                     // Lionshield Coster
+    x: 33, y: 33, w: 7, h: 5, wall: 'STONE_WALL', roof: 'shingle', base: 'GRAVEL',
+    roofRows: 2, door: 3, windows: [1, 5], sign: 2, chimney: 5, approach: 1,
+  }, res);                            // Lionshield Coster — stone under shingle
   building(map, {
-    x: 8, y: 23, w: 6, h: 5, wall: 'STONE_WALL', roof: 'shingle',
-    door: 2, windows: [1, 4], sign: 3,
-  }, res);                                                     // Shrine of Luck
+    x: 8, y: 23, w: 6, h: 5, wall: 'STONE_WALL', roof: 'thatch', base: 'GRAVEL',
+    roofRows: 2, door: 2, windows: [1, 4], sign: 3, peak: 2, approach: 1,
+  }, res);                            // Shrine of Luck — small stone box, one
+                                      // gable peaked over the door
   building(map, {
-    x: 5, y: 33, w: 7, h: 5, wall: 'WATTLE_WALL', roof: 'shingle',
-    door: 3, windows: [1, 5], sign: 2, chimney: 1,
-  }, res);                                                     // Miner's Exchange
+    x: 5, y: 33, w: 7, h: 5, wall: 'STONE_WALL', roof: 'tile', base: 'GRAVEL',
+    roofRows: 2, door: 3, windows: [1, 5], sign: 2, chimney: 1, approach: 1,
+  }, res);                            // The Miner's Exchange — a counting-house
   building(map, {
     x: 14, y: 33, w: 8, h: 5, wall: 'WATTLE_WALL', roof: 'shingle',
-    door: 3, windows: [1, 6], sign: 4, chimney: 6,
-  }, res);                                                     // Townmaster's Hall
+    roofRows: 2, door: 3, windows: [1, 6], upper: [2, 5], sign: 4, chimney: 6, approach: 1,
+  }, res);                            // Townmaster's Hall
   building(map, {
     x: 47, y: 32, w: 7, h: 6, wall: 'LOG_WALL', roof: 'thatch',
-    door: 3, windows: [5], sign: 2, chimney: 1,
-  }, res);                                                     // The Sleeping Giant
+    roofRows: 3, door: 3, shutters: [1, 5], sign: 2, chimney: 1, approach: 1,
+    roofPatch: [[3, 2], [4, 2]], patchTile: 'TILE_ROOF',
+  }, res);                            // The Sleeping Giant — boarded windows and
+                                      // a roof patched with somebody else's tiles
+  oset(map, 53, 36, tid('COBWEB', 'THATCH_M'));                // and never swept
   shell(map, {
-    x: 26, y: 19, w: 6, h: 3, wall: 'WATTLE_WALL', roof: 'thatch',
+    x: 26, y: 19, w: 6, h: 3, wall: 'WATTLE_WALL', roof: 'thatch', roofRows: 1,
     door: 3, windows: [1, 4],
   }, res);                                                     // the boarded Dendrar home
-  building(map, { x: 9, y: 12, w: 6, h: 5, wall: 'WATTLE_WALL', roof: 'thatch', windows: [1, 4], chimney: 4 }, res);
-  building(map, { x: 37, y: 19, w: 6, h: 5, wall: 'WATTLE_WALL', roof: 'thatch', windows: [1, 4], chimney: 1 }, res);
-  building(map, { x: 39, y: 40, w: 6, h: 5, wall: 'WATTLE_WALL', roof: 'thatch', windows: [1, 4], chimney: 4 }, res);
-  building(map, { x: 48, y: 41, w: 6, h: 5, wall: 'WATTLE_WALL', roof: 'shingle', windows: [1, 4], chimney: 1 }, res);
+  // Four cottages: two squat under a big roof, two taller with more wall.
+  building(map, { x: 9, y: 12, w: 6, h: 5, wall: 'WATTLE_WALL', roof: 'thatch', roofRows: 2, windows: [1, 4], chimney: 4 }, res);
+  building(map, { x: 37, y: 19, w: 6, h: 5, wall: 'WATTLE_WALL', roof: 'shingle', roofRows: 2, windows: [1, 4], chimney: 1 }, res);
+  building(map, { x: 39, y: 40, w: 6, h: 5, wall: 'LOG_WALL', roof: 'thatch', roofRows: 3, windows: [1, 4], chimney: 4 }, res);
+  building(map, { x: 48, y: 41, w: 6, h: 5, wall: 'WATTLE_WALL', roof: 'tile', roofRows: 3, windows: [1, 4], chimney: 1 }, res);
 
   // --- 5. Tresendar Manor: a burnt shell on the eastern rise ---------------
   const rubble = table([['RUBBLE', 5], ['ROCK', 3], ['BONES', 1]]);
@@ -535,30 +695,69 @@ function buildPhandalin(root) {
   prop(map, 22, 41, tid('CART', 'CRATE'), res);
 
   // --- 8. the pig sty, the woodpile, the carts ----------------------------
+  // Everything here is placed against a wall or along a frontage. A barrel
+  // standing in the middle of a street reads as a barrel that fell off the
+  // sprite sheet; the same barrel tucked into the corner where a wall meets the
+  // ground reads as a barrel somebody put down.
   floorRect(map, 3, 24, 5, 5, tid('MUD', 'DIRT'));
   fenceRect(map, 3, 24, 5, 5, { x: 5, y: 28 }, res);
   prop(map, 4, 25, tid('SACK', 'CRATE'), res);
   prop(map, 6, 26, tid('BARREL', 'CRATE'), res);
-  // Barthen's crates, stacked in the mud where the wagons unload.
-  for (const [px, py] of [[28, 26], [28, 27], [28, 28], [36, 27]]) prop(map, px, py, tid('CRATE', 'BARREL'), res);
+
+  // Barthen's: the wagon door in the base course, and the cargo it swallows.
+  // The stack runs up the west wall and out along the front where a cart backs in.
+  for (const [px, py] of [[28, 25], [28, 26], [28, 27], [28, 28], [36, 27]]) prop(map, px, py, tid('CRATE', 'BARREL'), res);
   prop(map, 36, 28, tid('BARREL', 'CRATE'), res);
   prop(map, 37, 27, tid('SACK', 'CRATE'), res);
-  // the woodpile behind the Sleeping Giant
-  for (const [px, py] of [[45, 33], [45, 34], [45, 35]]) prop(map, px, py, tid('CRATE', 'BARREL'), res);
-  prop(map, 46, 35, tid('STUMP', 'ROCK'), res);
-  prop(map, 46, 34, tid('BARREL', 'CRATE'), res);
-  // handcarts, a grindstone and the smith's leavings
+  prop(map, 34, 29, tid('CRATE', 'BARREL'), res);              // under the wagon door
+  prop(map, 35, 29, tid('SACK', 'CRATE'), res);
+  prop(map, 29, 29, tid('CART', 'CRATE'), res);
+
+  // The Stonehill Inn's frontage: a bench under the windows, barrels of ale
+  // stood against the east end, a handcart parked round the corner.
+  prop(map, 15, 27, tid('BENCH', 'CRATE'), res);
+  prop(map, 20, 27, tid('BARREL', 'CRATE'), res);
+  prop(map, 21, 27, tid('CRATE', 'BARREL'), res);
   prop(map, 22, 27, tid('CART', 'CRATE'), res);
-  prop(map, 37, 32, tid('CART', 'CRATE'), res);
-  prop(map, 13, 32, tid('GRINDSTONE', 'ROCK'), res);
+  prop(map, 13, 26, tid('BARREL', 'CRATE'), res);
+
+  // the woodpile stacked along the Sleeping Giant's west wall
+  for (const [px, py] of [[46, 33], [46, 34], [46, 35]]) prop(map, px, py, tid('CRATE', 'BARREL'), res);
+  prop(map, 45, 35, tid('STUMP', 'ROCK'), res);
+  prop(map, 46, 36, tid('BARREL', 'CRATE'), res);
+  prop(map, 47, 38, tid('BONES', 'RUBBLE'), res);              // nobody sweeps up here
+  prop(map, 53, 38, tid('BARREL', 'CRATE'), res);
+  prop(map, 54, 36, tid('RUBBLE', 'ROCK'), res);
+  prop(map, 45, 31, tid('DEAD_TREE', 'STUMP'), res);
+
+  // shop frontages: crates by the Coster's door, ore and sacks at the Exchange,
+  // benches outside the Townmaster's where petitioners wait
+  prop(map, 32, 38, tid('CRATE', 'BARREL'), res);
+  prop(map, 40, 38, tid('BARREL', 'CRATE'), res);
+  prop(map, 40, 33, tid('CART', 'CRATE'), res);
+  prop(map, 4, 38, tid('CRATE', 'BARREL'), res);
+  prop(map, 11, 38, tid('SACK', 'CRATE'), res);
+  prop(map, 12, 34, tid('GRINDSTONE', 'ROCK'), res);
+  prop(map, 12, 36, tid('ORE_IRON', 'ROCK'), res);
+  prop(map, 14, 38, tid('BENCH', 'CRATE'), res);
+  prop(map, 21, 38, tid('BENCH', 'CRATE'), res);
   prop(map, 22, 33, tid('SIGN', 'BENCH'), res);                // the Townmaster's bounty board
   prop(map, 12, 22, tid('BARREL', 'CRATE'), res);
   prop(map, 12, 28, tid('STATUE', 'SHRINE'), res);             // Tymora's coin outside the shrine
   prop(map, 8, 28, tid('SHRINE', 'STATUE'), res);
+  prop(map, 7, 27, tid('BUSH', 'ROCK'), res);
   prop(map, 56, 29, tid('SIGN', 'FENCE_H'), res);              // "PHANDALIN"
   prop(map, 2, 22, tid('SIGN', 'FENCE_H'), res);
-  // low stone walls along the street frontage
-  for (const [px, py] of [[18, 28], [30, 33], [32, 33], [42, 30], [43, 30]]) prop(map, px, py, tid('STONE_FENCE', 'FENCE_H'), res);
+  // cottage yards: a woodpile against each gable end
+  prop(map, 15, 16, tid('CRATE', 'BARREL'), res);
+  prop(map, 43, 19, tid('BARREL', 'CRATE'), res);
+  prop(map, 45, 44, tid('CRATE', 'BARREL'), res);
+  prop(map, 47, 45, tid('BARREL', 'CRATE'), res);
+  // low stone walls, each run butted INTO a building corner rather than left
+  // floating in the open: the inn's yard, Barthen's boundary, the tavern's.
+  for (const [px, py] of [[22, 24], [22, 25], [22, 26], [28, 24], [27, 24], [26, 24], [45, 32], [46, 32]]) {
+    prop(map, px, py, tid('STONE_FENCE', 'FENCE_H'), res);
+  }
   // a scattering of flowers and tall grass in the corners nobody mows
   scatter(map, rd, 2, 8, 6, 10, table([['FLOWERS_RED', 3], ['FLOWERS_YELLOW', 3], ['GRASS_TALL', 2]]), 0.22, res);
   scatter(map, rd, 50, 44, 8, 5, table([['FLOWERS_BLUE', 3], ['BUSH', 3], ['ROCK', 2]]), 0.24, res);

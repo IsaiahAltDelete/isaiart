@@ -207,7 +207,10 @@ export class Hotbar {
 
   /** The hover/refusal line, floated just above the bar. */
   _tip(ctx) {
-    const label = UI.fit(this.tip, 220, 'sm');
+    // 220px is 36 characters; the strip starts at x=5, so a tip can run to 320
+    // before it leaves the screen, and "Otiluke's Resilient Sphere" is a name
+    // worth showing whole.
+    const label = UI.fit(this.tip, 320, 'sm');
     const w = UI.measure(label, 'sm') + 10;
     const x = clamp(Math.round(BAR.x + 2), 2, VIEW_W - w - 2);
     const y = BAR.y - 12;

@@ -66,10 +66,26 @@ function icon(ctx, name, x, y, size, color, fallback) {
   if (fallback) fallback(ctx, Math.round(x), Math.round(y), size, color);
 }
 function fit(s, w, size) {
+  try { if (UI && UI.fit) return UI.fit(String(s == null ? '' : s), w, size); } catch (e) { /* below */ }
   let str = String(s == null ? '' : s);
   if (tw(str, size) <= w) return str;
   while (str.length > 1 && tw(str + '…', size) > w) str = str.slice(0, -1);
   return str + '…';
+}
+/**
+ * A person's name in `w` pixels. The party strip is 104px wide and
+ * "Sildar Hallwinter" is 101px on its own, so the full name loses every fight
+ * with the HP readout beside it. An ellipsis in a name reads as a bug —
+ * "Sildar Hall…" looks like the string was cut by mistake — so a name that will
+ * not fit falls back to its FIRST WORD, which is what everyone at the table
+ * calls that character anyway. Only a single unfittable word gets an ellipsis.
+ */
+function shortName(name, w, size) {
+  const s = String(name == null || name === '' ? 'Unnamed' : name);
+  if (tw(s, size) <= w) return s;
+  const first = s.split(/[\s,]+/)[0];
+  if (first && first !== s && tw(first, size) <= w) return first;
+  return fit(s, w, size);
 }
 
 async function softImport(path) {
@@ -160,18 +176,25 @@ function badgeFor(id) {
 // Layout constants
 // ---------------------------------------------------------------------------
 
-const PARTY = { x: 3, y: 3, w: 128, row: 20, pad: 3 };
+// row 21, not 20: each member is three 7px lines (name, bar, slots/AC) and at 20
+// the third line's drop shadow landed on the next member's name.
+const PARTY = { x: 3, y: 3, w: 128, row: 21, pad: 3 };
 const TR = { w: 116, h: 27, x: VIEW_W - 3 - 116, y: 3 };
 // The bottom strip belongs to ui/hotbar.js (BAR sits at VIEW_H - 15), so the
 // quest tracker and the log ribbon stack above it rather than under it.
-const QUEST = { x: 3, w: 168, h: 32, y: VIEW_H - 66 };
+// 168px left "The Lost Mine of Phandelver" (161px) 15px short of its own title
+// and cut every objective mid-word. Nothing lives between x=3 and the minimap's
+// left edge at x=340 on this row, so the panel takes the space it needs.
+const QUEST = { x: 3, w: 200, h: 32, y: VIEW_H - 66 };
 const MAP = { cx: VIEW_W - 33, cy: VIEW_H - 33, r: 27, px: 2 };
 const RIBBON = { x: 3, w: 334, h: 12, y: VIEW_H - 29 };
 
 const TOAST_MAX = 4;
 const TOAST_LIFE = 3.0;
 const TOAST_SLIDE = 0.22;
-const TOAST_W = 148;
+// The free band between the party strip (ends x=131) and the purse (starts
+// x=281) is 146px. A 148px toast could not fit it and clipped one or the other.
+const TOAST_W = 144;
 const LOG_LIFE = 4.0;
 
 // Tile flag bits, mirrored from world/tilemap.js so the HUD never has to import
@@ -471,11 +494,17 @@ export class HUD {
       ctx.fillRect(PARTY.x + 1, ry, 1, 16);
 
       // --- line 1: name + hp readout ---
+      // The name used to get a flat `cw - 30`, which is right for "41/58" and
+      // wrong for "185/185" (41px) and stingy for "DEAD" (23px). Measure the
+      // readout, then split the row: a long name keeps every pixel the number
+      // is not using, and the number is never printed through it.
       const nameCol = grey ? 'rgba(154,145,127,0.6)' : C('ink');
-      txt(ctx, x0, ry, fit(m.name || 'Unnamed', cw - 30, 'sm'), { size: 'sm', color: nameCol });
-      if (dead) txtR(ctx, x0 + cw, ry, 'DEAD', { size: 'sm', color: '#8a3a30' });
-      else if (down) txtR(ctx, x0 + cw, ry, 'DOWN', { size: 'sm', color: C('red') });
-      else txtR(ctx, x0 + cw, ry, `${Math.max(0, m.hp | 0)}/${m.maxHp | 0}`, { size: 'sm', color: hpColor(m) });
+      const readout = dead ? 'DEAD' : down ? 'DOWN' : `${Math.max(0, m.hp | 0)}/${m.maxHp | 0}`;
+      const readCol = dead ? '#8a3a30' : down ? C('red') : hpColor(m);
+      const readW = Math.min(tw(readout, 'sm'), Math.round(cw * 0.45));
+      const nameW = cw - 4 - readW;
+      txt(ctx, x0, ry, shortName(m.name, nameW, 'sm'), { size: 'sm', color: nameCol, maxWidth: nameW });
+      txt(ctx, x0 + cw, ry, readout, { size: 'sm', color: readCol, align: 'right', maxWidth: readW });
 
       // --- line 2: hp bar with a lagging damage ghost, or death saves ---
       const by = ry + 9;
@@ -541,8 +570,10 @@ export class HUD {
 
   _drawDeathSaves(ctx, x, y, m) {
     const ds = m.deathSaves || { success: 0, fail: 0 };
-    txt(ctx, x, y - 1, 'SAVES', { size: 'sm', color: 'rgba(154,145,127,0.6)' });
-    let px = x + 24;
+    const label = 'SAVES';
+    txt(ctx, x, y - 1, label, { size: 'sm', color: 'rgba(154,145,127,0.6)' });
+    // 'SAVES' is 29px; the pips started at +24 and covered its final S.
+    let px = x + tw(label, 'sm') + 4;
     for (let i = 0; i < 3; i++) {
       ctx.fillStyle = i < (ds.success | 0) ? C('green') : 'rgba(40,46,40,0.9)';
       ctx.fillRect(px, y, 4, 4); px += 5;
@@ -668,7 +699,12 @@ export class HUD {
       { size: 'sm', color: C('gold') });
 
     if (!step) {
-      txt(ctx, QUEST.x + 8, QUEST.y + 15, 'Return to the one who sent you.', { size: 'sm', color: C('green') });
+      // Every other string in this panel is wrapped in fit(); this one was
+      // missed, and 'Return to the one who sent you.' is 185px in a 168px
+      // panel — 25px of it printed onto the map.
+      // 185px of text; QUEST.x+8 to the panel's inner right edge is 186.
+      txt(ctx, QUEST.x + 8, QUEST.y + 15, fit('Return to the one who sent you.', QUEST.w - 14, 'sm'),
+        { size: 'sm', color: C('green') });
       return;
     }
 
@@ -822,16 +858,23 @@ export class HUD {
       const outT = t.t > t.life - 0.55 ? clamp((t.life - t.t) / 0.55, 0, 1) : 1;
       const ease = 1 - (1 - inT) * (1 - inT);          // ease-out on the slide in
       const w = Math.min(TOAST_W, Math.max(56, tw(t.text, 'sm') + (t.mark ? 20 : 12)));
-      const x = Math.round(VIEW_W / 2 - w / 2);
+      // Centred on the SCREEN, a full-width toast reached x=126 and clipped the
+      // party panel's right border. Centre it on the free band between the
+      // party strip and the purse instead.
+      const bandL = PARTY.x + PARTY.w + 2, bandR = TR.x - 2;
+      const x = Math.round(clamp((bandL + bandR) / 2 - w / 2, bandL, Math.max(bandL, bandR - w)));
       const y = Math.round(5 + t.slot - (1 - ease) * 14);
 
       ctx.save();
       ctx.globalAlpha = ctx.globalAlpha * ease * outT;
       panel(ctx, x, y, w, 13, { style: 'window' });
-      ctx.fillStyle = t.color;
+      // An undefined colour leaves fillStyle at whatever the last widget set,
+      // so a plain toast used to take its accent stripe from the minimap.
+      const accent = t.color || C('gold');
+      ctx.fillStyle = accent;
       ctx.fillRect(x + 1, y + 1, 2, 11);
       let tx = x + 6;
-      if (t.mark) { mark(ctx, t.mark, tx, y + 4, t.color); tx += 8; }
+      if (t.mark) { mark(ctx, t.mark, tx, y + 4, accent); tx += 8; }
       txt(ctx, tx, y + 3, fit(t.text, w - (tx - x) - 5, 'sm'), { size: 'sm', color: C('ink'), shadow: true });
       ctx.restore();
     }

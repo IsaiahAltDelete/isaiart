@@ -47,6 +47,7 @@ import {
 } from '../data/spells.js';
 import { resolveItem, rarityColor, weaponLine, armorLine, slotFor, isMagic } from '../data/items.js';
 import { MONSTERS, MONSTER_IDS, statLine, xpOf } from '../data/monsters.js';
+import { CheatsScene } from './cheatmenu.js';
 
 // ===========================================================================
 // 0. SAFETY & SHORTHANDS
@@ -89,15 +90,27 @@ function txt(ctx, x, y, s, opts) { return UI.text(ctx, R(x), R(y), s, opts || {}
 function txtR(ctx, x, y, s, opts) { return UI.text(ctx, R(x), R(y), s, { ...(opts || {}), align: 'right' }); }
 function txtC(ctx, x, y, s, opts) { return UI.text(ctx, R(x), R(y), s, { ...(opts || {}), align: 'center' }); }
 
-/** A dim label on the left, a bright value hard against the right edge. */
+/**
+ * A dim label on the left, a bright value hard against the right edge.
+ *
+ * This used to right-align the value with NO `maxWidth`, so a value wider than
+ * the column started at `x + w - vw` — outside the panel. "Neverwinter —
+ * Protector's Enclave" is 197px in a 106px column: it printed 91px clear of
+ * the info pane and straight across the pause menu's option list, while the
+ * `Math.max(8, …)` floor left the "Location" label with 8px, which `fitText`
+ * could not honour, so the label vanished too. UI.kvRow does the arithmetic
+ * once, for every caller, and guarantees label + value + gap <= w.
+ */
 function kv(ctx, x, y, w, label, value, opts = {}) {
-  const v = String(value);
-  const vw = UI.measure(v, opts.size || 'sm');
-  txt(ctx, x, y, label, {
-    size: 'sm', color: opts.labelColor || C.inkDim, shadow: true,
-    maxWidth: Math.max(8, w - vw - 4),
+  return UI.kvRow(ctx, R(x), R(y), w, label, value, {
+    size: 'sm',
+    valueSize: opts.size || 'sm',
+    color: opts.color || C.ink,
+    labelColor: opts.labelColor || C.inkDim,
+    valueMax: opts.valueMax,
+    labelMax: opts.labelMax,
+    gap: opts.gap,
   });
-  txtR(ctx, x + w, y, v, { size: opts.size || 'sm', color: opts.color || C.ink, shadow: true });
 }
 
 /** A small gold caption with a rule running out to the right of it. */
@@ -286,7 +299,7 @@ function rarityName(d) {
 }
 const goldText = (n) => `${Math.round(num(n, 0))} gp`;
 
-/** Carrying capacity for the whole company: Strength x 15 per member. */
+/** Carrying capacity for the whole party: Strength x 15 per member. */
 function partyCapacity() {
   let cap = 0;
   for (const m of Party.members) {
@@ -481,14 +494,15 @@ class MenuScene {
 
 const PAUSE_ITEMS = [
   { id: 'party', label: 'Party', icon: 'helm', key: 1, desc: 'Character sheets: ability scores, features, gear, conditions and every attack each companion can make.' },
-  { id: 'inventory', label: 'Inventory', icon: 'bag', key: 2, desc: 'The company pack. Use, equip, hand over or drop what you are hauling around the Sword Coast.' },
+  { id: 'inventory', label: 'Inventory', icon: 'bag', key: 2, desc: 'The party pack. Use, equip, hand over or drop what you are hauling around the Sword Coast.' },
   { id: 'spells', label: 'Spells', icon: 'book', key: 3, desc: 'Prepare spells against your class cap, spend slots, and read exactly what each one does.' },
   { id: 'journal', label: 'Journal', icon: 'scroll', key: 4, desc: 'Quests, faction contracts, standing with the five factions, and the Realms lore you have gathered.' },
   { id: 'map', label: 'Map', icon: 'map', key: 5, desc: 'The ground you have walked, the roads out of it, and the way back to a town you have found.' },
   { id: 'camp', label: 'Camp', icon: 'flame', key: 0, desc: 'Take a short rest and spend Hit Dice, or a long rest to recover everything — if the ground is safe enough.' },
-  { id: 'bestiary', label: 'Bestiary', icon: 'skull', key: 0, desc: 'Stat blocks for every creature the company has put down, with kill counts.' },
+  { id: 'bestiary', label: 'Bestiary', icon: 'skull', key: 0, desc: 'Stat blocks for every creature the party has put down, with kill counts.' },
   { id: 'save', label: 'Save', icon: 'quest', key: 0, desc: 'Write the tale so far into one of five journals.' },
   { id: 'settings', label: 'Settings', icon: 'anvil', key: 0, desc: 'Volume, text and battle speed, difficulty, accessibility and the keys you press.' },
+  { id: 'cheats', label: 'Cheats', icon: 'wand', key: 0, desc: 'The testing trapdoor: invulnerability, free spells, gold, levels and a revealed map. Not a game feature — the wand marks it as the workshop door.' },
   { id: 'quit', label: 'Quit to Title', icon: 'key', key: 0, desc: 'Return to the title screen. Anything you have not written into a journal is lost.' },
 ];
 
@@ -581,6 +595,7 @@ export class PauseMenuScene extends MenuScene {
       case 'bestiary': Game.push(new BestiaryScene()); break;
       case 'save': Game.push(new SaveMenuScene('save')); break;
       case 'settings': Game.push(new OptionsScene()); break;
+      case 'cheats': Game.push(new CheatsScene()); break;
       case 'camp': this._camp(); break;
       case 'quit': this._quit(); break;
       default: break;
@@ -637,7 +652,7 @@ export class PauseMenuScene extends MenuScene {
     if (st) safe(() => advanceTime(st, 60));
     sfx('heal');
     safe(() => toast('You take an hour. Wounds close, a little.'));
-    this.say(logs.length ? String(logs[logs.length - 1]) : 'The company catches its breath.');
+    this.say(logs.length ? String(logs[logs.length - 1]) : 'The party catches its breath.');
   }
 
   _confirmLongRest(info) {
@@ -651,7 +666,7 @@ export class PauseMenuScene extends MenuScene {
       if (st) { safe(() => advanceTime(st, 480)); st.stats.longRests = num(st.stats.longRests, 0) + 1; }
       sfx('levelup');
       safe(() => toast('Dawn. Everyone is on their feet again.'));
-      this.say('The company wakes rested.');
+      this.say('The party wakes rested.');
     });
   }
 
@@ -681,7 +696,14 @@ export class PauseMenuScene extends MenuScene {
     const LX = 6, LY = 34, LW = 150, LH = CONTENT_BOTTOM - LY;
     UI.panel(ctx, LX, LY, LW, LH, { style: 'window' });
     this.rects = [];
-    const rowH = 16;
+    // The pitch follows the entry count instead of being pinned at 16. Ten
+    // entries fitted; the eleventh (Cheats) put the last row at y=199, straight
+    // through the location/clock line this panel ends with — the row would have
+    // been drawn on top of it and 3px outside the frame. `listH` is the panel
+    // minus its top pad and that footer line, so the list can only ever end
+    // above it, however many entries there are.
+    const listH = LH - 5 - 15;
+    const rowH = Math.min(16, Math.floor(listH / Math.max(1, PAUSE_ITEMS.length)));
     for (let i = 0; i < PAUSE_ITEMS.length; i++) {
       const it = PAUSE_ITEMS[i];
       const ry = LY + 5 + i * rowH;
@@ -877,7 +899,7 @@ const CONTENT_H = CONTENT_BOTTOM - CONTENT_Y;   // 46 .. 210
 /**
  * Equip `inst` onto `ch` and push whatever the swap knocked loose back into the
  * shared pack. rules/character.js returns displaced gear to the character's own
- * inventory, which would quietly hide it from the Inventory screen; the company
+ * inventory, which would quietly hide it from the Inventory screen; the party
  * keeps one bag, so it goes back in the bag.
  * `fromPack` means the instance is not in ch.inventory yet.
  */
@@ -1316,7 +1338,7 @@ export class PartyScene extends MenuScene {
 
     if (!ch) {
       UI.panel(ctx, 8, CONTENT_Y, VIEW_W - 16, CONTENT_H, { style: 'window' });
-      txtC(ctx, VIEW_W / 2, CONTENT_Y + 70, 'There is no one in the company.', { size: 'md', color: C.inkDim });
+      txtC(ctx, VIEW_W / 2, CONTENT_Y + 70, 'There is no one in the party.', { size: 'md', color: C.inkDim });
       hintBar(ctx, HINT_Y, [[keyFor('cancel'), 'Back']]);
       return;
     }
@@ -1389,10 +1411,15 @@ export class PartyScene extends MenuScene {
     txtR(ctx, ix + 62, ty, 'SCR', { size: 'sm', color: C.disabled });
     txtR(ctx, ix + 90, ty, 'MOD', { size: 'sm', color: C.disabled });
     txtR(ctx, ix + iw, ty, 'SAVE', { size: 'sm', color: C.disabled });
+    // 9px rhythm, not 10: six ability rows plus eight combat rows at 10px ran
+    // the last row ("Darkvision  60 ft.") to y=209 inside a panel whose
+    // interior ends at 206, so it printed on the page background below the
+    // frame. At 9 the column ends at 203 with room to spare.
+    const RH = 9;
     ty += 8;
     for (let i = 0; i < ABILITIES.length; i++) {
       const ab = ABILITIES[i];
-      const ry = ty + i * 10;
+      const ry = ty + i * RH;
       const score = num(safe(() => abilityScore(ch, ab), 10), 10);
       const md = num(safe(() => abilityMod(ch, ab), 0), 0);
       const sv = num(safe(() => saveMod(ch, ab), 0), 0);
@@ -1404,7 +1431,7 @@ export class PartyScene extends MenuScene {
         size: 'sm', color: prof ? C.goldBright : C.inkDim, shadow: true,
       });
     }
-    ty += ABILITIES.length * 10 + 2;
+    ty += ABILITIES.length * RH + 3;
 
     ty = sectionHead(ctx, ix, ty, iw, 'IN COMBAT');
     const hd = safe(() => hitDiceTotal(ch), null) || { max: 0, used: 0 };
@@ -1419,7 +1446,7 @@ export class PartyScene extends MenuScene {
       ['Passive Perc.', String(num(safe(() => passivePerception(ch), 10), 10))],
       ['Darkvision', senses ? `${senses} ft.` : '—'],
     ];
-    rows.forEach((r, i) => kv(ctx, ix, ty + i * 10, iw, r[0], r[1], { color: i === 0 ? C.goldBright : C.ink }));
+    rows.forEach((r, i) => kv(ctx, ix, ty + i * RH, iw, r[0], r[1], { color: i === 0 ? C.goldBright : C.ink }));
 
     // Middle column: who they are and what they are trained in.
     const MX = 136, MW = 118;
@@ -1488,7 +1515,10 @@ export class PartyScene extends MenuScene {
       txt(ctx, rx + 8, yy, def.name, {
         size: 'sm', color: info.prof === 'none' ? C.inkDim : C.ink, shadow: true, maxWidth: rw - 44,
       });
-      txtR(ctx, rx + rw - 16, yy, signed(num(info.mod, 0)), { size: 'sm', color: C.ink, shadow: true });
+      // The ability tag is 3 glyphs = 17px right-aligned on rx+rw, so it opens
+      // at rx+rw-17: ending the modifier at rx+rw-16 merged its last digit
+      // into the tag's first letter ("+5DEX" printed as "+ЬEX"). Two clear px.
+      txtR(ctx, rx + rw - 21, yy, signed(num(info.mod, 0)), { size: 'sm', color: C.ink, shadow: true, maxWidth: 22 });
       txtR(ctx, rx + rw, yy, ABILITY_ABBR[def.ability], { size: 'sm', color: C.disabled, shadow: true });
     }
   }
@@ -1558,19 +1588,26 @@ export class PartyScene extends MenuScene {
       const on = i === sel;
       if (on) UI.highlight(ctx, ix - 3, ry - 1, iw + 6, rowH - 1, { alpha: 0.2 });
       txt(ctx, ix + 5, ry + 1, SLOT_NAMES[slot] || titleCase(slot), {
-        size: 'sm', color: on ? C.goldBright : C.inkDim, shadow: true, maxWidth: 46,
+        size: 'sm', color: on ? C.goldBright : C.inkDim, shadow: true, maxWidth: 49,
       });
       const inst = this._instFor(ch, slot);
       const d = inst ? (safe(() => itemDef(inst), null) || safe(() => resolveItem(inst.id), null)) : null;
       if (d) {
-        UI.icon(ctx, itemIcon(d), ix + 54, ry, 9, null);
-        txt(ctx, ix + 66, ry + 1, d.name, {
-          size: 'sm', color: itemColor(inst.id, d), shadow: true, maxWidth: iw - 72,
-        });
+        UI.icon(ctx, itemIcon(d), ix + 57, ry, 9, null);
+        // The name had `iw - 72` and the stat line a flat 60px right-aligned:
+        // the two claimed the same 54px, so "Greatsword" and "2d6 slashing"
+        // printed on top of each other. One split, one shared budget.
         const stat = d.kind === 'weapon' ? safe(() => weaponLine(d), '') : safe(() => armorLine(d), '');
-        if (stat) txtR(ctx, ix + iw, ry + 1, stat, { size: 'sm', color: C.disabled, shadow: true, maxWidth: 60 });
+        const sp = safe(() => UI.splitRow(iw - 69, d.name, stat || '', { size: 'sm', gap: 5, valueMax: 0.55 }), null)
+          || { labelW: iw - 75, valueW: 0 };
+        txt(ctx, ix + 69, ry + 1, d.name, {
+          size: 'sm', color: itemColor(inst.id, d), shadow: true, maxWidth: sp.labelW,
+        });
+        if (stat && sp.valueW > 0) {
+          txtR(ctx, ix + iw, ry + 1, stat, { size: 'sm', color: C.disabled, shadow: true, maxWidth: sp.valueW });
+        }
       } else {
-        txt(ctx, ix + 54, ry + 1, '— empty —', { size: 'sm', color: C.disabled, shadow: true });
+        txt(ctx, ix + 57, ry + 1, '— empty —', { size: 'sm', color: C.disabled, shadow: true });
       }
       if (on) UI.cursor(ctx, ix - 3, ry + 1, this.t);
       this.rowRects.push({ x: ix - 3, y: ry - 1, w: iw + 6, h: rowH, i });
@@ -1736,8 +1773,16 @@ export class PartyScene extends MenuScene {
     const LX = 3, LW = 214;
     UI.panel(ctx, LX, CONTENT_Y, LW, CONTENT_H, { style: 'window' });
     const ix = LX + 6, iw = LW - 12;
+    // Three real columns, each with its own budget. Before: the name took a
+    // flat 104px ending at ix+121 while the right-aligned HIT opened at ix+99
+    // ("Jallarzi's Storm of Radiance" over "DC 14"), and HIT's right edge and
+    // DAMAGE's left edge were the same pixel ("+8" welded to "2d6+5").
+    const NAME_X = ix + 17;
+    const HIT_R = ix + 120, HIT_W = 30;      // right edge / width of the to-hit column
+    const DMG_W = 78;                        // damage column, right-aligned on ix+iw
+    const NAME_W = (HIT_R - HIT_W - 4) - NAME_X;
     let ty = sectionHead(ctx, ix, CONTENT_Y + 5, iw, 'ATTACK OPTIONS');
-    txtR(ctx, ix + 128, ty, 'HIT', { size: 'sm', color: C.disabled });
+    txtR(ctx, HIT_R, ty, 'HIT', { size: 'sm', color: C.disabled });
     txtR(ctx, ix + iw, ty, 'DAMAGE', { size: 'sm', color: C.disabled });
     ty += 8;
 
@@ -1756,11 +1801,11 @@ export class PartyScene extends MenuScene {
       const on = idx === sel;
       if (on) UI.highlight(ctx, ix - 3, ry - 1, iw + 6, rowH, { alpha: 0.2 });
       UI.icon(ctx, a.kind === 'spell' ? 'mana' : 'sword', ix + 5, ry, 9, a.enabled ? null : C.disabled);
-      txt(ctx, ix + 17, ry + 1, a.name, {
-        size: on ? 'md' : 'sm', color: a.enabled ? (on ? C.goldBright : C.ink) : C.disabled, shadow: true, maxWidth: 104,
+      txt(ctx, NAME_X, ry + 1, a.name, {
+        size: on ? 'md' : 'sm', color: a.enabled ? (on ? C.goldBright : C.ink) : C.disabled, shadow: true, maxWidth: NAME_W,
       });
-      txtR(ctx, ix + 128, ry + 1, a.hit, { size: 'sm', color: a.enabled ? C.gold : C.disabled, shadow: true });
-      txtR(ctx, ix + iw, ry + 1, a.line, { size: 'sm', color: a.enabled ? C.ink : C.disabled, shadow: true, maxWidth: 74 });
+      txtR(ctx, HIT_R, ry + 1, a.hit, { size: 'sm', color: a.enabled ? C.gold : C.disabled, shadow: true, maxWidth: HIT_W });
+      txtR(ctx, ix + iw, ry + 1, a.line, { size: 'sm', color: a.enabled ? C.ink : C.disabled, shadow: true, maxWidth: DMG_W });
       if (on) UI.cursor(ctx, ix - 3, ry + 1, this.t);
       this.rowRects.push({ x: ix - 3, y: ry - 1, w: iw + 6, h: rowH, i: idx });
     }
@@ -2713,9 +2758,16 @@ export class SpellbookScene extends MenuScene {
     txt(ctx, 8, 30, '◀', { size: 'sm', color: C.gold });
     txt(ctx, 16, 30, `Filter: ${SPELL_FILTERS[this.filter].label}`, { size: 'sm', color: C.goldBright, shadow: true, maxWidth: 120 });
     txt(ctx, 140, 30, '▶', { size: 'sm', color: C.gold });
+    // Fixed slots: prepared count 152..238, concentration 242..392. The two
+    // can never meet, whatever the spell is called.
+    if (this._prep) {
+      txt(ctx, 152, 30, this._prep, {
+        size: 'sm', color: this._prepWarn ? C.warn : C.inkDim, shadow: true, maxWidth: 86,
+      });
+    }
     const conc = safe(() => isConcentrating(ch), false);
     txtR(ctx, VIEW_W - 8, 30, conc ? `Concentrating on ${(SPELLS[(ch.concentration || {}).spellId] || {}).name || 'a spell'}` : 'Not concentrating', {
-      size: 'sm', color: conc ? C.purple : C.disabled, shadow: true, maxWidth: 200,
+      size: 'sm', color: conc ? C.purple : C.disabled, shadow: true, maxWidth: 150,
     });
 
     // Spell list.
@@ -2797,9 +2849,13 @@ export class SpellbookScene extends MenuScene {
     const used = arr(ch.spells && ch.spells.prepared).length;
     kv(ctx, bx, 5, 114, 'Spell save DC', String(num(safe(() => spellDC(ch), 8), 8)), { color: C.goldBright });
     kv(ctx, bx, 14, 114, 'Spell attack', signed(num(safe(() => spellAtk(ch), 0), 0)), { color: C.goldBright });
-    txtR(ctx, VIEW_W - 8, 23, prepMode ? `${used}/${cap} prepared` : 'Spells known', {
-      size: 'sm', color: prepMode && cap && used >= cap ? C.warn : C.inkDim, shadow: true,
-    });
+    // The prepared count used to be a third row at y=23 inside a panel whose
+    // interior ends at y=23: seven glyph rows plus a shadow ran to y=31, three
+    // pixels past the frame and onto the filter strip at y=28. Two 9px rows
+    // are all this header holds, so the count moved to the strip below, where
+    // it owns a fixed 86px slot that cannot reach the concentration readout.
+    this._prep = prepMode ? `${used}/${cap} prepared` : 'Spells known';
+    this._prepWarn = !!(prepMode && cap && used >= cap);
   }
 
   _drawSpell(ctx, ch, sp, x, y, w, h) {
@@ -2813,26 +2869,46 @@ export class SpellbookScene extends MenuScene {
       size: 'sm', color: C.inkDim, shadow: true, maxWidth: w,
     });
 
-    const colW = Math.floor((w - 6) / 2);
+    // `componentText()` returns "V, S, M (…)" for 362 of the 364 spells, and
+    // the material clause runs to 935px — nine times the 97px half-column it
+    // was being poured into. The letters stay in the grid; the material list
+    // gets a full-width wrapped row of its own, so nothing is lost and nothing
+    // leaves the pane.
+    const comp = safe(() => componentText(sp), '—');
+    const mat = /\(([\s\S]*)\)\s*$/.exec(comp);
+    const compShort = mat ? (comp.slice(0, mat.index).replace(/[,\s]+$/, '') || 'V, S, M') : comp;
+
+    // 97px half-columns: "Casting Time" alone is 71px, which left "1 Action"
+    // 22px. "Cast Time" is 53 and the pair fits whole; ditto Duration once the
+    // inner gap drops to 3.
+    // Four full-width rows, not a 2x2 grid. 97px halves could not hold
+    // "Casting Time" + "1 Action" (118px) or "Duration" + "Concentration, up
+    // to 1 hour" (208px) — the pairs collided, and shrinking the gutter until
+    // they fitted welded "Action" to the next column's "Range". At full width
+    // every pair reads whole with the value hard right, for 14px of a
+    // description pane that scrolls anyway.
     const rows = [
       ['Casting Time', titleCase(String(sp.castTime || 'action'))],
       ['Range', safe(() => rangeText(sp), String(sp.range))],
-      ['Components', safe(() => componentText(sp), '—')],
+      ['Components', compShort],
       ['Duration', titleCase(String(sp.duration || 'instant'))],
     ];
-    rows.forEach((r, i) => {
-      const cx = x + (i % 2) * (colW + 6);
-      const cy = y + 22 + Math.floor(i / 2) * 10;
-      kv(ctx, cx, cy, colW, r[0], r[1]);
-    });
+    rows.forEach((r, i) => kv(ctx, x, y + 22 + i * 9, w, r[0], r[1]));
 
-    let ty = y + 44;
+    let ty = y + 60;
     let cx = x;
     if (sp.concentration) cx += (safe(() => UI.chip(ctx, cx, ty, 'Concentration', { color: C.purple }), 0) || 0) + 3;
     if (sp.ritual) cx += (safe(() => UI.chip(ctx, cx, ty, 'Ritual', { color: C.blue }), 0) || 0) + 3;
     if (sp.attack) cx += (safe(() => UI.chip(ctx, cx, ty, `${titleCase(sp.attack)} attack ${signed(num(safe(() => spellAtk(ch), 0), 0))}`, { color: C.gold }), 0) || 0) + 3;
     if (sp.save) cx += (safe(() => UI.chip(ctx, cx, ty, `${ABILITY_ABBR[sp.save.ability] || sp.save.ability} save DC ${num(safe(() => spellDC(ch), 8), 8)}`, { color: C.warn }), 0) || 0) + 3;
     ty += 12;
+
+    if (mat) {
+      const r = safe(() => UI.textWrapped(ctx, x, ty, w, `Material: ${mat[1]}`, {
+        size: 'sm', color: C.inkDim, shadow: true, maxLines: 3,
+      }), null);
+      ty += (r && r.height ? r.height : 9) + 2;
+    }
 
     const lvl = num(ch.level, 1);
     if (sp.damage) {
@@ -3170,10 +3246,18 @@ export class JournalScene extends MenuScene {
       } else if (e.kind === 'faction') {
         col = on ? C.goldBright : (e.f.color || C.ink);
       }
+      // The right-hand tag had no width and the label had the whole row, so
+      // "Giant Fire Beetle" and its "Bestiary" tag shared 45px of column.
+      const tag = e.kind === 'lore' ? (e.tag || '') : (e.kind === 'faction' ? String(num(e.value, 0)) : '');
+      const sp = safe(() => UI.splitRow(LW - 22, e.label, tag, { size: on ? 'md' : 'sm', gap: 5 }), null)
+        || { labelW: LW - 24, valueW: 0 };
       if (mark) txt(ctx, LX + 7, ry, mark, { size: 'sm', color: col, shadow: true });
-      txt(ctx, LX + 16, ry, e.label, { size: on ? 'md' : 'sm', color: col, shadow: true, maxWidth: LW - 24 });
-      if (e.kind === 'lore' && e.tag) txtR(ctx, LX + LW - 6, ry, e.tag, { size: 'sm', color: C.disabled, shadow: true });
-      if (e.kind === 'faction') txtR(ctx, LX + LW - 6, ry, String(num(e.value, 0)), { size: 'sm', color: C.goldDim, shadow: true });
+      txt(ctx, LX + 16, ry, e.label, { size: on ? 'md' : 'sm', color: col, shadow: true, maxWidth: sp.labelW });
+      if (tag && sp.valueW > 0) {
+        txtR(ctx, LX + LW - 6, ry, tag, {
+          size: 'sm', color: e.kind === 'faction' ? C.goldDim : C.disabled, shadow: true, maxWidth: sp.valueW,
+        });
+      }
       if (on) UI.cursor(ctx, LX + 2, ry, this.t);
       this.rowRects.push({ x: LX + 3, y: ry - 1, w: LW - 8, h: rowH, i: idx });
     }
@@ -3494,10 +3578,17 @@ export class MapScene extends MenuScene {
     UI.panel(ctx, 2, 2, VIEW_W - 4, 13, { style: 'dark' });
     const map = this.map;
     const region = (map && map.name) || prettyMapName(st && st.mapId);
-    txt(ctx, 8, 4, region.toUpperCase(), { size: 'md', color: C.gold, shadow: true, maxWidth: 220 });
+    const capW = Math.min(UI.measure(region.toUpperCase(), 'md'), 220);
+    txt(ctx, 8, 4, region.toUpperCase(), { size: 'md', color: C.gold, shadow: true, maxWidth: capW });
     if (st) {
       const ti = safe(() => timeInfo(st), null) || {};
-      txtR(ctx, VIEW_W - 8, 5, `${ti.date || ''} · ${ti.clock || ''}`, { size: 'sm', color: C.inkDim, shadow: true, maxWidth: 160 });
+      // "22 Alturiak, 1497 DR · 8:00 am" is 179px and the longest region name
+      // ("Neverwinter — Protector's Enclave") leaves 169. Drop the year before
+      // dropping the clock: the hour is what a traveller is reading this for.
+      const slot = Math.max(40, VIEW_W - 8 - (8 + capW) - 6);
+      let stamp = `${ti.date || ''} · ${ti.clock || ''}`;
+      if (UI.measure(stamp, 'sm') > slot) stamp = `${String(ti.date || '').replace(/,\s*-?\d+\s*DR\s*$/i, '')} · ${ti.clock || ''}`;
+      txtR(ctx, VIEW_W - 8, 5, stamp, { size: 'sm', color: C.inkDim, shadow: true, maxWidth: slot });
     }
 
     const AX = 3, AY = 18, AW = VIEW_W - 6, AH = 185;
@@ -3943,11 +4034,16 @@ export class OptionsScene extends MenuScene {
     UI.scrim(ctx, 0.6);
     const w = 220, h = 54;
     const x = R((VIEW_W - w) / 2), y = R((VIEW_H - h) / 2);
-    UI.window(ctx, x, y, w, h, 'Press a key', { style: 'gold' });
+    // 'gold' is a LIGHT brass fill; goldBright on it is 1.03:1 and inkDim is
+    // 1.20:1, so this modal used to be a blank plate. `window_` already stamps
+    // the title on a gold nameplate in dark ink — that is where the brass goes.
+    UI.window(ctx, x, y, w, h, 'Press a key', { style: 'window' });
     txtC(ctx, x + w / 2, y + 12, ACTION_LABELS[this.rebind.action] || this.rebind.action, {
-      size: 'md', color: C.goldBright, shadow: true, maxWidth: w - 16,
+      size: 'md', color: UI.inkFor('window', 'accent'), shadow: true, maxWidth: w - 16,
     });
-    txtC(ctx, x + w / 2, y + 28, 'Escape to keep the old one.', { size: 'sm', color: C.inkDim, shadow: true });
+    txtC(ctx, x + w / 2, y + 28, 'Escape to keep the old one.', {
+      size: 'sm', color: UI.inkFor('window', 'dim'), shadow: true, maxWidth: w - 16,
+    });
   }
 }
 
@@ -4011,8 +4107,11 @@ function statBlockLines(m, kills, w) {
   push('kv', `Speed|${spd.join(', ')}`);
   push('rule', '');
 
+  // Six ability groups on one line is ~430px in a ~230px pane, so the last
+  // three used to be swallowed by an ellipsis — half the stat block, gone.
+  // Wrap it instead; the pane scrolls, so extra rows cost nothing.
   const ab = m.abilities || {};
-  push('abilities', ABILITIES.map((a) => `${ABILITY_ABBR[a]} ${num(ab[a], 10)} (${signed(Math.floor((num(ab[a], 10) - 10) / 2))})`).join('  '));
+  wrap(ABILITIES.map((a) => `${ABILITY_ABBR[a]} ${num(ab[a], 10)} (${signed(Math.floor((num(ab[a], 10) - 10) / 2))})`).join('  '), null, 'abilities');
   push('rule', '');
 
   if (arr(m.saveProf).length) push('kv', `Saves|${arr(m.saveProf).map((s) => ABILITY_ABBR[s] || s).join(', ')}`);
@@ -4143,7 +4242,9 @@ export class BestiaryScene extends MenuScene {
 
     UI.panel(ctx, 2, 2, VIEW_W - 4, 13, { style: 'dark' });
     txt(ctx, 8, 4, 'BESTIARY', { size: 'md', color: C.gold, shadow: true });
-    txt(ctx, 74, 5, `${known} of ${list.length} recorded`, { size: 'sm', color: C.inkDim, shadow: true, maxWidth: 110 });
+    // "275 of 275 recorded" is 113px; the slot runs 74..192 (the filter block
+    // right-aligns into 200px of the remaining 392), so 116 is the real cap.
+    txt(ctx, 74, 5, `${known} of ${list.length} recorded`, { size: 'sm', color: C.inkDim, shadow: true, maxWidth: 116 });
     txtR(ctx, VIEW_W - 8, 5, `◀ ${BEST_FILTERS[this.filter].label} ▶   ·   ${this.sortByCR ? 'by CR' : 'by name'}`, {
       size: 'sm', color: C.goldDim, shadow: true, maxWidth: 200,
     });

@@ -40,6 +40,11 @@
 
   .meta{font-size:14px;color:#999;font-weight:400}
 
+  .sister{font-size:14px;font-weight:400;color:#999;text-decoration:none;
+          border-bottom:1px solid #eee;padding-bottom:2px;
+          transition:color .15s ease,border-color .15s ease}
+  .sister:hover{color:#111;border-bottom-color:#111}
+
   /* ── readme popup ── */
   .overlay{
     position:fixed;inset:0;background:rgba(0,0,0,.45);
@@ -81,6 +86,8 @@
   </div>
 
   <div class="meta">macOS &middot; 15 KB &middot; No administrator password required</div>
+
+  <a class="sister" href="../windowssync/">Using Windows? &rarr;</a>
 
   <div class="overlay" id="overlay">
     <div class="sheet" role="dialog" aria-modal="true" aria-label="Instructions">

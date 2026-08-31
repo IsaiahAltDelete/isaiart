@@ -1145,7 +1145,9 @@ class AdvanceScene {
     this._drawTitleBar(ctx, title, right);
 
     // --- left: options ----------------------------------------------------
-    const lx = 6, ly = 32, lw = 176, rowH = 13, visible = 12;
+    // 178, not 176: the two extra pixels are exactly what "Champion of the
+    // Sword Coast" needed, and the panel still stops short of the detail pane.
+    const lx = 6, ly = 32, lw = 178, rowH = 13, visible = 12;
     UI.panel(ctx, lx - 3, ly - 3, lw + 6, visible * rowH + 6, { style: 'dark', shadow: 0.3 });
 
     const self = this;
@@ -1173,8 +1175,14 @@ class AdvanceScene {
           tx = rx + 9;
         }
         const col = dis ? C.disabled : (picked ? C.goldBright : (sel ? C.goldBright : C.ink));
-        UI.text(g, tx, ry + 3, String(it.label), {
-          size: sel ? 'md' : 'sm', color: col, maxWidth: rw - (tx - rx) - 4,
+        // The selected row is set bold, which is 1px per glyph wider — so
+        // HIGHLIGHTING "Investment of the Chain Master" was what cut it to
+        // "Investment of the Cha…" while its neighbours showed in full. Bold
+        // only when bold still fits.
+        const label = String(it.label);
+        const room = rw - (tx - rx) - 2;
+        UI.text(g, tx, ry + 3, label, {
+          size: sel && UI.measure(label, 'md') <= room ? 'md' : 'sm', color: col, maxWidth: room,
         });
         if (dis) {
           g.fillStyle = 'rgba(10,7,8,0.30)';
@@ -1224,8 +1232,14 @@ class AdvanceScene {
     }
 
     UI.icon(ctx, CHOICE_ICON[c.type] || 'rune', ix, p.iy + 2, 10, option.disabled ? C.disabled : C.gold);
-    UI.text(ctx, ix + 13, p.iy + 3, option.name || option.id, {
-      size: 'md', color: option.disabled ? C.disabled : C.goldBright, maxWidth: iw - 15,
+    // "Investment of the Chain Master" is 209px bold in a 177px header. The
+    // panel exists to tell you what you are about to take permanently, so the
+    // name drops to the small face rather than dropping its last two words.
+    const oname = String(option.name || option.id || '');
+    const onameW = iw - 13;
+    UI.text(ctx, ix + 12, p.iy + 3, oname, {
+      size: UI.measure(oname, 'md') <= onameW ? 'md' : 'sm',
+      color: option.disabled ? C.disabled : C.goldBright, maxWidth: onameW,
     });
     UI.divider(ctx, ix, p.iy + 14, iw, { color: C.border });
 

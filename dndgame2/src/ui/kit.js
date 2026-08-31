@@ -429,13 +429,101 @@ export function wrapLines(str, w, size = 'sm', letterSpacing) {
   return out;
 }
 
-/** Truncate a string with an ellipsis so it fits `w` px. */
+/**
+ * Truncate a string with an ellipsis so it fits `w` px.
+ *
+ * The old loop stopped at `s.length > 1`, so it ALWAYS emitted at least two
+ * glyphs — 11px at sm, 13px at md — no matter how narrow the slot was. Every
+ * caller with a `Math.max(8, …)` width floor therefore overflowed its column
+ * by 3px without any visible sign. A slot too narrow for one glyph plus the
+ * ellipsis now gets the ellipsis alone, and one too narrow even for that gets
+ * nothing: the column ALWAYS wins, and a starved column reads as starved.
+ */
 export function fitText(str, w, size = 'sm') {
   let s = String(str == null ? '' : str);
   if (measureGlyphs(s, size) <= w) return s;
   const ell = '…';
+  if (measureGlyphs(ell, size) > w) return '';
   while (s.length > 1 && measureGlyphs(s + ell, size) > w) s = s.slice(0, -1);
-  return s + ell;
+  return measureGlyphs(s + ell, size) > w ? ell : s + ell;
+}
+
+/**
+ * UI.splitRow — divide a row between a left label and a right value.
+ *
+ * This is the arithmetic that four separate `kv()` copies each got wrong in a
+ * different way: measure both halves, hand each a percentage, and let the two
+ * percentages add up past 100 so a long value prints straight through its own
+ * label (or, right-aligned with no `maxWidth`, straight out of the panel).
+ *
+ * The contract here: label + value + gap NEVER exceed `w`. When both fit, both
+ * get their natural width. When they do not, the value is capped at
+ * `valueMax` (default two thirds) and the label keeps the rest, but the label
+ * is never squeezed below `labelMin` — a label cut to "Al…" tells the player
+ * nothing, so the value is the half that yields.
+ *
+ * Returns { labelW, valueW, gap, fits }. Feed labelW/valueW to `maxWidth`.
+ */
+function splitRow(w, label, value, opts = {}) {
+  const size = opts.size || 'sm';
+  const valueSize = opts.valueSize || size;
+  const gap = opts.gap == null ? 4 : opts.gap;
+  const total = Math.max(0, Math.round(w));
+  const lNeed = Math.ceil(measureGlyphs(label == null ? '' : label, size));
+  const vNeed = Math.ceil(measureGlyphs(value == null ? '' : value, valueSize));
+  if (vNeed <= 0) return { labelW: total, valueW: 0, gap: 0, fits: lNeed <= total };
+  if (lNeed <= 0) return { labelW: 0, valueW: Math.min(vNeed, total), gap: 0, fits: vNeed <= total };
+  const avail = Math.max(0, total - gap);
+  if (lNeed + vNeed <= avail) return { labelW: lNeed, valueW: vNeed, gap, fits: true };
+  const valueMax = Math.round(avail * (opts.valueMax == null ? 0.66 : opts.valueMax));
+  const labelMax = Math.round(avail * (opts.labelMax == null ? 0.62 : opts.labelMax));
+  const labelFloor = Math.round(avail * (opts.labelFloor == null ? 0.4 : opts.labelFloor));
+  let labelW;
+  let valueW;
+  if (lNeed <= labelMax) {
+    // The label fits inside its share: it gets exactly what it needs, and the
+    // value takes the rest. This is what saves "Alignment" and "Location".
+    labelW = lNeed;
+    valueW = avail - labelW;
+  } else {
+    // The label is going to be cut whatever we do, so stop starving the value
+    // for it: the value takes what it needs up to its cap, and the label keeps
+    // the remainder — never less than `labelFloor`, so it cannot collapse to
+    // two glyphs and a full stop.
+    valueW = Math.min(vNeed, valueMax);
+    labelW = avail - valueW;
+    if (labelW < labelFloor) { labelW = Math.min(labelFloor, avail); valueW = Math.max(0, avail - labelW); }
+  }
+  return { labelW: Math.max(0, labelW), valueW: Math.max(0, valueW), gap, fits: false };
+}
+
+/**
+ * UI.kvRow — "Speed        30 ft." drawn correctly: a dim label hard against
+ * the left edge, a bright value hard against the right, and a guarantee that
+ * neither ever crosses the other or leaves [x, x+w].
+ *
+ * opts: { size, valueSize, color, labelColor, gap, valueMax, labelMax, align }
+ * Returns the split it used.
+ */
+function kvRow(ctx, x, y, w, label, value, opts = {}) {
+  const size = opts.size || 'sm';
+  const valueSize = opts.valueSize || size;
+  const v = value == null ? '' : String(value);
+  const k = label == null ? '' : String(label);
+  const s = splitRow(w, k, v, { size, valueSize, gap: opts.gap, valueMax: opts.valueMax, labelMax: opts.labelMax, labelMin: opts.labelMin });
+  if (k && s.labelW > 0) {
+    text(ctx, R(x), R(y), k, {
+      size, color: opts.labelColor || COLORS.inkDim, shadow: opts.shadow == null ? true : opts.shadow,
+      maxWidth: s.labelW,
+    });
+  }
+  if (v && s.valueW > 0) {
+    text(ctx, R(x + w), R(y), v, {
+      size: valueSize, color: opts.color || COLORS.ink, align: 'right',
+      shadow: opts.shadow == null ? true : opts.shadow, maxWidth: s.valueW,
+    });
+  }
+  return s;
 }
 
 // ---------------------------------------------------------------------------
@@ -752,6 +840,40 @@ const PANEL_STYLES = {
 };
 
 /**
+ * The ink each panel style can actually carry, by role.
+ *
+ * `PANEL_STYLES.gold` is a genuine LIGHT brass fill (#f4d98d -> #c9992f). Half
+ * a dozen call sites drew `goldBright` / `ink` / `dim` on it, which is 1.03:1
+ * to 1.20:1 — literally invisible. Nothing enforced the declared `ink`, so
+ * this table gives every style a title/body/dim/accent set that is guaranteed
+ * legible on its own fill, and `inkFor()` is the one place to ask.
+ *
+ * Contrast against the darker of each fill's two stops is >= 4.5:1 throughout.
+ */
+const PANEL_INK = {
+  window: { title: COLORS.gold, body: COLORS.ink, dim: COLORS.inkDim, accent: COLORS.goldBright },
+  dark: { title: COLORS.gold, body: COLORS.ink, dim: COLORS.inkDim, accent: COLORS.goldBright },
+  plain: { title: COLORS.gold, body: COLORS.ink, dim: COLORS.inkDim, accent: COLORS.goldBright },
+  inset: { title: COLORS.goldDim, body: COLORS.ink, dim: COLORS.inkDim, accent: COLORS.gold },
+  // Light plates: near-black ink, a warm brown for the quiet half.
+  gold: { title: '#2a1c07', body: '#2a1c07', dim: '#5a4318', accent: '#7a2010' },
+  parchment: { title: '#3a2712', body: '#241708', dim: '#5a4318', accent: '#7a2010' },
+  danger: { title: '#ffb9a4', body: '#f0c0b0', dim: '#c08878', accent: '#ffd0a0' },
+  magic: { title: '#cfaaff', body: '#dcccff', dim: '#a494c8', accent: '#f0d264' },
+};
+
+/**
+ * UI.inkFor — the legible ink for `style` in `role`
+ * ('body' | 'dim' | 'title' | 'accent'). Call sites that hard-code a colour on
+ * a panel they did not choose are how light-on-light happens; ask instead.
+ */
+function inkFor(style, role = 'body') {
+  const key = typeof style === 'string' ? style : '';
+  const set = PANEL_INK[key] || PANEL_INK.window;
+  return set[role] || set.body;
+}
+
+/**
  * Generic border/fill engine. `panel` is a thin wrapper over this, but other
  * widgets (buttons, bars, tooltips) reuse it directly.
  */
@@ -917,7 +1039,14 @@ function bar(ctx, x, y, w, h, p, opts = {}) {
     const align = opts.labelAlign || 'center';
     const ly = y + Math.round((h - metrics(size).capH) / 2) - 1;
     const lx = align === 'left' ? x + 3 : align === 'right' ? x + w - 3 : x + w / 2;
-    text(ctx, lx, ly, String(opts.label), { size, color: lc, align, shadow: true });
+    // The label sits ON the meter, so half of it lands on the bright fill and
+    // half on the dark trough: pale ink over a green/gold fill is ~1.3:1 and
+    // a 1px drop shadow does not save it. A full keyline does, and it costs
+    // nothing on the dark half. `labelOutline: false` opts back out.
+    const keyline = opts.labelOutline === false ? null : (opts.labelOutline || '#0a0708');
+    text(ctx, lx, ly, String(opts.label), keyline
+      ? { size, color: lc, align, outline: keyline }
+      : { size, color: lc, align, shadow: true });
   }
   ctx.globalAlpha = prev;
 }
@@ -1243,15 +1372,25 @@ function button(ctx, x, y, w, h, label, opts = {}) {
     if (align === 'center') { align = 'left'; tx = ix; }
   }
 
+  // Same rule as `list()`: a right-aligned hint with no `maxWidth` walks off
+  // the left edge of its own button. It keeps at most 40% of the face.
+  const face = w - (ix - x) - 4;
   let hintW = 0;
   if (opts.hint) {
-    hintW = measureGlyphs(opts.hint, 'sm') + 4;
-    text(ctx, x + w - 4, ty + 1, opts.hint, { size: 'sm', color: dis ? COLORS.disabled : COLORS.inkDim, align: 'right', shadow: true });
+    const hw = Math.min(measureGlyphs(opts.hint, 'sm'), Math.round(face * 0.4));
+    hintW = hw + 4;
+    text(ctx, x + w - 4, ty + 1, opts.hint, {
+      size: 'sm', color: dis ? COLORS.disabled : COLORS.inkDim, align: 'right', shadow: true, maxWidth: hw,
+    });
   }
 
-  const avail = w - (ix - x) - hintW - 4;
+  const avail = face - hintW;
+  // A centred label centres on the WHOLE face, so with a hint on the right it
+  // still ran under the hint even though `avail` had been reduced for it.
+  // Recentre on the space the hint leaves.
+  if (align === 'center' && hintW > 0) tx -= Math.round(hintW / 2);
   text(ctx, tx, ty, String(label == null ? '' : label), {
-    size: 'md', color: ink, align, shadow: sel ? 'rgba(255,230,170,0.30)' : true, maxWidth: Math.max(8, avail),
+    size: 'md', color: ink, align, shadow: sel ? 'rgba(255,230,170,0.30)' : true, maxWidth: Math.max(0, avail),
   });
 
   if (sel && !dis) frameSel(ctx, x - 1, y - 1, w + 2, h + 2, opts.t || 0);
@@ -1362,16 +1501,24 @@ function list(ctx, x, y, w, items, index, opts = {}) {
     } else {
       let lx = x + (opts.cursor === false ? 3 : 9);
       if (it.icon) { icon(ctx, it.icon, lx, ry + Math.round((rowH - 9) / 2), 8, dis ? COLORS.disabled : it.iconColor || null); lx += 11; }
+      // The row is split label-first: a refusal reason like
+      // "✗ Kingdom of Many-Arrows 2" is 155px, and drawing it right-aligned
+      // with no `maxWidth` used to leave the choice itself 20 characters of a
+      // 294px row. The hint keeps at most 40% and is clamped to it.
+      const avail = rowW - (lx - x) - 2;
       let hintW = 0;
       if (it.hint != null && it.hint !== '') {
-        hintW = measureGlyphs(String(it.hint), 'sm') + 5;
-        text(ctx, x + rowW - 3, ry + Math.round((rowH - 6) / 2), String(it.hint), {
+        const hs = String(it.hint);
+        const hw = Math.min(measureGlyphs(hs, 'sm'), Math.round(avail * 0.4));
+        hintW = hw + 5;
+        text(ctx, x + rowW - 3, ry + Math.round((rowH - 6) / 2), hs, {
           size: 'sm', color: dis ? COLORS.disabled : (it.hintColor || COLORS.inkDim), align: 'right', shadow: true,
+          maxWidth: hw,
         });
       }
       const col = dis ? COLORS.disabled : (it.color || (sel ? COLORS.goldBright : COLORS.ink));
       text(ctx, lx, ry + Math.round((rowH - 6) / 2), String(it.label == null ? raw : it.label), {
-        size: sel ? 'md' : 'sm', color: col, shadow: true, maxWidth: rowW - (lx - x) - hintW - 2,
+        size: sel ? 'md' : 'sm', color: col, shadow: true, maxWidth: avail - hintW,
       });
     }
     if (sel && opts.cursor !== false && !dis) cursor(ctx, x + 1, ry + Math.round((rowH - 7) / 2), t);
@@ -1880,6 +2027,11 @@ export const UI = {
   lineHeight: (size) => metrics(size).lineH,
   metrics,
 
+  // two-column rows: allocate the width, then draw it
+  splitRow,
+  kvRow,
+  inkFor,
+
   // surfaces
   panel,
   window: window_,
@@ -1928,9 +2080,10 @@ export const UI = {
   RARITY_COLORS,
   DAMAGE_ICONS,
   PANEL_STYLES,
+  PANEL_INK,
   shade,
   shadeHex,
 };
 
-export { COLORS, DAMAGE_COLORS, RARITY_COLORS, DAMAGE_ICONS, ICON_NAMES, PANEL_STYLES };
+export { COLORS, DAMAGE_COLORS, RARITY_COLORS, DAMAGE_ICONS, ICON_NAMES, PANEL_STYLES, PANEL_INK };
 export default UI;

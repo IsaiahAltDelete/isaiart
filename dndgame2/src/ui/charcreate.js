@@ -303,7 +303,18 @@ const RP_X = 281, RP_W = 117;    // right panel
 const LC_X = LP_X + 4, LC_W = LP_W - 8;     //  6 .. 115
 const MC_X = MP_X + 4, MC_W = MP_W - 8;     // 125 .. 275
 const RC_X = RP_X + 4, RC_W = RP_W - 8;     // 285 .. 394
+/**
+ * Two-letter ability tags for the narrow option rows. "Co" and "Ch" keep
+ * Constitution and Charisma apart, which a single letter cannot, and the
+ * three of them together are 35px instead of the 65px "STR/DEX/CHA" costs.
+ */
+const ABILITY_PAIR = Object.freeze({ str: 'St', dex: 'Dx', con: 'Co', int: 'In', wis: 'Wi', cha: 'Ch' });
+
 const FOOT_Y = 218, FOOT_H = 20;
+// The footer's message/hint slot: x 54 up to the NEXT/CREATE button at x 338.
+// Every hintLine() string is written to fit inside it uncut — 47 characters at
+// sm is 281px — because the half that gets ellipsised is the instruction half.
+const FOOT_LINE_W = 282;
 const ROW_H = 11;
 // How many sub-section tabs fit on the strip at once. A warlock can hold eleven
 // level-1 choices, so the strip scrolls rather than hiding the overflow.
@@ -380,12 +391,20 @@ function clipped(ctx, x, y, w, h, fn) {
   try { fn(); } catch (e) { /* a bad catalogue entry must not kill the frame */ }
   ctx.restore();
 }
+/**
+ * Truncate to `w` px. The `out.length > 1` guard used to guarantee two glyphs
+ * of output — 11px at sm, 13px at md — so a caller that handed this an 8px
+ * slot overflowed by 3px with nothing to show for it. A slot too narrow for
+ * one glyph and the ellipsis gets the ellipsis; one too narrow for that gets
+ * nothing. The column always wins.
+ */
 function ellip(s, w, size) {
   s = String(s == null ? '' : s);
   if (tw(s, size) <= w) return s;
+  if (tw('…', size) > w) return '';
   let out = s;
   while (out.length > 1 && tw(out + '…', size) > w) out = out.slice(0, -1);
-  return out + '…';
+  return tw(out + '…', size) > w ? '…' : out + '…';
 }
 
 /** Greedy word wrap against the real font metrics. */
@@ -466,12 +485,23 @@ function Doc(x, w) {
       return this;
     },
 
-    /** "Speed  30 ft." — label left, value right. */
+    /**
+     * "Speed  30 ft." — label left, value right.
+     *
+     * The two halves have to add up to the row: giving the label 55% and the
+     * value 60% let a long pair overlap in the middle, which is what put a
+     * stray ellipsis through "Resistant to  Necrotic, Radiant". The value gets
+     * what it needs up to two thirds, the label gets the rest less a gap.
+     */
     kv(k, v, o) {
       const self = this; const op = obj(o);
+      const GAP = 6;
+      const val = String(v == null ? '' : v);
+      const valW = Math.min(tw(val, 'sm'), self.w * 0.66);
+      const keyW = Math.max(12, self.w - valW - GAP);
       return this._push(9, (ctx, y) => {
-        txt(ctx, self.x, y, ellip(k, self.w * 0.55, 'sm'), { size: 'sm', color: op.keyColor || C.dim, shadow: true });
-        rtxt(ctx, self.x + self.w, y, ellip(String(v), self.w * 0.6, 'sm'), { size: 'sm', color: op.color || C.ink, shadow: true });
+        txt(ctx, self.x, y, ellip(k, keyW, 'sm'), { size: 'sm', color: op.keyColor || C.dim, shadow: true });
+        rtxt(ctx, self.x + self.w, y, ellip(val, valW, 'sm'), { size: 'sm', color: op.color || C.ink, shadow: true });
       });
     },
 
@@ -2162,8 +2192,10 @@ export class CharCreateScene {
       case 'background': {
         if (!getBackground(d.backgroundId)) return 'Choose a background.';
         const asi = this.backgroundAsi();
-        if (bgAbilities(getBackground(d.backgroundId)).length && !asi) return 'Assign the background ability increase.';
-        if (d.bgMode === '2-1' && (!d.bgPlus2 || !d.bgPlus1 || d.bgPlus2 === d.bgPlus1)) return 'Pick which ability gets +2 and which gets +1.';
+        // Short on purpose: the summary step prefixes these with
+        // "To do — Background: ", and the footer slot is 282px total.
+        if (bgAbilities(getBackground(d.backgroundId)).length && !asi) return 'Assign the ability increase.';
+        if (d.bgMode === '2-1' && (!d.bgPlus2 || !d.bgPlus1 || d.bgPlus2 === d.bgPlus1)) return 'Set which ability gets +2 and which +1.';
         return null;
       }
       case 'abilities': {
@@ -2381,7 +2413,7 @@ export class CharCreateScene {
     const d = this.draft;
     return allSpecies().map((sp) => ({
       label: sp.name || cap(sp.id),
-      hint: sp.darkvision ? 'DV' + sp.darkvision : (sp.speed || 30) + 'ft',
+      hint: sp.darkvision ? 'dark ' + sp.darkvision : (sp.speed || 30) + 'ft',
       hintColor: sp.darkvision ? C.purple : C.dim,
       selected: sp.id === d.speciesId,
       color: sp.id === d.speciesId ? C.goldB : C.ink,
@@ -2471,7 +2503,11 @@ export class CharCreateScene {
     const d = this.draft;
     return backgroundIds().map((id) => {
       const bg = getBackground(id);
-      const abils = bgAbilities(bg).map((a) => ABILITY_ABBR[a]).join('/');
+      // "STR/DEX/CHA" is 65px of a 109px row: it left every background name
+      // ellipsised to four letters ("Acol…", "Char…", "Merc…", "Sold…"), which
+      // is the one thing you navigate this list by. ABILITY_PAIR is the same
+      // three abilities in 35px, and no name is cut for it.
+      const abils = bgAbilities(bg).map((a) => ABILITY_PAIR[a] || ABILITY_ABBR[a]).join('');
       return {
         label: obj(bg).name || cap(id),
         hint: abils,
@@ -2543,11 +2579,16 @@ export class CharCreateScene {
 
     if (method === 'pointbuy') {
       const left = this.pointsLeft();
-      rows.push({ label: 'Points left', hint: left + ' / ' + POINT_BUY_TOTAL, hintColor: left === 0 ? C.green : left < 0 ? C.red : C.gold, header: true });
+      // "27 / 27" with spaces is 41px and pushes the pair 3px past the row.
+      rows.push({ label: 'Points left', hint: left + '/' + POINT_BUY_TOTAL, hintColor: left === 0 ? C.green : left < 0 ? C.red : C.gold, header: true });
     } else if (method === 'roll') {
       rows.push({ label: '4d6 drop lowest', header: true, color: C.goldD });
     } else {
-      rows.push({ label: 'Standard Array', hint: STANDARD_ARRAY.join(' '), header: true, color: C.goldD });
+      // No hint: "Standard Array" is 83px and "15 14 13 12 10 8" is 95px in a
+      // 109px row, so the two used to print straight through each other. The
+      // six numbers are already listed on the six ability rows below and spelled
+      // out in the detail pane, so the header just titles the section.
+      rows.push({ label: 'Standard Array', header: true, color: C.goldD });
     }
 
     for (const ab of ABILITIES) {
@@ -2744,7 +2785,10 @@ export class CharCreateScene {
     const push = (r) => { if (r) rows.push(r); };
 
     rows.push({ label: 'Body', header: true, color: C.goldD });
-    push(this._optRow('Body type', 'body', ['m', 'f', 'n'], (v) => ({ m: 'Masculine', f: 'Feminine', n: 'Androgynous' }[v] || 'Androgynous')));
+    // "Body type" is 62px of an 81px row before the value gets a look in, and
+    // it sits directly under a "Body" header anyway — "Type" says the same
+    // thing and leaves "Androgynous" readable.
+    push(this._optRow('Type', 'body', ['m', 'f', 'n'], (v) => ({ m: 'Masculine', f: 'Feminine', n: 'Androgynous' }[v] || 'Androgynous')));
     push(this._optRow('Build', 'build', arr(AO.build).length ? AO.build : ['slim', 'normal', 'broad', 'tall']));
     push(this._optRow('Height', 'height', [0.9, 0.95, 1, 1.05, 1.1], (v) => (v < 0.97 ? 'Short' : v > 1.03 ? 'Tall' : 'Average')));
     push(this._colorRow('Skin', 'skin', pal.skin));
@@ -2764,7 +2808,7 @@ export class CharCreateScene {
     rows.push({ label: 'Dress', header: true, color: C.goldD });
     push(this._colorRow('Outfit', 'outfit', CLOTH_PALETTE));
     push(this._colorRow('Secondary', 'outfitAlt', CLOTH_PALETTE));
-    push(this._colorRow('Accent / trim', 'accent', ACCENT_PALETTE));
+    push(this._colorRow('Accent', 'accent', ACCENT_PALETTE));
     push(this._colorRow('Metal', 'metal', METAL_PALETTE));
     push(this._colorRow('Leather', 'leather', LEATHER_PALETTE));
     push(this._optRow('Cloak', 'cloakStyle', arr(AO.cloakStyle), (v) => (v === 'cloak-none' ? 'None' : cap(String(v).replace('cloak-', '')))));
@@ -2889,7 +2933,12 @@ export class CharCreateScene {
     if (!p) return;
     safe(() => UI.scrim(ctx, 0.6));
     const x = 60, y = 26, w = 280, h = 188;
-    panel(ctx, x, y, w, h, 'gold');
+    // 'gold' is a LIGHT brass plate meant to carry near-black ink. This modal
+    // drew its title, its whole option list and its key line in pale ink on
+    // it — 1.03:1 to 1.20:1, i.e. a blank sheet of brass. The deity/kit/feat
+    // picker is the screen players called "jumbled"; it is a dark window now,
+    // and every colour on it is the one it always wanted to be.
+    panel(ctx, x, y, w, h, 'window');
     txt(ctx, x + 8, y + 6, p.title, { size: 'md', color: C.goldB, shadow: true });
     rule(ctx, x + 8, y + 17, w - 16);
     const listX = x + 8, listY = y + 22, listW = 116;
@@ -3075,10 +3124,21 @@ export class CharCreateScene {
   drawRow(ctx, it, ix, x, ry, rw, rh, sel) {
     const midY = ry + Math.round((rh - 7) / 2);
     if (it.header) {
-      txt(ctx, x + 1, midY, ellip(it.label, rw - 26, 'sm'), { size: 'sm', color: it.color || C.goldD, shadow: true });
-      if (it.hint) rtxt(ctx, x + rw - 1, midY, it.hint, { size: 'sm', color: it.hintColor || C.dim, shadow: true });
-      const lw = tw(it.label, 'sm') + 4;
-      if (!it.hint) rule(ctx, x + lw, midY + 3, Math.max(0, rw - lw - 1));
+      // The hint used to be right-aligned with no width at all while the label
+      // took a flat `rw - 26` — so "Standard Array" and "15 14 13 12 10 8"
+      // (83px + 95px in a 109px row) printed straight through each other, and
+      // a header with NO hint still lost 26px it did not need. Split it.
+      const body = rw - 2;
+      const hs = it.hint == null ? '' : String(it.hint);
+      const sp = safe(() => UI.splitRow(body, it.label, hs, { size: 'sm', gap: 4, labelMax: 0.62 }), null)
+        || { labelW: body, valueW: 0 };
+      const shown = ellip(it.label, sp.labelW, 'sm');
+      txt(ctx, x + 1, midY, shown, { size: 'sm', color: it.color || C.goldD, shadow: true });
+      if (hs && sp.valueW > 0) {
+        rtxt(ctx, x + rw - 1, midY, ellip(hs, sp.valueW, 'sm'), { size: 'sm', color: it.hintColor || C.dim, shadow: true });
+      }
+      const lw = tw(shown, 'sm') + 4;
+      if (!hs) rule(ctx, x + lw, midY + 3, Math.max(0, rw - lw - 1));
       return;
     }
 
@@ -3109,32 +3169,45 @@ export class CharCreateScene {
       lx += 2;
     }
 
-    // right-hand value / swatch / hint
+    // Right-hand value / swatch / hint.
+    //
+    // The value used to claim 62% of the row before the label was measured at
+    // all, so "Alignment ◀Neutral Good▶" left the label 23px and printed it as
+    // "Al…" — a settable row whose name the player cannot read. The fixed
+    // furniture (swatch, ◀ ▶ arrows) is subtracted first, then UI.splitRow
+    // divides what is left LABEL-first: the value is the half that yields.
     let rx = x + rw - 1;
+    let deco = 0;
+    if (it.swatch) deco += 12;
+    const hasVal = it.value != null;
+    const arrows = hasVal && (it.onLeft || it.onRight);
+    if (arrows) deco += 14;                       // ▶ 6px on the right, ◀ 8px on the left
+    const labelSize = sel ? 'md' : 'sm';
+    const right = hasVal ? String(it.value) : (it.hint ? String(it.hint) : '');
+    const body = Math.max(0, rw - (lx - x) - 1 - deco);
+    const sp = safe(() => UI.splitRow(body, it.label, right, {
+      size: labelSize, valueSize: 'sm', gap: 3, labelMax: 0.72, valueMax: 0.62,
+    }), null) || { labelW: body, valueW: 0 };
+
     if (it.swatch) {
       swatch(ctx, rx - 9, midY - 1, 9, 8, it.swatch, sel);
       rx -= 12;
     }
-    if (it.value != null) {
-      const vstr = String(it.value);
-      const arrows = (it.onLeft || it.onRight);
+    if (hasVal) {
       if (arrows) {
         txt(ctx, rx - 4, midY, '▶', { size: 'sm', color: sel ? C.goldB : C.dim, shadow: true });
         rx -= 6;
       }
-      const vw = Math.min(tw(vstr, 'sm'), rw * 0.62);
-      rtxt(ctx, rx, midY, ellip(vstr, vw, 'sm'), { size: 'sm', color: it.valueColor || (sel ? C.goldB : C.ink), shadow: true });
-      rx -= vw;
+      rtxt(ctx, rx, midY, ellip(right, sp.valueW, 'sm'), { size: 'sm', color: it.valueColor || (sel ? C.goldB : C.ink), shadow: true });
+      rx -= sp.valueW;
       if (arrows) { txt(ctx, rx - 6, midY, '◀', { size: 'sm', color: sel ? C.goldB : C.dim, shadow: true }); rx -= 8; }
-    } else if (it.hint) {
-      const hw = tw(it.hint, 'sm');
-      rtxt(ctx, rx, midY, it.hint, { size: 'sm', color: it.hintColor || C.dim, shadow: true });
-      rx -= hw + 3;
+    } else if (right) {
+      rtxt(ctx, rx, midY, ellip(right, sp.valueW, 'sm'), { size: 'sm', color: it.hintColor || C.dim, shadow: true });
     }
 
-    const avail = Math.max(8, rx - lx);
-    txt(ctx, lx, midY, ellip(it.label, avail, sel ? 'md' : 'sm'), {
-      size: sel ? 'md' : 'sm',
+    const avail = sp.labelW;
+    txt(ctx, lx, midY, ellip(it.label, avail, labelSize), {
+      size: labelSize,
       color: it.disabled ? C.off : (it.color || (sel ? C.goldB : C.ink)),
       shadow: true,
     });
@@ -3146,9 +3219,11 @@ export class CharCreateScene {
     panel(ctx, LP_X, FOOT_Y, 396, FOOT_H, 'dark');
     const y = FOOT_Y + 4;
 
-    const backLabel = (this.step === 0 && this.sub === 0) ? 'QUIT' : 'BACK';
-    safe(() => UI.button(ctx, 6, y - 1, 42, 14, backLabel, { t: this.t }));
-    this.hit(6, y - 1, 42, 14, () => (this.step === 0 && this.sub === 0 ? this.cancelOut() : this.goPrev()));
+    // The key that works the button is part of its label, so nobody has to guess
+    // how to move between steps.
+    const backLabel = (this.step === 0 && this.sub === 0) ? 'QUIT' : 'Q BACK';
+    safe(() => UI.button(ctx, 6, y - 1, 48, 14, backLabel, { t: this.t }));
+    this.hit(6, y - 1, 48, 14, () => (this.step === 0 && this.sub === 0 ? this.cancelOut() : this.goPrev()));
 
     const last = STEPS[this.step].id === 'summary';
     const why = this.issue(this.step);
@@ -3156,12 +3231,12 @@ export class CharCreateScene {
     // CREATE is only truly ready when the WHOLE sheet is; a green button over an
     // unfinished skills page is exactly the lie that made this screen feel broken.
     const ready = last ? gap < 0 : !why;
-    const nextLabel = last ? 'CREATE' : 'NEXT';
-    const nx = 344 + this.shakeX('next');
-    safe(() => UI.button(ctx, nx, y - 1, 50, 14, nextLabel, {
+    const nextLabel = last ? 'CREATE' : 'NEXT R';
+    const nx = 338 + this.shakeX('next');
+    safe(() => UI.button(ctx, nx, y - 1, 56, 14, nextLabel, {
       selected: ready, disabled: !ready, t: this.t,
     }));
-    this.hit(344, y - 1, 50, 14, () => this.goNext());
+    this.hit(338, y - 1, 56, 14, () => this.goNext());
 
     // message / validation / hint
     const showMsg = this.messageT > 0 && this.message;
@@ -3169,7 +3244,7 @@ export class CharCreateScene {
     let color = C.dim;
     if (showMsg) { line = this.message; color = this.messageBad ? C.red : C.green; }
     else if (why) { line = why; color = C.orange; }
-    else if (last && gap >= 0) { line = 'Still to do — ' + STEPS[gap].title + ': ' + this.issue(gap); color = C.orange; }
+    else if (last && gap >= 0) { line = 'To do — ' + STEPS[gap].title + ': ' + this.issue(gap); color = C.orange; }
     else { line = this.hintLine(); color = C.dim; }
 
     // When something is outstanding the line doubles as a button: click it (or
@@ -3178,39 +3253,51 @@ export class CharCreateScene {
     // for almost the whole wizard (the name is empty until the second-to-last
     // step), and letting that drive the footer replaced every per-step hint
     // with the same nag.
+    // The slot runs from x=54 to the NEXT/CREATE button at x=338, so it is 282
+    // px wide, not the 286 that was being used — the old cap put the last two
+    // pixels of every long hint underneath the button.
     const jumpable = !showMsg && (!!why || (last && gap >= 0));
-    const lineW = Math.min(286, tw(line, 'sm') + 2);
+    const lineW = Math.min(FOOT_LINE_W, tw(line, 'sm') + 2);
     if (jumpable) {
       fill(ctx, 53, y - 1, lineW + 2, 9, 'rgba(232,134,58,0.14)');
       this.hit(53, y - 1, lineW + 2, 9, () => this.gotoIssue());
     }
-    txt(ctx, 54, y, ellip(line, 286, 'sm'), { size: 'sm', color, shadow: true });
+    txt(ctx, 54, y, ellip(line, FOOT_LINE_W, 'sm'), { size: 'sm', color, shadow: true });
 
+    // These have to FIT the slot — the old strings were ellipsised right
+    // before "Z Confirm", which is how a player ends up not knowing how to advance.
     const keys = jumpable
-      ? 'E jumps to what\'s missing   Q/R Step   ↑↓ Pick   Z Confirm'
+      ? 'E Jump to it   R Next step'
       : this.bucketCount() > 1
-        ? 'Q/R Step   TAB Section   ↑↓ Pick   ←→ Adjust   Z Confirm   X Back'
-        : 'Q/R Step   ↑↓ Pick   ←→ Adjust/Scroll   Z Confirm   X Back';
-    txt(ctx, 54, y + 9, ellip(keys, 286, 'sm'), { size: 'sm', color: 'rgba(150,140,115,0.65)', shadow: true });
+        ? 'Z Pick   TAB Section   R Next   Q Back'
+        : 'Z Pick   ←→ Adjust   R Next   Q Back';
+    txt(ctx, 54, y + 9, ellip(keys, FOOT_LINE_W, 'sm'), { size: 'sm', color: 'rgba(150,140,115,0.65)', shadow: true });
   }
 
+  /**
+   * The per-step hint. EVERY string here fits FOOT_LINE_W (282px = 47 sm
+   * characters) whole. Seven of the old twelve ran 287..389px and were cut
+   * mid-sentence — and the half that a hint loses to an ellipsis is always the
+   * instruction half, which is exactly how a player ends up unable to find the
+   * deity picker. If you add one, measure it: 47 characters, hard ceiling.
+   */
   hintLine() {
     const row = this.currentRow();
     switch (STEPS[this.step].id) {
-      case 'species': return this.sub === 1 ? 'Your lineage sharpens as you level.' : 'The people you were born to. 2024 rules: no ability bonuses here.';
+      case 'species': return this.sub === 1 ? 'Your lineage sharpens as you level.' : 'Your folk. 2024 rules: no ability bonus here.';
       case 'class': return 'What you do when the talking stops.';
       case 'subclass': return this.subclassActive() ? 'Your path within the class.' : 'Preview only — you choose this at level ' + (obj(getClass(this.draft.classId)).subclassLevel || 3) + '.';
-      case 'background': return this.bucket === 1 ? 'Backgrounds carry the ability increases in the 2024 rules.' : 'Where you came from, and the feat it taught you.';
+      case 'background': return this.bucket === 1 ? 'Your background sets the ability increases.' : 'Where you came from, and the feat it taught.';
       case 'abilities': return '1 Array   2 Point Buy   3 Roll';
-      case 'skills': return 'Cyan dots are already granted by your species or background.';
-      case 'spells': return 'Tab or 1-5 switch between cantrips, spells and pacts.';
+      case 'skills': return 'Cyan dots are already granted by your origin.';
+      case 'spells': return 'Tab or 1-5 switches cantrips, spells and pacts.';
       case 'features': return this.bucketCount() > BUCKET_SLOTS
         ? 'Tab walks all ' + this.bucketCount() + ' sets of choices.'
         : 'The last of your level-1 choices.';
-      case 'equipment': return 'Take the kit, or take the coin and shop in Phandalin.';
+      case 'equipment': return 'Take the kit, or coin to spend in Phandalin.';
       case 'appearance': return row && row.palette ? 'Left/right walks the palette.' : 'Everything here shows live on the sprite.';
-      case 'identity': return 'Z on the name field types; Z on the deity opens the full list.';
-      case 'summary': return 'Check it over, then Create. Any tab above jumps back.';
+      case 'identity': return 'Z types the name. Z on Deity opens the list.';
+      case 'summary': return 'Check it over, then Create. Tabs jump back.';
       default: return '';
     }
   }
@@ -3227,10 +3314,19 @@ export class CharCreateScene {
     const cx = RC_X + Math.round(RC_W / 2);
     let y = BODY_Y + 4;
 
+    // The panel's interior floor. The column used to run to y=253 for a caster
+    // — the weapon line sat on the bottom frame, and MAGIC, the slot list, the
+    // senses line and the purse were all drawn BELOW the panel, over (and past)
+    // the footer. Everything below is clipped to the frame so nothing can leave
+    // it again, and the rhythm was tightened until a level-1 wizard, the
+    // tallest case, ends at 212 instead of 253.
+    const FLOOR = BODY_Y + BODY_H - 3;
+    safe(() => UI.pushClip(ctx, RP_X + 2, BODY_Y + 2, RP_W - 4, BODY_H - 4));
+
     // --- identity ----------------------------------------------------------
     const name = (d.name || '').trim() || 'Unnamed';
     ctxt(ctx, cx, y, ellip(name, RC_W, 'md'), { size: 'md', color: d.name ? C.goldB : C.dim, shadow: true });
-    y += 10;
+    y += 9;
     const sp = getSpecies(d.speciesId);
     const lin = getLineage(d.speciesId, d.lineageId);
     const race = (lin ? lin.name : obj(sp).name || cap(d.speciesId));
@@ -3245,11 +3341,13 @@ export class CharCreateScene {
       ctxt(ctx, cx, y, ellip(subN + (this.subclassActive() ? '' : ' (planned)'), RC_W, 'sm'), {
         size: 'sm', color: this.subclassActive() ? C.purple : C.off, shadow: true,
       });
+      y += 8;
+    } else {
+      y += 2;
     }
-    y += 8;
 
     // --- animated sprite stage --------------------------------------------
-    const stageY = y, stageH = 54;
+    const stageY = y, stageH = 44;
     fill(ctx, RC_X, stageY, RC_W, stageH, 'rgba(0,0,0,0.42)');
     frame(ctx, RC_X, stageY, RC_W, stageH, 'rgba(120,100,60,0.45)');
     const dir = DIRS[Math.floor(this.t / 1.7) % DIRS.length];
@@ -3265,25 +3363,25 @@ export class CharCreateScene {
     if (!drew && ch) safe(() => UI.portrait(ctx, ch, cx - 20, stageY + 6, 40));
     txt(ctx, RC_X + 3, stageY + 2, dir.toUpperCase(), { size: 'sm', color: 'rgba(160,150,120,0.6)', shadow: true });
     this.hit(RC_X, stageY, RC_W, stageH, () => { this.gotoStep(STEP_INDEX.appearance); sfx('select'); });
-    y = stageY + stageH + 3;
+    y = stageY + stageH + 2;
 
     // --- headline derived stats -------------------------------------------
     const third = Math.floor(RC_W / 3);
     const cell = (i, label, value, color) => {
       const bx = RC_X + i * third;
-      fill(ctx, bx, y, third - 2, 17, 'rgba(0,0,0,0.32)');
+      fill(ctx, bx, y, third - 2, 16, 'rgba(0,0,0,0.32)');
       ctxt(ctx, bx + (third - 2) / 2, y + 1, label, { size: 'sm', color: C.goldD, shadow: true });
       ctxt(ctx, bx + (third - 2) / 2, y + 8, value, { size: 'md', color: color || C.ink, shadow: true });
     };
     cell(0, 'AC', ch ? String(ch.ac) : '—', C.blue);
     cell(1, 'HP', ch ? String(ch.maxHp) : '—', C.hp);
     cell(2, 'SPD', ch ? (ch.speed + 'ft') : '—', C.green);
-    y += 19;
+    y += 17;
     cell(0, 'INIT', ch ? signed(ch.initiative || 0) : '—', C.ink);
     cell(1, 'PROF', ch ? signed(safe(() => profBonus(ch), 2)) : '—', C.gold);
     const hd = ch ? Object.keys(obj(ch.hitDice)).map((k) => obj(ch.hitDice)[k].max + k).join(' ') : '';
     cell(2, 'HD', hd || ('d' + (obj(cls).hitDie || 8)), C.purple);
-    y += 20;
+    y += 18;
 
     rule(ctx, RC_X, y, RC_W); y += 3;
 
@@ -3292,7 +3390,7 @@ export class CharCreateScene {
     for (let i = 0; i < 6; i++) {
       const ab = ABILITIES[i];
       const cxx = RC_X + (i % 2) * half;
-      const ry = y + Math.floor(i / 2) * 11;
+      const ry = y + Math.floor(i / 2) * 10;
       const score = ch ? safe(() => abilityScore(ch, ab), this.finalScore(ab)) : this.finalScore(ab);
       const m = scoreMod(score);
       const prof = ch && arr(ch.saveProfs).indexOf(ab) >= 0;
@@ -3301,7 +3399,7 @@ export class CharCreateScene {
       txt(ctx, cxx + 22, ry + 1, String(score), { size: 'sm', color: C.ink, shadow: true });
       rtxt(ctx, cxx + half - 3, ry + 1, signed(m), { size: 'sm', color: m > 0 ? C.green : m < 0 ? C.red : C.dim, shadow: true });
     }
-    y += 34;
+    y += 31;
     rule(ctx, RC_X, y, RC_W); y += 3;
 
     // --- saves, attack, magic ---------------------------------------------
@@ -3324,27 +3422,32 @@ export class CharCreateScene {
       y += 9;
       txt(ctx, RC_X + 4, y, 'Unarmed', { size: 'sm', color: C.dim, shadow: true });
     }
-    y += 10;
+    y += 9;
 
-    if (ch && obj(ch.spells).ability) {
+    if (ch && obj(ch.spells).ability && y + 7 <= FLOOR) {
       const dc = safe(() => spellDC(ch), obj(ch.spells).dc || 8);
       const atk = safe(() => spellAtk(ch), obj(ch.spells).atk || 0);
-      txt(ctx, RC_X, y, 'MAGIC', { size: 'sm', color: C.goldD, shadow: true });
-      txt(ctx, RC_X + 34, y, 'DC ' + dc + '  ' + signed(atk), { size: 'sm', color: C.mp, shadow: true });
-      y += 9;
       const slots = obj(obj(ch.spells).slots);
       const parts = Object.keys(slots).map((k) => k + ':' + obj(slots[k]).max).filter((s) => !/:0$/.test(s));
-      txt(ctx, RC_X + 4, y, ellip(parts.length ? 'Slots ' + parts.join(' ') : 'No slots yet', RC_W - 4, 'sm'), { size: 'sm', color: C.dim, shadow: true });
-      y += 10;
+      // DC, attack and the slot list on ONE line: the old two-line block was
+      // the 19px that pushed the purse off the bottom of the panel.
+      txt(ctx, RC_X, y, 'MAGIC', { size: 'sm', color: C.goldD, shadow: true });
+      const magic = 'DC ' + dc + ' ' + signed(atk) + (parts.length ? '  ' + parts.join(' ') : '');
+      txt(ctx, RC_X + 34, y, ellip(magic, RC_W - 34, 'sm'), { size: 'sm', color: C.mp, shadow: true });
+      y += 9;
     }
 
     // --- senses / purse ----------------------------------------------------
-    const dv = ch ? Number(obj(ch.senses).darkvision) || 0 : 0;
-    const pp = ch ? safe(() => skillMod(ch, 'perception').passive, 10) : 10;
-    txt(ctx, RC_X, y, ellip('Passive Perc. ' + pp + (dv ? '   DV ' + dv : ''), RC_W, 'sm'), { size: 'sm', color: C.dim, shadow: true });
-    y += 9;
-    const gold = ch ? (Number(ch.gold) || 0) : 0;
-    txt(ctx, RC_X, y, ellip('Purse ' + gold + ' gp', RC_W, 'sm'), { size: 'sm', color: C.gold, shadow: true });
+    // One line, not two: "PP 13  DV 60" on the left, the purse hard right.
+    if (y + 7 <= FLOOR) {
+      const dv = ch ? Number(obj(ch.senses).darkvision) || 0 : 0;
+      const pp = ch ? safe(() => skillMod(ch, 'perception').passive, 10) : 10;
+      const gold = ch ? (Number(ch.gold) || 0) : 0;
+      safe(() => UI.kvRow(ctx, RC_X, y, RC_W, 'PP ' + pp + (dv ? '  DV ' + dv : ''), gold + ' gp', {
+        size: 'sm', labelColor: C.dim, color: C.gold, gap: 5,
+      }));
+    }
+    safe(() => UI.popClip(ctx));
   }
 
   // --- summary left column: the vital statistics block ---------------------
@@ -3445,10 +3548,11 @@ export class CharCreateScene {
     doc.head(sp.name || cap(sp.id));
     doc.wrap(sp.desc || '', { color: C.ink });
     doc.gap(2);
+    doc.rule('THE NUMBERS');
     doc.kv('Size', cap(sp.size || 'medium'));
     doc.kv('Speed', (sp.speed || 30) + ' ft.');
     doc.kv('Darkvision', sp.darkvision ? sp.darkvision + ' ft.' : '—', { color: sp.darkvision ? C.purple : C.dim });
-    if (arr(sp.resist).length) doc.kv('Resistant to', arr(sp.resist).map(cap).join(', '), { color: C.green });
+    if (arr(sp.resist).length) doc.kv('Resists', arr(sp.resist).map(cap).join(', '), { color: C.green });
     if (arr(sp.skillGrants).length) doc.kv('Skills', arr(sp.skillGrants).map(skillName).join(', '), { color: C.cyan });
     doc.kv('Languages', String(sp.languageCount || 2));
     const lin = lineagesFor(sp.id);
