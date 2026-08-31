@@ -23,6 +23,7 @@ the source; the image is a build artifact.
 | `cloud.pxa` | small wide tall | three drifting silhouettes |
 | `bird.pxa` | up mid down | gull, wingbeat |
 | `lighthouse.pxa` | dark lit | beacon on the headland, blinks at night |
+| `digits.pxa` | d0…d9 colon | the countdown face |
 
 ## Palette
 
@@ -30,6 +31,9 @@ the source; the image is a build artifact.
 semantic, which is what lets one grid produce a whole shoal: the page swaps
 `A`/`B`/`C` (body dark → light) and `D`/`E` (fin dark → light) at bake time, so
 `fish-small.pxa` ships in fourteen tropical colourways without fourteen files.
+
+`digits.pxa` carries its own two keys (`W` face, `K` outline) and is set on a
+fixed advance, so the countdown never jitters as the numbers change.
 
 ## Editing
 
