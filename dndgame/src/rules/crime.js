@@ -60,10 +60,18 @@ const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 /** The crime ledger, created on first use so pre-existing saves upgrade cleanly. */
 export function crimeState(st) {
   if (!st) return null;
-  if (!st.crime) {
-    st.crime = { bounty: {}, slain: {}, outlaw: {}, witnessed: 0, lastCrimeDay: 0, watchDue: {} };
+  const cs = (st.crime && typeof st.crime === 'object') ? st.crime : (st.crime = {});
+  // Backfill rather than only creating whole-cloth. A save written before a key
+  // existed has a `crime` object that is truthy but partial, and the old guard
+  // handed it straight back — so the next `cs.watchDue[region]` threw on a
+  // TypeError. The shape is also declared a second time in state.js; filling in
+  // what is missing means the two drifting apart degrades instead of crashing.
+  for (const k of ['bounty', 'slain', 'outlaw', 'watchDue']) {
+    if (!cs[k] || typeof cs[k] !== 'object') cs[k] = {};
   }
-  return st.crime;
+  if (typeof cs.witnessed !== 'number') cs.witnessed = 0;
+  if (typeof cs.lastCrimeDay !== 'number') cs.lastCrimeDay = 0;
+  return cs;
 }
 
 /**
@@ -197,12 +205,14 @@ export function isSlain(st, npcId) {
 
 export function bountyIn(st, map) {
   const cs = st && st.crime;
-  return (cs && cs.bounty[regionOf(map)]) || 0;
+  if (!cs || !cs.bounty) return 0;
+  return cs.bounty[regionOf(map)] || 0;
 }
 
 export function isOutlawIn(st, map) {
   const cs = st && st.crime;
-  return !!(cs && cs.outlaw[regionOf(map)]);
+  if (!cs || !cs.outlaw) return false;
+  return !!cs.outlaw[regionOf(map)];
 }
 
 /**
@@ -211,7 +221,7 @@ export function isOutlawIn(st, map) {
  */
 export function watchOwed(st, map) {
   const cs = st && st.crime;
-  if (!cs || !isSettled(map)) return 0;
+  if (!cs || !cs.watchDue || !isSettled(map)) return 0;
   return cs.watchDue[regionOf(map)] || 0;
 }
 

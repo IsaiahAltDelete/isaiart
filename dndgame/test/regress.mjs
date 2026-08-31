@@ -16,8 +16,8 @@ const R = [];
 const check = (name, ok, detail) => R.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`);
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8099';
-// GAME lets the same suite run against a copy of the game at another path, so a
-// duplicate deployed to dodge a stale CDN is proved working rather than assumed.
+// GAME lets the same suite run against the game at another path, so a copy
+// deployed somewhere else is proved working rather than assumed.
 const GAME = process.env.GAME || 'dndgame';
 await page.goto(`${BASE}/${GAME}/index.html`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1500);
@@ -305,6 +305,171 @@ check('battle: threat ignores spent reactions', (fight.threatWithSpentReactions 
   `${fight.threatWithSpentReactions} tiles`);
 check('battle: an unreachable target is explained', /ft/.test(fight.noTargetHint || ''), fight.noTargetHint);
 check('battle: animation beats can be skipped', !!fight.skipped);
+
+// --- an old save, missing a key ---------------------------------------------
+// crimeState() only built the ledger when it was absent entirely, so a save
+// written before a key existed came back truthy but partial and the next
+// `cs.watchDue[region]` threw. The shape is declared twice — here and in
+// state.js — so the two drifting apart has to degrade, not crash.
+const partial = await page.evaluate(async () => {
+  const C = await import('./src/rules/crime.js');
+  // A real GameState always has flags/reputation; only `crime` is the partial bit.
+  const st = { day: 3, flags: {}, reputation: {}, crime: { bounty: { phandalin: 50 } } };
+  const map = { id: 'phandalin', biome: 'city' };
+  const out = {};
+  try { out.watch = C.watchOwed(st, map); } catch (e) { out.watch = 'THREW: ' + e; }
+  try { out.outlaw = C.isOutlawIn(st, map); } catch (e) { out.outlaw = 'THREW: ' + e; }
+  try { out.bounty = C.bountyIn(st, map); } catch (e) { out.bounty = 'THREW: ' + e; }
+  try { C.reportDeath(st, 'toblen', { map, witnessed: true }); out.death = 'ok'; }
+  catch (e) { out.death = 'THREW: ' + String(e).slice(0, 80); }
+  out.filled = Object.keys(C.crimeState(st)).sort().join(',');
+  return out;
+});
+check('crime: a save missing a key does not throw',
+  partial.death === 'ok' && partial.watch === 0 && partial.outlaw === false && partial.bounty === 50,
+  JSON.stringify(partial));
+
+// --- world-verb spells ------------------------------------------------------
+// fieldRole classifies a spell by the tags on its effects, against a table in
+// fieldcast.js. Seven of that table's thirteen entries matched no spell in the
+// catalogue at all — it said 'identify', 'mend', 'comprehend', 'alarm', the
+// data says 'identify-item', 'repair', 'translate', 'ward-area'. Those spells
+// fell through to the buff branch, so Identify and Comprehend Languages spent a
+// first-level slot applying a buff that does not exist, and the overworld's
+// _spellIdentify hook could never fire. A table matched by string against data
+// in another file drifts silently, so assert the join rather than the symptom.
+const world = await page.evaluate(async () => {
+  const FC = await import('./src/rules/fieldcast.js');
+  const S = await import('./src/data/spells.js');
+  const all = S.SPELLS || S.default || {};
+  const ids = Array.isArray(all) ? all.map((x) => x.id) : Object.keys(all);
+  const get = (id) => (S.getSpell ? S.getSpell(id) : (Array.isArray(all) ? all.find((x) => x.id === id) : all[id])) || {};
+
+  // Every tag the catalogue actually writes on a utility effect.
+  const used = new Set();
+  for (const id of ids) for (const e of (get(id).effects || [])) {
+    if (e && String(e.kind).toLowerCase() === 'utility' && e.tag) used.add(String(e.tag).toLowerCase());
+  }
+  const table = [...(FC.WORLD_TAGS || [])];
+  const orphans = table.filter((t) => !used.has(t));
+
+  const roleOf = (id) => FC.fieldRole(get(id));
+  return {
+    orphans,
+    tableSize: table.length,
+    identify: roleOf('identify'),
+    mending: roleOf('mending'),
+    comprehend: roleOf('comprehend-languages'),
+    prestidigitation: roleOf('prestidigitation'),
+    // the ones that already worked must not regress
+    light: roleOf('light'),
+    mageHand: roleOf('mage-hand'),
+    knock: roleOf('knock'),
+    mageArmor: roleOf('mage-armor'),
+    cureWounds: roleOf('cure-wounds'),
+  };
+});
+check('spells: every world tag matches a real spell', world.orphans.length === 0,
+  world.orphans.length ? `unused: ${world.orphans.join(', ')}` : `${world.tableSize} tags`);
+check('spells: Identify is a world verb, not a buff', world.identify === 'world', world.identify);
+check('spells: Comprehend Languages is a world verb', world.comprehend === 'world', world.comprehend);
+check('spells: Mending and Prestidigitation are world verbs',
+  world.mending === 'world' && world.prestidigitation === 'world',
+  `${world.mending}/${world.prestidigitation}`);
+check('spells: the ones that already worked still do',
+  world.light === 'world' && world.mageHand === 'world' && world.knock === 'world'
+  && world.mageArmor === 'buff' && world.cureWounds === 'heal',
+  `${world.light}/${world.mageHand}/${world.knock}/${world.mageArmor}/${world.cureWounds}`);
+
+// --- hotbar slot indices ----------------------------------------------------
+// Each slot's fn closed over `out.length` rather than its own index, and a
+// closure reads that when the key is pressed — by which time the bar is full.
+const slotIdx = await page.evaluate(() => {
+  for (let i = 0; i < 12 && SC.Game.top && SC.Game.top.id !== 'overworld'; i++) SC.Game.pop();
+  const ow = SC.Game.top;
+  if (!ow || ow.id !== 'overworld') return { skip: 'not in the overworld' };
+  ow._rebuildSlots();
+  const seen = [];
+  const real = ow.hotbar.pulse.bind(ow.hotbar);
+  ow.hotbar.pulse = (i) => { seen.push(i); return real(i); };
+  const n = (ow._slots || []).length;
+  for (const s of ow._slots || []) { try { s.fn && s.fn(); } catch (e) { /* refusals are fine */ } }
+  ow.hotbar.pulse = real;
+  return { n, seen, distinct: new Set(seen).size };
+});
+if (slotIdx.skip) check('hotbar: each slot pulses its own index', false, slotIdx.skip);
+else {
+  check('hotbar: each slot pulses its own index',
+    slotIdx.seen.every((i) => i < slotIdx.n) && slotIdx.distinct === slotIdx.seen.length,
+    `${slotIdx.n} slots, pulsed [${slotIdx.seen.join(',')}]`);
+}
+
+// --- fleeing ---------------------------------------------------------------
+// A fight ends three ways and the results screen only ever branched two. A
+// successful escape fell through to the defeat arm, so outrunning a fight
+// showed "The company falls." and then a Game Over naming the creature you had
+// escaped as your killer, with the whole party still at full hp.
+const esc = await page.evaluate(async () => {
+  // The battle checks above leave a scene on the stack; get back to the world.
+  for (let i = 0; i < 12 && SC.Game.top && SC.Game.top.id !== 'overworld'; i++) SC.Game.pop();
+  const ow = SC.Game.top;
+  if (!ow || ow.id !== 'overworld') return { skip: 'not in the overworld: ' + (ow && ow.id) };
+  const before = ow.id;
+
+  ow._pushBattle(['goblin'], {});
+  for (let i = 0; i < 60 && SC.Game.top.id !== 'battle'; i++) await new Promise((r) => setTimeout(r, 50));
+  const battle = SC.Game.top;
+  if (!battle || battle.id !== 'battle') return { skip: 'no battle started (' + (battle && battle.id) + ')' };
+
+  const enc = battle.enc;
+  const runner = () => enc.units.find((u) => u.side === 'party' && u.hp > 0);
+  // A Dexterity contest, so retry until it lands; a failure leaves the fight
+  // active and only spends the caller's action.
+  let ok = false, tries = 0;
+  while (!ok && tries++ < 60 && enc.state === 'active') {
+    ok = !!(enc.fleeCheck(runner()) || {}).success;
+  }
+  if (!ok) return { skip: 'never won the escape contest in ' + tries + ' tries' };
+
+  const hpBefore = enc.units.filter((u) => u.side === 'party').map((u) => u.hp);
+  battle._checkOver();
+  const kind = battle.results && battle.results.kind;
+
+  // _leaveDefeat never called opts.onEnd, so nothing downstream of a flee ran:
+  // the creatures did not scatter and the field music never came back. Spy on
+  // the callback directly rather than on a side effect that was already set.
+  let told = false;
+  const realEnd = battle.opts.onEnd;
+  battle.opts.onEnd = (res) => { told = true; return realEnd && realEnd(res); };
+
+  // Walk off the results screen the way a player would.
+  battle.results.t = 5;
+  if (kind === 'escape') battle._leaveEscape();
+  else if (kind === 'victory') battle._leaveVictory();
+  else battle._leaveDefeat();
+  for (let i = 0; i < 40 && SC.Game.top.id === 'battle'; i++) await new Promise((r) => setTimeout(r, 50));
+
+  return {
+    from: before,
+    state: enc.state,
+    kind,
+    landedOn: SC.Game.top && SC.Game.top.id,
+    alive: hpBefore.every((h) => h > 0),
+    told,
+  };
+});
+
+if (esc.skip) {
+  check('flee: a successful escape is not a defeat', false, 'could not set up — ' + esc.skip);
+} else {
+  check('flee: a successful escape shows Escaped, not Defeat', esc.kind === 'escape',
+    `state=${esc.state} kind=${esc.kind}`);
+  check('flee: escaping does not end the run', esc.landedOn !== 'gameover',
+    `landed on ${esc.landedOn}`);
+  check('flee: it returns to the world you left', esc.landedOn === 'overworld', esc.landedOn);
+  check('flee: nobody dies of running away', esc.alive);
+  check('flee: the world is told the fight ended', esc.told, 'onEnd fired');
+}
 
 // --- save / load round trip ------------------------------------------------
 const save = await page.evaluate(() => {
