@@ -1,0 +1,54 @@
+@name  fish-small
+@scale 10
+@fps   8
+@size  18x11
+
+@palette
+K #0e2233  outline
+k #1b3d52  shade
+A #2a6f7a  body dark
+B #4fb7b1  body mid
+C #9fe7d8  body light
+D #d9803f  fin dark
+E #ffbd5b  fin light
+W #fff5cf  highlight
+e #0e2233  eye
+
+@frame a
+...........KKK....
+.........KKDDDK...
+....K..KKCCCCCKK..
+...KD.KCCCBBBBBCK.
+.KKDDKCCBBBBABWeAK
+KDDDDKCBBBBBABBBAK
+.K.DDKCBBBBBABBAKK
+..KKD.KABBBBBAAAK.
+....K..KKAAAAAKK..
+.........KKDDK....
+..........KDK.....
+
+@frame b
+...........KKK....
+.........KKDDDK...
+.......KKCCCCCKK..
+....K.KCCCBBBBBCK.
+..KKDKCCBBBBABWeAK
+.KDDDKCBBBBBABBBAK
+..KKDKCBBBBBABBAKK
+....K.KABBBBBAAAK.
+.......KKAAAAAKK..
+.........KKDDK....
+..........KDK.....
+
+@frame c
+...........KKK....
+.........KKDDDK...
+.......KKCCCCCKK..
+......KCCCBBBBBCK.
+....KKCCBBBBABWeAK
+..KDDKCBBBBBABBBAK
+...KKKCBBBBBABBAKK
+......KABBBBBAAAK.
+.......KKAAAAAKK..
+.........KKDDK....
+..........KDK.....

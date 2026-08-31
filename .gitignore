@@ -8,3 +8,7 @@ update_repos.log
 
 # source zip for /dndgame — unpacked, no need to ship it
 DND GAME.zip
+
+# python bytecode
+__pycache__/
+*.pyc

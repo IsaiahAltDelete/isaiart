@@ -422,39 +422,17 @@
 
     .completion-art {
       position: relative;
-      width: 92px;
-      height: 70px;
+      width: 100px;
+      height: 80px;
       margin: 0 auto 20px;
     }
 
-    .completion-art .fish-body {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      width: 52px;
-      height: 30px;
-      background: var(--accent);
-      border: 5px solid var(--ink);
-    }
-
-    .completion-art .fish-body::before {
-      content: "";
-      position: absolute;
-      top: 3px;
-      left: -23px;
-      border-top: 10px solid transparent;
-      border-bottom: 10px solid transparent;
-      border-right: 18px solid var(--coral);
-    }
-
-    .completion-art .fish-body::after {
-      content: "";
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      width: 5px;
-      height: 5px;
-      background: var(--ink);
+    .completion-art canvas {
+      display: block;
+      width: 100px;
+      height: 80px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
     }
 
     .spark {
@@ -468,6 +446,17 @@
     .spark.one { top: 4px; right: 12px; }
     .spark.two { bottom: 4px; left: 5px; animation-delay: 200ms; }
     .spark.three { top: 8px; left: 22px; animation-delay: 400ms; }
+
+    .credit {
+      margin: 22px 0 0;
+      padding-top: 16px;
+      border-top: 2px solid rgba(20, 42, 60, .2);
+      color: rgba(20, 42, 60, .72);
+      font-size: .82rem;
+      line-height: 1.5;
+    }
+
+    .credit a { color: var(--ink); }
 
     .completion h2 {
       margin: 0 0 10px;
@@ -594,6 +583,9 @@
         <button class="action-button" id="pauseButton" type="button">Pause</button>
         <button class="action-button primary" id="startButton" type="button">Start tide</button>
       </div>
+
+      <p class="credit">Every fish, gull and shipwreck-bound chest in this scene is
+        an ASCII grid drawn with <a href="../pixelforge/">pixelforge</a>.</p>
     </div>
   </dialog>
 
@@ -605,7 +597,7 @@
     <div class="dialog-body">
       <div class="completion-art" aria-hidden="true">
         <span class="spark one"></span><span class="spark two"></span><span class="spark three"></span>
-        <span class="fish-body"></span>
+        <canvas id="completionArt" width="20" height="16"></canvas>
       </div>
       <h2 id="completeTitle">The tide is in!</h2>
       <p>Nice work. Time to come up for air.</p>
@@ -618,6 +610,7 @@
 
   <div class="sr-only" id="announcement" aria-live="polite"></div>
 
+  <script src="sprites.js"></script>
   <script>
     (() => {
       "use strict";
@@ -645,6 +638,7 @@
       const minutesInput = document.getElementById("minutes");
       const secondsInput = document.getElementById("seconds");
       const endDateInput = document.getElementById("endDate");
+      const completionArt = document.getElementById("completionArt");
 
       const themes = {
         lagoon: { surface: "#75d3c1", mid: "#3c9e9f", deep: "#236d86", shine: "#c3f2d7" },
@@ -683,15 +677,171 @@
       let lastDayMinute = -1;
       let elapsedVisual = 0;
 
-      const fishColors = [
-        ["#f3bd59", "#e46f5d", "#fff0ae"],
-        ["#f28c81", "#8d5f91", "#ffe0b3"],
-        ["#7cc9bb", "#247b8f", "#d5f1ca"],
-        ["#88a8d7", "#4b5d9b", "#f8d890"],
-        ["#d7a76c", "#8d725b", "#f8e5b5"]
+      /* ── sprite bank ───────────────────────────────────────────────────
+         Every creature and prop below is a .pxa text grid in timer/sprites/,
+         drawn with pixelforge (see /pixelforge) and compiled into sprites.js by
+         timer/build_sprites.py. Nothing here plots a creature by hand: a frame
+         is baked once into an offscreen canvas -- optionally with a palette
+         swap and a horizontal flip -- and then blitted. */
+      const spriteData = window.TIDE_SPRITES || {};
+      const bakedSprites = new Map();
+
+      function parseHex(hex) {
+        const value = hex.replace("#", "");
+        return [
+          parseInt(value.slice(0, 2), 16),
+          parseInt(value.slice(2, 4), 16),
+          parseInt(value.slice(4, 6), 16)
+        ];
+      }
+
+      function bakeSprite(name, frameName, tintName, tint, flip) {
+        const id = `${name}|${frameName}|${tintName}|${flip ? 1 : 0}`;
+        if (bakedSprites.has(id)) return bakedSprites.get(id);
+
+        const def = spriteData[name];
+        const rows = def && def.frames[frameName];
+        if (!rows) {
+          bakedSprites.set(id, null);
+          return null;
+        }
+
+        const surface = document.createElement("canvas");
+        surface.width = def.w;
+        surface.height = def.h;
+        const paint = surface.getContext("2d");
+        const image = paint.createImageData(def.w, def.h);
+        const lut = {};
+        Object.keys(def.pal).forEach(key => {
+          lut[key] = parseHex((tint && tint[key]) || def.pal[key]);
+        });
+
+        for (let y = 0; y < def.h; y++) {
+          const row = rows[y];
+          for (let x = 0; x < def.w; x++) {
+            const color = lut[row[x]];
+            if (!color) continue;                       // "." stays transparent
+            const i = (y * def.w + (flip ? def.w - 1 - x : x)) * 4;
+            image.data[i] = color[0];
+            image.data[i + 1] = color[1];
+            image.data[i + 2] = color[2];
+            image.data[i + 3] = 255;
+          }
+        }
+
+        paint.putImageData(image, 0, 0);
+        bakedSprites.set(id, surface);
+        return surface;
+      }
+
+      function spriteSize(name) {
+        const def = spriteData[name];
+        return def ? { w: def.w, h: def.h } : { w: 0, h: 0 };
+      }
+
+      function frameAt(name, step) {
+        const def = spriteData[name];
+        if (!def) return "";
+        const order = def.order;
+        return order[((step % order.length) + order.length) % order.length];
+      }
+
+      function cycleFrame(cycle, time, beat, offset) {
+        return cycle[Math.floor((time + offset) / beat) % cycle.length];
+      }
+
+      function drawSprite(name, frameName, x, y, options) {
+        const opts = options || {};
+        const baked = bakeSprite(name, frameName, opts.tintName || "-", opts.tint, !!opts.flip);
+        if (!baked) return;
+        const scale = opts.scale || 1;
+        const width = baked.width * scale;
+        const height = baked.height * scale;
+        const left = Math.round(opts.center ? x - width / 2 : x);
+        const top = Math.round(opts.middle ? y - height / 2 : y);
+        if (opts.alpha != null && opts.alpha < 1) {
+          if (opts.alpha <= 0) return;
+          ctx.save();
+          ctx.globalAlpha = opts.alpha;
+          ctx.drawImage(baked, left, top, width, height);
+          ctx.restore();
+          return;
+        }
+        ctx.drawImage(baked, left, top, width, height);
+      }
+
+      /* The completion dialog shows the same chest sprite the sea floor does. */
+      function paintCompletionArt() {
+        const chest = spriteSize("chest");
+        if (!completionArt || !chest.w) return;
+        const baked = bakeSprite("chest", "open", "-", null, false);
+        if (!baked) return;
+        completionArt.width = chest.w;
+        completionArt.height = chest.h;
+        const art = completionArt.getContext("2d");
+        art.imageSmoothingEnabled = false;
+        art.clearRect(0, 0, chest.w, chest.h);
+        art.drawImage(baked, 0, 0);
+      }
+
+      /* Palette swaps over the shared A/B/C body and D/E fin keys, so four
+         grids stock a whole reef. Named after the fish they borrow from. */
+      const colorways = [
+        { name: "lagoon", tint: null },
+        { name: "clownfish", tint: { A: "#c2410c", B: "#fb8b24", C: "#ffe8c9", D: "#7c2d12", E: "#fff5cf" } },
+        { name: "tang", tint: { A: "#c98a06", B: "#ffd23f", C: "#fff6b8", D: "#8a5a00", E: "#ffe98a" } },
+        { name: "regal", tint: { A: "#1d3fa8", B: "#3d8bfd", C: "#a8d5ff", D: "#c9a227", E: "#ffe066" } },
+        { name: "parrot", tint: { A: "#0f766e", B: "#22c1a4", C: "#a7ffe4", D: "#c2338f", E: "#ff7ad9" } },
+        { name: "mandarin", tint: { A: "#1b5fa8", B: "#2fa8e0", C: "#b7f0ff", D: "#e2560f", E: "#ffa552" } },
+        { name: "lionfish", tint: { A: "#8f1d2e", B: "#e03b4b", C: "#ffd2cf", D: "#5b1220", E: "#fff0dc" } },
+        { name: "anthias", tint: { A: "#a3197a", B: "#ff5bb0", C: "#ffd0ec", D: "#b8860b", E: "#ffd76a" } },
+        { name: "wrasse", tint: { A: "#2f7a2f", B: "#63d15f", C: "#d6ffbc", D: "#7a3fb0", E: "#c58bff" } },
+        { name: "angel", tint: { A: "#153f8a", B: "#4f7fe0", C: "#cfe1ff", D: "#e6a100", E: "#ffdf6b" } },
+        { name: "chromis", tint: { A: "#2b3f8f", B: "#59c8f5", C: "#e0fbff", D: "#1c6f9c", E: "#8fe6ff" } },
+        { name: "coralgrouper", tint: { A: "#9c2a17", B: "#f2683a", C: "#ffd6b8", D: "#5c1a0d", E: "#ffb37a" } },
+        { name: "seagrass", tint: { A: "#3f6b2a", B: "#8fc740", C: "#e8ffb0", D: "#9c6b18", E: "#ffd166" } },
+        { name: "violetgoby", tint: { A: "#4a2d80", B: "#9160d8", C: "#e4d3ff", D: "#1f8f86", E: "#5fdac6" } }
+      ];
+      const species = [
+        { sprite: "fish-small", cycle: ["a", "b", "c", "b"], beat: 130, slow: .0012, fast: .0032, scales: [1, 1, 2] },
+        { sprite: "fish-long", cycle: ["a", "b", "c", "b"], beat: 170, slow: .0018, fast: .0040, scales: [1, 1, 1] },
+        { sprite: "fish-round", cycle: ["a", "b"], beat: 250, slow: .0009, fast: .0019, scales: [1, 1, 2] },
+        { sprite: "fish-fancy", cycle: ["a", "b"], beat: 310, slow: .0008, fast: .0016, scales: [1, 1] }
       ];
 
-      const fish = Array.from({ length: 13 }, (_, i) => createFish(i));
+      const drifters = [
+        { sprite: "jelly", cycle: ["a", "b", "c", "b"], beat: 430, x: .24, depth: .26, speed: .00035, phase: 1.1 },
+        { sprite: "jelly", cycle: ["a", "b", "c", "b"], beat: 560, x: .76, depth: .58, speed: -.00026, phase: 2.7 },
+        { sprite: "turtle", cycle: ["a", "b"], beat: 620, x: .5, depth: .42, speed: .00072, phase: .4 }
+      ];
+
+      /* Anchored to the sea floor. `at` is a fraction of the scene width. */
+      const seabed = [
+        { sprite: "seaweed", cycle: ["a", "b", "c", "b"], beat: 620, offset: 0, at: .07 },
+        { sprite: "coral", frame: "branch", at: .34 },
+        { sprite: "starfish", frame: "idle", at: .45 },
+        { sprite: "seaweed", cycle: ["a", "b", "c", "b"], beat: 780, offset: 310, at: .57 },
+        { sprite: "coral", frame: "fan", at: .69 },
+        { sprite: "coral", frame: "brain", at: .84 },
+        { sprite: "seaweed", cycle: ["a", "b", "c", "b"], beat: 700, offset: 520, at: .95 }
+      ];
+
+      const clouds = [
+        { frame: "wide", y: .11, drift: .0042, offset: .05, alpha: 1 },
+        { frame: "tall", y: .25, drift: .0026, offset: .48, alpha: .82 },
+        { frame: "small", y: .18, drift: .0017, offset: .79, alpha: .6 }
+      ];
+
+      const birds = [
+        { x: .18, y: .17, speed: .00014, beat: 150, offset: 0, direction: 1 },
+        { x: .46, y: .24, speed: .00011, beat: 180, offset: 90, direction: 1 },
+        { x: .72, y: .13, speed: .00017, beat: 135, offset: 210, direction: 1 }
+      ];
+
+      const boat = { x: .32, speed: .00006, direction: 1, phase: .8 };
+      const crab = { x: .62, speed: .0009, direction: -1 };
+
+      const fish = Array.from({ length: 11 }, (_, i) => createFish(i));
       const rain = Array.from({ length: 48 }, () => ({
         x: Math.random(),
         y: Math.random(),
@@ -708,16 +858,17 @@
       }));
 
       function createFish(i) {
-        const direction = Math.random() > .5 ? 1 : -1;
+        const kind = species[i % species.length];
         return {
+          kind,
+          colorway: colorways[(i * 3 + Math.floor(Math.random() * 3)) % colorways.length],
           x: Math.random(),
-          depth: .14 + Math.random() * .76,
-          speed: .0012 + Math.random() * .002,
-          size: 0.68 + Math.random() * 1.55,
-          direction,
+          depth: .08 + Math.random() * .84,
+          speed: kind.slow + Math.random() * (kind.fast - kind.slow),
+          scale: kind.scales[Math.floor(Math.random() * kind.scales.length)],
+          direction: Math.random() > .5 ? 1 : -1,
           phase: Math.random() * Math.PI * 2,
-          colors: fishColors[i % fishColors.length],
-          type: i % 4
+          beatOffset: Math.random() * 1200
         };
       }
 
@@ -763,14 +914,7 @@
         return "Night tide";
       }
 
-      function drawPixelCloud(x, y, scale, color) {
-        ctx.fillStyle = color;
-        ctx.fillRect(x, y + 3 * scale, 18 * scale, 4 * scale);
-        ctx.fillRect(x + 4 * scale, y, 7 * scale, 7 * scale);
-        ctx.fillRect(x + 11 * scale, y + 2 * scale, 5 * scale, 5 * scale);
-      }
-
-      function drawSky(now) {
+      function drawSky(now, dt) {
         const sky = getSky(now);
         const gradient = ctx.createLinearGradient(0, 0, 0, sceneHeight);
         gradient.addColorStop(0, rgb(sky.top));
@@ -792,24 +936,33 @@
             const pulse = Math.sin(elapsedVisual * .00045 + i) > .35 ? 2 : 1;
             ctx.fillRect(x, y, pulse, pulse);
           }
-          const mx = Math.floor(celestialX);
-          ctx.fillStyle = "#fff0b3";
-          ctx.fillRect(mx - 5, celestialY - 7, 10, 14);
-          ctx.fillRect(mx - 8, celestialY - 4, 16, 8);
-          ctx.fillStyle = rgb(sky.top);
-          ctx.fillRect(mx, celestialY - 6, 7, 11);
+          drawSprite("moon", "idle", celestialX, celestialY, { center: true, middle: true });
         } else {
-          const sx = Math.floor(celestialX);
-          ctx.fillStyle = twilight ? "#ffd06a" : "#ffe27a";
-          ctx.fillRect(sx - 6, celestialY - 6, 12, 12);
-          ctx.fillRect(sx - 3, celestialY - 9, 6, 18);
-          ctx.fillRect(sx - 9, celestialY - 3, 18, 6);
+          drawSprite("sun", frameAt("sun", Math.floor(elapsedVisual / 560)), celestialX, celestialY, {
+            center: true,
+            middle: true,
+            tintName: twilight ? "dusk" : "noon",
+            tint: twilight ? { S: "#ffcf72", s: "#ef8f52", W: "#fff0c4" } : null
+          });
         }
 
-        const cloudAlpha = night ? .22 : twilight ? .44 : .64;
-        const cloudOffset = (elapsedVisual * .00035) % (sceneWidth + 70);
-        drawPixelCloud(Math.round(sceneWidth - cloudOffset), Math.round(sceneHeight * .17), 1, `rgba(255,248,218,${cloudAlpha})`);
-        drawPixelCloud(Math.round((sceneWidth * .4 + cloudOffset * .58) % (sceneWidth + 50) - 30), Math.round(sceneHeight * .28), 2, `rgba(255,248,218,${cloudAlpha * .68})`);
+        const cloudAlpha = night ? .2 : twilight ? .44 : .62;
+        const cloudWidth = spriteSize("cloud").w;
+        const span = sceneWidth + cloudWidth + 20;
+        clouds.forEach(cloud => {
+          const x = ((cloud.offset * span + elapsedVisual * cloud.drift) % span) - cloudWidth - 10;
+          drawSprite("cloud", cloud.frame, x, sceneHeight * cloud.y, { alpha: cloudAlpha * cloud.alpha });
+        });
+
+        const birdAlpha = night ? 0 : twilight ? .38 : .6;
+        if (birdAlpha > 0) {
+          birds.forEach(bird => {
+            bird.x += bird.speed * bird.direction * dt / 16;
+            if (bird.x > 1.2) bird.x = -.2;
+            drawSprite("bird", cycleFrame(["up", "mid", "down", "mid"], elapsedVisual, bird.beat, bird.offset),
+              bird.x * sceneWidth, bird.y * sceneHeight, { center: true, middle: true, alpha: birdAlpha });
+          });
+        }
 
         const horizon = Math.floor(sceneHeight * .68);
         ctx.fillStyle = night ? "#1e4551" : twilight ? "#426c68" : "#4f8270";
@@ -819,6 +972,14 @@
           const bump = 6 + ((x * 13) % 9);
           ctx.fillRect(x, horizon - bump, 29, bump + 2);
           ctx.fillRect(x + 6, horizon - bump - 4, 13, 5);
+        }
+
+        // The beacon on the headland: lit through dusk and the night, and it blinks.
+        const tower = spriteSize("lighthouse");
+        if (tower.h) {
+          const dark = !(night || twilight) || Math.sin(elapsedVisual * .0011) < -.6;
+          drawSprite("lighthouse", dark ? "dark" : "lit",
+            Math.round(sceneWidth * .84), horizon - tower.h + 4, { center: true });
         }
       }
 
@@ -875,40 +1036,63 @@
         }
       }
 
-      function drawFishBody(item, x, y, scale, tailFrame) {
-        const direction = item.direction;
-        const width = Math.max(8, Math.round((item.type === 2 ? 16 : 13) * scale));
-        const height = Math.max(5, Math.round((item.type === 1 ? 9 : 7) * scale));
-        const px = Math.max(1, Math.round(scale));
-        const left = direction > 0 ? x - Math.floor(width / 2) : x + Math.floor(width / 2);
+      function drawBoat(dt, time) {
+        const hull = spriteSize("boat");
+        if (!hull.h) return;
+        boat.x += boat.speed * boat.direction * dt / 16;
+        if (boat.x > 1.25) boat.x = -.25;
+        if (boat.x < -.25) boat.x = 1.25;
+
+        const x = Math.round(boat.x * sceneWidth);
+        const surface = waterSurfaceY(x, time);
+        const bob = Math.sin(time * .0009 + boat.phase);
         ctx.save();
-        ctx.translate(left, y);
-        ctx.scale(direction, 1);
-
-        ctx.fillStyle = item.colors[1];
-        const tailKick = tailFrame ? px : 0;
-        ctx.fillRect(-width / 2 - 3 * px, -2 * px - tailKick, 4 * px, 4 * px + tailKick * 2);
-        ctx.fillRect(-width / 2 - 5 * px, -px, 3 * px, 2 * px);
-
-        ctx.fillStyle = item.colors[0];
-        ctx.fillRect(-Math.floor(width / 2), -Math.floor(height / 2), width, height);
-        ctx.fillRect(-Math.floor(width / 2) + px, -Math.floor(height / 2) - px, width - 4 * px, px);
-        ctx.fillRect(-Math.floor(width / 2) + px, Math.floor(height / 2), width - 3 * px, px);
-
-        if (item.type === 2) {
-          ctx.fillStyle = item.colors[1];
-          ctx.fillRect(-2 * px, -Math.floor(height / 2) - 2 * px, 5 * px, 2 * px);
-        }
-        if (item.type === 3) {
-          ctx.fillStyle = item.colors[2];
-          ctx.fillRect(-2 * px, -Math.floor(height / 2), 2 * px, height);
-        }
-
-        ctx.fillStyle = item.colors[2];
-        ctx.fillRect(Math.floor(width / 2) - 3 * px, -Math.floor(height / 2) + px, 2 * px, px);
-        ctx.fillStyle = "#13283b";
-        ctx.fillRect(Math.floor(width / 2) - 2 * px, -Math.floor(height / 2) + px, px, px);
+        ctx.beginPath();
+        ctx.rect(0, 0, sceneWidth, Math.max(0, Math.floor(surface + 2)));
+        ctx.clip();                                    // the hull sits in the water
+        drawSprite("boat", frameAt("boat", Math.floor(time / 1400)), x,
+          Math.round(surface - 19 + bob), { center: true, flip: boat.direction < 0 });
         ctx.restore();
+      }
+
+      function drawSeabed(dt, time) {
+        ctx.fillStyle = "#d5a765";
+        for (let x = 0; x < sceneWidth; x += 17) {
+          ctx.fillRect(x + ((x * 3) % 8), sceneHeight - 2 - ((x * 5) % 3), 4, 2);
+        }
+
+        seabed.forEach(item => {
+          const size = spriteSize(item.sprite);
+          if (!size.h) return;
+          const frame = item.cycle
+            ? cycleFrame(item.cycle, time, item.beat, item.offset || 0)
+            : item.frame;
+          drawSprite(item.sprite, frame, item.at * sceneWidth, sceneHeight - size.h + 1, { center: true });
+        });
+
+        const chest = spriteSize("chest");
+        if (chest.h) {
+          const x = sceneWidth * .21;
+          drawSprite("chest", completed ? "open" : "closed", x, sceneHeight - chest.h + 1, { center: true });
+          if (completed) {
+            ctx.fillStyle = "#fff5cf";
+            for (let i = 0; i < 5; i++) {
+              if (Math.sin(time * .004 + i * 1.7) < .3) continue;
+              const sx = Math.round(x - 10 + i * 5);
+              const sy = Math.round(sceneHeight - chest.h - 3 - ((i * 3) % 5) - Math.sin(time * .0016 + i) * 2);
+              ctx.fillRect(sx, sy, 1, 1);
+            }
+          }
+        }
+
+        const shell = spriteSize("crab");
+        if (shell.h) {
+          crab.x += crab.speed * crab.direction * dt / 60;
+          if (crab.x > .93) { crab.x = .93; crab.direction = -1; }
+          if (crab.x < .05) { crab.x = .05; crab.direction = 1; }
+          drawSprite("crab", frameAt("crab", Math.floor(time / 210)), crab.x * sceneWidth,
+            sceneHeight - shell.h + 1, { center: true, flip: crab.direction < 0 });
+        }
       }
 
       function drawUnderwaterLife(dt, time) {
@@ -919,6 +1103,8 @@
         ctx.rect(0, Math.max(0, surface + 3), sceneWidth, depth);
         ctx.clip();
 
+        drawSeabed(dt, time);
+
         bubbles.forEach(bubble => {
           bubble.y -= bubble.speed * dt;
           if (bubble.y < 0) { bubble.y = 1 + Math.random() * .18; bubble.x = Math.random(); }
@@ -928,27 +1114,48 @@
           ctx.fillRect(x, y, bubble.size, bubble.size);
         });
 
-        fish.forEach((item, index) => {
-          item.x += item.speed * item.direction * dt / 60;
-          if (item.direction > 0 && item.x > 1.16) item.x = -.16;
-          if (item.direction < 0 && item.x < -.16) item.x = 1.16;
-          const safeDepth = Math.max(14, depth - 8);
-          const x = Math.floor(item.x * sceneWidth);
-          const bob = Math.sin(time * .00032 + item.phase) * (.55 + item.size * .5);
-          const y = Math.floor(surface + 7 + item.depth * safeDepth + bob);
-          const sizeGate = Math.min(1, Math.max(.48, depth / 48));
-          drawFishBody(item, x, y, item.size * sizeGate, Math.sin(time * .0018 + index) > 0);
+        drifters.forEach(item => {
+          const size = spriteSize(item.sprite);
+          if (!size.h) return;
+          item.x += item.speed * dt / 16;
+          if (item.x > 1.22) item.x = -.22;
+          if (item.x < -.22) item.x = 1.22;
+          const lane = Math.max(6, depth - size.h - 6);
+          const y = surface + 4 + size.h / 2 + item.depth * lane + Math.sin(time * .00041 + item.phase) * 2;
+          drawSprite(item.sprite, cycleFrame(item.cycle, time, item.beat, item.phase * 400),
+            item.x * sceneWidth + Math.sin(time * .00022 + item.phase) * 2.5, y,
+            { center: true, middle: true, flip: item.speed < 0 });
         });
 
-        ctx.fillStyle = "#215a5d";
-        for (let x = 4; x < sceneWidth; x += 19) {
-          const height = 5 + ((x * 7) % 13);
-          ctx.fillRect(x, sceneHeight - height, 2, height);
-          ctx.fillRect(x - 2, sceneHeight - height + 3, 2, 2);
-          ctx.fillRect(x + 2, sceneHeight - height + 6, 2, 2);
-        }
-        ctx.fillStyle = "#d5a765";
-        for (let x = 0; x < sceneWidth; x += 17) ctx.fillRect(x + ((x * 3) % 8), sceneHeight - 2 - ((x * 5) % 3), 4, 2);
+        // Shallow or narrow water holds fewer fish; the shoal fills in as the
+        // tide rises, so a phone in portrait does not read as a packed tank.
+        const shoal = Math.max(3, Math.min(fish.length,
+          3 + Math.round(depth / 12), 2 + Math.round(sceneWidth / 26)));
+        fish.forEach((item, index) => {
+          item.x += item.speed * item.direction * dt / 60;
+          if (item.direction > 0 && item.x > 1.22) { item.x = -.22; item.depth = .08 + Math.random() * .84; }
+          if (item.direction < 0 && item.x < -.22) { item.x = 1.22; item.depth = .08 + Math.random() * .84; }
+
+          if (index >= shoal) return;
+
+          const size = spriteSize(item.kind.sprite);
+          if (!size.h) return;
+          // Big variants need room: shallow water or a narrow scene keeps them small.
+          const scale = sceneWidth < 210 || depth < size.h * item.scale + 26 ? 1 : item.scale;
+          const lane = Math.max(6, depth - size.h * scale - 8);
+          const y = surface + 4 + (size.h * scale) / 2 + item.depth * lane
+            + Math.sin(time * .00032 + item.phase) * 1.4;
+          drawSprite(item.kind.sprite, cycleFrame(item.kind.cycle, time, item.kind.beat, item.beatOffset),
+            item.x * sceneWidth, y, {
+              center: true,
+              middle: true,
+              scale,
+              flip: item.direction < 0,
+              tintName: item.colorway.name,
+              tint: item.colorway.tint
+            });
+        });
+
         ctx.restore();
       }
 
@@ -956,9 +1163,10 @@
         elapsedVisual = timestamp;
         const now = new Date();
         waterLevel += (waterTarget - waterLevel) * Math.min(.025, .0011 * dt);
-        drawSky(now);
+        drawSky(now, dt);
         drawRain(dt);
         drawWater(timestamp);
+        drawBoat(dt, timestamp);
         drawUnderwaterLife(dt, timestamp);
 
         const minute = now.getMinutes();
@@ -981,12 +1189,23 @@
         return `${pair(minutes)}<span class="colon">:</span>${pair(seconds)}`;
       }
 
+      function spokenTime(ms) {
+        const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+        const parts = [
+          [Math.floor(totalSeconds / 86400), "day"],
+          [Math.floor((totalSeconds % 86400) / 3600), "hour"],
+          [Math.floor((totalSeconds % 3600) / 60), "minute"],
+          [totalSeconds % 60, "second"]
+        ].filter(([value], i) => value > 0 || i === 3);
+        return parts.map(([value, unit]) => `${value} ${unit}${value === 1 ? "" : "s"}`).join(" ") + " remaining";
+      }
+
       function updateDisplay(force = false) {
         const shownSecond = Math.ceil(remainingMs / 1000);
         if (force || shownSecond !== lastShownSecond) {
           lastShownSecond = shownSecond;
           countdown.innerHTML = formatTime(remainingMs);
-          countdown.setAttribute("aria-label", `${shownSecond} seconds remaining`);
+          countdown.setAttribute("aria-label", spokenTime(remainingMs));
         }
         const progress = totalMs > 0 ? Math.min(1, Math.max(0, 1 - remainingMs / totalMs)) : 0;
         waterTarget = .24 + progress * .46;
@@ -1206,6 +1425,7 @@
       });
 
       resizeCanvas();
+      paintCompletionArt();
       setDefaultEndTime();
       updateDisplay(true);
       requestAnimationFrame(tick);

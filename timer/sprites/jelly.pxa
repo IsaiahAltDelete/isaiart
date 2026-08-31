@@ -1,0 +1,95 @@
+@name  jelly
+@scale 10
+@fps   8
+@size  14x20
+
+@palette
+K #0e2233  outline
+k #1b3d52  shade
+A #2a6f7a  body dark
+B #4fb7b1  body mid
+C #9fe7d8  body light
+D #d9803f  fin dark
+E #ffbd5b  fin light
+W #fff5cf  highlight
+e #0e2233  eye
+G #2f6b48  plant dark
+g #57a45f  plant mid
+H #8fce6a  plant light
+n #6b4326  wood dark
+N #a9713d  wood mid
+u #ffd166  gold
+S #ffe27a  sun light
+s #f7a94b  sun mid
+M #f4ecc6  moon light
+m #cbbf94  moon shade
+P #8f6bb5  violet
+p #c79ada  violet light
+R #ef7267  coral red
+F #f8f3df  foam
+
+@frame a
+....KKKKKK....
+...KCCCCCCK...
+..KCCCCCCCCK..
+.KCCWWCCCCCCK.
+KCCWCCCCCCCCBK
+KCCCCCCCCCCCBK
+KCCCCCCCCCCCBK
+KCCCCCCCCCCCBK
+KCBBBBBBBBBBBK
+.KKKKCBCKCKKK.
+..KCBKAKAKAK..
+..KCAKBKBKBK..
+..KCAKBKCKBK..
+..KCAKBKKACK..
+.KBKAKBKKBKAK.
+.KBKBKBKKBKBK.
+.KBKKKBKKBKBK.
+.KBK.KBK.KKBK.
+..K..KBK...K..
+......K.......
+
+@frame b
+.....KKKK.....
+...KKCCCCKK...
+..KCCCCCCCCK..
+..KCWWCCCCCK..
+.KCCWCCCCCCBK.
+.KCCCCCCCCCBK.
+.KCCCCCCCCCBK.
+.KCCCCCCCCCBK.
+.KCCCCCCCCCBK.
+.KCBBBBBBBBBK.
+..KKKKBCKKKK..
+..KCBKAKAKBK..
+..KCAKBKBKBK..
+..KBBKBKCKBK..
+..KBKABKKBBK..
+..KBKBK.KCAK..
+..KBKBK.KCAK..
+..KBKBK.KCAK..
+..KBKBK..KAK..
+...KKBK...K...
+
+@frame c
+.....KKKK.....
+....KCCCCK....
+...KCCCCCBK...
+...KCWWCCCK...
+..KCCWCCCCBK..
+..KCCCCCCCBK..
+..KCCCCCCCBK..
+..KCCCCCCCBK..
+..KCCCCCCCBK..
+..KCCCCCCCBK..
+..KCCCCCCCBK..
+..KCBBBBBBBK..
+...KKCKCKKK...
+...KCCAKBAK...
+...KBBAKCAK...
+...KBKBKBBK...
+..KCBKKBBKAK..
+..KBAKKBAKBK..
+..KBK.KBKKBK..
+..KBK.KBK.K...
