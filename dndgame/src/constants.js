@@ -1,7 +1,7 @@
 // constants.js — shared runtime constants for Sword Coast Chronicles.
 
 export const TITLE = 'Sword Coast Chronicles';
-export const VERSION = '1.2.0';
+export const VERSION = '1.1.0';
 export const YEAR_DR = 1496;
 
 // --- geometry -------------------------------------------------------------

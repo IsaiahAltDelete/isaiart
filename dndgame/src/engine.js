@@ -13,6 +13,17 @@
 import { VIEW_W, VIEW_H, MAX_DT, clamp } from './constants.js';
 import { Input } from './core/input.js';
 import { FX } from './render/fx.js';
+// ui/kit.js pulls in render/sprites.js, core/rng.js and constants.js only, so
+// this does not close a cycle back onto the engine.
+import { UI } from './ui/kit.js';
+
+/**
+ * How deep the canvas state stack is ever allowed to get in one frame.
+ * _draw drains this many levels before painting, so a scene that threw
+ * mid-clip last frame cannot leave the screen stuck inside its viewport.
+ * restore() on an empty stack is a no-op, so over-draining is free.
+ */
+const MAX_CTX_DEPTH = 32;
 
 export const Game = {
   canvas: null,
@@ -177,10 +188,76 @@ export const Game = {
     }
   },
 
-  _draw() {
+  /** Say a draw failed — once per site, not sixty times a second. */
+  _reportDrawFail(key, err) {
+    if (!this._drawFails) this._drawFails = new Set();
+    if (this._drawFails.has(key)) return;
+    this._drawFails.add(key);
+    console.error(`[engine] ${key} threw while drawing; the frame recovered.`, err);
+  },
+
+  /**
+   * Wind the canvas state stack back to nothing and drop UI's clip bookkeeping
+   * with it. `restore()` past the bottom of the stack is a defined no-op, so
+   * over-draining costs nothing and cannot corrupt a clean context.
+   */
+  _drainCtx() {
+    const ctx = this.ctx;
+    for (let i = 0; i < MAX_CTX_DEPTH; i++) ctx.restore();
+    UI.resetClips();
+  },
+
+  /**
+   * Paint one scene hook.
+   *
+   * A throw inside a draw method used to abort the rest of the frame with the
+   * scene's ctx.save() and UI.pushClip() still standing. Every later frame then
+   * nested inside the leaked clip — the game shrank into a 400x186 band that no
+   * scene change, map change or direct drawUI call could clear, only a reload.
+   *
+   * So: the engine's own save is balanced by try/finally whatever the scene
+   * does, and if the scene threw, everything it left standing is drained and the
+   * two levels this frame is holding are rebuilt — so the scenes after this one,
+   * the HUD and the toasts still paint on the very frame that failed.
+   */
+  _paint(scene, hook) {
     const ctx = this.ctx;
     ctx.save();
+    try {
+      scene[hook](ctx);
+    } catch (e) {
+      this._reportDrawFail(`${scene.id || scene.constructor?.name || 'scene'}.${hook}`, e);
+      this._drainCtx();
+      ctx.save();                       // stands in for _draw()'s baseline save
+      ctx.imageSmoothingEnabled = false;
+      ctx.save();                       // …and for this call's, popped below
+    } finally {
+      ctx.restore();
+    }
+  },
+
+  _draw() {
+    const ctx = this.ctx;
+
+    // Only pay for the drain when something outside _paint left the context
+    // dirty last frame. A clean frame does no extra work at all.
+    if (this._ctxDirty) { this._drainCtx(); this._ctxDirty = false; }
+
+    ctx.save();
+    try {
+      this._drawFrame(ctx);
+    } catch (e) {
+      this._reportDrawFail('frame', e);
+      this._ctxDirty = true;
+    } finally {
+      ctx.restore();
+    }
+  },
+
+  _drawFrame(ctx) {
     ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
@@ -203,7 +280,7 @@ export const Game = {
 
     for (let i = start; i < uiStart; i++) {
       const s = stack[i];
-      if (s && s.draw) { ctx.save(); s.draw(ctx); ctx.restore(); }
+      if (s && s.draw) this._paint(s, 'draw');
     }
     // Nothing of the world is visible under a full-screen menu — do not paint a
     // storm onto the black behind it.
@@ -212,23 +289,22 @@ export const Game = {
     // after the weather for the same reason the menus do.
     for (let i = start; i < uiStart; i++) {
       const s = stack[i];
-      if (s && s.drawUI) { ctx.save(); s.drawUI(ctx); ctx.restore(); }
+      if (s && s.drawUI) this._paint(s, 'drawUI');
     }
     for (let i = uiStart; i < stack.length; i++) {
       const s = stack[i];
-      if (s && s.draw) { ctx.save(); s.draw(ctx); ctx.restore(); }
+      if (s && s.draw) this._paint(s, 'draw');
     }
 
     // Overlays that draw even when covered (HUD toasts).
     const top = stack[stack.length - 1];
     for (const s of stack) {
-      if (s && s.drawOver && s !== top) { ctx.save(); s.drawOver(ctx); ctx.restore(); }
+      if (s && s.drawOver && s !== top) this._paint(s, 'drawOver');
     }
 
     FX.drawScreen(ctx);
     if (this._trans) this._drawTransition(ctx);
     if (this.debug) this._drawDebug(ctx);
-    ctx.restore();
   },
 
   _drawTransition(ctx) {

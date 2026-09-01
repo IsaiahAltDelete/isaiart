@@ -26,6 +26,7 @@ import { Party } from '../world/party.js';
 import { VIEW_W, VIEW_H, clamp } from '../constants.js';
 import { cheat, CHEAT_CODES } from '../core/cheats.js';
 import { CHEATS } from '../core/cheatflags.js';
+import { MAP_DEFS } from '../world/maps.js';
 
 // ===========================================================================
 // 0. SHORTHANDS  (private copies of the ui/menus.js house helpers)
@@ -231,6 +232,84 @@ const SWITCHES = ROWS.filter((r) => r.kind === 'toggle');
 /** The value column is sized once, against the widest thing that lands in it. */
 const STATE_W = Math.max(UI.measure('ON', 'md'), UI.measure('OFF', 'md'));
 const SPIN_W = 12 + Math.max(...TIME_PHASES.map((p) => UI.measure(p.label, 'md'))) + 12;
+const LVL_W = UI.measure('Lv 20', 'md');
+
+// ===========================================================================
+// 1b. TRAVEL — one row per map in the world, straight out of MAP_DEFS
+// ===========================================================================
+//
+// The destination list is READ from world/maps.js, never written out here: a
+// region pack that lands new maps in MAP_DEFS is on this screen for free, and
+// nothing in this file names a single place. Interiors are hidden by default —
+// with every inn room and cellar included the list is mostly doors — behind a
+// switch at the top of the section.
+
+const INTERIORS_ROW = Object.freeze({
+  kind: 'trvopt', label: 'Show Interiors', call: 'cheat.maps()',
+  desc: 'List inn rooms, shops and cellars too, not just the places under the sky',
+});
+
+function regionTitle(key) {
+  return String(key || 'elsewhere').replace(/-/g, ' ').toUpperCase();
+}
+
+/** One 'travel' row per MAP_DEFS entry, grouped under 'sub' headings by region. */
+function travelRows(showInteriors) {
+  const groups = new Map();
+  for (const d of Object.values(MAP_DEFS || {})) {
+    if (!d || !d.id) continue;
+    if (!showInteriors && d.kind === 'interior') continue;
+    // Group by region; a def without one (the Phandalin interiors, Tresendar
+    // Manor) borrows its parent map's region, so the Stonehill Inn lists under
+    // PHANDALIN HILLS beside the town it stands in, not in a kind-named bucket.
+    const parent = d.parent ? (MAP_DEFS || {})[d.parent] : null;
+    const key = String(d.region || (parent && parent.region) || d.kind || 'elsewhere');
+    let list = groups.get(key);
+    if (!list) groups.set(key, (list = []));
+    list.push({
+      kind: 'travel', id: d.id, label: String(d.name || d.id),
+      level: clamp(num(d.level, 1) | 0, 1, 20), safe: !!d.safe,
+      call: `cheat.tp('${d.id}')`,
+      desc: d.desc || 'No field notes on this place.',
+    });
+  }
+  const rows = [];
+  for (const [key, list] of groups) {
+    rows.push({ kind: 'sub', label: regionTitle(key) });
+    for (const r of list) rows.push(r);
+  }
+  return rows;
+}
+
+/**
+ * The full row list for one setting of the interiors switch. Both variants are
+ * built once — MAP_DEFS is frozen at load, so they cannot go stale — and the
+ * TRAVEL section simply does not appear if cheat.tp has drifted away.
+ */
+const SCENE_ROWS = { on: null, off: null };
+function sceneRows(showInteriors) {
+  const key = showInteriors ? 'on' : 'off';
+  if (SCENE_ROWS[key]) return SCENE_ROWS[key];
+  const rows = ROWS.slice();
+  if (typeof cheat.tp === 'function') {
+    const dests = travelRows(showInteriors);
+    if (dests.length) rows.push({ kind: 'head', label: 'TRAVEL' }, INTERIORS_ROW, ...dests);
+  } else console.warn('[cheats] TRAVEL hidden: cheat.tp is missing');
+  return (SCENE_ROWS[key] = rows);
+}
+
+/** The party's average level, the yardstick every destination is held against. */
+function partyLevel() {
+  return clamp(num(safe(() => Party.levelAvg(), 1), 1) | 0, 1, 20);
+}
+/** 0 = at or below the party, 1 = above it, 2 = far above it. */
+function threat(level, p) { return level > p + 4 ? 2 : level > p ? 1 : 0; }
+const THREAT_COLOR = [C.inkDim, C.warn, C.bad];
+const THREAT_TEXT = [
+  'At or below your level',
+  'Above your level — a hard fight',
+  'Far above your level — likely death',
+];
 
 // ===========================================================================
 // 2. FOOTER — the typed codes, wrapped to fit rather than ellipsised away
@@ -278,12 +357,15 @@ const ROW_H = 12;
 const HINT_Y = 224;            // the key strip owns 220..240
 const SUBTITLE = 'Testing tools — none of this is a game feature';
 
-function firstSelectable(from = 0, dir = 1) {
-  const n = ROWS.length;
+/** Headings — the gold section heads and the region sub-heads — hold no cursor. */
+function selectable(r) { return !!r && r.kind !== 'head' && r.kind !== 'sub'; }
+
+function firstSelectable(rows, from = 0, dir = 1) {
+  const n = rows.length;
   if (!n) return 0;
   let i = ((from % n) + n) % n;
   for (let k = 0; k < n; k++) {
-    if (ROWS[i].kind !== 'head') return i;
+    if (selectable(rows[i])) return i;
     i = (i + dir + n) % n;
   }
   return 0;
@@ -319,7 +401,9 @@ export class CheatsScene {
     this.uiLayer = true;
     this.t = 0;
     this.opts = opts || {};
-    this.index = firstSelectable(0, 1);
+    this.showInteriors = false;
+    this.rows = sceneRows(false);
+    this.index = firstSelectable(this.rows, 0, 1);
     this.top = 0;
     this.phase = nearestPhase();
     this.msg = '';
@@ -375,32 +459,39 @@ export class CheatsScene {
   update(dt) {
     this.t += num(dt, 0);
     if (this.msgT > 0) { this.msgT -= num(dt, 0); if (this.msgT <= 0) this.msg = ''; }
-    if (!ROWS.length) { if (Input.consume('cancel') || Input.consume('menu')) this.close(); return; }
+    if (!this.rows.length) { if (Input.consume('cancel') || Input.consume('menu')) this.close(); return; }
 
     if (Input.repeatConsume('up')) this._move(-1);
     if (Input.repeatConsume('down')) this._move(1);
 
-    const row = ROWS[this.index];
+    const row = this.rows[this.index];
     if (row && row.kind === 'time') {
       if (Input.repeatConsume('left')) this._spin(-1);
       if (Input.repeatConsume('right')) this._spin(1);
+    } else if (row && row.kind === 'trvopt') {
+      if (Input.repeatConsume('left') || Input.repeatConsume('right')) this._toggleInteriors();
     }
 
     // --- mouse ---
     const m = Input.mouse;
     const lr = this.listRect;
     const w = wheelOver(m, lr.x, lr.y, lr.w, lr.h);
-    if (w) this.top = clamp(this.top + w * 2, 0, Math.max(0, ROWS.length - this._visible()));
+    if (w) this.top = clamp(this.top + w * 2, 0, Math.max(0, this.rows.length - this._visible()));
     for (const s of this.spinRects) {
       if (clicked(m, s.x, s.y, s.w, s.h)) { this.index = s.i; this._spin(s.dir); return; }
     }
     for (const r of this.rowRects) {
       if (!hit(m, r.x, r.y, r.w, r.h)) continue;
-      if (this.index !== r.i) { this.index = r.i; sfx('cursor'); }
-      if (clicked(m, r.x, r.y, r.w, r.h)) { this._activate(ROWS[r.i]); return; }
+      // Hover only claims the cursor when the pointer actually MOVES. Without
+      // this the row under a resting pointer reassigned this.index on every
+      // frame, so Down moved the cursor and the same frame put it straight
+      // back — the keyboard could not leave whichever row the mouse happened
+      // to be sitting on. combatui.js guards its field hover the same way.
+      if (m.moved && this.index !== r.i) { this.index = r.i; sfx('cursor'); }
+      if (clicked(m, r.x, r.y, r.w, r.h)) { this.index = r.i; this._activate(this.rows[r.i]); return; }
     }
 
-    if (Input.consume('confirm')) { this._activate(ROWS[this.index]); return; }
+    if (Input.consume('confirm')) { this._activate(this.rows[this.index]); return; }
     if (Input.consume('cancel') || Input.consume('menu')) this.close();
   }
 
@@ -408,19 +499,20 @@ export class CheatsScene {
     return Math.max(1, Math.floor((this.listRect.h - 8) / ROW_H));
   }
 
-  /** Move the cursor, stepping over the group headings. */
+  /** Move the cursor, stepping over the group and region headings. */
   _move(dir) {
-    const n = ROWS.length;
+    const rows = this.rows;
+    const n = rows.length;
     let i = this.index;
     for (let k = 0; k < n; k++) {
       i = (i + dir + n) % n;
-      if (ROWS[i].kind !== 'head') break;
+      if (selectable(rows[i])) break;
     }
     if (i !== this.index) { this.index = i; sfx('cursor'); }
   }
 
   _spin(dir) {
-    const row = ROWS[this.index];
+    const row = this.rows[this.index];
     if (!row || row.kind !== 'time') return;
     const n = TIME_PHASES.length;
     this.phase = (this.phase + dir + n) % n;
@@ -428,8 +520,43 @@ export class CheatsScene {
   }
 
   _activate(row) {
-    if (!row || row.kind === 'head') { sfx('error'); return; }
+    if (!selectable(row)) { sfx('error'); return; }
+    if (row.kind === 'trvopt') { this._toggleInteriors(); return; }
+    if (row.kind === 'travel') { this._travel(row); return; }
     this._fire(row);
+  }
+
+  /**
+   * Swap the row list for the other interiors variant. The cursor stays on the
+   * switch itself — it exists in both variants at the same position — and the
+   * scroll is re-clamped because the list below it just changed length.
+   */
+  _toggleInteriors() {
+    this.showInteriors = !this.showInteriors;
+    sfx('select');
+    this.rows = sceneRows(this.showInteriors);
+    const i = this.rows.indexOf(INTERIORS_ROW);
+    this.index = i >= 0 ? i : firstSelectable(this.rows, 0, 1);
+    this.top = clamp(this.top, 0, Math.max(0, this.rows.length - this._visible()));
+    const n = this.rows.reduce((a, r) => a + (r.kind === 'travel' ? 1 : 0), 0);
+    this.say(`${this.showInteriors ? 'Interiors listed' : 'Interiors hidden'} — ${n} destinations`);
+  }
+
+  /**
+   * Warp there and drop the whole menu stack, so the player lands in the world
+   * rather than in the pause menu this screen was opened from. cheat.tp toasts
+   * its own arrival (or failure) line; this screen is gone before it lands.
+   */
+  _travel(row) {
+    sfx('select');
+    let res;
+    try { res = cheat.tp(row.id); } catch (e) {
+      this.say(`${row.label} failed: ${(e && e.message) || 'unknown error'}`, true);
+      return;
+    }
+    if (res && typeof res.catch === 'function') res.catch(() => {});
+    this._closing = true;
+    safe(() => Game.popTo((s) => !s || !s.uiLayer));
   }
 
   /**
@@ -491,21 +618,23 @@ export class CheatsScene {
 
   _drawList(ctx, x, y, w, h) {
     UI.panel(ctx, x, y, w, h, { style: 'window' });
-    if (!ROWS.length) {
+    const rows = this.rows;
+    if (!rows.length) {
       txtC(ctx, x + w / 2, y + h / 2 - 3, 'The cheat API is unavailable.', {
         size: 'sm', color: C.disabled, shadow: true, maxWidth: w - 12,
       });
       return;
     }
     const visible = this._visible();
-    const scrolls = ROWS.length > visible;
+    const scrolls = rows.length > visible;
     let top = this.top;
     if (this.index < top) top = this.index;
     if (this.index > top + visible - 1) top = this.index - visible + 1;
     // A group heading directly above the first visible row is worth keeping.
-    if (top > 0 && ROWS[top - 1] && ROWS[top - 1].kind === 'head' && this.index > top) top -= 1;
-    this.top = top = clamp(top, 0, Math.max(0, ROWS.length - visible));
+    if (top > 0 && rows[top - 1] && !selectable(rows[top - 1]) && this.index > top) top -= 1;
+    this.top = top = clamp(top, 0, Math.max(0, rows.length - visible));
 
+    const plv = partyLevel();
     const rowX = x + 3;
     const rowW = w - 6;
     const labelX = x + 12;
@@ -514,12 +643,17 @@ export class CheatsScene {
     const valueR = x + w - 9;
 
     UI.pushClip(ctx, x + 2, y + 3, w - 4, visible * ROW_H + 2);
-    for (let i = 0; i < visible && top + i < ROWS.length; i++) {
+    for (let i = 0; i < visible && top + i < rows.length; i++) {
       const idx = top + i;
-      const r = ROWS[idx];
+      const r = rows[idx];
       const ry = y + 4 + i * ROW_H;
       if (r.kind === 'head') {
         sectionHead(ctx, labelX - 6, ry + 3, rowW - 12, r.label);
+        continue;
+      }
+      if (r.kind === 'sub') {
+        // Region names: a step in from the gold heads, and a step down in tone.
+        sectionHead(ctx, labelX, ry + 3, rowW - 24, r.label, C.inkDim);
         continue;
       }
       const on = idx === this.index;
@@ -530,18 +664,28 @@ export class CheatsScene {
       // Measured against "Walk Through Walls" + OFF and "Return to Phandalin",
       // the widest label in each column, both at the selected 'md' weight.
       let reserve = 11;
-      if (r.kind === 'toggle') reserve = STATE_W + 6;
+      if (r.kind === 'toggle' || r.kind === 'trvopt') reserve = STATE_W + 6;
       else if (r.kind === 'time') reserve = SPIN_W + 6;
-      txt(ctx, labelX, ry + 3, r.label, {
+      else if (r.kind === 'travel') reserve = LVL_W + 8;
+      // Destinations sit a step further in, under their region name.
+      const lx = r.kind === 'travel' ? labelX + 5 : labelX;
+      txt(ctx, lx, ry + 3, r.label, {
         size: on ? 'md' : 'sm', color: on ? C.goldBright : C.ink, shadow: true,
-        maxWidth: Math.max(10, valueR - labelX - reserve),
+        maxWidth: Math.max(10, valueR - lx - reserve),
       });
 
-      if (r.kind === 'toggle') {
+      if (r.kind === 'toggle' || r.kind === 'trvopt') {
         // Read live, every frame: a typed code or the console flips this too.
-        const v = !!CHEATS[r.flag];
+        const v = r.kind === 'toggle' ? !!CHEATS[r.flag] : this.showInteriors;
         txtR(ctx, valueR, ry + 3, v ? 'ON' : 'OFF', {
           size: 'md', color: v ? C.good : C.disabled, shadow: true, maxWidth: STATE_W,
+        });
+      } else if (r.kind === 'travel') {
+        // The level band, tinted by how far it sits above the party.
+        const t = threat(r.level, plv);
+        txtR(ctx, valueR, ry + 3, `Lv ${r.level}`, {
+          size: on ? 'md' : 'sm', color: t ? THREAT_COLOR[t] : (on ? C.ink : C.inkDim),
+          shadow: true, maxWidth: LVL_W + 4,
         });
       } else if (r.kind === 'time') {
         const p = TIME_PHASES[this.phase];
@@ -562,8 +706,8 @@ export class CheatsScene {
 
     if (scrolls) {
       const bx = x + w - 6, by = y + 4, bh = visible * ROW_H;
-      const th = Math.max(6, Math.round((visible / ROWS.length) * bh));
-      const ty = by + Math.round(((bh - th) * top) / Math.max(1, ROWS.length - visible));
+      const th = Math.max(6, Math.round((visible / rows.length) * bh));
+      const ty = by + Math.round(((bh - th) * top) / Math.max(1, rows.length - visible));
       ctx.save();
       ctx.fillStyle = 'rgba(0,0,0,0.55)';
       ctx.fillRect(bx, by, 3, bh);
@@ -577,7 +721,7 @@ export class CheatsScene {
   _drawDetail(ctx, x, y, w, h) {
     UI.panel(ctx, x, y, w, h, { style: 'window' });
     const ix = x + 6, iw = w - 12;
-    const r = ROWS[this.index] || null;
+    const r = this.rows[this.index] || null;
     if (!r) return;
 
     txt(ctx, ix, y + 5, r.label, { size: 'md', color: C.gold, shadow: true, maxWidth: iw });
@@ -587,9 +731,9 @@ export class CheatsScene {
     const d = UI.textWrapped(ctx, ix, y + 17, iw, r.desc || '', { size: 'sm', color: C.ink, maxLines: 5 });
     let ty = y + 17 + d.height + 6;
 
-    ty = sectionHead(ctx, ix, ty, iw, 'STATE');
-    if (r.kind === 'toggle') {
-      const v = !!CHEATS[r.flag];
+    ty = sectionHead(ctx, ix, ty, iw, r.kind === 'travel' ? 'DESTINATION' : 'STATE');
+    if (r.kind === 'toggle' || r.kind === 'trvopt') {
+      const v = r.kind === 'toggle' ? !!CHEATS[r.flag] : this.showInteriors;
       txt(ctx, ix, ty, v ? 'ON' : 'OFF', { size: 'md', color: v ? C.good : C.disabled, shadow: true });
       // On its own line: "OFF Confirm turns it on" on one row leaves the hint
       // 122px for 119px of text, which is not a margin, it is a coincidence.
@@ -597,6 +741,24 @@ export class CheatsScene {
         size: 'sm', color: C.inkDim, shadow: true, maxWidth: iw,
       });
       ty += 22;
+    } else if (r.kind === 'travel') {
+      // The informed-choice block: the destination's level against the party's,
+      // so warping a level-2 party into Undermountain is a decision, not a trap.
+      const plv = partyLevel();
+      const t = threat(r.level, plv);
+      const a = UI.textWrapped(ctx, ix, ty, iw, `Level ${r.level} — the party is level ${plv}`, {
+        size: 'sm', color: C.ink, maxLines: 2,
+      });
+      ty += a.height + 2;
+      const verdict = t === 0 && r.safe ? 'Safe ground — nothing fights you here' : THREAT_TEXT[t];
+      const b = UI.textWrapped(ctx, ix, ty, iw, verdict, {
+        size: 'sm', color: t ? THREAT_COLOR[t] : C.good, maxLines: 2,
+      });
+      ty += b.height + 2;
+      txt(ctx, ix, ty, 'Confirm warps and closes the menu', {
+        size: 'sm', color: C.inkDim, shadow: true, maxWidth: iw,
+      });
+      ty += 12;
     } else if (r.kind === 'time') {
       const now = clockText();
       txt(ctx, ix, ty, now ? `Clock reads ${now}` : 'No game running', {

@@ -463,6 +463,8 @@ export class DialogueScene {
     this.seenPause = new Set();
 
     this.choices = [];
+    this.authoredCount = 0;      // how many of `choices` the writer wrote
+    this._entryIds = null;       // lazily-walked "opening of the tree" node ids
     this.index = 0;
     this.listTop = 0;
 
@@ -600,12 +602,18 @@ export class DialogueScene {
         reason: spent ? 'already tried' : gate.reason,
       });
     });
+    // How many choices the WRITER put on this node. The "Draw your weapon."
+    // line below is appended by the engine, and _advancePage has to be able to
+    // tell the two apart: an engine-added option must never be the reason a
+    // node stops and shows a menu instead of following its own `goto`.
+    this.authoredCount = out.length;
+
     // --- the option that is always on the table -----------------------------
     //
     // Baldur's Gate 3's rule: you may always draw steel. It is a terrible idea
-    // and the game lets you find that out yourself. Only the root node carries
-    // it, so it never interrupts a scripted exchange mid-flow, and never on a
-    // node that is already a fight or a shop.
+    // and the game lets you find that out yourself. Only the opening node
+    // carries it, so it never interrupts a scripted exchange mid-flow, and
+    // never on a node that is already a fight or a shop.
     if (this._canOfferAttack(node)) {
       out.push({
         raw: { attack: true },
@@ -625,10 +633,37 @@ export class DialogueScene {
     if (this.index < 0) this.index = 0;
   }
 
+  /**
+   * The nodes that count as "the opening of the conversation".
+   *
+   * Most trees are written as a start node that is pure narration and defers to
+   * a hub with `goto: 'hub'`. The player never gets a menu on the start node, so
+   * pinning "Draw your weapon." to `tree.start` alone put it on a node that has
+   * no menu — which is what forced the whole conversation into an attack-only
+   * choice list. The opening is therefore the start node PLUS every node reached
+   * from it by nothing but `goto`/`next`, up to and including the first one that
+   * carries choices of its own. Purely structural: no `do:` block is run here.
+   */
+  _entryNodes() {
+    if (this._entryIds) return this._entryIds;
+    const ids = new Set();
+    const nodes = (this.tree && this.tree.nodes) || {};
+    let id = this.startNode || (this.tree && this.tree.start) || null;
+    for (let i = 0; i < 64 && id != null && nodes[id] && !ids.has(id); i++) {
+      ids.add(id);
+      const n = nodes[id];
+      if (Array.isArray(n.choices) && n.choices.length) break;   // the menu itself
+      const nxt = n.goto ?? n.next;
+      id = (nxt === 'close' || nxt === 'end' || nxt === false) ? null : nxt;
+    }
+    this._entryIds = ids;
+    return ids;
+  }
+
   /** Is "Draw your weapon" a legal thing to offer on this node? */
   _canOfferAttack(node) {
-    if (!node || node !== (this.tree && this.tree.nodes && this.tree.nodes[this.tree.start])) {
-      // Only the opening node, unless the writer explicitly asked for it.
+    if (!node || !this._entryNodes().has(this.nodeId)) {
+      // Only the opening of the tree, unless the writer explicitly asked for it.
       if (!node || !node.allowAttack) return false;
     }
     if (this.tree && this.tree.noCombat) return false;
@@ -733,12 +768,17 @@ export class DialogueScene {
       sfx('page');
       return;
     }
-    if (this.choices.length) {
+    const nxt = this.node && (this.node.goto ?? this.node.next);
+    // A node's own `goto` outranks the engine-appended "Draw your weapon.":
+    // stopping on an option the writer never wrote would strand the player in a
+    // one-item menu and hide the whole rest of the tree. Only authored choices
+    // hold the conversation here — or an engine option on a node that has
+    // nowhere else to go, which is the one place it is the entire menu.
+    if (this.choices.length && (this.authoredCount > 0 || !nxt)) {
       this.mode = 'choose';
       sfx('cursor');
       return;
     }
-    const nxt = this.node && (this.node.goto ?? this.node.next);
     sfx('select');
     if (nxt) this._goto(nxt); else this._close();
   }
@@ -1046,13 +1086,17 @@ export class DialogueScene {
     const cost = Number(s.cost || 0);
     if (cost && !Party.spendGold(cost)) return `That would cost ${cost} gp.`;
     if (cost) sfx('coin');
-    safe(() => Party.longRest());
-    safe(() => Party.healAll());
+    // The clock moves FIRST. Party.longRest() emits EV.REST, and the overworld
+    // listens for it to claim the morning — so advancing the eight hours
+    // afterwards let the wake-up time be computed from the hour you lay down.
+    // Sleeping at 21:40 woke the party at 15:08 the same day.
     const st = S();
     if (st) {
       safe(() => advanceTime(st, s.minutes != null ? s.minutes : (s.hours != null ? s.hours * 60 : 480)));
       st.stats.longRests = (st.stats.longRests || 0) + 1;
     }
+    safe(() => Party.longRest());
+    safe(() => Party.healAll());
     sfx('heal');
     safe(() => FX.flash('#ffe9a8', 0.45));
     return 'The party is rested and whole.';

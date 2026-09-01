@@ -143,6 +143,39 @@ export const Party = {
     return entry;
   },
 
+  /**
+   * Hand a character's personal purse and pack over to the company.
+   *
+   * Character creation rolls the starting kit and starting gold onto the
+   * CHARACTER (`ch.gold`, `ch.inventory`), but every consumer in the game — the
+   * HUD purse, the inventory screen, both shop tills, the inn's room charge —
+   * reads the shared `Party.gold` / `Party.inventory`. Whoever starts or joins a
+   * campaign therefore has to tip their kit into the shared pack, or the player
+   * lands in Phandalin with 0 gp and "The pack is empty here."
+   *
+   * Worn equipment is left alone; only the pack and the purse move.
+   * Returns { gold, items } for a caller that wants to report it.
+   */
+  absorbKit(ch) {
+    const out = { gold: 0, items: 0 };
+    if (!ch) return out;
+    const pack = Array.isArray(ch.inventory) ? ch.inventory.slice() : [];
+    for (const e of pack) {
+      if (!e || !e.id) continue;
+      const qty = Math.max(1, Number(e.qty) || 1);
+      // Anything beyond uid/id/qty is per-instance state (charges, an enchant)
+      // and has to ride along or the item silently loses it.
+      const { uid: _uid, id, qty: _qty, ...rest } = e;
+      const carry = Object.keys(rest).length ? rest : null;
+      if (this.addItem(id, qty, carry)) out.items += qty;
+    }
+    if (Array.isArray(ch.inventory)) ch.inventory.length = 0;
+    const gold = Math.max(0, Math.round(Number(ch.gold) || 0));
+    if (gold) { this.addGold(gold); out.gold = gold; }
+    ch.gold = 0;
+    return out;
+  },
+
   removeItem(id, qty = 1) {
     let left = qty;
     for (let i = this.inventory.length - 1; i >= 0 && left > 0; i--) {

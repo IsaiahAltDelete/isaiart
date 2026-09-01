@@ -626,12 +626,24 @@ function fightingStyleTable() {
 function metamagicTable() { return FALLBACK_METAMAGIC; }
 function invocationTable() { return FALLBACK_INVOCATIONS; }
 
-/** Turn an option id into {id,name,desc}, searching every catalogue it could be in. */
+/**
+ * Turn an option id into {id,name,desc}, searching every catalogue it could be in.
+ *
+ * The bucket's own `type` picks the catalogue to ask FIRST, because ids collide
+ * across catalogues: `light` is both the Light cantrip and the cleric's Light
+ * Domain, and searching SUBCLASSES ahead of SPELLS put "Light Domain" in a
+ * wizard's cantrip list while the detail pane beside it described the cantrip.
+ * Anything not covered by a type falls through the same order as before.
+ */
 function optionEntry(type, id) {
   const key = String(id);
   const look = (t) => safe(() => t[key], null);
+  const spellish = type === 'cantrip' || type === 'spell';
   const tables = [
     (type === 'skill' || type === 'expertise') ? SKILLS : null,
+    spellish ? safe(() => SPELLS, {}) : null,
+    type === 'mastery' ? safe(() => WEAPON_MASTERY, {}) : null,
+    type === 'feat' ? safe(() => FEATS, {}) : null,
     fightingStyleTable(), FALLBACK_METAMAGIC, FALLBACK_INVOCATIONS,
     safe(() => FEATS, {}), safe(() => SUBCLASSES, {}), safe(() => SPELLS, {}),
     safe(() => WEAPON_MASTERY, {}), SKILLS,
@@ -841,6 +853,32 @@ function palettesFor(speciesId, lineageId) {
     eye: uniq([...arr(base.eye), ...arr(g.eye)]),
     horn: uniq([...arr(base.horn), ...HORN_PALETTE]),
   };
+}
+
+/**
+ * Where `value` sits in a cycler's pool.
+ *
+ * `indexOf` alone falls back to 0 whenever the current value is not literally in
+ * the pool, which silently mislabels the row AND makes the first press jump to
+ * pool[1] rather than step from where the character actually is. A numeric pool
+ * therefore matches on the nearest entry instead — that covers a species height
+ * the pool was never built around, and a character saved under an older pool.
+ */
+function poolIndex(pool, value) {
+  const i = pool.indexOf(value);
+  if (i >= 0) return i;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    let best = -1;
+    let bestD = Infinity;
+    for (let k = 0; k < pool.length; k++) {
+      const p = pool[k];
+      if (typeof p !== 'number') continue;
+      const d = Math.abs(p - value);
+      if (d < bestD) { bestD = d; best = k; }
+    }
+    if (best >= 0) return best;
+  }
+  return 0;
 }
 
 function modsFor(speciesId, lineageId) {
@@ -1970,6 +2008,30 @@ export class CharCreateScene {
     this._touch();
   }
 
+  /**
+   * Ask before throwing the whole character away.
+   *
+   * "Randomise everything" sits one row under the harmless "Randomise look" on
+   * the Appearance step, and randomiseAll() clears `_stash` — the very thing the
+   * anti-data-loss walk-back restores from — so a single mis-aimed Confirm
+   * destroyed a fully built character with nothing to undo it with. The cursor
+   * opens on "Keep", and Cancel backs out too.
+   */
+  confirmRandomiseAll() {
+    this.openPicker('Roll a whole new life?', [
+      {
+        id: 'keep',
+        name: 'Keep this character',
+        desc: 'Nothing changes. Species, class, background, ability scores, skills, spells and kit all stay as you set them.',
+      },
+      {
+        id: 'reroll',
+        name: 'Reroll everything',
+        desc: 'Species, lineage, class, subclass, background, ability scores, skills, spells, kit, appearance, alignment and deity are all rolled again.\n\nThis cannot be undone.',
+      },
+    ], 'keep', (pick) => { if (pick === 'reroll') this.randomiseAll(); });
+  }
+
   randomiseAll() {
     const d = this.draft;
     const r = this.rng;
@@ -2056,8 +2118,7 @@ export class CharCreateScene {
     const a = obj(this.draft.appearance);
     const arrList = arr(list);
     if (!arrList.length) return;
-    let i = arrList.indexOf(a[field]);
-    if (i < 0) i = 0;
+    let i = poolIndex(arrList, a[field]);
     i = (i + dir + arrList.length) % arrList.length;
     a[field] = arrList[i];
     this.draft.appearance = a;
@@ -2382,6 +2443,46 @@ export class CharCreateScene {
     this.togglePick(b, id);
   }
 
+  /**
+   * Spells and cantrips already chosen in some OTHER bucket, mapped to the
+   * bucket holding them.
+   *
+   * The Skills step refuses a proficiency the background already grants and
+   * shows it locked; the spell buckets did not, so a Sage wizard could spend a
+   * Magic Initiate pick on the Fire Bolt they had already taken as a class
+   * cantrip and simply lose the pick, silently.
+   */
+  grantedSpells(exceptKey) {
+    const out = {};
+    const all = arr(this.spellBuckets()).concat(arr(this.featureBuckets()));
+    for (const b of all) {
+      if (!b || (b.type !== 'spell' && b.type !== 'cantrip')) continue;
+      if (b.key === exceptKey) continue;
+      for (const id of this.picksOf(b.key)) {
+        if (!(id in out)) out[id] = b.title || b.label || 'Another choice';
+      }
+    }
+    return out;
+  }
+
+  /** togglePick, but a spell already granted elsewhere cannot be taken twice. */
+  toggleBucketPick(b, id) {
+    if (b && (b.type === 'spell' || b.type === 'cantrip')) {
+      const list = this.picksOf(b.key);
+      // Deselecting always works — otherwise an already-duplicated pick from an
+      // older draft would be impossible to clear.
+      if (list.indexOf(id) < 0) {
+        const src = this.grantedSpells(b.key)[id];
+        if (src) {
+          sfx('error');
+          this.warn(optionEntry(b.type, id).name + ' is already chosen under ' + src + '.');
+          return;
+        }
+      }
+    }
+    this.togglePick(b, id);
+  }
+
   // =========================================================================
   // ROW BUILDERS — the left column for every step.
   // Row: { label, hint, hintColor, color, header, checked, swatch, value,
@@ -2682,6 +2783,10 @@ export class CharCreateScene {
         return la - lz || String(a.name).localeCompare(String(z.name));
       });
     }
+    // A spell another bucket already grants is shown locked, the way the Skills
+    // step shows a background-granted proficiency, so the pick is never quietly
+    // spent on something you already have.
+    const grantedSp = (b.type === 'spell' || b.type === 'cantrip') ? this.grantedSpells(b.key) : {};
     let lastLevel = -1;
     for (const o of opts) {
       const sp = (b.type === 'spell' || b.type === 'cantrip') ? getSpell(o.id) : null;
@@ -2690,15 +2795,17 @@ export class CharCreateScene {
         rows.push({ label: sp.level === 0 ? 'Cantrips' : ordinal(sp.level) + ' Level', header: true, color: C.goldD });
       }
       const on = picks.indexOf(o.id) >= 0;
+      const src = on ? null : grantedSp[o.id];
       rows.push({
         label: o.name,
         optionId: o.id,
         option: o,
-        checked: on,
+        checked: src ? 'lock' : on,
+        sub: src || undefined,
         hint: sp ? (SCHOOLS[sp.school] ? String(SCHOOLS[sp.school].name).slice(0, 4) : '') : '',
-        hintColor: sp && SCHOOLS[sp.school] ? SCHOOLS[sp.school].color : C.dim,
-        color: on ? C.goldB : C.ink,
-        onConfirm: () => this.togglePick(b, o.id),
+        hintColor: src ? C.cyan : (sp && SCHOOLS[sp.school] ? SCHOOLS[sp.school].color : C.dim),
+        color: src ? C.cyan : on ? C.goldB : C.ink,
+        onConfirm: () => this.toggleBucketPick(b, o.id),
       });
     }
     return rows;
@@ -2768,8 +2875,7 @@ export class CharCreateScene {
     const a = obj(this.draft.appearance);
     const pool = arr(list);
     if (!pool.length) return null;
-    let i = pool.indexOf(a[field]);
-    if (i < 0) i = 0;
+    const i = poolIndex(pool, a[field]);
     const show = typeof fmt === 'function' ? fmt(pool[i]) : (pool[i] == null ? 'None' : cap(String(pool[i])));
     const step = (dir) => this.cycleAppearance(field, pool, dir);
     return { label, value: show, onLeft: () => step(-1), onRight: () => step(1) };
@@ -2790,7 +2896,15 @@ export class CharCreateScene {
     // thing and leaves "Androgynous" readable.
     push(this._optRow('Type', 'body', ['m', 'f', 'n'], (v) => ({ m: 'Masculine', f: 'Feminine', n: 'Androgynous' }[v] || 'Androgynous')));
     push(this._optRow('Build', 'build', arr(AO.build).length ? AO.build : ['slim', 'normal', 'broad', 'tall']));
-    push(this._optRow('Height', 'height', [0.9, 0.95, 1, 1.05, 1.1], (v) => (v < 0.97 ? 'Short' : v > 1.03 ? 'Tall' : 'Average')));
+    // Height is a multiplier on the species' OWN frame, and every species sets a
+    // different base (0.84 gnome … 1.15 goliath). A fixed absolute ladder of
+    // 0.9–1.1 contained almost none of them, so a high elf at 1.03 read "Short"
+    // and the first Right press shrank them to 0.95. Build the ladder around the
+    // species so the middle rung is always exactly where they start.
+    const baseH = Number(mods.height) || 1;
+    const heights = [-2, -1, 0, 1, 2].map((k) => Math.round((baseH + k * 0.04) * 1000) / 1000);
+    const heightNames = ['Very short', 'Short', 'Average', 'Tall', 'Very tall'];
+    push(this._optRow('Height', 'height', heights, (v) => heightNames[Math.max(0, heights.indexOf(v))] || 'Average'));
     push(this._colorRow('Skin', 'skin', pal.skin));
 
     rows.push({ label: 'Head', header: true, color: C.goldD });
@@ -2816,7 +2930,7 @@ export class CharCreateScene {
 
     rows.push({ label: 'Chance', header: true, color: C.goldD });
     rows.push({ label: 'Randomise look', button: true, onConfirm: () => this._randomiseLook(true) });
-    rows.push({ label: 'Randomise everything', button: true, color: C.orange, onConfirm: () => this.randomiseAll() });
+    rows.push({ label: 'Randomise everything', button: true, color: C.orange, onConfirm: () => this.confirmRandomiseAll() });
     return rows;
   }
 
@@ -2854,7 +2968,12 @@ export class CharCreateScene {
     });
     const eth = ethnicitiesFor(d.speciesId);
     if (eth.length > 1) {
-      let i = Math.max(0, eth.indexOf(d.ethnicity));
+      // The row used to fall back to eth[0] for display while leaving
+      // d.ethnicity null, so the summary and the saved character claimed no
+      // heritage while the row read "Chondathan" — and "Roll a name" was handed
+      // null. Adopt the value being shown, so shown and stored are the same.
+      if (eth.indexOf(d.ethnicity) < 0) d.ethnicity = eth[0];
+      const i = eth.indexOf(d.ethnicity);
       const step = (dir) => { d.ethnicity = eth[(i + dir + eth.length) % eth.length]; this._touch(); };
       rows.push({ label: 'Heritage', value: cap(eth[i]), onLeft: () => step(-1), onRight: () => step(1) });
     }
@@ -2896,7 +3015,7 @@ export class CharCreateScene {
     const bi = clamp(d.bond, 0, Math.max(0, bonds.length - 1));
     const stepB = (dir) => { d.bond = (bi + dir + bonds.length) % bonds.length; this._touch(); };
     rows.push({ label: 'Bond', value: (bi + 1) + '/' + bonds.length, onLeft: () => stepB(-1), onRight: () => stepB(1) });
-    rows.push({ label: 'Randomise everything', button: true, color: C.orange, onConfirm: () => this.randomiseAll() });
+    rows.push({ label: 'Randomise everything', button: true, color: C.orange, onConfirm: () => this.confirmRandomiseAll() });
     return rows;
   }
 

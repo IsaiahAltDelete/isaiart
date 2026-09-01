@@ -65,12 +65,44 @@ function wireGlue() {
   });
 
   // Combat outcomes feed the campaign state.
-  bus.on(EV.DEATH, ({ unit }) => {
-    if (!Game.state || !unit || unit.side === 'party') return;
-    if (unit.monsterId) recordKill(Game.state, unit.monsterId);
+  // Every emitter of EV.DEATH names the creature `ch` (combat.js, actions.js,
+  // character.js, conditions.js). Destructuring `unit` here returned on the
+  // first guard for every kill ever made, so the bestiary stayed empty, kills
+  // never counted, and no `kill` quest objective could complete. `unit` is
+  // still accepted so a future emitter using the combat word also lands.
+  bus.on(EV.DEATH, ({ ch, unit }) => {
+    const who = ch || unit;
+    if (!Game.state || !who || who.side === 'party') return;
+    if (who.monsterId) recordKill(Game.state, who.monsterId);
   });
   bus.on(EV.CRIT, () => { if (Game.state) Game.state.stats.crits++; });
   bus.on(EV.SPELL_CAST, () => { if (Game.state) Game.state.stats.spellsCast++; });
+
+  // The run tally counted only some of the things that move it: "Battles fought"
+  // was incremented in world/overworld.js alone, so fights started from a
+  // dialogue script, the rest screen or the cheat menu never registered, and
+  // "Gold earned" ignored every coin taken off a corpse. Count them where the
+  // events already fire, so every route into a fight is covered once.
+  bus.on(EV.COMBAT_START, () => { if (Game.state) Game.state.stats.battles = (Game.state.stats.battles || 0) + 1; });
+  bus.on(EV.COMBAT_END, ({ rewards }) => {
+    const st = Game.state;
+    const gold = Math.max(0, Number(rewards && rewards.gold) || 0);
+    if (st && gold) st.stats.goldEarned = (st.stats.goldEarned || 0) + gold;
+  });
+  bus.on(EV.DAMAGE, ({ ch, amount }) => {
+    const st = Game.state;
+    const n = Math.max(0, Number(amount) || 0);
+    if (!st || !ch || !n) return;
+    // `side` is only set on units inside an encounter; out in the world, ask the
+    // roster instead, so a trap or a fall still lands in the right column.
+    const mine = ch.side === 'party' || Party.members.indexOf(ch) >= 0;
+    if (mine) st.stats.damageTaken += n; else st.stats.damageDealt += n;
+  });
+  bus.on(EV.HEAL, ({ amount }) => {
+    const st = Game.state;
+    const n = Math.max(0, Number(amount) || 0);
+    if (st && n) st.stats.healed = (st.stats.healed || 0) + n;
+  });
   bus.on(EV.ITEM_GAIN, ({ id }) => { if (Game.state) progressQuests(Game.state, 'collect', id, 1); });
   bus.on(EV.MAP_ENTER, ({ mapId }) => { if (Game.state) progressQuests(Game.state, 'reach', mapId, 1); });
 }
@@ -93,7 +125,8 @@ export function newGame() {
   Game.push(new CharCreateScene((hero) => {
     if (!hero) { Game.pop(); return; }
     Party.add(hero);
-    Party.addGold(15);                       // a modest purse to start
+    Party.absorbKit(hero);                   // class kit + background gold -> the shared pack
+    Party.addGold(15);                       // and a modest purse on top
     Game.replace(new OverworldScene());
     travelTo(Game.state.mapId, Game.state.x, Game.state.y, Game.state.dir);
     bus.emit(EV.TOAST, { text: 'Phandalin. The Triboar Trail runs east.' });

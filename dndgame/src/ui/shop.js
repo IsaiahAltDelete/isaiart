@@ -206,7 +206,7 @@ const FALLBACK_SHOPS = {
     greeting: 'Rope, rations and lamp oil, all honestly priced. Ander will fetch anything you need.',
     stock: ['rations', 'torch', 'rope-hempen', 'bedroll', 'backpack', 'tinderbox',
       'waterskin', 'lantern-hooded', 'oil-flask', 'healers-kit', 'crowbar',
-      'grappling-hook', 'potion-of-healing'],
+      'grappling-hook', 'potion-healing'],
     fill: { kinds: ['food', 'tool', 'potion'], maxCost: 60, count: 14 },
     services: ['repair'],
   },
@@ -224,7 +224,7 @@ const FALLBACK_SHOPS = {
     id: 'shrine-of-luck', name: 'Shrine of Luck', keeper: 'Sister Garaele',
     npc: 'sister-garaele', kind: 'temple', music: 'town', markup: 1, buyback: 0.4,
     greeting: 'Lady Tymora smiles on the bold. Tell me where it hurts, and what you can tithe.',
-    stock: ['potion-of-healing', 'holy-water', 'antitoxin', 'holy-symbol', 'incense'],
+    stock: ['potion-healing', 'holy-water', 'antitoxin', 'holy-symbol', 'incense'],
     fill: { kinds: ['potion', 'scroll'], maxCost: 120, count: 10 },
     services: ['heal', 'lesser-restoration', 'remove-curse', 'revivify', 'identify'],
   },
@@ -236,6 +236,18 @@ const FALLBACK_SHOPS = {
     stock: ['pick', 'shovel', 'miners-pick', 'lantern-hooded', 'rope-hempen', 'crowbar'],
     fill: { kinds: ['tool', 'gem'], maxCost: 200, count: 10 },
     services: ['appraise'],
+  },
+  // Grista's tap house on the south side of Phandalin. maps.js has always put a
+  // shop trigger on her counter; nothing in either catalogue answered to the id,
+  // so the door opened onto "The shelves are bare today."
+  'sleeping-giant': {
+    id: 'sleeping-giant', name: 'The Sleeping Giant', keeper: 'Grista',
+    npc: 'grista', kind: 'inn', music: 'inn', markup: 1, buyback: 0.3,
+    greeting: 'Ale.',
+    stock: ['shadowdark-ale', 'neverwinter-ale', 'iriaeboran-north-brew',
+      'trail-bread', 'rations', 'torch', 'oil-flask'],
+    fill: { kinds: ['food'], maxCost: 12, count: 8 },
+    services: ['room-common', 'meal'],
   },
   'stonehill-inn': {
     id: 'stonehill-inn', name: 'Stonehill Inn', keeper: 'Toblen Stonehill',
@@ -262,10 +274,20 @@ const FALLBACK_SHOPS = {
   },
 };
 
+const warnedShops = new Set();
+
 /** Merge the authored table with the fallback, then normalise the stock rows. */
 function shopDefinition(shopId, opts) {
   const table = safe(() => SHOP_TABLES && SHOP_TABLES[shopId], null);
   const base = FALLBACK_SHOPS[shopId] || null;
+  // A trigger naming a shop that is in neither catalogue used to fall straight
+  // through to a nameless placeholder with empty shelves, which reads to the
+  // player as "the shop is out of stock today" rather than as the typo it is.
+  // Four of Phandalin's six counters sat like that. Say so, once per id.
+  if (!table && !base && !isObj(opts && opts.shop) && !warnedShops.has(shopId)) {
+    warnedShops.add(shopId);
+    console.warn(`[shop] no definition for "${shopId}" — opening an empty counter.`);
+  }
   const merged = { ...(base || {}), ...(isObj(table) ? table : {}), ...(isObj(opts && opts.shop) ? opts.shop : {}) };
   if (!merged.id) merged.id = shopId;
   if (!merged.name) merged.name = titleCase(String(shopId || 'shop').replace(/-/g, ' '));

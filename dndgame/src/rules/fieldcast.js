@@ -67,25 +67,9 @@ export function minutesFor(duration) {
 // ---------------------------------------------------------------------------
 
 /** The world verbs a `utility` effect can ask for, and who services them. */
-/**
- * Utility tags that DO something when cast standing in the world.
- *
- * These must be the tags data/spells*.js actually writes. Seven of the names
- * here once were not: the table said 'identify', 'mend', 'comprehend', 'alarm',
- * 'clean', 'purify' and 'disguise', while the catalogue says 'identify-item',
- * 'repair', 'translate', 'ward-area' and 'trick'. Nothing matched, so those
- * spells fell through fieldRole's last branch and were classified as buffs —
- * which meant Identify and Comprehend Languages spent a first-level slot to
- * apply a buff that does not exist, and overworld's _spellIdentify hook could
- * never fire at all. `test/regress.mjs` now fails if an entry here matches no
- * spell, because this is exactly the kind of table that drifts silently.
- *
- * ('disguise' is gone rather than renamed: Disguise Self carries a `buff`
- * effect, not a `utility` one, so the buff path already handles it correctly.)
- */
-export const WORLD_TAGS = new Set([
-  'light', 'unlock', 'detect-magic', 'create-item', 'telekinesis', 'water',
-  'identify-item', 'repair', 'translate', 'trick', 'ward-area',
+const WORLD_TAGS = new Set([
+  'light', 'unlock', 'detect-magic', 'create-item', 'telekinesis',
+  'purify', 'clean', 'mend', 'identify', 'comprehend', 'disguise', 'alarm', 'water',
 ]);
 
 /**
@@ -456,18 +440,20 @@ function castWorldEffect(ch, sp, eff, env) {
       if (done && done.ok) return said(true, done.text || 'The spectral hand fetches it back.');
       return said(false, 'The spectral hand drifts, finds nothing worth fetching, and fades.');
     }
-    case 'identify-item': {
+    case 'identify': {
       const done = typeof w.identify === 'function' ? safe(() => w.identify(), null) : null;
       if (done && done.ok) return said(true, done.text || 'It gives up its name.');
       return said(false, (done && done.text) || 'Nothing in the pack is a mystery.');
     }
     // Flavour verbs with no world state behind them yet. They still cost the
     // slot, because in the fiction they still happen.
+    case 'purify':
     case 'water':
-    case 'repair':
-    case 'translate':
-    case 'trick':
-    case 'ward-area':
+    case 'clean':
+    case 'mend':
+    case 'comprehend':
+    case 'disguise':
+    case 'alarm':
       return said(true, `${sp.name} takes hold.`);
     default:
       return null;

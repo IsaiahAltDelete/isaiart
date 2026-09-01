@@ -638,6 +638,25 @@ function popClip(ctx) {
   if (c) c.restore();
 }
 
+/** How many clips are outstanding. Zero at the end of a well-formed frame. */
+function clipDepth() { return clipStack.length; }
+
+/**
+ * Forget every outstanding clip without restoring anything.
+ *
+ * `clipStack` is a module global, so a draw call that throws between pushClip
+ * and popClip leaves an entry behind for ever, and every later popClip then
+ * restores one level too far — the leak compounds frame after frame until the
+ * whole screen is stuck inside a stale clip rectangle. engine.js drains the
+ * canvas state stack at the top of each frame; this drops the bookkeeping that
+ * went with it, so the two stay in step. Returns how many were abandoned.
+ */
+function resetClips() {
+  const n = clipStack.length;
+  clipStack.length = 0;
+  return n;
+}
+
 // ---------------------------------------------------------------------------
 // 6. TEXT API
 // ---------------------------------------------------------------------------
@@ -2070,6 +2089,8 @@ export const UI = {
   // plumbing
   pushClip,
   popClip,
+  clipDepth,
+  resetClips,
   rectStroke,
   vgrad,
   clearCache: clearUICache,

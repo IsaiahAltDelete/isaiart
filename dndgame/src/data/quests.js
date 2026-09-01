@@ -1159,11 +1159,391 @@ const ROAD_QUESTS = [
   }),
 ];
 
+// ===========================================================================
+// 3e — THE ROAD SOUTH AND BALDUR'S GATE
+//
+// The horizontal tier-3 arc: out of Waterdeep down the Trade Way to Daggerford
+// and the Way Inn, across the Fields of the Dead, in through the Black Dragon
+// Gate, and out again along the Coast Way to Beregost, Candlekeep and Nashkel.
+// Levels 8 to 13. Undermountain stays the vertical endless track; this is the
+// wide one.
+//
+// Three arcs live here:
+//   'the-gate-and-the-guild'  the spine — Mirt's errand to the Council of Four
+//   'the-lower-city'          the city's own troubles, taken in any order
+//   'the-coast-way'           the road's own, Daggerford to the Cloudpeaks
+//
+// The load-bearing quest is `the-writ-of-entry`. It sets the `bg-writ-of-entry`
+// flag, which is what removes Fist Sergeant Randal Whitburn from the Black
+// Dragon Gate warp at bg-blackgate (28,42) and opens Baldur's Gate. It carries
+// no `after` on purpose: a party that skipped the road can still buy its way
+// through the gate at 11 by doing the Flaming Fist one favour in the yards.
+// ===========================================================================
+
+const SOUTH_QUESTS = [
+
+  // --- the spine: the gate and the Guild -----------------------------------
+
+  Q('the-long-road-south', 'The Long Road South', {
+    giver: 'mirt', type: 'deliver', minLevel: 8, tier: 'standard',
+    chain: 'the-gate-and-the-guild', map: 'trade-way-north', faction: 'harpers',
+    desc: 'Mirt has four thousand gold sitting in a Baldurian counting house and no honest way to touch it, because every factor he has sent down the Trade Way in two years has come back robbed, come back dead, or become suddenly and permanently interested in staying in Daggerford. He does not want the money fetched. He wants somebody to walk the road and come back able to say plainly what is on it.',
+    summary: "Take Mirt's letter of credit down the Trade Way as far as Daggerford.",
+    steps: [
+      reach('trade-way-north', 'Leave Waterdeep by the south gate and take the Trade Way'),
+      kill('bandit-captain', 2, 'Break the two crews working the milestones above the Delimbiyr', 'trade-way-north'),
+      reach('daggerford', 'Come in under the Daggerford wall before dark'),
+      deliver('morwen-daggerford', "Present Mirt's letter to the Duchess of Daggerford", 'daggerford'),
+    ],
+    items: [{ id: 'rations', qty: 6 }, 'potion-greater-healing', 'gem-moonstone'],
+    rep: { harpers: 4, 'lords-alliance': 2 },
+    next: 'the-duchess-toll',
+    sets: ['trade-way-walked'],
+  }),
+
+  Q('the-duchess-toll', "The Duchess's Toll", {
+    giver: 'morwen-daggerford', type: 'clear', minLevel: 9, tier: 'standard',
+    chain: 'the-gate-and-the-guild', map: 'daggerford', faction: 'lords-alliance',
+    after: ['the-long-road-south'],
+    desc: 'Daggerford lives on the ferry and the bridge, and the bridge tolls have come in light by a third since midwinter. Duchess Morwen has audited her own clerks twice and found nothing, which tells her the theft is happening on the road before the coin ever reaches her gate. She will open the southern stage to you the day somebody puts a name to it.',
+    summary: 'Find out who is skimming the Delimbiyr crossing tolls, and stop them.',
+    steps: [
+      talk('morwen-daggerford', 'Hear the Duchess out in the castle hall', 'daggerford'),
+      kill('thug', 6, 'Break up the men taking coin at the ford above the bridge', 'trade-way-north'),
+      kill('bandit-captain', 1, 'Take the toll-master who set the rate and kept the tally', 'trade-way-north'),
+      deliver('morwen-daggerford', "Lay the tally-sticks on the Duchess's own table", 'daggerford'),
+    ],
+    items: ['potion-greater-healing', 'chain-shirt', 'gem-onyx'],
+    rep: { 'lords-alliance': 5, zhentarim: -2 },
+    next: 'the-way-inn-vigil',
+    sets: ['daggerford-favour'],
+  }),
+
+  Q('the-way-inn-vigil', 'Vigil at the Way Inn', {
+    giver: 'gorstag-amblecrown', type: 'kill', minLevel: 9, tier: 'small',
+    chain: 'the-gate-and-the-guild', map: 'the-way-inn',
+    after: ['the-duchess-toll'],
+    desc: 'The Way Inn has stood at the Dusk Road turning for two hundred years on one rule: the gates shut at dusk and nobody argues about it. For three tendays running, something has still been taking one sleeper a night out of a walled yard with forty people in it. Gorstag Amblecrown has stopped selling the north-side beds and started sitting up with a crossbow across his knees.',
+    summary: 'Sit up through the night with the caravan and find what is taking the sleepers.',
+    steps: [
+      talk('gorstag-amblecrown', 'Take the innkeeper up on the long chair by the fire', 'way-inn-common'),
+      kill('werewolf', 2, 'Put down what comes over the yard wall after dark', 'the-way-inn'),
+      talk('gorstag-amblecrown', 'Tell Gorstag what it was, and watch him decide not to write it down', 'way-inn-common'),
+    ],
+    items: [{ id: 'potion-healing', qty: 3 }, 'arrow-silvered'],
+    rep: { 'lords-alliance': 2, gauntlet: 2 },
+    next: 'the-fields-remember',
+  }),
+
+  Q('the-fields-remember', 'The Fields Remember', {
+    giver: 'taman-brightwood', type: 'clear', minLevel: 10, tier: 'major',
+    chain: 'the-gate-and-the-guild', map: 'fields-of-the-dead', faction: 'gauntlet',
+    after: ['the-way-inn-vigil'],
+    desc: "Every army that ever marched between Waterdeep and Baldur's Gate left its dead in this ground, and the barrow-builders piled them in ranks with their gear about them. The barrows are opening. Pilgrim-Marshal Taman Brightwood walks the road south four times a year and buried two of his own party out of the last crossing. He wants the mounds shut, and he wants a witness who will stand up in Baldur's Gate and say they were shut.",
+    summary: 'Close the opened barrows in the Fields of the Dead before the pilgrim road is lost.',
+    steps: [
+      reach('fields-of-the-dead', 'Come down out of the Trollbark onto the barrow fields'),
+      kill('wight', 5, 'Put the barrow-wights back under their own stones', 'fields-of-the-dead'),
+      kill('wraith', 2, 'Destroy the two wraiths holding the open mounds', 'fields-of-the-dead'),
+      clear('fields-of-the-dead', 'Seal the barrow line from the Trollbark edge to the river road'),
+    ],
+    items: [{ id: 'holy-water', qty: 4 }, 'potion-greater-healing', 'mace-plus1'],
+    rep: { gauntlet: 6, 'emerald-enclave': 2, harpers: 2 },
+    next: 'the-writ-of-entry',
+    sets: ['fields-barrows-sealed'],
+  }),
+
+  Q('the-writ-of-entry', 'The Writ of Entry', {
+    giver: 'yasheira-mostana', type: 'clear', minLevel: 11, tier: 'standard',
+    chain: 'the-gate-and-the-guild', map: 'bg-blackgate', faction: 'lords-alliance',
+    desc: 'Nobody walks through the Black Dragon Gate on their face alone. The Flaming Fist wants a writ; the writ wants a sponsor; and the sponsor wants a favour first. Lieutenant Yasheira Mostana has three caravan yards outside her own gate paying protection to a crew she is not permitted to touch on paper. Do it off the books and the writ is written the same hour, in her hand, with the Fist seal on it.',
+    summary: 'Do the Flaming Fist a favour in the Blackgate yards and take the writ that opens the city.',
+    steps: [
+      reach('bg-blackgate', 'Come down the Coast Way into the yards outside the Black Dragon Gate'),
+      talk('yasheira-mostana', 'Find the Fist lieutenant at the muster post and hear the price', 'bg-blackgate'),
+      kill('thug', 8, 'Clear the crew squeezing the caravan yards, one yard at a time', 'bg-blackgate'),
+      kill('veteran', 2, 'Put down the two former Fist who were running them', 'bg-blackgate'),
+      deliver('yasheira-mostana', 'Take the sealed writ of entry out of her own hand', 'bg-blackgate'),
+    ],
+    items: ['potion-greater-healing', 'studded-leather-plus1', { id: 'rations', qty: 4 }],
+    rep: { 'lords-alliance': 6, zhentarim: -3 },
+    next: 'what-the-mouth-prints',
+    sets: ['bg-writ-of-entry'],
+  }),
+
+  Q('what-the-mouth-prints', 'What the Mouth Prints', {
+    giver: 'rowan-linnacker', type: 'fetch', minLevel: 12, tier: 'standard',
+    chain: 'the-gate-and-the-guild', map: 'bg-the-wide', faction: 'harpers',
+    requires: ['bg-writ-of-entry'],
+    desc: "Baldur's Mouth has printed over four editions that the Guild had nothing whatever to do with the fire in the Heapside rope-walk. Rowan Linnacker did not write a word of it and cannot prove who did, because his own compositor set the formes and then stopped coming in to work. The proof sheets went out of the building in an apron pocket. Linnacker wants them back, and he is prepared to be in your debt about it, which in the Upper City is worth more than the fee.",
+    summary: "Recover the suppressed proof sheets and put Baldur's Mouth back in print.",
+    steps: [
+      talk('rowan-linnacker', 'Sit down with the editor in the composing room', 'baldurs-mouth'),
+      reach('bg-heapside', "Go down through the Baldur's Gate into Heapside after the sheets"),
+      collect('parchment', 8, 'Gather the proof sheets the compositor pulled and hid', 'bg-heapside'),
+      kill('spy', 4, 'Deal with the people paid to keep the story straight', 'bg-heapside'),
+      deliver('rowan-linnacker', 'Put the sheets on the stone in front of the editor', 'baldurs-mouth'),
+    ],
+    items: ['book', 'potion-superior-healing', 'cloak-of-protection'],
+    rep: { harpers: 5, 'lords-alliance': 2, zhentarim: -3 },
+    next: 'the-ducal-summons',
+    sets: ['bg-mouth-owes-you'],
+  }),
+
+  Q('the-ducal-summons', 'The Ducal Summons', {
+    giver: 'katernin-sashenstar', type: 'boss', minLevel: 13, tier: 'chain',
+    chain: 'the-gate-and-the-guild', map: 'bg-temples-district', faction: 'lords-alliance',
+    after: ['what-the-mouth-prints'], requires: ['bg-writ-of-entry'],
+    desc: 'Belynne Stelmane was murdered in a back room of the Elfsong Tavern in 1492, and the Council closed the matter inside a tenday. Duchess Katernin Sashenstar holds her chair now, and somebody has begun sending her copies of correspondence that only Stelmane\'s killers could be holding. She will not pay them a copper. She wants the letters taken out of the hands that hold them, and then she wants the hands.',
+    summary: "Break the blackmail worked on Duchess Sashenstar with Belynne Stelmane's murder.",
+    steps: [
+      talk('katernin-sashenstar', 'Hear the Duchess out in the High Hall, alone', 'high-hall'),
+      reach('elfsong-tavern', 'Stand in the room in the Elfsong where Stelmane died'),
+      reach('bg-sewers', 'Follow the way they came and went, down under Heapside'),
+      kill('cult-fanatic', 6, 'Break the Bhaalist cell keeping the letters', 'bg-sewers'),
+      kill('doppelganger', 1, 'Kill the thing wearing a dead clerk to carry them', 'bg-sewers'),
+      collect('case-map-scroll', 1, 'Recover the letter case with the Sashenstar seal on it', 'bg-sewers'),
+      deliver('katernin-sashenstar', 'Return the case unopened, and be able to say so', 'high-hall'),
+    ],
+    items: ['potion-supreme-healing', 'ring-of-mind-shielding', 'gem-emerald'],
+    rep: { 'lords-alliance': 8, harpers: 4, zhentarim: -4 },
+    next: 'the-fourth-chair',
+    sets: ['bg-ducal-summons'],
+  }),
+
+  Q('the-fourth-chair', 'The Fourth Chair', {
+    giver: 'ulder-ravengard', type: 'boss', minLevel: 13, tier: 'capstone',
+    chain: 'the-gate-and-the-guild', map: 'high-hall', faction: 'lords-alliance',
+    after: ['the-ducal-summons'], requires: ['bg-ducal-summons'],
+    desc: 'Grand Duke Ulder Ravengard has spent four years putting the city back together and has counted the money the entire time. Somebody is buying the fourth chair on the Council of Four with Guild coin, and the contract that arranged it was not signed in ink. He does not want an arrest. He wants it finished in the High Hall, in daylight, with the Parliament of Peers watching, so that nobody in this city ever has to be told what happened.',
+    summary: 'Finish the purchase of a ducal seat, in the High Hall, in front of the Parliament.',
+    steps: [
+      talk('ulder-ravengard', "Take the Grand Duke's charge in the map room", 'high-hall'),
+      reach('bg-sows-foot', "Go out to Sow's Foot and find who took the Guild's money"),
+      kill('veteran', 6, 'Cut through the swords that money hired', 'bg-sows-foot'),
+      collect('book', 1, 'Take the ledger that names the buyer', 'bg-sows-foot'),
+      kill('erinyes', 1, 'Kill the thing that countersigned, on the floor of the High Hall', 'high-hall'),
+      deliver('ulder-ravengard', 'Stand before the Parliament of Peers and let Ravengard speak', 'high-hall'),
+    ],
+    items: ['ring-of-protection', 'potion-supreme-healing', 'gem-diamond', 'longsword-plus2'],
+    rep: { 'lords-alliance': 12, harpers: 5, gauntlet: 4, zhentarim: -6 },
+    sets: ['bg-fourth-chair-settled', 'baldurs-gate-complete'],
+  }),
+
+  // --- the city's own ------------------------------------------------------
+
+  Q('the-elfsong-silent', 'The Elfsong Falls Silent', {
+    giver: 'alan-alyth', type: 'clear', minLevel: 12, tier: 'major',
+    chain: 'the-lower-city', map: 'bg-eastway',
+    desc: 'For as long as the Elfsong Tavern has had that name, an elven woman nobody can see has sung in the common room, in a language most of the drinkers do not speak and every one of them understands. Nine nights ago she stopped in the middle of a phrase. Alan Alyth has kept the house open, kept pouring, and kept his voice perfectly level, and he has not slept since. He says she has not gone. He says she is listening to something.',
+    summary: 'Find out what the Elfsong has heard under the Lower City, and answer it.',
+    steps: [
+      talk('alan-alyth', 'Ask the proprietor what changed on the night she stopped', 'elfsong-tavern'),
+      reach('bg-sewers', 'Go down through the Eastway drains under the tavern floor'),
+      kill('otyugh', 2, 'Clear the drain chamber directly below the common room', 'bg-sewers'),
+      kill('wraith', 2, 'Destroy what has been singing back to her', 'bg-sewers'),
+      talk('alan-alyth', 'Stand in the common room until she begins again', 'elfsong-tavern'),
+    ],
+    items: ['potion-superior-healing', 'lute', 'cloak-of-elvenkind'],
+    rep: { harpers: 5 },
+    sets: ['elfsong-heard'],
+  }),
+
+  Q('nine-fingers-favour', "Nine-Fingers' Favour", {
+    giver: 'rilsa-rael', type: 'fetch', minLevel: 12, tier: 'standard',
+    chain: 'the-lower-city', map: 'bg-bloomridge', faction: 'zhentarim',
+    desc: 'Rilsa Rael was born in the Outer City and has never once pretended otherwise. The Guild wants a patriar\'s private ledger out of the Counting House in Bloomridge — not copied, not burned, taken — and it wants the job done without a single lock broken, because a broken lock is an incident and an incident is Flaming Fist on the streets for a tenday. She is offering it to you because she has watched you work. That is the entire compliment; there will not be another.',
+    summary: 'Lift a patriar ledger out of the Counting House without breaking a lock.',
+    steps: [
+      talk('rilsa-rael', 'Take the job in the back room of the Blushing Mermaid', 'blushing-mermaid'),
+      reach('counting-house', 'Get inside the Counting House and onto the assay floor'),
+      collect('book', 1, 'Lift the ledger off the assay desk', 'counting-house'),
+      { ...kill('veteran', 4, 'If the Fist guard turns, put them down quietly', 'counting-house'), optional: true },
+      deliver('rilsa-rael', 'Hand the ledger over and take nothing else out of the building', 'bg-heapside'),
+    ],
+    items: ['thieves-tools', 'dust-of-disappearance', 'dagger-plus1'],
+    rep: { zhentarim: 7, 'lords-alliance': -4, harpers: -2 },
+    sets: ['bg-guild-known'],
+  }),
+
+  Q('the-mermaid-debt', "The Mermaid's Debt", {
+    giver: 'kethra-buckman', type: 'clear', minLevel: 12, tier: 'standard',
+    chain: 'the-lower-city', map: 'bg-heapside',
+    desc: "Three of the Blushing Mermaid's regulars went down the Undercellar stair in the same tenday and none of them came back up it. Kethra Buckman has run that house long enough that nothing surprises her, and she is careful to tell you she is not surprised now. She is also carrying three unpaid slates she has no intention of writing off, which is how she prefers to explain caring about people.",
+    summary: "Find out what happened to three of the Mermaid's regulars in the Undercellar.",
+    steps: [
+      talk('kethra-buckman', 'Get the three names off the slate behind the bar', 'blushing-mermaid'),
+      reach('the-undercellar', 'Take the Heapside stair down into the Undercellar'),
+      kill('wererat', 6, 'Clear the wererat nest working the back cells', 'the-undercellar'),
+      kill('doppelganger', 1, 'Kill the one that has been drinking at the Mermaid wearing a dead man', 'the-undercellar'),
+      talk('kethra-buckman', 'Tell Kethra, and let her decide what the house owes', 'blushing-mermaid'),
+    ],
+    items: [{ id: 'potion-greater-healing', qty: 2 }, 'shortsword-plus1', 'gem-pearl'],
+    rep: { zhentarim: 2 },
+  }),
+
+  Q('umberlees-tithe', "Umberlee's Tithe", {
+    giver: 'vonda-pisacar', type: 'kill', minLevel: 12, tier: 'standard',
+    chain: 'the-lower-city', map: 'bg-gray-harbour',
+    desc: "A carrack came into Gray Harbour on a dead calm with her sails furled and her crew at their stations, and every one of them had been drowned for a tenday. The Mother of Storms is neither surprised nor sympathetic: the master crossed the Bitch Queen's water without paying for it, and she has come up the anchor chain to collect the difference in person. Vonda Pisacar will name the tithe. You are not going to enjoy hearing it.",
+    summary: "Pay Umberlee's tithe on a ship that should never have made harbour.",
+    steps: [
+      talk('vonda-pisacar', "Hear the Bitch Queen's price at the Water Queen's House", 'water-queens-house'),
+      kill('chuul', 3, 'Clear what came up the anchor chain with her', 'bg-gray-harbour'),
+      kill('water-elemental', 1, 'Break the standing water that has not left the quay since dawn', 'bg-gray-harbour'),
+      collect('gem-black-pearl', 1, 'Take the black pearl the Queen named as her share', 'bg-gray-harbour'),
+      deliver('vonda-pisacar', 'Put the pearl into the tide-bowl with your own hand', 'water-queens-house'),
+    ],
+    items: ['cloak-of-the-manta-ray', 'potion-water-breathing', 'potion-superior-healing'],
+    rep: { 'lords-alliance': 2 },
+  }),
+
+  Q('the-gond-commission', 'The Gond Commission', {
+    giver: 'fonkin-timbers', type: 'fetch', minLevel: 12, tier: 'major',
+    chain: 'the-lower-city', map: 'dragonspear-castle',
+    desc: 'High Artificer Fonkin Timbers needs a driftglobe of one particular pattern out of one particular room in Dragonspear Castle, and describes the errand as a morning\'s walk with a lantern. Dragonspear is a ruined fortress standing over a hellgate that the armies of the Coast have had to close twice. He knows this. He is hoping very hard that you will not ask him a fourth question about it.',
+    summary: "Fetch the Gondsman's driftglobe out of Dragonspear Castle, which is worse than he said.",
+    steps: [
+      talk('fonkin-timbers', 'Take the commission at the High House of Wonders', 'high-house-of-wonders'),
+      reach('dragonspear-castle', 'Get down into the fortress standing over the hellgate'),
+      kill('bearded-devil', 6, 'Cut through what has come up through the floor since the last siege', 'dragonspear-castle'),
+      kill('barbed-devil', 2, 'Break the two holding the old Gondsman workshop', 'dragonspear-castle'),
+      collect('driftglobe', 1, 'Recover the driftglobe from the workshop bench', 'dragonspear-castle'),
+      deliver('fonkin-timbers', 'Bring it back to Heapside and watch him not apologise', 'high-house-of-wonders'),
+    ],
+    items: ['alchemy-jug', 'potion-superior-healing', 'gem-ruby'],
+    rep: { 'lords-alliance': 3, gauntlet: 4 },
+  }),
+
+  Q('the-tumbledown-count', 'The Tumbledown Count', {
+    giver: 'kosef-shemov', type: 'clear', minLevel: 11, tier: 'small',
+    chain: 'the-lower-city', map: 'bg-tumbledown',
+    desc: "Gravewarden Kosef Shemov keeps Kelemvor's books for the whole Tumbledown ground, and his books say he has buried three more people than he has graves for. He has walked the rows twice and counted the same three times. He would like somebody who is not a Kelemvorite priest — and therefore not obliged to be gentle about any of it — to go down the crypt stair and find out where the difference went.",
+    summary: 'Reconcile the Tumbledown burial ledger with what is actually in the crypts.',
+    steps: [
+      talk('kosef-shemov', 'Read the ledger with the gravewarden at the crypt door', 'bg-tumbledown'),
+      reach('tumbledown-crypts', 'Go down the stair into the Tumbledown crypts'),
+      kill('ghoul', 8, 'Clear the ghouls out of the lower rows', 'tumbledown-crypts'),
+      kill('ghast', 3, 'Destroy the three that were doing the counting', 'tumbledown-crypts'),
+      collect('gem-onyx', 3, 'Recover the grave-tokens the body-snatchers prised loose', 'tumbledown-crypts'),
+      deliver('kosef-shemov', 'Give the tokens back and let him close the book', 'bg-tumbledown'),
+    ],
+    items: [{ id: 'holy-water', qty: 3 }, 'potion-greater-healing', 'shovel'],
+    rep: { gauntlet: 4 },
+  }),
+
+  // --- the road's own ------------------------------------------------------
+
+  Q('morninglow-dawn', 'The Dawn at Morninglow', {
+    giver: 'lucian-dlusker', type: 'kill', minLevel: 9, tier: 'standard',
+    chain: 'the-coast-way', map: 'daggerford', faction: 'gauntlet',
+    desc: 'Morninglow Tower has kept a flame burning for Amaunator since before Daggerford had a wall, and Keeper Lucian Dlusker has relit it eleven times in nine nights. Nothing snuffs it. It simply goes thin, and grey, and dies — and every time it does, the shadows on the tower stair are a little longer than the light left in the room can account for.',
+    summary: 'Find out what is putting out the flame in Morninglow Tower.',
+    steps: [
+      talk('lucian-dlusker', 'Stand the dawn watch with the Keeper', 'morninglow-tower'),
+      kill('shadow', 8, 'Burn the shadows off the tower stair', 'daggerford'),
+      kill('wight', 1, 'Destroy the thing casting them, down in the undercroft', 'daggerford'),
+      talk('lucian-dlusker', 'See the flame lit, and see it stay lit', 'morninglow-tower'),
+    ],
+    items: [{ id: 'holy-water', qty: 3 }, 'lightbringer'],
+    rep: { gauntlet: 5 },
+  }),
+
+  Q('yellowknifes-tower', "Yellowknife's Tower", {
+    giver: 'delfen-ondabarl', type: 'fetch', minLevel: 10, tier: 'standard',
+    chain: 'the-coast-way', map: 'daggerford',
+    desc: 'Delfen Ondabarl was an old man in Daggerford twenty years ago and is not one now. He rode up the Trade Way to a tower he had warded himself as a young mage, went inside, and came out four days later with black hair and no memory at all of the middle two days. He is not frightened by this, which frightens everybody else. He would like his own spellbook back, and he would very much like to know who wrote the second half of it.',
+    summary: "Go back into Delfen Ondabarl's tower and recover the spellbook he left there.",
+    steps: [
+      talk('delfen-ondabarl', 'Get the road and the wards out of the wizard first', 'daggerford'),
+      reach('trade-way-north', 'Ride north to the tower off the Trade Way'),
+      kill('helmed-horror', 3, 'Break the guardians the tower set on its own doors', 'trade-way-north'),
+      collect('spellbook', 1, "Recover the spellbook written in Delfen's hand and dated forty years on", 'trade-way-north'),
+      deliver('delfen-ondabarl', 'Put the book in front of him and let him read the last page', 'daggerford'),
+    ],
+    items: ['scroll-4', 'pearl-of-power', 'potion-greater-healing'],
+    rep: { harpers: 3 },
+    sets: ['delfen-recruitable'],
+  }),
+
+  Q('the-friendly-arm-cellar', 'What Sleeps Under the Friendly Arm', {
+    giver: 'bentley-mirrorshade', type: 'clear', minLevel: 12, tier: 'major',
+    chain: 'the-coast-way', map: 'friendly-arm-inn', faction: 'gauntlet',
+    desc: 'The keep the Friendly Arm is built into belonged to a priest of Bhaal, and the Mirrorshades cleared it with a dozen friends and a great deal of luck before either of them was fifty. Bentley opened four floors and stopped. He has told the story for thirty years and left the fifth floor out of it every single time. Something down there has started keeping the taproom awake, and Gellana has told him to finish the job or stop telling the story.',
+    summary: 'Open the floor Bentley Mirrorshade never opened under the Friendly Arm.',
+    steps: [
+      talk('bentley-mirrorshade', 'Get the truth about the fifth floor out of the innkeeper', 'friendly-arm-common'),
+      kill('ghast', 8, 'Clear the cells the priest kept his congregation in', 'friendly-arm-inn'),
+      kill('wight', 3, 'Destroy the three that still wear his vestments', 'friendly-arm-inn'),
+      kill('revenant', 1, 'Face what is left of the priest of Bhaal himself', 'friendly-arm-inn'),
+      talk('bentley-mirrorshade', 'Tell Bentley the story has an ending now', 'friendly-arm-common'),
+    ],
+    items: ['potion-superior-healing', 'gem-ruby', 'mace-of-disruption'],
+    rep: { gauntlet: 7, harpers: 2 },
+    sets: ['friendly-arm-cellar-closed'],
+  }),
+
+  Q('song-of-the-morning-relic', 'The Relic of the Morning', {
+    giver: 'kelddath-ormlyr', type: 'fetch', minLevel: 12, tier: 'major',
+    chain: 'the-coast-way', map: 'rosymorn-monastery', faction: 'gauntlet',
+    desc: "The Song of the Morning at Beregost is the greatest house of Lathander south of Waterdeep, and its dawn reliquary went north three tendays ago in a locked cart with four guards, bound for the old monastery at Rosymorn to be shown to a chapter that no longer exists. Rosymorn has been empty of Lathander's people for years. It is not empty now. High Priest Kelddath Ormlyr wants the relic back, and he is careful not to ask about the guards.",
+    summary: "Recover Lathander's reliquary from Rosymorn Monastery.",
+    steps: [
+      talk('kelddath-ormlyr', 'Take the charge at the Song of the Morning', 'song-of-the-morning'),
+      reach('rosymorn-monastery', 'Climb the cliff road to the monastery gate'),
+      kill('veteran', 6, 'Break the raiders camped in the cloister', 'rosymorn-monastery'),
+      kill('oni', 1, 'Kill the thing that leads them and does all the talking', 'rosymorn-cloister'),
+      collect('reliquary', 1, 'Take the reliquary off the dawn altar', 'rosymorn-cloister'),
+      deliver('kelddath-ormlyr', 'Carry it back down the Coast Way to Beregost', 'song-of-the-morning'),
+    ],
+    items: ['periapt-of-wound-closure', 'potion-superior-healing', { id: 'holy-water', qty: 3 }],
+    rep: { gauntlet: 8, 'lords-alliance': 2 },
+    sets: ['rosymorn-relic-recovered'],
+  }),
+
+  Q('thalantyrs-bargain', "Thalantyr's Bargain", {
+    giver: 'thalantyr', type: 'fetch', minLevel: 12, tier: 'standard',
+    chain: 'the-coast-way', map: 'high-hedge',
+    desc: 'Thalantyr keeps a walled house east of Beregost with skeletons standing in the garden and a conjuration circle cut into the floor, and he is perfectly civil about both. He needs four things: onyx taken out of a grave, two measures of diamond dust ground fine, one piece of jade with no flaw in it, and two trolls dead within a day of the delivery. He will not say what for. He will, if all four arrive together, open the back of the shop.',
+    summary: 'Bring Thalantyr of High Hedge the four reagents he will not explain.',
+    steps: [
+      talk('thalantyr', 'Take the list at the High Hedge gate', 'high-hedge'),
+      collect('gem-onyx', 2, 'Cut onyx out of a grave, and do not clean it', 'bg-tumbledown'),
+      collect('diamond-dust', 2, 'Buy or grind two measures of diamond dust', 'beregost'),
+      collect('gem-jade', 1, 'Find one piece of jade with no flaw anywhere in it', 'coast-way-south'),
+      kill('troll', 2, 'Kill two trolls within a day of the delivery', 'coast-way-south'),
+      deliver('thalantyr', "Lay all four on the conjurer's table together", 'high-hedge'),
+    ],
+    items: ['wand-of-magic-missiles', 'scroll-5', 'potion-superior-healing'],
+    rep: { harpers: 2 },
+    sets: ['high-hedge-back-room'],
+  }),
+
+  Q('the-price-of-a-book', 'The Price of a Book', {
+    giver: 'sariel-amakiir', type: 'fetch', minLevel: 13, tier: 'chain',
+    chain: 'the-coast-way', map: 'candlekeep-approach',
+    desc: 'The Avowed of Candlekeep take one price at the gate and only one: a written work the library does not already hold. Great Reader Sariel Amakiir has a suggestion, offered with the particular courtesy of somebody who knows exactly how hard it is going to be. The Amnish diggers at Nashkel stopped work over something they cut out of the rock and would not carry up. It is written. It is not a book.',
+    summary: 'Buy your way through the Candlekeep gate with something written that nobody owns.',
+    steps: [
+      talk('sariel-amakiir', 'Hear the gate price at the Candlekeep gatehouse', 'candlekeep-gatehouse'),
+      reach('nashkel', 'Take the Coast Way south to the Amnish mining town'),
+      reach('nashkel-mines', 'Go down into the Nashkel iron workings'),
+      kill('umber-hulk', 2, 'Break through what the diggers stopped digging toward', 'nashkel-mines'),
+      kill('wraith', 3, 'Clear the flooded gallery beyond it', 'nashkel-mines'),
+      collect('map', 1, 'Take the graven survey the diggers would not carry up', 'nashkel-mines'),
+      deliver('sariel-amakiir', 'Present it at the gate and watch Candlekeep open', 'candlekeep-gatehouse'),
+    ],
+    items: ['scroll-6', 'book', 'gem-diamond', 'headband-of-intellect'],
+    rep: { harpers: 6, 'lords-alliance': 2 },
+    sets: ['candlekeep-gate-open'],
+  }),
+];
+
 // ---------------------------------------------------------------------------
-// 3e — THE CATALOGUE
+// 3f — THE CATALOGUE
 // ---------------------------------------------------------------------------
 
-const ALL_QUESTS = [].concat(MAIN_CHAIN, PHANDALIN_QUESTS, TOWNSFOLK_QUESTS, ROAD_QUESTS);
+const ALL_QUESTS = [].concat(MAIN_CHAIN, PHANDALIN_QUESTS, TOWNSFOLK_QUESTS, ROAD_QUESTS, SOUTH_QUESTS);
 
 /** Every hand-written quest in the game, keyed by id. */
 export const QUESTS = deepFreeze(Object.fromEntries(ALL_QUESTS.map((q) => [q.id, q])));
@@ -1253,6 +1633,42 @@ export const QUEST_CHAINS = deepFreeze({
     items: ['holy-water'],
     rep: { gauntlet: 6 },
   }),
+
+  'the-gate-and-the-guild': chain('the-gate-and-the-guild', 'The Gate and the Guild', {
+    tier: 'Levels 8–13', rewardLevel: 13, tier2: 'capstone', faction: 'lords-alliance',
+    desc: "Mirt cannot get his own money out of Baldur's Gate, which is a small problem that turns out to be attached to a very large one. The road runs south from Waterdeep through Daggerford and the Way Inn, across the barrows of the Fields of the Dead, and stops dead at the Black Dragon Gate, where a Flaming Fist sergeant wants a writ you do not have. Beyond it: a broadsheet printing lies, a duchess being blackmailed with a four-year-old murder, and a chair on the Council of Four that somebody has paid the Guild to fill.",
+    quests: [
+      'the-long-road-south', 'the-duchess-toll', 'the-way-inn-vigil', 'the-fields-remember',
+      'the-writ-of-entry', 'what-the-mouth-prints', 'the-ducal-summons', 'the-fourth-chair',
+    ],
+    completionFlag: 'bg-fourth-chair-settled',
+    items: ['gem-diamond', 'potion-supreme-healing'],
+    rep: { 'lords-alliance': 10, harpers: 6, zhentarim: -6 },
+  }),
+
+  'the-lower-city': chain('the-lower-city', 'The Lower City', {
+    tier: 'Levels 11–12', rewardLevel: 12, tier2: 'major',
+    desc: "What Baldur's Gate asks of you once you are inside its walls, and none of it goes through the Council. A tavern ghost who has stopped singing, a ledger the Guild wants lifted without breaking a lock, three missing regulars from the Blushing Mermaid, a tithe Umberlee has come ashore to collect in person, an errand to Dragonspear that is described as a morning's walk, and a burial ledger three names longer than the ground it accounts for.",
+    quests: [
+      'the-tumbledown-count', 'the-elfsong-silent', 'nine-fingers-favour', 'the-mermaid-debt',
+      'umberlees-tithe', 'the-gond-commission',
+    ],
+    completionFlag: 'lower-city-known',
+    items: ['potion-superior-healing', 'gem-black-pearl'],
+    rep: { harpers: 4, zhentarim: 4 },
+  }),
+
+  'the-coast-way': chain('the-coast-way', 'The Coast Way', {
+    tier: 'Levels 9–13', rewardLevel: 13, tier2: 'major', faction: 'gauntlet',
+    desc: 'The road itself, and the people who live beside it: a flame in Daggerford that will not stay lit, a wizard who came home twenty years younger, a floor under the Friendly Arm that Bentley Mirrorshade never opened, a Lathanderite relic carried north to Rosymorn and not carried back, a conjurer at High Hedge with a shopping list and no explanation, and the one price the Avowed of Candlekeep will take at their gate.',
+    quests: [
+      'morninglow-dawn', 'yellowknifes-tower', 'the-friendly-arm-cellar',
+      'song-of-the-morning-relic', 'thalantyrs-bargain', 'the-price-of-a-book',
+    ],
+    completionFlag: 'candlekeep-gate-open',
+    items: ['gem-emerald', 'potion-superior-healing'],
+    rep: { gauntlet: 8, harpers: 5 },
+  }),
 });
 
 export const QUEST_CHAIN_IDS = Object.freeze(Object.keys(QUEST_CHAINS));
@@ -1296,6 +1712,27 @@ export const QUEST_LOCATIONS = deepFreeze([
   loc('undermountain', 'Undermountain', 'beneath Waterdeep', 'dungeon', 8, 30, 'undermountain'),
   loc('the-underdark', 'the Underdark', 'in the Underdark', 'underdark', 11, 30, 'underdark'),
   loc('crypts-of-phandalin', 'the old crypts', 'in the crypts below the ruins', 'crypt', 3, 14, 'phandalin-manor'),
+
+  // --- the road south and Baldur's Gate (SOUTHERN CHARTER §5.4) ------------
+  // Once these exist, every faction board can post work in the south without a
+  // single new template: the Alliance already reads 'road', 'plains' and 'city',
+  // the Gauntlet reads 'ruins', 'crypt' and 'dungeon', and the Enclave 'plains'.
+  loc('trade-way', 'the Trade Way', 'on the Trade Way', 'road', 7, 16, 'trade-way-north'),
+  loc('daggerford', 'Daggerford', 'outside Daggerford', 'plains', 7, 14, 'daggerford'),
+  loc('fields-of-the-dead', 'the Fields of the Dead', 'in the Fields of the Dead', 'plains', 9, 20, 'fields-of-the-dead'),
+  loc('dragonspear-castle', 'Dragonspear Castle', 'under Dragonspear Castle', 'dungeon', 11, 24, 'dragonspear-castle'),
+  loc('rosymorn-monastery', 'Rosymorn Monastery', 'in Rosymorn Monastery', 'ruins', 10, 20, 'rosymorn-monastery'),
+  loc('coast-way', 'the Coast Way', 'on the Coast Way', 'road', 9, 18, 'coast-way-south'),
+  loc('baldurs-gate', "Baldur's Gate", "in Baldur's Gate", 'city', 10, 30, 'bg-the-wide'),
+  loc('bg-outer-city', 'the Outer City', 'in the Outer City', 'city', 9, 20, 'bg-sows-foot'),
+  loc('bg-sewers', 'the Lower City sewers', 'in the sewers beneath the city', 'dungeon', 10, 22, 'bg-sewers'),
+  loc('tumbledown-crypts', 'the Tumbledown crypts', 'in the Tumbledown crypts', 'crypt', 10, 20, 'tumbledown-crypts'),
+  loc('nashkel-mines', 'the Nashkel Mines', 'in the Nashkel Mines', 'mine', 11, 20, 'nashkel-mines'),
+  loc('beregost', 'Beregost', 'around Beregost', 'plains', 10, 18, 'beregost'),
+  loc('chionthar', 'the Chionthar', 'along the Chionthar', 'coast', 9, 20, 'bg-wyrms-crossing'),
+  loc('ulgoths-beard', "Ulgoth's Beard", "off Ulgoth's Beard", 'coast', 8, 16, 'ulgoths-beard'),
+  loc('the-way-inn', 'the Dusk Road turning', 'at the Dusk Road turning', 'plains', 7, 14, 'the-way-inn'),
+  loc('candlekeep-coast', 'the Candlekeep crag', 'below the Candlekeep crag', 'coast', 11, 20, 'candlekeep-approach'),
 ]);
 
 // ===========================================================================
@@ -1397,6 +1834,16 @@ export const FACTION_CONTRACTS = deepFreeze({
         desc: 'The Harpers have a name and half a face to go with it, and both are {prep}. Bring back the rest, or bring back proof there is nothing left to bring.',
         crShift: 1, goldMult: 1.3, xpMult: 1.3, repMult: 1.5,
       }),
+      // --- the south. Jaheira has run the Baldur's Gate cell out of a back
+      // room at the Blushing Mermaid for longer than most of her Harpers have
+      // been alive, and she posts the same kind of work she always has.
+      tpl('harper-southern-cell', {
+        kind: 'recon', type: 'fetch', name: 'The Southern Cell', count: [2, 4],
+        titles: ['A Quiet Look {prep}', 'The Cell Asks: {place}'],
+        desc: 'The Baldurian cell wants somebody unremarkable to go {prep} and come back able to describe it. No banners, no bodies in the road, and no report written down anywhere it could be read by the wrong hands.',
+        biomes: ['city', 'road', 'coast', 'plains', 'ruins'],
+        goldMult: 0.85, xpMult: 1.05, repMult: 1.1,
+      }),
     ],
   }),
 
@@ -1445,6 +1892,16 @@ export const FACTION_CONTRACTS = deepFreeze({
         titles: ['Consecrate What Was Taken {prep}', 'Reclaim the Holy Things {prep}'],
         desc: 'Things were taken from a shrine and carried {prep} by hands that had no right to them. Bring them back so they can be consecrated again.',
         goldMult: 0.9, xpMult: 1, repMult: 1.1,
+      }),
+      // --- the south. The barrow country between the Trollbark and the
+      // Chionthar keeps giving the Order work it never asked for.
+      tpl('gauntlet-barrow-watch', {
+        kind: 'kill', type: 'kill', name: 'The Barrow Watch', count: [6, 9],
+        titles: ['The Barrow Watch: {foes} {prep}', 'Put Them Back {prep}'],
+        desc: 'Old ground {prep} has stopped keeping what was buried in it. The Order does not debate this with anybody. Put the {foes} back under their own stones, count them as you go, and say the number out loud when you are done.',
+        biomes: ['plains', 'crypt', 'ruins', 'road'],
+        types: ['undead', 'fiend', 'construct'],
+        crShift: 0.5, goldMult: 1.1, xpMult: 1.2, repMult: 1.3,
       }),
     ],
   }),
@@ -1496,6 +1953,16 @@ export const FACTION_CONTRACTS = deepFreeze({
         types: ['beast', 'monstrosity', 'dragon', 'giant', 'plant'],
         crShift: 1.5, goldMult: 1.3, xpMult: 1.4, repMult: 1.5,
       }),
+      // --- the south. The Chionthar bank and the ankheg country south of
+      // Rivington are Enclave ground whether the city admits it or not.
+      tpl('enclave-riverbank', {
+        kind: 'kill', type: 'kill', name: 'The River Answers', count: [5, 8],
+        titles: ['The River Answers {prep}', 'Off the Bank {prep}'],
+        desc: 'Water carries things a long way and drops them where the current slows. There are too many {foes} {prep} and the bank cannot carry them. Thin them out, and do not touch the nests.',
+        biomes: ['coast', 'marsh', 'plains', 'road'],
+        types: ['beast', 'monstrosity', 'plant', 'aberration', 'elemental'],
+        goldMult: 0.95, xpMult: 1.05,
+      }),
     ],
   }),
 
@@ -1545,6 +2012,31 @@ export const FACTION_CONTRACTS = deepFreeze({
         desc: 'Sealed orders for the Alliance post at {place}. Carry them, do not open them, and do not be the reason they arrive late.',
         goldMult: 1, xpMult: 0.9,
       }),
+      // --- the south. The Flaming Fist takes Alliance contracts and posts its
+      // own under the same seal, which is why Baldur's Gate needs no sixth
+      // faction id: Imzel Chergoba's board at the Seatower is this board.
+      tpl('fist-road-contract', {
+        kind: 'clear', type: 'clear', name: 'Fist Road Contract', count: [1, 1],
+        titles: ['Fist Contract: Open the Road {prep}', 'The Fist Posts: {place}'],
+        desc: 'Posted at the Seatower under the Fist seal and countersigned by the Alliance, which amounts to the same coin. The road {prep} is shut by force. The Flaming Fist would rather pay you than march a company out of the city and leave the walls thin.',
+        biomes: ['road', 'plains', 'coast', 'hills'],
+        crShift: 0.5, goldMult: 1.25, xpMult: 1.15, repMult: 1.2,
+      }),
+      tpl('fist-gate-bounty', {
+        kind: 'kill', type: 'kill', name: 'Gate Bounty', count: [5, 8],
+        titles: ['Fist Bounty: {band} {prep}', 'Nailed to the Gate: {foes} {prep}'],
+        desc: 'Nailed up at the Black Dragon Gate and the Basilisk Gate both: {band} {prep}, paid by the head at the muster post, no argument about method and none about the count either.',
+        biomes: ['city', 'road', 'plains'],
+        types: ['humanoid', 'monstrosity', 'undead', 'beast'],
+        goldMult: 1.2, xpMult: 1,
+      }),
+      tpl('fist-under-the-city', {
+        kind: 'clear', type: 'clear', name: 'Under the City', count: [1, 1],
+        titles: ['Under the City: {place}', 'What Came Up the Drains {prep}'],
+        desc: 'Something has come up out of the ground {prep} and the Fist does not send companies below street level — it sends contracts. Go down, deal with it, and come back able to say the drain is clear.',
+        biomes: ['dungeon', 'crypt', 'cave', 'mine'],
+        crShift: 0.5, goldMult: 1.3, xpMult: 1.2, repMult: 1.1,
+      }),
     ],
   }),
 
@@ -1592,6 +2084,31 @@ export const FACTION_CONTRACTS = deepFreeze({
         titles: ['Silence the {foe} {prep}', 'A Loose Tongue {prep}'],
         desc: 'Somebody {prep} has been talking about the Network to people who write things down. Halia Thornton is very sorry about it. She is also very clear.',
         crShift: 1, goldMult: 1.5, xpMult: 1.1, repMult: 1.4,
+      }),
+      // --- the south. The Guild is not the Black Network, but it trades with
+      // it, buys from it and posts on the same board, which is how Rilsa Rael's
+      // work in Baldur's Gate reaches a party that has never been to Phandalin.
+      tpl('guild-outer-city', {
+        kind: 'kill', type: 'kill', name: 'The Guild Collects', count: [4, 7],
+        titles: ['The Guild Collects {prep}', 'A Quiet Word {prep}'],
+        desc: 'The Guild keeps the Outer City because nobody else will, and it charges for the service. Certain parties {prep} have stopped paying and started explaining why. Go and be the reason the explaining stops.',
+        biomes: ['city', 'road', 'ruins'],
+        types: ['humanoid', 'monstrosity', 'undead'],
+        goldMult: 1.3, xpMult: 0.95, repMult: 1.1,
+      }),
+      tpl('guild-quiet-removal', {
+        kind: 'boss', type: 'boss', name: 'Quiet Removal', count: [1, 1],
+        titles: ['A Quiet Removal {prep}', 'Nine-Fingers Would Prefer: {foe}'],
+        desc: 'There is one name {prep} and the Guild would prefer it were not a name any more. No fire, no bodies in the street, no incident — an incident is Flaming Fist on the streets for a tenday and everybody loses money.',
+        biomes: ['city', 'dungeon', 'crypt', 'ruins'],
+        crShift: 1, goldMult: 1.55, xpMult: 1.1, repMult: 1.5,
+      }),
+      tpl('guild-river-run', {
+        kind: 'recon', type: 'deliver', name: 'The River Run', count: [2, 4],
+        titles: ['The River Run: {place}', 'Nothing Declared {prep}'],
+        desc: 'A cargo goes {prep} without touching a toll book, a customs house or the Fist post on Wyrm\'s Rock. Take it, take the fee, and take a different road back than the one you took out.',
+        biomes: ['coast', 'road', 'marsh', 'city'],
+        goldMult: 1.45, xpMult: 0.85,
       }),
     ],
   }),

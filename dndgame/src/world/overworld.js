@@ -1893,7 +1893,9 @@ export class OverworldScene {
       return false;
     }
 
-    if (st) st.stats.battles = (st.stats.battles || 0) + 1;
+    // stats.battles is counted centrally in main.js on EV.COMBAT_START, so every
+    // route into a fight — here, a dialogue script, the rest screen, the cheat
+    // menu — is counted exactly once. Counting it again here would double it.
     for (const m of Party.all()) safe(() => fieldBuffsToRounds(m, st));
     const source = opts.source || null;
     const prevMusic = mapTrack(this.map, Game.state);
@@ -2174,14 +2176,10 @@ export class OverworldScene {
       if (seen.has(f.id)) continue;
       seen.add(f.id);
       const sp = safe(() => getSpell(f.id), null) || { name: f.id };
-      // Capture the index now. `out.length` inside the closure is read when the
-      // key is pressed, by which time the bar is full, so every slot pulsed the
-      // last one — or nothing at all.
-      const at = out.length;
       out.push({
         kind: 'spell', id: f.id, caster: f.m, name: sp.name || f.id, ready: true, role: f.role,
         tip: `${sp.name} — ${f.m.name}`,
-        fn: () => this._castFromHotbar(f.m, f.id, at),
+        fn: () => this._castFromHotbar(f.m, f.id, out.length),
       });
     }
 
@@ -2193,11 +2191,10 @@ export class OverworldScene {
     });
     if (potion && out.length < SLOT_COUNT) {
       const it = safe(() => resolveItem(potion.id), null) || {};
-      const at = out.length;
       out.push({
         kind: 'item', id: potion.id, name: it.name || potion.id, ready: true,
         count: potion.qty || 1, tip: `${it.name || potion.id} — heals the most hurt of you`,
-        fn: () => this._drinkFromHotbar(potion.id, at),
+        fn: () => this._drinkFromHotbar(potion.id, out.length),
       });
     }
 
@@ -2725,7 +2722,13 @@ export class OverworldScene {
       // Only claim the morning if this really was the room we just paid for.
       if (this.t - armedAt < 30) {
         const st = state();
-        if (st && (st.time < 360 || st.time > 660)) st.time = 420;
+        // Wake at 07:00, always by moving the clock FORWARD. Assigning
+        // st.time = 420 outright ran the day backwards (21:40 became 15:08 once
+        // the eight hours landed) and never rolled st.day, so "Days survived"
+        // and every day-gated event stood still through any number of nights.
+        if (st && (st.time < 360 || st.time > 660)) {
+          safe(() => advanceTime(st, (((420 - st.time) % 1440) + 1440) % 1440));
+        }
         this.banner = { text: 'Morning', sub: null, t: 0 };
         safe(() => Audio.music(mapTrack(this.map, Game.state)));
       }
@@ -2740,9 +2743,11 @@ export class OverworldScene {
         return true;
       }
       Game.transition('fade', () => {
+        // Same ordering rule as dialogue.js _heal: the clock moves before
+        // EV.REST goes out, so the morning is claimed from the right hour.
+        safe(() => advanceTime(state(), hours * 60));
         safe(() => Party.longRest());
         safe(() => Party.healAll());
-        safe(() => advanceTime(state(), hours * 60));
         safe(() => Audio.sfx('heal'));
         toast('Rested. The party is whole again.');
       }, { dur: 1.0 });

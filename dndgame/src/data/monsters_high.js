@@ -5356,6 +5356,61 @@ for (const g of [
     members: [['succubus', 0, 1], ['invisible-stalker', 0, 2], ['barbed-devil', 0, 2], ['helmed-horror', 0, 2]],
     boss: 'manshoon',
   }),
+
+  // --- the road south and Baldur's Gate (SOUTHERN CHARTER, levels 8–13) -----
+  // The Trade Way below the Delimbiyr, the Fields of the Dead, the Chionthar
+  // bank, and the city itself. Every creature already stands in the bestiary;
+  // these packs only teach the encounter roller what the south feels like.
+  group('coast-way-crews', 'The Coast Way Crews', {
+    desc: "Road-thieves with a professional's patience, working the milestones between Daggerford and the Gate: a captain who prices every wagon before he stops it, and two swords who used to wear Fist colours.",
+    biomes: ['road', 'plains', 'hills'], cr: 5, faction: 'bandits', minLevel: 7,
+    members: [['bandit-captain', 1, 2], ['veteran', 1, 2], ['thug', 2, 4], ['scout', 0, 2]],
+  }),
+  group('trollbark-foragers', 'Trollbark Foragers', {
+    desc: "Trolls down off the Trollbark edge with ogres carrying for them, eating their way along the softest stretch of the Trade Way.",
+    biomes: ['road', 'forest', 'plains', 'hills'], cr: 6, faction: 'giant', minLevel: 8,
+    members: [['troll', 1, 2], ['ogre', 1, 3]],
+  }),
+  group('fields-barrow-host', 'The Barrow Host', {
+    desc: "The Fields of the Dead giving back what every army left in them: wights walking in rank order, and a wraith where the standard-bearer stood.",
+    biomes: ['plains', 'road', 'crypt', 'ruins'], cr: 7, faction: 'undead', minLevel: 9,
+    members: [['wight', 1, 3], ['skeleton', 2, 5], ['specter', 1, 2], ['wraith', 0, 1]],
+  }),
+  group('chionthar-bank-hunters', 'Off the Chionthar Bank', {
+    desc: "The river carries things a long way and drops them where the current slows: chuuls in the shallows below the towpath, and standing water on the quay that was not there this morning.",
+    biomes: ['coast', 'marsh', 'plains'], cr: 6, faction: null, minLevel: 8,
+    members: [['chuul', 1, 2], ['water-weird', 0, 2], ['giant-crab', 0, 3], ['swarm-of-quippers', 0, 2]],
+  }),
+  group('outer-city-knives', 'Knives in the Outer City', {
+    desc: "The unwalled city after the lamps go out: a Guild crew that has stopped pretending to be porters, and one face on the roofline that was buried in Tumbledown last winter.",
+    biomes: ['city', 'road'], cr: 6, faction: 'zhentarim', minLevel: 9,
+    members: [['thug', 2, 5], ['spy', 1, 2], ['veteran', 0, 2], ['doppelganger', 0, 1]],
+  }),
+  group('bg-sewer-seep', 'Under the Lower City', {
+    desc: "What the drains under Baldur's Gate keep when nobody pays the ratcatcher: wererats with a ledger of their own, and an otyugh in the junction chamber that was old before the Fist was founded.",
+    biomes: ['dungeon', 'city', 'cave'], cr: 7, faction: null, minLevel: 10,
+    members: [['otyugh', 1, 2], ['wererat', 1, 3], ['swarm-of-rats', 1, 2], ['gray-ooze', 0, 2], ['ghast', 0, 1]],
+  }),
+  group('bhaalist-remnant', 'The Old Blood', {
+    desc: "Four years after the Absolute, the knives that never surrendered: fanatics of the Lord of Murder keeping a shrine nobody has found yet, and one congregant who did not stay dead.",
+    biomes: ['city', 'dungeon', 'crypt', 'ruins'], cr: 7, faction: null, minLevel: 10,
+    members: [['cult-fanatic', 1, 3], ['cultist', 2, 5], ['spy', 0, 2], ['revenant', 0, 1]],
+  }),
+  group('tumbledown-emptied-rows', 'The Emptied Rows', {
+    desc: "The lower galleries of the Tumbledown crypts, where the ghouls have been doing arithmetic the gravewarden's ledger cannot survive.",
+    biomes: ['crypt', 'dungeon'], cr: 5, faction: 'undead', minLevel: 9,
+    members: [['ghast', 2, 4], ['ghoul', 2, 5], ['wight', 0, 1]],
+  }),
+  group('rosymorn-cloister-raiders', 'The Cloister Raiders', {
+    desc: "The company squatting in Lathander's abandoned monastery: disciplined blades in the cloister, a construct on the dawn stair, and the thing that leads them doing all of the talking.",
+    biomes: ['mountain', 'ruins'], cr: 8, faction: null, minLevel: 10,
+    members: [['veteran', 2, 4], ['helmed-horror', 0, 2], ['oni', 0, 1]],
+  }),
+  group('nashkel-poisoned-seam', 'The Poisoned Seam', {
+    desc: "The gallery the Amnish diggers stopped digging toward: hulks in the rock with the ore gone wrong around them, and the flooded dark beyond full of what the mine buried.",
+    biomes: ['mine', 'cave'], cr: 8, faction: null, minLevel: 11,
+    members: [['umber-hulk', 1, 2], ['gray-ooze', 1, 2], ['wraith', 0, 2]],
+  }),
 ]) GROUPS[g.id] = g;
 
 // ---------------------------------------------------------------------------

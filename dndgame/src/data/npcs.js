@@ -3,8 +3,9 @@
 // the sellswords drinking at the Stonehill Inn and the Sleeping Giant who can be
 // hired into the party.
 //
-// PURE DATA. Nothing is imported. Nothing here mutates. The catalogues are deep
-// frozen; world/entity.js and ui/dialogue.js read them and clone what they need.
+// PURE DATA. Nothing here mutates, and the only import is the southern half of
+// this same catalogue (see below). The catalogues are deep frozen;
+// world/entity.js and ui/dialogue.js read them and clone what they need.
 //
 // Field contract (SPEC.md §3):
 //   NPCS[id] = { id, name, role, sprite, colorway, map, x, y, dir, wander,
@@ -20,6 +21,13 @@
 //
 // Setting note: every name here is either published Forgotten Realms canon or is
 // built from the ethnic naming tables in docs/SETTING.md §5. Nothing is coined.
+//
+// The southern half of the game — the Trade Way, the Coast Way and the three
+// cities that share the name Baldur's Gate — lives in `npcs_south.js` and is
+// concatenated in below (§3, §4). The split is the same one `monsters.js` and
+// `items.js` already use; the shape is identical either side of it.
+
+import { SOUTH_CAST, SOUTH_RECRUITS } from './npcs_south.js';
 
 // ---------------------------------------------------------------------------
 // deepFreeze — recursive Object.freeze for the exported catalogues (HARD RULE 8).
@@ -664,7 +672,7 @@ const CAST = [
     role: 'questgiver', species: 'human', sprite: 'npc-noble', voice: 'wheezing',
     colorway: cw('#e0a878', '#8a8a90', '#4a3a2a', '#6a5a3a', '#4a2a2a', '#c8b06a', '#54381f', '#a89878', '#c8b06a'),
     map: 'waterdeep', x: 15, y: 20, dir: 'right', wander: 0,
-    dialogue: 'mirt', faction: 'harpers', quests: ['mirts-loan'],
+    dialogue: 'mirt', faction: 'harpers', quests: ['mirts-loan', 'the-long-road-south'],
   }),
 
   npc('zasheir-rein', 'Zasheir Rein', {
@@ -690,8 +698,9 @@ const CAST = [
 // 3. THE CATALOGUE
 // ===========================================================================
 
-/** Every placed NPC in the game, keyed by id. */
-export const NPCS = deepFreeze(Object.fromEntries(CAST.map((n) => [n.id, n])));
+/** Every placed NPC in the game, keyed by id — the North, then the south. */
+const ALL = CAST.concat(SOUTH_CAST);
+export const NPCS = deepFreeze(Object.fromEntries(ALL.map((n) => [n.id, n])));
 export const NPC_IDS = Object.freeze(Object.keys(NPCS));
 
 // ===========================================================================
@@ -1152,6 +1161,9 @@ export const RECRUITS = deepFreeze([
     appearance: look({ body: 'm', build: 'slim', skin: '#8a7a8a', hair: '#2a2a3a', hairStyle: 'long', eye: '#c0c6d0', outfit: '#3a3a4a', outfitAlt: '#2a2a30', accent: '#b07ae0', horns: 'straight', hornColor: '#2a2a3a', tail: 'thin', outfitStyle: 'outfit-robe', cloakStyle: 'cloak-hooded' }),
     joinDialogue: 'recruit-leucis',
   }),
+
+  // --- the southern bench: Baldur's Gate and the roads to it ---------------
+  ...SOUTH_RECRUITS,
 ]);
 
 // ===========================================================================

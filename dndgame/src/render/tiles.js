@@ -95,8 +95,50 @@ export const PAL = {
   cave: '#564d44', caveD: '#39322b', caveL: '#766b5e', caveH: '#908576',
   caveM: '#63594e', caveS: '#4d453d', caveWD: '#2c2721', caveW: '#453d34', caveWL: '#615749',
   dgn: '#4a4753', dgnD: '#302e39', dgnL: '#63606e', dgnH: '#7d7a89',
-  dgnM: '#565361', dgnWD: '#25242c', dgnW: '#3a3844',
+  dgnM: '#565361', dgnWD: '#25242c', dgnW: '#333140',
   gravel: '#7a736a',
+
+  // VERTICAL SURFACES (2026-08c). Rule (b) — "WITHIN a family, COMPRESS" — was
+  // waived for walls when the ground was graded, on the theory that a wall is a
+  // prop and wants the wide ramp. Measured, that waiver was the whole defect:
+  // CLIFF and STONE_WALL spent the ENTIRE 50.8 L* `stone` ramp (stoneH 66.7 ->
+  // stoneXD 15.9) inside a single 16px tile, so every tile carried a white top
+  // row and a black bottom band and a field of them read as grey plaques in a
+  // lattice. Grid-visibility ratio 8.84 / 5.85 against the ground's 0.15-0.65.
+  //
+  // Walls now take the same medicine the ground did:
+  //   - the FACE of a masonry wall is drawn from stoneL / stoneM / stone /
+  //     stoneG / stoneD only — a 24.3 L* band, no stoneH, no stoneXD;
+  //   - stoneH and stoneXD are reserved for the crown and the foot of a MASS
+  //     (WALL_TOP_*, CLIFF_N/_S, CAVE_WALL_N/_S), never for a body tile;
+  //   - every family that had two tones between its base and its dark got the
+  //     missing mid so a mark can be 4-6 L* off the base instead of 15-25.
+  //
+  // ROCK is a new ramp, not an alias of `stone`. A natural rock face and a
+  // dressed masonry wall measured dE76 1.37 apart — the same material to the
+  // eye — and a BOULDER against a cliff measured 2.42. Greywacke is WARM
+  // (b* 4.4-8.2) against `stone`'s neutral b* 2.5-4.7, so a cliff, a wall and a
+  // granite erratic are now three materials at three temperatures.
+  rockH: '#8d8774', rockL: '#7d7665', rock: '#6e6759', rockM: '#615a4c',
+  rockG: '#534d40', rockD: '#433d33', rockXD: '#302c24',
+  // `stoneB` is the missing step between stoneG (38.3) and stoneD (32.4). The
+  // masonry FACE is built on it so a wall's mean L* lands near 37 against
+  // STONE_FLOOR / FLAGSTONE at 45.1 and COBBLE at 43.8 — the wall you cannot
+  // walk through and the paving in front of it measured dE76 3.04 and 3.84
+  // apart, both under the JND for two large adjacent patches.
+  stoneB: '#565349',
+  // Cave rock: `caveW`/`caveWD`/`caveWL` had no mid, so a blob was a 12 L* jump.
+  caveWM: '#3b342c', caveWG: '#514839',
+  // Dungeon masonry: `dgnW` dropped to #333140 so the wall clears DUNGEON_FLOOR
+  // by more than the 4.25 dE76 it measured, and gained two mids.
+  dgnWM: '#3d3b4b', dgnWG: '#2c2b36',
+  // Fired brick and lime plaster mids + the occlusion tones that were inlined
+  // as string literals at the two call sites.
+  brickM: '#7a4535', brickG: '#583024', brickXD: '#42221a',
+  plasterM: '#c4b795', plasterG: '#a1946f',
+  // Roof mids, so an eave can be one step instead of the family's whole range.
+  thatchG: '#7e6432', shingleM: '#6a3f33', shingleG: '#4c2d24',
+  tileRoofM: '#8f4f32', tileRoofG: '#6b3823',
 
   // ROCK against GRAVEL measured dE76 4.18 at 1.14:1 — a grey lump on grey
   // chippings, separated by neither value nor hue. Both ends move, and neither
@@ -383,6 +425,15 @@ function seam(c, x, y, salt, tones, n = 8, run = 4, span = 4) {
 const SEAM = {
   grass: 11, dirt: 12, path: 13, cave: 14, sand: 15, mud: 16, snow: 17,
   snowGrass: 18, tall: 19, gravel: 20, rut: 21, cobble: 23, bank: 24, water: 25,
+  // 26+ are the vertical surfaces. Ground families own 11-25; never reuse one.
+  // 26+ are the vertical surfaces. MOUNTAIN and PALISADE are absent on purpose:
+  // both are silhouettes with 40+ transparent pixels, and a ring mark landing
+  // above the skyline is a rock floating in mid-air. They agree with their
+  // neighbours through `edgeVariantAt` on the SHAPE of the shared border
+  // instead, which is what a silhouette actually needs.
+  cliff: 26, caveWall: 27, masonry: 28, brick: 29, timber: 30, thatch: 31,
+  shingle: 32, tileRoof: 33, dgnWall: 34, plaster: 35, crown: 37,
+  crownLit: 38, crownShade: 39, ruin: 40, ridge: 42, cliffTop: 43,
 };
 
 /**
@@ -400,6 +451,21 @@ const SEAM_TONE = {
   snow: [PAL.snowD, PAL.snow, PAL.snow, PAL.snowD, PAL.snow, PAL.snow],
   tall: [PAL.tall, PAL.tallD, PAL.tall, PAL.tallL, PAL.tallD, PAL.tall],
   water: [PAL.waterD, PAL.water, PAL.water, PAL.water, PAL.waterL, PAL.water],
+
+  // The vertical surfaces. Same discipline as the ground: the ring is built
+  // from the family's OWN mid tones so it is indistinguishable from the middle
+  // of the tile, and the marks are patch-sized for the families that mottle in
+  // patches, thin for the families that only speckle.
+  cliff: [PAL.rock, PAL.rockM, PAL.rockG, PAL.rock, PAL.rockM, PAL.rockL],
+  caveWall: [PAL.caveW, PAL.caveW, PAL.caveWM, PAL.caveW, PAL.caveWG, PAL.caveW],
+  masonry: [PAL.stone, PAL.stoneM, PAL.stoneG, PAL.stone, PAL.stoneG, PAL.stone],
+  brick: [PAL.brick, PAL.brickM, PAL.brickG, PAL.brick, PAL.brickM, PAL.brick],
+  timber: [PAL.wood, PAL.woodD, PAL.wood, PAL.bark, PAL.woodD, PAL.wood],
+  thatch: [PAL.thatch, PAL.thatchM, PAL.thatchD, PAL.thatch, PAL.thatchM, PAL.thatch],
+  shingle: [PAL.shingle, PAL.shingleM, PAL.shingleD, PAL.shingle, PAL.shingleM, PAL.shingle],
+  tileRoof: [PAL.tileRoof, PAL.tileRoofM, PAL.tileRoofD, PAL.tileRoof, PAL.tileRoofM, PAL.tileRoof],
+  dgnWall: [PAL.dgnW, PAL.dgnWM, PAL.dgnWG, PAL.dgnW, PAL.dgnWM, PAL.dgnW],
+  plaster: [PAL.plaster, PAL.plasterM, PAL.plasterD, PAL.plaster, PAL.plasterM, PAL.plaster],
 };
 
 /**
@@ -1600,143 +1666,326 @@ function buildTiles() {
 
   // --- 4.8 walls -----------------------------------------------------------
   //
-  // LIGHT DIRECTION. Nothing in the tileset had one: `leftMinusRight` measured
-  // within ±1 Y for every wall, every roof and both rock props, and CLIFF was
-  // lit backwards. Every wall family below now commits to light from the UPPER
-  // LEFT — lit top cap, lit left column, shaded right column — and finishes
-  // with a 2px `*XD` occlusion band on rows 14-15 so the wall visibly SITS ON
-  // the floor instead of being printed on it.
+  // LIGHT DIRECTION was added in the 2026-08 pass and it was added AT THE WRONG
+  // SCALE. `wallShade()` painted the family's lightest tone down column 0, its
+  // darkest down column 15 and its occlusion tone across rows 14-15 — on EVERY
+  // tile. A cliff fourteen tiles tall therefore got fourteen lit crowns and
+  // fourteen shadowed feet, and a field of them measured:
+  //
+  //     CLIFF row-mean L* first row -> last row 67 ... 16, |r0-r15| = 50.8
+  //     STONE_WALL the same, 50.8; LOG_WALL 42.7; DUNGEON_WALL 42.3
+  //     grid-visibility ratio CLIFF 8.84  STONE_WALL 5.85  DUNGEON_WALL 6.11
+  //     ...against 0.15-0.65 for every ground family three pixels away.
+  //
+  // Measured in situ through the game's own draw path, the seams inside a wall
+  // mass were 12.6x the interior contrast on wave-echo and 8.8x in Phandalin,
+  // where the ground scored 0.57. The walls were the worst thing on screen.
+  //
+  // Counted across every hand-built map, both cities, Undermountain, the world
+  // map and all four generators: 2,919 of 4,520 wall tiles (64.6%) have another
+  // wall directly below them and still drew the foot band and the lit crown.
+  // On wave-echo-cave-entrance it was 399 of 429.
+  //
+  // THE RULE NOW. A body tile does not know where it sits in the mass, so it
+  // may not draw anything that belongs to the mass:
+  //
+  //   * no crown, no foot band, no side pinstripes on a BODY tile. The crown
+  //     and the foot belong to the tiles that DO know — WALL_TOP_LIT /
+  //     WALL_TOP_SHADE for masonry, CLIFF_N/_S/_W/_E and CAVE_WALL_N/_S/_W/_E
+  //     for rock. CAVE_WALL was already built this way ("height cues go on the
+  //     `lit` cases only") and it was the one wall in the file that passed, at
+  //     0.71. Every other family now follows it.
+  //   * the interior ramp is COMPRESSED — rule (b) of the palette pass, which
+  //     had been waived for walls. A masonry face is stoneL..stoneD, a 24.3 L*
+  //     band; `stoneH` and `stoneXD` are reserved for a mass edge.
+  //   * height inside the body tile comes from MODELLING AT THE MATERIAL'S OWN
+  //     SCALE — every course of masonry and every stratum of rock has a lit top
+  //     lip and a shaded bed, on a 4-5px period, and the lit tone steps down
+  //     from the top of the tile to the bottom. That yields topMinusBot ~ +5
+  //     with |row0 - row15| ~ 0, where the old code bought topMinusBot +38 at a
+  //     cost of |row0 - row15| = 50.8.
+  //   * anything that has to agree across a tile border is a pure function of
+  //     the border — `edgeVariantAt` for a head joint that lands on it, the
+  //     family-fixed `fr()`/`seam()` generator for the course that straddles
+  //     it. Never a neighbour lookup: a raster is cached by (id, variant).
 
-  /** Shared wall finish: upper-left light, lower-right shade, base occlusion. */
-  const wallShade = (c, x, y, light, dark, occl, capTop = 0) => {
-    V(c, light, x, y + capTop, 16 - capTop - 2);
-    V(c, dark, x + 15, y + capTop, 16 - capTop - 2);
-    R(c, occl, x, y + 14, 16, 2);
+  /**
+   * COURSED MASONRY THAT RUNS THROUGH THE TILE BORDER.
+   *
+   * The old coursing was, in three families verbatim:
+   *
+   *     const off = (row % 2) ? 3 : 0;
+   *     for (let i = -1; i < 4; i++) { const bx = x + off + i * 6;
+   *       if (bx > x && bx < x + 16) V(c, dark, bx, oy, 3); }
+   *
+   * — so every tile put its head joints in exactly the same five columns, and
+   * a wall grew continuous vertical joint lines every 16px that no masonry bond
+   * has. The `bx > x` guard additionally FORBADE a joint on column 0, so column
+   * 0 was always the middle of a block and column 15 always the end of one.
+   *
+   * Here each course is laid left to right from random block widths, and the
+   * one joint that has to be agreed with the neighbour — the one ON the shared
+   * vertical border — comes from `edgeVariantAt`. Bit 0 is this tile's left
+   * border and bit 1 its right border, and two neighbours read the SAME bit for
+   * the border they share (see `edgeVariantAt`): clear, and the two end blocks
+   * merge into one long stone spanning the seam; set, and both agree there is a
+   * joint there. The joint is drawn once, by the tile on the RIGHT at column 0.
+   *
+   * The course grid is offset by half a course so that NO bed joint lands on
+   * row 0 or row 15 — the tile border falls in the MIDDLE of a course. With
+   * `ch` dividing 16 the phases line up automatically, and the straddling
+   * course is drawn from the FAMILY-fixed generator `fr()` so the tile above
+   * and the tile below paint the two halves of one course with its head joints
+   * in the same columns. That is the whole reason the horizontal seam vanishes.
+   *
+   *   vi          the resolved variant = the four shared-border bits
+   *   ch          course height in px. MUST divide 16.
+   *   bwMin/bwMax narrowest / widest block
+   *   faces       the body tone of each course, top of the tile downward; the
+   *               LAST entry is the straddling course and therefore also the
+   *               tone on row 0 and row 15, which is why those two rows match
+   *               and the horizontal seam disappears.
+   *   lits        the lit top-of-course tones, same indexing. Stepping `faces`
+   *               and `lits` down 3-6 L* over the height of the tile is what
+   *               gives the face its height WITHOUT putting a value cliff on
+   *               the tile border: it moves rows 1-14 and leaves 0 and 15 be.
+   */
+  const coursed = (c, x, y, vi, salt, ch, bwMin, bwMax, faces, lits, bed, joint) => {
+    const rows = 16 / ch, half = ch >> 1, last = faces.length - 1;
+    R(c, faces[last], x, y, 16, 16);
+    for (let k = -1; k < rows; k++) {
+      const top = k * ch + half;
+      const straddle = (top < 0 || top + ch > 16);
+      const i = straddle ? last : k;
+      const cr = straddle ? fr(salt)
+        : sr((salt ^ Math.imul(k + 2, 0x2545F491) ^ Math.imul(vi + 1, 0x9E3779B1)) >>> 0);
+      mark(c, faces[i], x, y, 0, top, 16, ch);
+      mark(c, lits[i], x, y, 0, top, 16, 1);
+      mark(c, bed, x, y, 0, top + ch - 1, 16, 1);
+      if (vi & 1) mark(c, joint, x, y, 0, top, 1, ch - 1);
+      let bx = 0;
+      for (;;) {
+        bx += bwMin + Math.floor(cr() * (bwMax - bwMin + 1));
+        if (bx > 14) break;
+        mark(c, joint, x, y, bx, top, 1, ch - 1);
+      }
+    }
   };
 
-  def('STONE_WALL', 'Stone Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'ruins', 'dungeon'], variants: 2 },
-    (c, x, y, v) => {
+  /**
+   * A block of a course repainted in a different tone — a stone replaced after
+   * a collapse, a brick fired hotter, a course sooted by a torch. This is what
+   * the "variants" of these families are supposed to be: `STONE_WALL` declared
+   * two and its two rasters differed on 2.3% of their pixels at mean dE 0.46,
+   * i.e. five speckle pixels. `TILE_ROOF` declared two and its draw signature
+   * did not take a variant at all. Kept strictly inboard of the outer ring.
+   */
+  const patchBlock = (c, col, x, y, r, ch, bwMin, bwMax, n) => {
+    for (let i = 0; i < n; i++) {
+      const w = bwMin + Math.floor(r() * (bwMax - bwMin + 1));
+      const bx = 1 + Math.floor(r() * Math.max(1, 14 - w));
+      const by = 1 + Math.floor(r() * Math.max(1, 15 - ch));
+      mark(c, col, x, y, bx, by, w, ch - 1);
+    }
+  };
+
+  // STONE_WALL is the most-placed wall in the game (765 tiles across the hand
+  // maps, 307 more in the generated crypt). It was 5.85:1 with a 32.3 L* border
+  // step, and it measured dE76 3.04 from STONE_FLOOR and 3.84 from COBBLE — a
+  // wall you cannot walk through and the paving in front of it, both under the
+  // just-noticeable difference for two large adjacent patches. The face is now
+  // built from stoneG/stone with stoneD beds, mean L* ~40 against the floor's
+  // 45.1, and the highlight it lost at the top is the crown tile's job.
+  def('STONE_WALL', 'Stone Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'ruins', 'dungeon'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => {
       const r = sr(v);
-      // top cap (the bit you see from above) then the face below it
-      R(c, PAL.stoneL, x, y, 16, 4); H(c, PAL.stoneH, x, y, 16); H(c, PAL.stoneD, x, y + 4, 16);
-      // The FACE is a step off STONE_FLOOR so a wall never sits at exactly the
-      // same value as the floor in front of it; the lit cap on top and the 3px
-      // occlusion band at the foot supply the height.
-      R(c, PAL.stoneM, x, y + 5, 16, 11);
-      for (let row = 0; row < 3; row++) {
-        const oy = y + 5 + row * 4, off = (row % 2) ? 3 : 0;
-        H(c, PAL.stoneD, x, oy + 3, 16);
-        for (let i = -1; i < 4; i++) { const bx = x + off + i * 6; if (bx > x && bx < x + 16) V(c, PAL.stoneD, bx, oy, 3); }
-        H(c, row === 0 ? PAL.stoneL : PAL.stone, x, oy, 16);
-      }
-      speck(c, PAL.stoneD, x, y + 5, 4, r, 16, 9);
-      wallShade(c, x, y, PAL.stoneL, PAL.stoneD, PAL.stoneXD, 4);
-      R(c, PAL.stoneXD, x, y + 13, 16, 3);
-      P(c, PAL.stoneH, x, y);
+      coursed(c, x, y, vi, SEAM.masonry, 4, 5, 9,
+        [PAL.stoneG, PAL.stoneB, PAL.stoneB, PAL.stoneB],
+        [PAL.stoneM, PAL.stone, PAL.stoneG, PAL.stoneB], PAL.stoneD, PAL.stoneD);
+      // two or three stones that were replaced, or that weathered differently
+      patchBlock(c, PAL.stoneM, x, y, r, 4, 4, 7, 1 + (vi & 1));
+      patchBlock(c, PAL.stoneD, x, y, r, 4, 3, 6, 1);
+      dashesI(c, PAL.stoneD, x, y, 4, r, 2);
+      speck(c, PAL.stoneM, x, y, 5, r);
+      seam(c, x, y, SEAM.masonry, SEAM_TONE.masonry, 7, 3, 3);
     });
 
-  def('STONE_WALL_TOP', 'Wall Top', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'ruins'], variants: 2 },
-    (c, x, y, v) => {
+  def('STONE_WALL_TOP', 'Wall Top', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'ruins'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => {
       const r = sr(v);
-      R(c, PAL.stoneL, x, y, 16, 16);
-      for (let row = 0; row < 4; row++) { H(c, PAL.stoneD, x, y + row * 4 + 3, 16); V(c, PAL.stoneD, x + ((row % 2) ? 5 : 11), y + row * 4, 3); }
+      coursed(c, x, y, vi, SEAM.crown, 4, 5, 9,
+        [PAL.stoneL, PAL.stoneM, PAL.stoneM, PAL.stoneM],
+        [PAL.stoneH, PAL.stoneL, PAL.stoneL, PAL.stoneM], PAL.stoneG, PAL.stoneG);
+      patchBlock(c, PAL.stone, x, y, r, 4, 4, 7, 1 + (vi & 1));
+      patchBlock(c, PAL.stoneH, x, y, r, 4, 3, 6, 1);
+      dashesI(c, PAL.stoneG, x, y, 4, r, 2);
       speck(c, PAL.stoneH, x, y, 6, r);
-      H(c, PAL.stoneH, x, y, 16); V(c, PAL.stoneH, x, y, 16);
-      V(c, PAL.stoneD, x + 15, y, 16); H(c, PAL.stoneD, x, y + 15, 16);
+      speck(c, PAL.stoneG, x, y, 5, r);
+      seam(c, x, y, SEAM.crown, SEAM_TONE.masonry, 7, 3, 3);
     });
 
-  def('BRICK_WALL', 'Brick Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'dungeon'], variants: 2 },
-    (c, x, y, v) => {
+  def('BRICK_WALL', 'Brick Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'dungeon'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => {
       const r = sr(v);
-      R(c, PAL.brick, x, y, 16, 16);
-      for (let row = 0; row < 5; row++) {
-        const oy = y + row * 3, off = (row % 2) ? 4 : 0;
-        H(c, PAL.brickD, x, oy + 2, 16);
-        for (let i = -1; i < 3; i++) { const bx = x + off + i * 8; if (bx > x && bx < x + 16) V(c, PAL.brickD, bx, oy, 2); }
-        if (oy < y + 14) H(c, PAL.brickL, x, oy, 16);
-      }
-      speck(c, PAL.brickD, x, y + 2, 5, r, 16, 12);
-      R(c, PAL.brickL, x, y, 16, 2); H(c, '#c07e63', x, y, 16);       // lit cap
-      wallShade(c, x, y, PAL.brickL, PAL.brickD, '#42221a', 2);
+      // The old course height was 3px, which does not divide 16: the bond
+      // restarted a pixel out of phase at every horizontal tile border, on top
+      // of the 8px joint lattice every tile shared. 4px (3px brick, 1px bed).
+      coursed(c, x, y, vi, SEAM.brick, 4, 6, 9,
+        [PAL.brick, PAL.brickM, PAL.brickM, PAL.brickM],
+        [PAL.brickL, PAL.brick, PAL.brick, PAL.brickM], PAL.brickD, PAL.brickG);
+      patchBlock(c, PAL.brickG, x, y, r, 4, 5, 8, 1 + (vi & 1));   // an over-fired brick
+      patchBlock(c, PAL.brickL, x, y, r, 4, 5, 8, 1);              // and a fresh one
+      speck(c, PAL.brickD, x, y, 5, r);
+      seam(c, x, y, SEAM.brick, SEAM_TONE.brick, 7, 3, 3);
     });
 
   // Phandalin's houses: fieldstone footing, lime plaster, dark timber framing.
-  def('WATTLE_WALL', 'Timber Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['city'], variants: 2 },
-    (c, x, y, v) => {
+  //
+  // This was the single worst thing in `phandalin-facade-8x.png`. It put a 2px
+  // `woodD` post at BOTH edges of every tile, so a facade grew a 4px black bar
+  // every 16 pixels; it put a head beam on rows 0-1 and a sill on rows 13-15,
+  // so a two-storey wall grew a 5px black bar at its own middle; and its two
+  // declared variants differed on 1.6% of their pixels at mean dE 0.20 — 36
+  // byte-identical panels in `field-wattle_wall.png`.
+  //
+  // Half-timbering really does have a rail at every storey and a post every few
+  // feet. The rail is now at rows 7-8, in the MIDDLE of the tile, so a stack of
+  // storeys gets one rail per storey and the tile border falls in the middle of
+  // a plaster panel instead of inside a beam. The post is 2px at columns 0-1
+  // only, gated on the shared left-border bit — the tile to the left reads the
+  // same bit as its right border and knows not to draw one, so a post is never
+  // doubled and never lands on every seam.
+  def('WATTLE_WALL', 'Timber Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['city'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => {
       const r = sr(v);
       R(c, PAL.plaster, x, y, 16, 16);
-      speck(c, PAL.plasterD, x, y, 8, r);
-      H(c, PAL.plasterXD, x, y + 12, 16);      // the plaster grimes where it meets the sill
-      R(c, PAL.woodD, x, y, 16, 2);            // head beam
-      R(c, PAL.woodD, x, y + 13, 16, 3);       // sill
-      R(c, PAL.woodD, x, y, 2, 16); R(c, PAL.woodD, x + 14, y, 2, 16);  // posts
-      // diagonal brace
-      for (let i = 0; i < 11; i++) { P(c, PAL.wood, x + 2 + i, y + 12 - i); P(c, PAL.woodD, x + 3 + i, y + 12 - i); }
-      H(c, PAL.woodL, x, y, 16); V(c, PAL.woodL, x, y, 16);
-      V(c, PAL.barkD, x + 15, y, 16);
-      R(c, PAL.barkXD, x, y + 15, 16, 1);
+      // the panel is very slightly darker toward the foot, which is the only
+      // vertical modelling a flat lime panel can carry without banding
+      R(c, PAL.plasterM, x, y + 9, 16, 6);
+      // 1px speckle over the WHOLE tile, ring included — lime render weathers,
+      // and without it rows 0/15 were flat `plaster` and the border measured
+      // |dL*| 0.60 against an interior of 9.59, which is a picture frame, not a
+      // matched seam (see the ground pass's note two sections up).
+      speck(c, PAL.plasterD, x, y, 12, r);
+      speck(c, PAL.plasterM, x, y, 10, r);
+      speck(c, PAL.plasterG, x, y, 5, r);
+      dashesI(c, PAL.plasterM, x, y, 4, r, 3);
+      // The frame. POSTS stand between the rails, so one post spans rows 9-15 of
+      // this tile and rows 0-6 of the tile below — and its column comes from the
+      // SHARED horizontal border (bit 3 here is bit 2 there), so the two halves
+      // are the same post and a two-storey facade has continuous framing. The
+      // rail is the only member on the tile's own border-free middle, and
+      // nothing touches row 0 or row 15, which is the whole reason the plaster
+      // now runs on into the storey above instead of hitting a 5px beam.
+      const pT = 3 + ((vi >> 2) & 1) * 8, pB = 3 + ((vi >> 3) & 1) * 8;
+      const post = (px, y0, h) => { mark(c, PAL.woodD, x, y, px, y0, 2, h); mark(c, PAL.wood, x, y, px, y0, 1, h); };
+      post(pT, 0, 7); post(pB, 9, 7);
+      R(c, PAL.woodD, x, y + 7, 16, 2);
+      H(c, PAL.wood, x, y + 7, 16);
+      H(c, PAL.plasterG, x, y + 9, 16);
+      // Braces spring from the rail and lean away from the post. Mirrored on the
+      // odd variants: every brace in the game used to run the same way, which is
+      // half of why a street read as one stamp repeated.
+      const dir = (vi & 1) ? 1 : -1, o = dir < 0 ? -2 : 2;
+      for (let i = 0; i < 5; i++) {
+        mark(c, PAL.woodD, x, y, pT + o + dir * i, 5 - i, 2, 1);
+        mark(c, PAL.woodD, x, y, pB + o + dir * i, 10 + i, 2, 1);
+      }
+      seam(c, x, y, SEAM.plaster, SEAM_TONE.plaster, 8, 3, 3);
     });
 
-  def('LOG_WALL', 'Log Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'forest'], variants: 2 },
-    (c, x, y, v) => {
+  // Logs run horizontally, so a log IS a course: lit upper lip, body, shaded
+  // underside. It was drawn on a 4px grid aligned to the tile, so the tile
+  // border landed exactly on the join between two logs — |row0 - row15| 42.7 —
+  // and it capped BOTH ends of every log with `barkD`, which made a wall of
+  // stacked crates. The grid is offset half a log now, so the border falls
+  // through the middle of one, and an end cap is drawn only where the shared
+  // border bit says two logs actually butt.
+  def('LOG_WALL', 'Log Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'forest'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => {
       const r = sr(v);
-      for (let i = 0; i < 4; i++) {
-        const oy = y + i * 4;
-        R(c, PAL.wood, x, oy, 16, 4);
-        H(c, PAL.woodL, x, oy, 16);
-        H(c, PAL.woodD, x, oy + 3, 16);
-        R(c, PAL.barkD, x, oy + 1, 2, 2); R(c, PAL.barkD, x + 14, oy + 1, 2, 2);
-      }
-      dashes(c, PAL.woodD, x, y, 4, r, 3);
-      H(c, PAL.woodH, x, y, 16);
-      V(c, PAL.woodL, x, y, 14); V(c, PAL.woodD, x + 15, y, 14);
-      R(c, PAL.barkXD, x, y + 14, 16, 2);
+      coursed(c, x, y, vi, SEAM.timber, 4, 13, 15,
+        [PAL.woodL, PAL.wood, PAL.wood, PAL.wood],
+        [PAL.woodH, PAL.woodL, PAL.woodL, PAL.wood], PAL.woodD, PAL.bark);
+      // An end cap sits on the shared LEFT border, agreed with the neighbour by
+      // bit 0. It is deliberately not drawn on the log that straddles the tile's
+      // own top/bottom border: that one's two halves are in tiles whose bit 0
+      // are independent draws, so it would come out capped on one side only.
+      if (vi & 1) for (let k = 0; k < 3; k++) mark(c, PAL.barkD, x, y, 0, k * 4 + 3, 2, 2);
+      // no two logs in a stack are the same timber
+      patchBlock(c, PAL.woodL, x, y, r, 4, 7, 13, 1);
+      patchBlock(c, PAL.bark, x, y, r, 4, 6, 11, 1);
+      // knots and sapwood streaks — the only thing that makes one log run
+      // differ from the next, and the old family had five speckle pixels
+      for (let i = 0; i < 3; i++) { const w = 2 + Math.floor(r() * 3); mark(c, PAL.bark, x, y, inX(r, w), inY(r, 2), w, 2); }
+      for (let i = 0; i < 2; i++) { const w = 3 + Math.floor(r() * 5); mark(c, PAL.woodH, x, y, inX(r, w), inY(r, 1), w, 1); }
+      dashesI(c, PAL.woodD, x, y, 5, r, 3);
+      dashesI(c, PAL.woodL, x, y, 4, r, 2);
+      speck(c, PAL.bark, x, y, 5, r);
+      speck(c, PAL.woodH, x, y, 4, r);
+      seam(c, x, y, SEAM.timber, SEAM_TONE.timber, 7, 3, 3);
     });
 
   // Was a byte-for-byte clone of DUNGEON_FLOOR plus three moss pixels — ΔE 1.0
   // between a floor you walk on and a wall you cannot. Own darker base, a lit
   // 2px top cap, a lit left edge, a shaded right edge and a base occlusion band.
-  def('DUNGEON_WALL', 'Dungeon Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['dungeon', 'crypt', 'underdark'], variants: 3 },
-    (c, x, y, v) => {
+  // `dgnW` dropped from #3a3844 to #333140 so the wall clears DUNGEON_FLOOR by
+  // more than the 4.25 dE76 it measured (the source comment claimed that was
+  // already fixed; it was not, it had only gone from 1.0 to 4.25).
+  def('DUNGEON_WALL', 'Dungeon Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['dungeon', 'crypt', 'underdark'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => {
       const r = sr(v);
-      R(c, PAL.dgnW, x, y, 16, 16);
-      for (let row = 0; row < 4; row++) {
-        const oy = y + row * 4 + 2, off = (row % 2) ? 4 : 0;
-        if (oy + 2 < y + 14) H(c, PAL.dgnWD, x, oy + 2, 16);
-        for (let i = -1; i < 3; i++) { const bx = x + off + i * 8; if (bx > x && bx < x + 16 && oy + 2 < y + 14) V(c, PAL.dgnWD, bx, oy, 2); }
-        if (oy < y + 14) H(c, PAL.dgn, x, oy, 16);
-      }
-      for (let i = 0; i < 3; i++) P(c, PAL.moss, x + Math.floor(r() * 16), y + 2 + Math.floor(r() * 12));
-      R(c, PAL.dgnL, x, y, 16, 2); H(c, PAL.dgnH, x, y, 16);          // lit cap
-      V(c, PAL.dgnL, x, y + 2, 12);                                    // lit left face
-      V(c, PAL.dgnWD, x + 15, y + 2, 12);                              // shaded right face
-      R(c, '#1b1a20', x, y + 14, 16, 2);                               // sits on the floor
+      coursed(c, x, y, vi, SEAM.dgnWall, 4, 6, 9,
+        [PAL.dgnWM, PAL.dgnW, PAL.dgnW, PAL.dgnW],
+        [PAL.dgnM, PAL.dgn, PAL.dgnWM, PAL.dgnW], PAL.dgnWG, PAL.dgnWG);
+      patchBlock(c, PAL.dgnWG, x, y, r, 4, 5, 8, 1 + (vi & 1));
+      patchBlock(c, PAL.dgnWM, x, y, r, 4, 4, 7, 1);
+      for (let i = 0; i < 3; i++) P(c, PAL.moss, x + 1 + Math.floor(r() * 14), y + 1 + Math.floor(r() * 14));
+      speck(c, PAL.dgnWG, x, y, 4, r);
+      seam(c, x, y, SEAM.dgnWall, SEAM_TONE.dgnWall, 7, 3, 3);
     });
 
-  def('RUINED_WALL', 'Ruined Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['ruins', 'plains', 'forest'], variants: 3 },
-    (c, x, y, v) => {
+  // RUINED_WALL already measured 1.72 — the only built wall that came close —
+  // because its crest is jagged and it never drew a foot band. It keeps that
+  // and only loses the two ruler-straight full-height joints and the clipped
+  // speckle; the crest height now comes from the shared TOP border bit, so two
+  // neighbours agree where the broken line crosses their seam.
+  def('RUINED_WALL', 'Ruined Wall', SOLID, { layer: 'deco', group: 'wall', biomes: ['ruins', 'plains', 'forest'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => {
       const r = sr(v);
-      const top = 3 + Math.floor(r() * 4);
-      // jagged broken crest
-      for (let i = 0; i < 16; i++) { const h0 = top + (r() < 0.4 ? 1 : 0); R(c, PAL.stone, x + i, y + h0, 1, 16 - h0); P(c, PAL.stoneH, x + i, y + h0); }
-      for (let row = 0; row < 3; row++) { const oy = y + top + 3 + row * 4; if (oy < y + 16) H(c, PAL.stoneD, x, oy, 16); }
-      V(c, PAL.stoneD, x + 5, y + top + 1, 14); V(c, PAL.stoneD, x + 11, y + top + 4, 11);
-      for (let i = 0; i < 4; i++) P(c, PAL.moss, x + Math.floor(r() * 16), y + top + Math.floor(r() * (16 - top)));
-      speck(c, PAL.stoneD, x, y + top, 4, r, 16, 16 - top);
+      const fe = fr(SEAM.ruin);
+      const top = 2 + ((vi >> 2) & 1) * 2 + ((vi >> 3) & 1) * 2 + Math.floor(r() * 2);
+      for (let i = 0; i < 16; i++) {
+        // the two end columns take their height from the family-fixed
+        // generator, so a run of ruin has an unbroken crest across its seams
+        const edge = (i === 0 || i === 15);
+        const h0 = top + ((edge ? fe() : r()) < 0.4 ? 1 : 0);
+        R(c, PAL.stone, x + i, y + h0, 1, 16 - h0); P(c, PAL.stoneL, x + i, y + h0);
+      }
+      for (let row = 0; row < 3; row++) { const oy = y + top + 3 + row * 4; if (oy < y + 16) H(c, PAL.stoneG, x, oy, 16); }
+      mark(c, PAL.stoneG, x, y, 3 + Math.floor(r() * 4), top + 1, 1, 14);
+      mark(c, PAL.stoneG, x, y, 9 + Math.floor(r() * 5), top + 4, 1, 11);
+      for (let i = 0; i < 4; i++) P(c, PAL.moss, x + 1 + Math.floor(r() * 14), y + top + Math.floor(r() * (15 - top)));
+      speck(c, PAL.stoneG, x, y + top + 1, 4, r, 16, Math.max(1, 14 - top));
+      seam(c, x, y, SEAM.ruin, SEAM_TONE.masonry, 5, 3, 3);
     });
 
-  def('PALISADE', 'Palisade', SOLID, { layer: 'deco', group: 'wall', biomes: ['plains', 'forest', 'city'], variants: 2 },
+  def('PALISADE', 'Palisade', SOLID, { layer: 'deco', group: 'wall', biomes: ['plains', 'forest', 'city'], variants: 8 },
     (c, x, y, v) => {
       const r = sr(v);
-      for (let i = 0; i < 4; i++) {
-        const px = x + i * 4, top = y + 1 + Math.floor(r() * 2);
-        R(c, PAL.bark, px, top + 2, 4, 16 - (top - y) - 2);
-        // sharpened point
-        P(c, PAL.barkL, px + 1, top); P(c, PAL.barkL, px + 2, top);
-        R(c, PAL.bark, px + 1, top + 1, 2, 1);
-        V(c, PAL.barkL, px, top + 2, 14); V(c, PAL.barkD, px + 3, top + 2, 14);
+      // stakes are 3 or 4 wide and start where the previous one ended, so a run
+      // of palisade no longer repeats the same four posts every 16px
+      let px = 0;
+      while (px < 16) {
+        const w = 3 + Math.floor(r() * 2), top = 1 + Math.floor(r() * 3);
+        mark(c, PAL.bark, x, y, px, top + 2, w, 16);
+        mark(c, PAL.barkL, x, y, px + 1, top, w - 2, 1);
+        mark(c, PAL.bark, x, y, px + 1, top + 1, w - 2, 1);
+        mark(c, PAL.barkL, x, y, px, top + 2, 1, 14);
+        mark(c, PAL.barkD, x, y, px + w - 1, top + 2, 1, 14);
+        px += w;
       }
-      H(c, PAL.woodD, x, y + 9, 16);
+      H(c, PAL.woodD, x, y + 9, 16); H(c, PAL.wood, x, y + 8, 16);
     });
 
   // The old `contact()` here was painted over immediately by the base plinth, so
@@ -1771,22 +2020,60 @@ function buildTiles() {
    * face so it reads as an extruded mass rather than a texture swap.
    * `lit` names the sides that face open floor.
    */
-  const caveWall = (key, label, lit) => def(key, label, SOLID, { layer: 'deco', group: 'cave-wall', biomes: ['cave', 'mine', 'underdark'], variants: 2 },
+  const caveWall = (key, label, lit) => def(key, label, SOLID, { layer: 'deco', group: 'cave-wall', biomes: ['cave', 'mine', 'underdark'], variants: lit ? 6 : 10 },
     (c, x, y, v) => {
       const r = sr(v);
       R(c, PAL.caveWD, x, y, 16, 16);
-      for (let i = 0; i < 9; i++) {
-        const px = x + Math.floor(r() * 12), py = y + Math.floor(r() * 12), w = 3 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 3);
-        R(c, PAL.caveW, px, py, w, h); H(c, PAL.caveWL, px, py, w);
+      // The blobs used to run `px` to x+11 with `w` to 5 and `py` to y+11 with
+      // `h` to 4 — so a third of them were sliced by the tile box and ended in
+      // mid-air at the seam. Inboard, exactly as the eleven ground families do,
+      // and the ring is put back by `seam()` from the family-fixed generator so
+      // the two halves of a mark really are one mark.
+      for (let i = 0; i < 10; i++) {
+        const w = 3 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 3);
+        const px = inX(r, w), py = inY(r, h);
+        // the higher a boss of rock sits on the face the more of the light it
+        // catches — a grade spent entirely on rows 1-14, so rows 0 and 15 stay
+        // the tone both neighbours agree on and the mass has no 16px sawtooth
+        const hi = py < 7;
+        mark(c, r() < 0.45 ? PAL.caveWM : PAL.caveW, x, y, px, py, w, h);
+        mark(c, r() < (hi ? 0.85 : 0.35) ? PAL.caveWL : PAL.caveW, x, y, px, py, w, 1);
+        mark(c, PAL.caveWG, x, y, px + 1, py + h, w - 1, 1);              // and its underside
       }
-      speck(c, PAL.caveM, x, y, 4, r);
+      for (let i = 0; i < 3; i++) { const w = 2 + Math.floor(r() * 3); mark(c, PAL.caveWG, x, y, inX(r, w), inY(r, 3), w, 3); }
+      // 1px grit over the WHOLE tile, ring included: the blobs are inboard now,
+      // so without this the outer ring would be flat `caveWD` in every variant
+      // and a wall of them would still correlate at lag 16.
+      speck(c, PAL.caveWL, x, y, 8, r);
+      speck(c, PAL.caveWG, x, y, 10, r);
+      speck(c, PAL.caveWM, x, y, 8, r);
+      speck(c, PAL.caveW, x, y, 8, r);
+      seam(c, x, y, SEAM.caveWall, SEAM_TONE.caveWall, 10, 4, 3);
       // Height cues go on the `lit` cases only. A CAVE_WALL with no lit side is
       // the INTERIOR of a rock mass — ringing it would just put the 16px grid
-      // back, which is the thing this pass exists to remove.
-      if (lit.includes('N')) { H(c, PAL.caveH, x, y, 16); H(c, PAL.caveL, x, y + 1, 16); }
-      if (lit.includes('S')) { H(c, PAL.caveW, x, y + 13, 16); R(c, '#1d1913', x, y + 14, 16, 2); }
-      if (lit.includes('W')) { V(c, PAL.caveL, x, y, 16); V(c, PAL.caveW, x + 1, y, 16); }
-      if (lit.includes('E')) { V(c, PAL.caveWD, x + 14, y, 16); V(c, '#1d1913', x + 15, y, 16); }
+      // back, which is the thing this pass exists to remove. This was already
+      // true here and it is why CAVE_WALL, at 0.71, was the ONLY wall in the
+      // file that passed the ground's grid-visibility test; every other family
+      // has now been rebuilt to match it. What the members lacked was contrast
+      // BETWEEN themselves — nine near-copies of the base plus a 1-2px rim —
+      // so each named side now carries an irregular 2-4px lip rather than a
+      // ruler-straight one, and the tones are pulled in to the cave-rock ramp
+      // instead of reaching for the floor family's highlights.
+      if (lit.includes('N')) {
+        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 5 + v) % 3); mark(c, PAL.caveWL, x, y, i, 0, 2, d); mark(c, PAL.caveM, x, y, i, 0, 2, 1); }
+      }
+      if (lit.includes('S')) {
+        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 3 + v) % 3); mark(c, PAL.caveWG, x, y, i, 16 - d - 1, 2, d + 1); }
+        R(c, '#1d1913', x, y + 15, 16, 1);
+      }
+      if (lit.includes('W')) {
+        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 7 + v) % 3); mark(c, PAL.caveWL, x, y, 0, i, d, 2); }
+        V(c, PAL.caveL, x, y, 16);
+      }
+      if (lit.includes('E')) {
+        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 11 + v) % 3); mark(c, PAL.caveWG, x, y, 16 - d, i, d, 2); }
+        V(c, '#1d1913', x + 15, y, 16);
+      }
     });
   caveWall('CAVE_WALL', 'Cave Wall', '');
   caveWall('CAVE_WALL_N', 'Cave Wall', 'N');
@@ -1798,28 +2085,122 @@ function buildTiles() {
   caveWall('CAVE_WALL_SW', 'Cave Wall', 'SW');
   caveWall('CAVE_WALL_NW', 'Cave Wall', 'NW');
 
-  // Cliffs / mountains: a rock face with strata, plus the eight edge cases.
-  // The profile used to be INVERTED — dark at the top, light at the bottom
-  // (topMinusBot -30) — so a cliff read as a hole rather than as a mass. Lit
-  // crown, strata that darken downward, occlusion at the foot.
-  const cliff = (key, label, lit) => def(key, label, SOLID, { layer: 'deco', group: 'cliff', biomes: ['mountain', 'hills', 'coast'], variants: 2 },
+  /**
+   * ROCK STRATA — the natural-stone analogue of `coursed`, and built on the
+   * same two ideas. Beds sit on a 4px grid offset by half a bed, so the tile
+   * border falls through the MIDDLE of a stratum instead of on the join between
+   * two, and the stratum that straddles the border is drawn from the
+   * family-fixed generator `fr()` so the tile above and the tile below paint
+   * the two halves of one bed. Nothing is a ruler line: each bed's lit upper
+   * lip is a run of 2-5px dashes that steps a pixel up and down, which is what
+   * a bedding plane in greywacke actually looks like and what the old
+   * `H(c, stoneD, x + r()*6, ly, 6 + r()*5)` — reaching x+15 and getting sliced
+   * — was trying and failing to be.
+   */
+  const strata = (c, x, y, vi, salt, faces, lits, shadeCol) => {
+    const last = faces.length - 1;
+    R(c, faces[last], x, y, 16, 16);
+    for (let k = -1; k < 4; k++) {
+      const top = k * 4 + 2;
+      const straddle = (top < 0 || top + 4 > 16);
+      const i = straddle ? last : k;
+      const rr = straddle ? fr(salt)
+        : sr((salt ^ Math.imul(k + 3, 0x27D4EB2D) ^ Math.imul(vi + 1, 0x165667B1)) >>> 0);
+      mark(c, faces[i], x, y, 0, top, 16, 4);
+      // A bedding plane is a BROKEN line. Drawing it whole, every four rows,
+      // turned the face into corduroy — the first attempt at this measured a
+      // perfect 0.31 grid ratio and still looked like a woven mat, because the
+      // metric only ever asked about the 16px border. Two fifths of each bed is
+      // missing and the rest steps up to two pixels, which is what leaves the
+      // face reading as rock that has been broken rather than laid.
+      let px = 0;
+      while (px < 16) {
+        const w = 3 + Math.floor(rr() * 5);
+        const roll = rr();
+        const j = Math.floor(rr() * 3);
+        if (roll > 0.62) {
+          mark(c, lits[i], x, y, px, top + j, w, 1);
+          if (roll > 0.86) mark(c, shadeCol, x, y, px, top + j + 1, w, 1);
+        }
+        px += w;
+      }
+    }
+  };
+
+  // CLIFFS. 429 tiles on wave-echo-cave-entrance, 1,418 more on the world map,
+  // and the worst measurement in the file: grid-visibility ratio 8.84, border
+  // |dL*| 34.54, row-mean profile 67 -> 16 inside ONE tile. It painted the full
+  // `stone` ramp — stoneH crown, stoneL/stoneD side pinstripes, stoneD+stoneXD
+  // foot band — on every tile, and 399 of the 429 on wave-echo have another
+  // cliff directly below them. `wave-echo-cave-entrance-cliffzoom-8x.png` was a
+  // lattice of grey plaques with a black bar every 16 rows.
+  //
+  // The body is now a continuous strata face on the new warm `rock` ramp — the
+  // old one measured dE76 1.37 from dressed STONE_WALL and 2.42 from a BOULDER,
+  // so a natural rock face, a masonry wall and a granite erratic were one
+  // material — and the crown, the foot and the flanks belong to the eight
+  // members, exactly as they already did for CAVE_WALL.
+  const cliff = (key, label, lit) => def(key, label, SOLID, { layer: 'deco', group: 'cliff', biomes: ['mountain', 'hills', 'coast'], variants: lit ? 6 : 12 },
     (c, x, y, v) => {
       const r = sr(v);
-      R(c, PAL.stone, x, y, 16, 16);
-      for (let i = 0; i < 16; i += 1) {
-        const h0 = 3 + Math.floor(r() * 3);
-        R(c, PAL.stoneM, x + i, y + h0, 1, 16 - h0);
+      strata(c, x, y, v, SEAM.cliff,
+        [PAL.rockL, PAL.rock, PAL.rock, PAL.rock],
+        [PAL.rockH, PAL.rockL, PAL.rockL, PAL.rock], PAL.rockM);
+      // ONE bedding plane per tile, at a row the variant chooses, dividing the
+      // face into big angular plates. This is where the mass gets its form now
+      // that the tile no longer paints a crown and a foot of its own: the light
+      // is committed at the 5-9px scale of the ROCK, not at the 16px scale of
+      // the grid, so it survives being tiled 1,418 times on the world map.
+      //
+      // The plane's own lip and shadow are the only strong horizontal lines in
+      // the tile and they are strictly inboard (rows 2-13), which is the whole
+      // difference between a bedding plane and the black bar the old code put
+      // on rows 14-15 of all 4,520 wall tiles.
+      const hy0 = 4 + Math.floor(r() * 8);
+      const up = [PAL.rockH, PAL.rockL, PAL.rockL, PAL.rock];
+      const lo = [PAL.rockL, PAL.rock, PAL.rock, PAL.rockM];
+      let px = 0;
+      while (px < 16) {
+        const w = 5 + Math.floor(r() * 6);
+        // the bedding plane STEPS from plate to plate. Held flat it read as a
+        // course of masonry, which is the one thing a cliff must not look like
+        // when CLIFF and STONE_WALL already measured dE76 1.37 apart.
+        const hy = Math.max(3, Math.min(13, hy0 + Math.floor(r() * 5) - 2));
+        mark(c, up[Math.floor(r() * 4)], x, y, px, 1, w, hy - 1);
+        mark(c, lo[Math.floor(r() * 4)], x, y, px, hy, w, 15 - hy);
+        if (r() < 0.85) { mark(c, PAL.rockG, x, y, px, hy - 1, w, 1); mark(c, r() < 0.6 ? PAL.rockH : PAL.rockL, x, y, px, hy, w, 1); }
+        if (px > 0) {                                  // the joint, jogged at the bed
+          const j = Math.floor(r() * 3) - 1;
+          mark(c, PAL.rockG, x, y, px, 1, 1, hy - 1);
+          mark(c, PAL.rockG, x, y, px + j, hy, 1, 14 - hy);
+        }
+        px += w;
       }
-      for (let i = 0; i < 5; i++) { const ly = y + 5 + Math.floor(r() * 10); H(c, PAL.stoneD, x + Math.floor(r() * 6), ly, 6 + Math.floor(r() * 5)); }
-      for (let i = 0; i < 4; i++) { const ly = y + 4 + Math.floor(r() * 8); H(c, PAL.stoneL, x + Math.floor(r() * 8), ly, 4); }
-      R(c, PAL.stoneD, x, y + 12, 16, 2);              // the face falls into shadow
-      R(c, PAL.stoneXD, x, y + 14, 16, 2);             // and meets the ground
-      R(c, PAL.stoneL, x, y, 16, 2); H(c, PAL.stoneH, x, y, 16);   // lit crown
-      V(c, PAL.stoneL, x, y + 2, 12); V(c, PAL.stoneD, x + 15, y + 2, 12);
-      if (lit.includes('N')) { H(c, PAL.stoneH, x, y, 16); H(c, PAL.stoneL, x, y + 1, 16); H(c, PAL.stoneM, x, y + 2, 16); }
-      if (lit.includes('S')) { H(c, PAL.stoneD, x, y + 13, 16); R(c, '#26241f', x, y + 14, 16, 2); }
-      if (lit.includes('W')) { V(c, PAL.stoneH, x, y, 16); V(c, PAL.stoneL, x + 1, y, 14); }
-      if (lit.includes('E')) { V(c, PAL.stoneD, x + 14, y, 16); V(c, '#26241f', x + 15, y, 16); }
+      for (let i = 0; i < 2; i++) { const h = 3 + Math.floor(r() * 6); mark(c, PAL.rockD, x, y, inX(r, 1), inY(r, h), 1, h); }
+      speck(c, PAL.rockD, x, y, 7, r);
+      speck(c, PAL.rockH, x, y, 5, r);
+      speck(c, PAL.rockG, x, y, 6, r);
+      seam(c, x, y, SEAM.cliff, SEAM_TONE.cliff, 9, 4, 3);
+      // The eight members were near-copies of the base plus a 1-2px rim — the
+      // closest pair measured dE 2.90 — so a mass drawn from them read as one
+      // tile repeated. Each named side now carries an IRREGULAR 2-4px lip, and
+      // the south side spills talus onto the ground below it.
+      if (lit.includes('N')) {
+        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 5 + v) % 3); mark(c, PAL.rockH, x, y, i, 0, 2, d); }
+        H(c, PAL.rockL, x, y + 1, 16);
+      }
+      if (lit.includes('S')) {
+        for (let i = 0; i < 16; i += 2) { const d = 2 + ((i * 3 + v) % 3); mark(c, PAL.rockD, x, y, i, 16 - d, 2, d); }
+        for (let i = 0; i < 5; i++) { const w = 1 + Math.floor(r() * 3); mark(c, PAL.rockXD, x, y, 1 + Math.floor(r() * 13), 13 + Math.floor(r() * 3), w, 1); }
+        H(c, PAL.rockXD, x, y + 15, 16);
+      }
+      if (lit.includes('W')) {
+        for (let i = 0; i < 16; i += 2) { const d = 1 + ((i * 7 + v) % 3); mark(c, PAL.rockH, x, y, 0, i, d, 2); }
+      }
+      if (lit.includes('E')) {
+        for (let i = 0; i < 16; i += 2) { const d = 2 + ((i * 11 + v) % 3); mark(c, PAL.rockD, x, y, 16 - d, i, d, 2); }
+        V(c, PAL.rockXD, x + 15, y, 16);
+      }
     });
   cliff('CLIFF', 'Cliff', '');
   cliff('CLIFF_N', 'Cliff', 'N');
@@ -1831,21 +2212,68 @@ function buildTiles() {
   cliff('CLIFF_SW', 'Cliff', 'SW');
   cliff('CLIFF_NW', 'Cliff', 'NW');
 
-  def('CLIFF_TOP', 'Clifftop', 0, { group: 'cliff-top', biomes: ['mountain', 'hills'], variants: 3 }, (c, x, y, v) => {
+  def('CLIFF_TOP', 'Clifftop', 0, { group: 'cliff-top', biomes: ['mountain', 'hills'], variants: 6 }, (c, x, y, v) => {
     const r = sr(v);
-    R(c, PAL.stoneL, x, y, 16, 16);
-    for (let i = 0; i < 7; i++) { const px = x + Math.floor(r() * 12), py = y + Math.floor(r() * 13); R(c, PAL.stone, px, py, 4, 3); H(c, PAL.stoneH, px, py, 4); }
-    speck(c, PAL.stoneD, x, y, 8, r);
+    R(c, PAL.rockL, x, y, 16, 16);
+    for (let i = 0; i < 9; i++) { const w = 3 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 3); const px = inX(r, w), py = inY(r, h); mark(c, PAL.rock, x, y, px, py, w, h); mark(c, PAL.rockH, x, y, px, py, w, 1); }
+    // heavy 1px grit over the whole tile — the marks above are inboard, so this
+    // is the only thing that stops columns 0 and 15 being identical in every
+    // variant (colmean lag-16 was 0.85 with a third of this)
+    speck(c, PAL.rockM, x, y, 26, r);
+    speck(c, PAL.rockG, x, y, 18, r);
+    speck(c, PAL.rockH, x, y, 14, r);
+    speck(c, PAL.rock, x, y, 14, r);
+    seam(c, x, y, SEAM.cliffTop, SEAM_TONE.cliff, 10, 4, 3);
   });
 
-  def('MOUNTAIN', 'Mountain', SOLID, { layer: 'deco', group: 'cliff', biomes: ['mountain'], variants: 2 }, (c, x, y, v) => {
-    const r = sr(v);
-    blob(c, PAL.stoneD, x, y, [[2, 7, 2], [3, 6, 4], [4, 5, 6], [5, 4, 8], [6, 3, 10], [7, 2, 12], [8, 1, 14], [9, 1, 14], [10, 0, 16], [11, 0, 16], [12, 0, 16], [13, 0, 16], [14, 0, 16], [15, 0, 16]]);
-    blob(c, PAL.stone, x, y, [[3, 7, 2], [4, 6, 3], [5, 5, 4], [6, 4, 6], [7, 3, 8], [8, 2, 10], [9, 2, 11], [10, 1, 13], [11, 1, 13], [12, 1, 14], [13, 0, 15], [14, 0, 15]]);
-    blob(c, '#f0f4f8', x, y, [[2, 7, 2], [3, 6, 3], [4, 6, 2], [5, 5, 2]]);
-    for (let i = 0; i < 5; i++) { const ly = y + 8 + Math.floor(r() * 7); H(c, PAL.stoneD, x + 1 + Math.floor(r() * 6), ly, 5); }
-    for (let i = 0; i < 3; i++) H(c, PAL.stoneH, x + 3 + Math.floor(r() * 6), y + 7 + Math.floor(r() * 6), 3);
-  });
+  /**
+   * MOUNTAIN. 671 tiles on the world map, 1,418 more places where CLIFF and
+   * MOUNTAIN sit side by side, and it was an ICON, not a tile: a hard-coded
+   * triangle with a `#f0f4f8` cap at the same three pixels every time, 90 of
+   * its 256 pixels transparent, its two declared variants differing on 12.9% of
+   * pixels, colmean lag-16 0.950. `field-mountain.png` was 36 identical
+   * pyramids and `world-cliffs-3x.png` a diamond lattice.
+   *
+   * Every MOUNTAIN on every map has a MOUNTAIN to its left and to its right —
+   * they are laid in horizontal ranges — so the thing that matters is that two
+   * neighbours agree about the skirt height where they meet. `edgeVariantAt`
+   * bit 0 is this tile's left border and bit 1 its right, and the tile to the
+   * left reads the SAME bit for that border, so the ridge line runs on
+   * unbroken. Bits 2-3 move the peak, so a range has four summits, not one
+   * repeated.
+   */
+  def('MOUNTAIN', 'Mountain', SOLID, { layer: 'deco', group: 'cliff', biomes: ['mountain'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => {
+      const r = sr(v);
+      const hL = (vi & 1) ? 3 : 7, hR = (vi & 2) ? 3 : 7;      // skirt height at each shared border
+      const pk = 3 + ((vi >> 2) & 3) * 3;                       // where the summit stands
+      const pkH = ((vi >> 3) & 1) ? 0 : 2;                      // and how high it reaches
+      const sky = new Array(16);
+      for (let i = 0; i < 16; i++) {
+        const t = i <= pk ? (pk ? i / pk : 1) : (15 - i) / Math.max(1, 15 - pk);
+        const base = (i <= pk ? hL : hR);
+        sky[i] = Math.max(0, Math.round(base + (pkH - base) * t) + (r() < 0.3 ? 1 : 0));
+      }
+      sky[0] = hL; sky[15] = hR;                                // the two shared borders are exact
+      for (let i = 0; i < 16; i++) {
+        const h0 = sky[i];
+        R(c, PAL.rock, x + i, y + h0, 1, 16 - h0);
+        P(c, PAL.rockH, x + i, y + h0);
+        // the lit western flank and the shaded eastern one, per column
+        if (i < pk) R(c, PAL.rockL, x + i, y + h0 + 1, 1, Math.min(4, 15 - h0));
+        else R(c, PAL.rockM, x + i, y + h0 + 1, 1, Math.min(4, 15 - h0));
+      }
+      // snowline: only the columns within two of the summit, and only when the
+      // summit is actually high enough to hold snow
+      if (pkH === 0) for (let i = Math.max(0, pk - 2); i <= Math.min(15, pk + 2); i++) R(c, '#e6ecf2', x + i, y + sky[i], 1, 1 + (Math.abs(i - pk) < 2 ? 1 : 0));
+      // Texture stays strictly BELOW the lowest possible skyline (8), because a
+      // MOUNTAIN is a silhouette with 90 transparent pixels and a mark in the
+      // sky is a floating speck. For the same reason there is no `seam()` ring
+      // here: the two shared borders are made to agree exactly instead, above.
+      for (let i = 0; i < 6; i++) { const w = 3 + Math.floor(r() * 4); mark(c, PAL.rockG, x, y, inX(r, w), 9 + Math.floor(r() * 6), w, 1); }
+      for (let i = 0; i < 4; i++) { const w = 2 + Math.floor(r() * 3); mark(c, PAL.rockL, x, y, inX(r, w), 9 + Math.floor(r() * 6), w, 1); }
+      speck(c, PAL.rockD, x, y + 9, 5, r, 16, 7);
+    });
 
   // --- 4.9 roofs -----------------------------------------------------------
   //
@@ -1862,78 +2290,114 @@ function buildTiles() {
    * surface. Either way it is no longer the uniform gold slab that measured
    * topMinusBot = -2.1.
    */
+  // 2026-08c. `thatchRow` painted BOTH `R(thatchXD, y+14, w, 2)` and
+  // `H(thatchXD, y+13, w)` — a 3px near-black eave — and buildings stack two or
+  // three roof rows (`maps.js:257`, `roofRows = min(3, h-3)`), so 486 of the
+  // game's 869 roof tiles drew an eave part-way down their own pitch. The eave
+  // is deleted from the tile: `_drawOverhangs` already ramps a five-row cast
+  // from an `over` tile onto whatever is below it, and it deliberately skips a
+  // tile that casts in its turn, so the shadow lands on the ground under the
+  // bottom course and nowhere else — which is what an eave is.
+  //
+  // What replaces it is the material's own structure: thatch is laid in
+  // overlapping courses, and a lap is put at rows 4 and 11 — INSIDE the tile,
+  // never on row 15 — so a pitch reads as courses of straw and the tile border
+  // falls through the middle of a course.
   const thatchRow = (c, x, y, r, x0, w) => {
-    R(c, PAL.thatchL, x + x0, y, w, 2);
-    R(c, PAL.thatch, x + x0, y + 2, w, 5);
-    R(c, PAL.thatchM, x + x0, y + 7, w, 4);
-    R(c, PAL.thatchD, x + x0, y + 11, w, 3);
-    R(c, PAL.thatchXD, x + x0, y + 14, w, 2);      // the eave overhangs and casts
+    R(c, PAL.thatch, x + x0, y, w, 16);
+    R(c, PAL.thatchL, x + x0, y + 1, w, 3);
+    R(c, PAL.thatchM, x + x0, y + 8, w, 3);
+    H(c, PAL.thatchD, x + x0, y + 4, w);            // the lap of one course over the next
+    H(c, PAL.thatchD, x + x0, y + 11, w);
+    H(c, PAL.thatchL, x + x0, y + 5, w); H(c, PAL.thatchL, x + x0, y + 12, w);
     // straw strokes, always running down the pitch, darker the lower they start
     for (let i = 0; i < 12; i++) {
-      const px = x + x0 + Math.floor(r() * Math.max(1, w));
-      const py = Math.floor(r() * 13);
-      V(c, py < 5 ? PAL.thatch : (py < 9 ? PAL.thatchM : PAL.thatchD), px, y + py, 2 + Math.floor(r() * 2));
+      const px = x0 + 1 + Math.floor(r() * Math.max(1, w - 2));
+      const py = 1 + Math.floor(r() * 12);
+      mark(c, py < 5 ? PAL.thatch : (py < 9 ? PAL.thatchM : PAL.thatchD), x, y, px, py, 1, 2 + Math.floor(r() * 2));
     }
-    for (let i = 0; i < 5; i++) { const px = x + x0 + Math.floor(r() * Math.max(1, w)); V(c, PAL.thatchL, px, y + Math.floor(r() * 8), 2); }
-    H(c, PAL.thatchXD, x + x0, y + 13, w);          // the shadow line the eave throws
+    for (let i = 0; i < 5; i++) mark(c, PAL.thatchL, x, y, x0 + 1 + Math.floor(r() * Math.max(1, w - 2)), 1 + Math.floor(r() * 11), 1, 2);
+    for (let i = 0; i < 4; i++) mark(c, PAL.thatchG, x, y, x0 + 1 + Math.floor(r() * Math.max(1, w - 3)), 1 + Math.floor(r() * 12), 2, 1);
+    // 1px speckle over the WHOLE tile, ring included. Without it every row 0 and
+    // row 15 was the same flat `thatch` and the border measured |dL*| 0.00 —
+    // which is not a matched seam, it is a 1px picture frame every 16 pixels,
+    // the exact failure the ground pass warns about two sections up.
+    for (let i = 0; i < 10; i++) mark(c, i % 3 ? PAL.thatchM : PAL.thatchL, x, y, x0 + Math.floor(r() * w), Math.floor(r() * 16), 1, 1);
+    for (let i = 0; i < 5; i++) mark(c, PAL.thatchD, x, y, x0 + Math.floor(r() * w), Math.floor(r() * 16), 1, 1);
   };
-  def('THATCH_L', 'Thatch Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 2 }, (c, x, y, v) => {
+  def('THATCH_L', 'Thatch Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 6 }, (c, x, y, v) => {
     const r = sr(v); thatchRow(c, x, y, r, 2, 14);
+    seam(c, x, y, SEAM.thatch, SEAM_TONE.thatch, 5, 3, 3);
     for (let i = 0; i < 16; i++) P(c, PAL.thatchD, x + 2, y + i);
     blob(c, PAL.thatchL, x, y, [[0, 2, 3], [1, 2, 2]]);
     V(c, PAL.ink, x + 1, y, 16);
   });
-  def('THATCH_M', 'Thatch Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 3 }, (c, x, y, v) => {
+  def('THATCH_M', 'Thatch Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 6 }, (c, x, y, v) => {
     const r = sr(v); thatchRow(c, x, y, r, 0, 16);
+    seam(c, x, y, SEAM.thatch, SEAM_TONE.thatch, 7, 3, 3);
   });
-  def('THATCH_R', 'Thatch Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 2 }, (c, x, y, v) => {
+  def('THATCH_R', 'Thatch Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 6 }, (c, x, y, v) => {
     const r = sr(v); thatchRow(c, x, y, r, 0, 14);
-    for (let i = 0; i < 16; i++) P(c, PAL.thatchXD, x + 13, y + i);
+    seam(c, x, y, SEAM.thatch, SEAM_TONE.thatch, 5, 3, 3);
+    for (let i = 0; i < 16; i++) P(c, PAL.thatchG, x + 13, y + i);
     V(c, PAL.ink, x + 14, y, 16);
   });
   // The capping bundle along the ridge line: a dark roll of straw with a lit
   // crown, then the pitch falling away below it.
-  def('THATCH_RIDGE', 'Roof Ridge', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 2 }, (c, x, y, v) => {
+  def('THATCH_RIDGE', 'Roof Ridge', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 6 }, (c, x, y, v) => {
     const r = sr(v); thatchRow(c, x, y, r, 0, 16);
+    seam(c, x, y, SEAM.ridge, SEAM_TONE.thatch, 5, 3, 3);
     R(c, PAL.thatchD, x, y + 1, 16, 4);
     H(c, PAL.thatchL, x, y + 1, 16); H(c, PAL.thatch, x, y + 2, 16);
     H(c, PAL.ink, x, y, 16);
-    for (let i = 0; i < 7; i++) V(c, PAL.thatchXD, x + Math.floor(r() * 16), y + 3, 2);
-    H(c, PAL.thatchXD, x, y + 5, 16);              // the ridge roll casts down the pitch
+    for (let i = 0; i < 7; i++) mark(c, PAL.thatchG, x, y, 1 + Math.floor(r() * 14), 3, 1, 2);
+    H(c, PAL.thatchG, x, y + 5, 16);               // the ridge roll casts down the pitch
   });
 
-  def('SHINGLE_ROOF', 'Shingle Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 3 }, (c, x, y, v) => {
+  def('SHINGLE_ROOF', 'Shingle Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 16, edgeVariant: true }, (c, x, y, v, vi) => {
     const r = sr(v);
-    R(c, PAL.shingle, x, y, 16, 16);
-    for (let row = 0; row < 4; row++) {
-      const oy = y + row * 4, off = (row % 2) ? 2 : 0;
-      H(c, PAL.shingleD, x, oy + 3, 16);
-      H(c, row < 2 ? PAL.shingleL : PAL.shingle, x, oy, 16);
-      for (let i = -1; i < 4; i++) { const bx = x + off + i * 4; if (bx > x && bx < x + 16) V(c, PAL.shingleD, bx, oy, 4); }
-    }
+    // Shingles ARE a coursed material, so they get the masonry treatment: the
+    // course grid offset half a course so the tile border falls through the
+    // middle of one, the vertical butt joints laid from random widths with the
+    // joint that lands on the shared border settled by `edgeVariantAt`, and the
+    // eave deleted (see the note above `thatchRow`).
+    coursed(c, x, y, vi, SEAM.shingle, 4, 3, 5,
+      [PAL.shingleL, PAL.shingle, PAL.shingle, PAL.shingle],
+      [PAL.shingleL, PAL.shingleL, PAL.shingle, PAL.shingleM], PAL.shingleD, PAL.shingleG);
+    patchBlock(c, PAL.shingleM, x, y, r, 4, 3, 5, 2);
+    patchBlock(c, PAL.shingleL, x, y, r, 4, 3, 4, 1);
     speck(c, PAL.shingleD, x, y, 5, r);
-    H(c, '#b1735e', x, y, 16);                       // lit ridge course
-    R(c, PAL.shingleXD, x, y + 14, 16, 2);           // eave overhang
+    seam(c, x, y, SEAM.shingle, SEAM_TONE.shingle, 7, 3, 3);
   });
 
-  def('TILE_ROOF', 'Tile Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 2 }, (c, x, y) => {
+  // TILE_ROOF declared two variants and its draw signature was `(c, x, y)` — no
+  // `v` at all, so its two rasters were byte identical: 355 tiles of one stamp.
+  // Pantiles run DOWN the pitch, so the ribs stay on their 4px period (which is
+  // continuous through a 16px border by construction); what moves per variant
+  // is the weathering, the moss and which pans are cracked.
+  def('TILE_ROOF', 'Tile Roof', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 8 }, (c, x, y, v) => {
+    const r = sr(v);
     R(c, PAL.tileRoofD, x, y, 16, 16);
     for (let i = 0; i < 4; i++) {
       const px = x + i * 4;
       R(c, PAL.tileRoof, px, y, 3, 16);
       V(c, PAL.tileRoofL, px, y, 16);
+      V(c, PAL.tileRoofM, px + 2, y, 16);
     }
-    for (let i = 0; i < 4; i++) H(c, PAL.tileRoofD, x, y + i * 4 + 3, 16);
-    H(c, '#d38f66', x, y, 16);                       // lit ridge course
-    R(c, PAL.tileRoofXD, x, y + 14, 16, 2);          // eave overhang
+    // the horizontal laps sit at rows 1/5/9/13 — never on row 15, where they
+    // used to meet the next tile's lit ridge row and make a 41.5 L* bar
+    for (let i = 0; i < 4; i++) { H(c, PAL.tileRoofG, x, y + i * 4 + 1, 16); H(c, PAL.tileRoofL, x, y + i * 4 + 2, 16); }
+    for (let i = 0; i < 5; i++) { const w = 2 + Math.floor(r() * 3); mark(c, PAL.tileRoofG, x, y, inX(r, w), inY(r, 2), w, 2); }
+    for (let i = 0; i < 3; i++) mark(c, PAL.moss, x, y, inX(r, 2), inY(r, 2), 2, 2);
+    speck(c, PAL.tileRoofL, x, y, 4, r);
+    seam(c, x, y, SEAM.tileRoof, SEAM_TONE.tileRoof, 6, 3, 3);
   });
 
   def('ROOF_PEAK', 'Roof Peak', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 1 }, (c, x, y) => {
     blob(c, PAL.thatchD, x, y, [[1, 7, 2], [2, 6, 4], [3, 5, 6], [4, 4, 8], [5, 3, 10], [6, 2, 12], [7, 1, 14], [8, 0, 16], [9, 0, 16], [10, 0, 16], [11, 0, 16], [12, 0, 16], [13, 0, 16], [14, 0, 16], [15, 0, 16]]);
-    blob(c, PAL.thatch, x, y, [[3, 6, 4], [4, 5, 6], [5, 4, 8], [6, 3, 10], [7, 2, 12], [8, 1, 14], [9, 1, 14], [10, 0, 16], [11, 0, 16], [12, 0, 16], [13, 0, 16]]);
+    blob(c, PAL.thatch, x, y, [[3, 6, 4], [4, 5, 6], [5, 4, 8], [6, 3, 10], [7, 2, 12], [8, 1, 14], [9, 1, 14], [10, 0, 16], [11, 0, 16], [12, 0, 16], [13, 0, 16], [14, 0, 16], [15, 0, 16]]);
     H(c, PAL.thatchL, x + 1, y + 9, 14); H(c, PAL.thatchL, x + 0, y + 12, 16);
     H(c, PAL.thatchM, x, y + 11, 16); H(c, PAL.thatchD, x, y + 13, 16);
-    R(c, PAL.thatchXD, x, y + 14, 16, 2);          // eave overhang
     blob(c, PAL.thatchL, x, y, [[3, 6, 3], [4, 5, 4], [5, 4, 4], [6, 3, 4], [7, 2, 4]]);  // lit upper-left slope
   });
 
@@ -2641,15 +3105,27 @@ function buildTiles() {
       P(c, PAL.graniteM, x + ox + 1, y + oy + 4);
     });
 
-  const ore = (key, label, gem, gemL) => def(key, label, SOLID, { layer: 'deco', group: 'cave-wall', biomes: ['mine', 'cave', 'underdark'], variants: 2 },
+  // An ore vein is a patch of the CAVE WALL it is embedded in, not a patch of
+  // floor: this painted `caveD`/`cave`/`caveL` — the FLOOR family — inside a
+  // `caveW` wall, so a vein measured mean L* 28.7 against CAVE_WALL's 20.7 and
+  // read as a hole punched through the rock. Rebased on the wall's own ramp.
+  const ore = (key, label, gem, gemL) => def(key, label, SOLID, { layer: 'deco', group: 'cave-wall', biomes: ['mine', 'cave', 'underdark'], variants: 4 },
     (c, x, y, v) => {
       const r = sr(v);
-      R(c, PAL.caveD, x, y, 16, 16);
-      for (let i = 0; i < 8; i++) { const px = x + Math.floor(r() * 12), py = y + Math.floor(r() * 12); R(c, PAL.cave, px, py, 4, 3); H(c, PAL.caveL, px, py, 4); }
-      for (let i = 0; i < 5; i++) {
-        const px = x + 1 + Math.floor(r() * 13), py = y + 1 + Math.floor(r() * 13);
-        R(c, gem, px, py, 2, 2); P(c, gemL, px, py);
+      R(c, PAL.caveWD, x, y, 16, 16);
+      for (let i = 0; i < 9; i++) {
+        const w = 3 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 3);
+        const px = inX(r, w), py = inY(r, h);
+        mark(c, PAL.caveW, x, y, px, py, w, h);
+        mark(c, PAL.caveWL, x, y, px, py, w, 1);
+        mark(c, PAL.caveWG, x, y, px + 1, py + h, w - 1, 1);
       }
+      speck(c, PAL.caveWG, x, y, 4, r);
+      for (let i = 0; i < 5; i++) {
+        const px = inX(r, 2), py = inY(r, 2);
+        mark(c, gem, x, y, px, py, 2, 2); P(c, gemL, x + px, y + py);
+      }
+      seam(c, x, y, SEAM.caveWall, SEAM_TONE.caveWall, 8, 4, 3);
     });
   ore('ORE_IRON', 'Iron Vein', '#8d8378', '#c3bdb2');
   ore('ORE_SILVER', 'Silver Vein', '#a8b4c0', '#e8f0f8');
@@ -3142,24 +3618,46 @@ function buildTiles() {
     c.fillStyle = 'rgba(14,10,8,0.10)'; c.fillRect(x, y + 5, 16, 1);
   });
 
-  def('WALL_TOP_LIT', 'Wall Crown', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'ruins', 'dungeon'], variants: 2 },
-    (c, x, y, v) => {
+  /**
+   * These two are the tiles that ARE allowed a mass edge, because they are the
+   * only wall tiles that know where they sit — which is the whole reason the
+   * body tiles no longer guess. `maps.js:228` places WALL_TOP_SHADE as the BASE
+   * COURSE of every stone, brick and ruined facade (`fy = y + h - 1`, the door
+   * row), and the census agrees: 165 placements, 100% of them with nothing
+   * below and 72% with a wall directly above. So it is a FOOT, not a crown —
+   * heavy flat course, occlusion where it meets the ground, and no lit cap,
+   * because there is a STONE_WALL sitting on it. WALL_TOP_LIT is the mirror
+   * image and is the one to reach for at the top of a mass.
+   *
+   * What neither is allowed any more is a `stoneH`/`stoneM` column 0 and a
+   * `stoneD`/`stoneXD` column 15. Base courses run in horizontal rows, so that
+   * put a light-then-dark pinstripe every 16 columns along the foot of every
+   * building in Phandalin and Neverwinter — column-profile amplitude 30.7 and
+   * 32.2, the largest in the file after the wall crowns themselves.
+   */
+  def('WALL_TOP_LIT', 'Wall Crown', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'ruins', 'dungeon'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => {
       const r = sr(v);
-      R(c, PAL.stoneL, x, y, 16, 16);
-      for (let row = 0; row < 4; row++) { H(c, PAL.stoneD, x, y + row * 4 + 3, 16); V(c, PAL.stoneD, x + ((row % 2) ? 5 : 11), y + row * 4, 3); }
+      coursed(c, x, y, vi, SEAM.crownLit, 4, 5, 9,
+        [PAL.stoneL, PAL.stoneL, PAL.stoneM, PAL.stoneM],
+        [PAL.stoneH, PAL.stoneH, PAL.stoneL, PAL.stoneL], PAL.stoneG, PAL.stoneG);
+      patchBlock(c, PAL.stoneM, x, y, r, 4, 4, 7, 1);
       speck(c, PAL.stoneH, x, y, 5, r);
-      R(c, PAL.stoneH, x, y, 16, 2); V(c, PAL.stoneH, x, y, 16);
-      V(c, PAL.stoneD, x + 15, y, 16); R(c, PAL.stoneXD, x, y + 14, 16, 2);
+      seam(c, x, y, SEAM.crownLit, SEAM_TONE.masonry, 7, 3, 3);
+      R(c, PAL.stoneH, x, y, 16, 2);                 // the lit crown of the mass
     });
 
-  def('WALL_TOP_SHADE', 'Wall Crown', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'ruins', 'dungeon'], variants: 2 },
-    (c, x, y, v) => {
+  def('WALL_TOP_SHADE', 'Wall Base Course', SOLID, { layer: 'deco', group: 'wall', biomes: ['city', 'ruins', 'dungeon'], variants: 16, edgeVariant: true },
+    (c, x, y, v, vi) => {
       const r = sr(v);
-      R(c, PAL.stone, x, y, 16, 16);
-      for (let row = 0; row < 4; row++) { H(c, PAL.stoneD, x, y + row * 4 + 3, 16); V(c, PAL.stoneD, x + ((row % 2) ? 5 : 11), y + row * 4, 3); }
-      speck(c, PAL.stoneD, x, y, 5, r);
-      H(c, PAL.stoneM, x, y, 16); V(c, PAL.stoneM, x, y, 16);
-      V(c, PAL.stoneXD, x + 15, y, 16); R(c, PAL.stoneXD, x, y + 14, 16, 2);
+      // 8px blocks: a plinth is laid in bigger, flatter stones than the wall
+      coursed(c, x, y, vi, SEAM.crownShade, 8, 7, 12,
+        [PAL.stone, PAL.stoneG],
+        [PAL.stoneM, PAL.stone], PAL.stoneD, PAL.stoneD);
+      patchBlock(c, PAL.stoneM, x, y, r, 8, 5, 9, 1);
+      speck(c, PAL.stoneG, x, y, 5, r);
+      seam(c, x, y, SEAM.crownShade, SEAM_TONE.masonry, 7, 3, 3);
+      R(c, PAL.stoneXD, x, y + 15, 16, 1);           // where the plinth meets the ground
     });
 
   // -------------------------------------------------------------------------

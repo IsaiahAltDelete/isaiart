@@ -1055,6 +1055,18 @@ export class Encounter {
     }
   }
 
+  /**
+   * The shared pack, but only for the side that owns it.
+   *
+   * `this.bag` is not a copy — world/overworld.js passes `Party.inventory`
+   * itself — so anything that reaches into it splices the player's real pack.
+   * Offering it to every unit let goblins drink the party's Potions of Healing
+   * and permanently delete them. The party's own bag, and nobody else's.
+   */
+  _bagFor(unit) {
+    return unit && unit.side === 'party' ? arr(this.bag) : [];
+  }
+
   /** Consumables from the shared party bag, plus anything on this creature. */
   _itemOptions(unit, b, cm, out) {
     const seen = new Map();
@@ -1069,7 +1081,7 @@ export class Encounter {
       if (prev) { prev.qty += num(entry.qty, 1); return; }
       seen.set(k, { entry, def, source, qty: num(entry.qty, 1) });
     };
-    for (const e of arr(this.bag)) consider(e, 'bag');
+    for (const e of this._bagFor(unit)) consider(e, 'bag');
     for (const e of arr(unit.inventory)) consider(e, 'self');
 
     for (const { entry, def, source, qty } of seen.values()) {
@@ -1821,7 +1833,7 @@ export class Encounter {
     const parts = id.split(':');
     const source = parts[1] || 'bag';
     const ref = parts.slice(2).join(':');
-    const list = source === 'bag' ? arr(this.bag) : arr(unit.inventory);
+    const list = source === 'bag' ? this._bagFor(unit) : arr(unit.inventory);
     const entry = list.find((e) => e && (e.uid === ref || e.id === ref));
     if (!entry) { this._push('That item is gone from the pack.', 'info', unit); return { ok: false, results, error: 'no-item' }; }
 
@@ -2721,12 +2733,19 @@ export class Encounter {
     }
 
     // --- treasure ----------------------------------------------------------
+    // The two sources disagree on shape: scaling.lootFor returns rich
+    // { id, qty, name, rarity } records, the per-stat-block fallback below
+    // returns bare id strings. Everything downstream — this log line, the
+    // victory screen's Spoils chips, and Party.addItem — reads ONE shape, so
+    // both branches are normalised here, at the junction, into
+    // { id, qty, name, rarity }. Leaving the two shapes to escape is what
+    // printed "Found: [object Object]" and dropped every drop on the floor.
     let gold = 0;
-    let items = [];
+    const raw = [];
     const fromScaling = safe(() => (typeof Scaling.lootFor === 'function' ? Scaling.lootFor(this) : null), null);
     if (fromScaling) {
       gold = num(fromScaling.gold);
-      items = arr(fromScaling.items).slice();
+      raw.push(...arr(fromScaling.items));
     } else {
       for (const f of foes) {
         const loot = f.loot;
@@ -2735,16 +2754,30 @@ export class Encounter {
         for (const row of arr(loot.table)) {
           if (!Array.isArray(row)) continue;
           const [itemId, chance] = row;
-          if (itemId && this.rng.chance(num(chance, 0.1))) items.push(itemId);
+          if (itemId && this.rng.chance(num(chance, 0.1))) raw.push(itemId);
         }
       }
+    }
+    const items = [];
+    for (const entry of raw) {
+      const id = typeof entry === 'string' ? entry : (entry && entry.id);
+      if (!id) continue;
+      const qty = Math.max(1, num(entry && entry.qty, 1));
+      const found = items.find((e) => e.id === id);
+      if (found) { found.qty += qty; continue; }
+      items.push({
+        id,
+        qty,
+        name: (entry && entry.name) || itemName(id) || id,
+        rarity: (entry && entry.rarity) || 'common',
+      });
     }
 
     if (xp > 0) {
       this._push(`The party earns ${xp} experience${survivors.length > 1 ? ` (${share} each)` : ''}.`, 'info');
     }
     if (gold > 0) this._push(`You gather ${gold} gp from the fallen.`, 'info');
-    for (const it of items) this._push(`Found: ${itemName(it) || it}.`, 'info');
+    for (const it of items) this._push(`Found: ${it.name}${it.qty > 1 ? ` ×${it.qty}` : ''}.`, 'info');
     for (const l of leveled) this._push(`${l.name} reaches level ${l.level}!`, 'buff');
     if (xp > 0) bus.emit(EV.XP_GAIN, { enc: this, xp, share, survivors: survivors.map((s) => s.uid) });
 

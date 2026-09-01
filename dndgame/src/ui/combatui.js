@@ -401,6 +401,7 @@ export class BattleScene {
     this.rollLines = null;            // { lines, color, t, dur }
     this.prompt = null;               // reaction prompt
     this.results = null;              // victory / defeat panel state
+    this._leaving = false;            // one-way latch: the results panel is closing
     this.hint = '';
 
     // --- sequencing --------------------------------------------------------
@@ -829,10 +830,6 @@ export class BattleScene {
     this.beats.length = 0;
     this.phase = 'over';
     const r = safe(() => enc.result(), null) || { state: enc.state };
-    // A fight ends three ways and this only ever branched two. `fled` fell
-    // through to the defeat arm, so outrunning a fight announced "The company
-    // falls" and then a Game Over naming, as your killer, the creature you had
-    // just escaped from.
     if (r.victory) this._openVictory(r);
     else if (r.fled || r.state === 'fled') this._openEscape(r);
     else this._openDefeat(r);
@@ -1067,9 +1064,21 @@ export class BattleScene {
 
     // --- shortcuts --------------------------------------------------------
     if (!inSub) {
+      // A group row is only built when it has entries, so a digit that pointed
+      // at an absent group did nothing at all and read as a dead key — digit-3
+      // with an empty pack was silent in every early fight. Say why instead;
+      // these are the same lines the group row itself would have carried.
+      const NO_GROUP = {
+        '@attack': 'Nothing to attack with.',
+        '@cast': 'You know no spells.',
+        '@class': 'No class features ready.',
+        '@item': 'The pack is empty.',
+      };
       const jump = (gid) => {
         const r = this._rootMenu().findIndex((x) => x.id === gid);
         if (r >= 0) { this.menuIndex = r; this._chooseRow(this._rootMenu()[r]); return true; }
+        sfx('error');
+        this.hint = NO_GROUP[gid] || 'Not available.';
         return false;
       };
       if (Input.consume('tab1')) { jump('@attack'); return; }
@@ -2308,9 +2317,18 @@ export class BattleScene {
     const enc = this.enc;
     const rw = enc.rewards || safe(() => enc.awardXp(), null) || { xp: 0, share: 0, gold: 0, loot: [], leveled: [] };
 
+    // awardXp normalises both loot sources to { id, qty, name, rarity }; an
+    // older encounter object (or a hand-built one) may still hand up bare ids,
+    // so accept either rather than resolving a string as an object and adding
+    // nothing at all.
+    const loot = (rw.loot || rw.items || []).map((e) => (typeof e === 'string'
+      ? { id: e, qty: 1, name: safe(() => itemName(e), e) || e, rarity: 'common' }
+      : { id: e.id, qty: Math.max(1, e.qty || 1), name: e.name || safe(() => itemName(e.id), e.id) || e.id, rarity: e.rarity || 'common' }))
+      .filter((e) => e.id);
+
     // The engine hands out XP; the purse and the pack are the scene's business.
     if (rw.gold > 0) safe(() => Party.addGold(rw.gold));
-    for (const id of rw.loot || rw.items || []) safe(() => Party.addItem(id, 1));
+    for (const e of loot) safe(() => Party.addItem(e.id, e.qty));
 
     const members = (enc.units || []).filter((u) => u && u.side === 'party' && u.kind !== 'monster');
     this.results = {
@@ -2318,7 +2336,7 @@ export class BattleScene {
       xp: rw.xp || 0,
       share: rw.share || 0,
       gold: rw.gold || 0,
-      loot: (rw.loot || rw.items || []).slice(),
+      loot,
       leveled: rw.leveled || [],
       members,
       rounds: result?.rounds || enc.round || 1,
@@ -2337,37 +2355,47 @@ export class BattleScene {
   }
 
   /**
-   * A successful escape. Not a win — no xp, no spoils — but emphatically not a
-   * defeat: everyone who ran is alive, and the run continues.
+   * The party got away. `enc.result()` reports this as its own state — it is
+   * neither `victory` nor `defeat` — and treating it as a defeat sent a party at
+   * full health to the Game Over screen. Escaping costs the spoils, nothing else.
    */
   _openEscape(result) {
-    const enc = this.enc;
-    const chasers = (enc?.units || []).filter((u) => u && u.side === 'foe' && !isDead(u));
-    this.results = {
-      kind: 'escape',
-      rounds: result?.rounds || enc?.round || 1,
-      chasers: chasers.map((u) => u.name || 'something'),
-      t: 0, index: 0,
-    };
+    this.results = { kind: 'fled', t: 0, index: 0, rounds: result?.rounds || this.enc?.round || 1 };
     safe(() => Audio.music(null));
-    sfx('back');
+    sfx('select');
   }
 
   _updateResults() {
     const r = this.results;
     if (!r) return;
     r.t += Game.dt || 0.016;
-    if (r.t < 0.6) return;
+    if (r.t < 0.6 || this._leaving) return;
 
     const m = Input.mouse;
     if (Input.consume('confirm') || Input.consume('cancel') || (m.clicked && m.over)) {
       if (r.kind === 'victory') this._leaveVictory();
-      else if (r.kind === 'escape') this._leaveEscape();
+      else if (r.kind === 'fled') this._leaveEscape();
       else this._leaveDefeat();
     }
   }
 
+  /** Back to the map, no Game Over: the company is alive and running. */
+  _leaveEscape() {
+    if (this._leaving) return;
+    this._leaving = true;
+    sfx('select');
+    const enc = this.enc;
+    if (this.opts.onEnd) safe(() => this.opts.onEnd(safe(() => enc.result(), null)));
+    if (Game.top === this) Game.pop();
+  }
+
   _leaveVictory() {
+    // import('./levelup.js') is asynchronous, so between the Confirm that starts
+    // it and the frame the module lands, _updateResults kept calling straight
+    // back in — thirty mashed Confirms pushed twenty-eight LevelUpScenes. One
+    // latch, checked by every exit from the results panel.
+    if (this._leaving) return;
+    this._leaving = true;
     sfx('select');
     const leveled = this.results?.leveled || [];
     const enc = this.enc;
@@ -2395,20 +2423,9 @@ export class BattleScene {
     finish();
   }
 
-  /**
-   * Hand the result back to whoever started the fight, then leave. The overworld
-   * uses it to scatter what chased you, reset the encounter counter and restore
-   * the field music — none of which ran while this path went to the Game Over
-   * screen instead.
-   */
-  _leaveEscape() {
-    sfx('select');
-    const enc = this.enc;
-    if (this.opts.onEnd) safe(() => this.opts.onEnd(safe(() => enc.result(), null)));
-    if (Game.top === this) Game.pop();
-  }
-
   _leaveDefeat() {
+    if (this._leaving) return;
+    this._leaving = true;
     sfx('select');
     const enc = this.enc;
     const killer = (enc?.units || []).find((u) => u && u.side === 'foe' && !isDead(u));
@@ -2532,8 +2549,21 @@ export class BattleScene {
     const sh = (Save?.settings?.screenShake === false || !FX.shakeOffset)
       ? { x: 0, y: 0 } : FX.shakeOffset();
 
+    // Everything below runs inside a clip and two nested saves. A throw anywhere
+    // in it used to leave all three standing, and since the clip is exactly
+    // FIELD the whole game was then trapped in a 400x186 band for the rest of
+    // the session. try/finally unwinds them whatever happens.
     UI.pushClip(ctx, FIELD.x, FIELD.y, FIELD.w, FIELD.h);
     ctx.save();
+    try {
+      this._drawFieldInner(ctx, sh);
+    } finally {
+      ctx.restore();
+      UI.popClip(ctx);
+    }
+  }
+
+  _drawFieldInner(ctx, sh) {
     ctx.translate(R(sh.x), R(sh.y));
 
     // Which tiles are on screen?
@@ -2564,9 +2594,6 @@ export class BattleScene {
     ctx.save();
     FX.draw(ctx, -o.x, -o.y);
     ctx.restore();
-
-    ctx.restore();
-    UI.popClip(ctx);
   }
 
   _drawTerrain(ctx, left, top, cols, rows) {
@@ -3699,24 +3726,21 @@ export class BattleScene {
   _drawResults(ctx) {
     const r = this.results;
     UI.scrim(ctx, 0.72);
-    if (r.kind === 'escape') {
-      const W = 248, H = 84, X = R((VIEW_W - W) / 2), Y = 72;
-      UI.window(ctx, X, Y, W, H, 'Escaped', { style: 'dark', shadow: 0.6 });
-      UI.text(ctx, VIEW_W / 2, Y + 14, 'You break away.', { size: 'lg', color: UI.COLORS.gold, align: 'center', shadow: true });
-      const who = r.chasers.length === 1 ? r.chasers[0]
-        : r.chasers.length ? `${r.chasers.length} pursuers` : 'the field';
-      UI.text(ctx, VIEW_W / 2, Y + 32, `${UI.fit(who, W - 30, 'sm')} left behind after ${r.rounds} round${r.rounds === 1 ? '' : 's'}.`,
-        { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
-      UI.text(ctx, VIEW_W / 2, Y + 46, 'No spoils — and they are still out there.', { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
-      UI.text(ctx, VIEW_W / 2, Y + H - 11, 'Press Confirm', { size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true });
-      return;
-    }
     if (r.kind === 'defeat') {
       const W = 240, H = 78, X = R((VIEW_W - W) / 2), Y = 74;
       UI.window(ctx, X, Y, W, H, 'Defeat', { style: 'dark', shadow: 0.6 });
       UI.text(ctx, VIEW_W / 2, Y + 14, 'The party falls.', { size: 'lg', color: UI.COLORS.red, align: 'center', shadow: true });
       UI.text(ctx, VIEW_W / 2, Y + 32, `The fight lasted ${r.rounds} round${r.rounds === 1 ? '' : 's'}.`, { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
       UI.text(ctx, VIEW_W / 2, Y + 46, 'Tymora turns her face away.', { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
+      UI.text(ctx, VIEW_W / 2, Y + H - 11, 'Press Confirm', { size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true });
+      return;
+    }
+    if (r.kind === 'fled') {
+      const W = 240, H = 78, X = R((VIEW_W - W) / 2), Y = 74;
+      UI.window(ctx, X, Y, W, H, 'Escape', { style: 'dark', shadow: 0.6 });
+      UI.text(ctx, VIEW_W / 2, Y + 14, 'You break away.', { size: 'lg', color: UI.COLORS.gold, align: 'center', shadow: true });
+      UI.text(ctx, VIEW_W / 2, Y + 32, `You held them for ${r.rounds} round${r.rounds === 1 ? '' : 's'}.`, { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
+      UI.text(ctx, VIEW_W / 2, Y + 46, 'No spoils — but the road is still yours.', { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
       UI.text(ctx, VIEW_W / 2, Y + H - 11, 'Press Confirm', { size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true });
       return;
     }
@@ -3773,9 +3797,11 @@ export class BattleScene {
 
     if (r.loot.length) {
       let cx = X + 10;
-      for (const id of r.loot.slice(0, 6)) {
-        const raw = safe(() => itemName(id), null);
-        const name = raw && raw !== id ? raw : titleCase(String(id).replace(/-/g, ' '));
+      for (const e of r.loot.slice(0, 6)) {
+        const id = e.id;
+        const raw = e.name || safe(() => itemName(id), null);
+        let name = raw && raw !== id ? raw : titleCase(String(id).replace(/-/g, ' '));
+        if (e.qty > 1) name += ` ×${e.qty}`;
         const room = X + W - 12 - cx;
         if (room < 34) break;
         const cw = UI.chip(ctx, cx, y, UI.fit(name, Math.min(96, room - 14), 'sm'),

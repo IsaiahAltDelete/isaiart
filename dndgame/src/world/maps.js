@@ -25,6 +25,12 @@
 //     placed, and swept clear again afterwards. Nobody gets bricked into a wall.
 
 import { TileMap, TF, setTileFlagResolver } from './tilemap.js';
+// Region packs. Each is a self-contained file that exports REGION_MAPS (raw map
+// definitions, keyed by id) and REGION_LINKS (rows in the same shape as LINKS
+// below). Keeping them out of this file lets whole regions be authored in
+// parallel without four agents editing one 2,000-line module.
+import { REGION_MAPS as SOUTH_MAPS, REGION_LINKS as SOUTH_LINKS } from './maps_south.js';
+import { REGION_MAPS as BG_MAPS, REGION_LINKS as BG_LINKS } from './maps_baldursgate.js';
 import { tileFlags } from '../render/tiles.js';
 import { makeRNG } from '../core/rng.js';
 import { NPCEntity, EntityList } from './entity.js';
@@ -457,7 +463,10 @@ const LINKS = [
  * (`toXY: null`) are placed by the map's own builder, which knows where the
  * generator put the stairs.
  */
-export const WORLD_NODES = Object.freeze(LINKS.flatMap((l) => {
+/** Every doorway in the game: the Sword Coast North plus each region pack. */
+const ALL_LINKS = LINKS.concat(SOUTH_LINKS || [], BG_LINKS || []);
+
+export const WORLD_NODES = Object.freeze(ALL_LINKS.flatMap((l) => {
   const out = [];
   if (l.aWarp) {
     out.push(Object.freeze({
@@ -886,7 +895,7 @@ function buildBarthens(root) {
   oset(map, 9, 6, tid('CHANDELIER', 'CANDLE'));
 
   finishInterior(map, r, rm.exit, res);
-  map.addTrigger({ id: 'barthens-shop', kind: 'shop', x: 8, y: 5, data: { shop: 'provisions', npc: 'elmar-barthen' } });
+  map.addTrigger({ id: 'barthens-shop', kind: 'shop', x: 8, y: 5, data: { shop: 'barthens-provisions', npc: 'elmar-barthen' } });
   return map;
 }
 
@@ -912,7 +921,7 @@ function buildLionshield(root) {
   oset(map, 9, 6, tid('CHANDELIER', 'CANDLE'));
 
   finishInterior(map, r, rm.exit, res);
-  map.addTrigger({ id: 'lionshield-shop', kind: 'shop', x: 8, y: 7, data: { shop: 'lionshield', npc: 'linene-graywind' } });
+  map.addTrigger({ id: 'lionshield-shop', kind: 'shop', x: 8, y: 7, data: { shop: 'lionshield-coster', npc: 'linene-graywind' } });
   return map;
 }
 
@@ -942,7 +951,7 @@ function buildShrineOfLuck(root) {
 
   finishInterior(map, r, rm.exit, res);
   map.addTrigger({ id: 'shrine-altar', kind: 'quest', x: 7, y: 3, w: 2, h: 1, data: { deity: 'tymora', text: 'A silver coin spins on the altar of Tymora and never quite falls.' } });
-  map.addTrigger({ id: 'shrine-shop', kind: 'shop', x: 8, y: 4, data: { shop: 'shrine', npc: 'sister-garaele' } });
+  map.addTrigger({ id: 'shrine-shop', kind: 'shop', x: 8, y: 4, data: { shop: 'shrine-of-luck', npc: 'sister-garaele' } });
   return map;
 }
 
@@ -1697,7 +1706,7 @@ function def(id, o) {
   };
 }
 
-export const MAP_DEFS = Object.freeze({
+const CORE_MAP_DEFS = ({
   phandalin: def('phandalin', {
     name: 'Phandalin', kind: 'town', biome: 'city', w: 60, h: 50, safe: true, music: 'town',
     level: 1, region: 'phandalin-hills', build: buildPhandalin,
@@ -1786,6 +1795,24 @@ export const MAP_DEFS = Object.freeze({
     desc: 'Halaster Blackcloak’s endless dungeon beneath Mount Waterdeep. It has no bottom.',
   }),
 });
+
+/**
+ * Every map in the game: the Sword Coast North core plus each region pack.
+ * A pack supplies RAW definitions (the same fields `def` takes); they are run
+ * through `def` here so a pack never has to import it.
+ */
+function packDefs(pack) {
+  const out = {};
+  for (const [id, o] of Object.entries(pack || {})) out[id] = def(id, o);
+  return out;
+}
+
+export const MAP_DEFS = Object.freeze({
+  ...CORE_MAP_DEFS,
+  ...packDefs(SOUTH_MAPS),
+  ...packDefs(BG_MAPS),
+});
+
 
 export const MAP_IDS = Object.freeze(Object.keys(MAP_DEFS));
 

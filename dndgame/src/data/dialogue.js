@@ -2,8 +2,10 @@
 // the travellers on the Triboar Trail, and the voices waiting in Neverwinter,
 // Waterdeep and Undermountain.
 //
-// PURE DATA. Nothing is imported; nothing here mutates. ui/dialogue.js pulls this
-// catalogue in with a dynamic import and drives it.
+// PURE DATA. The only import is the southern half of this same catalogue —
+// dialogue_south.js, spread in at the bottom of DIALOGUE exactly the way
+// npcs.js concatenates SOUTH_CAST. Nothing here mutates. ui/dialogue.js pulls
+// this catalogue in with a dynamic import and drives it.
 //
 // Contract (SPEC.md §3, and the implementation in ui/dialogue.js):
 //   DIALOGUE[id] = { start:'nodeId', nodes:{ nodeId: Node } }
@@ -31,6 +33,8 @@
 // Setting note: every name, place, deity and faction below is published
 // Forgotten Realms canon or is built from the ethnic naming tables in
 // docs/SETTING.md §5. Nothing is coined.
+
+import { SOUTH_DIALOGUE } from './dialogue_south.js';
 
 // ---------------------------------------------------------------------------
 // deepFreeze — recursive Object.freeze for the exported catalogue (HARD RULE 8).
@@ -2462,7 +2466,12 @@ export const DIALOGUE = deepFreeze({
           { text: 'Gundren is alive. He sent us.', goto: 'gundren' },
           { text: 'Where is Tharden?', goto: 'tharden' },
           { text: 'What is down here with you?', goto: 'below' },
+          { text: 'Sit tight. We are not done down here.', cancel: true, goto: 'bye' },
         ],
+      },
+      bye: {
+        speaker: 'Nundro Rockseeker',
+        text: "Aye. Go on then.\n\nHe settles back against the post and folds his arms, which with the chain on takes some doing.\n\nAnd when you come back past — the eastern face. Look at it yourself. You will see it.",
       },
       freed: {
         speaker: 'Nundro Rockseeker',
@@ -2925,7 +2934,12 @@ export const DIALOGUE = deepFreeze({
             goto: 'sworn',
           },
           { text: 'Neither. Move.', goto: 'neither' },
+          { text: 'Carry on, sentry.', cancel: true, goto: 'bye' },
         ],
+      },
+      bye: {
+        speaker: 'Rowan Buckman',
+        text: "She does not answer. She has gone back to watching the road, both hands on the stick, in the exact posture of somebody who has decided that the well is her responsibility now.",
       },
       hero: {
         speaker: 'Rowan Buckman',
@@ -3839,6 +3853,16 @@ export const DIALOGUE = deepFreeze({
             do: [{ gold: -360 }, { complete: 'mirts-loan' }, { clearFlag: 'mirt-loan-taken' }],
             goto: 'settled',
           },
+          {
+            text: 'You have business in the south, we hear.',
+            if: { all: [{ questNot: 'the-long-road-south' }, { level: 8 }] },
+            goto: 'south',
+          },
+          {
+            text: 'The Trade Way is walked, Old Wolf. Ask Daggerford.',
+            if: { all: [{ questDone: 'the-long-road-south' }, { notFlag: 'mirt-south-thanked' }] },
+            goto: 'south-done',
+          },
           { text: 'What are the other things you are?', goto: 'other' },
           {
             text: 'Sister Garaele sent us.',
@@ -3874,6 +3898,35 @@ export const DIALOGUE = deepFreeze({
         speaker: 'Mirt',
         text: "Garaele. The elf girl at the luck shrine.\n\nThe joviality does not go anywhere, but something behind it comes forward and looks at you properly.\n\nShe writes a good report. Short, dated, no adjectives. Half the Harpers write like poets and I burn theirs.\n\nSo. Phandalin. Netherese cellars, a spellforge under the hill, and the Black Network taking an interest in a town of four hundred souls.\\p Tell me all of it, in order, and I shall tell you what it means, and then neither of us will sleep.",
         do: [{ flag: 'mirt-harper-open' }, { rep: { id: 'harpers', amount: 3 } }],
+        goto: 'hub',
+      },
+      south: {
+        speaker: 'Mirt',
+        text: "Hear. \\pYou HEAR. Wonderful. I own four walls and a chair and apparently a town crier.\n\nHe heaves himself forward, and the chair and the joviality both creak.\n\nFine. Yes. Four thousand gold, sitting in a Baldurian counting house with my name on it, six hundred miles down the Trade Way. In two years I have sent three factors after it. One came back robbed. One came back in a box. One wrote to say he has married a Daggerford girl and taken up cheesemaking, which of the three is the fate I understand least.\\p I do not want the money carried. I want the ROAD. Walk it, all of it, and hand my letter of credit to Morwen Daggerford — the Duchess, and do call her that, she has a sword — and come back able to tell me plainly what is eating my couriers between here and the Delimbiyr.",
+        choices: [
+          {
+            text: 'We will walk it. Give us the letter.',
+            do: { quest: 'the-long-road-south' },
+            goto: 'south-yes',
+          },
+          { text: 'What is on the road, that you know of?', goto: 'south-road' },
+          { text: 'Six hundred miles is a lot of walking. Not yet.', goto: 'hub' },
+        ],
+      },
+      'south-road': {
+        speaker: 'Mirt',
+        text: "If I knew, I would not be paying to find out — but I shall give you the shape of it.\n\nHe counts it off on thick ringed fingers.\n\nBandits above the Delimbiyr, organised ones, which is the interesting word. Daggerford, safe, ruled by a Duchess worth ten of most lords. The Way Inn, safe-ish. Then the Fields of the Dead, which are named honestly, and Dragonspear, which I will not discuss after dark, and the long coast down to the Gate itself.\\p And at the end of it, Baldur's Gate. A city that makes this one look sentimental. If you get that far, keep your purse inside your shirt and your opinions inside your teeth.",
+        goto: 'south',
+      },
+      'south-yes': {
+        speaker: 'Mirt',
+        text: "There. Sealed, watermarked, and worth precisely nothing to anyone who steals it, which is the beauty of paper over coin.\n\nHe produces the letter from somewhere inside the doublet, warm and slightly bent.\n\nMorwen Daggerford, her own hand, no other. She will know what it is.\\p And — listen. He is suddenly not wheezing. The Harpers lost two good friends on that road this year and nobody southward will say the right names about it. Walk it with your eyes open. I am buying the LOOKING, understand. The gold is an excuse.",
+        goto: 'hub',
+      },
+      'south-done': {
+        speaker: 'Mirt',
+        text: "I know. Morwen wrote. Shorter letter than yours will be, and it still said more than three factors managed in two years.\n\nHe pours two glasses without asking and pushes one across.\n\nOrganised toll-thieves on my road, a Duchess short of swords, and the Gate at the end of it sitting on its own trouble like a hen on a griffon egg. That is worth knowing and I now know it.\\p The letter of credit is spent, the account is open, and you are on the short list of people I am at home to. Go south again when it calls you. It will. It always calls the useful ones.",
+        do: [{ flag: 'mirt-south-thanked' }, { rep: { id: 'harpers', amount: 2 } }],
         goto: 'hub',
       },
       bye: {
@@ -4002,6 +4055,12 @@ export const DIALOGUE = deepFreeze({
       },
     },
   },
+
+  // =========================================================================
+  // THE SOUTH — the Trade Way, the Coast Way, and Baldur's Gate entire.
+  // =========================================================================
+
+  ...SOUTH_DIALOGUE,
 
 });
 

@@ -147,13 +147,21 @@ export const cheat = {
   /** cheat.give('longsword-plus1', 1) — or cheat.give() for a useful test kit. */
   give(id, qty = 1) {
     if (!id) {
-      const kit = [['potion-of-healing', 10], ['potion-of-greater-healing', 5],
+      // These were 'potion-of-healing', 'potion-of-greater-healing' and
+      // 'scroll-of-fireball' — none of which are in ITEMS. Party.addItem
+      // returned null for all three, nothing was checked, and the kit reported
+      // success while containing no potions at all: the one thing a test kit is
+      // for. Real catalogue ids, and the report now counts what actually landed.
+      const kit = [['potion-healing', 10], ['potion-greater-healing', 5],
         ['rations', 10], ['torch', 10], ['thieves-tools', 1], ['arrow', 60],
-        ['scroll-of-fireball', 3], ['antitoxin', 3]];
-      for (const [k, q] of kit) Party.addItem(k, q);
-      return say('Test kit added to the pack');
+        ['scroll-fireball', 3], ['antitoxin', 3]];
+      const missed = [];
+      for (const [k, q] of kit) if (!Party.addItem(k, q)) missed.push(k);
+      return say(missed.length
+        ? `Test kit added, but ${missed.join(', ')} ${missed.length === 1 ? 'is' : 'are'} not in the catalogue`
+        : 'Test kit added to the pack');
     }
-    Party.addItem(id, qty);
+    if (!Party.addItem(id, qty)) return say(`No such item: ${id}`);
     return say(`+${qty} ${id}`);
   },
   /** Search the item catalogue: cheat.find('sword'). */

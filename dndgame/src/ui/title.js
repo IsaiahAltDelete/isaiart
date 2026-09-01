@@ -414,7 +414,9 @@ export class TitleScene {
     this.busy = true;
     const st = newGameState();
     Game.state = st;
-    if (ch) { Party.clear(); Party.add(ch); }
+    // The kit and the purse are rolled onto the character; the whole game reads
+    // the shared party pack. Hand them over or the campaign opens with 0 gp.
+    if (ch) { Party.clear(); Party.add(ch); Party.absorbKit(ch); }
     softImport('../world/overworld.js').then((ow) => {
       if (!ow || !ow.OverworldScene) {
         this.busy = false;
