@@ -537,6 +537,22 @@ function applyWarpNodes(map, mapId) {
     }
     map.exits[n.to] = { x, y, dir: n.dir };
   }
+
+  // Now the other direction: every warp that LANDS here. applyWarpNodes only
+  // ever cleared the tile you step ON, in the map that owns the warp — nothing
+  // guaranteed the tile you arrive at was walkable, because it belongs to a
+  // different map built by different code. A decorative prop scattered onto a
+  // landing tile silently strands the player inside scenery (this is exactly
+  // what sealed the road out of Rosymorn Monastery). Clearing the arrival tile
+  // costs nothing and makes the whole warp graph self-healing.
+  for (const n of warpsInto(mapId)) {
+    if (!n.toXY) continue;
+    const { x, y } = n.toXY;
+    if (!map.inBounds(x, y)) continue;
+    if (!map.solidAt(x, y)) continue;         // already fine, leave the art alone
+    map.set('deco', x, y, 0);                 // whatever was dropped here loses
+    map.clearFlag(x, y, TF.SOLID | TF.WATER | TF.DAMAGE);
+  }
   return map;
 }
 
