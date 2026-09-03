@@ -3,7 +3,7 @@
 
 import { PARTY_MAX, RESERVE_MAX } from '../constants.js';
 import { bus, EV } from '../core/events.js';
-import { resolveItem } from '../data/items.js';
+import { resolveItem, isMagic } from '../data/items.js';
 
 let nextUid = 1;
 function uid() { return `i${(nextUid++).toString(36)}${Date.now().toString(36).slice(-3)}`; }
@@ -125,12 +125,35 @@ export const Party = {
 
   // --- shared pack --------------------------------------------------------
 
+  /**
+   * A magic item pulled out of a chest is a mystery until somebody names it.
+   *
+   * `unidentified` was read in two places and written in none, so every wand
+   * and ring in the game arrived pre-appraised and Identify had nothing to do.
+   * The rule: anything above common rarity that carries an enchantment comes
+   * out of LOOT unnamed. Bought stock, conjured food, quest handouts and a
+   * companion's own kit are named already — the shop showed you the label and
+   * the spell made the thing, so pass `{ identified: true }` for those.
+   */
+  _isMystery(item, id) {
+    if (!item || !item.rarity || item.rarity === 'common') return false;
+    let magic = false;
+    try { magic = !!isMagic(id); } catch (e) { magic = false; }
+    return magic || !!item.magic || !!item.mech;
+  },
+
   addItem(id, qty = 1, opts = null) {
     const item = resolveItem(id);
     if (!item) return null;
+    const o = opts && typeof opts === 'object' ? opts : null;
+    const mystery = o && o.identified === false ? true
+      : o && (o.identified === true || o.source === 'shop') ? false
+        : (o && o.source === 'loot') || !o ? this._isMystery(item, id) : false;
+
     // Stackables merge; anything with per-instance state gets its own entry.
-    if (item.stack !== false && !opts) {
-      const e = this.inventory.find((x) => x.id === id && !x.opts);
+    // A mystery never merges: it has a state of its own to keep.
+    if (item.stack !== false && !opts && !mystery) {
+      const e = this.inventory.find((x) => x.id === id && !x.opts && !x.unidentified);
       if (e) {
         e.qty += qty;
         bus.emit(EV.ITEM_GAIN, { id, qty });
@@ -138,8 +161,10 @@ export const Party = {
       }
     }
     const entry = { uid: uid(), id, qty, ...(opts ? { opts } : {}) };
+    if (mystery) entry.unidentified = true;
+    else entry.identified = true;
     this.inventory.push(entry);
-    bus.emit(EV.ITEM_GAIN, { id, qty });
+    bus.emit(EV.ITEM_GAIN, { id, qty, unidentified: !!entry.unidentified });
     return entry;
   },
 
@@ -167,7 +192,8 @@ export const Party = {
       // and has to ride along or the item silently loses it.
       const { uid: _uid, id, qty: _qty, ...rest } = e;
       const carry = Object.keys(rest).length ? rest : null;
-      if (this.addItem(id, qty, carry)) out.items += qty;
+      // A companion's own kit is not loot: they know what they are carrying.
+      if (this.addItem(id, qty, carry || { identified: true })) out.items += qty;
     }
     if (Array.isArray(ch.inventory)) ch.inventory.length = 0;
     const gold = Math.max(0, Math.round(Number(ch.gold) || 0));

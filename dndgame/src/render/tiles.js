@@ -139,6 +139,18 @@ export const PAL = {
   // Roof mids, so an eave can be one step instead of the family's whole range.
   thatchG: '#7e6432', shingleM: '#6a3f33', shingleG: '#4c2d24',
   tileRoofM: '#8f4f32', tileRoofG: '#6b3823',
+  // SLATE — the fourth roof, for the patriars of Baldur's Gate and the Trades
+  // Ward: a cold blue-grey a full hue away from every other roof in town, so
+  // a street of shingle and pantile with one slate roof in it reads as one
+  // house that cost more. Same value band as shingle (L* ~33-45) so the two
+  // never fight for lightness, only for temperature.
+  slate: '#4d5566', slateD: '#39404e', slateL: '#636c80', slateM: '#565e6f',
+  slateG: '#434a59', slateXD: '#262a33',
+  // Canvas for awnings, stalls and tents: undyed sailcloth and the two dyes a
+  // market can afford.
+  canvas: '#d9cfae', canvasD: '#b4a884', canvasL: '#ece4c8',
+  dyeRed: '#a63c34', dyeRedD: '#7c2a24', dyeBlue: '#3e5f8a', dyeBlueD: '#2c4566',
+  dyeGreen: '#4e7a46', dyeGreenD: '#375a32',
 
   // ROCK against GRAVEL measured dE76 4.18 at 1.14:1 — a grey lump on grey
   // chippings, separated by neither value nor hue. Both ends move, and neither
@@ -434,6 +446,10 @@ const SEAM = {
   cliff: 26, caveWall: 27, masonry: 28, brick: 29, timber: 30, thatch: 31,
   shingle: 32, tileRoof: 33, dgnWall: 34, plaster: 35, crown: 37,
   crownLit: 38, crownShade: 39, ruin: 40, ridge: 42, cliffTop: 43,
+  // 44+ are the append-zone roofs: the gable-aware shingle and pantile sets
+  // share their body family's ring (shingle 32, tileRoof 33) so a SHINGLE_M
+  // beside a SHINGLE_ROOF is seamless; slate and dock are new families.
+  slate: 44, dock: 45, slateRidge: 46,
 };
 
 /**
@@ -464,6 +480,8 @@ const SEAM_TONE = {
   thatch: [PAL.thatch, PAL.thatchM, PAL.thatchD, PAL.thatch, PAL.thatchM, PAL.thatch],
   shingle: [PAL.shingle, PAL.shingleM, PAL.shingleD, PAL.shingle, PAL.shingleM, PAL.shingle],
   tileRoof: [PAL.tileRoof, PAL.tileRoofM, PAL.tileRoofD, PAL.tileRoof, PAL.tileRoofM, PAL.tileRoof],
+  slate: [PAL.slate, PAL.slateM, PAL.slateG, PAL.slate, PAL.slateM, PAL.slate],
+  dock: [PAL.wood, PAL.woodD, PAL.wood, PAL.woodL, PAL.woodD, PAL.wood],
   dgnWall: [PAL.dgnW, PAL.dgnWM, PAL.dgnWG, PAL.dgnW, PAL.dgnWM, PAL.dgnW],
   plaster: [PAL.plaster, PAL.plasterM, PAL.plasterD, PAL.plaster, PAL.plasterM, PAL.plaster],
 };
@@ -2543,38 +2561,91 @@ function buildTiles() {
     V(c, PAL.cloth, x + 8, y + 2, 5); R(c, PAL.wood, x + 7, y + 6, 3, 2);
   });
 
-  const BARREL_ROWS = [[3, 4, 8], [4, 3, 10], [5, 3, 10], [6, 3, 10], [7, 3, 10], [8, 3, 10], [9, 3, 10], [10, 3, 10], [11, 3, 10], [12, 3, 10], [13, 4, 8]];
+  // A cask seen from the game's three-quarter angle: you look slightly DOWN on
+  // it, so you see the lid as a squashed ellipse and the staves below it. The
+  // old barrel was a flat front elevation with a straight line for a top, which
+  // is why a row of them read as planks lying in the road. Rows 2-5 are the
+  // lid, 5-13 the belly, and the hoops bow a pixel at the ends to follow it.
+  const BARREL_ROWS = [[2, 5, 6], [3, 4, 8], [4, 3, 10], [5, 3, 10], [6, 3, 10], [7, 3, 10], [8, 3, 10], [9, 3, 10], [10, 3, 10], [11, 3, 10], [12, 4, 8], [13, 5, 6]];
+  const LID_ROWS = [[2, 5, 6], [3, 4, 8], [4, 4, 8]];
   def('BARREL', 'Barrel', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'dungeon', 'mine'], variants: 2 }, (c, x, y, v) => {
     const r = sr(v);
     shadowUnder(c, x, y, 10, 13);
     outline(c, PAL.barkXD, x, y, BARREL_ROWS);
     blob(c, PAL.wood, x, y, BARREL_ROWS);
-    H(c, PAL.iron, x + 3, y + 5, 10); H(c, PAL.iron, x + 3, y + 11, 10);
-    V(c, PAL.woodL, x + 4, y + 4, 9); V(c, PAL.woodD, x + 11, y + 4, 9);
-    R(c, PAL.woodL, x + 4, y + 3, 8, 1); H(c, PAL.woodD, x + 4, y + 4, 8);
-    V(c, PAL.barkD, x + 12, y + 4, 9);                       // shaded lower-right stave
-    if (r() < 0.5) P(c, PAL.woodD, x + 7, y + 8);
+
+    // --- the lid, catching the light -------------------------------------
+    blob(c, PAL.woodL, x, y, LID_ROWS);
+    H(c, PAL.woodH || PAL.canvasL, x + 5, y + 2, 6);          // the lit front lip
+    H(c, PAL.woodD, x + 4, y + 5, 8);                          // rim: lid meets belly
+    P(c, PAL.woodD, x + 3, y + 4); P(c, PAL.woodD, x + 12, y + 4);
+    // the two boards the head is made of
+    V(c, PAL.woodD, x + 7, y + 3, 2); V(c, PAL.woodD, x + 9, y + 2, 3);
+
+    // --- the belly --------------------------------------------------------
+    // Hoops sit a pixel lower at the ends, which is what makes a cylinder read
+    // as round rather than as a box with stripes on it.
+    for (const hy of [7, 11]) {
+      H(c, PAL.iron, x + 4, y + hy, 8);
+      P(c, PAL.ironD, x + 3, y + hy + 1); P(c, PAL.ironD, x + 12, y + hy + 1);
+      H(c, PAL.ironD, x + 4, y + hy + 1, 8);
+    }
+    V(c, PAL.woodL, x + 4, y + 6, 7);                          // lit stave, left
+    V(c, PAL.woodD, x + 10, y + 6, 7);                         // shaded stave
+    V(c, PAL.barkD, x + 11, y + 6, 7);                         // the turn away from the light
+    P(c, PAL.barkXD, x + 12, y + 9);
+    if (r() < 0.5) P(c, PAL.woodD, x + 6, y + 9);
   });
 
-  def('CRATE', 'Crate', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'dungeon', 'mine'], variants: 2 }, (c, x, y) => {
+  // A crate is a box, so it gets a lid you can see and a front you cannot see
+  // through: the top face is inset and lighter, and the front carries the
+  // bracing. Without the lid it was a square with an X on it — a sign lying
+  // face-up in the street.
+  def('CRATE', 'Crate', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'dungeon', 'mine'], variants: 2 }, (c, x, y, v) => {
+    const r = sr(v);
     shadowUnder(c, x, y, 12, 13);
-    outlineBox(c, PAL.barkXD, x, y, 2, 3, 12, 11);
-    R(c, PAL.wood, x + 2, y + 3, 12, 11);
-    O(c, PAL.woodD, x + 2, y + 3, 12, 11);
-    H(c, PAL.woodL, x + 3, y + 4, 10); V(c, PAL.woodL, x + 3, y + 4, 9);
-    for (let i = 0; i < 9; i++) { P(c, PAL.woodD, x + 3 + i, y + 4 + i); P(c, PAL.woodD, x + 12 - i, y + 4 + i); }
-    R(c, PAL.woodD, x + 2, y + 8, 12, 1);
-    V(c, PAL.barkD, x + 12, y + 4, 9);
+    outlineBox(c, PAL.barkXD, x, y, 2, 2, 12, 12);
+
+    // --- the lid ----------------------------------------------------------
+    // Narrower than the body and shifted up: the eye reads the offset as depth.
+    R(c, PAL.woodL, x + 3, y + 2, 10, 3);
+    H(c, PAL.woodH || PAL.canvasL, x + 3, y + 2, 10);
+    V(c, PAL.woodD, x + 8, y + 2, 3);                          // the seam between two boards
+    H(c, PAL.woodD, x + 2, y + 5, 12);                         // the hard edge: lid over front
+
+    // --- the front face ---------------------------------------------------
+    R(c, PAL.wood, x + 2, y + 6, 12, 8);
+    O(c, PAL.woodD, x + 2, y + 6, 12, 8);
+    for (let i = 0; i < 7; i++) { P(c, PAL.woodD, x + 3 + i, y + 7 + i); P(c, PAL.woodD, x + 12 - i, y + 7 + i); }
+    H(c, PAL.woodD, x + 2, y + 10, 12);                        // the middle batten
+    V(c, PAL.woodL, x + 3, y + 6, 8);                          // lit left edge
+    V(c, PAL.barkD, x + 12, y + 6, 8);                         // shaded right edge
+    if (r() < 0.5) { P(c, PAL.ironD, x + 4, y + 12); P(c, PAL.ironD, x + 11, y + 12); }   // corner nails
   });
 
-  def('SACK', 'Sack', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'mine'], variants: 2 }, (c, x, y) => {
-    shadowUnder(c, x, y, 10, 13);
-    outline(c, PAL.barkXD, x, y, [[4, 6, 4], [5, 5, 6], [6, 4, 8], [7, 3, 10], [8, 3, 10], [9, 3, 10], [10, 3, 10], [11, 3, 10], [12, 4, 8], [13, 4, 8]]);
-    blob(c, PAL.cloth, x, y, [[4, 6, 4], [5, 5, 6], [6, 4, 8], [7, 3, 10], [8, 3, 10], [9, 3, 10], [10, 3, 10], [11, 3, 10], [12, 4, 8], [13, 4, 8]]);
-    blob(c, PAL.clothD, x, y, [[11, 3, 10], [12, 4, 8], [13, 4, 8]]);
-    R(c, PAL.woodD, x + 6, y + 4, 4, 1);
-    H(c, '#8b7b56', x + 5, y + 6, 6);
-    V(c, '#e0d4b0', x + 5, y + 8, 4);
+  // A full sack is a heavy, sagging thing: wide at the bottom where the grain
+  // has settled, gathered at a tied neck, and lit down one side. The old one
+  // was a pale slab with a line on it and sat flat next to the new barrel.
+  const SACK_ROWS = [
+    [3, 7, 3], [4, 6, 4], [5, 5, 6], [6, 4, 8], [7, 3, 10],
+    [8, 3, 10], [9, 2, 12], [10, 2, 12], [11, 2, 12], [12, 3, 10], [13, 4, 8],
+  ];
+  def('SACK', 'Sack', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'mine'], variants: 2 }, (c, x, y, v) => {
+    const r = sr(v);
+    shadowUnder(c, x, y, 12, 13);
+    outline(c, PAL.barkXD, x, y, SACK_ROWS);
+    blob(c, PAL.cloth, x, y, SACK_ROWS);
+    // the light comes from the upper left, so the right shoulder turns away
+    blob(c, PAL.clothD, x, y, [[9, 10, 4], [10, 10, 4], [11, 10, 4], [12, 9, 4], [13, 9, 3]]);
+    blob(c, '#e0d4b0', x, y, [[6, 5, 3], [7, 4, 3], [8, 4, 3]]);       // lit shoulder
+    // the neck, gathered and tied
+    R(c, PAL.clothD, x + 6, y + 4, 4, 1);
+    H(c, PAL.bark, x + 6, y + 5, 4);                                    // the cord
+    P(c, PAL.barkD, x + 5, y + 5); P(c, PAL.barkD, x + 10, y + 5);
+    blob(c, PAL.cloth, x, y, [[3, 7, 3]]);                              // the gathered top
+    // creases where the weight pulls the weave
+    V(c, '#8b7b56', x + 6, y + 8, 4); V(c, '#8b7b56', x + 9, y + 9, 3);
+    if (r() < 0.5) P(c, PAL.clothD, x + 7, y + 11);
   });
 
   def('CART', 'Handcart', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'road'], variants: 1 }, (c, x, y) => {
@@ -3818,6 +3889,365 @@ function buildTiles() {
       isleMark(c, PAL.pebble, x, y, px, py, 2, 1);
       isleMark(c, PAL.pathXD, x, y, px + 1, py + 1, 1, 1);
     }
+  });
+
+  // -------------------------------------------------------------------------
+  // 4.30 GABLE-AWARE ROOF SETS — shingle, pantile, slate
+  //
+  // THATCH has always had L / M / R / RIDGE pieces, so a thatched house reads
+  // as a roof with two gable ends and a crest. SHINGLE_ROOF and TILE_ROOF were
+  // one tile repeated, so every shingled house in Phandalin was a flat red
+  // rectangle. These give `building()` the same four pieces for every roof
+  // material. The M tiles are the bodies the old single tiles drew, so a map
+  // that still places SHINGLE_ROOF beside SHINGLE_M is seamless; the L and R
+  // tiles add the verge line THATCH_L/_R carry (a 1px ink barge-board one
+  // column in, and a shaded column beside it); the RIDGE tiles cap the crest
+  // the way THATCH_RIDGE does — a dark roll with a lit crown and a shade row
+  // where it casts down the pitch.
+  // -------------------------------------------------------------------------
+
+  const shingleBody = (c, x, y, v, vi) => {
+    const r = sr(v);
+    coursed(c, x, y, vi, SEAM.shingle, 4, 3, 5,
+      [PAL.shingleL, PAL.shingle, PAL.shingle, PAL.shingle],
+      [PAL.shingleL, PAL.shingleL, PAL.shingle, PAL.shingleM], PAL.shingleD, PAL.shingleG);
+    patchBlock(c, PAL.shingleM, x, y, r, 4, 3, 5, 2);
+    patchBlock(c, PAL.shingleL, x, y, r, 4, 3, 4, 1);
+    speck(c, PAL.shingleD, x, y, 5, r);
+    seam(c, x, y, SEAM.shingle, SEAM_TONE.shingle, 7, 3, 3);
+    return r;
+  };
+  const pantileBody = (c, x, y, v) => {
+    const r = sr(v);
+    R(c, PAL.tileRoofD, x, y, 16, 16);
+    for (let i = 0; i < 4; i++) {
+      const px = x + i * 4;
+      R(c, PAL.tileRoof, px, y, 3, 16);
+      V(c, PAL.tileRoofL, px, y, 16);
+      V(c, PAL.tileRoofM, px + 2, y, 16);
+    }
+    for (let i = 0; i < 4; i++) { H(c, PAL.tileRoofG, x, y + i * 4 + 1, 16); H(c, PAL.tileRoofL, x, y + i * 4 + 2, 16); }
+    for (let i = 0; i < 5; i++) { const w = 2 + Math.floor(r() * 3); mark(c, PAL.tileRoofG, x, y, inX(r, w), inY(r, 2), w, 2); }
+    for (let i = 0; i < 3; i++) mark(c, PAL.moss, x, y, inX(r, 2), inY(r, 2), 2, 2);
+    speck(c, PAL.tileRoofL, x, y, 4, r);
+    seam(c, x, y, SEAM.tileRoof, SEAM_TONE.tileRoof, 6, 3, 3);
+    return r;
+  };
+  // Slates are wide, thin and laid to a 4px course like shingles, but the
+  // block widths run 4-7 (a slate is broader than a shake) and the face is
+  // the cold ramp above. A little lichen, never moss: slate is too cold for it.
+  const slateBody = (c, x, y, v, vi) => {
+    const r = sr(v);
+    coursed(c, x, y, vi, SEAM.slate, 4, 4, 7,
+      [PAL.slateL, PAL.slate, PAL.slate, PAL.slate],
+      [PAL.slateL, PAL.slateL, PAL.slateM, PAL.slateM], PAL.slateD, PAL.slateG);
+    patchBlock(c, PAL.slateM, x, y, r, 4, 4, 6, 2);
+    patchBlock(c, PAL.slateG, x, y, r, 4, 3, 5, 1);
+    for (let i = 0; i < 2; i++) mark(c, PAL.stoneL, x, y, inX(r, 2), inY(r, 1), 2, 1);   // lichen
+    speck(c, PAL.slateD, x, y, 4, r);
+    seam(c, x, y, SEAM.slate, SEAM_TONE.slate, 7, 3, 3);
+    return r;
+  };
+  // The verge: a barge-board one column in from the gable end, and the shaded
+  // course beside it. Same geometry as THATCH_L / THATCH_R.
+  const vergeL = (c, x, y, shadeCol) => { for (let i = 0; i < 16; i++) P(c, shadeCol, x + 2, y + i); V(c, PAL.ink, x + 1, y, 16); };
+  const vergeR = (c, x, y, shadeCol) => { for (let i = 0; i < 16; i++) P(c, shadeCol, x + 13, y + i); V(c, PAL.ink, x + 14, y, 16); };
+  // The crest: a dark ridge roll on rows 1-3, a lit crown on row 1, ink along
+  // the skyline on row 0, and the shade the roll throws onto row 4.
+  const crest = (c, x, y, r, dark, lit, mid, shade, caps) => {
+    H(c, PAL.ink, x, y, 16);
+    R(c, dark, x, y + 1, 16, 3);
+    H(c, lit, x, y + 1, 16); H(c, mid, x, y + 2, 16);
+    if (caps) for (let i = 1; i < 16; i += 4) mark(c, lit, x, y, i, 2, 2, 1);   // ridge tiles, every fourth
+    else for (let i = 0; i < 6; i++) mark(c, shade, x, y, 1 + Math.floor(r() * 14), 3, 1, 1);
+    H(c, shade, x, y + 4, 16);
+  };
+  const ROOF_OPTS = { layer: 'over', group: 'roof', biomes: ['city'], variants: 16, edgeVariant: true };
+  const PAN_OPTS = { layer: 'over', group: 'roof', biomes: ['city'], variants: 8 };
+
+  def('SHINGLE_L', 'Shingle Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { shingleBody(c, x, y, v, vi); vergeL(c, x, y, PAL.shingleD); });
+  def('SHINGLE_M', 'Shingle Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { shingleBody(c, x, y, v, vi); });
+  def('SHINGLE_R', 'Shingle Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { shingleBody(c, x, y, v, vi); vergeR(c, x, y, PAL.shingleG); });
+  def('SHINGLE_RIDGE', 'Shingle Ridge', SOLID, ROOF_OPTS, (c, x, y, v, vi) => {
+    const r = shingleBody(c, x, y, v, vi);
+    crest(c, x, y, r, PAL.shingleD, PAL.shingleL, PAL.shingle, PAL.shingleG, false);
+  });
+
+  def('TILE_L', 'Tile Roof', SOLID, PAN_OPTS, (c, x, y, v) => { pantileBody(c, x, y, v); vergeL(c, x, y, PAL.tileRoofD); });
+  def('TILE_M', 'Tile Roof', SOLID, PAN_OPTS, (c, x, y, v) => { pantileBody(c, x, y, v); });
+  def('TILE_R', 'Tile Roof', SOLID, PAN_OPTS, (c, x, y, v) => { pantileBody(c, x, y, v); vergeR(c, x, y, PAL.tileRoofG); });
+  def('TILE_RIDGE', 'Tile Ridge', SOLID, PAN_OPTS, (c, x, y, v) => {
+    const r = pantileBody(c, x, y, v);
+    crest(c, x, y, r, PAL.tileRoofD, PAL.tileRoofL, PAL.tileRoof, PAL.tileRoofG, true);
+  });
+
+  def('SLATE_L', 'Slate Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { slateBody(c, x, y, v, vi); vergeL(c, x, y, PAL.slateD); });
+  def('SLATE_M', 'Slate Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { slateBody(c, x, y, v, vi); });
+  def('SLATE_R', 'Slate Roof', SOLID, ROOF_OPTS, (c, x, y, v, vi) => { slateBody(c, x, y, v, vi); vergeR(c, x, y, PAL.slateG); });
+  def('SLATE_RIDGE', 'Slate Ridge', SOLID, ROOF_OPTS, (c, x, y, v, vi) => {
+    const r = slateBody(c, x, y, v, vi);
+    crest(c, x, y, r, PAL.slateD, PAL.slateL, PAL.slate, PAL.slateG, false);
+    // lead flashing along a slate ridge, every eighth pixel
+    for (let i = 3; i < 16; i += 8) mark(c, PAL.metalD, x, y, i, 1, 1, 2);
+  });
+
+  // -------------------------------------------------------------------------
+  // 4.31 CANVAS — awnings, stalls, tents, washing
+  //
+  // Everything a market is made of that is not a building. Until now these were
+  // faked with THATCH_M and FENCE_H on the `over` plane, which cast a roof's
+  // overhang band onto the street (the mask only asks "is it SOLID") and read
+  // as a roof with no house under it. AWNING and WASHING_LINE are NOT solid, so
+  // they cast nothing and the party walks under them; MARKET_STALL and TENT
+  // stand on `deco`, are solid, and cast the same contact shadow a barrel does.
+  // -------------------------------------------------------------------------
+
+  // The three dye jobs a Sword Coast market runs to, by variant.
+  const CANVAS = [
+    [PAL.dyeRed, PAL.dyeRedD], [PAL.dyeBlue, PAL.dyeBlueD], [PAL.dyeGreen, PAL.dyeGreenD],
+    [PAL.dyeRed, PAL.dyeRedD], [PAL.canvasD, PAL.canvasD],
+  ];
+  /** Striped cloth seen from above: stripes run down the pitch, lit at the top edge. */
+  const stripedCloth = (c, x, y, x0, y0, w, h, dye, dyeD) => {
+    R(c, PAL.canvas, x + x0, y + y0, w, h);
+    for (let i = 0; i < w; i += 4) { R(c, dye, x + x0 + i, y + y0, Math.min(2, w - i), h); }
+    H(c, PAL.canvasL, x + x0, y + y0, w);
+    H(c, PAL.canvasD, x + x0, y + y0 + h - 1, w);
+    for (let i = 0; i < w; i += 4) { P(c, dyeD, x + x0 + i, y + y0 + h - 1); P(c, dyeD, x + x0 + i + 1, y + y0 + h - 1); }
+  };
+  /** A scalloped hem hanging off the bottom of a canvas edge. */
+  const scallop = (c, x, y, x0, y0, w, dye, dyeD) => {
+    for (let i = 0; i < w; i += 4) {
+      const col = ((i >> 2) & 1) ? PAL.canvas : dye;
+      mark(c, col, x, y, x0 + i, y0, Math.min(4, w - i), 1);
+      mark(c, dyeD, x, y, x0 + i + 1, y0 + 1, Math.min(2, w - i - 1), 1);
+    }
+  };
+
+  def('AWNING', 'Awning', 0, { layer: 'over', group: 'canvas', biomes: ['city'], variants: 5 }, (c, x, y, v) => {
+    const r = sr(v);
+    const [dye, dyeD] = CANVAS[Math.floor(r() * CANVAS.length)];
+    // the canvas runs edge to edge so a row of them is one continuous shade
+    stripedCloth(c, x, y, 0, 2, 16, 10, dye, dyeD);
+    scallop(c, x, y, 0, 12, 16, dye, dyeD);
+    // the pole it is rolled onto, on the skyline
+    R(c, PAL.woodD, x, y, 16, 2); H(c, PAL.wood, x, y, 16);
+    // sun-fade: a couple of paler patches where the dye has gone
+    for (let i = 0; i < 2; i++) mark(c, PAL.canvasL, x, y, inX(r, 2), 3 + Math.floor(r() * 8), 2, 1);
+  });
+
+  def('MARKET_STALL', 'Market Stall', SOLID, { layer: 'deco', group: 'prop', biomes: ['city'], variants: 4 }, (c, x, y, v) => {
+    const r = sr(v);
+    const [dye, dyeD] = CANVAS[Math.floor(r() * 3)];
+    shadowUnder(c, x, y, 14, 14);
+    // the trestle: legs, a board, and the goods on it
+    outlineBox(c, PAL.barkXD, x, y, 1, 8, 14, 4);
+    R(c, PAL.wood, x + 1, y + 8, 14, 4); H(c, PAL.woodL, x + 1, y + 8, 14); H(c, PAL.woodD, x + 1, y + 11, 14);
+    R(c, PAL.woodD, x + 2, y + 12, 2, 3); R(c, PAL.woodD, x + 12, y + 12, 2, 3);
+    // wares: three lots, chosen per variant
+    const wares = [
+      () => { R(c, PAL.cloth, x + 3, y + 6, 3, 3); R(c, PAL.dyeBlue, x + 7, y + 6, 3, 3); R(c, PAL.dyeRed, x + 11, y + 6, 2, 3); },
+      () => { R(c, '#c9a13b', x + 3, y + 7, 3, 2); R(c, '#8a3a2a', x + 7, y + 6, 3, 3); R(c, PAL.leafL, x + 11, y + 7, 3, 2); P(c, PAL.leafH, x + 12, y + 7); },
+      () => { R(c, PAL.metal, x + 3, y + 6, 2, 3); R(c, PAL.gold, x + 7, y + 7, 2, 2); R(c, PAL.woodL, x + 10, y + 6, 4, 3); H(c, PAL.woodD, x + 10, y + 7, 4); },
+      () => { R(c, PAL.sand, x + 3, y + 6, 4, 3); R(c, PAL.sandD, x + 8, y + 6, 4, 3); P(c, PAL.dyeRed, x + 5, y + 6); P(c, PAL.dyeGreen, x + 10, y + 6); },
+    ];
+    wares[Math.floor(r() * wares.length)]();
+    // the canopy poles and the canopy itself, above and behind the board
+    V(c, PAL.woodD, x + 1, y + 2, 7); V(c, PAL.woodD, x + 14, y + 2, 7);
+    stripedCloth(c, x, y, 0, 1, 16, 3, dye, dyeD);
+    scallop(c, x, y, 0, 4, 16, dye, dyeD);
+    H(c, PAL.ink, x, y, 16);
+  });
+
+  const TENT_ROWS = [[2, 7, 2], [3, 6, 4], [4, 5, 6], [5, 5, 6], [6, 4, 8], [7, 4, 8], [8, 3, 10], [9, 3, 10], [10, 2, 12], [11, 2, 12], [12, 1, 14], [13, 1, 14]];
+  def('TENT', 'Tent', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'road', 'plains'], variants: 3 }, (c, x, y, v) => {
+    const r = sr(v);
+    const faded = r() < 0.5;
+    const cloth = faded ? PAL.canvasD : PAL.canvas, clothD = faded ? PAL.mud : PAL.canvasD;
+    shadowUnder(c, x, y, 14, 13);
+    outline(c, PAL.barkXD, x, y, TENT_ROWS);
+    blob(c, cloth, x, y, TENT_ROWS);
+    // the ridge seam down the middle and the guy ropes off the peak
+    V(c, clothD, x + 7, y + 3, 11); V(c, PAL.canvasL, x + 6, y + 3, 10);
+    for (let i = 0; i < 4; i++) { P(c, clothD, x + 3 - i + 1, y + 3 + i * 2); P(c, clothD, x + 12 + i - 1, y + 3 + i * 2); }
+    // the door flap, tied back on one side
+    R(c, '#1c1712', x + 6, y + 9, 4, 5); V(c, cloth, x + 9, y + 9, 5);
+    P(c, PAL.wood, x + 7, y + 1); P(c, PAL.wood, x + 7, y + 2);       // the ridge pole
+    if (r() < 0.6) { P(c, PAL.dyeRed, x + 8, y + 2); P(c, PAL.dyeRed, x + 9, y + 2); }   // a pennant
+    for (let i = 0; i < 3; i++) mark(c, clothD, x, y, 2 + Math.floor(r() * 11), 5 + Math.floor(r() * 7), 2, 1);
+  });
+
+  def('WASHING_LINE', 'Washing Line', 0, { layer: 'over', group: 'canvas', biomes: ['city'], variants: 5 }, (c, x, y, v) => {
+    const r = sr(v);
+    // the line, edge to edge so a run of tiles is one rope
+    H(c, PAL.barkD, x, y + 4, 16); P(c, PAL.bark, x + 5, y + 4); P(c, PAL.bark, x + 11, y + 4);
+    if (v % 5 === 4) return;                                   // a bare stretch of rope
+    const cols = [PAL.canvas, PAL.dyeBlue, PAL.dyeRed, PAL.cloth, PAL.canvasL, PAL.dyeGreen];
+    let px = 1 + Math.floor(r() * 2);
+    while (px < 13) {
+      const w = 2 + Math.floor(r() * 3), h = 4 + Math.floor(r() * 4);
+      const col = cols[Math.floor(r() * cols.length)];
+      R(c, col, x + px, y + 5, w, h);
+      P(c, PAL.barkXD, x + px, y + 4); if (w > 2) P(c, PAL.barkXD, x + px + w - 1, y + 4);   // pegs
+      V(c, shade(0.18), x + px + w - 1, y + 5, h);                                        // the fold
+      H(c, shade(0.14), x + px, y + 5 + h - 1, w);
+      px += w + 1 + Math.floor(r() * 2);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // 4.32 STREET FURNITURE — banner, lantern, planter, trough, hay, dock, post
+  // -------------------------------------------------------------------------
+
+  def('BANNER', 'Banner', 0, { layer: 'deco', group: 'prop', biomes: ['city'], variants: 3 }, (c, x, y, v) => {
+    const r = sr(v);
+    const set = [[PAL.dyeRed, PAL.dyeRedD, PAL.gold], [PAL.dyeBlue, PAL.dyeBlueD, PAL.silver], [PAL.dyeGreen, PAL.dyeGreenD, PAL.gold]][Math.floor(r() * 3)];
+    contact(c, x, y, 4, 15, 0);
+    // the pole, capped
+    V(c, PAL.barkXD, x + 4, y + 1, 15); V(c, PAL.woodL, x + 5, y + 1, 14); V(c, PAL.woodD, x + 6, y + 1, 14);
+    R(c, set[2], x + 4, y, 3, 1);
+    // the pennant, flying right off the pole, swallow-tailed
+    blob(c, set[1], x, y, [[2, 6, 8], [3, 6, 8], [4, 6, 8], [5, 6, 8], [6, 6, 7], [7, 6, 6], [8, 6, 5], [9, 6, 4]]);
+    blob(c, set[0], x, y, [[2, 7, 6], [3, 7, 6], [4, 7, 6], [5, 7, 6], [6, 7, 5], [7, 7, 4], [8, 7, 3], [9, 7, 2]]);
+    H(c, set[2], x + 7, y + 2, 6);                       // the fringe at the head
+    P(c, set[2], x + 9, y + 5); P(c, set[2], x + 10, y + 5); P(c, set[2], x + 9, y + 6);   // a device
+    mark(c, set[1], x, y, 12, 8, 2, 1);                   // the tail lifting in the wind
+  });
+
+  def('LANTERN', 'Lantern', 0, { layer: 'deco', group: 'prop', biomes: ['city'], variants: 1, animFrames: 2, fps: 3 },
+    (c, x, y, v, w, f) => {
+      // the glow is drawn first so the ironwork sits on top of it
+      c.fillStyle = 'rgba(255,196,96,0.16)'; c.fillRect(x + 2, y + 1, 12, 10);
+      c.fillStyle = 'rgba(255,214,120,0.14)'; c.fillRect(x + 4, y + 2 + (f & 1), 8, 7);
+      contact(c, x, y, 4, 15, 0);
+      // the bracket post and the arm the lantern hangs from
+      V(c, PAL.ironD, x + 3, y + 5, 11); V(c, PAL.iron, x + 4, y + 5, 10);
+      H(c, PAL.ironD, x + 3, y + 5, 6); P(c, PAL.ironD, x + 8, y + 6);
+      // the lantern: iron frame, horn panes, the flame
+      R(c, PAL.ironD, x + 6, y + 7, 5, 6); R(c, '#e9c46a', x + 7, y + 8, 3, 4);
+      P(c, PAL.fireHot, x + 8, y + 9 + (f & 1)); P(c, PAL.fire, x + 8, y + 10 - (f & 1));
+      V(c, PAL.ironXD, x + 8, y + 8, 4);                   // the frame's middle bar, over the glass
+      P(c, PAL.iron, x + 8, y + 6); R(c, PAL.iron, x + 7, y + 13, 3, 1);
+    });
+
+  def('PLANTER', 'Planter', SOLID, { layer: 'deco', group: 'prop', biomes: ['city'], variants: 3 }, (c, x, y, v) => {
+    const r = sr(v);
+    const petal = [PAL.red, '#e3b34a', PAL.blueL][v % 3], petalL = ['#e07a6a', '#f5d987', '#9fc0e8'][v % 3];
+    shadowUnder(c, x, y, 14, 13);
+    // the box
+    outlineBox(c, PAL.barkXD, x, y, 1, 8, 14, 5);
+    R(c, PAL.wood, x + 1, y + 8, 14, 5); H(c, PAL.woodL, x + 1, y + 8, 14); H(c, PAL.woodD, x + 1, y + 12, 14);
+    V(c, PAL.woodD, x + 5, y + 9, 3); V(c, PAL.woodD, x + 10, y + 9, 3);
+    // soil, and the plants spilling over the front edge
+    H(c, PAL.mudD, x + 2, y + 8, 12);
+    blob(c, PAL.leafD, x, y, [[4, 3, 10], [5, 2, 12], [6, 2, 12], [7, 1, 14], [8, 2, 12]]);
+    blob(c, PAL.leaf, x, y, [[4, 4, 4], [5, 3, 5], [6, 3, 4], [7, 2, 6], [8, 3, 4]]);
+    speck(c, PAL.leafL, x + 2, y + 4, 6, r, 12, 5);
+    for (let i = 0; i < 5; i++) {
+      const px = x + 2 + Math.floor(r() * 12), py = y + 3 + Math.floor(r() * 4);
+      P(c, petal, px, py); P(c, petalL, px, py - 1);
+    }
+  });
+
+  def('TROUGH', 'Water Trough', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'road'], variants: 2 }, (c, x, y, v) => {
+    const r = sr(v);
+    shadowUnder(c, x, y, 14, 13);
+    outlineBox(c, PAL.stoneXD, x, y, 1, 5, 14, 8);
+    R(c, PAL.stone, x + 1, y + 5, 14, 8);
+    H(c, PAL.stoneH, x + 1, y + 5, 14); H(c, PAL.stoneL, x + 1, y + 6, 14);
+    H(c, PAL.stoneD, x + 1, y + 12, 14); V(c, PAL.stoneD, x + 14, y + 6, 6);
+    R(c, PAL.waterD, x + 3, y + 7, 10, 4);
+    R(c, PAL.water, x + 3, y + 7, 10, 3);
+    H(c, PAL.waterL, x + 4 + Math.floor(r() * 3), y + 8, 3);
+    P(c, PAL.foam, x + 11 - Math.floor(r() * 3), y + 9);
+    if (r() < 0.5) { P(c, PAL.moss, x + 2, y + 11); P(c, PAL.moss, x + 13, y + 6); }   // slime at the waterline
+  });
+
+  const HAY_ROWS = [[5, 6, 4], [6, 4, 8], [7, 3, 10], [8, 2, 12], [9, 2, 12], [10, 1, 14], [11, 1, 14], [12, 1, 14], [13, 2, 12]];
+  def('HAY', 'Hay Pile', SOLID, { layer: 'deco', group: 'prop', biomes: ['city', 'plains', 'road'], variants: 3 }, (c, x, y, v) => {
+    const r = sr(v);
+    shadowUnder(c, x, y, 13, 13);
+    outline(c, PAL.thatchXD, x, y, HAY_ROWS);
+    blob(c, PAL.thatch, x, y, HAY_ROWS);
+    blob(c, PAL.thatchL, x, y, [[5, 6, 3], [6, 4, 4], [7, 3, 4], [8, 2, 3]]);
+    blob(c, PAL.thatchD, x, y, [[11, 9, 6], [12, 8, 7], [13, 7, 7]]);
+    for (let i = 0; i < 9; i++) mark(c, r() < 0.5 ? PAL.thatchD : PAL.thatchM, x, y, 2 + Math.floor(r() * 12), 6 + Math.floor(r() * 7), 1, 1 + Math.floor(r() * 2));
+    for (let i = 0; i < 4; i++) mark(c, PAL.thatchL, x, y, 3 + Math.floor(r() * 10), 6 + Math.floor(r() * 5), 2, 1);
+    // loose straw round the foot
+    for (let i = 0; i < 4; i++) mark(c, PAL.thatchM, x, y, Math.floor(r() * 15), 13 + Math.floor(r() * 2), 2, 1);
+  });
+
+  /**
+   * DOCK — a plank floor laid over water. The boards run across the tile with a
+   * 1px gap between them through which the water shows, so a quay of these
+   * reads as a deck and not as a wooden floor that happens to be beside the
+   * sea. Walkable, `floor` group (the water autotiler draws its own margin
+   * against it, as it does against any built surface).
+   */
+  def('DOCK', 'Dock Planks', 0, { group: 'floor', biomes: ['coast', 'city'], variants: 4 }, (c, x, y, v) => {
+    const r = sr(v);
+    R(c, PAL.deep, x, y, 16, 16);
+    for (let i = 0; i < 3; i++) mark(c, PAL.deepL, x, y, inX(r, 3), inY(r, 1), 3, 1);
+    // four boards, 3px each, on a 4px pitch: rows 0-2, 4-6, 8-10, 12-14, with
+    // row 15 the gap that lines up with the next tile's row -1
+    for (let i = 0; i < 4; i++) {
+      const by = y + i * 4;
+      R(c, PAL.wood, x, by, 16, 3); H(c, PAL.woodL, x, by, 16); H(c, PAL.woodD, x, by + 2, 16);
+      // a butt joint somewhere along the board, agreed with nobody: boards are
+      // short and joints wander
+      const jx = 2 + Math.floor(r() * 12);
+      V(c, PAL.barkD, x + jx, by, 3);
+      if (r() < 0.4) P(c, PAL.ironD, x + jx + 2, by + 1);            // a nail head
+    }
+    dashes(c, PAL.woodD, x, y, 3, r, 3);
+    if (r() < 0.5) mark(c, PAL.moss, x, y, inX(r, 2), 12, 2, 1);      // weed at the waterline
+    seam(c, x, y, SEAM.dock, SEAM_TONE.dock, 5, 3, 2);
+  });
+
+  def('PIER_POST', 'Mooring Post', SOLID, { layer: 'deco', group: 'prop', biomes: ['coast', 'city'], variants: 2 }, (c, x, y, v) => {
+    const r = sr(v);
+    footRight(c, x, y, 11, 2, 13, 0.9);
+    outlineBox(c, PAL.barkXD, x, y, 5, 1, 5, 14);
+    R(c, PAL.bark, x + 5, y + 1, 5, 14);
+    V(c, PAL.barkL, x + 5, y + 1, 14); V(c, PAL.barkD, x + 9, y + 1, 14);
+    R(c, PAL.barkL, x + 5, y + 1, 5, 1); H(c, PAL.woodH, x + 6, y + 1, 3);
+    // the rope coiled round it, and its tail
+    R(c, PAL.cloth, x + 4, y + 5, 7, 3); H(c, PAL.clothD, x + 4, y + 7, 7); P(c, PAL.clothD, x + 4, y + 5); P(c, PAL.clothD, x + 10, y + 5);
+    if (r() < 0.5) { P(c, PAL.cloth, x + 11, y + 8); P(c, PAL.cloth, x + 12, y + 9); P(c, PAL.clothD, x + 12, y + 10); }
+    for (let i = 0; i < 3; i++) P(c, PAL.moss, x + 6 + Math.floor(r() * 3), y + 10 + Math.floor(r() * 4));   // weed at the tideline
+  });
+
+  /**
+   * SHOP_SIGN — a board hung from an iron bracket, for the WALL of a shop.
+   *
+   * SIGN is a signpost: a board on a post that goes into the ground, rows 8-15.
+   * building() was placing it on the wall face, so every shop in the game had a
+   * signpost with its post driven through the plaster. A hanging sign is a
+   * different object: the bracket comes out of the wall at the top, the board
+   * swings under it, and nothing touches the ground — which is why this one is
+   * anchored to the TOP of the tile and leaves the bottom rows empty.
+   */
+  def('SHOP_SIGN', 'Shop Sign', 0, { layer: 'over', group: 'prop', biomes: ['city'], variants: 3 }, (c, x, y, v) => {
+    const r = sr(v);
+    // the bracket: a spur out of the wall and a short stay down to the eye
+    R(c, PAL.ironD, x + 2, y + 1, 9, 1);
+    P(c, PAL.ironD, x + 3, y + 2); P(c, PAL.ironD, x + 10, y + 2);
+    H(c, PAL.iron, x + 2, y + 1, 8);
+    // the two rings the board swings on
+    P(c, PAL.ironD, x + 5, y + 3); P(c, PAL.ironD, x + 9, y + 3);
+    // the board itself, hanging clear of the wall
+    outlineBox(c, PAL.barkXD, x, y, 3, 4, 10, 7);
+    R(c, PAL.wood, x + 3, y + 4, 10, 7);
+    O(c, PAL.woodD, x + 3, y + 4, 10, 7);
+    H(c, PAL.woodL, x + 4, y + 5, 8);
+    // a device painted on it: a tankard, a loaf, a horseshoe — legible at 16px
+    // only as a shape, which is exactly how a real one worked for the illiterate
+    const dev = Math.floor(r() * 3);
+    if (dev === 0) { R(c, PAL.ink, x + 6, y + 6, 4, 4); P(c, PAL.ink, x + 10, y + 7); P(c, PAL.ink, x + 10, y + 8); }
+    else if (dev === 1) { R(c, PAL.ink, x + 5, y + 7, 6, 3); H(c, PAL.ink, x + 6, y + 6, 4); }
+    else { H(c, PAL.ink, x + 6, y + 6, 4); V(c, PAL.ink, x + 5, y + 7, 3); V(c, PAL.ink, x + 10, y + 7, 3); }
+    // the shadow the board throws back onto the plaster behind it
+    R(c, 'rgba(0,0,0,0.22)', x + 4, y + 11, 10, 1);
   });
 }
 

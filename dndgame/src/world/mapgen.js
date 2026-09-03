@@ -1198,7 +1198,7 @@ function dressDungeon(map, g, th, r, info) {
  * A prop may stand here if it is passable, or — when it is solid — if walling
  * this tile off cannot pinch the map in two.
  */
-function canPlaceProp(map, x, y, id) {
+export function canPlaceProp(map, x, y, id) {
   if (!walkable(map, x, y) || hasProp(map, x, y)) return false;
   const solid = (tileFlags(id) & SOLID) !== 0;
   if (!solid) return true;

@@ -7,7 +7,11 @@ const browser = await chromium.launch({
   args: ['--no-sandbox'],
 });
 const page = await browser.newPage({ viewport: { width: 900, height: 560 } });
-const errs=[]; page.on('pageerror',e=>errs.push(String(e.stack||e))); page.on('console',m=>{if(m.type()==='error')errs.push('C:'+m.text());});
+// The browser asks every origin for /favicon.ico unprompted. The game does not
+// ship one (no external assets), so that 404 is the server being honest, not the
+// game being broken — it must not fail "boots with no errors".
+const IGNORE = /favicon\.ico/i;
+const errs=[]; page.on('pageerror',e=>errs.push(String(e.stack||e))); page.on('console',m=>{if(m.type()==='error'&&!IGNORE.test(m.location?.()?.url||''))errs.push('C:'+m.text());});
 // Every module the browser actually asks for, so we can prove the import map in
 // index.html is being honoured rather than silently ignored.
 const asked = [];
@@ -35,8 +39,12 @@ check('boots with no errors', errs.length === 0, errs[0] || '');
     bare.length ? `unstamped: ${bare[0]}` : `${asked.length} modules`);
 
   const { spawnSync } = await import('node:child_process');
+  const { fileURLToPath } = await import('node:url');
   // stamp.mjs owns dndgame/; a copy at another path carries the map it was copied with.
-  const r = spawnSync(process.execPath, [new URL('../tools/stamp.mjs', import.meta.url).pathname, '--check'],
+  // fileURLToPath, not .pathname: on Windows the latter yields "/C:/…", which node
+  // cannot resolve, so this check failed for a reason that had nothing to do with
+  // the import map.
+  const r = spawnSync(process.execPath, [fileURLToPath(new URL('../tools/stamp.mjs', import.meta.url)), '--check'],
     { encoding: 'utf8' });
   check('cache: index.html import map is up to date', r.status === 0,
     (r.stderr || r.stdout || '').trim().split('\n')[0]);

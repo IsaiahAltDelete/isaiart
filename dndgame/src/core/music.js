@@ -221,6 +221,106 @@ export const INSTRUMENTS = {
     vibrato: { rate: 4.2, depth: 3, delay: 0.35 }, gain: 0.6,
   },
 
+  // --- the orchestra --------------------------------------------------------
+  //
+  // The consort above is a handful of players in a room, which is right for a
+  // tavern and thin for a dragon. These are SECTIONS: `section: n` voices the
+  // note n times, each a few cents out, each starting a few milliseconds late,
+  // each panned to its own seat. That smear is the entire difference between a
+  // synth pad and "the strings came in" — sixteen violinists are not one violin
+  // played louder.
+  //
+  // `wave` here names a harmonic spectrum in audio.js rather than an oscillator
+  // shape, so a horn is built from a horn's actual overtone recipe.
+
+  strings: {                       // violins I+II together — the main singing line
+    kind: 'bow', wave: 'violin', section: 7, detuneCents: 9, smear: 0.03, width: 0.62,
+    attack: 0.16, release: 0.34, sustainLevel: 0.92,
+    filter: { type: 'lowpass', freq: 3600, q: 0.7 },
+    vibrato: { rate: 5.4, depth: 5, delay: 0.35 }, gain: 0.5,
+  },
+  stringsHigh: {                   // violins alone, up in the light
+    kind: 'bow', wave: 'violin', section: 6, detuneCents: 7, smear: 0.024, width: 0.7,
+    attack: 0.13, release: 0.28, sustainLevel: 0.9,
+    filter: { type: 'lowpass', freq: 4800, q: 0.6 },
+    vibrato: { rate: 5.8, depth: 6, delay: 0.3 }, gain: 0.4,
+  },
+  violas: {
+    kind: 'bow', wave: 'viola', section: 5, detuneCents: 10, smear: 0.03, width: 0.4,
+    attack: 0.17, release: 0.32, sustainLevel: 0.9,
+    filter: { type: 'lowpass', freq: 2400, q: 0.9 },
+    vibrato: { rate: 5.0, depth: 4, delay: 0.36 }, gain: 0.44,
+  },
+  celli: {
+    kind: 'bow', wave: 'cello', section: 5, detuneCents: 8, smear: 0.032, width: 0.34,
+    attack: 0.19, release: 0.4, sustainLevel: 0.92,
+    filter: { type: 'lowpass', freq: 1500, q: 0.9 },
+    vibrato: { rate: 4.6, depth: 4, delay: 0.4 }, gain: 0.56,
+  },
+  basses: {                        // the floor everything else stands on
+    kind: 'bow', wave: 'contrabass', section: 4, detuneCents: 7, smear: 0.036, width: 0.24,
+    attack: 0.22, release: 0.45, sustainLevel: 0.94,
+    filter: { type: 'lowpass', freq: 700, q: 0.8 },
+    vibrato: { rate: 4.0, depth: 3, delay: 0.5 }, gain: 0.62,
+  },
+  pizzicato: {                     // the same players, plucking
+    kind: 'pluck', wave: 'cello', section: 4, detuneCents: 8, smear: 0.014, width: 0.4,
+    attack: 0.003, decay: 0.5, curve: 3.0,
+    filter: { type: 'lowpass', freq: 2600, q: 1.0, sweepTo: 700, sweepDur: 0.35 },
+    click: 0.06, gain: 0.5,
+  },
+
+  horns: {                         // the heroic sound: four horns in unison
+    kind: 'bow', wave: 'horn', section: 4, detuneCents: 6, smear: 0.026, width: 0.36,
+    attack: 0.10, release: 0.3, sustainLevel: 0.9,
+    filter: { type: 'lowpass', freq: 1900, q: 0.9 },
+    vibrato: { rate: 4.4, depth: 2.5, delay: 0.45 }, gain: 0.55,
+  },
+  trumpets: {
+    kind: 'bow', wave: 'trumpet', section: 3, detuneCents: 5, smear: 0.016, width: 0.3,
+    attack: 0.045, release: 0.2, sustainLevel: 0.9,
+    filter: { type: 'lowpass', freq: 3400, q: 1.0 },
+    vibrato: { rate: 5.2, depth: 3, delay: 0.4 }, gain: 0.36,
+  },
+  trombones: {
+    kind: 'bow', wave: 'trombone', section: 3, detuneCents: 6, smear: 0.022, width: 0.3,
+    attack: 0.07, release: 0.26, sustainLevel: 0.92,
+    filter: { type: 'lowpass', freq: 2000, q: 0.9 },
+    gain: 0.46,
+  },
+  tuba: {
+    kind: 'bow', wave: 'tuba', section: 2, detuneCents: 5, smear: 0.03, width: 0.2,
+    attack: 0.11, release: 0.34, sustainLevel: 0.94,
+    filter: { type: 'lowpass', freq: 620, q: 0.8 }, gain: 0.6,
+  },
+
+  oboeSolo: {                      // one player: no section, no smear
+    kind: 'wind', wave: 'oboe', attack: 0.055, release: 0.13, sustainLevel: 0.9,
+    breath: 0.03, filter: { type: 'lowpass', freq: 3000, q: 1.1 },
+    vibrato: { rate: 5.5, depth: 5, delay: 0.25 }, gain: 0.34,
+  },
+  clarinetSolo: {
+    kind: 'wind', wave: 'clarinet', attack: 0.05, release: 0.14, sustainLevel: 0.92,
+    breath: 0.035, filter: { type: 'lowpass', freq: 2600, q: 0.9 },
+    vibrato: { rate: 4.8, depth: 3, delay: 0.3 }, gain: 0.38,
+  },
+  bassoonSolo: {
+    kind: 'wind', wave: 'bassoon', attack: 0.06, release: 0.16, sustainLevel: 0.9,
+    breath: 0.03, filter: { type: 'lowpass', freq: 1400, q: 1.0 },
+    vibrato: { rate: 4.4, depth: 3, delay: 0.35 }, gain: 0.42,
+  },
+  fluteSolo: {
+    kind: 'wind', wave: 'flute', attack: 0.075, release: 0.15, sustainLevel: 0.9,
+    breath: 0.11, filter: { type: 'lowpass', freq: 3400, q: 0.7 },
+    vibrato: { rate: 5.0, depth: 4.5, delay: 0.3 }, gain: 0.5,
+  },
+  woodwinds: {                     // flutes and clarinets doubling, as a pad
+    kind: 'wind', wave: 'clarinet', section: 4, detuneCents: 7, smear: 0.028, width: 0.5,
+    attack: 0.09, release: 0.2, sustainLevel: 0.9,
+    breath: 0.05, filter: { type: 'lowpass', freq: 2800, q: 0.8 },
+    vibrato: { rate: 4.9, depth: 3, delay: 0.34 }, gain: 0.34,
+  },
+
   // --- sustained beds -------------------------------------------------------
   organetto: {                     // portative organ: stacked partials, no vibrato
     kind: 'organ', partials: [[1, 1], [2, 0.5], [3, 0.28], [4, 0.16], [6, 0.08]],
@@ -796,6 +896,116 @@ export const TRACKS = {
       { name: 'perc', wave: 'noise', gain: 0.1, pattern: hits([28, 60], 'frame', 0.2) },
     ],
   },
+
+  // ── ORCHESTRAL — "The Coast Road" ─────────────────────────────────────────
+  // The full band, and the reason the section instruments exist: five string
+  // desks, four horns and a pair of kettles. Written so the sections ENTER
+  // rather than all playing at once — basses and celli lay the floor, violas
+  // fill, the violins take the tune, and the horns answer them a bar later.
+  // That staggering is what an orchestra sounds like; everyone playing all the
+  // time is what a synthesiser sounds like.
+  orchestral: {
+    bpm: 76, loopBars: 8, gain: 0.95,
+    layers: [
+      // The tune: a rising Aeolian line that reaches for the sixth and falls back.
+      { name: 'violins', inst: 'strings', gain: 0.34, pattern: [
+        ...tune(D4, 'aeolian', 0, [
+          [1, 8], [2, 4], [3, 4],
+          [5, 12], [4, 4],
+          [3, 8], [4, 4], [5, 4],
+          [6, 12], [5, 4],
+          [4, 8], [3, 4], [2, 4],
+          [1, 16],
+          [null, 8], [5, 4], [4, 4],
+          [3, 8], [1, 8],
+        ]),
+      ] },
+      // Violins an octave up, only over the second half: the moment it opens out.
+      { name: 'descant', inst: 'stringsHigh', gain: 0.16, pattern: [
+        ...tune(D4 + 12, 'aeolian', 64, [
+          [3, 8], [4, 4], [5, 4],
+          [6, 12], [5, 4],
+          [4, 8], [3, 4], [2, 4],
+          [1, 16],
+        ]),
+      ] },
+      // Horns answer the violins one bar behind, which is the oldest trick in
+      // orchestration and still the most effective.
+      { name: 'horns', inst: 'horns', gain: 0.26, pattern: [
+        ...tune(D3, 'aeolian', 16, [
+          [1, 8], [2, 4], [3, 4],
+          [5, 12], [null, 4],
+        ]),
+        ...tune(D3, 'aeolian', 80, [
+          [3, 8], [4, 4], [5, 4],
+          [6, 12], [null, 4],
+        ]),
+      ] },
+      { name: 'violas', inst: 'violas', gain: 0.2, pattern: [
+        ...rep(8, D3 + 7, 'aeolian', [[0, 1, 8, 0.7], [8, 3, 8, 0.6]],
+          { shift: [0, 0, -2, -2, 3, 3, 0, 0] }),
+      ] },
+      { name: 'celli', inst: 'celli', gain: 0.3, pattern: [
+        ...rep(8, D3, 'aeolian', [[0, 1, 12, 0.85], [12, 5, 4, 0.6]],
+          { shift: [0, 0, -2, -2, 3, 3, 0, 0] }),
+      ] },
+      { name: 'basses', inst: 'basses', gain: 0.34, pattern: [
+        ...rep(8, D3 - 12, 'aeolian', [[0, 1, 16, 0.9]],
+          { shift: [0, 0, -2, -2, 3, 3, 0, 0] }),
+      ] },
+      // Kettles on the bar lines, and the pair answering each other at the turn.
+      { name: 'timp', wave: 'noise', gain: 0.3,
+        pattern: beat(8, [0], 'timp', 0.55)
+          .concat(hits([56, 60, 120, 124], 'timphi', 0.4), hits([112], 'gong', 0.5)) },
+    ],
+  },
+
+  // ── RIVER BALLAD — "Down the Chionthar" ───────────────────────────────────
+  // An ORIGINAL tavern song for Baldur's Gate, not a cover of anyone's. The
+  // Chionthar is the river the city stands on, so the tune moves the way the
+  // barge traffic does: a long lilting three-feel, the fiddle carrying it, the
+  // lute walking underneath, and a bodhrán keeping the oars honest. Dorian, so
+  // it is wistful without being a dirge — a song for people who work water.
+  rivertune: {
+    bpm: 96, loopBars: 8, gain: 0.88,
+    layers: [
+      { name: 'fiddle', inst: 'vielle', gain: 0.32, pattern: [
+        ...tune(D4, 'dorian', 0, [
+          [5, 6], [4, 3], [3, 3], [4, 4],
+          [3, 6], [2, 3], [1, 3], [2, 4],
+          [1, 6], [2, 3], [3, 3], [5, 4],
+          [4, 12], [null, 4],
+          [5, 6], [6, 3], [5, 3], [4, 4],
+          [3, 6], [4, 3], [3, 3], [2, 4],
+          [1, 6], [2, 3], [3, 3], [2, 4],
+          [1, 12], [null, 4],
+        ]),
+      ] },
+      // The whistle takes the second half an octave up, the way a second player
+      // joins a chorus once everyone knows how it goes.
+      { name: 'whistle', inst: 'recorder', gain: 0.15, pattern: [
+        ...tune(D4 + 12, 'dorian', 64, [
+          [5, 6], [6, 3], [5, 3], [4, 4],
+          [3, 6], [4, 3], [3, 3], [2, 4],
+          [1, 6], [2, 3], [3, 3], [2, 4],
+          [1, 12], [null, 4],
+        ]),
+      ] },
+      { name: 'lute', inst: 'lute', gain: 0.24, pattern: [
+        ...rep(8, D3, 'dorian', [
+          [0, 1, 3, 0.85], [3, 5, 3, 0.4], [6, 8, 3, 0.45],
+          [9, 5, 3, 0.35], [12, 3, 2, 0.5], [14, 5, 2, 0.3],
+        ], { shift: [0, 0, -2, -2, 5, 5, 3, 0] }),
+      ] },
+      { name: 'celli', inst: 'celli', gain: 0.22, pattern: [
+        ...rep(8, D3 - 12, 'dorian', [[0, 1, 10, 0.8], [10, 5, 6, 0.55]],
+          { shift: [0, 0, -2, -2, 5, 5, 3, 0] }),
+      ] },
+      { name: 'perc', wave: 'noise', gain: 0.24,
+        pattern: beat(8, [0, 6], 'frame', 0.5)
+          .concat(beat(8, [3, 9, 12], 'frame', 0.22), beat(8, [14], 'shaker', 0.16)) },
+    ],
+  },
 };
 
 /** Track ids grouped by where they belong, so callers can pick sensibly. */
@@ -807,6 +1017,7 @@ export const TRACK_GROUPS = {
   combat: ['battle', 'boss', 'dragon'],
   sting: ['victory', 'defeat', 'lament'],
   mood: ['tense', 'mystery', 'camp'],
+  grand: ['orchestral', 'rivertune'],
 };
 
 /** Sensible music for a map's biome, so maps.js doesn't have to hard-code ids. */

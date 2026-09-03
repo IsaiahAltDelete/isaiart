@@ -62,19 +62,38 @@ export function monstersByCR(minCR, maxCR, { includeBosses = false } = {}) {
 
 export function monstersByType(type) { return (byType[type] || []).slice(); }
 
-export function bossesForTier(minCR, maxCR) {
-  return Object.keys(BOSSES).filter((id) => {
+/**
+ * Named bosses in a CR band. With a `biome`, bosses that list that biome are
+ * preferred; when none do, every boss in the band is returned so a milestone
+ * floor is never headless.
+ */
+export function bossesForTier(minCR, maxCR, biome = null) {
+  const all = Object.keys(BOSSES).filter((id) => {
     const cr = BOSSES[id].cr ?? 0;
     return cr >= minCR && cr <= maxCR;
   });
+  if (!biome) return all;
+  const local = all.filter((id) => (BOSSES[id].biomes || []).includes(biome));
+  return local.length ? local : all;
 }
 
-/** Encounter groups appropriate to a biome and CR band. */
-export function groupsForBiome(biome, maxCR = 30) {
-  return Object.keys(MONSTER_GROUPS).filter((k) => {
+/**
+ * Encounter groups appropriate to a biome and CR band. With a party `level`,
+ * packs outside their authored minLevel..maxLevel window are dropped, falling
+ * back to the biome-only list when that leaves nothing (a level-20 party on the
+ * Triboar Trail still meets *something* rather than an empty road).
+ */
+export function groupsForBiome(biome, maxCR = 30, level = null) {
+  const base = Object.keys(MONSTER_GROUPS).filter((k) => {
     const g = MONSTER_GROUPS[k];
     return (!g.biomes || g.biomes.includes(biome)) && (g.cr ?? 0) <= maxCR;
   });
+  if (level == null || !Number.isFinite(level)) return base;
+  const fit = base.filter((k) => {
+    const g = MONSTER_GROUPS[k];
+    return level >= (g.minLevel ?? 1) && level <= (g.maxLevel ?? 20);
+  });
+  return fit.length ? fit : base;
 }
 
 export function xpForCR(cr) {

@@ -866,11 +866,26 @@ export function rollEncounter(o = {}) {
   const level = Math.max(1, Math.floor(num(o.level, 1)));
   const size = clamp(Math.floor(num(o.size, 4)), 1, 8);
   const depth = Math.max(0, Math.floor(num(o.depth, 0)));
-  const difficulty = lower(o.difficulty || (depth > 0 ? difficultyFor(depth) : 'medium'));
+  const night = !!o.night;
+  const weather = lower(o.weather || 'clear');
+  const murk = weather === 'fog' || weather === 'rain' || weather === 'snow';
+  let difficulty = lower(o.difficulty || (depth > 0 ? difficultyFor(depth) : 'medium'));
   const r = o.seed != null ? makeRNG(o.seed) : makeRNG(hashStr(`enc:${biome}:${level}:${size}:${depth}:${difficulty}`));
 
+  // Night is when the things that hunt by dark come out: a third of the time the
+  // fight is one step harder than the same road by daylight.
+  let nightBump = false;
+  if (night && r.chance(0.35)) {
+    const ladder = ['easy', 'medium', 'hard', 'deadly'];
+    const i = ladder.indexOf(difficulty);
+    if (i >= 0 && i < ladder.length - 1) { difficulty = ladder[i + 1]; nightBump = true; }
+  }
+
   const budget = encounterBudget(level, size, difficulty);
-  const out = { monsters: [], boss: null, xp: 0, budget, difficulty, biome, level, depth, faction: null };
+  const out = {
+    monsters: [], boss: null, xp: 0, budget, difficulty, biome, level, depth, faction: null,
+    night, weather, nightBump,
+  };
 
   // The CR window this party can meaningfully fight. Low levels get a floor of 0 so
   // a wolf pack is still legal; high levels stop bothering with kobolds.
@@ -878,15 +893,49 @@ export function rollEncounter(o = {}) {
   const loCR = level <= 3 ? 0 : Math.max(0, Math.floor(level / 4));
   const wantCR = Math.max(0.125, level * 0.55);
 
+  // What a creature will actually cost once it spawns. On the surface a stat block
+  // more than two CR below the party is scaled up (see buildEncounterMonsters), so
+  // the budget is spent against the veteran, not the printed baseline.
+  const costOf = (id) => {
+    const cr = num(getMonster(id)?.cr, 0);
+    if (depth === 0 && level - cr > 2) return xpForCR(effectiveCR(cr, level));
+    return xpOf(id);
+  };
+  const totalCost = (list) => arr(list).reduce((t, e) => t + costOf(e.id) * Math.max(1, num(e.count, 1)), 0);
+
+  // Time and weather bias. Undead and darkvision hunters own the night; in fog and
+  // rain the ambushers are the ones who find you. Never zero — just a nudge.
+  const envWeight = (traits) => {
+    let w = 1;
+    if (night) {
+      if (traits.undead) w *= 2.4;
+      else if (traits.darkvision) w *= 1.6;
+      else w *= 0.55;
+    }
+    if (murk && traits.ambusher) w *= 2.2;
+    return w;
+  };
+
   // --- 1. a published-style group, if the bestiary has one for this biome ---
   let groupId = null;
+  const validGroups = (ids) => arr(ids).map(String).filter((id) => {
+    const g = MONSTER_GROUPS[id];
+    return g && arr(g.members).length;
+  });
   try {
-    const groups = groupsForBiome(biome, hiCR).filter((id) => {
-      const g = MONSTER_GROUPS[id];
-      return g && arr(g.members).length;
-    });
-    if (groups.length && r.chance(0.62)) {
-      groupId = r.pickWeighted(groups, (id) => crWeight(MONSTER_GROUPS[id].cr ?? wantCR, wantCR));
+    // A map may name its own table (Cragmaw scouts on the Triboar Trail, ghouls
+    // in the Fields of the Dead). Two fights in three come from it.
+    const table = validGroups(o.table);
+    if (table.length && r.chance(0.65)) {
+      groupId = r.pickWeighted(table, (id) => crWeight(MONSTER_GROUPS[id].cr ?? wantCR, wantCR) + 0.05);
+      out.fromTable = true;
+    }
+    if (!groupId) {
+      const groups = validGroups(groupsForBiome(biome, hiCR, level));
+      if (groups.length && r.chance(0.62)) {
+        groupId = r.pickWeighted(groups, (id) => crWeight(MONSTER_GROUPS[id].cr ?? wantCR, wantCR)
+          * envWeight(groupTraits(id)));
+      }
     }
   } catch { groupId = null; }
 
@@ -913,7 +962,7 @@ export function rollEncounter(o = {}) {
     if (!pool.length) { try { pool = monstersByCR(0, 30); } catch { pool = []; } }
     if (!pool.length) return out;                       // empty bestiary: no fight, no crash
 
-    const lead = r.pickWeighted(pool, (id) => crWeight(getMonster(id)?.cr, wantCR));
+    const lead = r.pickWeighted(pool, (id) => crWeight(getMonster(id)?.cr, wantCR) * envWeight(monsterTraits(id)));
     const leadBlock = getMonster(lead);
     out.faction = leadBlock?.faction || null;
 
@@ -933,7 +982,7 @@ export function rollEncounter(o = {}) {
 
     // Fill the remaining budget with kin, up to four distinct creature types.
     let guard = 0;
-    while (encounterXp(out.monsters) < budget * 0.8 && out.monsters.length < 4 && guard++ < 12) {
+    while (totalCost(out.monsters) < budget * 0.8 && out.monsters.length < 4 && guard++ < 12) {
       const id = r.pickWeighted(mixPool, (mid) => crWeight(getMonster(mid)?.cr, wantCR * 0.8));
       if (!id) break;
       const m = getMonster(id);
@@ -956,7 +1005,7 @@ export function rollEncounter(o = {}) {
     || (difficulty === 'deadly' && r.chance(0.3));
   if (wantBoss) {
     let candidates = [];
-    try { candidates = bossesForTier(Math.max(0, level * 0.6), level + 3); } catch { candidates = []; }
+    try { candidates = bossesForTier(Math.max(0, level * 0.6), level + 3, biome); } catch { candidates = []; }
     if (candidates.length) {
       const bossId = r.pickWeighted(candidates, (id) => crWeight(BOSSES[id]?.cr, level));
       if (bossId) {
@@ -969,28 +1018,103 @@ export function rollEncounter(o = {}) {
   // --- 4. spend the budget without blowing it -----------------------------
   // Trim the most expensive non-boss stack first, never below its group minimum.
   let guard = 0;
-  while (encounterXp(out.monsters) > budget && guard++ < 40) {
+  while (totalCost(out.monsters) > budget && guard++ < 40) {
     const trimmable = out.monsters
       .filter((e) => !e.boss && e.count > Math.max(1, num(e.min, 1)))
-      .sort((a, b) => xpOf(b.id) - xpOf(a.id));
+      .sort((a, b) => costOf(b.id) - costOf(a.id));
     if (!trimmable.length) {
       // Everything is at its minimum: drop the cheapest whole stack instead.
       const droppable = out.monsters.filter((e) => !e.boss);
       if (droppable.length <= 1) break;
-      const worst = droppable.sort((a, b) => xpOf(a.id) - xpOf(b.id))[0];
+      const worst = droppable.sort((a, b) => costOf(a.id) - costOf(b.id))[0];
       out.monsters.splice(out.monsters.indexOf(worst), 1);
       continue;
     }
     trimmable[0].count -= 1;
   }
   out.monsters = out.monsters.filter((e) => e.count > 0);
-  out.xp = encounterXp(out.monsters);
+
+  // A modest spend-up: a roll well under budget gets one or two more of its
+  // cheapest member, so a pack that rolled its minimum still feels like a pack.
+  for (let pass = 0; pass < 2; pass++) {
+    if (!out.monsters.length || totalCost(out.monsters) >= budget * 0.6) break;
+    const cheap = out.monsters.filter((e) => !e.boss).sort((a, b) => costOf(a.id) - costOf(b.id))[0];
+    if (!cheap || totalCost(out.monsters) + costOf(cheap.id) > budget) break;
+    cheap.count += 1;
+    cheap.max = Math.max(num(cheap.max, cheap.count), cheap.count);
+  }
+  out.xp = totalCost(out.monsters);
   return out;
+}
+
+/** Undead / darkvision / ambusher traits of one stat block, for time-of-day bias. */
+function monsterTraits(id) {
+  const m = getMonster(id);
+  if (!m) return { undead: false, darkvision: false, ambusher: false };
+  return {
+    undead: lower(m.type) === 'undead',
+    darkvision: num(m.senses?.darkvision, 0) > 0 || num(m.senses?.blindsight, 0) > 0 || num(m.senses?.truesight, 0) > 0,
+    ambusher: lower(m.ai?.archetype) === 'ambusher' || num(m.skills?.stealth, 0) >= 4,
+  };
+}
+
+/** The same, for a whole encounter group: any member counts. */
+function groupTraits(groupId) {
+  const g = MONSTER_GROUPS[groupId];
+  const t = { undead: false, darkvision: false, ambusher: !!g?.ambush };
+  for (const member of arr(g?.members)) {
+    const id = Array.isArray(member) ? member[0] : member?.id;
+    const mt = monsterTraits(id);
+    t.undead = t.undead || mt.undead;
+    t.darkvision = t.darkvision || mt.darkvision;
+    t.ambusher = t.ambusher || mt.ambusher;
+  }
+  return t;
+}
+
+/**
+ * Stealth versus passive Perception: who sees whom first.
+ *
+ *   monsters: [{id,count}]   the rolled spawn list (stat blocks are read for Stealth)
+ *   passive:  number         the party's best passive Perception
+ *   biome, night, weather    situational modifiers on the monsters' side
+ *
+ * Returns { ambush: true | 'party' | false, stealth, roll, passive, margin }:
+ * `true` means the party is surprised, `'party'` means the foes are.
+ */
+export function ambushContest(o = {}) {
+  const r = o.rng || (o.seed != null ? makeRNG(o.seed) : rng);
+  let best = -Infinity;
+  for (const e of arr(o.monsters)) {
+    const m = getMonster(e?.id);
+    if (!m) continue;
+    let s = num(m.skills?.stealth, NaN);
+    if (!Number.isFinite(s)) s = lower(m.ai?.archetype) === 'ambusher' ? 4 : abMod(num(m.abilities?.dex ?? m.dex, 10));
+    if (s > best) best = s;
+  }
+  if (!Number.isFinite(best)) best = 0;
+  const biome = lower(o.biome);
+  let mod = 0;
+  if (biome === 'forest' || biome === 'pine-forest' || biome === 'marsh' || biome === 'cave') mod += 2;
+  if (o.night) mod += 2;
+  const weather = lower(o.weather);
+  if (weather === 'fog') mod += 3;
+  else if (weather === 'rain' || weather === 'snow') mod += 1;
+  const d20 = r.int(1, 20);
+  const roll = d20 + best + mod;
+  const passive = num(o.passive, 10);
+  const margin = roll - passive;
+  const ambush = margin >= 5 ? true : margin <= -5 ? 'party' : false;
+  return { ambush, stealth: best + mod, roll, passive, margin };
 }
 
 /**
  * Convenience: roll an encounter AND build every Character in it, scaled to the
  * party. combat.js can hand the result straight to `new Encounter({ enemies })`.
+ *
+ * On the surface a creature whose printed CR sits more than two below the party
+ * level is scaled up along its own ladder (a veteran goblin, not a baseline one);
+ * elites turn up on the surface with a small level-driven chance.
  */
 export function buildEncounterMonsters(spec, o = {}) {
   const level = Math.max(1, Math.floor(num(o.level ?? spec?.level, 1)));
@@ -998,11 +1122,14 @@ export function buildEncounterMonsters(spec, o = {}) {
   const r = o.rng || makeRNG(o.seed != null ? o.seed : hashStr(`build:${level}:${depth}:${spec?.xp || 0}`));
   const out = [];
   for (const entry of arr(spec?.monsters)) {
+    const baseCR = num(getMonster(entry.id)?.cr, 0);
     for (let i = 0; i < Math.max(1, num(entry.count, 1)); i++) {
       const isBoss = !!entry.boss || entry.id === spec?.boss;
       // Deeper floors sprinkle elites; every fifth floor's headliner is a boss.
-      const elite = !isBoss && depth > 0 && r.chance(clamp(0.05 + depth * 0.02, 0, 0.35));
-      const scaled = (depth > 0 || elite || isBoss || o.forceScale)
+      const eliteChance = depth > 0 ? clamp(0.05 + depth * 0.02, 0, 0.35) : clamp(0.04 + level / 100, 0, 0.25);
+      const elite = !isBoss && (entry.elite === true || r.chance(eliteChance));
+      const outgrown = depth === 0 && !isBoss && (level - baseCR) > 2;
+      const scaled = (depth > 0 || elite || isBoss || outgrown || o.forceScale)
         ? scaleMonster(entry.id, level, { elite, boss: isBoss, depth, rng: r })
         : makeMonster(entry.id, { rng: r, level });
       scaled.side = 'foe';

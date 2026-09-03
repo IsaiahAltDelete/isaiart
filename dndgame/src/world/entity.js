@@ -576,7 +576,12 @@ export class MonsterEntity extends Entity {
    * opts (plus Entity's): {
    *   monsterId, groupId, level, count, sight=6, leash=12, aggro=true,
    *   speed (tiles/sec) | moveTime, giveUp=3, respawn=90, defeatedKey,
-   *   ambush, elite, boss, wander=2, alertSfx
+   *   ambush, elite, boss, wander=2, alertSfx,
+   *   monsters:[{id,count}]   the whole pack this entity stands for (a roamer)
+   *   packId, satellite       pack members share a packId; satellites converge
+   *                           on whoever the leader noticed
+   *   respawnDays             come back this many in-game days after a defeat
+   *                           (st.defeated[defeatedKey] then holds the day)
    * }
    */
   constructor(opts = {}) {
@@ -588,6 +593,11 @@ export class MonsterEntity extends Entity {
     this.elite = !!opts.elite;
     this.boss = !!opts.boss;
     this.ambush = !!opts.ambush;
+    this.monsters = Array.isArray(opts.monsters) ? opts.monsters.map((e) => ({ ...e })) : null;
+    this.packId = opts.packId || null;
+    this.satellite = !!opts.satellite;
+    this.roll = opts.roll || null;           // { groupId, name, difficulty } for the title card
+    this.respawnDays = opts.respawnDays != null ? opts.respawnDays : 0;
 
     this.home = opts.home ? { x: opts.home.x | 0, y: opts.home.y | 0 } : { x: this.x, y: this.y };
     this.sight = opts.sight != null ? opts.sight : 6;
@@ -621,7 +631,12 @@ export class MonsterEntity extends Entity {
 
   isMarkedDefeated() {
     const st = gstate();
-    return !!(st && this.defeatedKey && st.defeated && st.defeated[this.defeatedKey]);
+    if (!st || !this.defeatedKey || !st.defeated) return false;
+    const mark = st.defeated[this.defeatedKey];
+    if (!mark) return false;
+    // A roamer records the DAY it fell and is back after respawnDays.
+    if (typeof mark === 'number' && this.respawnDays > 0) return (st.day || 0) - mark < this.respawnDays;
+    return true;
   }
 
   /** Where is the player right now? The scene keeps this on the EntityList. */
@@ -637,7 +652,14 @@ export class MonsterEntity extends Entity {
     if (this.alertT > 0) this.alertT -= dt;
 
     if (this.state === 'dead') {
-      if (this.permanent || this.isMarkedDefeated() || this.respawn <= 0) return;
+      if (this.permanent) return;
+      if (this.respawnDays > 0) {
+        // Day-based respawn: poll the calendar now and then rather than every frame.
+        this.respawnT -= dt;
+        if (this.respawnT <= 0) { this.respawnT = 2; if (!this.isMarkedDefeated()) this.reviveAtHome(); }
+        return;
+      }
+      if (this.isMarkedDefeated() || this.respawn <= 0) return;
       this.respawnT -= dt;
       if (this.respawnT <= 0) this.reviveAtHome();
       return;
@@ -660,8 +682,9 @@ export class MonsterEntity extends Entity {
       this.path = null;
       this.repathT = 0;
       Audio.sfx(this.alertSfx, { vol: 0.5 });
-      bus.emit('monster:notice', { entity: this, monsterId: this.monsterId });
+      bus.emit('monster:notice', { entity: this, monsterId: this.monsterId, packId: this.packId });
       this.onNotice?.(p);
+      if (this.packId && !this.satellite) this.alertPack(p);
     }
 
     if (this.state === 'chase') this.trackTarget(dt, map, p, sees);
@@ -768,8 +791,37 @@ export class MonsterEntity extends Entity {
     return this.interact();
   }
 
+  /** Every other entity sharing this pack, if the map has an entity list. */
+  packMates() {
+    const list = this.list && this.list.list ? this.list.list : null;
+    if (!list || !this.packId) return [];
+    return list.filter((e) => e && e !== this && e.packId === this.packId && !e.removed);
+  }
+
+  /** Come running: a satellite told where the leader saw the party. */
+  alert(p, { giveUp = 8 } = {}) {
+    if (this.state === 'dead' || this.hidden || !this.aggro) return this;
+    if (this.state !== 'chase') {
+      this.state = 'chase';
+      this.lostT = 0;
+      this.alertT = 0.9;
+      this.path = null;
+      this.repathT = 0;
+      // A satellite that cannot see you yet still knows roughly where you are.
+      this.giveUp = Math.max(this.giveUp, giveUp);
+    }
+    if (p) this.faceToward(p.x, p.y);
+    return this;
+  }
+
+  /** The leader noticed the party — the whole pack converges. */
+  alertPack(p) {
+    for (const m of this.packMates()) if (typeof m.alert === 'function') m.alert(p);
+    return this;
+  }
+
   /** Called after the party wins: vanish, and maybe come back later. */
-  defeat({ permanent = null } = {}) {
+  defeat({ permanent = null, pack = true } = {}) {
     this.state = 'dead';
     this.hidden = true;
     this.solid = false;
@@ -777,11 +829,17 @@ export class MonsterEntity extends Entity {
     this.path = null;
     this.respawnT = this.respawn;
     const perm = permanent != null ? permanent : this.permanent;
+    const st = gstate();
     if (perm && this.defeatedKey) {
-      const st = gstate();
       if (st) { st.defeated = st.defeated || {}; st.defeated[this.defeatedKey] = true; }
       this.remove();
+    } else if (this.respawnDays > 0 && this.defeatedKey && st) {
+      st.defeated = st.defeated || {};
+      st.defeated[this.defeatedKey] = st.day || 0;
+      this.respawnT = 2;
     }
+    // One fight settles the whole pack: the satellites fell with their leader.
+    if (pack && this.packId) for (const m of this.packMates()) if (typeof m.defeat === 'function') m.defeat({ permanent: perm, pack: false });
     return this;
   }
 
@@ -821,12 +879,17 @@ export class MonsterEntity extends Entity {
   }
 
   interact() {
+    // A satellite hands the fight to its leader so the pack is fought once, whole.
+    const leader = this.satellite ? this.packMates().find((m) => m.packId === this.packId && !m.satellite && m.state !== 'dead') : null;
+    const src = leader || this;
     return {
       kind: 'battle',
       data: {
-        monsterId: this.monsterId, groupId: this.groupId, level: this.level,
-        count: this.count, elite: this.elite, boss: this.boss,
-        ambush: this.ambush, entity: this,
+        monsterId: src.monsterId, groupId: src.groupId, level: src.level,
+        count: src.count, elite: src.elite, boss: src.boss,
+        ambush: src.ambush, entity: src,
+        monsters: src.monsters ? src.monsters.map((e) => ({ ...e })) : null,
+        packId: src.packId, roll: src.roll, roamer: !!src.monsters,
       },
     };
   }
@@ -836,6 +899,8 @@ export class MonsterEntity extends Entity {
       ...super.serialize(), cls: 'monster', monsterId: this.monsterId,
       groupId: this.groupId, state: this.state, home: { ...this.home },
       defeatedKey: this.defeatedKey, respawnT: this.respawnT,
+      monsters: this.monsters, packId: this.packId, satellite: this.satellite,
+      respawnDays: this.respawnDays, roll: this.roll,
     };
   }
 }

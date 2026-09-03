@@ -70,13 +70,34 @@ const MENU = { x: 2, y: VIEW_H - 26, w: VIEW_W - 58, h: 24 };
 // unmissable, at the right end of the bar and never anywhere else.
 const ENDBTN = { x: VIEW_W - 54, y: VIEW_H - 26, w: 52, h: 24 };
 const MENU_CELL_W = 26;
+// The tightest plate we squeeze to before giving up and paging. 18px still
+// holds an 11px icon with a pixel of air either side.
+const MENU_CELL_MIN = 18;
 // A 7px lead-in on the left (the submenu back chevron) and a reserved column on
 // the right for the paging chevrons and the "3/17" counter. The counter used to
 // be drawn right-aligned into a 14px gap, which put it straight across the last
 // button — 23px of text in 14px of gutter.
 const MENU_PAD_L = 7;
 const MENU_GUTTER = 26;
-const MENU_VISIBLE = Math.floor((MENU.w - MENU_PAD_L - MENU_GUTTER) / MENU_CELL_W);
+/**
+ * The bar sizes itself to what the unit can actually do. Six verbs get six
+ * comfortable 26px plates; sixteen get sixteen tighter ones -- but every verb
+ * is on screen and one click away. Paging only survives for a sheet too long
+ * to fit even at the minimum plate width.
+ *
+ * It used to be a fixed 26px grid showing eleven buttons, so a cleric's
+ * sixteen verbs meant five of them lived behind a "1/16" counter and two
+ * chevrons: you had to page the bar just to SEE what you could do, every turn.
+ */
+function barLayout(n) {
+  const avail = MENU.w - MENU_PAD_L - 2;
+  const count = Math.max(1, n);
+  let cw = MENU_CELL_W;
+  if (count * cw > avail) cw = Math.max(MENU_CELL_MIN, Math.floor(avail / count));
+  if (Math.floor(avail / cw) >= count) return { cw, vis: count, paged: false };
+  // Genuinely too many: fall back to a paged window, gutter reserved.
+  return { cw, vis: Math.max(1, Math.floor((MENU.w - MENU_PAD_L - MENU_GUTTER) / cw)), paged: true };
+}
 /**
  * The bottom stack, read upward: bar, budget strip, detail plate, note strip.
  * These four used to be laid out independently and three of them collided —
@@ -96,8 +117,10 @@ const NOTE = { x: 0, y: DETAIL.y - 13, w: DETAIL.w + 2, h: 11 };
 const STAT = { x: 3, w: 116, h: 104 };
 const DICE = { x: 200, y: 80 };
 
-const MENU_ROWS = MENU_VISIBLE;   // legacy alias: the bar's visible button count
 const MENU_ROW_H = 12;
+/** The initiative rail's first portrait and its pitch (shared by draw + hit-test). */
+const RIBBON_X0 = 35;
+const RIBBON_CELL = 22;
 
 /** Movement speed of a walking sprite, in world pixels per second. */
 const WALK_PX = 52;
@@ -148,6 +171,9 @@ const arr = (v) => (Array.isArray(v) ? v : []);
 const lower = (v) => String(v == null ? '' : v).toLowerCase();
 
 /** Feet at the bottom of the tile, centred horizontally — world pixels. */
+function easeOut(t) { const u = 1 - clamp(t, 0, 1); return 1 - u * u * u; }
+function easeIn(t) { const u = clamp(t, 0, 1); return u * u; }
+
 function feetOf(u) {
   const p = posOf(u);
   return { x: p.x * TILE + TILE / 2, y: (p.y + 1) * TILE };
@@ -367,6 +393,13 @@ export class BattleScene {
     this.zoom = safe(() => (Save.settings.battleZoom === 'close' ? 2 : 1), 1);
     this.cam = { x: 0, y: 0 };
     this.camTo = { x: 0, y: 0 };
+    // Drag-to-pan. The camera normally chases whoever is acting, but the action
+    // bar and the log sit over the field, and a creature can end its move
+    // underneath one of them where it cannot be clicked. Dragging the
+    // battlefield breaks the follow until the next turn (or middle-click /
+    // double-tap to recentre), which is the cheapest way to reach anything.
+    this.drag = { on: false, moved: 0, x: 0, y: 0 };
+    this.camManual = false;
     this.ui = new Map();              // uid -> render state { x, y, dir, phase, ... }
     this.ribbonScroll = 0;
 
@@ -468,13 +501,22 @@ export class BattleScene {
         big: true, sfx: 'roar',
       });
     }
+    // Surprise cuts both ways now: the party can catch a pack unawares.
+    const partyAmbush = enc.ambush === 'party';
+    const foeAmbush = enc.ambush && !partyAmbush;
     this.beats.push({
-      k: 'banner', dur: 1.0, color: UI.COLORS.gold,
-      text: enc.ambush ? 'Ambush!' : 'Roll for Initiative',
-      sub: enc.ambush ? 'They were waiting for you.' : `Round ${enc.round || 1}`,
+      k: 'banner', dur: 1.0, color: partyAmbush ? UI.COLORS.green : UI.COLORS.gold,
+      text: foeAmbush ? 'Ambush!' : partyAmbush ? 'Surprise Attack!' : 'Roll for Initiative',
+      sub: foeAmbush ? 'They were waiting for you.'
+        : partyAmbush ? 'You caught them unawares.' : `Round ${enc.round || 1}`,
       sfx: 'dice',
     });
     this.beats.push({ k: 'fn', fn: () => this._openTurn() });
+
+    // The arena inherits the sky it was rolled under.
+    const m = enc.map || {};
+    if (m.weather && m.weather !== 'none') safe(() => FX.weather(m.weather, m.weather === 'fog' ? 0.45 : 0.6));
+    this.dark = clamp(Number(m.dark) || 0, 0, 1);
   }
 
   exit() {
@@ -503,6 +545,18 @@ export class BattleScene {
         x: f.x, y: f.y, dir: u.side === 'foe' ? 'left' : 'right',
         phase: 0, moving: false, wp: [], alpha: 1, flash: 0,
         hp: u.hp || 0, bob: 0, deathDone: false, spawn: this.t,
+        // Body animation. The sprites have no attack / hurt / cast frames — four
+        // walk frames per facing is the whole set — so a blow is sold with the
+        // body itself: a step back (anticipation), a lunge into the target, a
+        // recoil out of the hit, a topple to the ground. All in screen pixels,
+        // all decaying back to zero on their own.
+        ox: 0, oy: 0,                 // current offset from the logical feet
+        lunge: null,                  // { t, dur, dx, dy, back } lunge into a blow
+        recoil: null,                 // { t, dur, dx, dy } shoved by a hit
+        topple: 0,                    // 0 standing .. 1 flat on the ground
+        cast: null,                   // { t, dur, color } channelling a spell
+        flashColor: null,             // tint used while `flash` decays
+        corpse: false,                // dead and lying where it fell
       };
       this.ui.set(u.uid, s);
     }
@@ -536,19 +590,122 @@ export class BattleScene {
 
       if (s.flash > 0) s.flash = Math.max(0, s.flash - dt * 3.2);
 
-      // Death: one burst, then fade the sprite out of the world.
+      // --- body animation -------------------------------------------------
+      s.ox = 0; s.oy = 0;
+      if (s.lunge) {
+        const L = s.lunge;
+        L.t += dt;
+        const t = Math.min(1, L.t / L.dur);
+        // Ease out on the way in, snap back on the way out: a blow commits
+        // forward fast and the body settles after it lands.
+        const k = t < 0.45 ? easeOut(t / 0.45) : 1 - easeIn((t - 0.45) / 0.55);
+        const amp = L.back ? -k : k;
+        s.ox += L.dx * amp; s.oy += L.dy * amp;
+        if (t >= 1) s.lunge = null;
+      }
+      if (s.recoil) {
+        const Rc = s.recoil;
+        Rc.t += dt;
+        const t = Math.min(1, Rc.t / Rc.dur);
+        const k = (1 - t) * (1 - t);
+        s.ox += Rc.dx * k; s.oy += Rc.dy * k;
+        if (t >= 1) s.recoil = null;
+      }
+      if (s.cast) {
+        s.cast.t += dt;
+        if (s.cast.t >= s.cast.dur) s.cast = null;
+        else s.oy -= Math.round(Math.sin(s.cast.t * 9) * 0.5 + 0.5);   // a small rising bob
+      }
+      if (s.swing) {
+        const W = s.swing;
+        W.t += dt;
+        const t = Math.min(1, W.t / W.dur);
+        // Cock back over the first third, then whip through: the fast part of
+        // the arc is where the blow lands.
+        s.swingAngle = t < 0.34
+          ? easeOut(t / 0.34) * W.from
+          : W.from + (W.to - W.from) * easeIn((t - 0.34) / 0.66);
+        if (t >= 1) { s.swing = null; s.swingAngle = 0; }
+      } else if (s.swingAngle) {
+        s.swingAngle = 0;
+      }
+      // Topple: a body at 0 hp is on the ground; the swing there takes 0.35s
+      // with one small bounce so it reads as a fall, not a rotation.
+      const wantsFlat = u.hp <= 0;
+      if (wantsFlat && s.topple < 1) s.topple = Math.min(1, s.topple + dt * 2.8);
+      else if (!wantsFlat && s.topple > 0) s.topple = Math.max(0, s.topple - dt * 3.5);
+
+      // Death: the body drops where it stood and stays there. A field littered
+      // with the fallen is the story of the fight told for free; a corpse that
+      // fades to nothing in a second was telling you nothing at all.
       if (isDead(u)) {
         if (!s.deathDone) {
           s.deathDone = true;
           const p = this._fxAt(u);
           FX.burst(p.x, p.y - 8 * this.zoom, u.side === 'foe' ? '#8a2c1e' : '#5a4a7a', 14, { shape: 'smoke', speed: 40, life: 0.7 });
+          FX.burst(p.x, p.y - 2, '#3a2a2a', 6, { shape: 'square', speed: 30, life: 0.5, gravity: 60 });
           sfx('death');
+          s.corpse = true;
         }
-        s.alpha = Math.max(0, s.alpha - dt * 1.4);
+        s.alpha = Math.max(0.42, s.alpha - dt * 1.4);
       } else if (s.alpha < 1) {
         s.alpha = Math.min(1, s.alpha + dt * 2);
       }
     }
+  }
+
+  // --- body animation kicks ------------------------------------------------
+
+  /** Direction (unit vector, screen space) from unit `a` toward unit `b`. */
+  _toward(a, b) {
+    const pa = posOf(a), pb = posOf(b);
+    const dx = pb.x - pa.x, dy = pb.y - pa.y;
+    const d = Math.hypot(dx, dy) || 1;
+    return { x: dx / d, y: dy / d };
+  }
+
+  /** Lunge `dist` px toward `target` (or away, with back:true) over `dur` s. */
+  _animLunge(unit, target, dist = 6, dur = 0.26, back = false) {
+    const s = this._uiOf(unit, true);
+    if (!s || !target) return;
+    const v = this._toward(unit, target);
+    s.lunge = { t: 0, dur, dx: v.x * dist * this.zoom, dy: v.y * dist * this.zoom * 0.7, back };
+  }
+
+  /**
+   * Swing the weapon through an arc. `from`/`to` are radians; the blade is
+   * cocked back first and comes through fast, which is the shape of a real
+   * cut and reads correctly even at 16 pixels.
+   */
+  _animSwing(unit, dur = 0.3, from = -1.15, to = 1.35) {
+    const s = this._uiOf(unit, true);
+    if (!s) return;
+    s.swing = { t: 0, dur, from, to };
+  }
+
+  /** Shove the struck unit `dist` px away from `from`; heavier hits go further. */
+  _animRecoil(unit, from, dist = 3, dur = 0.22) {
+    const s = this._uiOf(unit, true);
+    if (!s) return;
+    const v = from ? this._toward(from, unit) : { x: 0, y: -1 };
+    s.recoil = { t: 0, dur, dx: v.x * dist * this.zoom, dy: v.y * dist * this.zoom * 0.7 };
+  }
+
+  /** Channel: the caster bobs and glows in the spell's colour while it builds. */
+  _animCast(unit, color, dur = 0.42) {
+    const s = this._uiOf(unit, true);
+    if (!s) return;
+    s.cast = { t: 0, dur, color: color || UI.COLORS.purple };
+  }
+
+  /**
+   * Hit-stop: the whole battlefield holds for a few frames on a heavy blow.
+   * It is the cheapest trick in the action-game book and it works because the
+   * eye reads a pause as weight. Beats, sprites and effects all wait on it.
+   */
+  _hitstop(sec) {
+    if (Save?.settings?.screenShake === false) return;
+    this.hitstop = Math.max(this.hitstop || 0, sec);
   }
 
   // =========================================================================
@@ -570,8 +727,87 @@ export class BattleScene {
 
   _focusUnit(u, snap = false) {
     if (!u) return;
+    // A player who has dragged the view keeps it until the turn changes; the
+    // camera snapping back mid-decision is exactly what made panning useless.
+    if (this.camManual && !snap) return;
     const s = this._uiOf(u, true) || feetOf(u);
     this._focusOn(s.x, s.y - TILE / 2, snap);
+  }
+
+  /**
+   * Pointer drag pans the camera. Returns true while a real drag is in progress
+   * so the caller can swallow the click that ends it — otherwise letting go
+   * over a tile would also select that tile.
+   */
+  _updateDrag() {
+    const m = Input.mouse;
+    const d = this.drag;
+    if (!m.over) { d.on = false; return false; }
+
+    if (m.down && !d.on) {
+      // Only start a drag on the field; a press inside a panel belongs to it.
+      if (!this._mouseOnField() && !this._mouseOverAnyPanel()) return false;
+      d.on = true; d.moved = 0; d.x = m.x; d.y = m.y;
+      return false;
+    }
+    if (!m.down) {
+      const wasDrag = d.on && d.moved > 3;
+      d.on = false;
+      return wasDrag;                       // swallow the release click
+    }
+
+    const dx = m.x - d.x, dy = m.y - d.y;
+    d.x = m.x; d.y = m.y;
+    d.moved += Math.abs(dx) + Math.abs(dy);
+    if (d.moved <= 3) return false;         // a shaky click is not a drag
+
+    // Screen pixels -> world pixels. Move the camera opposite the pointer so the
+    // field follows the hand.
+    this.camTo.x -= dx / this.zoom;
+    this.camTo.y -= dy / this.zoom;
+    this.cam.x -= dx / this.zoom;
+    this.cam.y -= dy / this.zoom;
+    this.camManual = true;
+    this._clampCam();
+    return true;
+  }
+
+  /** True when the pointer is over one of the floating combat panels. */
+  _mouseOverAnyPanel() {
+    const m = Input.mouse;
+    const inRect = (r) => r && m.x >= r.x && m.x <= r.x + r.w && m.y >= r.y && m.y <= r.y + r.h;
+    return inRect(MENU) || inRect(DETAIL) || inRect(BUDGET) || inRect(LOGTAIL) || inRect(NOTE);
+  }
+
+  /** Give the camera back to whoever is acting. */
+  /**
+   * Change the zoom, keeping the world point under (px,py) — or the camera
+   * focus when no pointer is given — where it is on screen.
+   */
+  _setZoom(z, px, py) {
+    if (z === this.zoom) return;
+    const o = this._origin();
+    // World point under the pointer at the old zoom.
+    const wx = px != null ? (px - o.x) / this.zoom : this.cam.x;
+    const wy = py != null ? (py - o.y) / this.zoom : this.cam.y;
+    this.zoom = z;
+    // Keep that world point under the pointer: it becomes the camera's focus,
+    // offset by the pointer's distance from the field centre at the new zoom.
+    if (px != null) {
+      const fc = this._focusPoint();
+      this.cam.x = wx - (px - fc.x) / this.zoom;
+      this.cam.y = wy - (py - fc.y) / this.zoom;
+      this.camTo.x = this.cam.x; this.camTo.y = this.cam.y;
+      this.camManual = true;
+    }
+    for (const s of this.ui.values()) { s.lunge = null; s.recoil = null; }
+    this._clampCam();
+  }
+
+  _recenter() {
+    this.camManual = false;
+    const u = safe(() => this.enc.current, null);
+    if (u) this._focusUnit(u);
   }
 
   _updateCam(dt) {
@@ -586,12 +822,28 @@ export class BattleScene {
     const worldW = (enc?.w || 22) * TILE;
     const worldH = (enc?.h || 15) * TILE;
     const f = this._focusPoint();
-    const minX = (f.x - FIELD.x) / this.zoom;
-    const maxX = worldW - (FIELD.x + FIELD.w - f.x) / this.zoom;
-    const minY = (f.y - FIELD.y) / this.zoom;
-    const maxY = worldH - (FIELD.y + FIELD.h - f.y) / this.zoom;
+    let minX = (f.x - FIELD.x) / this.zoom;
+    let maxX = worldW - (FIELD.x + FIELD.w - f.x) / this.zoom;
+    let minY = (f.y - FIELD.y) / this.zoom;
+    let maxY = worldH - (FIELD.y + FIELD.h - f.y) / this.zoom;
+
+    // While the player is panning by hand, let the field slide further than the
+    // automatic camera ever would. A 22x15 arena fits the screen entirely, so
+    // the normal clamp pins it dead centre — and a creature standing under the
+    // action bar or the log could never be brought into the open, which is the
+    // whole reason to offer panning. The slack is one panel's worth in each
+    // direction, enough to slide anything out from under a panel and no more.
+    if (this.camManual) {
+      const slackX = (MENU.w + 24) / this.zoom;
+      const slackY = (FIELD.h * 0.5) / this.zoom;
+      minX -= slackX; maxX += slackX;
+      minY -= slackY; maxY += slackY;
+    }
+
     this.cam.x = minX <= maxX ? clamp(this.cam.x, minX, maxX) : (minX + maxX) / 2;
     this.cam.y = minY <= maxY ? clamp(this.cam.y, minY, maxY) : (minY + maxY) / 2;
+    this.camTo.x = clamp(this.camTo.x, Math.min(minX, maxX), Math.max(minX, maxX));
+    this.camTo.y = clamp(this.camTo.y, Math.min(minY, maxY), Math.max(minY, maxY));
   }
 
   /**
@@ -650,9 +902,31 @@ export class BattleScene {
     this.speed = clamp(setting * (this.ff ? 3.2 : 1), 0.25, 6);
     FX.speed = this.speed;
 
-    const sdt = dt * this.speed;
+    let sdt = dt * this.speed;
+
+    // Hit-stop: a heavy blow holds the whole field for a few frames. Sprites,
+    // beats and effects all freeze; the camera and the input still run.
+    if (this.hitstop > 0) {
+      this.hitstop -= dt;
+      FX.speed = 0.02;
+      sdt = 0;
+    }
 
     this._updateUnits(sdt);
+    // A drag has to run before anything else reads the mouse, and it eats the
+    // click that ends it so panning never doubles as a selection.
+    this._dragging = this._updateDrag();
+    if (this._dragging) Input.mouse.clicked = false;
+    // The wheel zooms about the pointer. (M used to be eaten here as
+    // "recentre" before _globalKeys could read it as "zoom", so the zoom key
+    // was dead; recentring is the drag's own job now — double-tap / M-when-
+    // dragged — and the wheel and M both zoom.)
+    if (Input.mouse.wheel && this._mouseOnField()) {
+      const dir = Input.mouse.wheel < 0 ? 1 : -1;
+      const next = clamp(this.zoom + dir, 1, 2);
+      if (next !== this.zoom) this._setZoom(next, Input.mouse.x, Input.mouse.y);
+      Input.mouse.wheel = 0;
+    }
     this._updateCam(dt);
     this._updateOverlayTimers(sdt);
     this._checkBossPhase();
@@ -694,9 +968,10 @@ export class BattleScene {
       Input.consume('journal');
     }
     if (Input.pressed('map')) {
-      this.zoom = this.zoom === 2 ? 1 : 2;
-      FX.clear();
-      this._clampCam();
+      // M: zoom when the camera is where it belongs; recentre first if the
+      // player has dragged it away, so the key always does the useful thing.
+      if (this.camManual) this._recenter();
+      else this._setZoom(this.zoom === 2 ? 1 : 2);
       sfx('cursor');
       Input.consume('map');
     }
@@ -724,8 +999,15 @@ export class BattleScene {
     // beginTurn() rolls death saves internally, so watch the log to make those
     // dice as visible as every other d20 in the fight.
     const logMark = (enc.log || []).length;
+    // A new turn returns the camera to the game; a pan is a per-decision tool,
+    // not a mode the player has to remember to switch off.
+    this.camManual = false;
     const res = safe(() => enc.beginTurn(), null);
     this._pushDeathSaveBeats((enc.log || []).slice(logMark));
+    this._drainReplays();                       // lair actions, routs, legendary
+    this._syncAuras();
+    this.undo = null;
+    this.endConfirmAt = 0;
     if (this._checkOver()) return;
 
     const unit = enc.current;
@@ -809,12 +1091,30 @@ export class BattleScene {
     return true;
   }
 
-  _endTurn() {
+  _endTurn(force = false) {
     const enc = this.enc;
     if (!enc) return;
+    const unit = enc.current;
+    // Ending a turn with the action still in hand is the commonest way to
+    // throw a fight away by accident. Ask once; the second press within a
+    // few seconds goes through. Auto-end (budget spent) never asks.
+    if (!force && unit && this._isPlayerControlled(unit)) {
+      const b = this._budget();
+      const unspent = (b.action || 0) > 0 || (b.attacksLeft || 0) > 0;
+      const armed = this.endConfirmAt && (this.t - this.endConfirmAt) < 3;
+      if (unspent && !armed) {
+        this.endConfirmAt = this.t;
+        this.hint = 'Action unspent — End Turn again to confirm.';
+        sfx('cursor');
+        return;
+      }
+    }
+    this.endConfirmAt = 0;
+    this.undo = null;
     this.pending = null;
     this.areaCells = [];
     safe(() => enc.endTurn());
+    this._drainReplays();
     if (this._checkOver()) return;
     this.beats.push({ k: 'fn', fn: () => this._openTurn() });
     this.phase = 'anim';
@@ -907,7 +1207,37 @@ export class BattleScene {
     if (attacks.length) rows.push(group('attack', 'Attack', 'sword', attacks, 'Nothing to attack with.'));
 
     const spells = pick((o) => o.kind === 'spell' || String(o.id).startsWith('spell:'));
-    if (spells.length) rows.push(group('cast', 'Cast a Spell', 'staff', spells, 'You know no spells.'));
+    if (spells.length) {
+      const g = group('cast', 'Cast a Spell', 'staff', spells, 'You know no spells.');
+      // A level-17 wizard has thirty spells, and thirty plates on one bar is a
+      // wall, not a menu. Past a dozen, break them by spell level — which is
+      // also how a caster thinks about them: "what am I spending?"
+      if (spells.length > 12) {
+        const byLevel = new Map();
+        for (const o of spells) {
+          const lv = o.level || 0;
+          if (!byLevel.has(lv)) byLevel.set(lv, []);
+          byLevel.get(lv).push(o);
+        }
+        const tiers = [...byLevel.keys()].sort((a, b2) => a - b2).map((lv) => {
+          const list = byLevel.get(lv);
+          const on = list.some((o) => o.enabled);
+          const slots = unit.spells?.slots?.[lv];
+          const left = lv > 0 && slots ? Math.max(0, (slots.max || 0) - (slots.used || 0)) : null;
+          return {
+            id: `@cast:${lv}`, group: true, sub: list,
+            name: lv === 0 ? 'Cantrips' : `${ordinal(lv)} Level`,
+            icon: lv === 0 ? 'bolt' : 'staff',
+            enabled: on,
+            reason: on ? '' : (lv > 0 && left === 0 ? 'No slots of that level left' : 'None ready'),
+            desc: `${list.length} spell${list.length === 1 ? '' : 's'}${left != null ? ` · ${left} slot${left === 1 ? '' : 's'} left` : ''}.`,
+          };
+        });
+        g.sub = tiers;
+        g.desc = `${spells.length} spells, by level.`;
+      }
+      rows.push(g);
+    }
 
     const specials = pick((o) => String(o.id).startsWith('special:'));
     if (specials.length) rows.push(group('class', 'Class Action', 'star', specials, 'No class features ready.'));
@@ -923,7 +1253,15 @@ export class BattleScene {
       desc: `Walk up to ${budget.movement || 0} ft. Leaving a foe's reach provokes an Opportunity Attack.`,
     });
 
-    for (const id of ['dash', 'dodge', 'disengage', 'hide', 'help', 'shove', 'grapple', 'search', 'ready']) {
+    // A free take-back of the last move, while nothing has been rolled since.
+    if (this.undo && this.undo.uid === unit.uid && this.undo.round === enc.round) {
+      rows.push({
+        id: '@undo', name: 'Undo Move', icon: 'foot', undo: true, enabled: true,
+        desc: 'Step back to where you stood before that move. Free, as long as nothing has happened since.',
+      });
+    }
+
+    for (const id of ['stand', 'escape', 'dash', 'dodge', 'disengage', 'hide', 'help', 'shove', 'grapple', 'search', 'ready']) {
       const o = byId(id);
       if (o) rows.push(o);
     }
@@ -945,28 +1283,39 @@ export class BattleScene {
     return rows;
   }
 
+  /**
+   * The rows on screen. menuPath is a trail of group ids, so the spell menu
+   * can nest one deeper (Cast a Spell -> 3rd Level -> Fireball) without any
+   * of the navigation code needing to know how deep it went.
+   */
   _currentRows() {
     if (!this.menuPath.length) return this._rootMenu();
-    const root = this._rootMenu();
-    const g = root.find((r) => r.id === this.menuPath[0]);
-    if (g && g.sub) return g.sub;
+    if (this.menuPath[0] === '@sub') return this.subRows || [];
     if (this.menuPath[0] === '@reactions') return this._stanceRows();
-    return root;
+    let rows = this._rootMenu();
+    for (const step of this.menuPath) {
+      const g = rows.find((r) => r.id === step);
+      if (!g || !g.sub) return rows;
+      rows = g.sub;
+    }
+    return rows;
   }
 
   _stanceRows() {
     const kinds = [
       ['opportunity-attack', 'Opportunity Attack', 'Strike a foe that leaves your reach.'],
       ['shield', 'Shield', 'Cast Shield for +5 AC against the triggering attack.'],
+      ['counterspell', 'Counterspell', 'Spend a slot to try to stop an enemy spell as it is cast.'],
       ['defensive', 'Defensive Reactions', 'Parry, Deflect Attacks, Uncanny Dodge and the like.'],
       ['other', 'Everything Else', 'Any other reaction the rules offer you.'],
     ];
+    const who = this.enc?.current;
     return kinds.map(([id, name, desc]) => {
-      const st = this.stance.get(id) || 'ask';
+      const st = who ? this._stanceOf(who, id) : 'ask';
       return {
         id: `@stance:${id}`, name: `${name}: ${titleCase(st)}`, icon: 'shield',
         enabled: true, stanceKind: id,
-        desc: `${desc}  Currently: ${st === 'ask' ? 'ask me the first time' : st === 'yes' ? 'always use it' : 'never use it'}.`,
+        desc: `${desc}  ${who ? `${who.name}: ` : ''}${st === 'ask' ? 'ask me the first time' : st === 'yes' ? 'always use it' : 'never use it'}.`,
       };
     });
   }
@@ -983,10 +1332,12 @@ export class BattleScene {
     if (this.menuDirty) this._refreshOptions();
 
     const rows = this._currentRows();
-    if (!rows.length) { this._endTurn(); return; }
+    if (!rows.length) { this._endTurn(true); return; }
     const inSub = this.menuPath.length > 0;
     let idx = inSub ? this.subIndex : this.menuIndex;
     idx = clamp(idx, 0, rows.length - 1);
+    this.hoverMove = null;
+    this.hoverAttack = null;
 
     // --- keyboard ---------------------------------------------------------
     // The bar runs left-to-right, so left/right walk it. Up/down still work for
@@ -1016,21 +1367,22 @@ export class BattleScene {
       && m.x >= MENU.x && m.x <= MENU.x + MENU.w;
     if (onBar) {
       // Clicking the back chevron at the left of the bar leaves a submenu.
-      const gx = MENU.x + MENU_PAD_L + MENU_VISIBLE * MENU_CELL_W;
+      const L = barLayout(rows.length);
+      const gx = MENU.x + MENU_PAD_L + L.vis * L.cw;
       if (inSub && m.x < MENU.x + MENU_PAD_L) {
-        if (m.clicked) { this.menuPath = []; this.subIndex = 0; this.subTop = 0; sfx('back'); }
-      } else if (rows.length > MENU_VISIBLE && m.x >= gx) {
+        if (m.clicked) this._menuBack();
+      } else if (L.paged && m.x >= gx) {
         // The paging gutter: its two chevrons step the window a page at a time.
         if (m.clicked) {
           const back = m.x < gx + (MENU.x + MENU.w - gx) / 2;
-          idx = clamp(idx + (back ? -MENU_VISIBLE : MENU_VISIBLE), 0, rows.length - 1);
+          idx = clamp(idx + (back ? -L.vis : L.vis), 0, rows.length - 1);
           if (inSub) this.subIndex = idx; else this.menuIndex = idx;
           sfx('cursor');
         }
       } else {
-        const cell = Math.floor((m.x - (MENU.x + MENU_PAD_L)) / MENU_CELL_W);
+        const cell = Math.floor((m.x - (MENU.x + MENU_PAD_L)) / L.cw);
         const hovered = top + cell;
-        if (cell >= 0 && cell < MENU_VISIBLE && hovered >= 0 && hovered < rows.length) {
+        if (cell >= 0 && cell < L.vis && hovered >= 0 && hovered < rows.length) {
           if (hovered !== idx) { idx = hovered; sfx('cursor'); }
           if (m.clicked) {
             if (inSub) this.subIndex = idx; else this.menuIndex = idx;
@@ -1039,13 +1391,41 @@ export class BattleScene {
           }
         }
       }
-    } else if (this._mouseOnField()) {
-      // Hovering the field inspects whoever is standing there; a click pins the card.
-      const t = this._screenToTile(m.x, m.y);
-      const u = this._unitAtTile(t.x, t.y);
+    } else if (m.over && m.y < RIBBON.h && m.x >= RIBBON_X0) {
+      // The initiative rail: hover a portrait to read it, click to look at it.
+      const i = Math.floor((m.x - RIBBON_X0 + this.ribbonScroll) / RIBBON_CELL);
+      const order = enc.order || [];
+      const u = i >= 0 && i < order.length && enc.byUid ? enc.byUid(order[i]) : null;
       this.inspectHover = !!u;
       if (u && !this.inspectPinned) this.inspect = u;
+      if (u) this.hint = `${u.name}${enc.initiative?.[u.uid]?.total != null ? ` · initiative ${enc.initiative[u.uid].total}` : ''}`;
+      if (m.clicked && u) { this.inspect = u; this.inspectPinned = true; this._lookAt(u); this.camManual = true; sfx('select'); }
+    } else if (this._mouseOnField()) {
+      // The field itself is the menu for the two commonest verbs: point at a
+      // square you can reach and click to walk there; point at an enemy your
+      // weapon can reach and click to hit it. Everything else still inspects.
+      const t = this._screenToTile(m.x, m.y);
+      const u = this._unitAtTile(t.x, t.y);
+      const node = !u && !inSub ? this.reach.get(key(t.x, t.y)) : null;
+      const canMove = node && (this._budget().movement || 0) > 0;
+      const foe = u && u !== unit && u.side !== unit.side && !isDead(u) && !inSub ? u : null;
+      const atk = foe ? this._quickAttackFor(unit, foe) : null;
+      this.hoverMove = canMove ? { x: t.x, y: t.y, node } : null;
+      this.hoverAttack = atk ? { unit: foe, option: atk } : null;
+      this.inspectHover = !!u;
+      if (u && !this.inspectPinned) this.inspect = u;
+      if (canMove) this.hint = `Click to walk here — ${node.cost} ft${this.provoke.has(key(t.x, t.y)) ? ', provokes' : ''}`;
+      else if (atk) this.hint = `Click: ${atk.name} on ${foe.name}`;
       if (m.clicked) {
+        if (canMove) { this._commitMove(unit, node); return; }
+        if (atk) {
+          this.pending = atk;
+          this.slotLevel = null;
+          this.targets = safe(() => enc.targetsFor(unit, atk), { units: [], tiles: [] }) || { units: [], tiles: [] };
+          this.targetIndex = Math.max(0, this.targets.units.findIndex((x) => x === foe || x.uid === foe.uid));
+          this._commitOption({ unit: foe });
+          return;
+        }
         if (u) { this.inspect = u; this.inspectPinned = true; sfx('select'); }
         else { this.inspectPinned = false; this.inspect = null; }
       }
@@ -1102,9 +1482,25 @@ export class BattleScene {
     // Right-click is the universal "back" of every game with a mouse; Input has
     // been tracking it all along and nothing in the battle ever read it.
     if (Input.consume('cancel') || this._rightClick()) {
-      if (inSub) { this.menuPath = []; this.subIndex = 0; this.subTop = 0; sfx('back'); }
+      if (inSub) this._menuBack();
       else { this.inspect = null; this.inspectPinned = false; sfx('back'); }
     }
+  }
+
+  /**
+   * Up one level of the menu. The spell list nests (Cast -> 3rd Level ->
+   * Fireball), so back has to pop one step rather than jumping to the root —
+   * and it should land the cursor back on the group you came out of.
+   */
+  _menuBack() {
+    const from = this.menuPath[this.menuPath.length - 1];
+    this.menuPath = this.menuPath.slice(0, -1);
+    const rows = this._currentRows();
+    const i = rows.findIndex((r) => r.id === from);
+    if (this.menuPath.length) { this.subIndex = Math.max(0, i); this.subTop = 0; }
+    else if (i >= 0) { this.menuIndex = i; this.menuTop = 0; }
+    else { this.subIndex = 0; this.subTop = 0; }
+    sfx('back');
   }
 
   /** True once per frame if the pointer was right-clicked; consumes the flag. */
@@ -1172,15 +1568,18 @@ export class BattleScene {
 
     if (row.stance) { this.menuPath = ['@reactions']; this.subIndex = 0; this.subTop = 0; sfx('select'); return; }
     if (row.stanceKind) {
-      const cur = this.stance.get(row.stanceKind) || 'ask';
+      // Set it for THIS creature: a party-wide answer bound characters who
+      // could not even take the reaction being answered for.
+      const cur = this._stanceOf(unit, row.stanceKind);
       const next = cur === 'ask' ? 'yes' : cur === 'yes' ? 'no' : 'ask';
-      this.stance.set(row.stanceKind, next);
+      const k = `${unit.uid}|${row.stanceKind}`;
+      if (next === 'ask') this.stance.delete(k); else this.stance.set(k, next);
       sfx('select');
       return;
     }
     if (row.group) {
-      if (row.sub.length === 1 && row.sub[0].enabled) { this._beginOption(row.sub[0]); return; }
-      this.menuPath = [row.id];
+      if (row.sub.length === 1 && row.sub[0].enabled && !row.sub[0].group) { this._beginOption(row.sub[0]); return; }
+      this.menuPath = [...this.menuPath, row.id];
       this.subIndex = Math.max(0, row.sub.findIndex((o) => o.enabled));
       this.subTop = 0;
       sfx('select');
@@ -1188,9 +1587,67 @@ export class BattleScene {
     }
     if (row.move) { this._beginMove(); return; }
     if (row.flee) { this._doFlee(); return; }
+    if (row.undo) { this._undoMove(); return; }
     if (row.id === 'end') { sfx('select'); this._endTurn(); return; }
 
+    // Verbs with a mode the engine reads from `extra` get a two-row submenu
+    // rather than a silent default: a shove that always knocks prone is half
+    // a shove, and a Ready with no trigger is a bet the player never placed.
+    if (row.id === 'shove' && !row.extra) {
+      this.subRows = [
+        { ...row, name: 'Shove: Push 5 ft', extra: { mode: 'push' }, desc: 'Athletics contest. Push the creature 5 feet away from you.' },
+        { ...row, name: 'Shove: Knock Prone', extra: { mode: 'prone' }, desc: 'Athletics contest. Knock the creature Prone: melee hits on it have advantage.' },
+      ];
+      this.menuPath = ['@sub']; this.subIndex = 0; this.subTop = 0; sfx('select');
+      return;
+    }
+    if (row.id === 'ready' && !row.extra) {
+      this.subRows = [
+        { ...row, name: 'Ready: when a foe approaches', extra: { trigger: 'approach' }, desc: 'Strike the first enemy that comes within your reach, using your Reaction.' },
+        { ...row, name: 'Ready: when a foe attacks', extra: { trigger: 'attack' }, desc: 'Strike back the moment an enemy attacks or casts, using your Reaction.' },
+      ];
+      this.menuPath = ['@sub']; this.subIndex = 0; this.subTop = 0; sfx('select');
+      return;
+    }
+
     this._beginOption(row);
+  }
+
+  /** Put the acting creature back where it stood before its last move. */
+  _undoMove() {
+    const enc = this.enc;
+    const unit = enc?.current;
+    const u = this.undo;
+    if (!enc || !unit || !u || u.uid !== unit.uid || u.round !== enc.round) { sfx('error'); return; }
+    unit.pos = { ...u.pos };
+    const b = enc.budget;
+    if (b) { b.movement = u.movement; b.moveUsed = u.moveUsed; }
+    const s = this._uiOf(unit, true);
+    if (s) { const f = feetOf(unit); s.x = f.x; s.y = f.y; s.wp = []; s.moving = false; }
+    this.undo = null;
+    this.menuDirty = true;
+    this._recomputeReach(unit);
+    this.cursor = { ...posOf(unit) };
+    this._focusUnit(unit);
+    this.hint = 'Back where you were.';
+    sfx('back');
+  }
+
+  /**
+   * The attack the acting creature would use on `foe` with one click: the
+   * first enabled weapon attack that can reach them, action-cost first.
+   */
+  _quickAttackFor(unit, foe) {
+    const enc = this.enc;
+    if (!unit || !foe || !enc) return null;
+    if (this.menuDirty) this._refreshOptions();
+    const cands = this.options.filter((o) => o && o.enabled && o.kind === 'attack');
+    cands.sort((a, b) => (a.cost === 'action' ? 0 : 1) - (b.cost === 'action' ? 0 : 1));
+    for (const o of cands) {
+      const t = safe(() => enc.targetsFor(unit, o), null);
+      if (t && (t.units || []).some((x) => x === foe || x.uid === foe.uid)) return o;
+    }
+    return null;
   }
 
   // =========================================================================
@@ -1288,7 +1745,15 @@ export class BattleScene {
     const path = (node.path || []).slice();
     sfx('select');
 
+    // Remember where we stood, so a misclick is a free take-back — as long as
+    // nothing was rolled on the way (no opportunity attack, no readied strike).
+    const b0 = this._budget();
+    const snap = { uid: unit.uid, round: enc.round, pos: { ...(unit.pos || {}) }, movement: b0.movement, moveUsed: b0.moveUsed };
+
     const res = safe(() => enc.moveUnit(unit, path), null) || { steps: [], provoked: [] };
+    const replays = Array.isArray(enc.replays) ? enc.replays.length : 0;
+    this.undo = (res.provoked || []).length || replays ? null : snap;
+    this._drainReplays();
 
     // Walk the sprite across the squares the engine actually let it cross.
     if (s) {
@@ -1516,9 +1981,17 @@ export class BattleScene {
     this.pending = null;
     this.areaCells = [];
     this.phase = 'anim';
+    this.undo = null;
+    this.endConfirmAt = 0;
+
+    // A submenu choice (Shove: push / prone, Ready: trigger) rides along as
+    // `extra`, which is where the engine reads such modes from.
+    let tgt = target;
+    if (o.extra) tgt = { ...(target || {}), extra: o.extra };
 
     const spell = o.spellId ? getSpell(o.spellId) : null;
-    const res = safe(() => enc.perform(unit, id, target), null) || { ok: false, results: [] };
+    const res = safe(() => enc.perform(unit, id, tgt), null) || { ok: false, results: [] };
+    this._drainReplays();
 
     if (!res.ok && !(res.results || []).length) {
       sfx('error');
@@ -1599,6 +2072,7 @@ export class BattleScene {
       if (s) s.wp = (res.steps || []).map((p) => ({ x: p.x * TILE + TILE / 2, y: (p.y + 1) * TILE }));
       this.beats.push({ k: 'camera', unit, dur: 0.12 });
       this.beats.push({ k: 'walk', unit });
+      this._drainReplays();                   // a readied strike as it closed
       for (const p of res.provoked || []) {
         const atk = enc.byUid ? enc.byUid(p.attacker) : null;
         this.beats.push({ k: 'banner', dur: 0.5, color: UI.COLORS.warn, text: 'Opportunity Attack', sub: atk?.name || '' });
@@ -1611,6 +2085,7 @@ export class BattleScene {
       const res = safe(() => enc.perform(unit, plan.optionId, plan.target), null) || { results: [] };
       this.beats.push({ k: 'camera', unit, dur: 0.12 });
       this._pushResultBeats(unit, res.results || [], { spell, option: null });
+      this._drainReplays();                   // a counterspell, a readied shot
     }
 
     this.beats.push({ k: 'wait', dur: PLAN_PAUSE });
@@ -1636,7 +2111,7 @@ export class BattleScene {
     if (!this._isPlayerControlled(reactor)) return undefined;   // companions on auto, monsters
 
     const kind = this._stanceKey(offer);
-    const st = this.stance.get(kind) || 'ask';
+    const st = this._stanceOf(reactor, kind);
     if (st === 'yes') { this._noteReaction(reactor, offer, true); return true; }
     if (st === 'no') { this._noteReaction(reactor, offer, false); return false; }
 
@@ -1649,6 +2124,7 @@ export class BattleScene {
   _stanceKey(offer) {
     const k = String(offer.kind || 'other').toLowerCase();
     if (k.includes('opportunity')) return 'opportunity-attack';
+    if (k.includes('counter')) return 'counterspell';
     if (k.includes('shield')) return 'shield';
     if (/parry|deflect|uncanny|riposte|absorb|cutting/.test(k)) return 'defensive';
     return 'other';
@@ -1663,10 +2139,13 @@ export class BattleScene {
   }
 
   _queuePrompt(reactor, offer, kind) {
-    // Only one prompt per kind per fight; it arms the stance from then on.
-    if (this._promptedKinds && this._promptedKinds.has(kind)) return;
+    // One prompt per creature per kind per fight. It used to be one per KIND
+    // for the whole party, so the wizard's "always Shield" answer also spoke
+    // for the fighter, who has no Shield and a Reaction to spend elsewhere.
+    const seen = `${reactor.uid}|${kind}`;
     this._promptedKinds = this._promptedKinds || new Set();
-    this._promptedKinds.add(kind);
+    if (this._promptedKinds.has(seen)) return;
+    this._promptedKinds.add(seen);
     this.beats.push({
       k: 'prompt',
       make: () => ({
@@ -1674,9 +2153,18 @@ export class BattleScene {
         title: offer.name || 'Reaction',
         body: offer.desc || 'Spend your Reaction when this happens?',
         yes: 'Always', no: 'Never',
-        t: 0, dur: 6, index: 0,
+        // Costed reactions (a spell slot, a superiority die) default to NO on
+        // a timeout: the game should never spend a resource because the
+        // player looked away. Free ones keep the useful default.
+        costly: !!(offer.slot || offer.level || /spell|shield|counter|rebuke|absorb/i.test(String(offer.kind || offer.name || ''))),
+        t: 0, dur: 8, index: 0,
       }),
     });
+  }
+
+  /** The stance for one creature and one reaction kind. */
+  _stanceOf(reactor, kind) {
+    return this.stance.get(`${reactor.uid}|${kind}`) ?? this.stance.get(kind) ?? 'ask';
   }
 
   _updatePrompt(dt) {
@@ -1695,12 +2183,15 @@ export class BattleScene {
     let answer = null;
     if (Input.consume('confirm') || (m.clicked && m.y >= by && m.y <= by + 14)) answer = p.index === 0;
     else if (Input.consume('cancel')) answer = false;
-    else if (p.t >= p.dur) answer = true;   // timing out keeps the safe, useful default
+    // Timing out never spends a slot or a die: free reactions default on,
+    // costed ones default off.
+    else if (p.t >= p.dur) answer = !p.costly;
 
     if (answer !== null) {
-      this.stance.set(p.kind, answer ? 'yes' : 'no');
+      // Per creature: this character's answer, not the party's.
+      this.stance.set(`${p.reactor.uid}|${p.kind}`, answer ? 'yes' : 'no');
       safe(() => bus.emit(EV.TOAST, {
-        text: `${p.title}: ${answer ? 'always' : 'never'} from now on.`,
+        text: `${p.reactor.name || 'They'} — ${p.title}: ${answer ? 'always' : 'never'} from now on.`,
       }));
       sfx(answer ? 'select' : 'back');
       this.prompt = null;
@@ -1871,28 +2362,119 @@ export class BattleScene {
     const enc = this.enc;
     const spell = env.spell || null;
     if (spell) {
+      // The wind-up: a fireball and a cure wounds used to begin identically,
+      // with a banner. Now the caster gathers the spell first — a collapsing
+      // ring at their feet, motes rising in the school's colour — and the eye
+      // is on them before the payload goes anywhere.
+      const color = spell.vfx?.color || UI.COLORS.purple;
+      this.beats.push({
+        k: 'fx', dur: 0.3,
+        fn: () => {
+          const p = this._fxAt(actor);
+          this._animCast(actor, color, 0.75);
+          FX.ring(p.x, p.y, 14 * this.zoom, color, 0.35, { width: 2, expand: false });
+          FX.burst(p.x, p.y - 4, color, 10, { shape: 'spark', speed: 18, life: 0.5, gravity: -70, glow: 1, jitter: 6 });
+          if ((spell.level || 0) >= 5) { FX.burst(p.x, p.y - 8, color, 14, { shape: 'ember', speed: 30, life: 0.7, gravity: -50 }); FX.shake(0.12, 0.3); }
+        },
+      });
       this.beats.push({
         k: 'banner', dur: 0.6, color: UI.COLORS.purple,
         text: spell.name || 'A spell', sub: this._spellSub(spell, env.option),
         sfx: 'spell',
       });
+      // Concentration is a thing you can SEE now: the aura stays on the caster
+      // until it breaks (see _syncAuras).
+      if (spell.concentration) this.beats.push({ k: 'fn', fn: () => this._syncAuras() });
     }
 
-    for (const r of results || []) {
-      if (!r) continue;
+    // The area effect plays FIRST, whatever order the engine listed it in: the
+    // fireball detonates, then the creatures inside it roll. The per-target
+    // save beats then skip their own spell effect, since the area already was it.
+    const list = (results || []).filter(Boolean);
+    const areaRes = list.find((r) => r.kind === 'area');
+    if (areaRes) this._pushAreaBeats(actor, areaRes, spell, list);
+    // A spell with no attack and no save — bless, cure wounds, haste, shield of
+    // faith — still travels from the caster to whoever it lands on.
+    else if (spell && !list.some((r) => r.kind === 'save' || r.kind === 'attack')) {
+      const seen = new Set();
+      const tgts = [];
+      for (const r of list) {
+        const id = r.target || (r.kind === 'teleport' ? null : actor?.uid);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        const u = enc.byUid ? enc.byUid(id) : null;
+        if (u && u.pos) tgts.push(u);
+      }
+      if (tgts.length) {
+        this.beats.push({
+          k: 'fx', dur: 0.3,
+          fn: () => {
+            const from = this._fxAt(actor);
+            const pts = tgts.map((u) => this._fxAt(u));
+            const style = spell.vfx?.style || 'aura';
+            const isHeal = !!spell.heal;
+            this._castFX(style === 'nova' || style === 'burst' ? 'aura' : style, from, pts[0], spell.vfx?.color || (isHeal ? UI.COLORS.hpHeal : UI.COLORS.purple),
+              { spell, victims: pts, radius: 9 * this.zoom, blocking: false });
+          },
+        });
+      }
+    }
+
+    for (const r of list) {
+      if (r === areaRes) continue;
       const target = r.target ? (enc.byUid ? enc.byUid(r.target) : null) : null;
+      // A concentration check that rode in on a plain damage row gets its own
+      // die here. Attack and save rows carry theirs into _pushAttackBeats /
+      // _pushSaveBeats, which fire it in the right place in their own sequence
+      // — doing it here as well would roll the same save twice on screen.
+      if (r.concentration && r.kind !== 'attack' && r.kind !== 'save') this._pushConcentrationBeats(r.concentration);
       switch (r.kind) {
+        case 'concentration':
+          this._pushConcentrationBeats(r);
+          break;
         case 'attack': {
           const atk = r.attacker && enc.byUid ? enc.byUid(r.attacker) : actor;
           this._pushAttackBeats(atk, target, r.result, spell);
           break;
         }
         case 'save':
-          this._pushSaveBeats(actor, target, r.result, spell);
+          this._pushSaveBeats(actor, target, r.result, spell, { areaShown: !!areaRes });
           break;
         case 'area':
-          this._pushAreaBeats(actor, r, spell);
+          break;                                   // played above, first
+        case 'stand':
+          this._pushSimple(actor, 'Stands up', UI.COLORS.blue, 'buff');
           break;
+        case 'escape':
+          this._pushSimple(actor, r.success || r.result?.success ? 'Breaks free' : 'Still held',
+            r.success || r.result?.success ? UI.COLORS.good : UI.COLORS.inkDim, r.success || r.result?.success ? 'buff' : 'miss');
+          break;
+        case 'flee':
+        case 'fled':
+          this._pushSimple(target || actor, 'flees!', UI.COLORS.inkDim, null);
+          break;
+        case 'ready':
+          this._pushSimple(actor, 'Readied', UI.COLORS.warn, 'buff');
+          break;
+        case 'counterspell': {
+          // The counterspeller reaches across and the spell gutters — or holds.
+          const caster = target;
+          const stopper = r.source && enc.byUid ? enc.byUid(r.source) : null;
+          const won = r.countered !== false && r.countered != null ? !!r.countered : !r.result?.success;
+          this.beats.push({
+            k: 'fx', dur: 0.45,
+            fn: () => {
+              const a = stopper ? this._fxAt(stopper) : null;
+              const p = this._fxAt(caster || actor, -6);
+              if (a) FX.beam(a.x, a.y - 6, p.x, p.y, UI.COLORS.blue, 0.3, { width: 3, blocking: false });
+              FX.ring(p.x, p.y + 6, 12 * this.zoom, UI.COLORS.blue, 0.4, { width: 2, expand: false });
+              FX.burst(p.x, p.y, UI.COLORS.blue, 14, { shape: 'spark', speed: 60, life: 0.35, glow: 1 });
+              FX.floater(p.x, p.y - 10, won ? 'Countered!' : 'Counter fails', won ? UI.COLORS.blue : UI.COLORS.inkDim, { size: 'sm' });
+              sfx('debuff');
+            },
+          });
+          break;
+        }
         case 'damage':
           this._pushDamageFloater(target, r.amount, r.type || 'force');
           break;
@@ -1957,6 +2539,119 @@ export class BattleScene {
     }
   }
 
+  /**
+   * The die a concentrating caster rolls when they are hurt, and the banner
+   * when they lose the spell. Losing a Hold Person was the most consequential
+   * invisible event in the fight: it happened in the log and nowhere else.
+   *   c: { unit|uid, roll, dc, success, spellId, spellName }
+   */
+  _pushConcentrationBeats(c) {
+    if (!c) return;
+    const enc = this.enc;
+    const unit = c.unit && c.unit.uid ? c.unit : (enc.byUid ? enc.byUid(c.unit || c.uid) : null);
+    if (!unit) return;
+    const showRolls = Save?.settings?.showRolls !== false;
+    const name = c.spellName || (c.spellId && getSpell(c.spellId)?.name) || 'the spell';
+    const ok = !!c.success;
+    if (c.roll) {
+      this.beats.push({
+        k: 'dice', silent: !showRolls, dur: DICE_HOLD * 0.8,
+        roll: {
+          ...c.roll, dc: c.dc, hit: ok,
+          label: ok ? 'HELD' : 'BROKEN',
+          labelColor: ok ? UI.COLORS.good : UI.COLORS.bad,
+          who: unit.name || null, what: `Concentration · ${name}`,
+        },
+      });
+    }
+    this.beats.push({
+      k: 'fx', dur: ok ? 0.2 : 0.5,
+      fn: () => {
+        const p = this._fxAt(unit, -16);
+        if (ok) {
+          FX.floater(p.x, p.y, 'Concentration held', UI.COLORS.purple, { size: 'sm' });
+        } else {
+          FX.floater(p.x, p.y, `${name} lost!`, UI.COLORS.bad, { size: 'sm' });
+          FX.burst(p.x, p.y + 6, UI.COLORS.purple, 14, { shape: 'smoke', speed: 40, life: 0.6, size: 3 });
+          sfx('debuff');
+          this._syncAuras();
+        }
+      },
+    });
+    if (!ok) this.beats.push({ k: 'banner', dur: 0.7, color: UI.COLORS.bad, text: 'Concentration Broken', sub: `${unit.name} loses ${name}` });
+  }
+
+  /**
+   * One persistent aura per concentrating creature, in the spell's colour,
+   * following the sprite; gone the moment the concentration is.
+   */
+  _syncAuras() {
+    this.auras = this.auras || new Map();
+    const enc = this.enc;
+    const live = new Set();
+    for (const u of enc?.units || []) {
+      if (!u || isDead(u) || !u.concentration) continue;
+      live.add(u.uid);
+      // FX.clear() (a skipped beat) drops persistent auras; re-raise those.
+      if (this.auras.has(u.uid) && !this.auras.get(u.uid).done) continue;
+      const spell = u.concentration.spellId ? getSpell(u.concentration.spellId) : null;
+      const color = spell?.vfx?.color || UI.COLORS.purple;
+      const h = FX.aura(() => {
+        const s = this.ui.get(u.uid);
+        if (!s || !u.concentration || isDead(u)) return null;
+        return { x: s.x, y: s.y };
+      }, color, 0, { motes: 4, radius: 6, rise: 9, spin: 1.8 });
+      if (h) this.auras.set(u.uid, h);
+    }
+    for (const [uid, h] of this.auras) {
+      if (!live.has(uid)) { FX.remove(h); this.auras.delete(uid); }
+    }
+  }
+
+  /**
+   * Things the engine did outside anyone's turn — legendary actions, lair
+   * actions, a readied strike, a pack breaking and running — arrive on
+   * `enc.replays` and are played here with the same beats as everything else.
+   */
+  _drainReplays() {
+    const enc = this.enc;
+    const list = enc && Array.isArray(enc.replays) ? enc.replays.splice(0) : [];
+    for (const rp of list) {
+      if (!rp) continue;
+      const actor = rp.actor && rp.actor.uid ? rp.actor : (enc.byUid ? enc.byUid(rp.actor) : null);
+      const kind = String(rp.kind || '');
+      const TITLES = {
+        legendary: ['Legendary Action', UI.COLORS.red],
+        lair: ['Lair Action', UI.COLORS.purple],
+        readied: ['Readied Action', UI.COLORS.warn],
+        morale: ['Rout', UI.COLORS.inkDim],
+        counterspell: ['Counterspell', UI.COLORS.blue],
+      };
+      const [title, color] = TITLES[kind] || [titleCase(kind || 'Reaction'), UI.COLORS.warn];
+      if (actor) this.beats.push({ k: 'camera', unit: actor, dur: 0.12 });
+      this.beats.push({ k: 'banner', dur: 0.55, color, text: title, sub: actor?.name || '' });
+      if (kind === 'morale' && actor) {
+        this.beats.push({
+          k: 'fx', dur: 0.4,
+          fn: () => {
+            const p = this._fxAt(actor, -16);
+            FX.floater(p.x, p.y, 'flees!', UI.COLORS.inkDim, { size: 'sm' });
+            const s = this._uiOf(actor, true);
+            if (s) { s.alpha = 0; }
+          },
+        });
+      }
+      const optId = String(rp.optionId || '');
+      const spellId = optId.startsWith('spell:') ? optId.slice(6).split('@')[0] : rp.spellId || null;
+      const spell = spellId ? getSpell(spellId) : null;
+      if (rp.results && rp.results.length) this._pushResultBeats(actor, rp.results, { spell });
+      else if (rp.log && rp.log.length && actor) {
+        const line = typeof rp.log[0] === 'string' ? rp.log[0] : (rp.log[0].text || '');
+        if (line) this._pushSimple(actor, UI.fit(line, 120, 'sm'), color, null);
+      }
+    }
+  }
+
   _spellSub(spell, option) {
     const bits = [];
     if (spell.level === 0) bits.push('Cantrip');
@@ -2013,30 +2708,53 @@ export class BattleScene {
       });
     }
 
-    // 3. impact
+    // 3. wind-up: the body commits before the blow lands. A melee attacker
+    //    draws back half a step; an archer draws; a caster gathers the spell.
     const ranged = this._isRangedAttack(attacker, target, spell);
+    const dtype = this._damageTypeOf(res, spell);
+    this.beats.push({
+      k: 'fx', dur: spell ? 0.22 : 0.14,
+      fn: () => {
+        if (spell) this._animCast(attacker, spell?.vfx?.color, 0.5);
+        else {
+          this._animLunge(attacker, target, ranged ? 2 : 3, 0.16, true);
+          // The blade starts moving on the wind-up, so the arc is already
+          // travelling when the impact beat fires a fraction later.
+          if (!ranged) { this._animSwing(attacker, 0.34); sfx('slash', { vol: 0.5 }); }
+        }
+      },
+    });
+
+    // 4. impact
     this.beats.push({
       k: 'fx', dur: ranged ? 0.34 : 0.24,
       fn: () => {
         const a = this._fxAt(attacker);
         const p = this._fxAt(target);
+        const dealt = res.applied && res.applied.dealt;
         if (crit) { FX.flash('#fff0b8', 0.12, 0.5); FX.shake(0.75, 0.4); sfx('hitcrit'); }
         if (ranged) {
           const style = spell?.vfx || {};
-          FX.projectile(a.x, a.y, p.x, p.y, {
-            color: style.color || (spell ? UI.COLORS.purple : '#cfc7b4'),
-            shape: spell ? 'bolt' : 'arrow',
-            speed: 320, arc: spell ? 0 : 14, trail: true,
-            onHit: () => { if (hit) this._impact(target, crit, spell, res.applied && res.applied.dealt); },
+          this._animLunge(attacker, target, 2, 0.18, false);
+          this._castFX(spell ? (style.style || 'bolt') : 'arrow', a, p, style.color || (spell ? UI.COLORS.purple : '#cfc7b4'), {
+            spell, dtype, blocking: true,
+            onHit: () => {
+              if (hit) this._impact(target, crit, spell, dealt, attacker, dtype);
+              else this._whiff(target, p);
+            },
           });
           sfx(spell ? 'spell' : 'arrow');
         } else {
           const s = this._uiOf(attacker);
-          FX.slash(p.x, p.y, s?.dir || 'right', spell?.vfx?.color || '#ffffff');
+          // The lunge carries the attacker INTO the target's square; the arc
+          // sweeps through it a beat later, when the body is at full reach.
+          this._animLunge(attacker, target, 7, 0.3, false);
+          FX.slash(p.x, p.y, s?.dir || 'right', spell?.vfx?.color || (crit ? '#ffe9a3' : '#ffffff'),
+            { len: crit ? 24 : 18, width: crit ? 4 : 3, sparks: hit ? 6 : 2 });
           sfx(hit ? (crit ? 'hitcrit' : 'hit') : 'miss');
-          if (hit) this._impact(target, crit, spell, res.applied && res.applied.dealt);
+          if (hit) this._impact(target, crit, spell, dealt, attacker, dtype);
+          else this._whiff(target, p, attacker);
         }
-        if (!hit) FX.floater(p.x, p.y - 4, 'MISS', UI.COLORS.inkDim, { size: 'sm' });
       },
     });
 
@@ -2060,6 +2778,11 @@ export class BattleScene {
         },
       });
     }
+
+    // 4b. a blow that broke someone's concentration. This lives here rather
+    //     than only in _pushResultBeats because opportunity attacks and
+    //     readied strikes come straight through this function.
+    if (res.concentration) this._pushConcentrationBeats(res.concentration);
 
     // 5. riders: mastery, sneak attack, conditions
     for (const e of res.effects || []) {
@@ -2087,22 +2810,179 @@ export class BattleScene {
     return safe(() => distanceFt(attacker, target), 5) > 5;
   }
 
-  /** Flash the target, shake it, and throw the right sparks for the damage type. */
-  _impact(target, crit, spell, dealt) {
+  /** The damage type an attack or spell result is mostly made of. */
+  _damageTypeOf(res, spell) {
+    const bt = res && res.byType;
+    if (bt && typeof bt === 'object') {
+      let best = null, bestN = -1;
+      for (const k in bt) if (bt[k] > bestN) { best = k; bestN = bt[k]; }
+      if (best) return lower(best);
+    }
+    const bd = res && res.breakdown;
+    if (Array.isArray(bd) && bd.length && bd[0].type) return lower(bd[0].type);
+    return lower(spell?.damage?.type || '') || null;
+  }
+
+  /**
+   * What a hit looks like, by what it is made of. Steel opens a body; fire
+   * flares and leaves embers; cold rimes; lightning cracks; necrotic smoke
+   * rolls; radiant flashes. One table, so every attack, spell and save damage
+   * in the game reads correctly without each caller knowing about it.
+   */
+  static IMPACT = {
+    slashing: { shape: 'blood', color: '#c83a2a', speed: 90, gravity: 110, sfx: null },
+    piercing: { shape: 'blood', color: '#c83a2a', speed: 70, gravity: 130, sfx: null },
+    bludgeoning: { shape: 'square', color: '#d8cbb0', speed: 70, gravity: 140, sfx: null, dust: true },
+    fire: { shape: 'ember', color: 'fire', speed: 80, gravity: -60, sfx: 'fire', glow: true, flash: '#ffb060' },
+    cold: { shape: 'square', color: 'cold', speed: 60, gravity: 50, sfx: 'ice', shards: true },
+    lightning: { shape: 'spark', color: 'lightning', speed: 150, gravity: 0, sfx: 'thunder', flash: '#fff6c0', jag: true },
+    thunder: { shape: 'smoke', color: 'thunder', speed: 120, gravity: -10, sfx: 'thunder', ring: true },
+    acid: { shape: 'square', color: 'acid', speed: 50, gravity: 90, sfx: null, drip: true },
+    poison: { shape: 'smoke', color: 'poison', speed: 30, gravity: -30, sfx: 'debuff' },
+    necrotic: { shape: 'smoke', color: 'necrotic', speed: 40, gravity: -40, sfx: 'debuff' },
+    radiant: { shape: 'spark', color: 'radiant', speed: 90, gravity: -20, sfx: null, flash: '#fff4d0', glow: true },
+    force: { shape: 'spark', color: 'force', speed: 110, gravity: 0, sfx: null, ring: true },
+    psychic: { shape: 'ember', color: 'psychic', speed: 40, gravity: -50, sfx: 'debuff', ring: true },
+  };
+
+  /** Flash the target, shove it, shake the screen, and spray the right stuff. */
+  _impact(target, crit, spell, dealt, attacker, dtype) {
     const s = this._uiOf(target, true);
-    if (s) s.flash = 1;
     const p = this._fxAt(target);
-    const col = spell?.vfx?.color || '#e0604a';
-    FX.burst(p.x, p.y, col, crit ? 16 : 8, { shape: 'blood', speed: crit ? 120 : 80, life: 0.35, gravity: 90 });
+    const type = dtype || this._damageTypeOf(null, spell) || 'slashing';
+    const I = BattleScene.IMPACT[type] || BattleScene.IMPACT.slashing;
+    const col = FX.COLORS[I.color] || I.color || spell?.vfx?.color || '#e0604a';
+
+    if (s) { s.flash = 1; s.flashColor = type === 'slashing' || type === 'piercing' || type === 'bludgeoning' ? '#ff5a4a' : col; }
+    // Knocked back along the line of the blow; heavier hits go further.
+    const max = safe(() => maxHpOf(target), target.maxHp || 1) || 1;
+    const frac = dealt ? clamp(dealt / max, 0, 1) : 0;
+    this._animRecoil(target, attacker || null, 2 + frac * 5 + (crit ? 2 : 0), 0.22 + frac * 0.1);
+
+    const n = (crit ? 16 : 8) + Math.round(frac * 8);
+    FX.burst(p.x, p.y, col, n, {
+      shape: I.shape, speed: I.speed * (crit ? 1.4 : 1), life: 0.36, gravity: I.gravity, glow: I.glow ? 1 : 0,
+      dir: attacker ? this._toward(attacker, target) : undefined, spread: attacker ? 1.3 : Math.PI,
+    });
+    if (I.dust) FX.burst(p.x, p.y, '#8a7a60', 6, { shape: 'smoke', speed: 26, life: 0.5, size: 3 });
+    if (I.shards) FX.burst(p.x, p.y - 4, '#e8f6ff', 6, { shape: 'spark', speed: 60, life: 0.3, gravity: 120 });
+    if (I.ring) FX.ring(p.x, p.y, 10 * this.zoom, col, 0.3, { width: 2 });
+    if (I.jag) FX.beam(p.x + 4, p.y - 22, p.x, p.y - 6, col, 0.14, { jagged: true, width: 2, blocking: false });
+    if (I.flash && (crit || frac > 0.3)) FX.flash(I.flash, 0.08, 0.28);
+    if (I.sfx) sfx(I.sfx, { vol: 0.6 });
+
     // A flat 0.22 shake for every hit told you a blow had landed and nothing
     // about its size. Scale it, and let a party member's blood tint the screen.
     if (dealt) this._damageFelt(target, dealt);
     else if (!crit) FX.shake(0.22, 0.2);
+    // A crit, or a blow that takes a third of someone, holds the frame.
+    if (crit) this._hitstop(0.09);
+    else if (frac >= 0.34) this._hitstop(0.05);
+  }
+
+  /** A miss: the target sways out of the line, and says so. */
+  _whiff(target, p, attacker) {
+    const s = this._uiOf(target, true);
+    if (s && attacker) {
+      // A sidestep: perpendicular to the line of the attack, and back.
+      const v = this._toward(attacker, target);
+      s.recoil = { t: 0, dur: 0.26, dx: -v.y * 3 * this.zoom, dy: v.x * 2 * this.zoom };
+    }
+    FX.floater(p.x, p.y - 4, 'MISS', UI.COLORS.inkDim, { size: 'sm' });
+  }
+
+  /**
+   * One place that turns a spell's authored `vfx.style` into effects, so an
+   * attack spell, a save spell and an area spell with the same style look the
+   * same. `from`/`to` are screen points; `o`: { spell, dtype, radius, dir,
+   * blocking, onHit, victims:[screen points] }.
+   */
+  _castFX(style, from, to, color, o = {}) {
+    const col = FX.COLORS[color] || color || UI.COLORS.purple;
+    const radius = o.radius || 16 * this.zoom;
+    const done = () => { if (o.onHit) o.onHit(to.x, to.y); };
+    switch (style) {
+      case 'arrow':
+        FX.projectile(from.x, from.y, to.x, to.y, { color: col, shape: 'arrow', speed: 340, arc: 14, trail: false, onHit: done, blocking: o.blocking });
+        return;
+      case 'bolt':
+        FX.projectile(from.x, from.y, to.x, to.y, {
+          color: col, shape: 'bolt', speed: 360, trail: true, onHit: done, blocking: o.blocking,
+          impact: { color: col, count: 8, shape: 'spark' },
+        });
+        return;
+      case 'orb':
+        FX.projectile(from.x, from.y, to.x, to.y, { color: col, shape: 'orb', speed: 220, arc: 10, trail: true, onHit: done, blocking: o.blocking });
+        return;
+      case 'beam':
+        FX.beam(from.x, from.y - 6, to.x, to.y - 6, col, 0.34, { width: 4, blocking: o.blocking });
+        FX.burst(to.x, to.y - 6, col, 10, { shape: 'spark', speed: 60, life: 0.3 });
+        done();
+        return;
+      case 'chain': {
+        const pts = [from, ...(o.victims && o.victims.length ? o.victims : [to])];
+        FX.chain(pts, col, 0.42, { blocking: o.blocking });
+        for (const v of pts.slice(1)) FX.burst(v.x, v.y - 6, col, 8, { shape: 'spark', speed: 90, life: 0.25 });
+        done();
+        return;
+      }
+      case 'nova':
+        FX.nova(to.x, to.y, col, { radius, count: 22, blocking: o.blocking });
+        FX.shake(0.3, 0.28);
+        done();
+        return;
+      case 'burst':
+        // A burst is a nova without the fireball: a bright flash and a spray,
+        // the shape of thunderwave, shatter, guiding bolt landing.
+        FX.ring(to.x, to.y, radius * 0.9, col, 0.32, { width: 2, fill: 0.2 });
+        FX.burst(to.x, to.y - 4, col, 18, { shape: 'spark', speed: radius * 3, life: 0.36, glow: 1 });
+        FX.burst(to.x, to.y, FX.COLORS.shadow, 5, { shape: 'smoke', speed: 20, life: 0.5, size: 3 });
+        done();
+        return;
+      case 'cone': {
+        const dir = o.dir || Math.atan2(to.y - from.y, to.x - from.x);
+        FX.burst(from.x, from.y - 6, col, 34, { shape: o.dtype === 'cold' ? 'square' : 'ember', speed: radius * 4.2, life: 0.42, dir, spread: 0.5, gravity: 0, glow: 1 });
+        FX.burst(from.x, from.y - 6, col, 10, { shape: 'smoke', speed: radius * 2.4, life: 0.55, dir, spread: 0.55, size: 4 });
+        done();
+        return;
+      }
+      case 'rain':
+        FX.rain(to.x, to.y, radius, col, { count: 14, dur: 0.7, blocking: o.blocking });
+        done();
+        return;
+      case 'aura': {
+        // A blessing settles on each creature it touches and clings for a
+        // moment: motes circling their feet in the spell's colour.
+        const pts = o.victims && o.victims.length ? o.victims : [to];
+        FX.ring(to.x, to.y, radius, col, 0.5, { width: 2, fill: 0.12 });
+        for (const v of pts) {
+          const px = v.x, py = v.y;
+          FX.aura(() => ({ x: px, y: py }), col, 1.3, { motes: 6, radius: 7 * this.zoom, rise: 12 });
+          FX.burst(px, py - 8, col, 6, { shape: 'spark', speed: 22, life: 0.6, gravity: -30, glow: 1 });
+        }
+        done();
+        return;
+      }
+      case 'wave':
+        FX.ring(to.x, to.y, radius, col, 0.42, { width: 3 });
+        FX.ring(to.x, to.y, radius * 0.6, col, 0.3, { width: 2 });
+        FX.burst(to.x, to.y, col, 16, { shape: 'smoke', speed: radius * 2.2, life: 0.5, size: 3 });
+        FX.shake(0.2, 0.2);
+        done();
+        return;
+      case 'slash':
+        FX.slash(to.x, to.y, o.dir != null ? o.dir : 'right', col, { len: Math.max(18, radius) });
+        done();
+        return;
+      default:
+        FX.burst(to.x, to.y - 6, col, 12, { shape: 'spark', speed: 70, life: 0.32, glow: 1 });
+        done();
+    }
   }
 
   // --- saves ---------------------------------------------------------------
 
-  _pushSaveBeats(source, target, res, spell) {
+  _pushSaveBeats(source, target, res, spell, env = {}) {
     if (!res || !target) return;
     const showRolls = Save?.settings?.showRolls !== false;
     const ok = !!res.success;
@@ -2130,21 +3010,34 @@ export class BattleScene {
     }
 
     const dealt = res.applied?.dealt ?? res.damage ?? 0;
+    // The spell itself, in its own colours, arriving at the creature that
+    // has to save against it. A single-target save spell used to be a die
+    // and an ember — hold person, blindness, banishment all looked the same.
+    if (spell && !env.areaShown) {
+      const style = spell.vfx?.style || 'burst';
+      const dtype = this._damageTypeOf(res, spell);
+      this.beats.push({
+        k: 'fx', dur: 0.26,
+        fn: () => {
+          const from = source ? this._fxAt(source) : this._fxAt(target);
+          const to = this._fxAt(target);
+          this._castFX(style === 'nova' || style === 'rain' ? 'burst' : style, from, to, spell.vfx?.color, { spell, dtype, blocking: false, radius: 10 * this.zoom });
+        },
+      });
+    }
     if (dealt > 0) {
       const lines = damageLines(res.breakdown);
       if (ok) lines.push(res.evasion ? 'Evasion — no damage' : 'half on a success');
       if (showRolls && lines.length) {
         this.beats.push({ k: 'rollline', dur: DMG_HOLD * 0.8, lines, color: '#e88a70' });
       }
+      const dtype = this._damageTypeOf(res, spell);
       this.beats.push({
         k: 'fx', dur: 0.16,
         fn: () => {
           const p = this._fxAt(target);
-          const s = this._uiOf(target, true);
-          if (s) s.flash = 1;
           if (Save?.settings?.showDamageNumbers !== false) FX.floater(p.x, p.y - 6, String(dealt), '#ff8a70', { size: 1.2 });
-          FX.burst(p.x, p.y, spell?.vfx?.color || '#e0604a', 8, { shape: 'ember', speed: 70, life: 0.32 });
-          this._damageFelt(target, dealt);
+          this._impact(target, false, spell, dealt, source && source !== target ? source : null, dtype);
         },
       });
     } else if (ok) {
@@ -2156,6 +3049,8 @@ export class BattleScene {
         },
       });
     }
+
+    if (res.concentration) this._pushConcentrationBeats(res.concentration);
 
     for (const e of res.effects || []) {
       if (!e || !e.id) continue;
@@ -2171,11 +3066,28 @@ export class BattleScene {
 
   // --- areas ---------------------------------------------------------------
 
-  _pushAreaBeats(actor, r, spell) {
+  _pushAreaBeats(actor, r, spell, all = []) {
+    const enc = this.enc;
     const cells = r.tiles || [];
     const style = spell?.vfx?.style || 'burst';
     const color = spell?.vfx?.color || UI.COLORS.orange;
     const aim = r.aim || (cells.length ? cells[Math.floor(cells.length / 2)] : posOf(actor));
+
+    // Everyone caught, in screen space, so auras and chains can visit each one:
+    // the per-target save / attack results in the same batch name them.
+    const victimsOf = () => {
+      const seen = new Set(), out = [];
+      for (const x of all) {
+        if (!x || (x.kind !== 'save' && x.kind !== 'attack' && x.kind !== 'buff' && x.kind !== 'heal') || !x.target) continue;
+        if (seen.has(x.target)) continue;
+        seen.add(x.target);
+        const u = enc?.byUid ? enc.byUid(x.target) : null;
+        if (u && u.pos) out.push(this._fxAt(u));
+      }
+      return out;
+    };
+    const dtype = lower(spell?.damage?.type || '');
+    const isCone = spell?.target?.kind === 'cone' || style === 'cone';
 
     this.beats.push({
       k: 'fx', dur: style === 'rain' ? 0.7 : 0.45,
@@ -2183,39 +3095,19 @@ export class BattleScene {
         const c = this._fxTile(aim.x, aim.y);
         const from = this._fxAt(actor);
         const radius = Math.max(16, Math.sqrt(Math.max(1, cells.length)) * TILE * this.zoom * 0.5);
-        switch (style) {
-          case 'bolt':
-            FX.projectile(from.x, from.y, c.x, c.y, { color, shape: 'bolt', speed: 340 });
-            break;
-          case 'beam':
-            FX.beam(from.x, from.y, c.x, c.y, color, 0.32, { width: 4 });
-            break;
-          case 'chain':
-            FX.chain([from, c], color, 0.4);
-            break;
-          case 'nova':
-            FX.nova(c.x, c.y, color, { radius, count: 22 });
-            break;
-          case 'rain':
-            FX.rain(c.x, c.y, radius, color, { count: 14, dur: 0.7 });
-            break;
-          case 'aura':
-            FX.ring(c.x, c.y, radius, color, 0.5);
-            FX.burst(c.x, c.y, color, 12, { shape: 'spark', speed: 40, life: 0.6 });
-            break;
-          case 'wave':
-            FX.ring(c.x, c.y, radius, color, 0.4);
-            FX.burst(c.x, c.y, color, 16, { shape: 'smoke', speed: 90, life: 0.5 });
-            break;
-          case 'slash':
-            FX.slash(c.x, c.y, 'right', color, { len: radius });
-            break;
-          default:
-            FX.nova(c.x, c.y, color, { radius, count: 16 });
-            break;
-        }
-        FX.shake(0.3, 0.28);
-        sfx(style === 'bolt' || style === 'beam' ? 'spell' : 'fire');
+        const dir = Math.atan2(c.y - from.y, c.x - from.x);
+        // A bolt that flies to the centre and then detonates (fireball), or a
+        // shape that simply appears at its origin (cone, aura, wave).
+        const arrives = style === 'bolt' || style === 'orb';
+        const payload = () => {
+          if (arrives) this._castFX('nova', from, c, color, { radius, dtype });
+        };
+        this._castFX(isCone ? 'cone' : style, from, c, color, {
+          spell, dtype, radius, dir, victims: victimsOf(), blocking: arrives, onHit: payload,
+        });
+        if (!isCone && style !== 'aura') FX.shake(0.3, 0.28);
+        const I = BattleScene.IMPACT[dtype];
+        sfx(I && I.sfx ? I.sfx : (style === 'bolt' || style === 'beam' || style === 'aura' ? 'spell' : 'fire'));
       },
     });
   }
@@ -2582,6 +3474,11 @@ export class BattleScene {
     this._drawTerrain(ctx, left, top, cols, rows);
     ctx.restore();
 
+    // 1b. night, and any fog the fight was rolled in — pools of light around
+    //     the party, everything else in shadow. Purely a read of the arena's
+    //     `dark`; the rules for dim light live with the engine.
+    if (this.dark > 0.05) this._drawDarkness(ctx);
+
     // 2. tactical overlays (screen space, so the lines stay 1px crisp)
     this._drawGrid(ctx, left, top, cols, rows);
     this._drawTacticalOverlays(ctx);
@@ -2594,6 +3491,41 @@ export class BattleScene {
     ctx.save();
     FX.draw(ctx, -o.x, -o.y);
     ctx.restore();
+  }
+
+  /** A darkness layer with light carved out around the party (and any lit foe). */
+  _drawDarkness(ctx) {
+    if (typeof document === 'undefined') return;
+    if (!this._darkCanvas) {
+      this._darkCanvas = document.createElement('canvas');
+      this._darkCanvas.width = FIELD.w; this._darkCanvas.height = FIELD.h;
+    }
+    const dc = this._darkCanvas, g = dc.getContext('2d');
+    const amt = this.dark;
+    g.globalCompositeOperation = 'source-over';
+    g.clearRect(0, 0, dc.width, dc.height);
+    g.fillStyle = `rgba(8,10,28,${(0.62 * amt).toFixed(3)})`;
+    g.fillRect(0, 0, dc.width, dc.height);
+    g.globalCompositeOperation = 'destination-out';
+    const flick = 0.92 + 0.08 * Math.sin(this.t * 9);
+    for (const u of this.enc?.units || []) {
+      if (!u || isDead(u)) continue;
+      const s = this.ui.get(u.uid);
+      if (!s) continue;
+      // Everyone carries some light; the party carries torches. A creature
+      // with a lit spell effect (light, faerie fire) glows on its own.
+      const lit = u.side === 'party' || (u.effects || []).some((e) => /light|flame|fire|radiant/i.test(String(e.id || e.name || '')));
+      const r = (lit ? 3.2 : 1.1) * TILE * this.zoom * flick;
+      const x = this._sx(s.x) - FIELD.x, y = this._sy(s.y) - 8 * this.zoom - FIELD.y;
+      const grd = g.createRadialGradient(x, y, r * 0.25, x, y, r);
+      grd.addColorStop(0, 'rgba(0,0,0,1)');
+      grd.addColorStop(0.55, 'rgba(0,0,0,0.75)');
+      grd.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grd;
+      g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    g.globalCompositeOperation = 'source-over';
+    ctx.drawImage(dc, FIELD.x, FIELD.y);
   }
 
   _drawTerrain(ctx, left, top, cols, rows) {
@@ -2638,6 +3570,22 @@ export class BattleScene {
             ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 6);
           }
         }
+
+        // Difficult terrain, marked ALWAYS — not just while the move range is up.
+        // Every foot here costs two, so it is the single biggest reason a route
+        // bends: the pathfinder walks around a mud patch and, with nothing drawn
+        // to say why, the preview just looks broken. A permanent chevron hatch
+        // makes the detour legible before the player ever opens the move menu.
+        const f = safe(() => map?.flagAt(tx, ty), 0) || 0;
+        if ((f & TILE_FLAGS.SLOW) && !(f & TILE_FLAGS.SOLID)) {
+          ctx.fillStyle = 'rgba(24,16,8,0.30)';
+          for (let o = 0; o < TILE; o += 4) {
+            ctx.fillRect(px + o, py + TILE - 2, 2, 1);
+            ctx.fillRect(px + o + 1, py + TILE - 3, 2, 1);
+          }
+          ctx.fillStyle = 'rgba(255,232,170,0.16)';
+          for (let o = 2; o < TILE; o += 4) ctx.fillRect(px + o, py + 3, 1, TILE - 7);
+        }
       }
     }
   }
@@ -2663,6 +3611,20 @@ export class BattleScene {
   }
 
   /** Fill one grid square in screen space. */
+  /** '#rrggbb' plus an alpha, as an rgba() string. Memoised per colour. */
+  _rgba(hex, a) {
+    this._rgbCache = this._rgbCache || new Map();
+    let c = this._rgbCache.get(hex);
+    if (!c) {
+      let h = String(hex || '#ffffff').replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      const n = parseInt(h, 16) || 0;
+      c = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+      this._rgbCache.set(hex, c);
+    }
+    return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(2)})`;
+  }
+
   _fillTile(ctx, tx, ty, color, inset = 0) {
     const s = this._tileScreen(tx, ty);
     const w = R(TILE * this.zoom) - inset * 2;
@@ -2758,6 +3720,72 @@ export class BattleScene {
       }
     }
 
+    // --- spell zones ---------------------------------------------------------
+    // Fog, darkness, briars, a wall of force. Drawn under the tactical overlays
+    // so the movement range still reads on top of them, and in the spell's own
+    // authored colour so a fog cloud and a cloud of darkness are not the same
+    // grey square. Without this a caster spends a slot and sees nothing.
+    const zones = enc.zones;
+    if (Array.isArray(zones) && zones.length) {
+      for (const z of zones) {
+        const col = (z.vfx && z.vfx.color) || '#c8ccd4';
+        const dark = z.tag === 'darkness';
+        const solid = !!z.mech.blocksMovement;
+        // Heavy obscurement is a wall you cannot see through: paint it nearly
+        // opaque. A wall of force is a hard edge. Briars are a hatch.
+        const fill = dark ? 0.82 : z.mech.heavilyObscured ? 0.62 : solid ? 0.5 : 0.26;
+        const drift = Math.sin(this.t * 0.9 + z.tiles.length) * 0.04;
+        for (const c of z.tiles) {
+          this._fillTile(ctx, c.x, c.y, this._rgba(col, clamp(fill + drift, 0.1, 0.92)));
+        }
+        if (z.mech.difficultTerrain) {
+          for (const c of z.tiles) {
+            const s = this._tileScreen(c.x, c.y);
+            const w = R(TILE * this.zoom);
+            ctx.fillStyle = this._rgba(col, 0.5);
+            for (let i = 0; i < w; i += 4) ctx.fillRect(s.x + i, s.y, 1, w);
+          }
+        }
+        if (solid) for (const c of z.tiles) this._strokeTile(ctx, c.x, c.y, this._rgba(col, 0.9), 1);
+      }
+    }
+
+    // --- hazards -------------------------------------------------------------
+    // A tile that burns or drowns you should say so before you stand on it,
+    // not after. Drawn under everything else, always — a hazard you can only
+    // see while the move cursor is up is a trap, not terrain.
+    const haz = enc.map && enc.map.hazards;
+    if (Array.isArray(haz) && haz.length) {
+      const pulse = 0.20 + 0.10 * Math.sin(this.t * 4);
+      for (const h of haz) {
+        const col = /fire|lava|ember|brazier|coal/i.test(String(h.type || '')) ? '230,110,40'
+          : /acid|bog|mire|slime/i.test(String(h.type || '')) ? '150,200,60'
+            : /ice|frost/i.test(String(h.type || '')) ? '150,220,255' : '210,90,70';
+        for (const c of h.tiles || []) {
+          this._fillTile(ctx, c.x, c.y, `rgba(${col},${pulse.toFixed(2)})`);
+          const s = this._tileScreen(c.x, c.y);
+          const w = R(TILE * this.zoom);
+          ctx.fillStyle = `rgba(${col},0.5)`;
+          for (let i = 0; i < w; i += 4) { ctx.fillRect(s.x + i, s.y, 2, 1); ctx.fillRect(s.x + i, s.y + w - 1, 2, 1); }
+        }
+      }
+    }
+
+    // --- pointing at the field from the menu ---------------------------------
+    if (this.phase === 'menu' && unit) {
+      if (this.hoverMove) {
+        const k = key(this.hoverMove.x, this.hoverMove.y);
+        this._fillTile(ctx, this.hoverMove.x, this.hoverMove.y, this.provoke.has(k) ? 'rgba(200,60,45,0.30)' : 'rgba(70,140,230,0.28)');
+        this._drawPath(ctx, unit, this.hoverMove);
+      }
+      if (this.hoverAttack) {
+        const p = posOf(this.hoverAttack.unit);
+        const s = this._tileScreen(p.x, p.y);
+        const w = R(TILE * this.zoom);
+        UI.frameSel(ctx, s.x, s.y, w, w, this.t, { color: UI.COLORS.red });
+      }
+    }
+
     // --- the acting creature -----------------------------------------------
     if (unit && (this.phase === 'menu' || this.phase === 'move' || this.phase === 'target')) {
       const p = posOf(unit);
@@ -2774,13 +3802,14 @@ export class BattleScene {
     }
   }
 
-  _drawPath(ctx, unit) {
-    const node = this.reach.get(key(this.cursor.x, this.cursor.y));
+  _drawPath(ctx, unit, at) {
+    const to = at || this.cursor;
+    const node = this.reach.get(key(to.x, to.y));
     if (!node) return;
     const start = posOf(unit);
     const pts = [{ x: start.x, y: start.y }, ...(node.path || [])];
     const half = (TILE * this.zoom) / 2;
-    const provokes = this.provoke.has(key(this.cursor.x, this.cursor.y));
+    const provokes = this.provoke.has(key(to.x, to.y));
     const col = provokes ? '#ff8a72' : '#a8d4ff';
 
     // Dotted line: a dot every third pixel along each leg.
@@ -2802,7 +3831,7 @@ export class BattleScene {
     }
 
     // Foot count at the destination.
-    const end = this._tileScreen(this.cursor.x, this.cursor.y);
+    const end = this._tileScreen(to.x, to.y);
     const label = `${node.cost} ft`;
     const lw = UI.measure(label, 'sm') + 6;
     const lx = clamp(end.x + half - lw / 2, FIELD.x + 2, FIELD.x + FIELD.w - lw - 2);
@@ -2819,29 +3848,59 @@ export class BattleScene {
     for (const u of list) {
       const s = this._uiOf(u);
       if (!s || s.alpha <= 0.02) continue;
-      const x = R(this._sx(s.x));
-      const y = R(this._sy(s.y));
+      const x = R(this._sx(s.x) + s.ox);
+      const y = R(this._sy(s.y) + s.oy);
       if (x < FIELD.x - 40 || x > FIELD.x + FIELD.w + 40) continue;
       if (y < FIELD.y - 60 || y > FIELD.y + FIELD.h + 40) continue;
 
-      const down = u.hp <= 0 && !isDead(u);
+      const dead = isDead(u);
+      const down = u.hp <= 0 && !dead;
       // Whole-number scales only: a fractional one resamples the sprite to mush.
       const scale = Math.max(1, Math.round(this.zoom * sizeScale(u)));
-      const tint = s.flash > 0.02 ? '#ff5a4a' : null;
+      const tint = s.flash > 0.02 ? (s.flashColor || '#ff5a4a') : null;
+
+      // The channelling glow sits under the caster, in the spell's colour.
+      if (s.cast) {
+        const k = Math.min(1, s.cast.t / 0.15) * (1 - Math.max(0, (s.cast.t - s.cast.dur + 0.15) / 0.15));
+        const rad = (7 + Math.sin(s.cast.t * 14) * 1.5) * this.zoom;
+        ctx.save();
+        ctx.globalAlpha = 0.55 * k;
+        ctx.strokeStyle = s.cast.color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.ellipse(x, y - 1, rad, rad * 0.45, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 0.22 * k;
+        ctx.fillStyle = s.cast.color;
+        ctx.beginPath(); ctx.ellipse(x, y - 1, rad * 0.8, rad * 0.36, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+
+      // A toppled body: the swing to the ground overshoots a touch and settles,
+      // which is what makes it a fall instead of a rotation. Foes fall away
+      // from the party's side of the field, party members toward it.
+      let rotate = 0;
+      if (s.topple > 0) {
+        const t = s.topple;
+        const swing = t < 0.8 ? easeOut(t / 0.8) * 1.08 : 1.08 - 0.08 * ((t - 0.8) / 0.2);
+        rotate = swing * (Math.PI / 2) * (u.side === 'foe' ? 1 : -1);
+      }
 
       safe(() => drawActor(ctx, u, x, y, {
         dir: s.dir,
         phase: Math.floor(s.phase),
         moving: s.moving,
         scale,
-        alpha: s.alpha * (down ? 0.75 : 1),
-        tint,
-        tintAmt: s.flash * 0.75,
-        shadow: true,
-        downed: down,
+        alpha: s.alpha * (down ? 0.8 : 1),
+        tint: dead && s.corpse ? '#2a1c22' : tint,
+        tintAmt: dead && s.corpse ? 0.55 : s.flash * 0.75,
+        shadow: !dead,
+        rotate,
+        // The sprite has its own left-facing frames, so never flip it — but
+        // the swing needs to know which way the arc goes.
+        swing: s.swingAngle || 0,
+        facingLeft: s.dir === 'left',
       }));
 
-      if (!isDead(u)) this._drawUnitTag(ctx, u, x, y, scale);
+      if (!dead) this._drawUnitTag(ctx, u, x, y, scale);
     }
   }
 
@@ -3000,6 +4059,10 @@ export class BattleScene {
     if (this.enc.currentUid === u.uid) {
       const bob = Math.round(Math.sin(this.t * 5) * 1.5);
       UI.text(ctx, x, top - 9 + bob, UI.G.chevDown, { size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true });
+    } else if (u._unaware && u.side === 'foe') {
+      // A creature that has not noticed you yet. Worth knowing: it is the one
+      // you want to open on, and it will stop being unaware the moment you do.
+      UI.text(ctx, x, top - 9, '?', { size: 'sm', color: UI.COLORS.inkDim, align: 'center', shadow: true });
     }
   }
 
@@ -3014,9 +4077,9 @@ export class BattleScene {
     UI.text(ctx, 17, 3, 'ROUND', { size: 'sm', color: '#3a2607', align: 'center' });
     UI.text(ctx, 17, 11, String(enc.round || 1), { size: 'md', color: '#2a1c07', align: 'center' });
 
-    const x0 = 35, x1 = VIEW_W - 3;
+    const x0 = RIBBON_X0, x1 = VIEW_W - 3;
     const avail = x1 - x0;
-    const cell = 22;
+    const cell = RIBBON_CELL;
     const order = enc.order || [];
     const total = order.length * cell;
     const curIdx = Math.max(0, order.indexOf(enc.currentUid));
@@ -3056,11 +4119,30 @@ export class BattleScene {
       });
 
       if (dead) UI.icon(ctx, 'skull', px + size / 2 - 4, py + size / 2 - 4, 8, '#e8dcc0');
+      if (this.inspect === u && !cur) UI.rectStroke(ctx, px - 1, py - 1, size + 2, size + 2, UI.COLORS.goldBright, 1);
 
-      // Initiative number in the corner.
+      // Conditions, as the same coloured dots the field tags use, in the
+      // portrait's top corner — so the rail tells you who is held, poisoned
+      // or frightened before their turn comes round.
+      if (!dead) {
+        const badges = safe(() => conditionBadges(u), []) || [];
+        let bxx = px + size - 3;
+        for (let k = 0; k < Math.min(4, badges.length); k++) {
+          ctx.fillStyle = '#0a0708';
+          ctx.fillRect(bxx - 1, py, 3, 3);
+          ctx.fillStyle = badges[k].color || UI.COLORS.purple;
+          ctx.fillRect(bxx, py + 1, 2, 2);
+          bxx -= 3;
+        }
+        if (u.concentration) UI.icon(ctx, 'rune', px, py, 6, UI.COLORS.purple);
+      }
+
+      // Initiative number under every portrait, not only the current one.
       const init = enc.initiative?.[u.uid]?.total;
-      if (init != null && cur) {
-        UI.text(ctx, px + size / 2, py + size + 6, String(init), { size: 'sm', color: UI.COLORS.gold, align: 'center', shadow: true });
+      if (init != null) {
+        UI.text(ctx, px + size / 2, py + size + (cur ? 6 : 5), String(init), {
+          size: 'sm', color: cur ? UI.COLORS.gold : UI.COLORS.inkDim, align: 'center', shadow: cur,
+        });
       }
     }
     UI.popClip(ctx);
@@ -3125,10 +4207,11 @@ export class BattleScene {
     UI.panel(ctx, MENU.x, MENU.y, MENU.w, MENU.h, { style: 'window', shadow: 0.55 });
 
     // Keep the selected button inside the visible window.
+    const L = barLayout(rows.length);
     let top = inSub ? this.subTop : this.menuTop;
     if (idx < top) top = idx;
-    if (idx > top + MENU_VISIBLE - 1) top = idx - MENU_VISIBLE + 1;
-    top = clamp(top, 0, Math.max(0, rows.length - MENU_VISIBLE));
+    if (idx > top + L.vis - 1) top = idx - L.vis + 1;
+    top = clamp(top, 0, Math.max(0, rows.length - L.vis));
     if (inSub) this.subTop = top; else this.menuTop = top;
 
     // A back chevron on the left whenever we are inside a submenu, so the mouse
@@ -3137,10 +4220,10 @@ export class BattleScene {
       UI.text(ctx, MENU.x + 2, MENU.y + 7, UI.G.chevLeft || '<', { size: 'sm', color: UI.COLORS.goldBright });
     }
 
-    for (let i = 0; i < MENU_VISIBLE; i++) {
+    for (let i = 0; i < L.vis; i++) {
       const r = rows[top + i];
       if (!r) break;
-      const c = this._menuCellRect(i);
+      const c = this._menuCellRect(i, L.cw);
       const sel = (top + i) === idx;
       const on = r.enabled !== false;
 
@@ -3157,7 +4240,7 @@ export class BattleScene {
       // Icon only: the full name and its maths are on the plate above, which is
       // how a bar stays readable once a caster has twenty things to click. The
       // icon has to actually differ per verb for that to work: see verbIcon().
-      UI.icon(ctx, verbIcon(r), c.x + 6, c.y + 8, 11,
+      UI.icon(ctx, verbIcon(r), c.x + R((c.w - 11) / 2), c.y + 8, 11,
         on ? (sel ? '#2a1c07' : null) : UI.COLORS.disabled);
 
       // Cost pip (A / B / R), or a chevron when the button opens a submenu.
@@ -3185,8 +4268,8 @@ export class BattleScene {
     // Paging control, in the gutter the cells deliberately leave free. The
     // counter used to be right-aligned into a 14px gap and printed straight
     // across the last button.
-    if (rows.length > MENU_VISIBLE) {
-      const gx = MENU.x + MENU_PAD_L + MENU_VISIBLE * MENU_CELL_W;
+    if (L.paged) {
+      const gx = MENU.x + MENU_PAD_L + L.vis * L.cw;
       const gw = MENU.x + MENU.w - gx;
       const mid = R(gx + gw / 2);
       UI.text(ctx, mid - 6, MENU.y + 3, UI.G.chevLeft || '<', {
@@ -3194,7 +4277,7 @@ export class BattleScene {
       });
       UI.text(ctx, mid + 6, MENU.y + 3, UI.G.chevRight || '>', {
         size: 'sm', align: 'center',
-        color: top + MENU_VISIBLE < rows.length ? UI.COLORS.gold : UI.COLORS.disabled,
+        color: top + L.vis < rows.length ? UI.COLORS.gold : UI.COLORS.disabled,
       });
       UI.text(ctx, mid, MENU.y + 13, UI.fit(`${idx + 1}/${rows.length}`, gw - 2, 'sm'),
         { size: 'sm', align: 'center', color: UI.COLORS.inkDim, shadow: true });
@@ -3202,8 +4285,8 @@ export class BattleScene {
   }
 
   /** Screen rect of action-bar button `i` (index into the visible window). */
-  _menuCellRect(i) {
-    return { x: MENU.x + MENU_PAD_L + i * MENU_CELL_W, y: MENU.y + 2, w: MENU_CELL_W - 3, h: MENU.h - 4 };
+  _menuCellRect(i, cw = MENU_CELL_W) {
+    return { x: MENU.x + MENU_PAD_L + i * cw, y: MENU.y + 2, w: cw - 3, h: MENU.h - 4 };
   }
 
   /** The right-hand panel: what the highlighted thing does, and the maths. */
@@ -3299,8 +4382,16 @@ export class BattleScene {
 
     // --- live maths for the highlighted target ------------------------------
     if (aiming) this._drawTargetMath(ctx, unit, ix, mathTop, w);
-    else if (Array.isArray(row.levels) && row.levels.length > 1 && y + 7 <= DETAIL.y + DETAIL.h - 4) {
-      UI.text(ctx, ix, DETAIL.y + DETAIL.h - 11, `Slots: ${row.levels.join(', ')}`, { size: 'sm', color: UI.COLORS.mp, shadow: true });
+    else if (Array.isArray(row.levels) && row.levels.length && y + 7 <= DETAIL.y + DETAIL.h - 4) {
+      // "Slots: 1, 2, 3" said which levels could cast it and not how many of
+      // each were left, which is the number that decides whether to upcast.
+      const slots = unit?.spells?.slots || {};
+      const parts = row.levels.map((lv) => {
+        const s = slots[lv];
+        const left = s ? Math.max(0, (s.max || 0) - (s.used || 0)) : null;
+        return left == null ? `${ordinal(lv)}` : `${ordinal(lv)} ×${left}`;
+      });
+      UI.text(ctx, ix, DETAIL.y + DETAIL.h - 11, UI.fit(`Slots: ${parts.join('  ')}`, w, 'sm'), { size: 'sm', color: UI.COLORS.mp, shadow: true });
     }
   }
 
@@ -3587,11 +4678,12 @@ export class BattleScene {
       style: hot ? 'gold' : live ? 'window' : 'inset',
       shadow: live ? 0.45 : 0.15, studs: false,
     });
-    const ink = !live ? UI.COLORS.disabled : hot ? '#2a1c07' : UI.COLORS.goldBright;
-    UI.text(ctx, ENDBTN.x + ENDBTN.w / 2, ENDBTN.y + 4, 'END', {
+    const armed = live && this.endConfirmAt && (this.t - this.endConfirmAt) < 3;
+    const ink = !live ? UI.COLORS.disabled : hot ? '#2a1c07' : armed ? UI.COLORS.bad : UI.COLORS.goldBright;
+    UI.text(ctx, ENDBTN.x + ENDBTN.w / 2, ENDBTN.y + 4, armed ? 'SURE?' : 'END', {
       size: 'md', color: ink, align: 'center', shadow: !hot,
     });
-    UI.text(ctx, ENDBTN.x + ENDBTN.w / 2, ENDBTN.y + 13, 'TURN', {
+    UI.text(ctx, ENDBTN.x + ENDBTN.w / 2, ENDBTN.y + 13, armed ? 'ACTION LEFT' : 'TURN', {
       size: 'sm', color: ink, align: 'center', shadow: !hot,
     });
   }

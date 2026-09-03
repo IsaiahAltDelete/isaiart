@@ -89,348 +89,32 @@
 // 1491; Katernin Sashenstar and Bardeid Dlusker hold their chairs.
 
 import { TileMap, TF } from './tilemap.js';
+import { tid } from './mapgen.js';
 import {
-  tid, generateDungeon, generateCrypt,
-} from './mapgen.js';
-import { npcsOnMap } from '../data/npcs.js';
+  KEY, gset, dset, oset, floor, grect, drect, orect, floorRect, dframe, table, pickT, prop, scatter,
+  groundNoise, repave, sealBorder, openDoorway, normalizeTriggers, reservedFor, clearStanding,
+  sweepStanding, building, shell, room, fenceRect, bigOak, addSign,
+  interiorMap as kitInteriorMap, finishInterior as kitFinishInterior, packDungeon,
+  stallRow, awning, washingLine, wearPatches,
+  innFloor,
+} from './mapkit.js';
 
 // ---------------------------------------------------------------------------
-// 0. PRELUDE — the painting helpers, copied from maps.js §0–§1
+// 0. PRELUDE — the painting kit is world/mapkit.js. Only what needs this
+//    pack's own REGION_LINKS lives here.
 // ---------------------------------------------------------------------------
 
-const KEY = (x, y) => `${x},${y}`;
-
-function gset(map, x, y, id) { if (id != null && map.inBounds(x, y)) map.ground[y * map.w + x] = id | 0; }
-function dset(map, x, y, id) { if (id != null && map.inBounds(x, y)) map.deco[y * map.w + x] = id | 0; }
-function oset(map, x, y, id) { if (id != null && map.inBounds(x, y)) map.over[y * map.w + x] = id | 0; }
-
-/** Lay a floor tile and sweep whatever was standing on it. */
-function floor(map, x, y, id) {
-  if (!map.inBounds(x, y)) return;
-  const i = y * map.w + x;
-  if (id != null) map.ground[i] = id | 0;
-  map.deco[i] = 0;
-  map.over[i] = 0;
-}
-
-function grect(map, x, y, w, h, id) {
-  for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) gset(map, i, j, id);
-}
-function drect(map, x, y, w, h, id) {
-  for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) dset(map, i, j, id);
-}
-function orect(map, x, y, w, h, id) {
-  for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) oset(map, i, j, id);
-}
-function floorRect(map, x, y, w, h, id) {
-  for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) floor(map, i, j, id);
-}
-/** Outline only — the walls of a room, the rails of a paddock. */
-function dframe(map, x, y, w, h, id) {
-  for (let i = x; i < x + w; i++) { dset(map, i, y, id); dset(map, i, y + h - 1, id); }
-  for (let j = y; j < y + h; j++) { dset(map, x, j, id); dset(map, x + w - 1, j, id); }
-}
-
-/** Resolve a weighted [name, weight] table to real tile ids once, up front. */
-function table(rows) {
-  const out = [];
-  for (const [name, w] of rows) {
-    const id = tid(name);
-    if (id != null) out.push([id, w]);
-  }
-  return out;
-}
-function pickT(r, tbl, fallback = 0) {
-  if (!tbl || !tbl.length) return fallback;
-  const e = r.pickWeighted(tbl, (x) => x[1]);
-  return e ? e[0] : fallback;
-}
-
-/** A prop that refuses to stand on somebody's feet. */
-function prop(map, x, y, id, res) {
-  if (!map.inBounds(x, y) || id == null) return false;
-  if (res && res.has(KEY(x, y))) return false;
-  map.deco[y * map.w + x] = id | 0;
-  return true;
-}
-
-/** Scatter deco across a rect at a given density, skipping reserved tiles. */
-function scatter(map, r, x, y, w, h, tbl, chance, res) {
-  for (let j = y; j < y + h; j++) {
-    for (let i = x; i < x + w; i++) {
-      if (!map.inBounds(i, j)) continue;
-      if (map.deco[j * map.w + i]) continue;
-      if (!r.chance(chance)) continue;
-      prop(map, i, j, pickT(r, tbl), res);
-    }
-  }
-}
-
-/** Speckle the ground plane from a weighted table. */
-function groundNoise(map, r, x, y, w, h, tbl) {
-  for (let j = y; j < y + h; j++) {
-    for (let i = x; i < x + w; i++) gset(map, i, j, pickT(r, tbl));
-  }
-}
+/** Interiors in the city default to its region string. */
+const interiorMap = (o) => kitInteriorMap({ region: 'baldurs-gate', ...o });
 
 /**
- * Re-lay the district's own ground over every OPEN tile in a rect — the tiles
- * with nothing standing on them. `building()` drags a beaten DIRT_PATH approach
- * out of every door it cuts, which is right in Phandalin and wrong on a
- * flagged Upper City street, so every city map here paints its buildings first
- * and then repaves round them.
+ * Flags, border, exit, threshold, spawn, NPC sweep — and then any two-tile
+ * cupboard a hearth wall, a counter run and a back stair left behind the
+ * furniture is closed in the room's own stone.
  */
-function repave(map, r, x, y, w, h, tbl) {
-  for (let j = y; j < y + h; j++) {
-    for (let i = x; i < x + w; i++) {
-      if (!map.inBounds(i, j)) continue;
-      if (map.deco[j * map.w + i]) continue;
-      gset(map, i, j, pickT(r, tbl));
-    }
-  }
-}
-
-/** Ring the map in something solid so nobody walks off the edge. */
-function sealBorder(map, fillId) {
-  const id = fillId != null ? fillId : tid('BLACK', 'VOID');
-  for (let x = 0; x < map.w; x++) {
-    if (!map.deco[x]) dset(map, x, 0, id);
-    if (!map.deco[(map.h - 1) * map.w + x]) dset(map, x, map.h - 1, id);
-    map.setFlag(x, 0, TF.SOLID);
-    map.setFlag(x, map.h - 1, TF.SOLID);
-  }
-  for (let y = 0; y < map.h; y++) {
-    if (!map.deco[y * map.w]) dset(map, 0, y, id);
-    if (!map.deco[y * map.w + map.w - 1]) dset(map, map.w - 1, y, id);
-    map.setFlag(0, y, TF.SOLID);
-    map.setFlag(map.w - 1, y, TF.SOLID);
-  }
-  return map;
-}
-
-/** Turn a stamped-solid door tile into something you can actually walk through. */
-function openDoorway(map, x, y) {
-  if (!map.inBounds(x, y)) return;
-  map.clearFlag(x, y, TF.SOLID | TF.WATER | TF.SLOW | TF.DAMAGE);
-  map.setFlag(x, y, TF.DOOR | TF.TRIGGER);
-}
-
-/** Re-add mapgen's bare trigger objects through TileMap so they gain ids. */
-function normalizeTriggers(map) {
-  try {
-    const raw = (map.triggers || []).slice();
-    map.clearTriggers();
-    for (const t of raw) map.addTrigger(t);
-  } catch (e) { try { map.reindexTriggers(); } catch (e2) { /* give up quietly */ } }
-  return map;
-}
-
-/** Every NPC tile on a map, whether or not they spawn yet. Props avoid these. */
-function reservedFor(id) {
-  const s = new Set();
-  try { for (const n of npcsOnMap(id)) s.add(KEY(n.x, n.y)); } catch (e) { /* catalogue absent */ }
-  return s;
-}
-
-function addSign(map, x, y, text, title) {
-  map.addTrigger({ id: `sign-${x}-${y}`, kind: 'sign', x, y, data: { text, title: title || null } });
-}
-
-// ---------------------------------------------------------------------------
-// 0b. BUILDINGS — copied from maps.js §1
-// ---------------------------------------------------------------------------
-
-const ROOFS = {
-  thatch: { ridge: 'THATCH_RIDGE', l: 'THATCH_L', m: 'THATCH_M', r: 'THATCH_R' },
-  shingle: { ridge: 'SHINGLE_ROOF', l: 'SHINGLE_ROOF', m: 'SHINGLE_ROOF', r: 'SHINGLE_ROOF' },
-  tile: { ridge: 'TILE_ROOF', l: 'TILE_ROOF', m: 'TILE_ROOF', r: 'TILE_ROOF' },
-};
-
-const BASE_COURSE = {
-  WATTLE_WALL: 'STONE_WALL', LOG_WALL: 'STONE_WALL', PALISADE: 'STONE_WALL',
-  STONE_WALL: 'WALL_TOP_SHADE', BRICK_WALL: 'WALL_TOP_SHADE', RUINED_WALL: 'WALL_TOP_SHADE',
-};
-
-/**
- * A real enterable house. Footprint solid, roof on the `over` plane so the party
- * walks behind it. See maps.js §1 for the five-band elevation this paints.
- */
-function building(map, b, res) {
-  const { x, y, w, h } = b;
-  const wallKey = b.wall || 'WATTLE_WALL';
-  const wall = tid(wallKey, 'STONE_WALL');
-  const base = tid(b.base || 'DIRT', 'DIRT');
-  const rk = ROOFS[b.roof] || ROOFS.thatch;
-  const course = tid(b.course || BASE_COURSE[wallKey] || 'STONE_WALL', wallKey);
-
-  grect(map, x, y, w, h, base);
-  drect(map, x, y, w, h, wall);
-  orect(map, x, y, w, h, 0);
-
-  const want = b.roofRows != null ? b.roofRows : Math.min(3, h - 3);
-  const roofRows = Math.max(1, Math.min(want, h - 2));
-  const fy = y + h - 1;                            // base course; the door row
-  const wallTop = y + roofRows;                    // the row the eave shadows
-  const gy = Math.max(wallTop, fy - 1);            // the ground-floor wall row
-
-  for (let j = 0; j < roofRows; j++) {
-    for (let i = 0; i < w; i++) {
-      let name;
-      if (j === 0) name = rk.ridge;
-      else if (i === 0) name = rk.l;
-      else if (i === w - 1) name = rk.r;
-      else name = rk.m;
-      const id = tid(name, 'THATCH_M');
-      oset(map, x + i, y + j, id);
-      dset(map, x + i, y + j, id);
-    }
-  }
-  if (b.peak != null) oset(map, x + b.peak, y, tid('ROOF_PEAK', 'THATCH_RIDGE'));
-  for (const [px, py] of b.roofPatch || []) oset(map, x + px, y + py, tid(b.patchTile || 'SHINGLE_ROOF', 'THATCH_RIDGE'));
-  if (b.chimney != null) oset(map, x + b.chimney, y, tid('CHIMNEY', 'THATCH_RIDGE'));
-  if (b.chimney2 != null) oset(map, x + b.chimney2, y, tid('CHIMNEY', 'THATCH_RIDGE'));
-
-  for (let i = 0; i < w; i++) dset(map, x + i, fy, course);
-  if (b.band != null) for (let i = 0; i < w; i++) dset(map, x + i, y + b.band, tid(b.bandTile || 'LOG_WALL', wallKey));
-
-  const win = tid(b.lit ? 'WINDOW_LIT' : 'WINDOW', 'WINDOW');
-  for (const dx of b.windows || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, gy, win);
-  if (wallTop < gy) for (const dx of b.upper || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, wallTop, win);
-  for (const dx of b.shutters || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, gy, tid('SHUTTER', 'WINDOW'));
-  for (const dx of b.loading || []) if (dx >= 0 && dx < w) dset(map, x + dx, fy, tid('SHUTTER', 'DOOR_CLOSED'));
-  if (b.sign != null) dset(map, x + b.sign, gy, tid('SIGN', 'WINDOW'));
-
-  let door = null, front = null;
-  if (b.door != null) {
-    const dx = x + b.door;
-    gset(map, dx, fy, tid('WOOD_FLOOR_H', 'DIRT'));
-    dset(map, dx, fy, tid(b.iron ? 'IRON_DOOR' : 'DOOR_CLOSED', 'DOOR_OPEN'));
-    door = { x: dx, y: fy };
-    front = { x: dx, y: fy + 1 };
-  }
-
-  if (door) {
-    const sy = fy + 1;
-    const worn = tid('DIRT_PATH', 'DIRT');
-    for (let i = -1; i <= 1; i++) gset(map, door.x + i, sy, worn);
-    gset(map, door.x, sy, tid('FLAGSTONE', 'DIRT_PATH'));
-    const run = b.approach != null ? b.approach : 2;
-    for (let k = 1; k <= run; k++) {
-      const py = sy + k;
-      if (!map.inBounds(door.x, py) || map.deco[py * map.w + door.x]) break;
-      gset(map, door.x, py, worn);
-    }
-  }
-
-  if (res) for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) res.add(KEY(i, j));
-  return { door, front };
-}
-
-/** A house nobody can enter — shuttered, boarded, still part of the skyline. */
-function shell(map, b, res) {
-  const out = building(map, { ...b, door: null, windows: [], shutters: b.windows || [] }, res);
-  if (b.door != null) dset(map, b.x + b.door, b.y + b.h - 1, tid('SHUTTER', 'WINDOW'));
-  return out;
-}
-
-/** A four-walled interior room with an exit punched in its base course. */
-function room(map, o) {
-  const w = o.w != null ? o.w : map.w;
-  const h = o.h != null ? o.h : map.h;
-  const x = o.x || 0, y = o.y || 0;
-  const fl = tid(o.floor || 'WOOD_FLOOR', 'STONE_FLOOR');
-  const wallKey = o.wall || 'WATTLE_WALL';
-  const wall = tid(wallKey, 'STONE_WALL');
-  const course = tid(o.course || BASE_COURSE[wallKey] || 'STONE_WALL', wallKey);
-  const stony = wallKey === 'STONE_WALL' || wallKey === 'BRICK_WALL';
-  const post = tid(o.post || (stony ? 'PILLAR' : 'LOG_WALL'), wallKey);
-
-  floorRect(map, x, y, w, h, fl);
-  dframe(map, x, y, w, h, wall);
-  for (let i = x; i < x + w; i++) dset(map, i, y + h - 1, course);
-  for (const [px, py] of [[x, y], [x + w - 1, y], [x, y + h - 1], [x + w - 1, y + h - 1]]) dset(map, px, py, post);
-
-  const ex = o.exit != null ? o.exit : (x + (w >> 1));
-  const ey = y + h - 1;
-  gset(map, ex, ey, tid('WOOD_FLOOR_H', 'DIRT'));
-  dset(map, ex, ey, tid('DOOR_CLOSED', 'DOOR_OPEN'));
-  const step = tid(o.step || (/^WOOD/.test(o.floor || 'WOOD_FLOOR') ? 'FLAGSTONE' : 'WOOD_FLOOR_H'), 'FLAGSTONE');
-  for (let i = -1; i <= 1; i++) gset(map, ex + i, ey - 1, step);
-  return { exit: { x: ex, y: ey }, spawn: { x: ex, y: ey - 1 } };
-}
-
-/** A paddock, orchard or field boundary with one gate. */
-function fenceRect(map, x, y, w, h, gate, res) {
-  const fh = tid('FENCE_H', 'HEDGE'), fv = tid('FENCE_V', 'HEDGE'), fc = tid('FENCE_CORNER', 'HEDGE');
-  for (let i = x; i < x + w; i++) { prop(map, i, y, fh, res); prop(map, i, y + h - 1, fh, res); }
-  for (let j = y; j < y + h; j++) { prop(map, x, j, fv, res); prop(map, x + w - 1, j, fv, res); }
-  prop(map, x, y, fc, res); prop(map, x + w - 1, y, fc, res);
-  prop(map, x, y + h - 1, fc, res); prop(map, x + w - 1, y + h - 1, fc, res);
-  if (gate) dset(map, gate.x, gate.y, tid('GATE', 'FENCE_H'));
-  return map;
-}
-
-/** A two-tile-wide oak, planted so you walk behind it. */
-function bigOak(map, x, y) {
-  dset(map, x, y + 1, tid('OAK_BL', 'TREE_OAK'));
-  dset(map, x + 1, y + 1, tid('OAK_BR', 'TREE_OAK'));
-  oset(map, x, y, tid('OAK_TL', 'TREE_OAK'));
-  oset(map, x + 1, y, tid('OAK_TR', 'TREE_OAK'));
-}
-
-function interiorMap(o) {
-  return new TileMap({
-    w: o.w, h: o.h, id: o.id, name: o.name, biome: 'city', indoor: true,
-    music: o.music || 'town', safe: o.safe !== false, encounterRate: 0,
-    ambient: o.ambient || { color: '#2a1e14', alpha: 0.14 },
-    region: o.region || 'baldurs-gate',
-  });
-}
-
-function clearStanding(map, x, y) {
-  if (!map.inBounds(x, y)) return;
-  const i = y * map.w + x;
-  if (!(map.flags[i] & TF.SOLID)) return;
-  map.deco[i] = 0;
-  map.flags[i] = (map.flags[i] & ~(TF.SOLID)) | 0;
-}
-
 function finishInterior(map, r, exit, res) {
-  map.recomputeFlags({ keep: 0 });
-  sealBorder(map, tid('STONE_WALL', 'BRICK_WALL'));
-  openDoorway(map, exit.x, exit.y);
-  // The threshold: the spawn tile and the two beside it. A bench laid across the
-  // door would leave the room enterable and not leaveable, and `loadMap` would
-  // quietly relocate the spawn somewhere the link table never meant.
-  for (let i = -1; i <= 1; i++) clearStanding(map, exit.x + i, exit.y - 1);
-  map.spawn = { x: exit.x, y: exit.y - 1 };
-  map.entry = { ...map.spawn };
-  if (res) for (const k of res) { const [x, y] = k.split(',').map(Number); clearStanding(map, x, y); }
-  // A hearth wall, a counter run and a back stair between them will now and then
-  // leave a two-tile cupboard behind the furniture that reads as floor and can
-  // never be entered. Close it in the room's own stone.
+  kitFinishInterior(map, exit, res, { seal: 'STONE_WALL', threshold: true });
   if (map.id) fillDeadPockets(map, map.id, 'STONE_WALL', 6);
-  return map;
-}
-
-/**
- * The exterior equivalent of `finishInterior`'s NPC sweep: nobody may be bricked
- * in. It takes the MAP ID, not the prop-avoidance set — `building()` adds its
- * whole footprint to that set so scatter() keeps off the roofs, and sweeping it
- * would erase every building on the map down to bare ground.
- *
- * A warden posted ON a gate is standing on a door tile on purpose, and wiping
- * that tile would delete the door itself, so doors and gates are spared;
- * `applyWarpNodes` opens them a moment later anyway.
- */
-function sweepStanding(map, id) {
-  const doors = new Set([tid('DOOR_CLOSED'), tid('DOOR_OPEN'), tid('IRON_DOOR'), tid('GATE')].filter((v) => v != null));
-  for (const k of reservedFor(id)) {
-    const [x, y] = k.split(',').map(Number);
-    if (!map.inBounds(x, y)) continue;
-    if (doors.has(map.deco[y * map.w + x])) continue;
-    clearStanding(map, x, y);
-  }
   return map;
 }
 
@@ -779,9 +463,7 @@ function buildNorchapel(root) {
   prop(map, 34, 22, tid('CART', 'CRATE'), res);
 
   // Washing strung between the chapel gables, on the plane you walk under.
-  for (const [x0, x1, y] of [[11, 16, 15], [37, 40, 15], [10, 16, 33], [37, 41, 33]]) {
-    for (let x = x0; x <= x1; x++) oset(map, x, y, tid('FENCE_H', 'THATCH_M'));
-  }
+  for (const [x0, x1, y] of [[11, 16, 15], [37, 40, 15], [10, 16, 33], [37, 41, 33]]) washingLine(map, x0, y, x1, rd);
 
   scatter(map, rd, 2, 2, 44, 36, junk, 0.035, res);
   for (let y = 2; y <= 37; y++) {
@@ -874,18 +556,16 @@ function buildLittleCalimshan(root) {
   // AWNINGS. Cloth strung frontage to frontage on the `over` plane, so the party
   // walks under shade and the district reads dark from above — the one trick
   // that makes Little Calimshan legible from a thumbnail.
-  const awn = tid('THATCH_M', 'SHINGLE_ROOF');
-  for (let y = 4; y <= 28; y += 4) for (let x = 20; x <= 28; x++) oset(map, x, y, awn);
-  for (const [x0, x1, y] of [[6, 12, 14], [36, 43, 14], [6, 12, 29], [36, 43, 29]]) {
-    for (let x = x0; x <= x1; x++) oset(map, x, y, awn);
-  }
+  // Real AWNING now, not THATCH_M: the roof tile was solid-flagged canvas, so
+  // `_drawOverhangs` dropped a house's shadow onto an open bazaar lane.
+  for (let y = 4; y <= 28; y += 4) awning(map, 20, y, 9);
+  for (const [x0, x1, y] of [[6, 12, 14], [36, 43, 14], [6, 12, 29], [36, 43, 29]]) awning(map, x0, y, x1 - x0 + 1);
 
-  // Stalls down both sides of the spine, every other tile.
+  // Stalls down both sides of the spine, every other tile, canvas over the aisle.
   const wares = table([['SHELF_GOODS', 6], ['CRATE', 5], ['SACK', 5], ['BARREL', 3], ['CART', 2]]);
-  for (let y = 5; y <= 32; y += 2) {
-    if (y >= 21 && y <= 23) continue;
-    prop(map, 21, y, pickT(rd, wares), res);
-    prop(map, 27, y, pickT(rd, wares), res);
+  for (const [sx, face] of [[21, 1], [27, -1]]) {
+    stallRow(map, sx, 5, 8, 'v', rd, { step: 2, face, res, wares, banner: true });
+    stallRow(map, sx, 25, 4, 'v', rd, { step: 2, face, res, wares });
   }
   for (const [x, y] of [[19, 20], [29, 20], [19, 24], [29, 24]]) prop(map, x, y, tid('BRAZIER', 'TORCH'), res);
   for (const [x, y] of [[20, 12], [28, 12], [20, 33], [28, 33]]) prop(map, x, y, tid('CANDLE', 'TORCH'), res);
@@ -1156,9 +836,7 @@ function buildSowsFoot(root) {
     }
   }
   // Sailcloth and sacking pitched over the lane for whatever shelter it gives.
-  for (const [x0, x1, y] of [[3, 7, 21], [12, 18, 20], [27, 33, 22], [37, 41, 21], [21, 23, 30]]) {
-    for (let x = x0; x <= x1; x++) oset(map, x, y, tid('THATCH_M', 'SHINGLE_ROOF'));
-  }
+  for (const [x0, x1, y] of [[3, 7, 21], [12, 18, 20], [27, 33, 22], [37, 41, 21], [21, 23, 30]]) awning(map, x0, y, x1 - x0 + 1);
 
   map.recomputeFlags({ keep: 0 });
   sealBorder(map, tid('PALISADE', 'STONE_WALL'));
@@ -1256,9 +934,7 @@ function buildTwinSongs(root) {
   // Pilgrim camp: benches down the avenue, oaks, and canvas over the verges.
   for (let y = 7; y <= 37; y += 5) { prop(map, 20, y, tid('BENCH', 'CRATE'), res); prop(map, 28, y, tid('BENCH', 'CRATE'), res); }
   bigOak(map, 9, 15); bigOak(map, 38, 15); bigOak(map, 9, 24); bigOak(map, 38, 24);
-  for (const [x0, x1, y] of [[8, 12, 8], [36, 40, 8], [8, 12, 31], [36, 40, 31]]) {
-    for (let x = x0; x <= x1; x++) oset(map, x, y, tid('THATCH_M', 'SHINGLE_ROOF'));
-  }
+  for (const [x0, x1, y] of [[8, 12, 8], [36, 40, 8], [8, 12, 31], [36, 40, 31]]) awning(map, x0, y, x1 - x0 + 1);
   for (const [x, y] of [[21, 10], [27, 10], [21, 30], [27, 30]]) prop(map, x, y, tid('BRAZIER', 'TORCH'), res);
   scatter(map, rd, 2, 2, 44, 38, table([['BUSH', 4], ['HEDGE', 3], ['BARREL', 2], ['SACK', 2], ['CANDLE', 2]]), 0.028, res);
 
@@ -1444,17 +1120,22 @@ function buildRivington(root) {
   bigOak(map, 23, 26); bigOak(map, 47, 26); bigOak(map, 3, 26); bigOak(map, 12, 8); bigOak(map, 38, 6);
 
   // --- the refugee camp along the road ---------------------------------------
-  // Canvas on the `over` plane, cook-fires and gear on the ground. Four years
-  // after the Absolute the tents are still here and no longer look temporary.
+  // Real TENT now, not a rectangle of roof-thatch hung in the air: a tent is a
+  // solid, deco-plane thing you walk round and it throws a prop's contact
+  // shadow, where THATCH_M threw a whole house's overhang across the camp.
+  // Four years after the Absolute they are still here and no longer temporary.
   for (const [x0, y0] of [[21, 5], [22, 16], [21, 27], [33, 5], [46, 17]]) {
-    for (let x = x0; x <= x0 + 3; x++) for (let y = y0; y <= y0 + 1; y++) oset(map, x, y, tid('THATCH_M', 'SHINGLE_ROOF'));
+    for (let x = x0; x <= x0 + 2; x++) prop(map, x, y0, tid('TENT', 'THATCH_M'), res);
+    awning(map, x0, y0 + 1, 3);                       // the fly sheet over the door
     prop(map, x0, y0 + 2, tid('BRAZIER', 'TORCH'), res);
     prop(map, x0 + 2, y0 + 2, tid('SACK', 'CRATE'), res);
     prop(map, x0 + 3, y0, tid('BARREL', 'CRATE'), res);
+    prop(map, x0 + 3, y0 + 1, tid('HAY', 'SACK'), res);       // bedding, four years old
   }
   prop(map, 24, 20, tid('WELL', 'FOUNTAIN'), res);
   const stall = table([['CART', 5], ['CRATE', 5], ['SACK', 4], ['SHELF_GOODS', 3], ['BARREL', 3]]);
-  for (let x = 8; x <= 48; x += 4) { prop(map, x, 20, pickT(rd, stall), res); prop(map, x + 2, 24, pickT(rd, stall), res); }
+  stallRow(map, 8, 20, 11, 'h', rd, { step: 4, face: -1, res, wares: stall, banner: true });
+  stallRow(map, 10, 24, 10, 'h', rd, { step: 4, face: 1, res, wares: stall });
   scatter(map, rd, 2, 2, 52, 40, table([['BUSH', 4], ['SACK', 3], ['BARREL', 3], ['STUMP', 2], ['ROCK', 2]]), 0.02, res);
 
   map.recomputeFlags({ keep: 0 });
@@ -1597,9 +1278,7 @@ function buildGrayHarbour(root) {
   for (const [x, y] of [[30, 19], [44, 19], [56, 19]]) prop(map, x, y, tid('BRAZIER', 'TORCH'), res);
   scatter(map, rd, 26, 1, 33, 24, table([['CRATE', 5], ['BARREL', 5], ['SACK', 3]]), 0.03, res);
   // Washing between the warehouse gables — the Lower City's signature overhead.
-  for (const [x0, x1, y] of [[35, 46, 10], [46, 57, 10], [35, 45, 17]]) {
-    for (let x = x0; x <= x1; x++) oset(map, x, y, tid('FENCE_H', 'THATCH_M'));
-  }
+  for (const [x0, x1, y] of [[35, 46, 10], [46, 57, 10], [35, 45, 17]]) washingLine(map, x0, y, x1, rd);
 
   map.recomputeFlags({ keep: 0 });
   // Three sides of this map are open water and already solid; only the strip of
@@ -1698,9 +1377,7 @@ function buildBloomridge(root) {
   for (let x = 3; x <= 45; x += 4) prop(map, x, 32, pickT(rd, clutter), res);
   for (const [x, y] of [[10, 20], [30, 20], [44, 20], [20, 31], [34, 31]]) prop(map, x, y, tid('BRAZIER', 'TORCH'), res);
   scatter(map, rd, 2, 5, 44, 35, table([['CRATE', 5], ['BARREL', 4], ['SACK', 3], ['BENCH', 2]]), 0.03, res);
-  for (const [x0, x1, y] of [[13, 22, 15], [26, 36, 15], [4, 12, 30], [28, 36, 30]]) {
-    for (let x = x0; x <= x1; x++) oset(map, x, y, tid('FENCE_H', 'THATCH_M'));
-  }
+  for (const [x0, x1, y] of [[13, 22, 15], [26, 36, 15], [4, 12, 30], [28, 36, 30]]) washingLine(map, x0, y, x1, rd);
 
   map.recomputeFlags({ keep: 0 });
   sealBorder(map, tid('BRICK_WALL', 'STONE_WALL'));
@@ -1833,9 +1510,7 @@ function buildHeapside(root) {
   for (const [x0, x1, y] of [[2, 8, 7], [24, 34, 7], [11, 21, 21], [36, 46, 21],
     [2, 8, 32], [12, 21, 32], [30, 41, 32], [44, 50, 32],
     [12, 21, 8], [36, 47, 8], [2, 8, 20], [25, 31, 20], [44, 50, 19],
-    [2, 8, 33], [23, 31, 33], [34, 43, 32], [14, 22, 40], [30, 40, 40]]) {
-    for (let x = x0; x <= x1; x++) oset(map, x, y, tid('FENCE_H', 'THATCH_M'));
-  }
+    [2, 8, 33], [23, 31, 33], [34, 43, 32], [14, 22, 40], [30, 40, 40]]) washingLine(map, x0, y, x1, rd);
   for (let x = 2; x <= 49; x += 3) prop(map, x, 22, pickT(rd, clutter), res);
   for (const [x, y] of [[12, 20], [28, 20], [40, 20], [20, 33], [38, 33]]) prop(map, x, y, tid('BRAZIER', 'TORCH'), res);
   scatter(map, rd, 1, 1, 50, 40, table([['CRATE', 5], ['BARREL', 5], ['SACK', 4], ['RUBBLE', 2]]), 0.045, res);
@@ -1846,6 +1521,10 @@ function buildHeapside(root) {
     }
   }
 
+  map.recomputeFlags({ keep: 0 });
+  // Heapside's streets are earth showing through where the paving gave out.
+  wearPatches(map, rd, { x: 2, y: 5, w: 48, h: 36 }, 'DIRT_ISLE', 16, { res });
+  wearPatches(map, rd, { x: 2, y: 20, w: 48, h: 4 }, 'PATH_ISLE', 8, { res });
   map.recomputeFlags({ keep: 0 });
   sealBorder(map, tid('BRICK_WALL', 'STONE_WALL'));
   sweepStanding(map, 'bg-heapside');
@@ -2105,10 +1784,12 @@ function buildTheWide(root) {
 
   // The two stall arcades, east and west of the processional, every second tile
   // with a walking lane between them.
+  // Real MARKET_STALL trestles with the canvas over the walking lane. The Wide
+  // is the biggest market on the Sword Coast; it should not be a grid of crates.
   const wares = table([['CART', 5], ['CRATE', 5], ['SACK', 4], ['SHELF_GOODS', 4], ['BARREL', 3]]);
-  for (let x = 34; x <= 46; x += 2) { prop(map, x, 12, pickT(rd, wares), res); prop(map, x, 19, pickT(rd, wares), res); }
-  for (let x = 10; x <= 22; x += 2) { prop(map, x, 26, pickT(rd, wares), res); prop(map, x, 32, pickT(rd, wares), res); }
-  for (let x = 34; x <= 46; x += 2) { prop(map, x, 26, pickT(rd, wares), res); prop(map, x, 32, pickT(rd, wares), res); }
+  for (const [x0, y0, face] of [[34, 12, 1], [34, 19, -1], [10, 26, 1], [10, 32, -1], [34, 26, 1], [34, 32, -1]]) {
+    stallRow(map, x0, y0, 7, 'h', rd, { step: 2, face, res, wares, banner: true });
+  }
   for (const [x, y] of [[7, 11], [49, 11], [7, 34], [49, 34]]) prop(map, x, y, tid('BRAZIER', 'TORCH'), res);
   for (const [x, y] of [[12, 20], [44, 20], [12, 24], [44, 24]]) prop(map, x, y, tid('STATUE', 'PILLAR'), res);
   for (const [x, y] of [[10, 13], [46, 13], [10, 33], [46, 33]]) prop(map, x, y, tid('HEDGE', 'BUSH'), res);
@@ -2148,6 +1829,13 @@ function buildTheWide(root) {
 
   scatter(map, rd, 2, 4, 52, 36, table([['BENCH', 4], ['HEDGE', 3], ['CRATE', 2], ['BARREL', 2]]), 0.018, res);
 
+  map.recomputeFlags({ keep: 0 });
+  // WEAR. render/tiles.js has drawn COBBLE_ISLE and PATH_ISLE since the tileset
+  // was written and no map had ever placed one, so every plaza in the game was a
+  // flat field of identical stones. The Wide is the most walked-on ground on the
+  // Sword Coast; it should show it.
+  wearPatches(map, rd, { x: 6, y: 10, w: 44, h: 26 }, 'COBBLE_ISLE', 14, { res });
+  wearPatches(map, rd, { x: 24, y: 10, w: 9, h: 26 }, 'PATH_ISLE', 8, { res });
   map.recomputeFlags({ keep: 0 });
   sealBorder(map, tid('STONE_WALL', 'BRICK_WALL'));
   sweepStanding(map, 'bg-the-wide');
@@ -2343,6 +2031,9 @@ function buildCitadelStreets(root) {
   prop(map, 12, 23, tid('SACK', 'CRATE'), res);
   scatter(map, rd, 2, 12, 42, 26, table([['HEDGE', 4], ['BENCH', 3], ['CRATE', 2]]), 0.015, res);
 
+  map.recomputeFlags({ keep: 0 });
+  wearPatches(map, rd, { x: 24, y: 11, w: 9, h: 15 }, 'COBBLE_ISLE', 7, { res });
+  wearPatches(map, rd, { x: 2, y: 20, w: 42, h: 5 }, 'GRAVEL_ISLE', 8, { res });
   map.recomputeFlags({ keep: 0 });
   sealBorder(map, tid('STONE_WALL', 'BRICK_WALL'));
   sweepStanding(map, 'bg-citadel-streets');
@@ -2616,7 +2307,11 @@ function buildLowLantern(root) {
   const map = interiorMap({ id: 'low-lantern', name: 'The Low Lantern', w: 22, h: 16, music: 'inn' });
   const res = reservedFor('low-lantern');
   const r = root.fork('lantern');
-  const rm = room(map, { w: 22, h: 16, floor: 'WOOD_FLOOR', wall: 'LOG_WALL', post: 'TIMBER_SUPPORT' });
+  const rm = room(map, {
+    w: 22, h: 16, floor: 'WOOD_FLOOR', wall: 'LOG_WALL', post: 'TIMBER_SUPPORT',
+    // The galley, forward of the bar. A ship that feeds people has one.
+    rooms: [{ x: 0, y: 0, w: 5, h: 6, door: 'e', name: 'galley' }],
+  });
 
   run(map, 6, 13, 4, 'BAR', res);
   run(map, 5, 15, 1, 'SHELF_GOODS', res);
@@ -2634,7 +2329,7 @@ function buildLowLantern(root) {
 
   finishInterior(map, r, rm.exit, res);
   map.addTrigger({ id: 'low-lantern-shop', kind: 'shop', x: 9, y: 5, data: { shop: 'low-lantern', npc: 'marta-agosto' } });
-  map.addTrigger({ id: 'low-lantern-rest', kind: 'rest', x: 19, y: 1, w: 1, h: 2, data: { inn: true, cost: 9, text: 'A hammock on the second deck, and the river moving under you all night. Rest here?' } });
+  map.addTrigger({ id: 'low-lantern-rest', kind: 'rest', x: 19, y: 2, w: 1, h: 1, data: { inn: true, cost: 9, text: 'A hammock on the second deck, and the river moving under you all night. Rest here?' } });
   return map;
 }
 
@@ -2676,7 +2371,13 @@ function buildBlushingMermaid(root) {
   const map = interiorMap({ id: 'blushing-mermaid', name: 'The Blushing Mermaid', w: 24, h: 20, music: 'inn' });
   const res = reservedFor('blushing-mermaid');
   const r = root.fork('mermaid');
-  const rm = room(map, { w: 24, h: 20, floor: 'WOOD_FLOOR', wall: 'BRICK_WALL', post: 'TIMBER_SUPPORT' });
+  const rm = room(map, {
+    w: 24, h: 20, floor: 'WOOD_FLOOR', wall: 'BRICK_WALL', post: 'TIMBER_SUPPORT',
+    rooms: [
+      { x: 0, y: 0, w: 6, h: 6, door: 'e', name: 'kitchen' },
+      { x: 18, y: 12, w: 6, h: 8, door: 'w', floor: 'CARPET_RED', name: 'private room' },
+    ],
+  });
 
   // the bar, the shelves, the hearth
   run(map, 7, 15, 5, 'BAR', res);
@@ -2706,7 +2407,7 @@ function buildBlushingMermaid(root) {
 
   finishInterior(map, r, rm.exit, res);
   map.addTrigger({ id: 'mermaid-shop', kind: 'shop', x: 11, y: 6, data: { shop: 'blushing-mermaid', npc: 'kethra-buckman' } });
-  map.addTrigger({ id: 'mermaid-rest', kind: 'rest', x: 21, y: 17, w: 1, h: 2, data: { inn: true, cost: 7, text: 'A room over the taproom, a bolt on the door and a landlady who has heard worse than whatever you did today. Rest here?' } });
+  map.addTrigger({ id: 'mermaid-rest', kind: 'rest', x: 21, y: 18, w: 1, h: 1, data: { inn: true, cost: 7, text: 'A room over the taproom, a bolt on the door and a landlady who has heard worse than whatever you did today. Rest here?' } });
   map.addTrigger({ id: 'mermaid-board', kind: 'quest', x: 2, y: 17, data: { board: 'recruit', npc: 'kethra-buckman' } });
   map.addTrigger({ id: 'mermaid-harpers', kind: 'quest', x: 21, y: 3, data: { board: 'harpers', npc: 'jaheira' } });
   addSign(map, 2, 17, 'HANDS WANTED. Sellswords, guides, a cook who can be trusted with a knife, and one person willing to go down to Tumbledown after dark. Ask at the bar.');
@@ -2821,7 +2522,15 @@ function buildElfsongTavern(root) {
   const map = interiorMap({ id: 'elfsong-tavern', name: 'The Elfsong Tavern', w: 26, h: 20, music: 'inn' });
   const res = reservedFor('elfsong-tavern');
   const r = root.fork('elfsong');
-  const rm = room(map, { w: 26, h: 20, floor: 'WOOD_FLOOR', wall: 'BRICK_WALL', post: 'TIMBER_SUPPORT' });
+  const rm = room(map, {
+    w: 26, h: 20, floor: 'WOOD_FLOOR', wall: 'BRICK_WALL', post: 'TIMBER_SUPPORT',
+    rooms: [
+      // The kitchen door is placed by hand, not by side: the builder stands a
+      // cask on (5,3), which is where an 'e' door would land.
+      { x: 0, y: 0, w: 6, h: 6, door: { x: 5, y: 2 }, name: 'kitchen' },
+      { x: 20, y: 12, w: 6, h: 8, door: 'w', floor: 'CARPET_RED', name: 'snug' },
+    ],
+  });
 
   // the long bar, and Alan Alyth's shelves behind it
   run(map, 8, 17, 5, 'BAR', res);
@@ -2853,7 +2562,7 @@ function buildElfsongTavern(root) {
 
   finishInterior(map, r, rm.exit, res);
   map.addTrigger({ id: 'elfsong-shop', kind: 'shop', x: 12, y: 6, data: { shop: 'elfsong-tavern', npc: 'alan-alyth' } });
-  map.addTrigger({ id: 'elfsong-rest', kind: 'rest', x: 23, y: 17, w: 1, h: 2, data: { inn: true, cost: 15, text: 'A clean room, a barred shutter, and a voice somewhere below singing in Elvish until you are asleep. Rest here?' } });
+  map.addTrigger({ id: 'elfsong-rest', kind: 'rest', x: 23, y: 18, w: 1, h: 1, data: { inn: true, cost: 15, text: 'A clean room, a barred shutter, and a voice somewhere below singing in Elvish until you are asleep. Rest here?' } });
   map.addTrigger({ id: 'elfsong-snug', kind: 'quest', x: 23, y: 3, data: { text: 'The corner table. Duchess Belynne Stelmane was killed at it in 1492 and Alan Alyth has kept it laid ever since, for one, with a candle.' } });
   return map;
 }
@@ -2931,7 +2640,10 @@ function buildSharessCaress(root) {
   const map = interiorMap({ id: 'sharess-caress', name: "Sharess' Caress", w: 24, h: 18, music: 'inn' });
   const res = reservedFor('sharess-caress');
   const r = root.fork('caress');
-  const rm = room(map, { w: 24, h: 18, floor: 'WOOD_FLOOR', wall: 'BRICK_WALL' });
+  const rm = room(map, {
+    w: 24, h: 18, floor: 'WOOD_FLOOR', wall: 'BRICK_WALL',
+    rooms: [{ x: 0, y: 0, w: 5, h: 6, door: 'e', name: 'kitchen' }],
+  });
 
   floorRect(map, 8, 6, 8, 6, tid('MOSAIC', 'WOOD_FLOOR'));
   run(map, 7, 16, 4, 'BAR', res);
@@ -2951,7 +2663,7 @@ function buildSharessCaress(root) {
 
   finishInterior(map, r, rm.exit, res);
   map.addTrigger({ id: 'caress-shop', kind: 'shop', x: 11, y: 5, data: { shop: 'sharess-caress', npc: 'kallista' } });
-  map.addTrigger({ id: 'caress-rest', kind: 'rest', x: 21, y: 15, w: 1, h: 2, data: { inn: true, cost: 12, text: 'A room on the bridge side, and the river under the floor all night. Rest here?' } });
+  map.addTrigger({ id: 'caress-rest', kind: 'rest', x: 21, y: 16, w: 1, h: 1, data: { inn: true, cost: 12, text: 'A room on the bridge side, and the river under the floor all night. Rest here?' } });
   return map;
 }
 
@@ -2973,46 +2685,16 @@ function buildSharessCaress(root) {
 //           back. The down stair is converted to a sign instead, which reads as
 //           a choked shaft and cannot strand anybody.
 
-function packDungeon(id, name, opts, surface, flavour) {
-  return (r, ctx) => {
-    const seed = (ctx && ctx.seed) || id;
-    const gen = opts.gen === 'crypt' ? generateCrypt : generateDungeon;
-    const map = gen({
-      seed: `${seed}:${id}`, depth: 1, biome: opts.biome, size: opts.size,
-      name, level: opts.level, theme: opts.theme,
-    });
-    for (const t of map.triggers || []) {
-      if (t.kind !== 'warp' || !t.data) continue;
-      const role = t.data.stair || t.data.dir;
-      if (role === 'up') {
-        Object.assign(t.data, { stair: 'up', kind: 'stairs', exit: true, ...surface });
-      } else if (role === 'down') {
-        t.kind = 'sign';
-        t.step = false;
-        t.data = { text: flavour };
-      }
-    }
-    map.id = id;
-    map.name = name;
-    map.region = 'baldurs-gate';
-    map.level = opts.level;
-    map.depth = 1;
-    if (opts.encounterTable) map.encounterTable = opts.encounterTable;
-    normalizeTriggers(map);
-    return map;
-  };
-}
-
 const buildSewers = packDungeon(
   'bg-sewers', 'The Lower City Sewers',
-  { gen: 'dungeon', theme: 'dungeon', biome: 'dungeon', size: 'large', level: 12 },
+  { gen: 'dungeon', theme: 'dungeon', biome: 'dungeon', size: 'large', level: 12, region: 'baldurs-gate', connect: false },
   { map: 'bg-heapside', x: 10, y: 35, dir: 'up' },
   'The stair drops away into standing black water. Whatever is down there has been down there a long while, and the Guild pays nobody enough to find out what.',
 );
 
 const buildTumbledownCrypts = packDungeon(
   'tumbledown-crypts', 'The Tumbledown Crypts',
-  { gen: 'crypt', theme: 'crypt', biome: 'crypt', size: 'medium', level: 12 },
+  { gen: 'crypt', theme: 'crypt', biome: 'crypt', size: 'medium', level: 12, region: 'baldurs-gate', connect: false },
   { map: 'bg-tumbledown', x: 30, y: 25, dir: 'up' },
   'A second stair goes down past this one and is shut with a Kelemvorite ward — a grey seal, still bright, renewed within the tenday. The Gravewarden renews it himself and will not say why.',
 );
@@ -3300,3 +2982,34 @@ export const REGION_LINKS = [
   { a: 'bg-tumbledown', aWarp: [30, 24], aLand: [30, 25], b: 'tumbledown-crypts', bWarp: null, bLand: null, toB: 'down', toA: 'up', kind: 'cave' },
 ];
 
+
+// ---------------------------------------------------------------------------
+// UPPER FLOORS — see the same block at the foot of maps_south.js
+// ---------------------------------------------------------------------------
+const INN_FLOORS = [
+  {
+    inn: 'low-lantern', name: 'The Low Lantern — Second Deck',
+    stair: [19, 1], land: [19, 2], rooms: 3, wall: 'LOG_WALL',
+    desc: 'Hammocks on the second deck, and the Chionthar moving under you all night.',
+  },
+  {
+    inn: 'blushing-mermaid', name: 'The Blushing Mermaid — Upstairs',
+    stair: [21, 17], land: [21, 18], rooms: 4, wall: 'WATTLE_WALL',
+    desc: 'Rooms over the taproom, and a landlady who has heard worse than whatever you did.',
+  },
+  {
+    inn: 'elfsong-tavern', name: 'The Elfsong — Guest Rooms',
+    stair: [23, 17], land: [23, 18], rooms: 5, wall: 'STONE_WALL',
+    desc: 'Clean rooms, barred shutters, and a voice below singing in Elvish until you sleep.',
+  },
+  {
+    inn: 'sharess-caress', name: 'Sharess’s Caress — Upper Rooms',
+    stair: [21, 15], land: [21, 16], rooms: 4, wall: 'BRICK_WALL',
+    desc: 'Rooms on the bridge side, and the river under the floor all night.',
+  },
+].map((s) => innFloor({ region: 'baldurs-gate', music: 'inn', ...s }));
+
+for (const f of INN_FLOORS) {
+  REGION_MAPS[f.id] = f.def;
+  REGION_LINKS.push(f.link);
+}

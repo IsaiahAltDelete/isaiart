@@ -652,9 +652,73 @@ function pulseWave(duty) {
   return w;
 }
 
+// ---------------------------------------------------------------------------
+// HARMONIC SPECTRA — what actually makes a note sound like an instrument.
+//
+// `triangle` and `sawtooth` are the two shapes every synthesised game score in
+// the world is made of, and the ear knows them instantly: they are the "beep".
+// A real instrument is a specific recipe of harmonic strengths, and the Web
+// Audio API will build an oscillator from one directly (createPeriodicWave), so
+// a violin can be a violin without shipping a single byte of sample.
+//
+// Each list is the amplitude of harmonic 1, 2, 3, … relative to the loudest.
+// The characteristic facts are the ones worth knowing:
+//   • a clarinet's cylindrical bore suppresses EVEN harmonics — that hollow, woody
+//     sound is literally the missing 2nd, 4th and 6th;
+//   • an oboe and a bassoon are weak at the fundamental and loud at 2–4, which is
+//     why they cut through an orchestra at low volume;
+//   • a flute is very nearly a sine wave, and is carried by breath noise instead;
+//   • brass gets its bite from strong upper-middle harmonics, and the higher the
+//     instrument the further up that peak sits.
+// ---------------------------------------------------------------------------
+
+const SPECTRA = {
+  // strings — rich, dense, slow rolloff
+  violin: [1, 0.72, 0.55, 0.42, 0.38, 0.28, 0.22, 0.18, 0.14, 0.11, 0.09, 0.07, 0.05, 0.04, 0.03],
+  viola: [1, 0.68, 0.48, 0.34, 0.26, 0.19, 0.14, 0.10, 0.08, 0.06, 0.04, 0.03],
+  cello: [1, 0.75, 0.50, 0.35, 0.26, 0.18, 0.13, 0.09, 0.07, 0.05, 0.03],
+  contrabass: [1, 0.60, 0.32, 0.18, 0.11, 0.07, 0.04, 0.02],
+  // brass — the peak climbs with the instrument
+  horn: [1, 0.55, 0.30, 0.16, 0.09, 0.05, 0.03],
+  trombone: [0.90, 1, 0.70, 0.45, 0.30, 0.20, 0.13, 0.08, 0.05],
+  trumpet: [0.70, 1, 0.85, 0.62, 0.45, 0.32, 0.22, 0.15, 0.10, 0.07, 0.05],
+  tuba: [1, 0.70, 0.38, 0.20, 0.11, 0.06, 0.03],
+  // double reeds — quiet fundamental, loud 2nd and 3rd
+  oboe: [0.45, 1, 0.90, 0.60, 0.40, 0.30, 0.20, 0.14, 0.10, 0.06],
+  bassoon: [0.50, 1, 0.75, 0.50, 0.30, 0.20, 0.12, 0.08, 0.05],
+  // single reed — odd harmonics only
+  clarinet: [1, 0.05, 0.60, 0.04, 0.35, 0.03, 0.22, 0.02, 0.12, 0.01, 0.06],
+  // air columns — almost pure
+  flute: [1, 0.25, 0.08, 0.04, 0.02],
+  panpipe: [1, 0.18, 0.10, 0.05, 0.02],
+};
+
+const _waveCache = new Map();
+
+/** A cached PeriodicWave for one named spectrum. Null if the context refuses. */
+function harmonicWave(name) {
+  if (_waveCache.has(name)) return _waveCache.get(name);
+  const spec = SPECTRA[name];
+  let w = null;
+  if (spec && state.ctx) {
+    const n = spec.length + 1;
+    const real = new Float32Array(n), imag = new Float32Array(n);
+    for (let k = 1; k < n; k++) imag[k] = spec[k - 1];
+    try { w = state.ctx.createPeriodicWave(real, imag, { disableNormalization: false }); } catch (e) { w = null; }
+  }
+  _waveCache.set(name, w);
+  return w;
+}
+
 /**
  * Build a decaying-noise impulse response — a serviceable stone hall without
  * shipping an audio file. `decay` shapes how fast it dies; `secs` is the tail.
+ *
+ * The tail alone reads as "processed"; what tells the ear the size of a room is
+ * the handful of DISCRETE early reflections that arrive before it — the first
+ * bounce off a wall, then the ceiling. Those are stamped in first, at times
+ * that suit a hall rather than a cupboard, and the two channels are built from
+ * separate noise so the reverb has width instead of sitting in your head.
  */
 function makeHallIR(ctx, secs = 2.0, decay = 2.5) {
   const rate = ctx.sampleRate;
@@ -672,6 +736,17 @@ function makeHallIR(ctx, secs = 2.0, decay = 2.5) {
     const pre = Math.floor(rate * 0.012);
     for (let i = len - 1; i >= pre; i--) d[i] = d[i - pre];
     for (let i = 0; i < pre; i++) d[i] = 0;
+
+    // Early reflections: the first few discrete bounces. These are what carry
+    // the SIZE of the room — without them a tail is just a wash. Times are
+    // slightly different per channel so the hall has width.
+    const taps = ch === 0
+      ? [[0.0191, 0.62], [0.0295, -0.48], [0.0438, 0.36], [0.0617, -0.27], [0.0834, 0.19]]
+      : [[0.0223, 0.58], [0.0331, -0.44], [0.0472, 0.33], [0.0663, -0.25], [0.0891, 0.17]];
+    for (const [t, a] of taps) {
+      const i = Math.floor(rate * t);
+      if (i < len) d[i] += a;
+    }
   }
   return buf;
 }
@@ -686,7 +761,16 @@ function setWave(osc, wave) {
     case 'saw': case 'sawtooth': osc.type = 'sawtooth'; return true;
     case 'sine': osc.type = 'sine'; return true;
     case 'triangle': osc.type = 'triangle'; return true;
-    case 'square': default: osc.type = 'square'; return true;
+    case 'square': osc.type = 'square'; return true;
+    default: {
+      // A named harmonic spectrum — 'violin', 'horn', 'clarinet'. Falls back to
+      // a sawtooth if the browser will not build the wave, so a missing
+      // spectrum is a duller note rather than silence.
+      const w = SPECTRA[wave] ? harmonicWave(wave) : null;
+      if (w) { osc.setPeriodicWave(w); return true; }
+      osc.type = SPECTRA[wave] ? 'sawtooth' : 'square';
+      return true;
+    }
   }
 }
 
@@ -764,6 +848,24 @@ function drumVoice(name, when, vol, dest) {
       osc({ f0: 92, f1: 46, dec: 0.42, vol: 0.95 * vol, type: 'sine' });
       osc({ f0: 138, f1: 70, dec: 0.16, vol: 0.22 * vol, type: 'triangle' });
       nz({ filter: { type: 'lowpass', freq: 600, q: 0.8, sweepTo: 160 }, dec: 0.09, vol: 0.14 * vol });
+      break;
+    // ── orchestral percussion ─────────────────────────────────────────────
+    case 'timp':           // timpani: a tuned kettle, pitch bending down as it rings
+      osc({ f0: 110, f1: 82, dec: 0.9, vol: 0.9 * vol, type: 'sine' });
+      osc({ f0: 165, f1: 124, dec: 0.5, vol: 0.30 * vol, type: 'sine' });
+      osc({ f0: 220, f1: 168, dec: 0.28, vol: 0.14 * vol, type: 'triangle' });
+      nz({ filter: { type: 'lowpass', freq: 800, q: 0.8, sweepTo: 180 }, dec: 0.12, vol: 0.16 * vol });
+      break;
+    case 'timphi':         // the higher of the pair, for the answering note
+      osc({ f0: 165, f1: 124, dec: 0.75, vol: 0.85 * vol, type: 'sine' });
+      osc({ f0: 248, f1: 186, dec: 0.4, vol: 0.26 * vol, type: 'sine' });
+      nz({ filter: { type: 'lowpass', freq: 950, q: 0.8, sweepTo: 220 }, dec: 0.1, vol: 0.14 * vol });
+      break;
+    case 'gong':           // tam-tam: a long inharmonic wash under a big moment
+      osc({ f0: 84, f1: 72, dec: 2.4, vol: 0.34 * vol, type: 'sine', atk: 0.02 });
+      osc({ f0: 131, f1: 118, dec: 2.0, vol: 0.20 * vol, type: 'triangle', atk: 0.03 });
+      osc({ f0: 197, f1: 174, dec: 1.6, vol: 0.13 * vol, type: 'triangle', atk: 0.04 });
+      nz({ filter: { type: 'bandpass', freq: 1800, q: 0.5 }, dec: 1.8, vol: 0.16 * vol, atk: 0.05 });
       break;
     case 'drip':           // water falling somewhere in the dark
       osc({ f0: 1500, f1: 620, dec: 0.10, vol: 0.30 * vol, type: 'sine', atk: 0.002 });
@@ -876,17 +978,37 @@ function musicVoice(layer, when, note, dur, vol, dest, transpose) {
   } else {
     // Subtractive: one oscillator per string course, slightly detuned so a lute's
     // doubled strings beat against each other the way real ones do.
-    const n = Math.max(1, inst.courses || 1);
+    //
+    // `section: n` is the same idea taken to an orchestra. Sixteen violinists
+    // are not one violin played louder — they are sixteen very slightly
+    // different pitches, starting at very slightly different moments, spread
+    // across the stage. That spread and that smear IS the sound of a section,
+    // and it is the difference between "a synth pad" and "the strings came in".
+    const sect = Math.max(0, inst.section || 0);
+    const n = Math.max(1, sect || inst.courses || 1);
+    const width = inst.width ?? (sect ? 0.55 : 0);
     for (let i = 0; i < n; i++) {
       const o = ctx.createOscillator();
       setWave(o, inst.wave || 'triangle');
-      o.frequency.setValueAtTime(f, when);
+      const t0 = sect ? when + arng.float(0, inst.smear ?? 0.022) : when;
+      o.frequency.setValueAtTime(f, t0);
       const spread = inst.spread || 0;
       const off = n === 1 ? 0 : (i - (n - 1) / 2) * spread;
-      try { o.detune.setValueAtTime(off + jitter(3), when); } catch (e) { /* ignore */ }
+      // Players are out of tune by a few cents in BOTH directions, never evenly.
+      const cents = sect ? arng.float(-(inst.detuneCents ?? 9), inst.detuneCents ?? 9) : jitter(3);
+      try { o.detune.setValueAtTime(off + cents, t0); } catch (e) { /* ignore */ }
       const pg = ctx.createGain();
-      pg.gain.value = 1 / n;
-      o.connect(pg); pg.connect(mix);
+      // Uneven weighting: a section is not n identical players.
+      pg.gain.value = (1 / n) * (sect ? arng.float(0.72, 1.28) : 1);
+      o.connect(pg);
+      if (width > 0 && typeof ctx.createStereoPanner === 'function') {
+        const pan = ctx.createStereoPanner();
+        pan.pan.value = n === 1 ? 0 : ((i / (n - 1)) * 2 - 1) * width;
+        pg.connect(pan); pan.connect(mix);
+      } else {
+        pg.connect(mix);
+      }
+      o._startAt = t0;
       sources.push(o);
     }
   }
@@ -943,7 +1065,7 @@ function musicVoice(layer, when, note, dur, vol, dest, transpose) {
     lfo.start(when); lfo.stop(stopAt);
   }
 
-  for (const o of sources) { o.start(when); o.stop(stopAt); }
+  for (const o of sources) { o.start(o._startAt || when); o.stop(stopAt); }
 }
 
 /**

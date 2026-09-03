@@ -4,14 +4,87 @@
 // so a character costs one drawImage per frame no matter how many layers it has.
 
 import { composeSprite, drawComposed, drawSprite, hasSprite, makeColorway, spriteDef } from './sprites.js';
+import { monsterArtFor } from './spritedata_monsters.js';
 import { SPRITE_W, SPRITE_H, DIRS } from '../constants.js';
 import { hashStr } from '../core/rng.js';
 import { resolveItem } from '../data/items.js';
+import { SPECIES } from '../data/species.js';
 
 // Draw order, back to front. Cloaks go behind the body; hair behind a helm.
-const ORDER = ['cloak', 'tail', 'body', 'ears', 'hair', 'beard', 'outfit', 'horns', 'helm', 'shield', 'weapon'];
+const ORDER = ['cloak', 'tail', 'body', 'boots', 'ears', 'face', 'hair', 'beard', 'outfit', 'horns', 'helm', 'shield', 'weapon'];
+
+/**
+ * The species sprite flags for a character, lineage overriding species.
+ * Read from the data rather than the saved appearance so a character rolled
+ * before these layers existed still grows their tusks.
+ */
+function speciesMods(ch) {
+  const sp = SPECIES?.[ch.speciesId];
+  if (!sp) return {};
+  const lin = (sp.lineages || []).find((l) => l.id === ch.lineageId);
+  return { ...(sp.spriteMods || {}), ...(lin?.spriteMods || {}) };
+}
 
 // --- equipment -> sprite layer mapping ------------------------------------
+
+/**
+ * The rest of the outfit: what a class puts on its head, over its shoulders and
+ * on its feet when the player has not chosen otherwise.
+ *
+ * `'auto'` is the point of this. Before it, `appearance.helmStyle` defaulted to
+ * `'helm-none'`, which is also what a player picks when they want a bare head --
+ * the two were the same value, so a class default could not be applied without
+ * silently overriding a deliberate choice. `'auto'` means "you decide", and
+ * `'helm-none'` now means what it says.
+ *
+ * Characters saved before this have real style ids and so keep exactly the look
+ * they had. Boots are the exception: nothing ever stored a bootStyle, so an old
+ * character reads as `'auto'` and gets the boots of their calling.
+ */
+const CLASS_KIT = {
+  barbarian: { helm: 'helm-none', cloak: 'cloak-short', boots: 'boots-wraps' },
+  bard: { helm: 'helm-cap', cloak: 'cloak-short', boots: 'boots-court' },
+  cleric: { helm: 'helm-circlet', cloak: 'cloak-none', boots: 'boots-cuffed' },
+  druid: { helm: 'helm-hood', cloak: 'cloak-none', boots: 'boots-wraps' },
+  fighter: { helm: 'helm-cap', cloak: 'cloak-none', boots: 'boots-tall' },
+  monk: { helm: 'helm-none', cloak: 'cloak-none', boots: 'boots-sandal' },
+  paladin: { helm: 'helm-cap', cloak: 'cloak-long', boots: 'boots-plate' },
+  ranger: { helm: 'helm-hood', cloak: 'cloak-short', boots: 'boots-tall' },
+  rogue: { helm: 'helm-hood', cloak: 'cloak-short', boots: 'boots-cuffed' },
+  sorcerer: { helm: 'helm-none', cloak: 'cloak-short', boots: 'boots-court' },
+  warlock: { helm: 'helm-none', cloak: 'cloak-long', boots: 'boots-tall' },
+  wizard: { helm: 'helm-wizard', cloak: 'cloak-long', boots: 'boots-cuffed' },
+};
+
+const KIT_FALLBACK = { helm: 'helm-none', cloak: 'cloak-none', boots: 'boots-cuffed' };
+
+/** One slot of a class's default kit. */
+function kitFor(ch, slot) {
+  const k = CLASS_KIT[ch.classes?.[0]?.id];
+  return (k && k[slot]) || KIT_FALLBACK[slot];
+}
+
+/** Resolve a chosen style, letting 'auto' (or nothing at all) defer to the class. */
+function styleOr(chosen, ch, slot) {
+  if (chosen && chosen !== 'auto') return chosen;
+  return kitFor(ch, slot);
+}
+
+/** What each calling wears when it is not wearing armour. */
+const CLASS_DRESS = {
+  barbarian: 'outfit-fur',
+  bard: 'outfit-doublet',
+  cleric: 'outfit-vestments',
+  druid: 'outfit-druidwear',
+  fighter: 'outfit-gambeson',
+  monk: 'outfit-monk',
+  paladin: 'outfit-tabard',
+  ranger: 'outfit-ranger',
+  rogue: 'outfit-jerkin',
+  sorcerer: 'outfit-robe',
+  warlock: 'outfit-coat',
+  wizard: 'outfit-robe',
+};
 
 /** Which body-armour sprite an equipped armour maps to. */
 function outfitFor(ch) {
@@ -31,11 +104,11 @@ function outfitFor(ch) {
     if (it.category === 'medium') return 'outfit-scale';
     if (it.category === 'light') return 'outfit-leather';
   }
-  // No armour: dress by class so an unarmoured wizard still looks like a wizard.
+  // No armour: dress by class. This used to fold twelve classes into three
+  // looks -- robe, wrap, or the same brown tunic -- so an unarmoured party was
+  // six people in one costume.
   const cls = ch.classes?.[0]?.id;
-  if (cls === 'wizard' || cls === 'sorcerer' || cls === 'warlock') return 'outfit-robe';
-  if (cls === 'monk') return 'outfit-monk';
-  if (cls === 'druid' || cls === 'cleric') return 'outfit-robe';
+  if (CLASS_DRESS[cls] && hasSprite(CLASS_DRESS[cls])) return CLASS_DRESS[cls];
   return ch.appearance?.outfitStyle || 'outfit-tunic';
 }
 
@@ -91,7 +164,24 @@ function helmFor(ch) {
     if (String(id).includes('horn')) return 'helm-horned';
     return 'helm-cap';
   }
-  return ch.appearance?.helmStyle || 'helm-none';
+  return styleOr(ch.appearance?.helmStyle, ch, 'helm');
+}
+
+/** Cloaks are appearance-only; nothing in the equipment list maps to one yet. */
+function cloakFor(ch) {
+  return styleOr(ch.appearance?.cloakStyle, ch, 'cloak');
+}
+
+/**
+ * Boots. Armour on the body implies armoured feet: a character in plate gets
+ * sabatons whatever their calling would otherwise have put them in.
+ */
+function bootsFor(ch) {
+  const a = ch.appearance || {};
+  if (a.bootStyle && a.bootStyle !== 'auto') return a.bootStyle;
+  const armor = outfitFor(ch);
+  if (armor === 'outfit-plate' || armor === 'outfit-half-plate') return 'boots-plate';
+  return kitFor(ch, 'boots');
 }
 
 function bodyFor(ch) {
@@ -99,7 +189,13 @@ function bodyFor(ch) {
   if (a.bodyStyle) return a.bodyStyle;
   const size = ch.size || 'medium';
   if (size === 'small') return 'body-small';
+  // A dwarf is not a short human and cannot be drawn as one -- the head is
+  // pinned to rows 2-9 by every helm and hair layer. The stout frame carries
+  // it instead: thicker chest, shorter shank.
+  const sm = speciesMods(ch);
+  if (sm.build === 'stout') return 'body-stout';
   const build = a.build || 'normal';
+  if (build === 'stout') return 'body-stout';
   if (build === 'slim') return 'body-slim';
   if (build === 'broad') return 'body-broad';
   if (build === 'tall') return 'body-tall';
@@ -143,10 +239,18 @@ export function actorLayers(ch, frame) {
   const L = [];
   const push = (name, extra) => { if (name && name.endsWith('-none') === false && hasSprite(name)) L.push({ name, frame, colorway: cw, ...extra }); };
 
-  push(a.cloakStyle || 'cloak-none');
+  push(cloakFor(ch));
   if (a.tail) push(`tail-${a.tail}`);
   push(bodyFor(ch));
-  if (a.ears && a.ears !== 'round') push(`ears-${a.ears}`);
+  push(bootsFor(ch));
+  const sm = speciesMods(ch);
+  const ears = a.ears || sm.ears;
+  if (ears && ears !== 'round' && ears !== 'none') push(`ears-${ears}`);
+  // Species features, over the face and under the hair.
+  if (a.scales ?? sm.scales) push('face-scales');
+  if (a.snout ?? sm.snout) push((a.fur ?? sm.fur) ? 'face-muzzle' : 'face-snout');
+  if (a.tusks ?? sm.tusks) push('face-tusks');
+  if (a.markings ?? sm.markings) push('face-markings');
   const helm = helmFor(ch);
   // A great helm hides the hair; a circlet or cap sits on top of it.
   if (helm !== 'helm-great' && helm !== 'helm-hood') push(`hair-${a.hairStyle || 'short'}`);
@@ -166,15 +270,22 @@ function actorSig(ch, frame) {
   const idOf = (v) => (typeof v === 'string' ? v : v?.id || '');
   return hashStr([
     frame, bodyFor(ch), a.hairStyle, a.beard, a.ears, a.horns, a.tail,
-    a.cloakStyle, a.helmStyle, a.outfitStyle,
+    ch.speciesId, ch.lineageId, ch.classes?.[0]?.id,
+    a.cloakStyle, a.helmStyle, a.outfitStyle, a.bootStyle,
+    helmFor(ch), cloakFor(ch), bootsFor(ch),
     idOf(eq.armor), idOf(eq.mainHand), idOf(eq.offHand), idOf(eq.helm),
     a.skin, a.hair, a.eye, a.outfit, a.outfitAlt, a.accent, a.metal, a.leather,
   ].join('')).toString(36);
 }
 
 /** Get the composed canvas for one frame of a character. */
-export function actorCanvas(ch, frame) {
-  const layers = actorLayers(ch, frame);
+export function actorCanvas(ch, frame, opts = {}) {
+  let layers = actorLayers(ch, frame);
+  if (!layers.length) return null;
+  // The weapon can be pulled out and drawn separately so it can swing on its
+  // own — a body that lunges with a sword welded to its fist is a body being
+  // shoved, not a body striking. `omitWeapon` leaves the hand empty.
+  if (opts.omitWeapon) layers = layers.filter((l) => !String(l.name).startsWith('wep-'));
   if (!layers.length) return null;
   // Composite height is the tallest layer so hats and weapons aren't clipped.
   let h = SPRITE_H, w = SPRITE_W;
@@ -182,7 +293,14 @@ export function actorCanvas(ch, frame) {
     const d = spriteDef(l.name);
     if (d) { h = Math.max(h, d.h); w = Math.max(w, d.w); }
   }
-  return composeSprite(`${actorSig(ch, frame)}|${w}x${h}`, w, h, layers);
+  const sig = `${actorSig(ch, frame)}${opts.omitWeapon ? '|nw' : ''}|${w}x${h}`;
+  return composeSprite(sig, w, h, layers);
+}
+
+/** The character's weapon sprite name, or null when their hands are empty. */
+export function weaponSpriteOf(ch) {
+  const n = weaponFor(ch);
+  return n && n !== 'wep-none' && hasSprite(n) ? n : null;
 }
 
 // --- public draw API ------------------------------------------------------
@@ -198,21 +316,67 @@ export function drawActor(ctx, ch, x, y, opts = {}) {
   const frame = opts.frame || `${dir}-${opts.moving ? [0, 1, 0, 2][(opts.phase | 0) & 3] : (opts.idleBob ? 3 : 0)}`;
 
   // Monsters and NPCs that ship as a single finished sprite skip composition.
-  if (ch.sprite && hasSprite(ch.sprite) && !ch.layered) {
-    return drawSprite(ctx, ch.sprite, frame, x, y, {
+  // A creature resolves its art through the bestiary's own map, which knows
+  // that 'dragon' means dragon-adult in red at 62% tint and that 'spider' means
+  // the phase-spider body. Without this every creature whose catalogue sprite
+  // name has no art — 127 of 275, dragons included — fell through to the
+  // LAYERED path below and was drawn as a human being.
+  const art = ch.monsterId && !ch.layered ? monsterArtFor(ch.monsterId, ch.sprite) : null;
+  const spriteName = art ? art.sprite : ch.sprite;
+  if (spriteName && hasSprite(spriteName) && !ch.layered) {
+    // Three tints can apply, in order of authority: the one the CALLER passes
+    // (a hit flash, a corpse), the one on the INSTANCE (the catalogue's own
+    // colour for this creature), and the FAMILY one (which colour of dragon
+    // this is). Each carries its own strength — a caller's amount belongs only
+    // to a caller's tint, and it is routinely 0, so it must not be inherited by
+    // the other two or a red dragon comes out grey.
+    let tint = opts.tint || null;
+    let tintAmt = opts.tintAmt;
+    if (!tint && ch.tint) { tint = ch.tint; tintAmt = art && art.tint ? art.tintAmt : 0.6; }
+    if (!tint && art && art.tint) { tint = art.tint; tintAmt = art.tintAmt; }
+    return drawSprite(ctx, spriteName, frame, x, y, {
       colorway: ch.colorway || (ch.appearance ? colorwayOf(ch) : null),
-      scale: opts.scale || 1, alpha: opts.alpha, tint: opts.tint, tintAmt: opts.tintAmt,
+      scale: (opts.scale || 1) * (art ? art.scale : 1),
+      alpha: opts.alpha, tint, tintAmt,
       shadow: opts.shadow !== false, flip: opts.flip, bob: opts.bob,
-      rotate: opts.downed ? Math.PI / 2 : 0,
+      rotate: opts.rotate != null ? opts.rotate : (opts.downed ? Math.PI / 2 : 0),
     });
   }
 
-  const canvas = actorCanvas(ch, frame);
+  // A swing: the weapon layer is composed separately and rotated about the
+  // fist, so the blade travels through the arc while the body holds its pose.
+  // `swing` is radians; 0 is the rest position.
+  const swing = opts.swing || 0;
+  const wep = swing ? weaponSpriteOf(ch) : null;
+
+  const canvas = actorCanvas(ch, frame, { omitWeapon: !!wep });
   if (!canvas) return false;
-  drawComposed(ctx, canvas, x, y, {
+  const common = {
     scale: opts.scale || 1, alpha: opts.alpha, tint: opts.tint, tintAmt: opts.tintAmt,
-    shadow: opts.shadow !== false, flip: opts.flip, bob: opts.bob, sig: actorSig(ch, frame),
-  });
+    flip: opts.flip, bob: opts.bob,
+    rotate: opts.rotate != null ? opts.rotate : (opts.downed ? Math.PI / 2 : 0),
+  };
+  drawComposed(ctx, canvas, x, y, { ...common, shadow: opts.shadow !== false, sig: `${actorSig(ch, frame)}${wep ? '|nw' : ''}` });
+
+  if (wep) {
+    const wc = composeSprite(`~wep|${wep}|${frame}|${actorSig(ch, frame)}`,
+      spriteDef(wep)?.w || SPRITE_W, spriteDef(wep)?.h || SPRITE_H,
+      [{ name: wep, frame, colorway: colorwayOf(ch) }]);
+    if (wc) {
+      const sc = opts.scale || 1;
+      const left = !!(opts.facingLeft || opts.flip);
+      // Pivot at the fist: a little under half way up the sprite, off centre
+      // on the side the character is facing.
+      const px = x + (left ? -3 : 3) * sc;
+      const py = y - (wc.height * 0.45) * sc;
+      ctx.save();
+      ctx.translate(Math.round(px), Math.round(py));
+      ctx.rotate(swing * (left ? -1 : 1));
+      ctx.translate(-Math.round(px), -Math.round(py));
+      drawComposed(ctx, wc, x, y, { ...common, shadow: false, sig: `${wep}|${frame}` });
+      ctx.restore();
+    }
+  }
   return true;
 }
 
@@ -244,6 +408,10 @@ export function randomAppearance(species, r, opts = {}) {
   const cwPal = species?.colorways || {};
   const mods = species?.spriteMods || {};
   const pick = (arr, fb) => (arr && arr.length ? r.pick(arr) : fb);
+  // A class dresses in its own colours when we know the class. Without this
+  // the outfit came from one generic swatch list and a druid could roll the
+  // same brown as a warlock.
+  const cp = classPalette(opts.classId, r);
   const HAIR = ['short', 'long', 'ponytail', 'braid', 'curly', 'topknot', 'bob', 'wild', 'widowspeak', 'shaved', 'mohawk', 'bald'];
   const BEARD = mods.beard === 'common' ? ['full', 'braided', 'goatee', 'mustache', 'stubble']
     : mods.beard === 'none' ? ['none'] : ['none', 'none', 'stubble', 'goatee', 'full'];
@@ -257,30 +425,109 @@ export function randomAppearance(species, r, opts = {}) {
     hairStyle: r.pick(HAIR),
     beard: r.pick(BEARD),
     eye: pick(cwPal.eye, '#37527a'),
-    outfit: r.pick(OUTFITS),
-    outfitAlt: r.pick(OUTFITS),
-    accent: r.pick(['#e3b34a', '#c0c6d0', '#b06a2a', '#7fbf6a']),
-    metal: r.pick(['#aab2c0', '#c8b06a', '#9a8f80']),
-    leather: r.pick(['#6b4a2a', '#54381f', '#7a5a34']),
-    cloth: r.pick(['#c8b58a', '#a89878', '#d8ccae']),
+    outfit: cp ? cp.main : r.pick(OUTFITS),
+    outfitAlt: cp ? cp.alt : r.pick(OUTFITS),
+    accent: cp ? cp.accent : r.pick(['#e3b34a', '#c0c6d0', '#b06a2a', '#7fbf6a']),
+    metal: cp ? cp.metal : r.pick(['#aab2c0', '#c8b06a', '#9a8f80']),
+    leather: cp ? cp.leather : r.pick(['#6b4a2a', '#54381f', '#7a5a34']),
+    cloth: cp ? cp.cloth : r.pick(['#c8b58a', '#a89878', '#d8ccae']),
     ears: mods.ears && mods.ears !== 'round' ? mods.ears : null,
     horns: mods.horns ? r.pick(['curved', 'straight', 'ram', 'crown']) : null,
     tail: mods.tail ? r.pick(['thin', 'tufted', 'cat', 'scaled']) : null,
     hornColor: pick(cwPal.horn, '#8c8377'),
-    cloakStyle: r.chance(0.35) ? r.pick(['cloak-short', 'cloak-long', 'cloak-hooded']) : 'cloak-none',
-    helmStyle: 'helm-none',
+    // 'auto' hands these to the class. A player who wants a bare head or no
+    // cloak picks the explicit 'none' and it is honoured.
+    cloakStyle: 'auto',
+    helmStyle: 'auto',
+    bootStyle: 'auto',
     outfitStyle: 'outfit-tunic',
     height: mods.height || 1,
   };
+}
+
+
+/**
+ * What each calling actually wears, in colour.
+ *
+ * The outfit GRIDS gave every class its own cut, but the colours came out of
+ * one generic eight-swatch list, so a druid and a warlock could both roll the
+ * same brown and the party read as one costume in different silhouettes. The
+ * NPC families in spritedata_chars.js look as distinct as they do for exactly
+ * this reason: each one is pinned to a coherent palette. This gives the player
+ * classes the same treatment, with two or three sets each so two clerics in
+ * one party are not twins.
+ *
+ * main = the garment, alt = its second colour, accent = trim and metal fittings,
+ * cloth = the shirt/underlayer the body layer shows at the arms.
+ */
+export const CLASS_PALETTE = Object.freeze({
+  barbarian: [
+    { main: '#8a5a3a', alt: '#5a3f22', accent: '#c8b06a', metal: '#9a8f80', leather: '#6b4a2a', cloth: '#b8a678' },
+    { main: '#6a5a4a', alt: '#3f2c18', accent: '#b8ab97', metal: '#8e939c', leather: '#4e3218', cloth: '#a89878' },
+  ],
+  bard: [
+    { main: '#8a2a5a', alt: '#c8a860', accent: '#f0d264', metal: '#c8b06a', leather: '#6b4a2a', cloth: '#d8ccae' },
+    { main: '#2f4f7f', alt: '#c8306a', accent: '#e3b34a', metal: '#c8b06a', leather: '#54381f', cloth: '#d8ccae' },
+    { main: '#3f6b3a', alt: '#e0a020', accent: '#f0d264', metal: '#c8b06a', leather: '#6b4a2a', cloth: '#c8b58a' },
+  ],
+  cleric: [
+    { main: '#e8e2d2', alt: '#c8b06a', accent: '#e3b34a', metal: '#c8b06a', leather: '#7a6a48', cloth: '#ddd6c4' },
+    { main: '#dfe4ec', alt: '#8a9ab8', accent: '#c0c6d0', metal: '#aab2c0', leather: '#6b4a2a', cloth: '#d8ccae' },
+  ],
+  druid: [
+    { main: '#5a6b3a', alt: '#7a5a34', accent: '#8a9a6a', metal: '#9a8f80', leather: '#4e3218', cloth: '#b8a678' },
+    { main: '#6a7a4a', alt: '#54381f', accent: '#c8b06a', metal: '#8e939c', leather: '#5a3f22', cloth: '#a89878' },
+  ],
+  fighter: [
+    { main: '#7a3030', alt: '#4a4a52', accent: '#c4a24a', metal: '#a8b0bd', leather: '#57381d', cloth: '#c8b58a' },
+    { main: '#3a4a6a', alt: '#4a4a52', accent: '#c0c6d0', metal: '#9aa2b0', leather: '#4e3218', cloth: '#a8a090' },
+  ],
+  monk: [
+    { main: '#c07a2a', alt: '#7a2a2a', accent: '#e0a020', metal: '#9a8f80', leather: '#6b4a2a', cloth: '#d8ccae' },
+    { main: '#8a6a3a', alt: '#4a3a2a', accent: '#c8b06a', metal: '#8e939c', leather: '#54381f', cloth: '#c8b58a' },
+  ],
+  paladin: [
+    { main: '#2a3a6a', alt: '#c0c6d0', accent: '#e3b34a', metal: '#c0c6d0', leather: '#3f2c18', cloth: '#d8ccae' },
+    { main: '#7a1f1f', alt: '#e8e2d2', accent: '#c8b06a', metal: '#aab2c0', leather: '#4e3218', cloth: '#ddd6c4' },
+  ],
+  ranger: [
+    { main: '#3f5f3a', alt: '#4e3218', accent: '#8a6a2a', metal: '#8e939c', leather: '#4e3218', cloth: '#5a6b3a' },
+    { main: '#4a5a4a', alt: '#54381f', accent: '#a89878', metal: '#9a8f80', leather: '#5a3f22', cloth: '#6a7a4a' },
+  ],
+  rogue: [
+    { main: '#3a3a42', alt: '#2e2116', accent: '#8a2a2a', metal: '#8e939c', leather: '#2e2116', cloth: '#5a5a62' },
+    { main: '#2f3a4a', alt: '#3f2c18', accent: '#6aa8b0', metal: '#8e939c', leather: '#3f2c18', cloth: '#4a5a6a' },
+  ],
+  sorcerer: [
+    { main: '#8a1f3a', alt: '#c8306a', accent: '#f0d264', metal: '#c8b06a', leather: '#54381f', cloth: '#d8ccae' },
+    { main: '#5a2a6a', alt: '#8a2a5a', accent: '#e3b34a', metal: '#c8b06a', leather: '#4e3218', cloth: '#c8b58a' },
+  ],
+  warlock: [
+    { main: '#2a2230', alt: '#5a2a6a', accent: '#b07ae0', metal: '#8e939c', leather: '#2e2116', cloth: '#c8b58a' },
+    { main: '#22303a', alt: '#2a5a5a', accent: '#6aa8b0', metal: '#8e939c', leather: '#3f2c18', cloth: '#a8a090' },
+  ],
+  wizard: [
+    { main: '#2f4f7f', alt: '#1c2a4a', accent: '#c8b06a', metal: '#c8b06a', leather: '#54381f', cloth: '#d8ccae' },
+    { main: '#3a2a5a', alt: '#5a4a7a', accent: '#e3b34a', metal: '#c8b06a', leather: '#4e3218', cloth: '#c8b58a' },
+  ],
+});
+
+/** One of a class's palettes, or null for a class with none listed. */
+export function classPalette(classId, r) {
+  const sets = CLASS_PALETTE[classId];
+  if (!sets || !sets.length) return null;
+  if (r && typeof r.pick === 'function') return r.pick(sets);
+  return sets[0];
 }
 
 /** Options the character-creation appearance step cycles through. */
 export const APPEARANCE_OPTIONS = {
   hairStyle: ['short', 'long', 'ponytail', 'braid', 'curly', 'topknot', 'bob', 'wild', 'widowspeak', 'mohawk', 'shaved', 'bald'],
   beard: ['none', 'stubble', 'goatee', 'mustache', 'full', 'braided'],
-  build: ['slim', 'normal', 'broad', 'tall'],
-  cloakStyle: ['cloak-none', 'cloak-short', 'cloak-long', 'cloak-hooded'],
-  helmStyle: ['helm-none', 'helm-cap', 'helm-hood', 'helm-circlet', 'helm-horned', 'helm-wizard', 'helm-great'],
+  build: ['slim', 'normal', 'broad', 'stout', 'tall'],
+  cloakStyle: ['auto', 'cloak-none', 'cloak-short', 'cloak-long', 'cloak-hooded'],
+  helmStyle: ['auto', 'helm-none', 'helm-cap', 'helm-hood', 'helm-circlet', 'helm-horned', 'helm-wizard', 'helm-great'],
+  bootStyle: ['auto', 'boots-none', 'boots-tall', 'boots-cuffed', 'boots-sandal', 'boots-wraps', 'boots-plate', 'boots-court'],
   outfitStyle: ['outfit-tunic', 'outfit-robe', 'outfit-leather', 'outfit-noble', 'outfit-peasant', 'outfit-monk'],
   horns: [null, 'curved', 'straight', 'ram', 'crown'],
   tail: [null, 'thin', 'tufted', 'cat', 'scaled'],

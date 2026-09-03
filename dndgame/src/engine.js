@@ -16,6 +16,8 @@ import { FX } from './render/fx.js';
 // ui/kit.js pulls in render/sprites.js, core/rng.js and constants.js only, so
 // this does not close a cycle back onto the engine.
 import { UI } from './ui/kit.js';
+import { Save } from './core/save.js';
+import { bus } from './core/events.js';
 
 /**
  * How deep the canvas state stack is ever allowed to get in one frame.
@@ -57,6 +59,8 @@ export const Game = {
 
     Input.attach(this.canvas);
     window.addEventListener('resize', () => this.resize());
+    // Window Scale lives in Settings > Display; re-fit the moment it changes.
+    bus.on('settings:changed', () => this.resize());
     this.resize();
 
     if (rootScene) this.push(rootScene);
@@ -73,6 +77,15 @@ export const Game = {
     let s = Math.min(cw / VIEW_W, chh / VIEW_H);
     s = s >= 1 ? Math.floor(s) : s;
     if (s <= 0) s = 1;
+    // Settings > Display > Window Scale. 'auto' fills the window, which on a
+    // 1080p monitor means 4x -- a 5px font printed 20px tall and menus to
+    // match. Pinning it to 2 or 3 keeps the UI the size it was designed at and
+    // letterboxes the rest. The option has always been in the list; nothing
+    // read it, so every window silently ran at maximum.
+    let pref = 'auto';
+    try { pref = Save.settings.scale; } catch { pref = 'auto'; }
+    const pinned = Number(pref);
+    if (pref !== 'auto' && Number.isFinite(pinned) && pinned > 0) s = Math.min(pinned, s);
     this.scale = s;
     const w = Math.round(VIEW_W * s), h = Math.round(VIEW_H * s);
     this.canvas.style.width = w + 'px';

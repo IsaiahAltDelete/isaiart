@@ -407,7 +407,7 @@ const RAW = {
       hair: ['#8c2f1e', '#b34a24', '#c96a2a', '#7a4a22', '#5a3418', '#3a2414', '#1c1410', '#5f4a3a', '#7f7f7f', '#a8a8a8', '#e2e2e2', '#d9a441'],
       eye: ['#3b2a1a', '#5a3d22', '#2f6b8f', '#3f7a4a', '#7a7a7a', '#c9a227', '#4a3a55', '#1b1b1b'],
     },
-    spriteMods: { ears: 'round', horns: false, tail: false, beard: 'common', height: 0.85, build: 'broad', snout: false, scales: false, fur: false, wings: false },
+    spriteMods: { ears: 'round', horns: false, tail: false, beard: 'common', height: 0.85, build: 'stout', snout: false, scales: false, fur: false, wings: false },
   },
 
   // =========================================================================

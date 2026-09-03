@@ -28,6 +28,7 @@
 // `items.js` already use; the shape is identical either side of it.
 
 import { SOUTH_CAST, SOUTH_RECRUITS } from './npcs_south.js';
+import { EXTRA_CAST } from './npcs_extra.js';
 
 // ---------------------------------------------------------------------------
 // deepFreeze — recursive Object.freeze for the exported catalogues (HARD RULE 8).
@@ -405,7 +406,11 @@ const CAST = [
     desc: 'Twelve, furious, and entirely out of tears. She has decided that when she is grown she will kill every Redbrand in Faerûn, and she means it.',
     role: 'flavor', tag: 'child', species: 'human', sprite: 'npc-child', voice: 'fierce',
     colorway: cw('#e8bd95', '#5a3a20', '#4a3a2a', '#5a4a6a', '#a89878', '#9a9aa4', '#6b4a2a', '#c8b58a', '#8a2a2a'),
-    map: 'phandalin', x: 29, y: 23, dir: 'left', wander: 1,
+    // Moved one tile west and one north when Barthen's Provisions grew to the
+    // six-row footprint its 18x14 interior is the inside of: (29,23) is now
+    // the shed's north-west corner. She still stands with her mother outside
+    // the boarded Dendrar house.
+    map: 'phandalin', x: 28, y: 22, dir: 'left', wander: 1,
     dialogue: 'nilsa', quests: ['nilsas-courage'],
   }),
 
@@ -699,7 +704,7 @@ const CAST = [
 // ===========================================================================
 
 /** Every placed NPC in the game, keyed by id — the North, then the south. */
-const ALL = CAST.concat(SOUTH_CAST);
+const ALL = CAST.concat(SOUTH_CAST, EXTRA_CAST);
 export const NPCS = deepFreeze(Object.fromEntries(ALL.map((n) => [n.id, n])));
 export const NPC_IDS = Object.freeze(Object.keys(NPCS));
 

@@ -1167,6 +1167,14 @@ export const DIALOGUE = deepFreeze({
             failure: 'haggle-bad',
             do: { recruit: { id: 'sister-garaele', cost: 40 } },
           },
+          {
+            // Charm Person on a Harper agent of Tymora. She will not thank you
+            // for it when it wears off, but she will already be on the road.
+            text: 'Twenty, Sister, and you know it is the right road. [Charmed]',
+            if: { charmed: true },
+            do: { recruit: { id: 'sister-garaele', cost: 20 } },
+            goto: 'haggle-good',
+          },
           { text: 'Not yet. Keep the shrine.', goto: 'hub' },
         ],
       },
@@ -1244,6 +1252,14 @@ export const DIALOGUE = deepFreeze({
             success: 'ledger-yes',
             failure: 'ledger-no',
             do: { quest: 'the-exchange-ledger' },
+          },
+          {
+            // The Zhentarim's woman in Phandalin, charmed into candour. DC 18
+            // is a wall at low level; a 1st-level slot is the other way round it.
+            text: 'The ledger, Halia. Between friends. [Charmed]',
+            if: [{ flag: 'garaele-secret-hinted' }, { charmed: true }],
+            do: { quest: 'the-exchange-ledger' },
+            goto: 'ledger-yes',
           },
           { text: 'Good day, mistress.', cancel: true, goto: 'bye' },
         ],
@@ -2389,6 +2405,13 @@ export const DIALOGUE = deepFreeze({
             text: 'Just tell me where it is. [Persuasion 18]',
             success: 'told',
             failure: 'not-told',
+          },
+          {
+            // A charmed Gundren Rockseeker cannot keep a secret from a friend,
+            // and a Rockseeker counts everyone he likes as a friend anyway.
+            text: 'Gundren. Old friend. Where is the mine? [Charmed]',
+            if: { charmed: true },
+            goto: 'told',
           },
           { text: 'Later, master dwarf.', cancel: true, goto: 'bye' },
         ],

@@ -32,6 +32,8 @@ import {
 } from '../rules/character.js';
 import { recomputeSpells } from '../rules/spellcasting.js';
 import { canAttack } from '../rules/crime.js';
+import { isCharmed, socialCheckMods, speakingWithAnimals } from '../rules/fieldworld.js';
+import { BEAST_MOMENTS, BEAST_VOICES } from '../data/tables.js';
 import { grantXp } from '../rules/progression.js';
 import { getSpell } from '../data/spells.js';
 import { resolveItem, itemName as catalogueItemName } from '../data/items.js';
@@ -283,13 +285,26 @@ function parseCheckTag(text) {
   };
 }
 
-/** The companion with the best odds — a party sends its face to do the talking. */
+/**
+ * The companion with the best odds — a party sends its face to do the talking.
+ *
+ * `skillMod` already folds in a buff's `skillBonus` and `advSkill`, so Disguise
+ * Self and Pass Without Trace count here on their own. The rest of the field
+ * buffs — Guidance's bonus die, Enhance Ability's Advantage — live in
+ * `socialCheckMods`, which is what makes the choice of speaker honest: the
+ * cleric with Guidance up should be the one who opens their mouth.
+ */
 function bestChecker(skill, ability) {
   let best = null;
   let bm = -99;
   for (const m of Party.members) {
     if (!m || m.hp <= 0) continue;
-    const v = skill ? safe(() => skillMod(m, skill).mod, 0) : safe(() => abilityMod(m, ability), 0);
+    let v = skill ? safe(() => skillMod(m, skill).mod, 0) : safe(() => abilityMod(m, ability), 0);
+    const mods = safe(() => socialCheckMods(m, skill, ability), null);
+    if (mods) {
+      // Advantage is worth roughly +3.3 on a d20; a d4 of Guidance is +2.5.
+      v += mods.bonus + (mods.adv ? 3 : 0) - (mods.dis ? 3 : 0) + mods.dice.length * 2;
+    }
     if (v > bm) { bm = v; best = m; }
   }
   return best || Party.members[0] || null;
@@ -341,6 +356,20 @@ function evalIf(cond, scene) {
   }
   for (const f of arr(cond.notFlag ?? cond.noFlag)) {
     if (st && hasFlag(st, String(f))) return fail('', true);
+  }
+
+  // --- enchantment -------------------------------------------------------
+  // `if: { charmed: true }` opens a line only while this NPC is under Charm
+  // Person or Suggestion. It cannot be a plain flag test: the flag holds the
+  // minute the charm lapses, so `hasFlag` would keep returning true forever.
+  if (cond.charmed != null) {
+    const who = cond.charmed === true ? (scene && scene.npcId) : String(cond.charmed);
+    const on = !!(st && who && safe(() => isCharmed(st, who), false));
+    if (on !== (cond.charmed !== false)) return fail('', true);
+  }
+  if (cond.notCharmed) {
+    const who = cond.notCharmed === true ? (scene && scene.npcId) : String(cond.notCharmed);
+    if (st && who && safe(() => isCharmed(st, who), false)) return fail('', true);
   }
 
   // --- quests ------------------------------------------------------------
@@ -509,6 +538,16 @@ export class DialogueScene {
     } else {
       const found = DIALOGUE()[this.dialogueId];
       this.tree = isObj(found) && isObj(found.nodes) ? found : this._fallbackTree();
+      // An authored animal scene is written as something you WATCH — the dog
+      // asleep across the bridge road, the cat declining to move. That is the
+      // right scene when you cannot talk to it. With Speak with Animals up it
+      // should not be the only scene, so the beast gets a spoken opening and
+      // the authored one stays underneath it.
+      if (this.tree !== this._lastBeastWrap && this._isBeast()
+        && safe(() => speakingWithAnimals(S()), false)) {
+        this.tree = this._withBeastVoice(this.tree);
+        this._lastBeastWrap = this.tree;
+      }
     }
     if (!this._started) {
       this._started = true;
@@ -516,11 +555,122 @@ export class DialogueScene {
     }
   }
 
-  /** Something to say when the writers have not filled this NPC in yet. */
+  /**
+   * Something to say when there is no authored tree.
+   *
+   * The NPC's own `greeting` comes first: it is per-character, it may be an
+   * array of lines to vary between visits, and it is what makes a crowd of
+   * flavour townsfolk feel like a crowd rather than one person copied sixty
+   * times. Before this, every treeless NPC in the game said the identical
+   * sentence about goblins on the Triboar Trail.
+   */
   _fallbackTree() {
-    const line = (this.opts.rumor && rumorLine(this.npcId))
-      || 'Well met. Keep to the Triboar Trail after dark — the goblins have grown bold.';
+    // An animal is not a townsperson who has run out of things to say. It has
+    // no Common at all, so it must never reach the generic human line below —
+    // a sow, a goose and a crow used to greet you identically, in words, about
+    // goblins on the Triboar Trail.
+    if (this._isBeast()) return this._beastTree();
+
+    const g = this.npc && this.npc.greeting;
+    let line = '';
+    if (Array.isArray(g) && g.length) {
+      // Seeded on the npc id so one person keeps one line within a visit, but
+      // the cast as a whole is not reciting in unison.
+      line = g[Math.abs(hashStr(String(this.npcId || '') + this.visitSalt())) % g.length];
+    } else if (typeof g === 'string' && g.trim()) {
+      line = g.trim();
+    }
+    if (!line) {
+      line = (this.opts.rumor && rumorLine(this.npcId))
+        || 'Well met. Keep to the Triboar Trail after dark — the goblins have grown bold.';
+    }
     return { start: 'n1', nodes: { n1: { text: line } } };
+  }
+
+  /** The NPC record behind this conversation, however it was addressed. */
+  _record() {
+    const n = this.npc;
+    if (n && typeof n === 'object' && (n.tag || n.species || n.sprite)) return n;
+    const id = this.npcId || (n && (n.npcId || n.id));
+    return (id && NPCS()[id]) || null;
+  }
+
+  /** Is the thing in front of us a beast rather than a person? */
+  _isBeast() {
+    const r = this._record();
+    if (!r) return false;
+    return r.tag === 'animal' || r.species === 'beast';
+  }
+
+  /** One line from a per-species table, stable for this animal for this visit. */
+  _beastLine(table) {
+    const r = this._record() || {};
+    const rows = table[r.sprite] || table.default || [''];
+    const i = Math.abs(hashStr(String(this.npcId || r.sprite || '') + this.visitSalt())) % rows.length;
+    return rows[i];
+  }
+
+  /**
+   * Put the animal's own voice in front of an authored scene, with a way into
+   * the scene underneath. The authored nodes are untouched — this only adds a
+   * new start node — so nothing an author wrote is lost or rewritten.
+   */
+  _withBeastVoice(tree) {
+    const r = this._record() || {};
+    const inner = tree.start || Object.keys(tree.nodes)[0];
+    return {
+      start: '_beast',
+      nodes: {
+        ...tree.nodes,
+        _beast: {
+          text: this._beastLine(BEAST_VOICES),
+          speaker: r.name || null,
+          beast: true,
+          choices: [
+            { text: 'Watch it a while.', goto: inner },
+            { text: 'Leave it be.', goto: 'close', cancel: true },
+          ],
+        },
+      },
+    };
+  }
+
+  /**
+   * What a beast gives you.
+   *
+   * Without Speak with Animals you get an observation: what it does, in the
+   * third person, with no speech in it. With the spell up it actually answers,
+   * and the answers stay inside the 2024 rule that a beast's knowledge is
+   * bounded by its intelligence — the here, the now, the recent, and food.
+   */
+  _beastTree() {
+    const r = this._record() || {};
+    const speaking = safe(() => speakingWithAnimals(S()), false);
+    if (!speaking) {
+      const text = this._beastLine(BEAST_MOMENTS);
+      return { start: 'n1', nodes: { n1: { text, speaker: r.name || null, beast: true } } };
+    }
+    return {
+      start: 'n1',
+      nodes: {
+        n1: {
+          text: this._beastLine(BEAST_VOICES),
+          speaker: r.name || null,
+          beast: true,
+          choices: [
+            { text: 'Watch it instead.', goto: 'watch' },
+            { text: 'Leave it be.', goto: 'close', cancel: true },
+          ],
+        },
+        watch: { text: this._beastLine(BEAST_MOMENTS), speaker: r.name || null, beast: true },
+      },
+    };
+  }
+
+  /** Changes slowly, so a second conversation can draw a different line. */
+  visitSalt() {
+    const st = S();
+    return String(Math.floor(Number(st && st.time) / 180) || 0) + ':' + String((st && st.day) || 0);
   }
 
   // --- node navigation ---------------------------------------------------
@@ -850,12 +1000,26 @@ export class DialogueScene {
     const skill = c.check.skill || null;
     const ability = skill ? SKILLS[skill].ability : (c.check.ability || 'cha');
     const who = bestChecker(skill, ability);
+
+    // Everything the party has going for it that abilityCheck cannot see on its
+    // own: Guidance's die, Enhance Ability's Advantage, a flat check bonus off a
+    // condition. Without this, casting Guidance before a [Persuasion 15] gate
+    // changed precisely nothing, which made the cantrip a decoration.
+    const mods = safe(() => socialCheckMods(who, skill, ability), null)
+      || { bonus: 0, adv: false, dis: false, dice: [], why: [], spend: () => {}, rollDice: () => 0 };
+    // A charmed listener is arguing with a friend. Advantage, per the condition.
+    const charmed = !!(S() && this.npcId && safe(() => isCharmed(S(), this.npcId), false));
+
     const res = safe(() => abilityCheck(null, who, ability, {
       skill: skill || undefined,
       dc: c.check.dc,
-      adv: !!c.check.adv,
-      dis: !!c.check.dis,
+      bonus: mods.bonus + safe(() => mods.rollDice(), 0),
+      adv: !!c.check.adv || mods.adv || charmed,
+      advReason: charmed ? 'they think you are a friend' : (mods.why[0] || 'a spell'),
+      dis: (!!c.check.dis || mods.dis) && !charmed,
     }), null);
+    // Guidance is spent on the roll, not on opening the menu.
+    safe(() => mods.spend());
     const success = res ? !!res.success : true;
     const display = res && res.roll ? {
       ...res.roll,

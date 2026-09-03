@@ -32,7 +32,7 @@ import {
 } from './character.js';
 import {
   conditionMech, addCondition, removeCondition, hasCondition, consumeCondition,
-  activeConditions, conditionName, CONDITIONS, roundsFor,
+  activeConditions, conditionName, CONDITIONS, roundsFor, exhaustionLevel, reduceExhaustion,
 } from './conditions.js';
 import {
   concentrationCheck, isConcentrating, breakConcentration, spellDC, spellAtk, spendSlot,
@@ -97,9 +97,12 @@ export function isAlly(a, b) {
   return !!a && !!b && a !== b && sideOf(a) === sideOf(b);
 }
 
-/** Everything still standing (0 hp creatures are not threats and do not block lines). */
+/**
+ * Everything still standing (0 hp creatures are not threats and do not block lines).
+ * A creature that has fled the field (`_fled`) is gone for every purpose here.
+ */
 function standingUnits(ctx) {
-  return unitsOf(ctx).filter((u) => isAlive(u));
+  return unitsOf(ctx).filter((u) => isAlive(u) && !u._fled);
 }
 
 /** Position of a unit or a bare tile — accepts {pos:{x,y}}, {x,y}, or [x,y]. */
@@ -321,6 +324,10 @@ export function lineOfSight(ctx, a, b) {
   const A = tileOf(a), B = tileOf(b);
   if (!map) return true;
   if (A.x === B.x && A.y === B.y) return true;
+  // Fog Cloud and Darkness are heavy obscurement: they stop sight rather than
+  // arrows, so they belong here and not in the map's solidity. Asking the
+  // encounter means one hook covers targeting, cover, advantage and the AI.
+  if (ctx && typeof ctx.zoneBlocksSight === 'function' && ctx.zoneBlocksSight(A, B)) return false;
   return blockedProbes(map, A, B) < PROBE_OFFSETS.length;
 }
 
@@ -1351,8 +1358,11 @@ export function pushCreature(ctx, pusher, target, feet = 10) {
   const A = tileOf(pusher), B = tileOf(target);
   let dx = Math.sign(B.x - A.x), dy = Math.sign(B.y - A.y);
   if (dx === 0 && dy === 0) dx = 1;
+  // A negative distance is a pull: the same line, walked toward the pusher. The
+  // pusher's own square is occupied, so the pull stops in front of it.
+  if (feet < 0) { dx = -dx; dy = -dy; }
 
-  const steps = Math.max(0, Math.round(feet / FEET_PER_TILE));
+  const steps = Math.max(0, Math.round(Math.abs(feet) / FEET_PER_TILE));
   let moved = 0;
   let x = B.x, y = B.y;
   for (let i = 0; i < steps; i++) {
@@ -1902,7 +1912,8 @@ export function grantTempHp(ctx, target, amount) {
 /**
  * Apply one declarative effect from a spell, item or monster action.
  * Recognised kinds: 'condition', 'damage', 'heal', 'temphp', 'shield', 'push',
- * 'teleport', 'buff'. Anything else is returned untouched so combat.js can act on it.
+ * 'forcedMove', 'cure', 'buff', 'debuff'. Anything else is returned untouched so
+ * combat.js can act on it.
  */
 export function applyEffect(ctx, source, target, eff, env = {}) {
   if (!eff || !target) return null;
@@ -1980,10 +1991,40 @@ export function applyEffect(ctx, source, target, eff, env = {}) {
       return { kind: 'shield', target: target.uid, ac: num(eff.ac, 5) };
     }
 
-    case 'push': {
-      const moved = pushCreature(ctx, source, target, num(eff.distance, 10));
-      if (moved) pushLog(log, ctx, `${tName} is pushed ${moved} ft.`, 'debuff');
-      return { kind: 'push', target: target.uid, distance: moved };
+    case 'push':
+    case 'forcedmove': {
+      // Spell data writes { kind:'forcedMove', tag:'push'|'pull'|'flee'|'directed' }.
+      // Everything but a pull moves the target directly away from the source;
+      // 'speed' means the target's own Speed (Fear, Command: Flee).
+      const tag = lower(eff.tag || 'push');
+      let feet = eff.distance === 'speed' ? num(target.speed, 30) : num(eff.distance, 10);
+      if (tag === 'pull') feet = -feet;
+      const moved = pushCreature(ctx, source, target, feet);
+      if (moved) pushLog(log, ctx, `${tName} is ${tag === 'pull' ? 'pulled' : 'pushed'} ${moved} ft.`, 'debuff');
+      return { kind: 'push', target: target.uid, distance: moved, tag };
+    }
+
+    case 'cure': {
+      // Lesser/Greater Restoration, Heal, Remove Curse: lift up to `count` of the
+      // listed conditions the target actually has. Exhaustion is a level, not a
+      // flag, so it is reduced by `mech.reduceExhaustion` (1 by default).
+      const max = Math.max(1, num(eff.count, 1));
+      const cured = [];
+      for (const c of arr(eff.conditions)) {
+        if (cured.length >= max) break;
+        const id = lower(c);
+        if (id === 'exhaustion') {
+          if (exhaustionLevel(target) <= 0) continue;
+          reduceExhaustion(target, Math.max(1, num(eff.mech?.reduceExhaustion, 1)));
+          cured.push('Exhaustion');
+          continue;
+        }
+        if (!hasCondition(target, id)) continue;
+        if (removeCondition(target, id)) cured.push(conditionName(id));
+      }
+      if (cured.length) pushLog(log, ctx, `${tName} is cured of ${cured.join(' and ')}.`, 'heal');
+      else pushLog(log, ctx, `${tName} has nothing to cure.`, 'info');
+      return { kind: 'cure', target: target.uid, cured };
     }
 
     case 'buff': {
@@ -1999,6 +2040,25 @@ export function applyEffect(ctx, source, target, eff, env = {}) {
       try { recalc(target); } catch (e) { /* a stat block without a sheet */ }
       pushLog(log, ctx, `${tName} is affected by ${eff.name || 'a spell'}.`, 'buff');
       return { kind: 'buff', target: target.uid, id: eff.id || 'buff' };
+    }
+
+    case 'debuff': {
+      // Same shape as a buff (a mech block the character merge understands) but
+      // hostile, so it sits on the TARGET keyed to the caster: breakConcentration
+      // strips every effect whose `source` is the caster and which is flagged
+      // `concentration` (or carries the spell's id), which is exactly this record.
+      if (!Array.isArray(target.effects)) target.effects = [];
+      const dur = eff.rounds ?? roundsFor(eff.duration);
+      target.effects.push({
+        id: eff.id || 'debuff', name: eff.name || 'Hostile magic',
+        dur, mech: eff.mech || null, source: source?.uid || null,
+        concentration: !!eff.concentration, spellId: eff.spellId || null,
+        hostile: true, save: eff.save || null, dc: eff.dc ?? env.dc ?? null,
+      });
+      target._mech = null;
+      try { recalc(target); } catch (e) { /* a stat block without a sheet */ }
+      pushLog(log, ctx, `${tName} is ${eff.name ? `afflicted by ${eff.name}` : 'afflicted'}.`, 'debuff');
+      return { kind: 'debuff', target: target.uid, id: eff.id || 'debuff', name: eff.name || null, dur };
     }
 
     default:

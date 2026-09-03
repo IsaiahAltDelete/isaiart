@@ -398,12 +398,22 @@ export function drawComposed(ctx, canvas, x, y, opts = {}) {
     ctx.globalAlpha = opts.alpha ?? 1;
   }
   if (opts.tint && (opts.tintAmt ?? 0.6) > 0) img = getTinted(canvas, opts.tint, opts.tintAmt ?? 0.6, `~comp${canvas.width}x${canvas.height}|${opts.sig || ''}`);
+  // A layered character used to ignore `rotate`, so a downed hero stood at
+  // attention at 75% alpha while a downed goblin (single-sprite path) lay flat.
+  // Pivot on the feet, not the centre: a body that topples swings its head to
+  // the ground and stays anchored to the tile it fell on.
+  let ddx = dx, ddy = dy;
+  if (opts.rotate) {
+    ctx.translate(Math.round(x), Math.round(y));
+    ctx.rotate(opts.rotate);
+    ddx = -Math.round(w / 2); ddy = -Math.round(h);
+  }
   if (opts.flip) {
-    ctx.translate(dx + w, dy);
+    ctx.translate(ddx + w, ddy);
     ctx.scale(-1, 1);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height, 0, 0, w, h);
   } else {
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height, dx, dy, w, h);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height, ddx, ddy, w, h);
   }
   ctx.restore();
 }

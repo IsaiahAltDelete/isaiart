@@ -574,7 +574,7 @@ const RAW = {
     ritual: false, concentration: false, components: { v: true, s: true, m: 'a sprig of mistletoe', consumed: false }, duration: '24 hours',
     target: { kind: 'self', count: 1 }, attack: null, save: null, damage: null,
     heal: { dice: '1', mod: null, perBerry: true, scale: { perSlot: null } },
-    effects: [{ kind: 'utility', tag: 'create-item', mech: { itemId: 'goodberry', qty: 10 } }],
+    effects: [{ kind: 'utility', tag: 'create-item', mech: { itemId: 'goodberry-preserve', qty: 10 } }],
     lists: ['druid', 'ranger'], tags: ['heal', 'utility'], ai: { role: 'heal', weight: 0.6 }, vfx: { style: 'burst', color: '#8ce05a' },
   },
   'grease': {
@@ -677,7 +677,7 @@ const RAW = {
     desc: 'The creature you touch covers ground faster for an hour without tiring. Caravan guards on the High Road pay well for it.',
     ritual: false, concentration: false, components: { v: true, s: true, m: 'a pinch of dirt', consumed: false }, duration: '1 hour',
     target: { kind: 'creature', count: 1, allowAllies: true, maxTargets: 1 }, attack: null, save: null, damage: null, heal: null,
-    effects: [{ kind: 'buff', id: 'longstrider', name: 'Longstrider', duration: '1 hour', mech: { speedBonus: 10 } }],
+    effects: [{ kind: 'buff', id: 'longstrider', name: 'Longstrider', duration: '1 hour', mech: { speedBonus: 10, travelSpeed: 0.85 } }],
     lists: ['bard', 'druid', 'ranger', 'wizard'], tags: ['movement', 'buff'], ai: { role: 'buff', weight: 0.4 }, vfx: { style: 'aura', color: '#9fd6e8' },
   },
   'mage-armor': {
@@ -904,6 +904,17 @@ const RAW = {
     target: { kind: 'self', count: 1 }, attack: null, save: null, damage: null, heal: null,
     effects: [{ kind: 'buff', id: 'blur', name: 'Blur', duration: '1 minute', mech: { attackedDis: true, ignoredBy: ['blindsight', 'truesight'] } }],
     lists: ['sorcerer', 'wizard'], tags: ['buff'], ai: { role: 'buff', weight: 1.2 }, vfx: { style: 'aura', color: '#b07af0' },
+  },
+  'branding-smite': {
+    id: 'branding-smite', name: 'Branding Smite', level: 2, school: 'transmutation', castTime: 'bonus',
+    reactionTrigger: 'you hit a creature with a weapon or an Unarmed Strike',
+    range: 'self',
+    desc: 'The blow lands and the target lights up like iron fresh off the anvil. Nothing so marked can put the shadows back on: no invisibility takes, and every archer in the line can see where to aim.',
+    ritual: false, concentration: true, components: { v: true, s: false, m: '', consumed: false }, duration: '1 minute',
+    target: { kind: 'creature', count: 1 }, attack: null, save: null,
+    damage: { dice: '2d6', type: 'radiant', scale: { perSlot: '1d6', cantripLevels: null } }, heal: null,
+    effects: [{ kind: 'debuff', id: 'branded', name: 'Branded', duration: '1 minute', mech: { onSmite: true, lightRadius: 5, revealsInvisible: true, cannotHide: true, cannotTurnInvisible: true } }],
+    lists: ['paladin'], tags: ['damage', 'debuff'], ai: { role: 'nuke', weight: 1.1 }, vfx: { style: 'slash', color: '#ffe9a6' },
   },
   'calm-emotions': {
     id: 'calm-emotions', name: 'Calm Emotions', level: 2, school: 'enchantment', castTime: 'action', range: 60,
@@ -1782,7 +1793,7 @@ const RAW = {
     desc: 'Raw materials reshape themselves into finished goods — a pile of logs into a bridge, ore into a hundred nails. Fine work needs the matching craft proficiency.',
     ritual: false, concentration: false, components: { v: true, s: true, m: '', consumed: false }, duration: 'instant',
     target: { kind: 'point', count: 1 }, attack: null, save: null, damage: null, heal: null,
-    effects: [{ kind: 'utility', tag: 'craft', mech: { maxVolume: '10ft-cube', needsToolProf: true } }],
+    effects: [{ kind: 'utility', tag: 'craft', mech: { maxVolume: '10ft-cube', needsToolProf: true, qty: 1, itemChoices: ['rope-hempen', 'ladder', 'tent', 'chain', 'grappling-hook', 'crowbar', 'shovel', 'bedroll'] } }],
     lists: ['wizard'], tags: ['utility'], ai: { role: 'utility', weight: 0.05 }, vfx: { style: 'nova', color: '#ffd24a' },
   },
   'fire-shield': {

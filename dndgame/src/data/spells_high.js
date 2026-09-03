@@ -149,7 +149,7 @@ const RAW = {
     desc: 'You pull shadowstuff into the shape of a thing and tell it to be real. It obliges — for an hour if it is cloth, far less if you were greedy enough to ask for gemstones.',
     ritual: false, concentration: false, components: { v: true, s: true, m: 'a tiny piece of matter of the kind you intend to create', consumed: false }, duration: '1 hour',
     target: { kind: 'cube', count: 1, length: 5 }, attack: null, save: null, damage: null, heal: null,
-    effects: [{ kind: 'utility', tag: 'create-object', mech: { maxCube: 5, cubePerSlot: 5, materialDuration: { vegetable: '24h', stone: '12h', metal: '1h', gem: '10m' } } }],
+    effects: [{ kind: 'utility', tag: 'create-object', mech: { maxCube: 5, cubePerSlot: 5, qty: 1, itemChoices: ['rope-silk', 'ladder', 'tent', 'oil-flask', 'caltrops', 'holy-water', 'torch', 'waterskin'], materialDuration: { vegetable: '24h', stone: '12h', metal: '1h', gem: '10m' } } }],
     lists: ['sorcerer', 'wizard'], tags: ['utility'], ai: { role: 'utility', weight: 0.15 }, vfx: { style: 'nova', color: '#b07af0' },
   },
   'destructive-wave': {
@@ -695,7 +695,7 @@ const RAW = {
     desc: 'A great iron cauldron heaves up out of nowhere at your feet, muttering to itself. Reach in and it hands you a potion — its choice of potion, and it has opinions.',
     ritual: false, concentration: false, components: { v: true, s: true, m: 'a gem-encrusted cauldron worth 100+ GP', consumed: false }, duration: '10 minutes',
     target: { kind: 'self', count: 1 }, attack: null, save: null, damage: null, heal: null,
-    effects: [{ kind: 'utility', tag: 'potion-cauldron', mech: { potionValueBudget: 500, drawsPerCast: 'prof', bonusActionDraw: true, potionTiers: ['potion-of-healing', 'potion-of-greater-healing', 'potion-of-fire-breath', 'potion-of-heroism'] } }],
+    effects: [{ kind: 'utility', tag: 'potion-cauldron', mech: { itemId: 'potion-greater-healing', qty: 1, potionValueBudget: 500, drawsPerCast: 'prof', bonusActionDraw: true, potionTiers: ['potion-healing', 'potion-greater-healing', 'potion-fire-breath', 'potion-heroism'] } }],
     lists: ['warlock', 'wizard'], tags: ['utility', 'heal'], ai: { role: 'utility', weight: 0.8 }, vfx: { style: 'burst', color: '#7fbf6a' },
   },
   'tensers-transformation': {

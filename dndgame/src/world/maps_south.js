@@ -32,803 +32,26 @@
 // NOTHING HERE CALLS Math.random(). Every builder is handed an RNG forked from
 // the world seed, so the same campaign rebuilds the same Daggerford for ever.
 
-import { TileMap, TF } from './tilemap.js';
+import { TileMap } from './tilemap.js';
+import { tid } from './mapgen.js';
 import {
-  tid, generateDungeon, generateCave, generateMine, generateRuins,
-} from './mapgen.js';
-import { npcsOnMap } from '../data/npcs.js';
+  KEY, gset, dset, oset, floor, grect, drect, orect, floorRect, dframe, table, pickT, prop, scatter,
+  groundNoise, patches, sealBorder, openDoorway, normalizeTriggers, reservedFor, reserve,
+  clearStanding, sweepStanding, building, shell, room, fenceRect, bigOak, bigPine, seating,
+  addSign, signpost, interiorMap as kitInteriorMap, finishInterior,
+  curtain, keepTower, gateway, ruinShell, bend, carriageway, milestone,
+  openThickets, connectRegions, packDungeon, siteMouth,
+  stallRow, garden, wearPatches,
+  innFloor,
+} from './mapkit.js';
 
 // ---------------------------------------------------------------------------
-// 0. THE PAINTING KIT  (copied from world/maps.js §0–§1)
+// 0. THE PAINTING KIT lives in world/mapkit.js
 // ---------------------------------------------------------------------------
 
-const KEY = (x, y) => `${x},${y}`;
+/** Interiors on this road default to the Trade Way's region string. */
+const interiorMap = (o) => kitInteriorMap({ region: 'trade-way', ...o });
 
-function gset(map, x, y, id) { if (id != null && map.inBounds(x, y)) map.ground[y * map.w + x] = id | 0; }
-function dset(map, x, y, id) { if (id != null && map.inBounds(x, y)) map.deco[y * map.w + x] = id | 0; }
-function oset(map, x, y, id) { if (id != null && map.inBounds(x, y)) map.over[y * map.w + x] = id | 0; }
-
-/** Lay a floor tile and sweep whatever was standing on it. */
-function floor(map, x, y, id) {
-  if (!map.inBounds(x, y)) return;
-  const i = y * map.w + x;
-  if (id != null) map.ground[i] = id | 0;
-  map.deco[i] = 0;
-  map.over[i] = 0;
-}
-
-function grect(map, x, y, w, h, id) {
-  for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) gset(map, i, j, id);
-}
-function drect(map, x, y, w, h, id) {
-  for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) dset(map, i, j, id);
-}
-function orect(map, x, y, w, h, id) {
-  for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) oset(map, i, j, id);
-}
-function floorRect(map, x, y, w, h, id) {
-  for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) floor(map, i, j, id);
-}
-/** Outline only — the walls of a room, the rails of a paddock. */
-function dframe(map, x, y, w, h, id) {
-  for (let i = x; i < x + w; i++) { dset(map, i, y, id); dset(map, i, y + h - 1, id); }
-  for (let j = y; j < y + h; j++) { dset(map, x, j, id); dset(map, x + w - 1, j, id); }
-}
-
-/** Resolve a weighted [name, weight] table to real tile ids once, up front. */
-function table(rows) {
-  const out = [];
-  for (const [name, w] of rows) {
-    const id = tid(name);
-    if (id != null) out.push([id, w]);
-  }
-  return out;
-}
-function pickT(r, tbl, fallback = 0) {
-  if (!tbl || !tbl.length) return fallback;
-  const e = r.pickWeighted(tbl, (x) => x[1]);
-  return e ? e[0] : fallback;
-}
-
-/** A prop that refuses to stand on somebody's feet. */
-function prop(map, x, y, id, res) {
-  if (!map.inBounds(x, y) || id == null) return false;
-  if (res && res.has(KEY(x, y))) return false;
-  map.deco[y * map.w + x] = id | 0;
-  return true;
-}
-
-/** Scatter deco across a rect at a given density, skipping reserved tiles. */
-function scatter(map, r, x, y, w, h, tbl, chance, res) {
-  for (let j = y; j < y + h; j++) {
-    for (let i = x; i < x + w; i++) {
-      if (!map.inBounds(i, j)) continue;
-      if (map.deco[j * map.w + i]) continue;
-      if (!r.chance(chance)) continue;
-      prop(map, i, j, pickT(r, tbl), res);
-    }
-  }
-}
-
-/** Speckle the ground plane from a weighted table. */
-function groundNoise(map, r, x, y, w, h, tbl) {
-  for (let j = y; j < y + h; j++) {
-    for (let i = x; i < x + w; i++) gset(map, i, j, pickT(r, tbl));
-  }
-}
-
-/**
- * Blot COHERENT clumps of one material over another.
- *
- * This exists because of a mistake worth writing down. `groundNoise` is for a
- * FAMILY — GRASS/GRASS_2/GRASS_3/CLOVER are four cuts of one lawn, and picking
- * between them per tile reads as a lawn. Feed it two different MATERIALS at
- * comparable weights and every tile becomes a coin flip between, say, gravel
- * and turf: the eye stops seeing ground and starts seeing television static,
- * and the renderer's verge pass has to draw a fringe on literally every tile.
- * Phandalin never does this — it lays solid grass, then solid dirt roads, then
- * a cobble square — and neither should anything here.
- *
- * So: `groundNoise` the base family, then `patches` the second material in
- * blobs you can see the shape of. Each blob grows outward from a seed with a
- * 4-way frontier, which gives a ragged edge rather than a rectangle.
- */
-function patches(map, r, x, y, w, h, tbl, count, lo = 4, hi = 16, res = null) {
-  for (let n = 0; n < count; n++) {
-    let budget = r.int(lo, hi);
-    const open = [[r.int(x, x + w - 1), r.int(y, y + h - 1)]];
-    const done = new Set();
-    while (budget > 0 && open.length) {
-      const [px, py] = open.splice(r.int(0, open.length - 1), 1)[0];
-      const key = KEY(px, py);
-      if (done.has(key)) continue;
-      done.add(key);
-      if (px < x || py < y || px >= x + w || py >= y + h) continue;
-      if (!map.inBounds(px, py)) continue;
-      if (res && res.has(key)) continue;
-      gset(map, px, py, pickT(r, tbl));
-      budget--;
-      for (const [dx, dy] of DIRS4) if (r.chance(0.6)) open.push([px + dx, py + dy]);
-    }
-  }
-}
-
-/** Ring the map in something solid. Warp pads always sit one tile inside it. */
-function sealBorder(map, fillId) {
-  const id = fillId != null ? fillId : tid('BLACK', 'VOID');
-  for (let x = 0; x < map.w; x++) {
-    if (!map.deco[x]) dset(map, x, 0, id);
-    if (!map.deco[(map.h - 1) * map.w + x]) dset(map, x, map.h - 1, id);
-    map.setFlag(x, 0, TF.SOLID);
-    map.setFlag(x, map.h - 1, TF.SOLID);
-  }
-  for (let y = 0; y < map.h; y++) {
-    if (!map.deco[y * map.w]) dset(map, 0, y, id);
-    if (!map.deco[y * map.w + map.w - 1]) dset(map, map.w - 1, y, id);
-    map.setFlag(0, y, TF.SOLID);
-    map.setFlag(map.w - 1, y, TF.SOLID);
-  }
-  return map;
-}
-
-/** Turn a stamped-solid door tile into something you can actually walk through. */
-function openDoorway(map, x, y) {
-  if (!map.inBounds(x, y)) return;
-  map.clearFlag(x, y, TF.SOLID | TF.WATER | TF.SLOW | TF.DAMAGE);
-  map.setFlag(x, y, TF.DOOR | TF.TRIGGER);
-}
-
-/** Re-add mapgen's plain-object triggers through TileMap so they get indexed. */
-function normalizeTriggers(map) {
-  try {
-    const raw = (map.triggers || []).slice();
-    map.clearTriggers();
-    for (const t of raw) map.addTrigger(t);
-  } catch (e) { try { map.reindexTriggers(); } catch (e2) { /* give up quietly */ } }
-  return map;
-}
-
-/** Every NPC tile on a map, whether or not they spawn yet. Props avoid these. */
-function reservedFor(id) {
-  const s = new Set();
-  try { for (const n of npcsOnMap(id)) s.add(KEY(n.x, n.y)); } catch (e) { /* catalogue absent */ }
-  return s;
-}
-
-/**
- * TWO SETS, AND THEY ARE NOT THE SAME SET.
- *
- *   `npcs`  exactly the tiles data/npcs.js stands somebody on. Swept clear at
- *           the very end, so nobody is ever bricked into a wall.
- *   `res`   that, plus every building footprint and every stretch of curtain
- *           wall, because `building()` adds its own rect to whatever set it is
- *           handed. Props avoid it and `openThickets` refuses to dig through it.
- *
- * Sweeping `res` instead of `npcs` would knock the solid out of every wall on
- * the map, which is a spectacular way to ruin a town.
- */
-function reserve(id) {
-  const npcs = reservedFor(id);
-  return { npcs, res: new Set(npcs) };
-}
-
-/** Nothing may stand where the cast is supposed to be standing. */
-function clearStanding(map, x, y) {
-  if (!map.inBounds(x, y)) return;
-  const i = y * map.w + x;
-  if (!(map.flags[i] & TF.SOLID)) return;
-  map.deco[i] = 0;
-  map.flags[i] = (map.flags[i] & ~(TF.SOLID)) | 0;
-}
-function sweepStanding(map, res) {
-  if (!res) return map;
-  for (const k of res) { const [x, y] = k.split(',').map(Number); clearStanding(map, x, y); }
-  return map;
-}
-
-const ROOFS = {
-  thatch: { ridge: 'THATCH_RIDGE', l: 'THATCH_L', m: 'THATCH_M', r: 'THATCH_R' },
-  shingle: { ridge: 'SHINGLE_ROOF', l: 'SHINGLE_ROOF', m: 'SHINGLE_ROOF', r: 'SHINGLE_ROOF' },
-  tile: { ridge: 'TILE_ROOF', l: 'TILE_ROOF', m: 'TILE_ROOF', r: 'TILE_ROOF' },
-};
-
-const BASE_COURSE = {
-  WATTLE_WALL: 'STONE_WALL', LOG_WALL: 'STONE_WALL', PALISADE: 'STONE_WALL',
-  STONE_WALL: 'WALL_TOP_SHADE', BRICK_WALL: 'WALL_TOP_SHADE', RUINED_WALL: 'WALL_TOP_SHADE',
-};
-
-/**
- * A real enterable house: ridge, pitch, eave, wall face, base course, threshold.
- * See maps.js §1 for why every one of those bands has to be there.
- */
-function building(map, b, res) {
-  const { x, y, w, h } = b;
-  const wallKey = b.wall || 'WATTLE_WALL';
-  const wall = tid(wallKey, 'STONE_WALL');
-  const base = tid(b.base || 'DIRT', 'DIRT');
-  const rk = ROOFS[b.roof] || ROOFS.thatch;
-  const course = tid(b.course || BASE_COURSE[wallKey] || 'STONE_WALL', wallKey);
-
-  grect(map, x, y, w, h, base);
-  drect(map, x, y, w, h, wall);
-  orect(map, x, y, w, h, 0);
-
-  const want = b.roofRows != null ? b.roofRows : Math.min(3, h - 3);
-  const roofRows = Math.max(1, Math.min(want, h - 2));
-  const fy = y + h - 1;
-  const wallTop = y + roofRows;
-  const gy = Math.max(wallTop, fy - 1);
-
-  for (let j = 0; j < roofRows; j++) {
-    for (let i = 0; i < w; i++) {
-      let name;
-      if (j === 0) name = rk.ridge;
-      else if (i === 0) name = rk.l;
-      else if (i === w - 1) name = rk.r;
-      else name = rk.m;
-      const id = tid(name, 'THATCH_M');
-      oset(map, x + i, y + j, id);
-      dset(map, x + i, y + j, id);
-    }
-  }
-  if (b.peak != null) oset(map, x + b.peak, y, tid('ROOF_PEAK', 'THATCH_RIDGE'));
-  for (const [px, py] of b.roofPatch || []) oset(map, x + px, y + py, tid(b.patchTile || 'SHINGLE_ROOF', 'THATCH_RIDGE'));
-  if (b.chimney != null) oset(map, x + b.chimney, y, tid('CHIMNEY', 'THATCH_RIDGE'));
-  if (b.chimney2 != null) oset(map, x + b.chimney2, y, tid('CHIMNEY', 'THATCH_RIDGE'));
-
-  for (let i = 0; i < w; i++) dset(map, x + i, fy, course);
-  if (b.band != null) for (let i = 0; i < w; i++) dset(map, x + i, y + b.band, tid(b.bandTile || 'LOG_WALL', wallKey));
-
-  const win = tid(b.lit ? 'WINDOW_LIT' : 'WINDOW', 'WINDOW');
-  for (const dx of b.windows || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, gy, win);
-  if (wallTop < gy) for (const dx of b.upper || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, wallTop, win);
-  for (const dx of b.shutters || []) if (dx > 0 && dx < w - 1) dset(map, x + dx, gy, tid('SHUTTER', 'WINDOW'));
-  for (const dx of b.loading || []) if (dx >= 0 && dx < w) dset(map, x + dx, fy, tid('SHUTTER', 'DOOR_CLOSED'));
-  if (b.sign != null) dset(map, x + b.sign, gy, tid('SIGN', 'WINDOW'));
-
-  let door = null, front = null;
-  if (b.door != null) {
-    const dx = x + b.door;
-    gset(map, dx, fy, tid('WOOD_FLOOR_H', 'DIRT'));
-    dset(map, dx, fy, tid(b.ironDoor ? 'IRON_DOOR' : 'DOOR_CLOSED', 'DOOR_OPEN'));
-    door = { x: dx, y: fy };
-    front = { x: dx, y: fy + 1 };
-  }
-
-  if (door) {
-    const sy = fy + 1;
-    const worn = tid(b.step || 'DIRT_PATH', 'DIRT');
-    for (let i = -1; i <= 1; i++) gset(map, door.x + i, sy, worn);
-    gset(map, door.x, sy, tid('FLAGSTONE', 'DIRT_PATH'));
-    const run = b.approach != null ? b.approach : 2;
-    for (let k = 1; k <= run; k++) {
-      const py = sy + k;
-      if (!map.inBounds(door.x, py) || map.deco[py * map.w + door.x]) break;
-      gset(map, door.x, py, worn);
-    }
-  }
-
-  if (res) for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) res.add(KEY(i, j));
-  return { door, front };
-}
-
-/** A house nobody can enter — shuttered, boarded, still part of the skyline. */
-function shell(map, b, res) {
-  const out = building(map, { ...b, door: null, windows: [], shutters: b.windows || [] }, res);
-  if (b.door != null) dset(map, b.x + b.door, b.y + b.h - 1, tid(b.ironDoor ? 'IRON_DOOR' : 'SHUTTER', 'WINDOW'));
-  return out;
-}
-
-/** A four-walled interior room with an exit punched through the south footing. */
-function room(map, o) {
-  const w = o.w != null ? o.w : map.w;
-  const h = o.h != null ? o.h : map.h;
-  const x = o.x || 0, y = o.y || 0;
-  const fl = tid(o.floor || 'WOOD_FLOOR', 'STONE_FLOOR');
-  const wallKey = o.wall || 'WATTLE_WALL';
-  const wall = tid(wallKey, 'STONE_WALL');
-  const course = tid(o.course || BASE_COURSE[wallKey] || 'STONE_WALL', wallKey);
-  const stony = wallKey === 'STONE_WALL' || wallKey === 'BRICK_WALL';
-  const post = tid(o.post || (stony ? 'PILLAR' : 'LOG_WALL'), wallKey);
-
-  floorRect(map, x, y, w, h, fl);
-  dframe(map, x, y, w, h, wall);
-  for (let i = x; i < x + w; i++) dset(map, i, y + h - 1, course);
-  for (const [px, py] of [[x, y], [x + w - 1, y], [x, y + h - 1], [x + w - 1, y + h - 1]]) dset(map, px, py, post);
-
-  const ex = o.exit != null ? o.exit : (x + (w >> 1));
-  const ey = y + h - 1;
-  gset(map, ex, ey, tid('WOOD_FLOOR_H', 'DIRT'));
-  dset(map, ex, ey, tid('DOOR_CLOSED', 'DOOR_OPEN'));
-  const step = tid(o.step || (/^WOOD/.test(o.floor || 'WOOD_FLOOR') ? 'FLAGSTONE' : 'WOOD_FLOOR_H'), 'FLAGSTONE');
-  for (let i = -1; i <= 1; i++) gset(map, ex + i, ey - 1, step);
-  return { exit: { x: ex, y: ey }, spawn: { x: ex, y: ey - 1 } };
-}
-
-/** A paddock, orchard or field boundary with one gate. */
-function fenceRect(map, x, y, w, h, gate, res) {
-  const fh = tid('FENCE_H', 'HEDGE'), fv = tid('FENCE_V', 'HEDGE'), fc = tid('FENCE_CORNER', 'HEDGE');
-  for (let i = x; i < x + w; i++) { prop(map, i, y, fh, res); prop(map, i, y + h - 1, fh, res); }
-  for (let j = y; j < y + h; j++) { prop(map, x, j, fv, res); prop(map, x + w - 1, j, fv, res); }
-  prop(map, x, y, fc, res); prop(map, x + w - 1, y, fc, res);
-  prop(map, x, y + h - 1, fc, res); prop(map, x + w - 1, y + h - 1, fc, res);
-  if (gate) dset(map, gate.x, gate.y, tid('GATE', 'FENCE_H'));
-  return map;
-}
-
-/** Two-tile trees, planted across deco/over so you walk behind the crown. */
-function bigOak(map, x, y) {
-  dset(map, x, y + 1, tid('OAK_BL', 'TREE_OAK'));
-  dset(map, x + 1, y + 1, tid('OAK_BR', 'TREE_OAK'));
-  oset(map, x, y, tid('OAK_TL', 'TREE_OAK'));
-  oset(map, x + 1, y, tid('OAK_TR', 'TREE_OAK'));
-}
-function bigPine(map, x, y) {
-  dset(map, x, y + 1, tid('PINE_BL', 'TREE_PINE'));
-  dset(map, x + 1, y + 1, tid('PINE_BR', 'TREE_PINE'));
-  oset(map, x, y, tid('PINE_TL', 'TREE_PINE'));
-  oset(map, x + 1, y, tid('PINE_TR', 'TREE_PINE'));
-}
-
-/**
- * A taproom's seating. Returns the `tableAt(x, y, len)` every common room in
- * this file uses: `len` tiles of table, a chair at each end, and benches down
- * the long sides — so a room can mix small rounds with the long trestles a
- * caravan that arrived together actually sits at. Six identical
- * table-and-two-chairs read as a furniture showroom rather than as an inn,
- * which is the same repetition problem the houses in a town have.
- */
-function seating(map, r, res) {
-  return (tx, ty, len = 1) => {
-    for (let i = 0; i < len; i++) prop(map, tx + i, ty, tid('TABLE', 'BENCH'), res);
-    prop(map, tx - 1, ty, tid('CHAIR', 'BENCH'), res);
-    prop(map, tx + len, ty, tid('CHAIR', 'BENCH'), res);
-    for (let i = 0; i < len; i++) {
-      if (r.chance(len > 1 ? 0.85 : 0.65)) prop(map, tx + i, ty + 1, tid(len > 1 ? 'BENCH' : 'CHAIR', 'BENCH'), res);
-      if (len > 1 && r.chance(0.7)) prop(map, tx + i, ty - 1, tid('BENCH', 'CHAIR'), res);
-    }
-  };
-}
-
-/** A signpost you can read, wherever a SIGN tile already stands. */
-function addSign(map, x, y, text, title) {
-  map.addTrigger({ id: `sign-${x}-${y}`, kind: 'sign', x, y, data: { text, title: title || null } });
-}
-/** The sign and the post in one call, because a readable sign with no SIGN tile
- *  under it is a sentence the player never finds. */
-function signpost(map, x, y, text, res, title) {
-  prop(map, x, y, tid('SIGN', 'ROCK'), res);
-  addSign(map, x, y, text, title);
-}
-
-function interiorMap(o) {
-  return new TileMap({
-    w: o.w, h: o.h, id: o.id, name: o.name, biome: o.biome || 'city', indoor: true,
-    music: o.music || 'town', safe: true, encounterRate: 0,
-    ambient: o.ambient || { color: '#2a1e14', alpha: 0.14 },
-    region: o.region || 'trade-way',
-  });
-}
-
-function finishInterior(map, exit, res, sealKey) {
-  map.recomputeFlags({ keep: 0 });
-  sealBorder(map, tid(sealKey || 'WATTLE_WALL', 'STONE_WALL'));
-  openDoorway(map, exit.x, exit.y);
-  map.spawn = { x: exit.x, y: exit.y - 1 };
-  map.entry = { ...map.spawn };
-  sweepStanding(map, res);
-  return map;
-}
-
-// ---------------------------------------------------------------------------
-// 0b. WHAT A ROAD NEEDS THAT A TOWN DOES NOT
-// ---------------------------------------------------------------------------
-
-/**
- * A curtain wall you can put a gate through.
- *
- * Read top-down, a wall is three bands exactly as a house is: the lit crown you
- * are looking down onto, the face you are looking at, and the plinth where it
- * meets the ground. A one-tile line of STONE_WALL reads as a fence. The side
- * runs are a single column, because a wall running away from the camera shows
- * you its face and nothing else.
- *
- * o: { key='STONE_WALL', gates: [[x,y]], towers: [[x,y]], north, south, east, west }
- */
-function curtain(map, x, y, w, h, o = {}) {
-  const key = o.key || 'STONE_WALL';
-  // WALL_TOP_LIT and WALL_TOP_SHADE are cut stone. Crowning a timber stockade
-  // with them puts a masonry coping on a row of sharpened logs, so a wall that
-  // is not masonry is simply three courses of itself.
-  const masonry = key === 'STONE_WALL' || key === 'BRICK_WALL' || key === 'RUINED_WALL';
-  const face = tid(key, 'STONE_WALL');
-  const crown = tid(o.crown || (masonry ? 'WALL_TOP_LIT' : key), key);
-  const plinth = tid(o.plinth || (masonry ? 'WALL_TOP_SHADE' : key), key);
-  const post = tid(o.post || 'PILLAR', 'STONE_WALL');
-  const base = tid(o.base || 'GRAVEL', 'DIRT');
-  const x1 = x + w - 1, y1 = y + h - 1;
-
-  if (o.north !== false) {
-    for (let i = x; i <= x1; i++) {
-      gset(map, i, y, base); gset(map, i, y + 1, base); gset(map, i, y + 2, base);
-      dset(map, i, y, crown); dset(map, i, y + 1, face); dset(map, i, y + 2, plinth);
-    }
-  }
-  if (o.south !== false) {
-    for (let i = x; i <= x1; i++) {
-      gset(map, i, y1 - 1, base); gset(map, i, y1, base);
-      dset(map, i, y1 - 1, face); dset(map, i, y1, plinth);
-    }
-  }
-  if (o.west !== false) for (let j = y; j <= y1; j++) { gset(map, x, j, base); dset(map, x, j, face); }
-  if (o.east !== false) for (let j = y; j <= y1; j++) { gset(map, x1, j, base); dset(map, x1, j, face); }
-  for (const [px, py] of [[x, y], [x1, y], [x, y1], [x1, y1]]) dset(map, px, py, post);
-  for (const [px, py] of o.towers || []) dset(map, px, py, post);
-  // A wall is a deliberate enclosure, so it joins the protected set: nothing
-  // later in the build gets to dig a second way in.
-  if (o.res) {
-    for (let i = x; i <= x1; i++) for (let j = y; j <= y + 2; j++) o.res.add(KEY(i, j));
-    for (let i = x; i <= x1; i++) { o.res.add(KEY(i, y1 - 1)); o.res.add(KEY(i, y1)); }
-    for (let j = y; j <= y1; j++) { o.res.add(KEY(x, j)); o.res.add(KEY(x1, j)); }
-  }
-  return map;
-}
-
-/**
- * A tower you look up at and never enter.
- *
- * Deliberately NOT `building()`. A building tall enough to read as a tower
- * spends nearly all its height on roof, and a roof seen from directly overhead
- * is one enormous unbroken slab of tile — which is what a first pass at
- * Candlekeep looked like, six orange rectangles in a row. From above, a tower
- * is a shaft of masonry: a lit crown with merlons stepping out of it, a
- * shadowed plinth at the foot, and slit windows every storey up the face.
- * That is what this draws, and the skyline stops looking like a warehouse.
- */
-function keepTower(map, x, y, w, h, o = {}, res) {
-  const key = o.key || 'STONE_WALL';
-  const face = tid(key, 'STONE_WALL');
-  const crown = tid(o.crown || 'WALL_TOP_LIT', key);
-  const plinth = tid(o.plinth || 'WALL_TOP_SHADE', key);
-  const post = tid('PILLAR', 'STONE_WALL');
-  grect(map, x, y, w, h, tid(o.base || 'FLAGSTONE', 'GRAVEL'));
-  drect(map, x, y, w, h, face);
-  orect(map, x, y, w, h, 0);
-  for (let i = 0; i < w; i++) { dset(map, x + i, y, crown); dset(map, x + i, y + h - 1, plinth); }
-  // Merlons: every other tile of the crown steps up, so the silhouette reads
-  // as battlements rather than as a flat-topped box.
-  if (o.merlons !== false) for (let i = 0; i < w; i += 2) dset(map, x + i, y, post);
-  dset(map, x, y + h - 1, post); dset(map, x + w - 1, y + h - 1, post);
-  const win = tid(o.lit === false ? 'WINDOW' : 'WINDOW_LIT', 'WINDOW');
-  const storey = o.storey || 3;
-  for (let j = y + 2; j < y + h - 1; j += storey) {
-    for (let i = 1; i < w - 1; i += 2) dset(map, x + i, j, win);
-  }
-  if (o.peak != null) oset(map, x + o.peak, y, tid('ROOF_PEAK', 'WALL_TOP_LIT'));
-  if (o.chimney != null) oset(map, x + o.chimney, y, tid('CHIMNEY', 'WALL_TOP_LIT'));
-  if (res) for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) res.add(KEY(i, j));
-  return map;
-}
-
-/**
- * Punch a gateway through a wall: a walkable column of road with a GATE tile in
- * it (GATE is DOOR|TRIGGER, never SOLID, so a gate you can see is a gate you can
- * walk through), jambs of PILLAR either side and a torch on each jamb.
- */
-function gateway(map, cx, y0, y1, roadId, o = {}) {
-  const halfW = o.half != null ? o.half : 1;
-  for (let y = y0; y <= y1; y++) {
-    for (let x = cx - halfW; x <= cx + halfW; x++) floor(map, x, y, roadId);
-  }
-  for (let y = y0; y <= y1; y++) {
-    dset(map, cx - halfW - 1, y, tid('PILLAR', 'STONE_WALL'));
-    dset(map, cx + halfW + 1, y, tid('PILLAR', 'STONE_WALL'));
-  }
-  if (o.gate !== false) {
-    const gy = o.gateRow != null ? o.gateRow : y0;
-    for (let x = cx - halfW; x <= cx + halfW; x++) dset(map, x, gy, tid('GATE', 'DOOR_OPEN'));
-  }
-  if (o.torch !== false) {
-    dset(map, cx - halfW - 1, o.torchRow != null ? o.torchRow : y1, tid('TORCH', 'PILLAR'));
-    dset(map, cx + halfW + 1, o.torchRow != null ? o.torchRow : y1, tid('TORCH', 'PILLAR'));
-  }
-  return map;
-}
-
-/**
- * A roofless shell: apron, cracked floor, a broken wall ring, fallen stone
- * inside it. `gaps` are the places the ring has come down — which is what tells
- * a ruin apart from a building somebody merely forgot to roof.
- */
-function ruinShell(map, r, x, y, w, h, o = {}, res) {
-  const fl = tid(o.floor || 'STONE_FLOOR_CRACKED', 'STONE_FLOOR');
-  floorRect(map, x, y, w, h, tid(o.apron || 'GRAVEL', 'DIRT'));
-  floorRect(map, x + 1, y + 1, w - 2, h - 2, fl);
-  dframe(map, x, y, w, h, tid(o.wall || 'RUINED_WALL', 'STONE_WALL'));
-  for (const [px, py] of o.pillars || [[x, y], [x + w - 1, y]]) prop(map, px, py, tid('PILLAR', 'RUBBLE'), res);
-  const rub = table(o.rubble || T_RUIN);
-  for (let j = y + 1; j < y + h - 1; j++) {
-    for (let i = x + 1; i < x + w - 1; i++) if (r.chance(o.mess != null ? o.mess : 0.14)) prop(map, i, j, pickT(r, rub), res);
-  }
-  for (const [gx, gy] of o.gaps || []) { dset(map, gx, gy, 0); floor(map, gx, gy, fl); }
-  return map;
-}
-
-/**
- * How far the carriageway has wandered off the map's spine at row `y`.
- * Tapered to nothing at both ends, because the warp pads are nailed to a fixed
- * column and a road that arrives four tiles east of its own gate is a bug.
- */
-function bend(v, len, amp, freq, phase = 0) {
-  const t = Math.min(1, Math.min(v, len - 1 - v) / 9);
-  return Math.round(Math.sin(v * freq + phase) * amp * t);
-}
-
-/** A carriageway: `wide` tiles of ruts either side of the spine, plus verges. */
-function carriageway(map, r, spine, y0, y1, wide, ruts, verge) {
-  for (let y = y0; y <= y1; y++) {
-    const cx = spine(y);
-    for (let d = -wide; d <= wide; d++) floor(map, cx + d, y, pickT(r, ruts));
-    if (verge) {
-      gset(map, cx - wide - 1, y, pickT(r, verge));
-      gset(map, cx + wide + 1, y, pickT(r, verge));
-    }
-  }
-  return map;
-}
-
-/** A milestone: the stone, the reading, and the beaten patch travellers stand on. */
-function milestone(map, x, y, text, res) {
-  gset(map, x, y + 1, tid('DIRT', 'DIRT_PATH'));
-  signpost(map, x, y, text, res);
-  return map;
-}
-
-/**
- * NOTHING WALKABLE MAY BE WALLED OFF BY ACCIDENT.
- *
- * Scattering trees by distance-from-the-road makes thickets, and a thicket that
- * happens to close its own ring is a glade the player can see and never enter.
- * Deliberate enclosures are fine — a walled yard has a gate because somebody
- * drew one — but a pocket the dice made is a bug, and on a 60x80 map the dice
- * make several.
- *
- * So: flood from `from`, find every orphan blob of `minSize` or more, and push a
- * one-tile path from the blob to the nearest reachable tile, sweeping the
- * vegetation off it. `protect` is the set every `building()` footprint is added
- * to: the path refuses to cross it, so a walled yard keeps its wall and the
- * blob is simply left alone. Index order makes the whole pass deterministic.
- */
-const DIRS4 = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-
-function openThickets(map, from, minSize = 5, protect = null) {
-  const W = map.w, H = map.h, N = W * H;
-  map.recomputeFlags({ keep: 0 });
-  // `sealBorder()` has not run yet, and a pocket in the corner of the map is
-  // "connected" round the outside ring right up until it does. Count the ring
-  // as solid here or every corner thicket passes this test and fails in play.
-  const solid = (i) => {
-    const x = i % W, y = (i / W) | 0;
-    return x === 0 || y === 0 || x === W - 1 || y === H - 1 || map.solidAt(x, y);
-  };
-
-  const reach = new Uint8Array(N);
-  const s0 = from.y * W + from.x;
-  if (solid(s0)) return map;
-  const st = [s0]; reach[s0] = 1;
-  while (st.length) {
-    const i = st.pop(), x = i % W, y = (i / W) | 0;
-    for (const [dx, dy] of DIRS4) {
-      const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-      const j = ny * W + nx;
-      if (reach[j] || solid(j)) continue;
-      reach[j] = 1; st.push(j);
-    }
-  }
-
-  const grouped = new Uint8Array(N);
-  for (let i0 = 0; i0 < N; i0++) {
-    if (reach[i0] || grouped[i0] || solid(i0)) continue;
-    const blob = [i0]; grouped[i0] = 1;
-    for (let k = 0; k < blob.length; k++) {
-      const x = blob[k] % W, y = (blob[k] / W) | 0;
-      for (const [dx, dy] of DIRS4) {
-        const nx = x + dx, ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-        const j = ny * W + nx;
-        if (grouped[j] || reach[j] || solid(j)) continue;
-        grouped[j] = 1; blob.push(j);
-      }
-    }
-    if (blob.length < minSize) continue;
-
-    // Shortest way out, through anything but the sealed border.
-    const prev = new Int32Array(N).fill(-1);
-    const seen = new Uint8Array(N);
-    const q = blob.slice();
-    for (const b of blob) seen[b] = 1;
-    let head = 0, target = -1;
-    while (head < q.length && target < 0) {
-      const c = q[head++], x = c % W, y = (c / W) | 0;
-      for (const [dx, dy] of DIRS4) {
-        const nx = x + dx, ny = y + dy;
-        if (nx < 1 || ny < 1 || nx >= W - 1 || ny >= H - 1) continue;
-        const j = ny * W + nx;
-        if (seen[j]) continue;
-        if (protect && protect.has(KEY(nx, ny))) continue;
-        // Only vegetation can be cleared. Water stays water and a mountain
-        // stays a mountain, so a tile that is solid with nothing standing on it
-        // is solid because of its ground, and digging it would be a lie the
-        // builder's own recomputeFlags() undoes two lines later.
-        if (map.flagAt(nx, ny) & TF.WATER) continue;
-        if (!map.deco[j] && map.solidAt(nx, ny)) continue;
-        seen[j] = 1; prev[j] = c;
-        if (reach[j]) { target = j; break; }
-        q.push(j);
-      }
-    }
-    if (target < 0) continue;
-    // Walk the parent chain back to THIS blob — not to any older one, or the
-    // corridor stops halfway and the pocket stays sealed.
-    const mine = new Set(blob);
-    for (let c = prev[target]; c >= 0 && !mine.has(c); c = prev[c]) {
-      clearStanding(map, c % W, (c / W) | 0);
-      reach[c] = 1;
-    }
-    for (const b of blob) reach[b] = 1;
-  }
-  return map;
-}
-
-/**
- * THE SAME PROMISE, UNDERGROUND.
- *
- * `validateConnectivity` in mapgen only guarantees the points it is handed —
- * entry, exit, chests, the boss. Whole rooms can still end up walled off, and
- * whether they do is pure seed luck: Wave Echo Cave strands 11 tiles and the
- * Nashkel Mines stranded 301 on the first seed they were given. A mine with a
- * quarter of itself behind a wall is not atmosphere, it is a bug.
- *
- * So the same digger runs on a generated floor. Down here the walls are on the
- * DECO plane over a floor ground (mapgen's `paintCell`), so clearing a wall is
- * clearing deco — except for the VOID cells outside the rooms, which have no
- * ground at all; those get the floor of whatever they are being joined to.
- */
-function connectRegions(map, minSize = 6) {
-  const W = map.w, H = map.h, N = W * H;
-  const from = map.entry || map.spawn;
-  if (!from) return map;
-  const solid = (i) => {
-    const x = i % W, y = (i / W) | 0;
-    return map.solidAt(x, y) && !(map.flagAt(x, y) & TF.DOOR);
-  };
-  const reach = new Uint8Array(N);
-  const s0 = from.y * W + from.x;
-  if (solid(s0)) return map;
-  const st = [s0]; reach[s0] = 1;
-  while (st.length) {
-    const i = st.pop(), x = i % W, y = (i / W) | 0;
-    for (const [dx, dy] of DIRS4) {
-      const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-      const j = ny * W + nx;
-      if (reach[j] || solid(j)) continue;
-      reach[j] = 1; st.push(j);
-    }
-  }
-
-  const grouped = new Uint8Array(N);
-  for (let i0 = 0; i0 < N; i0++) {
-    if (reach[i0] || grouped[i0] || solid(i0)) continue;
-    const blob = [i0]; grouped[i0] = 1;
-    for (let k = 0; k < blob.length; k++) {
-      const x = blob[k] % W, y = (blob[k] / W) | 0;
-      for (const [dx, dy] of DIRS4) {
-        const nx = x + dx, ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-        const j = ny * W + nx;
-        if (grouped[j] || reach[j] || solid(j)) continue;
-        grouped[j] = 1; blob.push(j);
-      }
-    }
-    if (blob.length < minSize) continue;
-
-    const prev = new Int32Array(N).fill(-1);
-    const seen = new Uint8Array(N);
-    const q = blob.slice();
-    for (const b of blob) seen[b] = 1;
-    let head = 0, target = -1;
-    while (head < q.length && target < 0) {
-      const c = q[head++], x = c % W, y = (c / W) | 0;
-      for (const [dx, dy] of DIRS4) {
-        const nx = x + dx, ny = y + dy;
-        if (nx < 1 || ny < 1 || nx >= W - 1 || ny >= H - 1) continue;
-        const j = ny * W + nx;
-        if (seen[j]) continue;
-        seen[j] = 1; prev[j] = c;
-        if (reach[j]) { target = j; break; }
-        q.push(j);
-      }
-    }
-    if (target < 0) continue;
-    const fill = map.ground[target] || map.ground[blob[0]] || tid('DUNGEON_FLOOR', 'STONE_FLOOR');
-    const mine = new Set(blob);
-    for (let c = prev[target]; c >= 0 && !mine.has(c); c = prev[c]) {
-      // A flooded gallery blocks as hard as a wall and clearing SOLID does not
-      // touch it: WATER is its own bit. Plank the route where it crosses one.
-      const wet = (map.flags[c] & TF.WATER) !== 0;
-      map.deco[c] = 0;
-      if (wet) map.ground[c] = tid('BRIDGE_WOOD', 'STONE_FLOOR');
-      else if (!map.ground[c]) map.ground[c] = fill | 0;
-      map.flags[c] &= ~(TF.SOLID | TF.WATER | TF.SLOW | TF.DAMAGE);
-      reach[c] = 1;
-    }
-    for (const b of blob) reach[b] = 1;
-  }
-  return map;
-}
-
-/**
- * A procedural site hanging off this pack.
- *
- * maps.js's `buildProcedural` only knows the way out of Undermountain, Wave Echo
- * and the Redbrand hideout; everything else gets `up: null`, which leaves the
- * up-stair inert and the site a one-way hole. So a pack dungeon generates itself
- * and rewrites its own stairs against the surface tile it was entered from.
- */
-function packDungeon(id, name, opts, surface) {
-  const gen = opts.gen === 'cave' ? generateCave
-    : opts.gen === 'mine' ? generateMine
-      : opts.gen === 'ruins' ? generateRuins : generateDungeon;
-  return (r, ctx) => {
-    const map = gen({
-      seed: `${(ctx && ctx.seed) || 'sword-coast'}:${id}`,
-      depth: 1,
-      biome: opts.biome || 'dungeon',
-      theme: opts.theme || 'dungeon',
-      size: opts.size || 'medium',
-      name,
-      level: opts.level || 10,
-    });
-    for (const t of map.triggers || []) {
-      if (t.kind !== 'warp' || !t.data) continue;
-      const role = t.data.stair || t.data.dir;
-      if (role === 'up') Object.assign(t.data, { stair: 'up', kind: 'stairs', exit: true, ...surface });
-      if (role === 'down') Object.assign(t.data, { stair: 'down', kind: 'stairs', map: `${id}-2`, depth: 2, dir: 'down' });
-    }
-    map.id = id;
-    map.name = name;
-    map.level = opts.level || 10;
-    map.region = opts.region || id;
-    if (opts.encounterTable) map.encounterTable = opts.encounterTable;
-    if (opts.music) map.music = opts.music;
-    connectRegions(map, 6);
-    normalizeTriggers(map);
-    return map;
-  };
-}
-
-/**
- * The mouth of a procedural site on a hand-built map.
- *
- * A `bWarp: null` row is only half a link: `applyWarpNodes` skips it, because
- * the destination has not been generated yet and nobody knows where its stairs
- * landed. The surface end therefore has to be stamped by hand, exactly as
- * `buildWaveEchoEntrance` stamps the Wave Echo adit.
- */
-function siteMouth(map, x, y, to, o = {}) {
-  // `tile: null` leaves the tile alone — for a mouth that is already a door
-  // somebody's `building()` painted, where stamping a ground tile over it would
-  // put a door graphic on the ground plane and lose the door.
-  if (o.tile !== null) floor(map, x, y, tid(o.tile || 'STAIRS_DOWN', 'CAVE_FLOOR'));
-  openDoorway(map, x, y);
-  map.addTrigger({
-    id: `${map.id}>${to}`, kind: 'warp', x, y,
-    data: { map: to, depth: 1, dir: o.dir || 'down', kind: o.kind || 'cave', theme: o.theme || null },
-  });
-  return map;
-}
 
 // --- shared ground tables ---------------------------------------------------
 //
@@ -847,7 +70,6 @@ const T_WOOD = [['TREE_OAK', 8], ['BUSH', 4], ['GRASS_TALL', 3], ['STUMP', 1], [
 const T_SCRUB = [['BUSH', 5], ['GRASS_TALL', 5], ['ROCK', 3], ['FLOWERS_YELLOW', 2], ['FLOWERS_BLUE', 1]];
 const T_YARD = [['GRAVEL', 9], ['GRAVEL', 4]];
 const T_STALL = [['CART', 5], ['CRATE', 5], ['SACK', 4], ['BARREL', 3], ['SHELF_GOODS', 2]];
-const T_RUIN = [['RUBBLE', 6], ['ROCK', 4], ['BONES', 1], ['STUMP', 1]];
 const T_STRAND = [['SAND', 9], ['SAND', 4]];
 
 // ---------------------------------------------------------------------------
@@ -1457,19 +679,22 @@ function buildDaggerford(root) {
     x: 12, y: 11, w: 9, h: 6, wall: 'STONE_WALL', roof: 'tile', base: 'COBBLE', lit: true,
     roofRows: 2, door: 4, windows: [1, 2, 7], upper: [3, 6], sign: 6, band: 3,
     chimney: 1, chimney2: 7, approach: 1,
+    porch: 3, lantern: true, interior: 'river-shining-tavern',
   }, res);                                       // The River Shining Tavern (16,16)
   building(map, {
     x: 31, y: 16, w: 6, h: 5, wall: 'WATTLE_WALL', roof: 'thatch', base: 'COBBLE',
     roofRows: 2, door: 3, windows: [1, 4], sign: 2, chimney: 4, approach: 1,
+    porch: 3, lantern: true, interior: 'happy-cow',
   }, res);                                       // The Happy Cow (34,20)
   building(map, {
     x: 18, y: 22, w: 9, h: 9, wall: 'STONE_WALL', roof: 'tile', base: 'FLAGSTONE', lit: true,
     roofRows: 4, door: 4, windows: [1, 2, 6, 7], upper: [3, 5], sign: 6, band: 5,
-    peak: 4, approach: 1,
+    peak: 4, approach: 1, porch: 3, lantern: true, interior: 'morninglow-tower',
   }, res);                                       // Morninglow Tower (22,30)
   building(map, {
     x: 36, y: 26, w: 9, h: 5, wall: 'STONE_WALL', roof: 'shingle', base: 'GRAVEL',
     roofRows: 2, door: 4, windows: [1, 7], sign: 2, chimney: 7, approach: 1,
+    porch: 3, interior: 'daggerford-smithy',
   }, res);                                       // Derval Ironeater's smithy (40,30)
   prop(map, 35, 31, tid('ANVIL', 'FORGE'), res);
   prop(map, 34, 30, tid('FORGE', 'ANVIL'), res);
@@ -1479,7 +704,9 @@ function buildDaggerford(root) {
 
   // --- 7. the market, the well, and the rest of the town -------------------
   floorRect(map, 31, 22, 15, 4, tid('FLAGSTONE', 'COBBLE'));
-  for (let x = 35; x <= 43; x += 2) { prop(map, x, 23, pickT(rd, table(T_STALL)), res); prop(map, x, 25, pickT(rd, table(T_STALL)), res); }
+  stallRow(map, 35, 23, 5, 'h', rd, { step: 2, face: 1, res, wares: table(T_STALL), banner: true });
+  stallRow(map, 35, 25, 5, 'h', rd, { step: 2, face: -1, res, wares: table(T_STALL) });
+  wearPatches(map, rd, { x: 31, y: 22, w: 15, h: 4 }, 'COBBLE_ISLE', 5, { res });
   prop(map, 32, 24, tid('WELL', 'FOUNTAIN'), res);
   signpost(map, 33, 25, 'THE DAGGERFORD MARKET — by the Duchess’s charter, three days in ten. Coin of Waterdeep, Baldur’s Gate and Amn all taken; coin of Zhentil Keep is not.', res);
 
@@ -1512,6 +739,22 @@ function buildDaggerford(root) {
 
   openThickets(map, { x: 28, y: 3 }, 5, res);
   map.recomputeFlags({ keep: 0 });
+
+  // --- the temple close ----------------------------------------------------
+  // Lathander's garden beside Morninglow Tower, planted AFTER `recomputeFlags`
+  // on purpose: `garden()` lays its hedge through `canPlaceProp`, which refuses
+  // any tile that would pinch the lane between the tower and the smithy. A ring
+  // with a gap in it where the lane runs is a garden; a ring that closes the
+  // lane is a bug.
+  garden(map, { x: 27, y: 26, w: 7, h: 6 }, rd, { res, gate: { x: 30, y: 31 } });
+  addSign(map, 30, 31, 'THE MORNINGLOW CLOSE — planted for Amaunator at the re-founding, and weeded every dawn by whoever drew the short straw.');
+  // Wear where a market town's feet actually go: the market floor, the well,
+  // and the length of the processional between the two gates.
+  wearPatches(map, rd, { x: 31, y: 22, w: 15, h: 4 }, 'COBBLE_ISLE', 6, { res });
+  wearPatches(map, rd, { x: 21, y: 8, w: 3, h: 32 }, 'PATH_ISLE', 9, { res });
+  wearPatches(map, rd, { x: 27, y: 9, w: 5, h: 3 }, 'GRAVEL_ISLE', 3, { res });
+  map.recomputeFlags({ keep: 0 });
+
   sealBorder(map, tid('TREE_OAK', 'BLACK'));
   sweepStanding(map, npcs);
   map.spawn = { x: 28, y: 3 };
@@ -1539,7 +782,11 @@ function buildRiverShining(root) {
   const map = interiorMap({ id: 'river-shining-tavern', name: 'The River Shining Tavern', w: 24, h: 18, music: 'inn', region: 'daggerford' });
   const { npcs, res } = reserve('river-shining-tavern');
   const r = root.fork('tavern');
-  const rm = room(map, { w: 24, h: 18, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 12 });
+  const rm = room(map, {
+    w: 24, h: 18, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 12,
+    // Kitchen behind the bar: an inn that cooks has somewhere to cook.
+    rooms: [{ x: 0, y: 0, w: 6, h: 6, door: 'e', name: 'kitchen' }],
+  });
 
   for (let x = 8; x <= 15; x++) prop(map, x, 5, tid('BAR', 'COUNTER'), res);
   for (let x = 7; x <= 16; x++) prop(map, x, 1, tid('SHELF_GOODS', 'BOOKSHELF'), res);
@@ -1563,7 +810,7 @@ function buildRiverShining(root) {
   oset(map, 17, 10, tid('CHANDELIER', 'CANDLE'));
 
   finishInterior(map, rm.exit, npcs, 'STONE_WALL');
-  map.addTrigger({ id: 'river-shining-rest', kind: 'rest', x: 21, y: 1, w: 1, h: 2, data: { inn: true, cost: 9, text: 'A room over the river with a real window and a bolt on the door. Rest here?' } });
+  map.addTrigger({ id: 'river-shining-rest', kind: 'rest', x: 21, y: 2, w: 1, h: 1, data: { inn: true, cost: 9, text: 'A room over the river with a real window and a bolt on the door. Rest here?' } });
   map.addTrigger({ id: 'river-shining-shop', kind: 'shop', x: 11, y: 6, data: { shop: 'river-shining-tavern', npc: 'filarion-filvendorson' } });
   return map;
 }
@@ -1635,7 +882,14 @@ function buildDaggerfordSmithy(root) {
   const map = interiorMap({ id: 'daggerford-smithy', name: 'Ironeater’s Smithy', w: 20, h: 14, music: 'shop', region: 'daggerford' });
   const { npcs, res } = reserve('daggerford-smithy');
   const r = root.fork('smithy');
-  const rm = room(map, { w: 20, h: 14, floor: 'STONE_FLOOR', wall: 'STONE_WALL', exit: 10, step: 'WOOD_FLOOR_H' });
+  const rm = room(map, {
+    w: 20, h: 14, floor: 'STONE_FLOOR', wall: 'STONE_WALL', exit: 10, step: 'WOOD_FLOOR_H',
+    // The stock room: bar iron, charcoal and finished work, behind a door, the
+    // way a smith who does not want his stock walking off keeps it.
+    // Door placed by hand: an 'w' door would land on (14,10), where the builder
+    // stands a crate.
+    rooms: [{ x: 14, y: 7, w: 6, h: 7, door: { x: 14, y: 9 }, floor: 'STONE_FLOOR', name: 'stock' }],
+  });
 
   prop(map, 3, 2, tid('FORGE', 'HEARTH'), res);
   prop(map, 4, 2, tid('FORGE', 'HEARTH'), res);
@@ -1718,7 +972,7 @@ function buildTheWayInn(root) {
   building(map, {
     x: 16, y: 11, w: 13, h: 6, wall: 'STONE_WALL', roof: 'shingle', base: 'GRAVEL', lit: true,
     roofRows: 2, door: 6, windows: [1, 2, 3, 9, 10, 11], upper: [4, 8], sign: 8, band: 3,
-    chimney: 1, chimney2: 11, approach: 2,
+    chimney: 1, chimney2: 11, approach: 2, porch: 3, lantern: true,
   }, res);                                        // way-inn-common (22,16)
   prop(map, 15, 17, tid('BENCH', 'CRATE'), res);
   prop(map, 29, 17, tid('BENCH', 'CRATE'), res);
@@ -1796,9 +1050,17 @@ function buildWayInnCommon(root) {
   const map = interiorMap({ id: 'way-inn-common', name: 'The Way Inn', w: 26, h: 20, music: 'inn', region: 'trade-way' });
   const { npcs, res } = reserve('way-inn-common');
   const r = root.fork('common');
-  const rm = room(map, { w: 26, h: 20, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 13 });
+  const rm = room(map, {
+    w: 26, h: 20, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 13,
+    rooms: [
+      { x: 0, y: 2, w: 6, h: 7, door: 'e', name: 'kitchen' },
+      { x: 20, y: 13, w: 6, h: 7, door: 'w', floor: 'CARPET_RED', name: 'private room' },
+    ],
+  });
 
-  // One enormous room. Two hearths, because a caravanserai is heated for forty.
+  // The common floor, the kitchen behind the bar and the carters' private room.
+  // Two hearths, because a caravanserai is heated for forty.
+  prop(map, 1, 1, tid('BARREL', 'CRATE'), res);   // the corner the notice board makes
   prop(map, 1, 5, tid('HEARTH', 'BRAZIER'), res);
   prop(map, 1, 6, tid('HEARTH', 'BRAZIER'), res);
   prop(map, 24, 5, tid('HEARTH', 'BRAZIER'), res);
@@ -1830,7 +1092,7 @@ function buildWayInnCommon(root) {
 
   finishInterior(map, rm.exit, npcs, 'STONE_WALL');
   addSign(map, 2, 1, 'THE ROAD BOARD. Chalked columns: who is going north, who south, who east on the Dusk Road, and how many swords they have. Half the Trade Way’s business is done against this wall.');
-  map.addTrigger({ id: 'way-inn-common-rest', kind: 'rest', x: 23, y: 1, w: 1, h: 2, data: { inn: true, cost: 7, text: 'A bunk in the long room above, and forty other travellers snoring through it. Rest here?' } });
+  map.addTrigger({ id: 'way-inn-common-rest', kind: 'rest', x: 23, y: 2, w: 1, h: 1, data: { inn: true, cost: 7, text: 'A bunk in the long room above, and forty other travellers snoring through it. Rest here?' } });
   map.addTrigger({ id: 'way-inn-common-shop', kind: 'shop', x: 12, y: 5, data: { shop: 'way-inn-common', npc: 'gorstag-amblecrown' } });
   return map;
 }
@@ -2148,7 +1410,8 @@ function buildUlgothsBeard(root) {
   building(map, {
     x: 16, y: 11, w: 9, h: 6, wall: 'STONE_WALL', roof: 'thatch', base: 'GRAVEL', lit: true,
     roofRows: 3, door: 4, windows: [1, 2, 7], upper: [3, 6], sign: 6, band: 3,
-    chimney: 1, chimney2: 7, approach: 1, roofPatch: [[5, 1], [6, 2]], patchTile: 'SHINGLE_ROOF',
+    chimney: 1, chimney2: 7, approach: 1, roofPatch: [[5, 1], [6, 2]], patchTile: 'SHINGLE_M',
+    porch: 3, lantern: true,
   }, res);                                       // ulgoths-beard-inn (20,16)
   prop(map, 25, 17, tid('BARREL', 'CRATE'), res);
   prop(map, 15, 17, tid('BENCH', 'CRATE'), res);
@@ -2195,7 +1458,10 @@ function buildUlgothsBeardInn(root) {
   const map = interiorMap({ id: 'ulgoths-beard-inn', name: 'The Sea Bounty', w: 22, h: 16, music: 'inn', region: 'ulgoths-beard' });
   const { npcs, res } = reserve('ulgoths-beard-inn');
   const r = root.fork('bounty');
-  const rm = room(map, { w: 22, h: 16, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 11 });
+  const rm = room(map, {
+    w: 22, h: 16, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 11,
+    rooms: [{ x: 0, y: 0, w: 6, h: 6, door: 'e', name: 'kitchen' }],
+  });
 
   for (let x = 7; x <= 13; x++) prop(map, x, 4, tid('BAR', 'COUNTER'), res);
   for (let x = 6; x <= 14; x++) prop(map, x, 1, tid('SHELF_GOODS', 'BOOKSHELF'), res);
@@ -2214,7 +1480,7 @@ function buildUlgothsBeardInn(root) {
   oset(map, 5, 3, tid('CHANDELIER', 'CANDLE'));
 
   finishInterior(map, rm.exit, npcs, 'STONE_WALL');
-  map.addTrigger({ id: 'sea-bounty-rest', kind: 'rest', x: 20, y: 1, w: 1, h: 2, data: { inn: true, cost: 5, text: 'A room under the thatch that smells of tar and fish, and a bed that has never once been cold. Rest here?' } });
+  map.addTrigger({ id: 'sea-bounty-rest', kind: 'rest', x: 20, y: 2, w: 1, h: 1, data: { inn: true, cost: 5, text: 'A room under the thatch that smells of tar and fish, and a bed that has never once been cold. Rest here?' } });
   map.addTrigger({ id: 'sea-bounty-shop', kind: 'shop', x: 10, y: 5, data: { shop: 'sea-bounty', npc: 'westra-helder' } });
   return map;
 }
@@ -2333,7 +1599,13 @@ function buildFriendlyArmCommon(root) {
   const map = interiorMap({ id: 'friendly-arm-common', name: 'The Friendly Arm Inn', w: 26, h: 20, music: 'inn', region: 'coast-way' });
   const { npcs, res } = reserve('friendly-arm-common');
   const r = root.fork('arm');
-  const rm = room(map, { w: 26, h: 20, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 13 });
+  const rm = room(map, {
+    w: 26, h: 20, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 13,
+    rooms: [
+      { x: 0, y: 2, w: 6, h: 7, door: 'e', name: 'kitchen' },
+      { x: 20, y: 13, w: 6, h: 7, door: 'w', floor: 'CARPET_RED', name: 'private room' },
+    ],
+  });
 
   // A keep's hall converted: pillars down the middle where the vault needs them.
   for (const py of [6, 10, 14]) { prop(map, 7, py, tid('PILLAR', 'STONE_WALL'), res); prop(map, 18, py, tid('PILLAR', 'STONE_WALL'), res); }
@@ -2366,7 +1638,7 @@ function buildFriendlyArmCommon(root) {
 
   finishInterior(map, rm.exit, npcs, 'STONE_WALL');
   map.addTrigger({ id: 'friendly-arm-cellar', kind: 'sign', x: 2, y: 1, data: { text: 'A stair down into the old undercroft, boarded across at the fourth step and nailed. The nails are new. Bentley will change the subject twice and then stop answering.' } });
-  map.addTrigger({ id: 'friendly-arm-common-rest', kind: 'rest', x: 24, y: 1, w: 1, h: 2, data: { inn: true, cost: 12, text: 'A room in a keep with a wall round it, a bar on the door and a gnome downstairs who does not sleep. The best rest on the Coast Way. Rest here?' } });
+  map.addTrigger({ id: 'friendly-arm-common-rest', kind: 'rest', x: 24, y: 2, w: 1, h: 1, data: { inn: true, cost: 12, text: 'A room in a keep with a wall round it, a bar on the door and a gnome downstairs who does not sleep. The best rest on the Coast Way. Rest here?' } });
   map.addTrigger({ id: 'friendly-arm-common-shop', kind: 'shop', x: 13, y: 5, data: { shop: 'friendly-arm-common', npc: 'bentley-mirrorshade' } });
   return map;
 }
@@ -2447,15 +1719,15 @@ function buildBeregost(root) {
   building(map, {
     x: 11, y: 9, w: 11, h: 6, wall: 'STONE_WALL', roof: 'tile', base: 'COBBLE', lit: true,
     roofRows: 2, door: 5, windows: [1, 2, 3, 8, 9], upper: [4, 7, 9], sign: 7, band: 3,
-    chimney: 1, chimney2: 9, approach: 1,
+    chimney: 1, chimney2: 9, approach: 1, porch: 3, lantern: true,
   }, res);                                       // Feldepost's Inn (16,14)
   building(map, {
     x: 36, y: 10, w: 9, h: 5, wall: 'WATTLE_WALL', roof: 'thatch', base: 'COBBLE', lit: true,
-    roofRows: 2, door: 4, windows: [1, 2, 7], sign: 6, chimney: 7, approach: 1,
+    roofRows: 2, door: 4, windows: [1, 2, 7], sign: 6, chimney: 7, approach: 1, porch: 3, lantern: true,
   }, res);                                       // The Jovial Juggler (40,14)
   building(map, {
     x: 21, y: 20, w: 8, h: 5, wall: 'STONE_WALL', roof: 'shingle', base: 'GRAVEL',
-    roofRows: 2, door: 5, windows: [1, 6], sign: 2, chimney: 1, approach: 1,
+    roofRows: 2, door: 5, windows: [1, 6], sign: 2, chimney: 1, approach: 1, porch: 3,
   }, res);                                       // Thunderhammer Smithy (26,24)
   prop(map, 20, 25, tid('ANVIL', 'FORGE'), res);
   prop(map, 19, 24, tid('FORGE', 'ANVIL'), res);
@@ -2555,7 +1827,10 @@ function buildFeldeposts(root) {
   const map = interiorMap({ id: 'feldeposts-inn', name: 'Feldepost’s Inn', w: 22, h: 18, music: 'inn', region: 'beregost' });
   const { npcs, res } = reserve('feldeposts-inn');
   const r = root.fork('feldepost');
-  const rm = room(map, { w: 22, h: 18, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 11 });
+  const rm = room(map, {
+    w: 22, h: 18, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 11,
+    rooms: [{ x: 0, y: 0, w: 6, h: 6, door: 'e', name: 'kitchen' }],
+  });
 
   for (let x = 8; x <= 14; x++) prop(map, x, 4, tid('BAR', 'COUNTER'), res);
   for (let x = 7; x <= 15; x++) prop(map, x, 1, tid('SHELF_GOODS', 'BOOKSHELF'), res);
@@ -2574,7 +1849,7 @@ function buildFeldeposts(root) {
   oset(map, 6, 12, tid('CHANDELIER', 'CANDLE'));
 
   finishInterior(map, rm.exit, npcs, 'STONE_WALL');
-  map.addTrigger({ id: 'feldeposts-rest', kind: 'rest', x: 20, y: 1, w: 1, h: 2, data: { inn: true, cost: 10, text: 'A room on the second floor with a shutter that closes properly and a lock that works. Rest here?' } });
+  map.addTrigger({ id: 'feldeposts-rest', kind: 'rest', x: 20, y: 2, w: 1, h: 1, data: { inn: true, cost: 10, text: 'A room on the second floor with a shutter that closes properly and a lock that works. Rest here?' } });
   map.addTrigger({ id: 'feldeposts-shop', kind: 'shop', x: 11, y: 5, data: { shop: 'feldeposts-inn', npc: 'feldepost' } });
   return map;
 }
@@ -2584,7 +1859,10 @@ function buildJovialJuggler(root) {
   const map = interiorMap({ id: 'jovial-juggler', name: 'The Jovial Juggler', w: 22, h: 18, music: 'inn', region: 'beregost' });
   const { npcs, res } = reserve('jovial-juggler');
   const r = root.fork('juggler');
-  const rm = room(map, { w: 22, h: 18, floor: 'WOOD_FLOOR_H', wall: 'WATTLE_WALL', exit: 11 });
+  const rm = room(map, {
+    w: 22, h: 18, floor: 'WOOD_FLOOR_H', wall: 'WATTLE_WALL', exit: 11,
+    rooms: [{ x: 0, y: 0, w: 6, h: 6, door: 'e', name: 'kitchen' }],
+  });
 
   for (let x = 7; x <= 13; x++) prop(map, x, 4, tid('BAR', 'COUNTER'), res);
   for (let x = 6; x <= 14; x++) prop(map, x, 1, tid('SHELF_GOODS', 'BOOKSHELF'), res);
@@ -2606,7 +1884,7 @@ function buildJovialJuggler(root) {
 
   finishInterior(map, rm.exit, npcs, 'WATTLE_WALL');
   addSign(map, 2, 9, 'THE BOARD BY THE FIRE. Sellswords, guides and one very confident bard, chalked up with what they want a day and what they are actually worth.');
-  map.addTrigger({ id: 'jovial-juggler-rest', kind: 'rest', x: 20, y: 1, w: 1, h: 2, data: { inn: true, cost: 8, text: 'A room over the common floor, and somebody will be playing under it until second bell. Rest here?' } });
+  map.addTrigger({ id: 'jovial-juggler-rest', kind: 'rest', x: 20, y: 2, w: 1, h: 1, data: { inn: true, cost: 8, text: 'A room over the common floor, and somebody will be playing under it until second bell. Rest here?' } });
   map.addTrigger({ id: 'jovial-juggler-shop', kind: 'shop', x: 10, y: 5, data: { shop: 'jovial-juggler', npc: 'kithri-greenbottle' } });
   return map;
 }
@@ -2686,7 +1964,10 @@ function buildThunderhammerSmithy(root) {
   const map = interiorMap({ id: 'thunderhammer-smithy', name: 'Thunderhammer Smithy', w: 20, h: 16, music: 'shop', region: 'beregost' });
   const { npcs, res } = reserve('thunderhammer-smithy');
   const r = root.fork('hammer');
-  const rm = room(map, { w: 20, h: 16, floor: 'STONE_FLOOR', wall: 'STONE_WALL', exit: 10, step: 'WOOD_FLOOR_H' });
+  const rm = room(map, {
+    w: 20, h: 16, floor: 'STONE_FLOOR', wall: 'STONE_WALL', exit: 10, step: 'WOOD_FLOOR_H',
+    rooms: [{ x: 14, y: 8, w: 6, h: 8, door: 'w', floor: 'STONE_FLOOR', name: 'stock' }],
+  });
 
   prop(map, 2, 2, tid('FORGE', 'HEARTH'), res);
   prop(map, 3, 2, tid('FORGE', 'HEARTH'), res);
@@ -3056,7 +2337,7 @@ function buildNashkel(root) {
   building(map, {
     x: 16, y: 13, w: 9, h: 6, wall: 'STONE_WALL', roof: 'shingle', base: 'GRAVEL', lit: true,
     roofRows: 2, door: 4, windows: [1, 2, 7], upper: [3, 6], sign: 6, band: 3,
-    chimney: 1, chimney2: 7, approach: 1,
+    chimney: 1, chimney2: 7, approach: 1, porch: 3, lantern: true,
   }, res);                                       // nashkel-inn (20,18)
   building(map, {
     x: 28, y: 14, w: 8, h: 5, wall: 'WATTLE_WALL', roof: 'thatch', base: 'GRAVEL',
@@ -3124,7 +2405,10 @@ function buildNashkelInn(root) {
   const map = interiorMap({ id: 'nashkel-inn', name: 'The Nashkel Inn', w: 22, h: 18, music: 'inn', region: 'nashkel' });
   const { npcs, res } = reserve('nashkel-inn');
   const r = root.fork('nashkel');
-  const rm = room(map, { w: 22, h: 18, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 11 });
+  const rm = room(map, {
+    w: 22, h: 18, floor: 'WOOD_FLOOR', wall: 'STONE_WALL', exit: 11,
+    rooms: [{ x: 0, y: 0, w: 6, h: 6, door: 'e', name: 'kitchen' }],
+  });
 
   for (let x = 8; x <= 14; x++) prop(map, x, 4, tid('BAR', 'COUNTER'), res);
   for (let x = 7; x <= 15; x++) prop(map, x, 1, tid('SHELF_GOODS', 'BOOKSHELF'), res);
@@ -3144,7 +2428,7 @@ function buildNashkelInn(root) {
   oset(map, 6, 12, tid('CHANDELIER', 'CANDLE'));
 
   finishInterior(map, rm.exit, npcs, 'STONE_WALL');
-  map.addTrigger({ id: 'nashkel-inn-bed', kind: 'rest', x: 20, y: 1, w: 1, h: 2, data: { inn: true, cost: 8, text: 'A room at the top of the stairs with a window on the Cloud Peaks. Rest here?' } });
+  map.addTrigger({ id: 'nashkel-inn-bed', kind: 'rest', x: 20, y: 2, w: 1, h: 1, data: { inn: true, cost: 8, text: 'A room at the top of the stairs with a window on the Cloud Peaks. Rest here?' } });
   map.addTrigger({ id: 'nashkel-inn-shop', kind: 'shop', x: 11, y: 5, data: { shop: 'nashkel-inn', npc: 'vitiare-calabra' } });
   return map;
 }
@@ -3363,3 +2647,57 @@ export const REGION_MAPS = {
     desc: 'The iron mine under the Cloud Peaks, and whatever is in the ore that the assay keeps failing.',
   },
 };
+
+// ---------------------------------------------------------------------------
+// UPPER FLOORS
+// ---------------------------------------------------------------------------
+//
+// Seven taprooms in this pack had a STAIRS_UP tile with a `rest` trigger on it
+// and nothing at the top of the stairs. `innFloor` (mapkit) builds the landing
+// and guest rooms those stairs were always supposed to reach, and returns both
+// the map def and the LINKS row, so each stair is now a real two-way warp.
+// Each taproom's `rest` trigger has moved one tile down off the stair — its
+// 1x2 span already covered that tile — so the warp and the rest never shadow
+// each other in `triggerAt`.
+const INN_FLOORS = [
+  {
+    inn: 'river-shining-tavern', name: 'The River Shining — Guest Rooms',
+    stair: [21, 1], land: [21, 2], rooms: 4, wall: 'STONE_WALL',
+    desc: 'Rooms over the Delimbiyr, and a bolt on every door.',
+  },
+  {
+    inn: 'way-inn-common', name: 'The Way Inn — Long Room',
+    stair: [23, 1], land: [23, 2], rooms: 5, wall: 'STONE_WALL',
+    desc: 'Bunks for forty caravaneers, and all forty of them snore.',
+  },
+  {
+    inn: 'ulgoths-beard-inn', name: 'The Sea Bounty — Upstairs',
+    stair: [20, 1], land: [20, 2], rooms: 3, wall: 'WATTLE_WALL',
+    desc: 'Three rooms under the thatch that smell of tar and fish.',
+  },
+  {
+    inn: 'friendly-arm-common', name: 'The Friendly Arm — Guest Rooms',
+    stair: [24, 1], land: [24, 2], rooms: 5, wall: 'STONE_WALL',
+    desc: 'The safest beds on the Coast Way, inside a keep with a wall round it.',
+  },
+  {
+    inn: 'feldeposts-inn', name: 'Feldepost’s Inn — Second Floor',
+    stair: [20, 1], land: [20, 2], rooms: 4, wall: 'STONE_WALL',
+    desc: 'Shutters that close properly and locks that work. Beregost’s best.',
+  },
+  {
+    inn: 'jovial-juggler', name: 'The Jovial Juggler — Upstairs',
+    stair: [20, 1], land: [20, 2], rooms: 4, wall: 'WATTLE_WALL',
+    desc: 'Rooms over the common floor, and somebody playing under them till second bell.',
+  },
+  {
+    inn: 'nashkel-inn', name: 'The Nashkel Inn — Upstairs',
+    stair: [20, 1], land: [20, 2], rooms: 4, wall: 'WATTLE_WALL',
+    desc: 'Amnish beds, Amnish prices, and a window on the Cloud Peaks.',
+  },
+].map((s) => innFloor({ region: 'trade-way', music: 'inn', ...s }));
+
+for (const f of INN_FLOORS) {
+  REGION_MAPS[f.id] = f.def;
+  REGION_LINKS.push(f.link);
+}

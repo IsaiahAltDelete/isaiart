@@ -38,6 +38,7 @@ import {
 } from '../rules/conditions.js';
 import { className, subclassName, xpToNext, xpProgress } from '../rules/progression.js';
 import { fieldCastable, fieldCast, fieldTargeting } from '../rules/fieldcast.js';
+import { travelSites } from '../rules/fieldworld.js';
 import { Party } from '../world/party.js';
 import {
   saveState, loadState, stateSummary, advanceTime, timeInfo, REP_RANKS, repRank,
@@ -293,6 +294,21 @@ function itemColor(id, d) {
 }
 function itemName(id, d) {
   return (d && d.name) || titleCase(String(id || '').replace(/-/g, ' '));
+}
+
+/**
+ * What an unidentified find is called before anybody names it. The kind is
+ * obvious by looking — a ring is a ring — so that is all the label gives away.
+ */
+const UNKNOWN_NAMES = {
+  weapon: 'An Unfamiliar Blade', armor: 'Strange Armour', shield: 'A Marked Shield',
+  potion: 'An Unlabelled Vial', scroll: 'A Sealed Scroll', wand: 'A Carved Wand',
+  ring: 'A Plain Ring', amulet: 'A Dull Amulet', cloak: 'A Heavy Cloak',
+  boots: 'Well-Worn Boots', gloves: 'Odd Gloves', helm: 'A Battered Helm',
+  rod: 'A Black Rod', staff: 'A Knotted Staff', gem: 'An Uncut Stone',
+};
+function unknownName(d) {
+  return UNKNOWN_NAMES[String((d && d.kind) || '')] || 'Something Enchanted';
 }
 function rarityName(d) {
   return (RARITY[(d && d.rarity) || 'common'] || {}).name || 'Common';
@@ -2423,14 +2439,33 @@ export class InventoryScene extends MenuScene {
       return;
     }
     const d = it.def;
-    const col = itemColor(it.id, d);
-    const nameLines = UI.wrapLines(itemName(it.id, d), w, 'md');
+    // An unnamed find is a shape and a weight and nothing else. Identify, Detect
+    // Magic, or the coin an appraiser charges will tell you the rest.
+    const mystery = !!(it.entry && it.entry.unidentified);
+    const col = mystery ? C.purple : itemColor(it.id, d);
+    const shown = mystery ? unknownName(d) : itemName(it.id, d);
+    const nameLines = UI.wrapLines(shown, w, 'md');
     let ty = y;
     for (const l of nameLines.slice(0, 2)) { txt(ctx, x, ty, l, { size: 'md', color: col, shadow: true }); ty += 11; }
-    txt(ctx, x, ty, `${titleCase(String((d && d.kind) || 'item'))} · ${rarityName(d)}`, {
-      size: 'sm', color: C.inkDim, shadow: true, maxWidth: w,
+    txt(ctx, x, ty, mystery
+      ? `${titleCase(String((d && d.kind) || 'item'))} · unidentified`
+      : `${titleCase(String((d && d.kind) || 'item'))} · ${rarityName(d)}`, {
+      size: 'sm', color: mystery ? C.goldDim : C.inkDim, shadow: true, maxWidth: w,
     });
     ty += 10;
+    if (mystery) {
+      kv(ctx, x, ty, w, 'Weight', `${num(d && d.weight, 0)} lb${it.qty > 1 ? ` (x${it.qty})` : ''}`);
+      ty += 13;
+      UI.divider(ctx, x, ty, w);
+      ty += 4;
+      const lines = UI.wrapLines(
+        'The Weave clings to it and will not say why. Identify, Detect Magic or a temple appraisal will give up its name.',
+        w, 'sm',
+      );
+      for (let i = 0; i < lines.length && ty < y + h - 8; i++) { txt(ctx, x, ty, lines[i], { size: 'sm', color: C.inkDim, shadow: true }); ty += 9; }
+      this._maxScroll = 0;
+      return;
+    }
     kv(ctx, x, ty, w, 'Weight', `${num(d && d.weight, 0)} lb${it.qty > 1 ? ` (x${it.qty})` : ''}`);
     kv(ctx, x, ty + 9, w, 'Value', goldText(num(d && d.cost, 0)));
     ty += 20;
@@ -2641,14 +2676,29 @@ export class SpellbookScene extends MenuScene {
     this._doCast(ch, row, ch);
   }
 
-  _doCast(ch, row, target) {
+  /**
+   * @param {object} extra   answers to a previous `pending` question:
+   *                         `{ destination }` for a teleport, `{ itemChoice }`
+   *                         for Creation. Nothing is spent until they arrive.
+   */
+  _doCast(ch, row, target, extra = null) {
     const res = safe(() => fieldCast(ch, row.id, {
       target,
       party: Party,
       state: Game.state,
       world: this._worldHooks(),
+      ...(extra || {}),
     }), null);
+
+    // The spell has a question before it has a cost. fieldcast has taken
+    // nothing — no slot, no component — and will not until the answer comes
+    // back through `extra`.
+    if (res && res.pending) { this._askPending(ch, row, target, res.pending); return; }
+
     if (!res || !res.ok) { sfx('error'); this.say((res && res.text) || 'Nothing happens.', true, 2.6); return; }
+
+    // A long-range teleport moved the party's pin; the overworld moves the party.
+    if (res.travel && res.travel.id) { this._teleportTo(res.travel, res.lines[0]); return; }
 
     if (res.minutes) safe(() => advanceTime(Game.state, res.minutes));
     // main.js already counts EV.SPELL_CAST; counting it here too double-billed
@@ -2671,8 +2721,74 @@ export class SpellbookScene extends MenuScene {
    */
   _worldHooks() {
     const ow = safe(() => Game.scenes.find((sc) => sc && sc.id === 'overworld'), null);
-    if (!ow || typeof ow.spellHooks !== 'function') return {};
-    return safe(() => ow.spellHooks(), {}) || {};
+    const base = (ow && typeof ow.spellHooks === 'function' && safe(() => ow.spellHooks(), null)) || {};
+    // The travel list is pure GameState — where you have been — so it works
+    // from the rest screen and the title screen too, where there is no
+    // overworld beneath us to ask.
+    if (typeof base.sites !== 'function') {
+      const st = Game.state;
+      base.sites = (mode) => safe(() => travelSites(st, mode, st && st.mapId), []) || [];
+    }
+    return base;
+  }
+
+  /**
+   * Put a spell's question to the player. Teleport asks where; Creation and
+   * Fabricate ask what. Cancelling costs nothing at all, which is the whole
+   * point of asking before the slot is spent rather than after.
+   */
+  _askPending(ch, row, target, pending) {
+    if (pending.kind === 'travel') {
+      const sites = arr(pending.sites);
+      const options = sites.map((s, i) => ({
+        label: s.town ? `${s.name}  (safe)` : s.name,
+        value: i,
+        color: s.town ? C.good : C.ink,
+      }));
+      options.push({ label: 'Think better of it', value: null });
+      this.ask(row.spell.name, sites.length === 1 ? 'The sanctuary you set.' : 'Somewhere you have been.', options, (v) => {
+        if (v == null || !sites[v]) return;
+        this._doCast(ch, row, target, { destination: sites[v] });
+      });
+      return;
+    }
+    if (pending.kind === 'item') {
+      const choices = arr(pending.choices);
+      const options = choices.map((c, i) => ({ label: c.name, value: i }));
+      options.push({ label: 'Nothing, after all', value: null });
+      this.ask(row.spell.name, 'Shape it into what?', options, (v) => {
+        if (v == null || !choices[v]) return;
+        this._doCast(ch, row, target, { itemChoice: choices[v].id });
+      });
+      return;
+    }
+    this.say('It waits on an answer nobody can give.', true, 2.6);
+  }
+
+  /**
+   * Move the party after a teleport that has already been paid for. Same road
+   * the regional map's fast travel takes, minus the hours on it — that is what
+   * a 7th-level slot buys.
+   */
+  _teleportTo(dest, line) {
+    sfx('spell');
+    this.say(line || 'The world folds, and unfolds somewhere else.', false, 3.4);
+    softImport('../world/overworld.js', 'overworld').then((ow) => {
+      const go = ow && ow.travelTo;
+      const st = Game.state;
+      if (!go) {
+        if (st) { st.mapId = dest.id; safe(() => toast(`You step out in ${dest.name || dest.id}.`)); }
+        this.close();
+        return;
+      }
+      Game.transition('fade', () => {
+        safe(() => (Number.isFinite(dest.x) && Number.isFinite(dest.y)
+          ? go(dest.id, dest.x, dest.y, dest.dir || 'down')
+          : go(dest.id)));
+        // Close the whole menu stack: you are somewhere else now.
+        while (Game.top === this) Game.pop();
+      });
+    });
   }
 
   /** Move the cursor past group headers. */

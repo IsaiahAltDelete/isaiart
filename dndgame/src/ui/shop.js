@@ -36,6 +36,7 @@ import {
 import { Party } from '../world/party.js';
 import { advanceTime } from '../state.js';
 import { priceMultiplierIn, shopsRefuse } from '../rules/crime.js';
+import { charmDiscount } from '../rules/fieldworld.js';
 
 // ===========================================================================
 // 0. SAFETY
@@ -475,6 +476,7 @@ export class ShopScene {
 
     this.shopId = String(shopId || 'barthens-provisions');
     this.outlawMult = 1;          // markup a bounty on your head earns you
+    this.charmMult = 1;           // …and the discount a charmed shopkeeper gives
     this.refused = false;         // …and the point past which they stop selling
     this.opts = opts || {};
     this.onClose = opts.onClose || null;
@@ -514,7 +516,11 @@ export class ShopScene {
       || (st ? { id: st.mapId } : null);
     this.outlawMult = safe(() => priceMultiplierIn(st, map), 1) || 1;
     this.refused = safe(() => shopsRefuse(st, map), false);
-    if (this.outlawMult > 1) this.shop = { ...this.shop, markup: this.shop.markup * this.outlawMult };
+    // A shopkeeper under Charm Person counts the party as friends, and friends
+    // get a tenth off. rules/fieldworld.js owns the flag and its expiry.
+    this.charmMult = safe(() => charmDiscount(st, this.shop.npc), 1) || 1;
+    const mult = this.outlawMult * this.charmMult;
+    if (mult !== 1) this.shop = { ...this.shop, markup: this.shop.markup * mult };
 
     this._shopState();                       // runs the restock check
     this._cmp.clear();
@@ -523,6 +529,7 @@ export class ShopScene {
     safe(() => bus.emit(EV.SHOP_OPEN, { id: this.shopId }));
     if (this.refused) this._say('"I know what you did. Get out."', true, 6);
     else if (this.outlawMult > 1) this._say('"Your coin spends. It just spends harder."', true, 6);
+    else if (this.charmMult < 1) this._say('"For you? Call it a tenth off. I like your face."', false, 6);
     else if (this._restocked) this._say('Fresh stock came up the High Road.', false);
     else if (!this.msg) this._say(this.shop.greeting, false, 6);
   }
@@ -829,7 +836,8 @@ export class ShopScene {
       return;
     }
     Party.spendGold(total);
-    Party.addItem(row.id, qty);
+    // Bought stock is never a mystery: the label was on the shelf.
+    Party.addItem(row.id, qty, { identified: true });
     if (row.limited) {
       const sold = this._shopState();
       sold[row.id] = num(sold[row.id], 0) + qty;
@@ -945,7 +953,12 @@ export class ShopScene {
       }
       case 'identify': {
         let n = 0;
-        for (const e of arr(Party.inventory)) if (!e.identified) { e.identified = true; n++; }
+        // The temple's appraisal and the Identify spell write the same two
+        // fields, so a thing named here stays named for the spellbook too.
+        for (const e of arr(Party.inventory)) {
+          if (e.identified && !e.unidentified) continue;
+          e.identified = true; e.unidentified = false; n++;
+        }
         sfx('spell');
         return n ? `${n} item${n === 1 ? '' : 's'} named and read.` : 'Nothing in your pack was a mystery.';
       }

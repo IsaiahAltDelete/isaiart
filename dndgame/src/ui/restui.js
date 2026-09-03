@@ -55,6 +55,7 @@ import { exhaustionLevel } from '../rules/conditions.js';
 import { className } from '../rules/progression.js';
 import { Party } from '../world/party.js';
 import { advanceTime, hasFlag } from '../state.js';
+import { watchMods, setRecallPoint } from '../rules/fieldworld.js';
 import { resolveItem } from '../data/items.js';
 
 const C = UI.COLORS;
@@ -1285,7 +1286,34 @@ export class RestScene {
     }
     if (!watcher) watcher = this.members[0] || null;
 
-    return { spec, dc, watcher, mod: best === -99 ? 0 : best, roll: null, ambush: true, level };
+    // What the party's magic is worth to the one sitting up with the fire.
+    // Alarm means nothing crosses the perimeter unheard: Advantage on the
+    // watch, and no ambush even when the roll goes badly. A camp with no light
+    // on it, and a watcher with no darkvision, is the other way about.
+    const mods = safe(() => watchMods(this._campScene(), st, Party, watcher, w.mapId), null)
+      || { adv: false, dis: false, ambush: true, why: '' };
+
+    return {
+      spec, dc, watcher, mod: best === -99 ? 0 : best, roll: null, level,
+      adv: !!mods.adv, dis: !!mods.dis, canAmbush: mods.ambush !== false,
+      why: mods.why || '', ambush: mods.ambush !== false,
+    };
+  }
+
+  /**
+   * A stand-in scene for rules/fieldworld, which reads `map.dark` and
+   * `scene.spellLight` to decide whether the watch is squinting into the dark.
+   * The real overworld is still on the stack underneath us, so borrow its light
+   * rather than pretending the party never cast one.
+   */
+  _campScene() {
+    const ow = safe(() => Game.scenes.find((sc) => sc && sc.id === 'overworld'), null);
+    return {
+      map: { id: this.where.mapId, dark: this.inn || this.where.sheltered ? 0 : 1 },
+      spellLight: (ow && ow.spellLight) || null,
+      entities: [],
+      state: S(),
+    };
   }
 
   _pickDream() {
@@ -1344,11 +1372,12 @@ export class RestScene {
     this.phaseT = 0;
     this.watchT = 0;
     this.watchStage = 0;
-    e.roll = safe(() => d20(e.mod, { dc: e.dc }), null)
+    e.roll = safe(() => d20(e.mod, { dc: e.dc, adv: !!e.adv, dis: !!e.dis }), null)
       || { total: e.mod + 10, natural: 10, mod: e.mod, rolls: [10] };
     e.roll.dc = e.dc;
     e.success = num(e.roll.total, 0) >= e.dc;
-    e.ambush = !e.success;
+    // A ward that gets tripped is not a surprise, however the Perception lands.
+    e.ambush = !e.success && e.canAmbush !== false;
     sfx('dice');
     safe(() => Audio.music('tense'));
   }
@@ -1431,6 +1460,15 @@ export class RestScene {
       this.longLog.push({ ch, lines });
     }
     if (st && st.stats) st.stats.longRests = num(st.stats.longRests, 0) + 1;
+
+    // A bed under a roof is a sanctuary, and Word of Recall wants to know where
+    // the last one was. Inns and temples only: a bedroll in the Mere of Dead
+    // Men is not somewhere the Weave will consent to put you down again.
+    if (st && (this.inn || this.where.sheltered)) {
+      safe(() => setRecallPoint(st, this.where.mapId || st.mapId, st.x, st.y,
+        this.where.place || null, st.dir || 'down'));
+    }
+
     safe(() => bus.emit(EV.REST, { kind: 'long' }));
     safe(() => bus.emit(EV.PARTY_CHANGE, { members: Party.members }));
     safe(() => Audio.music(this.inn ? 'inn' : 'town'));

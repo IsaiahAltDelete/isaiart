@@ -7108,6 +7108,1115 @@ let registered = false;
  * Define every bestiary sprite with the sprite engine. Safe to call twice —
  * the second call is a no-op. Returns how many sprites were registered.
  */
+// ===========================================================================
+// GAP SPRITES — creatures that had no art of their own.
+//
+// Twenty-two creatures were reaching MONSTER_SPRITE_MAP's last-resort family
+// guess: a raven drawn as a griffon, a giant fire beetle as a hill giant, a
+// crawling severed hand as a goblin. The guess is the right CATEGORY and the
+// wrong animal, which reads worse than an obvious placeholder because the
+// player believes it. These are the bodies those creatures should have had.
+//
+// TWO RULES, both learned the hard way from rendering these and looking:
+//
+//  1. Rows are left-anchored and fit() pads the BOTTOM, so an array shorter
+//     than `h` leaves the creature hovering above its own feet. Every walker
+//     below runs its last leg row at h-1. Fliers may sit a pixel or two high;
+//     that is the hover, and hoverer() bobs them.
+//  2. sym() mirrors a HALF row and fills from its last character to the centre
+//     line — so a row ending in a colour makes a solid body of width
+//     2*(hw - startCol), and a row ending in '.' leaves a gap down the middle.
+//     Fill for bodies, exact for legs and antlers. Front views were coming out
+//     as loaves of bread because every row started at column 4 and filled.
+// ===========================================================================
+
+function gapSprites() {
+  // --- birds ---------------------------------------------------------------
+  // A raven is mostly silhouette at this size: blunt head, heavy beak, a long
+  // wedge tail. The eye is the one light pixel, which is what makes a black
+  // bird read as a bird rather than a hole in the world.
+  hoverer('raven', {
+    w: 16, h: 16,
+    palette: pal('#3f3f4d', '#1c1c24', '#7a7a8e', { E: '#e8c33a' }),
+    down: [
+      '', '',
+      '......KK',
+      '.....K22K',
+      '.....KEEK',
+      '.....K22K',
+      '....K2222K',
+      '....K2222K',
+      '...K122221K',
+      '...K122221K',
+      '...K122221K',
+      '....K12221K',
+      '....K1221K',
+      '.....K22K',
+      '.....K44K',
+      '......KK',
+    ],
+    side: [
+      '', '',
+      '...KK',
+      '..K22K',
+      '.K2E2K',
+      '4K2222KK',
+      '44K222222KKK',
+      '.K12222222222K',
+      '.K122222222221K',
+      '.K11222222221K',
+      '..K1122222221K',
+      '..K11222222K',
+      '...KK1111KK',
+      '.....K44K',
+      '.....4..4',
+      '.....4..4',
+    ],
+  });
+
+  // Vulture: the hunch is the whole read. A bald head on a bare neck held low
+  // and forward, a pale ruff where the feathers start, a heavy hooked bill.
+  hoverer('vulture', {
+    w: 20, h: 20,
+    palette: pal('#5a4a3a', '#241e1a', '#c8b8a0', { O: '#c08a7a' }),
+    down: [
+      '', '',
+      '........KK',
+      '.......KOOK',
+      '.......KZZK',
+      '.......KOOK',
+      '........KOK',
+      '......K3333K',
+      '.....K333333K',
+      '....K11333311K',
+      '...K1111111111K',
+      '...K1111111111K',
+      '...K1111111111K',
+      '....K11111111K',
+      '....K11111111K',
+      '.....K111111K',
+      '......K1111K',
+      '.......K44K',
+      '........KK',
+      '',
+    ],
+    side: [
+      '', '',
+      '..KOK',
+      '.KOOK',
+      '.KOZK',
+      '4KOOK',
+      '44KO3K',
+      '..K33KK',
+      '.K3311KKK',
+      'K33111122222KK',
+      'K3111122222222K',
+      '.K111122222222K',
+      '.K1111222222221K',
+      '..K111222222221K',
+      '..K11122222221K',
+      '...KK111111KK',
+      '.....K44K',
+      '.....4..4',
+      '.....4..4',
+      '',
+    ],
+  });
+
+  // A giant owl is a face: the disc of it, and two lamps in the middle. Round
+  // where the vulture is angular, so the two never read as the same bird.
+  hoverer('giant-owl', {
+    w: 24, h: 24,
+    palette: pal('#8a7a5a', '#4a3f2a', '#e8dcc0', { E: '#ffd24a' }),
+    down: [
+      '', '',
+      '.......KKKKKK',
+      '......K333333K',
+      '.....K33333333K',
+      '.....K3EE33EE3K',
+      '.....K3EZ33EZ3K',
+      '.....K33333333K',
+      '.....K333TT333K',
+      '......K33333K',
+      '....KK11333311KK',
+      '..KK111133331111KK',
+      '.K1111113333111111K',
+      '.K1111113333111111K',
+      '.K1111113333111111K',
+      '..K11111333311111K',
+      '..K1111133331111K',
+      '...K111133331111K',
+      '....K1113333111K',
+      '.....K1133331K',
+      '......K11111K',
+      '.......K444K',
+      '........KK',
+      '',
+    ],
+    side: [
+      '', '',
+      '....KKKK',
+      '...K3333K',
+      '..K3EE333K',
+      '..K3EZ333K',
+      '..K33333TK',
+      '..K333333K',
+      '.K11333333KK',
+      'K111133333311KK',
+      'K11113333333111K',
+      'K111133333331111K',
+      '.K11133333331111K',
+      '.K1113333333111K',
+      '..K111333333111K',
+      '..K111333333111K',
+      '...K11133333111K',
+      '...K1111333311K',
+      '....K1111111K',
+      '.....K44KK44K',
+      '.....4....4',
+      '.....4....4',
+      '',
+    ],
+  });
+
+  // --- four-legged beasts ---------------------------------------------------
+  // A hyena is a wolf that slopes: high at the shoulder, low at the hip, on
+  // short legs, and spotted. The slope is the silhouette cue that stops it
+  // reading as a dog.
+  walker('hyena', {
+    w: 24, h: 24, legTop: 19,
+    palette: pal('#9a8a5a', '#4a3a22', '#c8b88a', { E: '#e8c33a' }),
+    backSub: { Z: '2', E: '2', T: '2' },
+    down: sym([
+      '', '', '', '', '',
+      '........K44.',
+      '........K1E.',
+      '........K11.',
+      '........K1T.',
+      '.......K1122',
+      '......K11222',
+      '......K11222',
+      '.....K112222',
+      '.....K114222',
+      '.....K112222',
+      '.....K112242',
+      '......K11222',
+      '......K11222',
+      '......K11222',
+      '.......K1122',
+      '.......K11K.',
+      '.......K11K.',
+      '.......K11K.',
+      '.......KKK..',
+    ], 24),
+    side: [
+      '', '', '',
+      '..KK4K',
+      '.K1442K',
+      '.K14E22KKK',
+      'K1T22222211KK',
+      'K1222242222221KK',
+      'K12222222422222221K',
+      '.K1224222222422221K',
+      '..K122222422222221K',
+      '..K122422222224222K',
+      '...K12222222222221K',
+      '...K1222K11122222221K',
+      '...K122K...K122221K',
+      '...K12K....K12221K',
+      '...K12K....K1222K',
+      '..K122K...K12221K',
+      '..K122K...K1222K',
+      '..K122K...K1222K',
+      '..K12K.....K122K',
+      '..K12K.....K122K',
+      '..KKK......KKKK',
+      '',
+    ],
+  });
+
+  // Low, long and quick: a weasel is nearly all body. The legs barely show,
+  // which is exactly the difference between this and the rat it was borrowing.
+  walker('giant-weasel', {
+    w: 20, h: 16, legTop: 12,
+    palette: pal('#a88a4a', '#5a4020', '#e8dcb0', { E: '#a82a2a' }),
+    backSub: { Z: '2', E: '2', T: '2' },
+    down: sym([
+      '', '', '',
+      '.......K1.',
+      '.......KE.',
+      '.......K1.',
+      '.......KT.',
+      '......K112',
+      '.....K1122',
+      '.....K1122',
+      '.....K1122',
+      '.....K1122',
+      '......K112',
+      '......K1K.',
+      '......K1K.',
+      '......KKK.',
+    ], 20),
+    side: [
+      '', '',
+      '..KK',
+      '.K12K',
+      '.K1E2KKK',
+      'K1T2222222KKK',
+      'K1222222222222KK',
+      '.K12222222222222K',
+      '.K12222222222222K',
+      '..K122222222222K',
+      '..K1K22222222K1K',
+      '..K1K.K1222K.K1K',
+      '..K1K.K122K..K1K',
+      '..K1K.K12K...K1K',
+      '..KK..KKK....KK',
+      '',
+    ],
+  });
+
+  // Antlers first: an elk at this size is a rack of horn with a body under it,
+  // and the boar it was borrowing had neither the height nor the crown.
+  walker('giant-elk', {
+    w: 32, h: 32, legTop: 25,
+    palette: pal('#7a5a3a', '#3f2c1a', '#c8a878', { T: '#e0d4b0', E: '#e8c33a' }),
+    backSub: { Z: '2', E: '2' },
+    down: sym([
+      '', '',
+      '....T...T.......',
+      '.....T.T........',
+      '......TT........',
+      '.......T........',
+      '.......T........',
+      '...........K11',
+      '...........K1E',
+      '...........K11',
+      '...........K1T',
+      '..........K112',
+      '.........K1122',
+      '........K11222',
+      '.......K112222',
+      '.......K112222',
+      '.......K112222',
+      '.......K112222',
+      '.......K112222',
+      '.......K112222',
+      '........K11222',
+      '........K11222',
+      '.........K1122',
+      '.........K11K.',
+      '.........K11K.',
+      '.........K11K.',
+      '.........K11K.',
+      '.........K11K.',
+      '.........K11K.',
+      '.........K11K.',
+      '.........K11K.',
+      '.........K11K.',
+      '.........KKK..',
+    ], 32),
+    side: [
+      '', '',
+      '..T..T..T',
+      '.T.TT.TT',
+      '..TTTTT',
+      '...TTT',
+      '...KKT',
+      '..K12K',
+      '..K1E2KK',
+      '.K1T2222KKKK',
+      '.K12222222222KKKK',
+      'K12222222222222222KK',
+      'K1222222222222222222 1K',
+      '.K122222222222222222221K',
+      '..K12222222222222222222K',
+      '..K1222222222222222222 1K',
+      '...K1222222222222222221K',
+      '...K1222K11111122222221K',
+      '...K122K.....K12222221K',
+      '...K12K......K1222221K',
+      '...K12K......K122221K',
+      '...K12K......K12221K',
+      '..K122K......K12221K',
+      '..K122K......K1222K',
+      '..K122K......K1222K',
+      '..K12K.......K122K',
+      '..K12K.......K122K',
+      '..K12K.......K122K',
+      '..K12K.......K122K',
+      '..K12K.......K122K',
+      '..KKK.........KKK',
+    ],
+  });
+}
+
+function gapSprites2() {
+  // --- vermin ---------------------------------------------------------------
+  // Fire beetle: a domed carapace with the two glowing glands over its eyes
+  // that make it worth a copper to a miner. It was being drawn as a HILL
+  // GIANT, which was the worst mismatch the fallback produced.
+  walker('giant-fire-beetle', {
+    w: 16, h: 16, legTop: 13,
+    palette: pal('#3a2a22', '#8a2a1a', '#c85a2a', { E: '#ff8c28' }),
+    backSub: { E: '2' },
+    down: sym([
+      '', '', '',
+      '.....K4.',
+      '.....K4.',
+      '....KEE1',
+      '....K111',
+      '...K1122',
+      '...K1223',
+      '..K11223',
+      '..K11223',
+      '..K11223',
+      '...K1122',
+      '4..K1122',
+      '.4.KK11.',
+      '..4KK...',
+    ], 16),
+    side: [
+      '', '', '',
+      '.4K',
+      '.44KK',
+      'KEE111KK',
+      '.K11122233KK',
+      'K112223333333K',
+      'K11223333333333K',
+      'K1122333333333 3K',
+      '.K11223333333333K',
+      '.K1122333333333K',
+      '..K11223333333K',
+      '..K4K4K4K4K4K',
+      '..4.4.4.4.4',
+      '..4.4.4.4.4',
+    ],
+  });
+
+  // A centipede is segments and legs. Nothing else about it matters at this
+  // size, so the body is banded hard and the legs stick out past the outline.
+  walker('giant-centipede', {
+    w: 20, h: 16, legTop: 13,
+    palette: pal('#8a5a2a', '#3a2418', '#c89a4a', { E: '#a82a2a' }),
+    backSub: { E: '2' },
+    down: sym([
+      '', '',
+      '......K44.',
+      '......KEE1',
+      '......K111',
+      '4....K1122',
+      '.4...K1133',
+      '4....K1122',
+      '.4...K1133',
+      '4....K1122',
+      '.4...K1133',
+      '4....K1122',
+      '.4...K1133',
+      '.....K1122',
+      '......KK11',
+      '.......KK.',
+    ], 20),
+    side: [
+      '', '',
+      '.4K4',
+      'KEE11KK',
+      '.K1122233KK',
+      '4K112233223333KK',
+      '.K1122332233223K',
+      '4K1122332233223K',
+      '.K1122332233223K',
+      '4K1122332233223K',
+      '.K1122332233223K',
+      '4K11223322332233K',
+      '.K1122332233223K',
+      '4K4K4K4K4K4K4K',
+      '.4.4.4.4.4.4',
+      '.4.4.4.4.4.4',
+    ],
+  });
+
+  // Wings first, and a body that hangs under them. The sting is the one detail
+  // worth a pixel of ivory.
+  hoverer('giant-wasp', {
+    w: 20, h: 20,
+    palette: pal('#d8b83a', '#241e14', '#f0dc8a', { E: '#a82a2a' }),
+    down: [
+      '', '',
+      '.......KK',
+      '......KEEK',
+      '......K11K',
+      '..KK..K44K..KK',
+      '.K99KK1111KK99K',
+      'K9999K1111K9999K',
+      'K99999K11K99999K',
+      '.K9999K44K9999K',
+      '..K99K1111K99K',
+      '....K114411K',
+      '....K441144K',
+      '....K114411K',
+      '.....K4114K',
+      '......K11K',
+      '.......KTK',
+      '.......T',
+      '', '',
+    ],
+    side: [
+      '', '',
+      '..KK',
+      '.KEEK',
+      '.K11K',
+      '.K44KKK',
+      'K1111199999KK',
+      'K1144199999999K',
+      'K1111199999999K',
+      '.K441199999999K',
+      '.K111144KK',
+      '..K44114K',
+      '..K11441K',
+      '..K44114K',
+      '...K1144K',
+      '...K4114K',
+      '....K11K',
+      '.....KTK',
+      '......T',
+      '',
+    ],
+  });
+
+  // --- swarms ---------------------------------------------------------------
+  // A swarm has no body, only a shape made of many small ones. Quippers are
+  // fish: bright, wedge-shaped, all pointing the same way.
+  hoverer('swarm-of-quippers', {
+    w: 20, h: 20,
+    palette: pal('#5a8ac0', '#1c2a3a', '#c8dcf0', { R: '#a82a2a' }),
+    down: [
+      '', '',
+      '...K3K...K3K',
+      '..K333K.K333K',
+      '..K3R3K.K3R3K',
+      '...K3K...K3K',
+      '.K3K..K3K..K3K',
+      'K333K.K333K.K33K',
+      'K3R3K.K3R3K.K3RK',
+      '.K3K..K3K...K3K',
+      '...K3K..K3K',
+      '..K333K.K333K',
+      '..K3R3K.K3R3K',
+      '...K3K...K3K',
+      '.K3K..K3K',
+      'K333K.K333K',
+      'K3R3K.K3R3K',
+      '.K3K..K3K',
+      '', '',
+    ],
+  });
+
+  // Snakes in a heap: coils and heads, no single silhouette. It was borrowing
+  // the salamander, which is a big red humanoid serpent — nothing like it.
+  hoverer('swarm-of-poisonous-snakes', {
+    w: 20, h: 20,
+    palette: pal('#4a7a3a', '#22301c', '#8ac04a', { E: '#e8c33a' }),
+    down: [
+      '', '',
+      '..KEK.....KEK',
+      '..K3KKK.KKK3K',
+      '...K333K333K',
+      '..K33111133K',
+      '.K3311333113K',
+      'KE31133113311K',
+      'K331133EK3311K',
+      '.K3113311333K',
+      '.K1133113311K',
+      'KE3113311331K',
+      'K33113311331K',
+      '.K331133113K',
+      '..K3311331K',
+      '...K33113K',
+      '....KEKEK',
+      '.....K.K',
+      '', '',
+    ],
+  });
+
+  // --- oddities -------------------------------------------------------------
+  // A severed hand walking on its fingers. Tiny, pale, and unmistakable in
+  // silhouette, which is the only thing that saves it at this size: knuckles
+  // humped over four splayed fingers, with the stump trailing.
+  walker('crawling-claw', {
+    w: 16, h: 16, legTop: 11,
+    palette: pal('#c8b498', '#5a4436', '#e8dcc8', { R: '#7a2a2a' }),
+    backSub: {},
+    down: sym([
+      '', '', '', '',
+      '.....KK1',
+      '....K111',
+      '...K1111',
+      '...K1111',
+      '..K11133',
+      '..K11111',
+      '..KR1111',
+      '..K1K1K1',
+      '..K1K1K1',
+      '..K1K1K1',
+      '..KK.K.K',
+      '',
+    ], 16),
+    side: [
+      '', '', '',
+      '.....KKK',
+      '....K111K',
+      '..KK11111K',
+      '.K111111111K',
+      'K11111111111K',
+      'K11113311111K',
+      'KR1111111111K',
+      '.K1K1K1K1K1K',
+      '.K1K1K1K1K1K',
+      '.K1K1K1K1K1K',
+      '.K1K1K1K1K1K',
+      '.K1K1K1K1K1K',
+      '.KK.K.K.K.KK',
+    ],
+  });
+
+  // A shrub that got up: the same bush silhouette the overworld already uses,
+  // with two eyes in it and roots that walk. The joke only lands if it reads as
+  // a plant first and a creature second.
+  walker('awakened-shrub', {
+    w: 16, h: 16, legTop: 12,
+    palette: pal('#4a6a2a', '#5a4028', '#7ac04a', { E: '#e8c33a' }),
+    backSub: { E: '3' },
+    down: sym([
+      '', '',
+      '.....K3.',
+      '....K333',
+      '....K331',
+      '...K3133',
+      '...K33E3',
+      '...K3313',
+      '..K33133',
+      '..K31333',
+      '..K33313',
+      '...K3313',
+      '...K3133',
+      '....K44.',
+      '....K4K.',
+      '....KK..',
+    ], 16),
+    side: [
+      '', '',
+      '....K3K',
+      '...K333K',
+      '..K33133K',
+      '..K313333K',
+      '.K33E3313K',
+      '.K3313333K',
+      '.K13333133K',
+      '.K33133331K',
+      '..K3313333K',
+      '..K33133K',
+      '...K4KK4K',
+      '...K4K.4K',
+      '...K4K.4K',
+      '...KK..KK',
+    ],
+  });
+
+  // Straw, sacking and a crooked cross. Still until it is not — which is why
+  // its idle is a lean rather than a stance, and why the arms never come down.
+  walker('scarecrow', {
+    w: 20, h: 24, legTop: 19,
+    palette: pal('#c8a44a', '#5a3f28', '#e8d488', { E: '#ff8c28', R: '#7a2a2a' }),
+    backSub: { E: '1' },
+    down: sym([
+      '', '',
+      '......K33.',
+      '......K311',
+      '......K3E1',
+      '......K311',
+      '......KK33',
+      '..K44K1111',
+      '.K44411111',
+      'K444111111',
+      '.K4K111111',
+      '....K11111',
+      '....K44111',
+      '....K44111',
+      '....K44111',
+      '....K11111',
+      '....K31111',
+      '....K31111',
+      '....K3K11.',
+      '....3K.1K.',
+      '....3..1K.',
+      '....3..1K.',
+      '.......KK.',
+    ], 20),
+    side: [
+      '', '',
+      '....K33K',
+      '...K3113K',
+      '...K3E13K',
+      '...K3113K',
+      '...KK33KK',
+      '.K44K11K44K',
+      'K4441111144K',
+      'K44111111144K',
+      '.K4K11111K4K',
+      '....K1111K',
+      '....K4114K',
+      '....K4114K',
+      '....K4114K',
+      '....K1111K',
+      '....K3113K',
+      '....K3113K',
+      '....K3KK3K',
+      '....3K..3K',
+      '....3K..3K',
+      '....3K..3K',
+      '....KK..KK',
+    ],
+  });
+}
+
+
+function gapSprites3() {
+  // --- fey and celestials ---------------------------------------------------
+  // A unicorn is a horse plus one line of ivory, and the horn has to clear the
+  // head or it reads as a bump. It was borrowing the griffon, which has a beak.
+  walker('unicorn', {
+    w: 28, h: 28, legTop: 22,
+    palette: pal('#e8e4ee', '#c0bcd0', '#ffffff', { T: '#f0e0a8', E: '#7fd4ff' }),
+    backSub: { Z: '2', E: '2' },
+    down: sym([
+      '', '',
+      '..........T...',
+      '..........T...',
+      '.........KT...',
+      '.........K11..',
+      '.........K1E..',
+      '.........K11..',
+      '.........K1T..',
+      '........K112..',
+      '.......K11222.',
+      '.......K112222',
+      '......K1122222',
+      '......K1122222',
+      '......K1122222',
+      '......K1122222',
+      '......K1122222',
+      '.......K112222',
+      '.......K112222',
+      '........K11222',
+      '........K11K..',
+      '........K11K..',
+      '........K11K..',
+      '........K11K..',
+      '........K11K..',
+      '........K11K..',
+      '........KKK...',
+    ], 28),
+    side: [
+      '', '',
+      '.....T',
+      '....T',
+      '...TK',
+      '..K11K',
+      '..K1E1KK',
+      '.K1T11111KKK',
+      '.K111111111111KKK',
+      'K1111111111111111KK',
+      'K111111111111111111K',
+      '.K11111111111111111K',
+      '..K111111111111111K',
+      '..K11111111111111 1K',
+      '..K1111K11111111111K',
+      '..K111K...K1111111K',
+      '..K11K....K111111K',
+      '..K11K....K11111K',
+      '..K11K....K1111K',
+      '.K111K....K1111K',
+      '.K111K....K1111K',
+      '.K11K......K111K',
+      '.K11K......K111K',
+      '.K11K......K111K',
+      '.K11K......K111K',
+      '.KKK........KKK',
+    ],
+  });
+
+  // A satyr is a man to the waist and a goat below it, and the horns curl back.
+  // The gnoll it was borrowing is a hyena-headed brute — nothing alike.
+  walker('satyr', {
+    w: 20, h: 24, legTop: 17,
+    palette: pal('#c89a6a', '#6a4a2a', '#e8c8a0', { T: '#d8ccae', E: '#3a2a1a' }),
+    backSub: { E: '1' },
+    // Narrow through the chest and wide at the haunch: the whole read is a man
+    // above the waist and a goat below it. Written at column 6 and inward so
+    // sym() cannot fill the torso out into a barrel.
+    down: sym([
+      '', '',
+      '......T...',
+      '......T7..',
+      '.......K11',
+      '.......K1E',
+      '.......K11',
+      '.......KK1',
+      '.....K11111',
+      '....K111111',
+      '...K1111111',
+      '...K1111111',
+      '....K111111',
+      '.....K11111',
+      '......K1111',
+      '......K4444',
+      '.....K44444',
+      '.....K44444',
+      '.....K444K.',
+      '.....K44K..',
+      '.....K44K..',
+      '.....K44K..',
+      '.....KTTK..',
+      '.....KKK...',
+    ], 20),
+    side: [
+      '', '',
+      '..T..T',
+      '..7T7',
+      '...K11K',
+      '...K1E1K',
+      '...K1111K',
+      '....KK11K',
+      '...K11111K',
+      '..K1111111K',
+      '..K11111111K',
+      '..K11111111K',
+      '...K1111111K',
+      '...K111111K',
+      '....K44444K',
+      '...K4444444K',
+      '...K444444K',
+      '...K44K444K',
+      '...K44K.K44K',
+      '...K44K.K44K',
+      '...K44K.K44K',
+      '...KTTK.KTTK',
+      '...KKK...KKK',
+      '',
+    ],
+  });
+
+  // Couatl: a feathered serpent. The wings are the whole point — a snake body
+  // in flight with a rainbow along it. It was borrowing the salamander.
+  hoverer('couatl', {
+    w: 24, h: 24,
+    palette: pal('#3a8a5a', '#c8a03a', '#7fd4ff', { R: '#c8306a', U: '#a86ad0', E: '#e8c33a' }),
+    down: [
+      '', '',
+      '..........KK',
+      '.........KEEK',
+      '.........K11K',
+      '..KK.....K11K.....KK',
+      '.K55KK...K11K...KK55K',
+      'K5555K...K33K...K5555K',
+      'K55555K.K3333K.K55555K',
+      'K555555K K33K K555555K',
+      '.K55555K.K33K.K55555K',
+      '..KK55K..KUUK..K55KK',
+      '.........KUUK',
+      '.........KRRK',
+      '.........K33K',
+      '.........KUUK',
+      '.........KRRK',
+      '.........K33K',
+      '.........KUUK',
+      '..........KK',
+      '', '',
+    ],
+    side: [
+      '', '',
+      '..KK',
+      '.KEEK',
+      '.K11K',
+      '.K11KKKK',
+      '.K3355555KK',
+      'K33355555555K',
+      'K3333K5555555K',
+      'K33333KK5555K',
+      '.KU333K.KKKK',
+      '..KU33K',
+      '..KR33K',
+      '...KU33K',
+      '...KR333K',
+      '....KU333K',
+      '....KR333K',
+      '.....KU33K',
+      '.....KR3K',
+      '......KK',
+      '', '',
+    ],
+  });
+
+  // A pseudodragon is a cat-sized drake: everything a dragon has, at a scale
+  // where it perches on a shoulder. Tail barb included, because it is the
+  // thing that actually bites.
+  hoverer('pseudodragon', {
+    w: 16, h: 16,
+    palette: pal('#a8332a', '#5a1c18', '#e8b04a', { E: '#e8c33a', T: '#e0d4b0' }),
+    down: [
+      '', '',
+      '.....KK',
+      '....K11K',
+      '....KEEK',
+      '....K11K',
+      '.KK.K11K.KK',
+      'K55KK11KK55K',
+      'K555K11K555K',
+      '.K55K11K55K',
+      '..KK111KK',
+      '...K111K',
+      '...K111K',
+      '....K1K',
+      '....K1KT',
+      '.....KT',
+    ],
+    side: [
+      '', '',
+      '..KK',
+      '.K11K',
+      '.KE1K',
+      '.K11KKK',
+      'K111555KK',
+      'K1115555 5K',
+      'K11115555K',
+      '.K1111KKK',
+      '.K11111K',
+      '..K1111K',
+      '..K111K.K',
+      '..K11K.KT',
+      '..KK.KT',
+      '.....T',
+    ],
+  });
+
+  // --- shapechangers and the rest -------------------------------------------
+  // A werewolf stands like a man and is built like a wolf: long muzzle, hunched
+  // shoulders, digitigrade legs. The bugbear it borrowed is just a big goblin.
+  walker('werewolf', {
+    w: 24, h: 28, legTop: 22,
+    palette: pal('#5a5048', '#2a2622', '#8a8078', { E: '#e8c33a', T: '#efe6d2' }),
+    backSub: { E: '1', T: '1' },
+    down: sym([
+      '', '',
+      '....K11K.',
+      '....K11K.',
+      '.....K11.',
+      '.....K1E1',
+      '.....K111',
+      '.....KTT1',
+      '....K1111',
+      '...K11111',
+      '..K111111',
+      '.K1111111',
+      'K11111111',
+      'K11111111',
+      'K11111111',
+      '.K1111111',
+      '.K1111111',
+      '..K111111',
+      '..K111111',
+      '...K11111',
+      '...K11111',
+      '...K1111K',
+      '...K111K.',
+      '...K111K.',
+      '...K111K.',
+      '...KTTTK.',
+      '...KKKK..',
+    ], 24),
+    side: [
+      '', '',
+      '..K11K',
+      '..K11K',
+      '..K111K',
+      '.K11E11K',
+      'K1T111111K',
+      'K1T11111K',
+      '.K111111KK',
+      '.K1111111 1K',
+      'K111111111K',
+      'K1111111111K',
+      'K11111111111K',
+      'K111111111111K',
+      '.K11111111111K',
+      '.K1111111111K',
+      '..K111111111K',
+      '..K11111111K',
+      '..K1111111K',
+      '..K111K111K',
+      '..K11K.K11K',
+      '..K11K.K11K',
+      '.K111K.K111K',
+      '.K11K...K11K',
+      '.K11K...K11K',
+      '.KTTK...KTTK',
+      '.KKK.....KKK',
+    ],
+  });
+
+  // A gorgon is a bull of iron plates that breathes petrifying gas. Bulk, low
+  // head, and the plates catching light — it was drawn as a GOBLIN.
+  walker('gorgon', {
+    w: 28, h: 24, legTop: 18,
+    palette: pal('#6a7280', '#3a4048', '#a8b4c0', { T: '#dde4ec', E: '#7fd4ff' }),
+    backSub: { E: '2' },
+    down: sym([
+      '', '',
+      '.....T..T.....',
+      '......KK......',
+      '.....K11K.....',
+      '.....K1E1.....',
+      '.....K111.....',
+      '.....K1TT.....',
+      '....K11122....',
+      '...K1112222...',
+      '..K11122222222',
+      '.K1112222222 2',
+      'K111222222222',
+      'K11122222222',
+      'K11122222222',
+      '.K1122222222',
+      '.K1122222222',
+      '..K122222222',
+      '..K11K122222',
+      '..K11K.K1222',
+      '..K11K.K1222',
+      '..K11K.K1222',
+      '..KTTK.KTT22',
+      '..KKK..KKK..',
+    ], 28),
+    side: [
+      '', '',
+      '..T..T',
+      '...KK',
+      '..K11K',
+      '..K1E1KK',
+      '..K1T111KKKK',
+      '.K111111111111KK',
+      'K1112222222222222K',
+      'K11222222222222222K',
+      'K1122222222222222 2K',
+      '.K1222222222222222K',
+      '.K122222222222222K',
+      '..K1222222222222K',
+      '..K122K111112222K',
+      '..K12K...K1222 2K',
+      '..K12K...K12222K',
+      '..K12K...K1222K',
+      '..K12K...K1222K',
+      '..K12K...K1222K',
+      '..KTTK...KTTTK',
+      '..KKK.....KKK',
+      '', '',
+    ],
+  });
+
+  // Xorn: three arms, three eyes, a mouth in the middle of it, and stone all
+  // the way through. Radial rather than bilateral, which is what makes it
+  // read as elemental and not as a short man in a rock suit.
+  walker('xorn', {
+    w: 20, h: 20, legTop: 16,
+    palette: pal('#6a5a4a', '#3a3028', '#9a8a72', { E: '#e8c33a', T: '#d8ccae' }),
+    backSub: { E: '2' },
+    down: sym([
+      '', '',
+      '.....KK...',
+      '....K11K..',
+      '....K1E1..',
+      '...K11111.',
+      '..K1111111',
+      '.K11111111',
+      'K111111111',
+      'K11EK111TT',
+      'K111K111TT',
+      'K1111111TT',
+      '.K11111111',
+      '.K11111111',
+      '..K1111111',
+      '..K11K1111',
+      '..K11K.K11',
+      '..KTTK.KTT',
+      '..KKK..KKK',
+      '',
+    ], 20),
+    side: [
+      '', '',
+      '....KK',
+      '...K11K',
+      '...K1E1K',
+      '..K111111K',
+      '.K11111111K',
+      'K1111111111K',
+      'K11EK1111TTK',
+      'K111K1111TTK',
+      'K111111111TK',
+      '.K111111111K',
+      '.K111111111K',
+      '..K11111111K',
+      '..K11K1111K',
+      '..K11K.K11K',
+      '..K11K.K11K',
+      '..KTTK.KTTK',
+      '..KKK..KKK',
+      '',
+    ],
+  });
+
+  // Manes: the least of the demons. A squat, lumpen thing with too many teeth
+  // and no neck, so it never reads as the goblin it was borrowing.
+  walker('manes', {
+    w: 16, h: 16, legTop: 12,
+    palette: pal('#8a7a8a', '#4a3a4a', '#b0a0b0', { E: '#a82a2a', T: '#efe6d2' }),
+    backSub: { E: '1', T: '1' },
+    down: sym([
+      '', '',
+      '....KK..',
+      '...K11K.',
+      '...K1E1.',
+      '...K111.',
+      '...KTTT.',
+      '..K11111',
+      '.K111111',
+      'K1111111',
+      'K1111111',
+      '.K111111',
+      '..K11111',
+      '..K11K11',
+      '..KTTK.K',
+      '..KKK..K',
+    ], 16),
+    side: [
+      '', '',
+      '...KK',
+      '..K11K',
+      '..K1E1K',
+      '..K1111K',
+      '..KTTT1K',
+      '.K1111111K',
+      'K111111111K',
+      'K1111111111K',
+      'K111111111K',
+      '.K11111111K',
+      '.K11111111K',
+      '..K11K111K',
+      '..K11K.K1K',
+      '..KTTK.KTK',
+      '..KKK..KK',
+    ],
+  });
+}
+
 export function registerMonsterSprites() {
   if (registered) return DEFS.length;
   registered = true;
@@ -7116,6 +8225,7 @@ export function registerMonsterSprites() {
   largeSprites(); largeSprites2(); largeSprites3(); largeSprites4();
   hugeSprites(); hugeSprites2(); hugeSprites3(); hugeSprites4();
   colossalSprites(); colossalSprites2(); colossalSprites3();
+  gapSprites(); gapSprites2(); gapSprites3();
   variantSprites();
   for (const { name, def } of DEFS) defineSprite(name, def);
   return DEFS.length;
@@ -7352,7 +8462,43 @@ const EXPLICIT = {
   'giant-lizard': { sprite: 'giant-lizard' },
   'crocodile': { sprite: 'giant-lizard', tint: '#4a5a3a', tintAmt: 0.35, scale: 1.15 },
   'giant-crocodile': { sprite: 'giant-lizard', tint: '#3a4a2a', tintAmt: 0.35, scale: 1.5 },
-  'giant-elk': { sprite: 'boar', tint: '#a08050', tintAmt: 0.35, scale: 1.3 },
+  // --- creatures that used to fall through to a family guess ---------------
+  // Each of these now has a body of its own in gapSprites(); the entries below
+  // point the catalogue's sprite NAME (often 'beetle', 'wasp', 'shrub') at it,
+  // and size the larger cousins off the same art.
+  'giant-elk': { sprite: 'giant-elk' },
+  'elk': { sprite: 'giant-elk', scale: 0.8 },
+  'raven': { sprite: 'raven' },
+  'vulture': { sprite: 'vulture' },
+  'giant-vulture': { sprite: 'vulture', scale: 1.35 },
+  'giant-owl': { sprite: 'giant-owl' },
+  'hyena': { sprite: 'hyena' },
+  'giant-hyena': { sprite: 'hyena', scale: 1.35 },
+  'giant-weasel': { sprite: 'giant-weasel' },
+  'giant-fire-beetle': { sprite: 'giant-fire-beetle' },
+  'giant-centipede': { sprite: 'giant-centipede' },
+  'giant-wasp': { sprite: 'giant-wasp' },
+  'swarm-of-quippers': { sprite: 'swarm-of-quippers' },
+  'swarm-of-poisonous-snakes': { sprite: 'swarm-of-poisonous-snakes' },
+  'crawling-claw': { sprite: 'crawling-claw' },
+  'awakened-shrub': { sprite: 'awakened-shrub' },
+  'awakened-tree': { sprite: 'awakened-shrub', tint: '#5a4028', tintAmt: 0.4, scale: 1.8 },
+  'scarecrow': { sprite: 'scarecrow' },
+  // A toad is a frog, not a frog-MAN: it was reaching bullywug, which stands up.
+  'giant-toad': { sprite: 'giant-frog', tint: '#7a6a3a', tintAmt: 0.4, scale: 1.2 },
+  'wolf-spider': { sprite: 'giant-spider', tint: '#6a5a3a', tintAmt: 0.35, scale: 0.85 },
+  'unicorn': { sprite: 'unicorn' },
+  'satyr': { sprite: 'satyr' },
+  'couatl': { sprite: 'couatl' },
+  'pseudodragon': { sprite: 'pseudodragon' },
+  'werewolf': { sprite: 'werewolf' },
+  'wereboar': { sprite: 'werewolf', tint: '#6a5230', tintAmt: 0.4 },
+  'weretiger': { sprite: 'werewolf', tint: '#c08a3a', tintAmt: 0.4 },
+  'werebear': { sprite: 'werewolf', tint: '#4a3524', tintAmt: 0.45, scale: 1.15 },
+  'gorgon': { sprite: 'gorgon' },
+  'xorn': { sprite: 'xorn' },
+  'manes': { sprite: 'manes' },
+  'dretch': { sprite: 'manes', tint: '#7a8a5a', tintAmt: 0.4, scale: 1.1 },
   'giant-eagle': { sprite: 'griffon', tint: '#c8b088', tintAmt: 0.35 },
   'giant-crab': { sprite: 'giant-scorpion', tint: '#c05a3a', tintAmt: 0.4 },
   'ape': { sprite: 'quaggoth', tint: '#4a3a2a', tintAmt: 0.4 },
@@ -7485,9 +8631,15 @@ const EXPLICIT = {
   'venomfang': { sprite: 'dragon-young', tint: '#3f8a3a', tintAmt: 0.62 },
   'cryovain': { sprite: 'dragon-adult', tint: '#c8e8f8', tintAmt: 0.62 },
   'claugiyliamatar': { sprite: 'dragon-ancient', tint: '#3f8a3a', tintAmt: 0.62 },
+  // Arveiaturace, the White Wyrm — an ancient white, and the only named dragon
+  // that had no entry at all, so she was falling through to a goblin.
+  'arveiaturace': { sprite: 'dragon-ancient', tint: '#c8e8f8', tintAmt: 0.62, scale: 1.05 },
   'agatha': { sprite: 'banshee', scale: 1.1 },
   'hamun-kost': { sprite: 'mage', tint: '#a82a2a', tintAmt: 0.4 },
   'mormesk': { sprite: 'wraith', tint: '#5a3a7a', tintAmt: 0.35, scale: 1.1 },
+  // The bestiary calls him 'halaster'; this was keyed to his full name, so the
+  // Mad Mage of Undermountain was being drawn as a goblin.
+  'halaster': { sprite: 'lich', tint: '#a86ad0', tintAmt: 0.3, scale: 1.1 },
   'halaster-blackcloak': { sprite: 'lich', tint: '#a86ad0', tintAmt: 0.3, scale: 1.1 },
   'xanathar': { sprite: 'beholder', tint: '#a86ad0', tintAmt: 0.3, scale: 1.1 },
   'manshoon': { sprite: 'mage', tint: '#2a2438', tintAmt: 0.4 },
@@ -7658,4 +8810,36 @@ export function monsterSpriteName(id) { return spriteForMonster(id).sprite; }
 export function monsterSpriteSize(id) {
   const def = DEF_INDEX.get(spriteForMonster(id).sprite);
   return def ? { w: def.w, h: def.h } : { w: 16, h: 24 };
+}
+
+/**
+ * The art a creature should actually be drawn with — the one the renderer calls.
+ *
+ * This whole mapping layer was written and then never wired to anything: every
+ * caller read `monster.sprite` straight out of the catalogue, and 127 of the 275
+ * creatures name a sprite that does not exist ('dragon', 'spider', 'ooze',
+ * 'swarm-bats'…). A missing name falls through the compositor to the LAYERED
+ * humanoid path, so half the bestiary — every dragon in the game included — was
+ * being drawn as a person in a tunic.
+ *
+ * The rule below is deliberately narrow, because resolving through the map
+ * blindly makes four creatures worse: the map's last resort is a family-name
+ * guess (`FAMILY_HINTS`), which turns a mastiff into a goblin and a gargoyle
+ * into a golem. An EXPLICIT entry is authored knowledge and always wins; a
+ * guess is only better than nothing, so it is used only when the catalogue's
+ * own sprite does not exist.
+ *
+ *   monsterId  the catalogue id, e.g. 'young-red-dragon'
+ *   dataSprite the sprite the catalogue asked for, e.g. 'dragon'
+ *
+ * Returns { sprite, tint, tintAmt, scale } — never null, never a missing name.
+ */
+export function monsterArtFor(monsterId, dataSprite) {
+  const key = normId(monsterId);
+  const explicit = key ? MONSTER_SPRITE_MAP[key] : null;
+  if (explicit && hasSprite(explicit.sprite)) return spriteForMonster(monsterId);
+  if (dataSprite && hasSprite(dataSprite)) {
+    return Object.freeze({ sprite: dataSprite, tint: null, tintAmt: 0, scale: 1 });
+  }
+  return spriteForMonster(monsterId);
 }

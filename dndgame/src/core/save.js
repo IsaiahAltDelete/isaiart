@@ -436,10 +436,11 @@ export const SETTING_SPEC = Object.freeze({
   autoEndTurn: { kind: 'bool', def: true, name: 'Auto End Turn', group: 'combat' },
   battleSpeed: { kind: 'enum', def: 1, options: [0.5, 1, 1.5, 2, 3], name: 'Battle Speed', group: 'combat' },
   difficulty: { kind: 'enum', def: 'normal', options: ['story', 'easy', 'normal', 'hard', 'deadly'], name: 'Difficulty', group: 'combat' },
-  // Ambushes out of the grass are OFF by default. The wilds are still dangerous —
-  // you can see what is hunting you and choose to walk around it.
+  // Ambushes out of the grass default to 'normal' — a moderate rate that sits
+  // alongside the visible wandering packs. 'off' leaves only the packs you can
+  // see coming and walk around.
   wildEncounters: {
-    kind: 'enum', def: 'off', options: ['off', 'rare', 'normal', 'frequent'],
+    kind: 'enum', def: 'normal', options: ['off', 'rare', 'normal', 'frequent'],
     name: 'Random Ambushes', group: 'combat',
   },
   roamingMonsters: { kind: 'bool', def: true, name: 'Visible Wandering Foes', group: 'combat' },

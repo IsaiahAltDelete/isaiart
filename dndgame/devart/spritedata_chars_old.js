@@ -28,7 +28,7 @@
 //     rows 14-16  torso only, cols 5-10, NO outline (the body owns cols 3-4/11-12)
 //     rows 17+    hems span cols 4-11 with K at 4 and 11 (the arms are gone by then)
 
-import { defineSprite, shadeHex } from './sprites.js';
+import { defineSprite, shadeHex } from '../src/render/sprites.js';
 
 // --- palette --------------------------------------------------------------
 // Every humanoid layer shares this key map so layers can be flattened together.
@@ -194,7 +194,7 @@ function flatten(grids, w = W, h = H) {
 const ART = Object.create(null);   // layer name -> { frameName: rows } (for the NPC baker)
 const PENDING = [];                // [name, def] pairs waiting for registration
 
-function define(name, def) { PENDING.push([name, def]); return name; }
+function define(name, def) { PENDING.push(['old-' + name, def]); return name; }
 
 /** Register a humanoid layer and remember its grids for the NPC baker. */
 function layer(name, dirs, anim, paletteExtra) {
@@ -244,15 +244,13 @@ function rowsOf(rows) {
 // Front / back view: one leg lifts clear of the ground, the other stays planted.
 const LEGS_F = {
   1: {
-    20: '....KCCKKCCK....',
     21: '....KLLKKLLK....',
-    22: '....KLLKKLLK....',
+    22: '....KLLKKPPK....',
     23: '....KPPK........',
   },
   2: {
-    20: '....KCCKKCCK....',
     21: '....KLLKKLLK....',
-    22: '....KLLKKLLK....',
+    22: '....KPPKKLLK....',
     23: '........KPPK....',
   },
 };
@@ -260,13 +258,11 @@ const LEGS_F = {
 // Side view: a two-pixel stride, near leg reaching forward, far leg trailing back.
 const LEGS_S = {
   1: {
-    20: '...KCCCKKCK.....',
     21: '...KLLLKKLK.....',
     22: '...KLLLKKLK.....',
     23: '...KPPPKKPK.....',
   },
   2: {
-    20: '....KCKKCCCK....',
     21: '....KLKKLLLK....',
     22: '....KLKKLLLK....',
     23: '....KPKKPPPK....',
@@ -292,12 +288,12 @@ const BODY_N_DOWN = [
   '.....KKKKKK.....',
   '....KllsssdK....',
   '....KlssssdK....',
-  '....KsdssddK....',
+  '....KlssssdK....',
   '....KsessedK....',
   '....KssddsdK....',
   '....KsssssdK....',
   '.....KssddK.....',
-  '....KccccccK....',
+  '...KccccccccK...',
   '...KsccccccsK...',
   '...KsccccccdK...',
   '...KsccccccdK...',
@@ -305,9 +301,9 @@ const BODY_N_DOWN = [
   '...KsccccccdK...',
   '...KlccccccdK...',
   '....KccccccK....',
-  '....KCCCCCCK....',
-  '....KCCKKCCK....',
-  '....KCCKKCCK....',
+  '....KLLLLLLK....',
+  '....KLLLLLLK....',
+  '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KPPKKPPK....',
@@ -324,7 +320,7 @@ const BODY_N_LEFT = [
   '...KKsssdddK....',
   '....KsssdddK....',
   '.....KssddK.....',
-  '.....KccccK.....',
+  '....KccccccK....',
   '....KccccccK....',
   '...KsccccccK....',
   '...KsccccccK....',
@@ -332,9 +328,9 @@ const BODY_N_LEFT = [
   '...KsccccccK....',
   '...KlccccccK....',
   '....KccccccK....',
-  '....KCCCCCCK....',
-  '....KCCKKCCK....',
-  '....KCCKKCCK....',
+  '....KLLLLLLK....',
+  '....KLLLLLLK....',
+  '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KPPKKPPK....',
@@ -344,14 +340,14 @@ const BODY_N_UP = [
   '................',
   '................',
   '.....KKKKKK.....',
-  '....KllssssK....',
-  '....KlsssssK....',
+  '....KssssssK....',
+  '....KssssssK....',
+  '....KssssssK....',
   '....KsssssdK....',
-  '....KsssssdK....',
-  '....KssssddK....',
+  '....KsssdddK....',
   '....KssddddK....',
   '.....KssddK.....',
-  '....KccccccK....',
+  '...KccccccccK...',
   '...KsccccccsK...',
   '...KsccccccdK...',
   '...KsccccccdK...',
@@ -359,9 +355,9 @@ const BODY_N_UP = [
   '...KsccccccdK...',
   '...KsccccccdK...',
   '....KccccccK....',
-  '....KCCCCCCK....',
-  '....KCCKKCCK....',
-  '....KCCKKCCK....',
+  '....KLLLLLLK....',
+  '....KLLLLLLK....',
+  '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KPPKKPPK....',
@@ -375,7 +371,7 @@ layer('body-normal', { down: BODY_N_DOWN, left: BODY_N_LEFT, up: BODY_N_UP }, {
 
 // --- body-slim: one pixel narrower through the shoulders and chest ---------
 const SLIM_TORSO_D = [
-  '.....KccccK.....',
+  '....KccccccK....',
   '....KsccccsK....',
   '....KsccccdK....',
   '....KsccccdK....',
@@ -385,7 +381,7 @@ const SLIM_TORSO_D = [
   '....KccccccK....',
 ];
 const SLIM_TORSO_S = [
-  '.....KccccK.....',
+  '....KccccccK....',
   '....KccccccK....',
   '...KscccccK.....',
   '...KscccccK.....',
@@ -409,7 +405,7 @@ layer('body-slim',
 
 // --- body-broad: two pixels wider at the shoulders (orc, half-orc, fighter) --
 const BROAD_TORSO_D = [
-  '...KccccccccK...',
+  '..KKccccccccKK..',
   '..KsccccccccsK..',
   '..KsccccccccdK..',
   '..KsccccccccdK..',
@@ -419,7 +415,7 @@ const BROAD_TORSO_D = [
   '...KccccccccK...',
 ];
 const BROAD_TORSO_S = [
-  '....KccccccK....',
+  '...KccccccccK...',
   '...KccccccccK...',
   '..KsccccccccK...',
   '..KsccccccccK...',
@@ -443,7 +439,7 @@ layer('body-broad',
 
 // --- body-tall: goliath frame -- broad, long-waisted, longer shanks ---------
 const TALL_TORSO_D = [
-  '...KccccccccK...',
+  '..KKccccccccKK..',
   '..KsccccccccsK..',
   '..KsccccccccdK..',
   '..KsccccccccdK..',
@@ -453,7 +449,7 @@ const TALL_TORSO_D = [
   '..KlccccccccdK..',
 ];
 const TALL_TORSO_S = [
-  '....KccccccK....',
+  '...KccccccccK...',
   '...KccccccccK...',
   '..KsccccccccK...',
   '..KsccccccccK...',
@@ -463,9 +459,9 @@ const TALL_TORSO_S = [
   '..KlccccccccK...',
 ];
 const TALL_LEGS = [
-  '...KCCCCCCCCK...',
-  '....KCCKKCCK....',
-  '....KCCKKCCK....',
+  '...KLLLLLLLLK...',
+  '....KLLLLLLK....',
+  '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KPPKKPPK....',
@@ -483,79 +479,35 @@ layer('body-tall',
     up: { ...LEGS_F, 3: { 11: '..KccccccccccK..', 17: '..KsccccccccdK..' } },
   });
 
-// --- body-stout: dwarf frame -- broad through the chest, short in the shank --
-// The head cannot move: every helm, hair and horn layer is authored against
-// rows 2-9. So a dwarf reads short by being thicker through the body with the
-// legs starting a row lower, not by shrinking the sprite.
-const STOUT_TORSO_D = [
-  '...KccccccccK...',
-  '..KsccccccccsK..',
-  '..KsccccccccdK..',
-  '..KsccccccccdK..',
-  '..KsCCCCCCCCdK..',
-  '..KsccccccccdK..',
-  '..KsccccccccdK..',
-  '..KlccccccccdK..',
-  '...KccccccccK...',
-];
-const STOUT_TORSO_S = [
-  '....KccccccK....',
-  '...KccccccccK...',
-  '..KsccccccccK...',
-  '..KsccccccccK...',
-  '..KsCCCCCCCcK...',
-  '..KsccccccccK...',
-  '..KsccccccccK...',
-  '..KlccccccccK...',
-  '...KccccccccK...',
-];
-const STOUT_LEGS = [
-  '....KCCKKCCK....',
-  '....KCCKKCCK....',
-  '....KLLKKLLK....',
-  '....KLLKKLLK....',
-  '....KPPKKPPK....',
-];
-
-layer('body-stout',
-  {
-    down: BODY_N_DOWN.slice(0, 10).concat(STOUT_TORSO_D, STOUT_LEGS),
-    left: BODY_N_LEFT.slice(0, 10).concat(STOUT_TORSO_S, STOUT_LEGS),
-    up: BODY_N_UP.slice(0, 10).concat(STOUT_TORSO_D, STOUT_LEGS),
-  },
-  {
-    down: { ...LEGS_F, 3: { 11: '..KccccccccccK..', 17: '..KsccccccccdK..' } },
-    left: { ...LEGS_S, 3: { 11: '...KccccccccK...', 17: '..KsccccccccK...' } },
-    up: { ...LEGS_F, 3: { 11: '..KccccccccccK..', 17: '..KsccccccccdK..' } },
-  });
-
 // --- body-small: halfling / gnome / child -- narrow body under a full head ---
 const SMALL_BODY_D = [
-  '.....KccccK.....',
+  '....KccccccK....',
   '....KsccccsK....',
   '....KsccccdK....',
   '....KsCCCCdK....',
   '....KsccccdK....',
   '....KlccccdK....',
   '.....KccccK.....',
-  '....KCCCCCCK....',
-  '....KCCKKCCK....',
-  '....KCCKKCCK....',
+  '....KLLLLLLK....',
+  '....KLLLLLLK....',
+  '....KLLKKLLK....',
+  '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KPPKKPPK....',
 ];
 const SMALL_BODY_S = [
-  '.....KccccK.....',
+  '....KccccccK....',
   '....KccccccK....',
   '...KscccccK.....',
   '...KsCCCCcK.....',
   '...KscccccK.....',
   '...KlcccccK.....',
   '.....KccccK.....',
-  '....KCCCCCCK....',
-  '....KCCKKCCK....',
-  '....KCCKKCCK....',
+  '....KLLLLLLK....',
+  '....KLLLLLLK....',
+  '....KLLKKLLK....',
+  '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KLLKKLLK....',
   '....KPPKKPPK....',
@@ -654,14 +606,14 @@ layer('hair-short', {
     '.....KKKKKK.....',
     '....KjjhhhhK....',
     '....KjhhhhHK....',
-    '....Khh..hHK....',
+    '....Kh....HK....',
     '....Kh....HK....',
   ]),
   left: at(1, [
     '.....KKKKKK.....',
     '....KjjhhhhK....',
     '....KjhhhhHK....',
-    '....Khh.hhHK....',
+    '....Kh..hhHK....',
     '........KhHK....',
   ]),
   up: at(1, [
@@ -679,7 +631,7 @@ layer('hair-long', {
     '.....KKKKKK.....',
     '....KjjhhhhK....',
     '...KjhhhhhhHK...',
-    '...Khh....hHK...',
+    '...Kh......HK...',
     '...Kh......HK...',
     '...Kh......HK...',
     '...Kh......HK...',
@@ -694,7 +646,7 @@ layer('hair-long', {
     '.....KKKKKK.....',
     '....KjjhhhhK....',
     '....KjhhhhhHK...',
-    '....Khh..hhHK...',
+    '....Kh...hhHK...',
     '.........KhhHK..',
     '.........KhhHK..',
     '.........KhhHK..',
@@ -726,7 +678,7 @@ layer('hair-ponytail', {
     '.....KKKKKK.....',
     '....KjjhhhhK....',
     '....KjhhhhHK....',
-    '....Khh...KhK...',
+    '....Kh....KhK...',
     '....Kh....KhK...',
     '..........KhK...',
     '..........KHK...',
@@ -736,7 +688,7 @@ layer('hair-ponytail', {
     '.....KKKKKK.....',
     '....KjjhhhhK....',
     '....KjhhhhHK....',
-    '....Khh.hhHK....',
+    '....Kh..hhHK....',
     '........KhHK....',
     '..........KhhK..',
     '..........KhHK..',
@@ -763,7 +715,7 @@ layer('hair-braid', {
     '.....KKKKKK.....',
     '....KjjhhhhK....',
     '....KjhhhhHK....',
-    '....Khh...KhK...',
+    '....Kh....KhK...',
     '....Kh....KHK...',
     '..........KhK...',
     '..........KHK...',
@@ -775,7 +727,7 @@ layer('hair-braid', {
     '.....KKKKKK.....',
     '....KjjhhhhK....',
     '....KjhhhhHK....',
-    '....Khh.hhHK....',
+    '....Kh..hhHK....',
     '........KhHK....',
     '.........KhhK...',
     '.........KHhK...',
@@ -911,7 +863,7 @@ layer('hair-bob', {
     '.....KKKKKK.....',
     '....KjjhhhhK....',
     '...KjhhhhhhHK...',
-    '...Khh....hHK...',
+    '...Kh......HK...',
     '...Kh......HK...',
     '...Kh......HK...',
     '...Kh......HK...',
@@ -922,7 +874,7 @@ layer('hair-bob', {
     '.....KKKKKK.....',
     '....KjjhhhhK....',
     '....KjhhhhhHK...',
-    '....Khh.hhhHK...',
+    '....Kh..hhhHK...',
     '.........KhhHK..',
     '.........KhhHK..',
     '.........KhhHK..',
@@ -977,15 +929,15 @@ layer('hair-widowspeak', {
     '....KjjhhhhK....',
     '....KjhhhhHK....',
     '....KjhhhhHK....',
-    '....KhhhhhHK....',
+    '....Kh.hh.HK....',
     '.......hh.......',
   ]),
   left: at(1, [
     '.....KKKKKK.....',
     '....KjjhhhhK....',
     '....KjhhhhHK....',
-    '....KjhhhhHK....',
-    '....Khh.KhHK....',
+    '....Kjh.hhHK....',
+    '....Kh..KhHK....',
     '.....h..KhHK....',
   ]),
   up: at(1, [
@@ -1213,28 +1165,8 @@ layer('tail-scaled', { down: TAIL_SCALED, left: TAIL_SCALED, up: TAIL_SCALED });
 // ===========================================================================
 
 /** Register an outfit whose front grid is reused for every facing. */
-/**
- * Pull a row in by one pixel each side, moving its outline with it. Used to
- * slope a shoulder line: row 10 used to run the full cols 3-12 like row 11, so
- * every torso -- body and outfit alike -- met the neck as a hard square corner
- * and the whole character read as a slab with a head on it.
- */
-function insetRow(row) {
-  const c = row.split('');
-  let a = c.findIndex((ch) => ch !== '.');
-  let b = c.length - 1 - c.slice().reverse().findIndex((ch) => ch !== '.');
-  if (a < 0 || b <= a + 2) return row;
-  c[a] = '.'; c[b] = '.';
-  c[a + 1] = 'K'; c[b - 1] = 'K';
-  return c.join('');
-}
-
 function outfit(name, rows, anim) {
   const g = norm(rows);
-  // Every outfit's first authored row is the top of the sleeves, and it sits on
-  // the body's sloped shoulder -- so it gets the same slope, without each
-  // outfit having to remember to draw one.
-  g[10] = insetRow(g[10]);
   return layer(name, { down: g, left: g, up: g }, anim);
 }
 
@@ -1411,221 +1343,12 @@ outfit('outfit-monk', at(10, [
   '....KAAAAAAK....',
 ]));
 
-
-// --- class dress ----------------------------------------------------------
-// Unarmoured adventurers used to collapse into three looks: robe, monastic
-// wrap, or the same brown tunic for everybody else -- a party of six read as
-// one costume. These are the working clothes of each calling, so a bard is a
-// bard from across the room.
-
-// Fighter: a quilted gambeson, the padding you wear when you cannot afford mail.
-outfit('outfit-gambeson', at(10, [
-  '...KaaaaaaaaK...',
-  '...KaAaaaaAaK...',
-  '...KAaAaaAaAK...',
-  '...KAaaAAaaAK...',
-  '.....LLLLLL.....',
-  '.....aAaaAa.....',
-  '.....aaAAaa.....',
-  '....KaaaaaaK....',
-  '....KAAAAAAK....',
-]));
-
-// Rogue: dark jerkin with a baldric cutting across the chest.
-outfit('outfit-jerkin', at(10, [
-  '...KPLLLLLLPK...',
-  '...KPxLLLLLPK...',
-  '...KPLxLLLLPK...',
-  '...KPLLxLLLPK...',
-  '.....LLxLLL.....',
-  '.....PPxPPP.....',
-  '.....LLLLLL.....',
-  '....KLLLLLLK....',
-  '....KPPPPPPK....',
-]));
-
-// Bard: a parti-coloured doublet, the two halves in the wearer's own colours.
-outfit('outfit-doublet', at(10, [
-  '...KaaaabbbbK...',
-  '...KaqaabbBbK...',
-  '...KAaaabbbBK...',
-  '...KAaaabbbBK...',
-  '.....tttttt.....',
-  '.....aaabbb.....',
-  '.....aaabbb.....',
-  '....KaaabbbK....',
-  '....KAAABBBK....',
-]));
-
-// Ranger: leather harness over a cloth shirt, quiver strap on the chest.
-outfit('outfit-ranger', at(10, [
-  '...KLLccccLLK...',
-  '...KLccccccLK...',
-  '...KPccccccPK...',
-  '...KPcxccccPK...',
-  '.....LLLLLL.....',
-  '.....cxcccc.....',
-  '.....cccccc.....',
-  '....KccccccK....',
-  '....KLLLLLLK....',
-]));
-
-// Cleric: vestments with a stole hanging the length of the front.
-outfit('outfit-vestments', at(10, [
-  '...KattttttaK...',
-  '...KAattttaAK...',
-  '...KAatxxtaAK...',
-  '...KAatxxtaAK...',
-  '.....atxxta.....',
-  '.....LtxxtL.....',
-  '.....atxxta.....',
-  '....KatxxtaK....',
-  '....KAAxxAAK....',
-]));
-
-// Druid: rough homespun, cord belt, a hem left deliberately ragged.
-outfit('outfit-druidwear', at(10, [
-  '...KccaaaaccK...',
-  '...KcaaaaaacK...',
-  '...KCaaaaaaCK...',
-  '...KCaaqqaaCK...',
-  '.....LxxxxL.....',
-  '.....aaaaaa.....',
-  '.....aqaaqa.....',
-  '....KaaaaaaK....',
-  '....KACAACAK....',
-]));
-
-// Warlock: a long coat worn open over a shirt, collar up.
-outfit('outfit-coat', at(10, [
-  '...KAabbbbaAK...',
-  '...KAabccbaAK...',
-  '...KAabccbaAK...',
-  '...KAabccbaAK...',
-  '.....abccba.....',
-  '.....LbccbL.....',
-  '.....abccba.....',
-  '....KabccbaK....',
-  '....KAAbbAAK....',
-]));
-
-// Barbarian: a fur mantle and a wide belt, and nothing else worth the weight.
-outfit('outfit-fur', at(10, [
-  '...KLPLLLLPLK...',
-  '...KPLLssLLPK...',
-  '...KsLssssLsK...',
-  '...KssssssssK...',
-  '.....LLLLLL.....',
-  '.....ssdsds.....',
-  '.....ssssss.....',
-  '....KLLLLLLK....',
-  '....KPLPPLPK....',
-]));
-
-// Paladin: a tabard over mail, the device down the centre.
-outfit('outfit-tabard', at(10, [
-  '...KmMaaaaMmK...',
-  '...KmMaxxaMmK...',
-  '...KmMaxxaMmK...',
-  '...KmMaxxaMmK...',
-  '.....maxxam.....',
-  '.....LtxxtL.....',
-  '.....maxxam.....',
-  '....KmaxxamK....',
-  '....KMAxxAMK....',
-]));
-
-// ===========================================================================
-// SPECIES FEATURES. data/species.js has always declared snout, scales, tusks
-// and markings, and nothing ever drew them -- so a dragonborn was a human
-// wearing horns and a half-orc was a broad human. One layer each, over the
-// face, under the hair.
-// ===========================================================================
-
-// Dragonborn muzzle. Drawn in the HORN colour, which is the species' scale hue.
-layer('face-snout', {
-  down: at(7, [
-    '.....KooooK.....',
-    '.....KoOOoK.....',
-    '.....KOOOOK.....',
-  ]),
-  left: at(6, [
-    '.Kooooo.........',
-    '.KoOOoo.........',
-    '..KOOoo.........',
-  ]),
-  up: [],
-});
-
-// A brow ridge of scale across the top of the face.
-layer('face-scales', {
-  down: at(5, ['....KooooooK....']),
-  left: at(5, ['...KoooooooK....']),
-  up: at(5, ['....KooooooK....']),
-});
-
-// Orc and half-orc tusks, rising past the mouth.
-layer('face-tusks', {
-  down: at(6, [
-    '......W..W......',
-    '......W..W......',
-    '.....KW..WK.....',
-  ]),
-  left: at(6, [
-    '...W............',
-    '..WW............',
-    '..KW............',
-  ]),
-  up: [],
-});
-
-// Tabaxi muzzle: a pale mask around a dark nose.
-layer('face-muzzle', {
-  down: at(7, [
-    '......lZZl......',
-    '......WWWW......',
-  ]),
-  left: at(7, [
-    '...ZWl..........',
-    '...WWl..........',
-  ]),
-  up: [],
-});
-
-// Goliath lithoderms -- the raised, stone-coloured patches of their heritage.
-layer('face-markings', {
-  down: at(6, [
-    '.....o....o.....',
-    '.....o....o.....',
-    '.....O....O.....',
-  ]),
-  left: at(6, [
-    '....o...........',
-    '....o...........',
-    '....O...........',
-  ]),
-  up: at(6, [
-    '.....o....o.....',
-    '.....o....o.....',
-    '.....O....O.....',
-  ]),
-});
-
 export const OUTFIT_STYLES = Object.freeze([
   { id: 'outfit-tunic', name: 'Tunic' },
   { id: 'outfit-peasant', name: 'Homespun' },
   { id: 'outfit-robe', name: 'Robes' },
   { id: 'outfit-noble', name: 'Fine Clothes' },
   { id: 'outfit-monk', name: 'Monastic Wrap' },
-  { id: 'outfit-gambeson', name: 'Gambeson' },
-  { id: 'outfit-jerkin', name: 'Jerkin' },
-  { id: 'outfit-doublet', name: 'Doublet' },
-  { id: 'outfit-ranger', name: 'Ranger Leathers' },
-  { id: 'outfit-vestments', name: 'Vestments' },
-  { id: 'outfit-druidwear', name: 'Rough Robe' },
-  { id: 'outfit-coat', name: 'Long Coat' },
-  { id: 'outfit-fur', name: 'Fur Mantle' },
-  { id: 'outfit-tabard', name: 'Tabard' },
   { id: 'outfit-hide', name: 'Hide' },
   { id: 'outfit-leather', name: 'Leather' },
   { id: 'outfit-studded', name: 'Studded Leather' },
@@ -1723,105 +1446,6 @@ layer('cloak-hooded',
       2: { 20: '...KBBBBBBBBBBK.', 21: '....KBBBBBBBBK..', 22: '.....KKKKKKKK...' },
     },
   });
-
-
-// ===========================================================================
-// BOOTS. Footwear used to be painted into the body layer itself -- three rows
-// of LEATHER at the bottom of every character, identical for a barefoot monk
-// and a knight in plate. This is a real layer, drawn over the body's legs and
-// under the outfit, so a long robe still falls over the top of it.
-//
-// The masks are the body's own walk patches recoloured, so a boot swings with
-// the leg it is on instead of standing still while the leg moves.
-// ===========================================================================
-
-/** Recolour a leg patch table: { rowIndex: gridRow } with tokens swapped. */
-function recolourLegs(table, map) {
-  const out = {};
-  for (const frame of Object.keys(table)) {
-    const rows = {};
-    for (const r of Object.keys(table[frame])) {
-      rows[r] = table[frame][r].replace(/[CLP]/g, (ch) => (map[ch] != null ? map[ch] : ch));
-    }
-    out[frame] = rows;
-  }
-  return out;
-}
-
-/**
- * A boot layer. `rows` are the four base rows 20..23; `map` recolours the
- * shared walk patches to match them.
- */
-function boots(name, rows, map) {
-  const g = at(20, rows);
-  const anim = {
-    down: recolourLegs(LEGS_F, map),
-    left: recolourLegs(LEGS_S, map),
-    up: recolourLegs(LEGS_F, map),
-  };
-  return layer(name, { down: g, left: g, up: g }, anim);
-}
-
-emptyLayer('boots-none');
-
-// Knee-high riding leather with a turned cuff. The default for most people.
-boots('boots-tall', [
-  '....KttKKttK....',
-  '....KLLKKLLK....',
-  '....KLLKKLLK....',
-  '....KPPKKPPK....',
-], { C: 't', L: 'L', P: 'P' });
-
-// Short, hard-wearing, folded over at the ankle.
-boots('boots-cuffed', [
-  '....KCCKKCCK....',
-  '....KttKKttK....',
-  '....KLLKKLLK....',
-  '....KPPKKPPK....',
-], { C: 'C', L: 'L', P: 'P' });
-
-// Sandals and bare feet: the monk, and anyone who walks the Old Faith's roads.
-boots('boots-sandal', [
-  '....KssKKssK....',
-  '....KLsKKsLK....',
-  '....KssKKssK....',
-  '....KLLKKLLK....',
-], { C: 's', L: 's', P: 'L' });
-
-// Cloth wraps to the calf -- barbarians, druids, anyone shod by hand.
-boots('boots-wraps', [
-  '....KcCKKCcK....',
-  '....KCcKKcCK....',
-  '....KcCKKCcK....',
-  '....KPPKKPPK....',
-], { C: 'c', L: 'C', P: 'P' });
-
-// Sabatons. Steel over the whole foot, banded at the ankle.
-boots('boots-plate', [
-  '....KmmKKmmK....',
-  '....KnmKKmnK....',
-  '....KmmKKmmK....',
-  '....KMMKKMMK....',
-], { C: 'm', L: 'm', P: 'M' });
-
-// Court shoes: soft leather, a bright buckle, no use whatsoever off a floor.
-boots('boots-court', [
-  '....KCCKKCCK....',
-  '....KLLKKLLK....',
-  '....KLtKKtLK....',
-  '....KPPKKPPK....',
-], { C: 'C', L: 'L', P: 'P' });
-
-export const BOOT_STYLES = Object.freeze([
-  { id: 'auto', name: 'By Calling' },
-  { id: 'boots-none', name: 'Barefoot' },
-  { id: 'boots-tall', name: 'Riding Boots' },
-  { id: 'boots-cuffed', name: 'Cuffed Boots' },
-  { id: 'boots-sandal', name: 'Sandals' },
-  { id: 'boots-wraps', name: 'Foot Wraps' },
-  { id: 'boots-plate', name: 'Sabatons' },
-  { id: 'boots-court', name: 'Court Shoes' },
-]);
 
 export const CLOAK_STYLES = Object.freeze([
   { id: 'cloak-none', name: 'No Cloak' },
@@ -2330,85 +1954,6 @@ npc('npc-farmer', ['body-normal', 'hair-short', 'beard-stubble', 'outfit-peasant
 npc('npc-miner', ['body-broad', 'hair-short', 'beard-full', 'outfit-hide', 'helm-cap'],
   { skin: '#b07a4e', hair: '#33231a', leather: '#5e4326', cloth: '#9a8a6a', metal: '#8e939c' });
 
-// --- the rest of the working world ---------------------------------------
-// Sixteen families had to cover every town on the Sword Coast, so a dockhand,
-// a scribe and a fisherman were all "npc-villager-m" in different colours.
-// These cost nothing but a layer stack -- the art is the class dress and the
-// species features already in this file.
-
-// Labourers, carters and dockhands: broad, in whatever the work leaves whole.
-npc('npc-labourer', ['body-broad', 'hair-short', 'beard-stubble', 'outfit-peasant'],
-  { skin: '#b07a4e', hair: '#2c1e14', cloth: '#9a8a6a', leather: '#5a3f22', accent: '#8a6a3a' });
-
-npc('npc-porter', ['body-normal', 'hair-short', 'outfit-peasant', 'helm-cap'],
-  { skin: '#8a5734', hair: '#1c1410', cloth: '#a89878', leather: '#6b4a2a', metal: '#9a8a6a' });
-
-// Fisherfolk and rivermen: oilskin brown, cap against the weather.
-npc('npc-fisher', ['body-normal', 'hair-short', 'beard-full', 'outfit-leather', 'helm-cap'],
-  { skin: '#c98d5e', hair: '#6a6a72', leather: '#4e3a22', metal: '#7a6a4a', accent: '#6aa8b0' });
-
-// Sailors off the Chionthar traffic: bright sash, bare arms, headscarf.
-npc('npc-sailor', ['body-slim', 'hair-short', 'outfit-tunic', 'helm-cap'],
-  { skin: '#a86f45', hair: '#1c1410', main: '#2f6b6b', metal: '#b02a2a', leather: '#54381f', accent: '#e3b34a' });
-
-// Herders on the Trade Way, walking their flock down the road.
-npc('npc-herder', ['body-normal', 'hair-short', 'beard-stubble', 'outfit-peasant', 'wep-staff'],
-  { skin: '#c98d5e', hair: '#5a3a20', cloth: '#b8a678', leather: '#5a3f22', accent: '#8a9a6a' });
-
-// Hunters and trappers working the Neverwinter Wood edge.
-npc('npc-hunter', ['body-slim', 'hair-ponytail', 'outfit-ranger', 'cloak-short', 'wep-bow'],
-  { skin: '#8a5734', hair: '#3a2416', cloth: '#5a6b3a', leather: '#4e3218', accent: '#8a6a2a' });
-
-// Scribes, clerks and countinghouse men.
-npc('npc-scribe', ['body-slim', 'hair-short', 'outfit-robe'],
-  { skin: '#e8bd95', hair: '#6a6a72', main: '#3a3a4a', accent: '#c0c6d0', cloth: '#d8ccae' });
-
-// Sages and tutors -- the robe, but scholarly rather than arcane.
-npc('npc-scholar', ['body-normal', 'hair-long', 'beard-full', 'outfit-robe', 'helm-circlet'],
-  { skin: '#e0a878', hair: '#d8d8e0', main: '#4a2a5a', metal: '#c8b06a', accent: '#e3b34a' });
-
-// Temple acolytes, distinct from the robed priest.
-npc('npc-acolyte', ['body-normal', 'hair-bob', 'outfit-vestments'],
-  { skin: '#c98d5e', hair: '#3a2416', main: '#e8e2d2', accent: '#d8bf5a', cloth: '#ddd6c4' });
-
-// Minstrels working the taprooms for coin and a bed.
-npc('npc-minstrel', ['body-slim', 'hair-curly', 'outfit-doublet', 'helm-cap'],
-  { skin: '#e0a878', hair: '#5a3a20', main: '#7a2a5a', alt: '#c8a860', metal: '#c8b06a', accent: '#e3b34a' });
-
-// Festhall staff. The Realms have festhalls in every city of size -- Waterdeep
-// alone supports a dozen -- and they are places of drink, music, dancing and
-// paid company. Dressed as the sourcebooks describe them: fine cloth, a lot of
-// gold, and better clothes than most nobles in this game.
-npc('npc-festhall-f', ['body-slim', 'hair-long', 'outfit-doublet', 'helm-circlet'],
-  { skin: '#e8bd95', hair: '#1c1410', main: '#8a2a5a', alt: '#c8306a', metal: '#c8b06a', accent: '#f0d264' });
-
-npc('npc-festhall-m', ['body-slim', 'hair-ponytail', 'outfit-noble', 'helm-circlet'],
-  { skin: '#a86f45', hair: '#5a3a20', main: '#4a2a6a', accent: '#f0d264', metal: '#c8b06a', cloth: '#d8ccae' });
-
-// A festhall's own doorman: big, well dressed, and not a guard exactly.
-npc('npc-bouncer', ['body-broad', 'hair-shaved', 'beard-goatee', 'outfit-leather', 'wep-mace'],
-  { skin: '#6b4227', hair: '#1c1410', leather: '#2e2116', metal: '#c8b06a', accent: '#c8306a' });
-
-// Beggars and the road-worn, in whatever they were given.
-npc('npc-beggar', ['body-slim', 'hair-wild', 'beard-full', 'outfit-peasant', 'cloak-hooded'],
-  { skin: '#8a5734', hair: '#6a6a72', cloth: '#7a6a54', main: '#5a4a3a', leather: '#3f2c18' });
-
-// City Watch of Baldur's Gate -- heavier than a village guard, and liveried.
-npc('npc-watch', ['body-broad', 'outfit-half-plate', 'helm-great', 'shield-kite', 'wep-sword'],
-  { skin: '#c98d5e', metal: '#9aa2b0', main: '#2a3a5a', leather: '#3f2c18', accent: '#c4a24a' });
-
-// Mercenaries drinking between contracts.
-npc('npc-sellsword', ['body-broad', 'hair-topknot', 'beard-braided', 'outfit-studded', 'wep-greatsword'],
-  { skin: '#a86f45', hair: '#7a5a2a', leather: '#4e3218', metal: '#8e939c', accent: '#b02a2a' });
-
-// Farmwives and goodwives -- the other half of every farmstead.
-npc('npc-goodwife', ['body-normal', 'hair-braid', 'outfit-peasant'],
-  { skin: '#e8bd95', hair: '#a8823a', cloth: '#c3a678', leather: '#6b4a2a', accent: '#7fbf6a' });
-
-// Drovers and stablehands.
-npc('npc-drover', ['body-normal', 'hair-short', 'beard-stubble', 'outfit-leather', 'helm-cap'],
-  { skin: '#8a5734', hair: '#33231a', leather: '#6b4a2a', metal: '#9a8a6a', accent: '#a8763e' });
-
 npc('npc-noble', ['cloak-short', 'body-slim', 'hair-long', 'outfit-noble'],
   { skin: '#efc79c', hair: '#2a1c14', main: '#5a2f6b', alt: '#3a1f4a', accent: '#e6c45c' });
 
@@ -2826,481 +2371,6 @@ creature('ox', 24, 24, {
     2: { 20: '......KfK...KfK.........', 21: '......KFK...KFK.........', 22: '......KFK...KFK.........', 23: '......KKK...KKK.........' },
   },
 }, BEAST_PAL('#6e5744', '#4a3a2c', '#8f7a62', { o: '#cfc3a4', O: '#9a8f74' }));
-
-// ===========================================================================
-// MORE BEASTS. The world had five animals -- dog, cat, chicken, horse, ox --
-// so every farmyard on the Sword Coast held the same five. These are the rest
-// of the ordinary ones: what you actually walk past on the Trade Way.
-// Same 16x16 frame and the same BEAST_PAL tokens as the originals.
-// ===========================================================================
-
-creature('sheep', 16, 16, {
-  down: [
-    '................', '................', '................', '................',
-    '.....KKKKKK.....',
-    '....KWWWWWWK....',
-    '....KFeWWeFK....',
-    '....KFFnnFFK....',
-    '.....KFFFFK.....',
-    '...KWWWWWWWWK...',
-    '..KWWWWWWWWWWK..',
-    '..KWWWWWWWWWWK..',
-    '..KWWWWWWWWWWK..',
-    '..KGWWWWWWWWGK..',
-    '...KKFFFFFFKK...',
-    '....KF....FK....',
-  ],
-  left: [
-    '................', '................', '................', '................',
-    '................',
-    '..KKK...........',
-    '.KFFFK..KKKKK...',
-    '.KFeFKKWWWWWWK..',
-    '.KFFnFWWWWWWWWK.',
-    '..KFFKWWWWWWWWK.',
-    '...KKWWWWWWWWWK.',
-    '.....KWWWWWWWK..',
-    '.....KFKKKKFK...',
-    '.....KFK..KFK...',
-    '.....KFK..KFK...',
-    '.....KKK..KKK...',
-  ],
-  up: [
-    '................', '................', '................', '................',
-    '.....KKKKKK.....',
-    '....KFFFFFFK....',
-    '....KFFFFFFK....',
-    '....KFFFFFFK....',
-    '.....KFFFFK.....',
-    '...KWWWWWWWWK...',
-    '..KWWWWWWWWWWK..',
-    '..KWWWWWWWWWWK..',
-    '..KWWWWWWWWWWK..',
-    '..KGWWWWWWWWGK..',
-    '...KKFFFFFFKK...',
-    '....KF....FK....',
-  ],
-}, {
-  down: { 1: { 15: '....KF....K.....' }, 2: { 15: '.....K....FK....' } },
-  left: { 1: { 14: '....KFK...KFK...' }, 2: { 14: '......KFK.KFK...' } },
-}, BEAST_PAL('#e8e2d4', '#4a423a', '#f6f2e8'));
-
-creature('goat', 16, 16, {
-  down: [
-    '................', '................', '................', '................',
-    '...KK......KK...',
-    '....KKKKKKKK....',
-    '....KfefffefK...',
-    '....KffnnffK....',
-    '.....KfWWfK.....',
-    '....KffffffK....',
-    '...KffffffffK...',
-    '..KffffffffffK..',
-    '..KffffffffffK..',
-    '..KFffffffffFK..',
-    '...KKFFFFFFKK...',
-    '....KF....FK....',
-  ],
-  left: [
-    '................', '................', '................', '................',
-    '..KK............',
-    '.KK.KKK.........',
-    '.KfffKK.KKKKK...',
-    '.KfefFKKfffffK..',
-    '.KffnFffffffffK.',
-    '..KWWKffffffffK.',
-    '...KKfffffffffK.',
-    '.....KffffffffK.',
-    '.....KfKKKKfK...',
-    '.....KfK..KfK...',
-    '.....KFK..KFK...',
-    '.....KKK..KKK...',
-  ],
-  up: [
-    '................', '................', '................', '................',
-    '...KK......KK...',
-    '....KKKKKKKK....',
-    '....KffffffK....',
-    '....KffffffK....',
-    '.....KffffK.....',
-    '....KffffffK....',
-    '...KffffffffK...',
-    '..KffffffffffK..',
-    '..KffffffffffK..',
-    '..KFffffffffFK..',
-    '...KKFFFFFFKK...',
-    '....KF....FK....',
-  ],
-}, {
-  down: { 1: { 15: '....KF....K.....' }, 2: { 15: '.....K....FK....' } },
-  left: { 1: { 14: '....KFK...KFK...' }, 2: { 14: '......KFK.KFK...' } },
-}, BEAST_PAL('#b8a678', '#7a6a48', '#d8ccae'));
-
-creature('pig', 16, 16, {
-  down: [
-    '................', '................', '................', '................',
-    '................',
-    '....KK....KK....',
-    '...KffKKKKffK...',
-    '...KfeffffefK...',
-    '...KffnnnnffK...',
-    '....KFnnnnFK....',
-    '..KffffffffffK..',
-    '.KffffffffffffK.',
-    '.KffffffffffffK.',
-    '.KFffffffffffFK.',
-    '..KKFFFFFFFFKK..',
-    '...KF..KK..FK...',
-  ],
-  left: [
-    '................', '................', '................', '................',
-    '................',
-    '..KK............',
-    '.KffK...........',
-    'KffffKKKKKKKK...',
-    'KnnfefffffffffK.',
-    'KnnffffffffffffK',
-    '.KffffffffffffFK',
-    '..KFffffffffffFK',
-    '..KfKKKKKKKKfK..',
-    '..KfK....KKfK...',
-    '..KFK....KKFK...',
-    '..KKK.....KKK...',
-  ],
-  up: [
-    '................', '................', '................', '................',
-    '................',
-    '....KK....KK....',
-    '...KFFKKKKFFK...',
-    '...KFFFFFFFFK...',
-    '...KFFFFFFFFK...',
-    '....KFFFFFFK....',
-    '..KffffffffffK..',
-    '.KffffffffffffK.',
-    '.KffffffffffffK.',
-    '.KFffffffffffFK.',
-    '..KKFFFFFFFFKK..',
-    '...KF..KK..FK...',
-  ],
-}, {
-  down: { 1: { 15: '...KF..KK...K...' }, 2: { 15: '....K..KK..FK...' } },
-  left: { 1: { 14: '..KFK.....KKK...' }, 2: { 14: '..KKK....KKFK...' } },
-}, BEAST_PAL('#e0a898', '#a8705f', '#f2c8b8', { n: '#c96a72' }));
-
-creature('cow', 16, 16, {
-  down: [
-    '................', '................', '................',
-    '..KK........KK..',
-    '...KKKKKKKKKK...',
-    '...KWWffffWWK...',
-    '...KWeffffeWK...',
-    '...KffnnnnffK...',
-    '....KFnnnnFK....',
-    '..KffWWffWWffK..',
-    '.KffWWWffWWWffK.',
-    '.KfffWWffWWfffK.',
-    '.KffffffffffffK.',
-    '.KFffffWWfffffK.',
-    '..KKFFFFFFFFKK..',
-    '...KF..KK..FK...',
-  ],
-  left: [
-    '................', '................', '................',
-    '..KK............',
-    '.KKKKKK.........',
-    '.KWWffK.........',
-    '.KWefWKKKKKKKK..',
-    '.KffnfffWWfffffK',
-    '.KFnnffWWWWffffK',
-    '..KKKffWWWWffffK',
-    '...KffffffffffFK',
-    '...KfKKKKKKKfK..',
-    '...KfK....KKfK..',
-    '...KFK....KKFK..',
-    '...KKK.....KKK..',
-  ],
-  up: [
-    '................', '................', '................',
-    '..KK........KK..',
-    '...KKKKKKKKKK...',
-    '...KffffffffK...',
-    '...KffWWWWffK...',
-    '...KffffffffK...',
-    '....KffffffK....',
-    '..KffWWffWWffK..',
-    '.KffWWWffWWWffK.',
-    '.KfffWWffWWfffK.',
-    '.KffffffffffffK.',
-    '.KFffffWWfffffK.',
-    '..KKFFFFFFFFKK..',
-    '...KF..KK..FK...',
-  ],
-}, {
-  down: { 1: { 15: '...KF..KK...K...' }, 2: { 15: '....K..KK..FK...' } },
-  left: { 1: { 13: '...KFK....KKKK..' }, 2: { 13: '...KKK....KKFK..' } },
-}, BEAST_PAL('#8a5f36', '#5f4022', '#b08a5a'));
-
-creature('goose', 16, 16, {
-  down: [
-    '................', '................', '................',
-    '......KKK.......',
-    '.....KWWWK......',
-    '.....KeWeK......',
-    '.....yWWWy......',
-    '.....KWWWK......',
-    '.....KWWWK......',
-    '....KWWWWWK.....',
-    '...KWWWWWWWK....',
-    '..KWWWWWWWWWK...',
-    '..KWWWWWWWWWK...',
-    '..KGWWWWWWWGK...',
-    '...KKGGGGGKK....',
-    '.....y...y......',
-  ],
-  left: [
-    '................', '................', '................',
-    '.....KKK........',
-    '....KWWWK.......',
-    '....KeWWK.......',
-    '..yyKWWWK.......',
-    '....KWWWK.......',
-    '....KWWWK.......',
-    '....KWWWWKK.....',
-    '...KWWWWWWWKK...',
-    '..KWWWWWWWWWWK..',
-    '..KWWWWWWWWWGK..',
-    '..KGWWWWWWWGK...',
-    '...KKGGGGKK.....',
-    '.....y.y........',
-  ],
-  up: [
-    '................', '................', '................',
-    '......KKK.......',
-    '.....KWWWK......',
-    '.....KWWWK......',
-    '.....KWWWK......',
-    '.....KWWWK......',
-    '.....KGGGK......',
-    '....KWWWWWK.....',
-    '...KWWWWWWWK....',
-    '..KWWWWWWWWWK...',
-    '..KWGGGGGGGWK...',
-    '..KGWWWWWWWGK...',
-    '...KKGGGGGKK....',
-    '.....y...y......',
-  ],
-}, {
-  down: { 1: { 15: '.....y..........' }, 2: { 15: '.........y......' } },
-  left: { 1: { 15: '.....y..........' }, 2: { 15: '.......y........' } },
-}, BEAST_PAL('#f2ece0', '#b8b0a0', '#ffffff'));
-
-// NOT 'rat': spritedata_monsters.js defines a `rat` for the bestiary, and
-// whichever module registered last used to silently win. This is the tame
-// one that lives on a wharf; the monster keeps the plain name.
-creature('town-rat', 16, 16, {
-  down: [
-    '................', '................', '................', '................',
-    '................', '................', '................',
-    '....KK....KK....',
-    '...KffKKKKffK...',
-    '...KfefffefK....',
-    '....KffnnffK....',
-    '...KffffffffK...',
-    '..KffffffffffK..',
-    '..KFffffffffFK..',
-    '...KKFFFFFFKK...',
-    '....K......K....',
-  ],
-  left: [
-    '................', '................', '................', '................',
-    '................', '................',
-    '..KK............',
-    '.KffK...........',
-    'KffefKKKKKK.....',
-    'KfnffffffffKK...',
-    '.KffffffffffFKKK',
-    '.KFfffffffffFKGG',
-    '..KFFFFFFFFFK...',
-    '..KfK....KfK....',
-    '..KKK....KKK....',
-    '................',
-  ],
-  up: [
-    '................', '................', '................', '................',
-    '................', '................', '................',
-    '....KK....KK....',
-    '...KFFKKKKFFK...',
-    '...KFFFFFFFK....',
-    '....KFFFFFFK....',
-    '...KffffffffK...',
-    '..KffffffffffK..',
-    '..KFffffffffFK..',
-    '...KKFFFFFFKK...',
-    '....K......K....',
-  ],
-}, {
-  down: { 1: { 15: '....K...........' }, 2: { 15: '...........K....' } },
-  left: { 1: { 13: '..KfK.....KKK...' }, 2: { 13: '..KKK.....KfK...' } },
-}, BEAST_PAL('#6a6258', '#3e3a34', '#8e867a'));
-
-creature('crow', 16, 16, {
-  down: [
-    '................', '................', '................', '................',
-    '................', '................',
-    '......KKK.......',
-    '.....KfefK......',
-    '.....KfffK......',
-    '....KfffffK.....',
-    '...KfffffffK....',
-    '...KfFfffFfK....',
-    '...KfFfffFfK....',
-    '....KfffffK.....',
-    '.....KFFFK......',
-    '.....y...y......',
-  ],
-  left: [
-    '................', '................', '................', '................',
-    '................', '................',
-    '.....KKK........',
-    '....KefK........',
-    '..yyKffK........',
-    '....KfffKK......',
-    '....KfffffKK....',
-    '...KfFfffffFK...',
-    '...KfFfffffFK...',
-    '....KffffffK....',
-    '.....KFFFFK.....',
-    '.....y.y........',
-  ],
-  up: [
-    '................', '................', '................', '................',
-    '................', '................',
-    '......KKK.......',
-    '.....KfffK......',
-    '.....KfffK......',
-    '....KfFFfK......',
-    '...KfFFFFfK.....',
-    '...KfFFFFFfK....',
-    '...KfFFFFFfK....',
-    '....KfffffK.....',
-    '.....KFFFK......',
-    '.....y...y......',
-  ],
-}, {
-  down: { 1: { 10: '...KfffffffK....', 15: '.....y..........' }, 2: { 15: '.........y......' } },
-  left: { 1: { 15: '.....y..........' }, 2: { 15: '.......y........' } },
-}, BEAST_PAL('#2e2c34', '#14131a', '#4e4c58', { y: '#8a8a6a' }));
-
-creature('fox', 16, 16, {
-  down: [
-    '................', '................', '................', '................',
-    '....KK....KK....',
-    '...KfFKKKKFfK...',
-    '...KffffffffK...',
-    '...KfeffffefK...',
-    '....KfWnnWfK....',
-    '.....KWWWWK.....',
-    '...KffffffffK...',
-    '..KfffWWWWfffK..',
-    '..KfffWWWWfffK..',
-    '..KFffffffffFK..',
-    '...KKFFFFFFKK...',
-    '....KF....FK....',
-  ],
-  left: [
-    '................', '................', '................', '................',
-    '..KK............',
-    '.KfFK...........',
-    '.KfffKKKKKK.....',
-    'KfeffffffffKK...',
-    'KWnfffffffffFKK.',
-    '.KWWffWWWWffFKGG',
-    '..KffffWWWWffFKG',
-    '..KFffffffffffK.',
-    '..KfKKKKKKKKfK..',
-    '..KfK....KKfK...',
-    '..KFK....KKFK...',
-    '..KKK.....KKK...',
-  ],
-  up: [
-    '................', '................', '................', '................',
-    '....KK....KK....',
-    '...KfFKKKKFfK...',
-    '...KffffffffK...',
-    '...KffffffffK...',
-    '....KffffffK....',
-    '.....KffffK.....',
-    '...KffffffffK...',
-    '..KfffffffffK...',
-    '..KfffWWWWfffK..',
-    '..KFffffffffFK..',
-    '...KKFFFFFFKK...',
-    '....KF....FK....',
-  ],
-}, {
-  down: { 1: { 15: '....KF....K.....' }, 2: { 15: '.....K....FK....' } },
-  left: { 1: { 14: '..KFK.....KKK...' }, 2: { 14: '..KKK....KKFK...' } },
-}, BEAST_PAL('#c96a2a', '#8a4418', '#e89a5a'));
-
-creature('deer', 16, 16, {
-  down: [
-    '..K..........K..',
-    '..KK.K....K.KK..',
-    '...KKK....KKK...',
-    '....KK....KK....',
-    '.....KKKKKK.....',
-    '....KffffffK....',
-    '....KfeffefK....',
-    '....KffnnffK....',
-    '.....KfWWfK.....',
-    '...KffffffffK...',
-    '..KffWffffWffK..',
-    '..KffffffffffK..',
-    '..KffWffffWffK..',
-    '..KFffffffffFK..',
-    '...KKFFFFFFKK...',
-    '....KF....FK....',
-  ],
-  left: [
-    '..K.............',
-    '..KK.K..........',
-    '...KKK..........',
-    '....KK..........',
-    '...KKKK.........',
-    '..KffffK........',
-    '..KfefFKKKKKK...',
-    '..KffnFffffffK..',
-    '...KWWKffWffffK.',
-    '....KKffffffffK.',
-    '.....KffWffffFK.',
-    '.....KffffffffK.',
-    '.....KfKKKKfK...',
-    '.....KfK..KfK...',
-    '.....KFK..KFK...',
-    '.....KKK..KKK...',
-  ],
-  up: [
-    '..K..........K..',
-    '..KK.K....K.KK..',
-    '...KKK....KKK...',
-    '....KK....KK....',
-    '.....KKKKKK.....',
-    '....KffffffK....',
-    '....KffffffK....',
-    '....KffffffK....',
-    '.....KffffK.....',
-    '...KffffffffK...',
-    '..KffWffffWffK..',
-    '..KffffffffffK..',
-    '..KWWffffffWWK..',
-    '..KFffffffffFK..',
-    '...KKFFFFFFKK...',
-    '....KF....FK....',
-  ],
-}, {
-  down: { 1: { 15: '....KF....K.....' }, 2: { 15: '.....K....FK....' } },
-  left: { 1: { 14: '....KFK...KFK...' }, 2: { 14: '......KFK.KFK...' } },
-}, BEAST_PAL('#a8763e', '#6a4620', '#c99a5e'));
 
 // ===========================================================================
 // REGISTRATION

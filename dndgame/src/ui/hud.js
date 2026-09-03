@@ -222,6 +222,10 @@ export class HUD {
     this.map = null;             // current TileMap
     this.entities = null;        // optional entity list override
     this.player = null;          // { sx, sy, moving } in screen pixels
+    // Spell markers, shared by reference with the overworld scene:
+    // rules/fieldworld.js addMarker/expireMarkers own the array, the HUD only
+    // draws it. [{ x, y, label, until, color }]
+    this.markers = null;
 
     this.toasts = [];
     this.logLine = null;
@@ -811,6 +815,9 @@ export class HUD {
       txtC(ctx, cx, cy - 3, 'no map', { size: 'sm', color: 'rgba(154,145,127,0.45)' });
     }
 
+    // Locate Object's pin, and anything else the Weave is pointing at.
+    if (map) this._drawMarkerPips(ctx, cx, cy, r, px);
+
     // The party, always dead centre, pulsing.
     const pulse = 0.6 + 0.4 * Math.sin(this.t * 4);
     ctx.globalAlpha = clamp(this.alpha, 0, 1) * pulse;
@@ -832,6 +839,75 @@ export class HUD {
     ctx.fillStyle = C('gold');
     ctx.fillRect(cx - 1, cy - r - 1, 2, 3);
     txtC(ctx, cx, cy - r - 10, 'N', { size: 'sm', color: 'rgba(224,179,82,0.75)' });
+
+    this._drawMarkerLabel(ctx, cx, cy, r);
+  }
+
+  /** The live spell markers, nearest first, as an array — never null. */
+  _markers() {
+    const m = this.markers;
+    return Array.isArray(m) ? m.filter((k) => k && Number.isFinite(k.x) && Number.isFinite(k.y)) : [];
+  }
+
+  /**
+   * A pulsing pip per spell marker, drawn inside the dial's clip. A marker
+   * beyond the rim is pinned TO the rim on its true bearing — Locate Object
+   * says "north-east, four hundred feet" and the dial should agree, rather
+   * than dropping the pin because the chest is off the edge of the glass.
+   */
+  _drawMarkerPips(ctx, cx, cy, r, px) {
+    const list = this._markers();
+    if (!list.length) return;
+    const st = Game.state || {};
+    const ox = Math.round(st.x || 0), oy = Math.round(st.y || 0);
+    const pulse = 0.45 + 0.55 * Math.abs(Math.sin(this.t * 3));
+
+    for (const m of list) {
+      let sx = (m.x - ox) * px, sy = (m.y - oy) * px;
+      const d = Math.hypot(sx, sy);
+      let edge = false;
+      if (d > r - 3) { const k = (r - 3) / (d || 1); sx *= k; sy *= k; edge = true; }
+      const x = Math.round(cx + sx), y = Math.round(cy + sy);
+      const col = m.color || '#b07af0';
+
+      ctx.globalAlpha = clamp(this.alpha, 0, 1) * pulse;
+      ctx.fillStyle = col;
+      if (edge) {
+        // On the rim it is a wedge pointing outward, not a dot you could
+        // mistake for something standing there.
+        ctx.fillRect(x - 1, y - 1, 3, 3);
+      } else {
+        ctx.fillRect(x, y - 2, 1, 5);
+        ctx.fillRect(x - 2, y, 5, 1);
+      }
+      ctx.globalAlpha = clamp(this.alpha, 0, 1) * pulse * 0.4;
+      ctx.fillRect(x - 3, y - 3, 7, 7);
+    }
+    ctx.globalAlpha = clamp(this.alpha, 0, 1);
+  }
+
+  /** What the nearest pin is, spelled out above the dial. */
+  _drawMarkerLabel(ctx, cx, cy, r) {
+    const list = this._markers();
+    if (!list.length) return;
+    const st = Game.state || {};
+    const ox = Math.round(st.x || 0), oy = Math.round(st.y || 0);
+    const near = list.slice().sort((a, b) => (
+      Math.max(Math.abs(a.x - ox), Math.abs(a.y - oy)) - Math.max(Math.abs(b.x - ox), Math.abs(b.y - oy))
+    ))[0];
+    if (!near || !near.label) return;
+
+    const feet = Math.max(Math.abs(near.x - ox), Math.abs(near.y - oy)) * 5;
+    const line = `${near.label} ${feet}ft`;
+    const w = Math.min(112, tw(line, 'sm') + 12);
+    const x = VIEW_W - 3 - w, y = cy - r - 21;
+    ctx.save();
+    ctx.globalAlpha = clamp(this.alpha, 0, 1) * 0.92;
+    panel(ctx, x, y, w, 11, { style: 'dark' });
+    ctx.fillStyle = near.color || '#b07af0';
+    ctx.fillRect(x + 4, y + 4, 3, 3);
+    txt(ctx, x + 10, y + 2, fit(line, w - 14, 'sm'), { size: 'sm', color: C('ink') });
+    ctx.restore();
   }
 
   // --- message log ribbon -------------------------------------------------

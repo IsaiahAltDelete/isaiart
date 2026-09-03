@@ -160,7 +160,8 @@ export function jitter(enc, unit, key, amount = 1) {
 // Reading the battlefield
 // ---------------------------------------------------------------------------
 
-function unitsOf(enc) { return Array.isArray(enc?.units) ? enc.units.filter(Boolean) : []; }
+/** Everyone still on the field — a creature that fled (`_fled`) no longer exists to the AI. */
+function unitsOf(enc) { return Array.isArray(enc?.units) ? enc.units.filter((u) => u && !u._fled) : []; }
 
 /** Is this creature capable of doing anything at all right now? */
 function canAct(unit) {
@@ -924,6 +925,10 @@ export function selfPreservePlan(enc, unit, infos) {
 
   // 2. Run, if this thing runs at all.
   if (willFlee(unit) && ai.selfPreserve > 0.65 && enemies.length) {
+    // combat.js offers a bloodied monster an explicit "leave the field" action
+    // (id 'flee'); taking it is cleaner than a retreat that gets chased down.
+    const flee = infos.find((i) => i.id === 'flee');
+    if (flee) return [actionPlan(flee, null)];
     const tiles = reachCache(enc, unit).tiles;
     let best = null, bestScore = -Infinity;
     for (const t of tiles) {
@@ -940,9 +945,6 @@ export function selfPreservePlan(enc, unit, infos) {
     if (dis) plans.push(actionPlan(dis, null));
     else if (dash && threatAt(enc, unit, tileOf(unit)) === 0) plans.push(actionPlan(dash, null));
     plans.push(movePlan(best));
-    // Some engines expose an explicit "flee the field" option; take it if offered.
-    const flee = infos.find((i) => /flee|escape|retreat/.test(lower(`${i.id} ${i.name}`)));
-    if (flee) plans.push(actionPlan(flee, null));
     return compact(plans);
   }
 
@@ -1564,10 +1566,19 @@ export function legendaryPlan(enc, unit, budget = 1) {
     if (!list.length) return [];
     const idx = actionIndex(unit);
     const infos = list
-      .map((a) => describeOption(enc, unit, {
-        id: a.id, kind: lower(a.kind) === 'attack' ? 'attack' : 'special',
-        name: a.name, cost: 'legendary', action: a, enabled: true,
-      }, idx))
+      .map((a) => {
+        // "Morningstar Swing" with ref:'morningstar' IS that attack — fold the
+        // stat-block action in so range and damage are the real ones.
+        const base = a.ref ? idx.get(lower(a.ref)) : null;
+        const act = base ? { ...base, id: a.id, name: a.name || base.name, cost: a.cost, ai: a.ai || base.ai } : a;
+        // Described as an 'action' so bestAttackOption will consider it; the real
+        // price is legendary uses, which combat.js charges.
+        return describeOption(enc, unit, {
+          id: a.id, kind: lower(act.kind) === 'attack' ? 'attack' : 'special',
+          name: a.name, cost: 'action', action: act, enabled: true,
+          targeting: act.targeting || null,
+        }, idx);
+      })
       .filter((i) => i && num(i.act?.cost, 1) <= num(budget, 1));
     if (!infos.length) return [];
 

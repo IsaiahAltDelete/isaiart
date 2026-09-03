@@ -44,6 +44,9 @@ export function newGameState(seed) {
     // Reads are guarded, so a save written before this field existed still loads.
     crime: { bounty: {}, slain: {}, outlaw: {}, witnessed: 0, lastCrimeDay: 0, watchDue: {} },
     bestiary: {},              // monsterId -> kills (unlocks stat blocks)
+    // Wilderness regions the party has thinned out: mapId -> { count, day }.
+    // Four victories in one region quiets its roads for three days.
+    cleared: {},
     depth: {},                 // endless dungeon progress, e.g. { undermountain: 0 }
     unlocked: { undermountain: false, neverwinter: false, waterdeep: false },
     shops: { restockDay: 121, stock: {} },

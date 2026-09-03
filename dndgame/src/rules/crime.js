@@ -112,14 +112,19 @@ export function statBlockFor(npc, entity) {
   return ROLE_BLOCK[role] || 'commoner';
 }
 
+/** EntityList is iterable and also exposes `.list`; a bare array works too. */
+function asList(entities) {
+  if (!entities) return null;
+  if (Array.isArray(entities)) return entities;
+  if (Array.isArray(entities.list)) return entities.list;
+  if (typeof entities[Symbol.iterator] === 'function') return entities;
+  return null;
+}
+
 /** Everyone within `radius` tiles who could see it happen. */
 export function witnessesNear(entities, x, y, radius = 7, ignore = null) {
   const out = [];
-  // EntityList is iterable and also exposes `.list`; a bare array works too.
-  const src = !entities ? null
-    : (Array.isArray(entities) ? entities
-      : (Array.isArray(entities.list) ? entities.list
-        : (typeof entities[Symbol.iterator] === 'function' ? entities : null)));
+  const src = asList(entities);
   if (!src) return out;
   for (const e of src) {
     if (!e || e === ignore || e.removed || e.hidden) continue;
@@ -150,7 +155,12 @@ export function reportAssault(st, { map, npc, entity, witnesses = 0 }) {
 
   const region = regionOf(map);
   const block = statBlockFor(npc, entity);
-  const seen = witnesses > 0;
+  // Calm Emotions, cast a moment ago, is the difference between a street that
+  // screams for the watch and one that decides it saw nothing. The bounty for
+  // the swing itself still lands — magic does not un-draw a sword — but nobody
+  // reports it, so it is priced as an unwitnessed crime and no patrol comes.
+  const hushed = consumeCalm(st);
+  const seen = witnesses > 0 && !hushed;
   const fine = Math.round((BOUNTY[block] || 40) * (seen ? 1 : 0.35));
 
   cs.bounty[region] = (cs.bounty[region] || 0) + fine;
@@ -259,4 +269,76 @@ export function priceMultiplierIn(st, map) {
 
 export function shopsRefuse(st, map) {
   return isOutlawIn(st, map) && bountyIn(st, map) >= 250;
+}
+
+// ---------------------------------------------------------------------------
+// Calm Emotions
+// ---------------------------------------------------------------------------
+//
+// The 2nd-level spell that stops a riot is worth a slot only if a riot is a
+// thing that can be stopped. rules/fieldworld.js#charmFacing calls this with
+// the scene's entity list the moment the spell lands.
+
+/** Absolute minutes on the campaign clock — the same arithmetic fieldcast uses. */
+function nowMinutes(st) {
+  if (!st) return 0;
+  return (Number(st.day) || 0) * 1440 + (Number(st.time) || 0);
+}
+
+/**
+ * Talk the street down. Every NPC who was alarmed, fleeing or hostile within
+ * `radius` tiles goes back to their business, the outstanding patrol is called
+ * off, and for the next minute an assault reported here is treated as one
+ * nobody saw.
+ *
+ * @param {object} st         GameState
+ * @param {object} map        the map the party is standing on
+ * @param {Iterable} entities the scene's entity list, in any of its shapes
+ * @param {object} opts       { x, y, radius = 10, minutes = 1 }
+ * @returns {number} how many witnesses were talked down
+ */
+export function calmWitnesses(st, map, entities, opts = {}) {
+  const cs = crimeState(st);
+  if (!cs) return 0;
+  const o = obj(opts);
+  const region = regionOf(map);
+  const src = asList(entities);
+  const hasPoint = Number.isFinite(o.x) && Number.isFinite(o.y);
+  const radius = Number.isFinite(o.radius) ? o.radius : 10;
+
+  let n = 0;
+  if (src) {
+    for (const e of src) {
+      if (!e || e.removed || e.kind !== 'npc') continue;
+      if (hasPoint && Math.max(Math.abs(e.x - o.x), Math.abs(e.y - o.y)) > radius) continue;
+      // Only the people who were actually upset count; a calmed farmer who was
+      // never shouting is not a witness the party bought off.
+      if (!(e.hostile || e.alarmed || e.witness || e.fleeT > 0 || e.calling)) continue;
+      e.hostile = false;
+      e.alarmed = false;
+      e.witness = false;
+      e.calling = false;
+      e.fleeT = 0;
+      e.calmed = true;
+      n++;
+    }
+  }
+
+  cs.witnessed = Math.max(0, (cs.witnessed || 0) - n);
+  if (cs.watchDue[region]) cs.watchDue[region] = Math.max(0, cs.watchDue[region] - 1);
+  cs.calmUntil = nowMinutes(st) + Math.max(1, Number(o.minutes) || 1);
+  return n;
+}
+
+/** Is the crowd still under Calm Emotions? Reading it does not spend it. */
+export function calmActive(st) {
+  const cs = st && st.crime;
+  return !!(cs && cs.calmUntil != null && nowMinutes(st) < cs.calmUntil);
+}
+
+/** …reporting an assault does: one spell hushes one crime, not an evening of them. */
+function consumeCalm(st) {
+  if (!calmActive(st)) return false;
+  st.crime.calmUntil = null;
+  return true;
 }

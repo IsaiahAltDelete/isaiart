@@ -99,7 +99,12 @@ export class Hotbar {
    * model: {
    *   action: { key, label, enabled, why, fn } | null   — the E verb
    *   attack: { key, label, enabled, why, fn } | null   — the Shift+E verb
-   *   slots:  [{ name, icon, ready, why, count, fn }]   — quick slots, 1..4
+   *   slots:  [{ name, icon, ready, why, count, fn, needsChoice }]  — quick slots, 1..4
+   *           `needsChoice` marks a spell that has to ask the player something
+   *           before it can be cast (Teleport: where? Creation: what?). The bar
+   *           has no room to ask, so it says where the question lives instead
+   *           of firing a verb that can only refuse. rules/fieldcast.js exports
+   *           `fieldNeedsChoice(spellId)` for whoever builds the model.
    *   menus:  [{ key, icon, label, fn }]                — the fixed shortcuts
    * }
    */
@@ -188,7 +193,10 @@ export class Hotbar {
     this.hot.push({
       x, y, w, h,
       fn: ready && s && s.fn ? s.fn : null,
-      tip: s ? (ready ? (s.tip || s.name) : (s.why || 'Not available.')) : 'Empty slot.',
+      tip: !s ? 'Empty slot.'
+        : !ready ? (s.why || 'Not available.')
+          : s.needsChoice ? `${s.name} — open the spellbook to choose`
+            : (s.tip || s.name),
     });
     return x + w + SLOT_GAP;
   }

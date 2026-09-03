@@ -1761,6 +1761,201 @@ function dream(id, text, o = {}) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// ANIMALS
+// ---------------------------------------------------------------------------
+// A beast does not speak Common. Talking to one without Speak with Animals up
+// used to fall through the generic fallback, so a sow, a crow and a goose all
+// told you the same thing about goblins on the Triboar Trail -- in Common. Two
+// tables fix that, both keyed by sprite:
+//
+//   BEAST_MOMENTS -- what you SEE when you approach an animal you cannot talk
+//     to. Third person, observational, no speech. This is the default.
+//   BEAST_VOICES  -- what the animal actually SAYS once Speak with Animals is
+//     running. Kept inside the 2024 rule that a beast's answers are limited by
+//     its intelligence: the here, the now, the recent, and food. None of them
+//     know the plot, and none of them talk like a person.
+//
+// `default` catches any sprite added later, so a new beast reads as dull rather
+// than wrong. Lines are chosen by a hash of the NPC id, so two geese in one
+// town differ, and each keeps its own line for the length of a visit.
+
+export const BEAST_MOMENTS = deepFreeze({
+  dog: [
+    'The dog watches your hands, in case they are about to become food-related. When they are not, it forgives you immediately.',
+    'It thumps its tail twice on the ground without getting up, which is as much ceremony as you are getting.',
+    'The dog leans its whole weight against your shin and stands there, entirely content, going nowhere.',
+    'The dog is asleep in the one patch of sun on the whole street, and has clearly planned its day around it.',
+    'It falls in beside you for six paces, decides that is enough of an adventure, and turns back.',
+  ],
+  cat: [
+    'The cat regards you with the flat, unhurried contempt of something that has never once been asked to work.',
+    'It permits one stroke, decides that was the agreed amount, and walks off mid-sentence.',
+    'The cat is sitting exactly where you were about to walk, and has clearly thought about this.',
+    'It is watching a spot on the wall where there is nothing at all, and will not be talked out of it.',
+  ],
+  crow: [
+    'The crow turns its head to bring one eye fully to bear on you, and holds it there a beat too long to be comfortable.',
+    'It hops one step closer, checks whether you noticed, and hops back. Something bright in your kit has its attention.',
+    'The crow says something short and disparaging and goes back to watching the square.',
+    'Three of them are up on the roofline. Only this one came down, and it came down to look at you specifically.',
+    'The crow drops something small and worthless at your feet and waits, plainly expecting a trade.',
+  ],
+  goose: [
+    'The goose lowers its neck level with the ground and advances. There is no negotiating with this.',
+    'It stands in the middle of the lane like a toll it has not yet settled the price of.',
+    'The goose hisses. It is a small animal making a very large sound, and it knows it.',
+    'It follows you at exactly your walking pace, three feet behind, saying nothing. This is somehow worse.',
+  ],
+  chicken: [
+    'The hen looks at you sideways, decides you are not grain, and resumes the search for something that is.',
+    'It scratches twice, stares hard at the ground it has just uncovered, and finds it wanting.',
+    'The hen makes a low continuous complaint about the general state of things and moves away from you.',
+    'It is standing on a barrel it should not be able to reach, looking pleased about it.',
+  ],
+  pig: [
+    'The sow is lying in the cool mud with the air of something that has solved a problem you have not.',
+    'It opens one eye, establishes that you have brought nothing edible, and closes it again.',
+    'The sow grunts once, which is either a greeting or a dismissal, and either way is the whole conversation.',
+  ],
+  sheep: [
+    'The sheep looks up, chews, and holds your eye for slightly longer than there is anything behind it to fill.',
+    'It moves three steps away and stops, having satisfied whatever that was about.',
+    'The sheep is standing very close to another sheep, and would prefer to keep it that way.',
+    'It has got itself on the wrong side of a hurdle and cannot work out that the way back is the way it came.',
+    'The sheep stares at you, then at the grass, then at you, and cannot hold both facts at once.',
+  ],
+  goat: [
+    'The goat is already eating something it should not be, and makes eye contact throughout.',
+    'It has got its head through a fence and is entirely relaxed about how that will end.',
+    'The goat considers your belt, your sleeve and your pack in turn, purely as food.',
+  ],
+  cow: [
+    'The cow turns its head with enormous slowness, looks at you, and keeps chewing.',
+    'It breathes out heavily through its nose, which is as close to an opinion as you are getting.',
+    'The cow has been standing in this spot for some time and intends to go on doing so.',
+  ],
+  ox: [
+    'The ox stands in the traces without impatience, waiting for the part of the day where it pulls.',
+    'It shifts its weight, and the whole cart behind it complains about the movement.',
+    'The ox looks at you the way a wall would, if a wall were being polite about it.',
+    'It is drinking from the trough with great deliberation, and will not be hurried by you or anyone.',
+  ],
+  horse: [
+    'The horse shifts and stamps, wanting the road rather than the post it is tied to.',
+    'It lips at your sleeve, finds no apple in it, and holds that against you briefly.',
+    'The horse turns one ear toward you and the other toward the road, and the road is winning.',
+  ],
+  deer: [
+    'The deer goes absolutely still, and every part of it is measuring the distance to the trees.',
+    'It lifts its head, ears swivelling, and you have perhaps three heartbeats before it decides.',
+    'The deer watches you without blinking, and does not move until you do.',
+  ],
+  fox: [
+    'The fox stops, one paw lifted, entirely unbothered, and considers you as an interesting problem.',
+    'It flows into the hedge without appearing to hurry, and is somehow already thirty feet away.',
+    'The fox has something in its mouth and no intention of discussing where it came from.',
+  ],
+  'town-rat': [
+    'The rat runs the gutter line without once looking up, on business that predates you.',
+    'It freezes half out of the drain, whiskers working, then decides you are not worth the interruption.',
+    'The rat watches from under the boards. There are almost certainly others.',
+    'It is carrying something twice its size down a gap you would not get a finger into.',
+  ],
+  default: [
+    'It watches you for a moment with no expression you can read, then goes back to what it was doing.',
+    'The animal shifts, uninterested, and puts its attention somewhere more useful than you.',
+  ],
+});
+
+export const BEAST_VOICES = deepFreeze({
+  dog: [
+    '"You smell like three places. One of them had meat in it. Was it the meat one? Tell me it was the meat one."',
+    '"I know every person on this street and I like all of them. I like you as well. That was quick, was it not."',
+    '"There was shouting last night, past the well. I barked. It stopped. You are welcome."',
+    '"Are we going somewhere? We are going somewhere. I am coming. I have decided."',
+    '"The tall one with the smell of iron gives me things. I would follow him into anything. Do not tell him."',
+  ],
+  cat: [
+    '"No."\n\nIt does not elaborate, and it does not look away either.',
+    '"There is a way in under the storehouse. I am not telling you where. I am telling you there is one."',
+    '"You may talk to me. I have not agreed to answer. That is how this works."',
+    '"I killed something this morning and left it where you would find it. That was a gift. You are welcome."',
+  ],
+  crow: [
+    '"Bright thing. You have a bright thing. I saw it. Give me the bright thing and I will tell you a true thing."',
+    '"Two men on the roof last night who were not roofers. I watched the whole time. Nobody ever asks me."',
+    '"Everything dies eventually and I am extremely patient. Nothing personal. You look well."',
+    '"I have watched this square since before you were on it and I will watch it after. Ask me something small."',
+    '"There is a dead thing in the ditch north of here. I am telling you because you might move it. I cannot."',
+  ],
+  goose: [
+    '"This is MINE. The lane is mine. The puddle is mine. You are standing in the puddle."',
+    '"Come closer. Go on. I have waited all week for somebody to come closer."',
+    '"I do not care how big you are. I have never once cared how big anything is."',
+    '"Two men came at night and I made noise and they went away again. That is the job. I do the job."',
+  ],
+  chicken: [
+    '"Is that grain? That is not grain. Why would you come here without grain."',
+    '"The fox came to the fence on the second night and looked at all of us and went away again. Nobody believes me."',
+    '"Everything is fine. Everything is fine. Something is going to happen. Everything is fine."',
+    '"I laid one this morning. Nobody has said anything about it. Nobody ever says anything about it."',
+  ],
+  pig: [
+    '"I have eaten. I am warm. There is nothing you can offer that improves on this."',
+    '"They are kind to me here and they feed me well and I have decided not to think about why."',
+    '"Scratch behind the ear and I will tell you anything. I do not know anything. Scratch anyway."',
+  ],
+  sheep: [
+    '"Where are the others. Are you the others. You are not the others."',
+    '"Grass here. Grass there. The there grass is better. It is always the there grass."',
+    '"Something moved on the hill. It was probably nothing. It is always probably nothing."',
+    '"I do not like the gate being open. I do not like the gate being shut either. I would rather no gate."',
+    '"You are between me and the others and I would very much like you to stop being that."',
+  ],
+  goat: [
+    '"I can eat that. I can definitely eat that. Stand still."',
+    '"They built the fence higher. I want you to know that I take that personally."',
+    '"There is a path up the rocks the big ones cannot use. I use it constantly. It is the best thing about me."',
+  ],
+  cow: [
+    '"Mmm. Yes. It is morning. It was morning yesterday as well."',
+    '"You are standing where the girl stands with the bucket. You do not have the bucket."',
+    '"Everything is slow and that is correct. You are all in a great deal of hurry about nothing."',
+  ],
+  ox: [
+    '"I pull. Then I stop. Then I eat. It is a good arrangement and I would not change it."',
+    '"The load was heavier out of Waterdeep than it is now. I noticed. Nobody said anything."',
+    '"Do not push. I am already going. I have always already been going."',
+    '"There is a stone in the road at the bend that has been there since spring. Somebody should move it."',
+  ],
+  horse: [
+    '"The road goes somewhere. I have been to the end of this rope and it does not."',
+    '"You are heavier than you look, and I would still rather carry you than stand here."',
+    '"There was wolf on the wind two nights back, west of the trail. The others did not smell it. They never do."',
+  ],
+  deer: [
+    '"Do not follow me. I am saying that politely. Do not follow me."',
+    '"Men came through with iron two days ago, going north, being very loud about it."',
+    '"I have already chosen which way I am running. I chose before you spoke."',
+  ],
+  fox: [
+    '"I have not taken anything from anyone who could not spare it. Recently."',
+    '"There is a gap in the wall behind the smithy. I could be persuaded to stay vague about which one."',
+    '"You want to know what is out there. I want to know what is in your pack. We are both being reasonable."',
+  ],
+  'town-rat': [
+    '"Under everything, there is more everything. You lot only ever see the top layer."',
+    '"Something big moved in the drains this week and it was not one of us. We are all being very quiet about it."',
+    '"You want to get into somewhere? Everything has a hole in it. Everything."',
+    '"The grain store leaks on the north side. I would call that a kindness. The miller would not."',
+  ],
+  default: [
+    '"Food. Warm. Not-safe. That is most of it, honestly."',
+    'It answers, in a way -- a short string of wants and warnings, none of them about anything further off than this street.',
+  ],
+});
+
 export const INN_DREAMS = deepFreeze([
   dream('warm-hearth', 'You dream of nothing in particular: a fire, a low room, somebody moving about downstairs. You wake up before dawn feeling as though you were owed the rest of it.'),
   dream('road-ahead', 'You dream you are walking the Triboar Trail east and the road keeps going and the light never changes. It is not frightening. It is only very long.'),
@@ -1817,5 +2012,6 @@ export function tableCounts() {
     dreams: INN_DREAMS.length,
     tavernLines: TAVERN_LINES.length,
     flavorRoles: Object.keys(FLAVOR_LINES).length,
+    beastVoices: Object.keys(BEAST_VOICES).length,
   };
 }

@@ -297,8 +297,8 @@ const HORN_PALETTE = ['#8c8377', '#6a6058', '#b8ab97', '#3a3630', '#d8cdb4', '#5
 
 const TAB_X = 2, TAB_Y = 2, TAB_W = 396, TAB_H = 12;
 const BODY_Y = 16, BODY_H = 200, BODY_B = BODY_Y + BODY_H;     // 16 .. 216
-const LP_X = 2, LP_W = 117;      // left panel
-const MP_X = 121, MP_W = 158;    // middle panel
+const LP_X = 2, LP_W = 137;      // left panel
+const MP_X = 141, MP_W = 138;    // middle panel
 const RP_X = 281, RP_W = 117;    // right panel
 const LC_X = LP_X + 4, LC_W = LP_W - 8;     //  6 .. 115
 const MC_X = MP_X + 4, MC_W = MP_W - 8;     // 125 .. 275
@@ -325,13 +325,13 @@ const STEPS = [
   { id: 'class', tab: 'CLAS', title: 'Class' },
   { id: 'subclass', tab: 'SUB', title: 'Subclass' },
   { id: 'background', tab: 'BACK', title: 'Background' },
-  { id: 'abilities', tab: 'ABIL', title: 'Ability Scores' },
+  { id: 'abilities', tab: 'ABIL', title: 'Abilities' },
   { id: 'skills', tab: 'SKIL', title: 'Skills' },
   { id: 'spells', tab: 'SPEL', title: 'Spells' },
   { id: 'features', tab: 'FEAT', title: 'Features' },
   { id: 'equipment', tab: 'GEAR', title: 'Equipment' },
   { id: 'appearance', tab: 'LOOK', title: 'Appearance' },
-  { id: 'identity', tab: 'NAME', title: 'Name & Identity' },
+  { id: 'identity', tab: 'NAME', title: 'Identity' },
   { id: 'summary', tab: 'DONE', title: 'Summary' },
 ];
 const STEP_INDEX = {};
@@ -454,6 +454,18 @@ function swatch(ctx, x, y, w, h, color, sel) {
 // drawn. Nothing can ever overflow the panel, and prev/next scrolls it.
 // ===========================================================================
 
+/**
+ * Row pitch for the doc column.
+ *
+ * The glyphs themselves cannot shrink: the font is a 5x7 bitmap drawn at
+ * scale 1, and E/H/M/W/Z all paint column 5, so dropping letterSpacing to 0
+ * would fuse "HE" into one blob. The pitch is the knob that is actually free.
+ * A glyph occupies rows 0..6 (row 6 only for the descenders g j p q y), so an
+ * 8px pitch still leaves a clear row between lines where 9px left two -- about
+ * an eighth more text in the same panel, at no cost to legibility.
+ */
+const DOC_LINE = 8;
+
 function Doc(x, w) {
   return {
     x, w, y: 0, ops: [],
@@ -463,13 +475,13 @@ function Doc(x, w) {
     /** Big gold heading. */
     head(s, color) {
       const self = this;
-      return this._push(11, (ctx, y) => txt(ctx, self.x, y, ellip(s, self.w, 'md'), { size: 'md', color: color || C.gold, shadow: true }));
+      return this._push(DOC_LINE + 2, (ctx, y) => txt(ctx, self.x, y, ellip(s, self.w, 'md'), { size: 'md', color: color || C.gold, shadow: true }));
     },
 
     /** A single non-wrapping line. */
     line(s, o) {
       const self = this; const op = obj(o);
-      return this._push(op.h || 9, (ctx, y) => txt(ctx, self.x + (op.indent || 0), y, ellip(s, self.w - (op.indent || 0), op.size), { size: op.size || 'sm', color: op.color || C.ink, shadow: true }));
+      return this._push(op.h || DOC_LINE, (ctx, y) => txt(ctx, self.x + (op.indent || 0), y, ellip(s, self.w - (op.indent || 0), op.size), { size: op.size || 'sm', color: op.color || C.ink, shadow: true }));
     },
 
     /** Wrapped body text. */
@@ -480,7 +492,7 @@ function Doc(x, w) {
       const lines = wrapText(s, this.w - indent, size);
       const self = this;
       for (const l of lines) {
-        this._push(9, ((line) => (ctx, y) => txt(ctx, self.x + indent, y, line, { size, color: op.color || C.dim, shadow: true }))(l));
+        this._push(DOC_LINE, ((line) => (ctx, y) => txt(ctx, self.x + indent, y, line, { size, color: op.color || C.dim, shadow: true }))(l));
       }
       return this;
     },
@@ -497,9 +509,14 @@ function Doc(x, w) {
       const self = this; const op = obj(o);
       const GAP = 6;
       const val = String(v == null ? '' : v);
-      const valW = Math.min(tw(val, 'sm'), self.w * 0.66);
-      const keyW = Math.max(12, self.w - valW - GAP);
-      return this._push(9, (ctx, y) => {
+      // The value used to claim 66% and the key took what was left, so in a
+      // narrow column "Resists  Necrotic, Radiant" printed as "Resis...
+      // Necrotic, Rad..." -- both halves cut, and the cut label is the half
+      // that says what the number even is. The key gets its natural width
+      // first (capped at half the column) and the value takes the remainder.
+      const keyW = Math.min(tw(k, 'sm'), Math.max(12, self.w * 0.5));
+      const valW = Math.max(12, self.w - keyW - GAP);
+      return this._push(DOC_LINE, (ctx, y) => {
         txt(ctx, self.x, y, ellip(k, keyW, 'sm'), { size: 'sm', color: op.keyColor || C.dim, shadow: true });
         rtxt(ctx, self.x + self.w, y, ellip(val, valW, 'sm'), { size: 'sm', color: op.color || C.ink, shadow: true });
       });
@@ -2001,7 +2018,7 @@ export class CharCreateScene {
     const sp = getSpecies(d.speciesId);
     const lin = getLineage(d.speciesId, d.lineageId);
     const src = lin && lin.colorways ? Object.assign({}, sp, { colorways: lin.colorways, spriteMods: lin.spriteMods || obj(sp).spriteMods }) : sp;
-    const a = safe(() => randomAppearance(src, this.rng, {}), null);
+    const a = safe(() => randomAppearance(src, this.rng, { classId: d.classId }), null);
     d.appearance = a ? Object.assign({}, obj(d.appearance), a) : obj(d.appearance);
     this._reskin();
     if (makeSound !== false) sfx('select');
@@ -2021,7 +2038,7 @@ export class CharCreateScene {
     this.openPicker('Roll a whole new life?', [
       {
         id: 'keep',
-        name: 'Keep this character',
+        name: 'Keep as is',
         desc: 'Nothing changes. Species, class, background, ability scores, skills, spells and kit all stay as you set them.',
       },
       {
@@ -2333,7 +2350,7 @@ export class CharCreateScene {
       case 'skills': return this.skillBuckets().map((b) => b.label);
       case 'spells': return this.spellBuckets().map((b) => b.label);
       case 'features': return this.featureBuckets().map((b) => b.label);
-      case 'summary': return ['Stats', 'Feats', 'Magic', 'Gear'];
+      case 'summary': return ['Stat', 'Feat', 'Magi', 'Gear'];
       default: return [];
     }
   }
@@ -2512,10 +2529,27 @@ export class CharCreateScene {
 
   rowsSpecies() {
     const d = this.draft;
-    return allSpecies().map((sp) => ({
+    // The wizard has always been able to roll a whole character, but the button
+    // lived on the Appearance step -- nine screens in. The one player who most
+    // wants it is the one who does not want to read nine screens, so it goes
+    // here, on the first thing they see.
+    const rows = [
+      { label: 'In a hurry', header: true, color: C.goldD },
+      {
+        label: 'Quick start', hint: 'roll and play', button: true, color: C.green,
+        onConfirm: () => this.quickStart(),
+      },
+      {
+        label: 'Roll a hero', hint: 'then tweak it', button: true, color: C.orange,
+        onConfirm: () => this.confirmRandomiseAll(),
+      },
+      { label: 'Your folk', header: true, color: C.goldD },
+    ];
+    return rows.concat(allSpecies().map((sp) => ({
       label: sp.name || cap(sp.id),
-      hint: sp.darkvision ? 'dark ' + sp.darkvision : (sp.speed || 30) + 'ft',
-      hintColor: sp.darkvision ? C.purple : C.dim,
+      // No hint column. Darkvision and speed are both spelled out in THE
+      // NUMBERS on the doc panel two inches to the right, and squeezing them
+      // in here cost the names half their width and crowded the frame.
       selected: sp.id === d.speciesId,
       color: sp.id === d.speciesId ? C.goldB : C.ink,
       data: sp,
@@ -2525,7 +2559,17 @@ export class CharCreateScene {
         if (speciesHasLineages(sp.id)) { this.sub = 1; sfx('select'); }
         else this.goNext();
       },
-    }));
+    })));
+  }
+
+  /**
+   * Roll everything and walk straight into the world. finish() still validates
+   * every step, so if the roll ever leaves a bucket empty this lands the player
+   * on that step with a reason instead of failing quietly.
+   */
+  quickStart() {
+    this.randomiseAll();
+    this.finish();
   }
 
   rowsLineage() {
@@ -2711,7 +2755,7 @@ export class CharCreateScene {
     }
 
     rows.push({
-      label: 'Auto-assign for class',
+      label: 'Auto-assign',
       button: true,
       onConfirm: () => this.autoAssignForClass(),
     });
@@ -2841,7 +2885,7 @@ export class CharCreateScene {
       onFocus: () => this.setTakeGold(),
       onConfirm: () => { this.setTakeGold(); this.goNext(); },
     });
-    rows.push({ label: 'Reroll the purse', button: true, onConfirm: () => this.rerollGold() });
+    rows.push({ label: 'Reroll purse', button: true, onConfirm: () => this.rerollGold() });
     return rows;
   }
 
@@ -2925,8 +2969,14 @@ export class CharCreateScene {
     push(this._colorRow('Accent', 'accent', ACCENT_PALETTE));
     push(this._colorRow('Metal', 'metal', METAL_PALETTE));
     push(this._colorRow('Leather', 'leather', LEATHER_PALETTE));
-    push(this._optRow('Cloak', 'cloakStyle', arr(AO.cloakStyle), (v) => (v === 'cloak-none' ? 'None' : cap(String(v).replace('cloak-', '')))));
-    push(this._optRow('Headgear', 'helmStyle', arr(AO.helmStyle), (v) => (v === 'helm-none' ? 'None' : cap(String(v).replace('helm-', '')))));
+    // 'auto' reads as "By Calling": the class picks. It is a real value, not a
+    // missing one, so choosing None below is honoured instead of being mistaken
+    // for never having chosen.
+    const styleName = (pre) => (v) => (v === 'auto' ? 'By Calling'
+      : v === pre + '-none' ? 'None' : cap(String(v).replace(pre + '-', '')));
+    push(this._optRow('Cloak', 'cloakStyle', arr(AO.cloakStyle), styleName('cloak')));
+    push(this._optRow('Headgear', 'helmStyle', arr(AO.helmStyle), styleName('helm')));
+    push(this._optRow('Boots', 'bootStyle', arr(AO.bootStyle), styleName('boots')));
 
     rows.push({ label: 'Chance', header: true, color: C.goldD });
     rows.push({ label: 'Randomise look', button: true, onConfirm: () => this._randomiseLook(true) });
@@ -3340,7 +3390,7 @@ export class CharCreateScene {
 
     // The key that works the button is part of its label, so nobody has to guess
     // how to move between steps.
-    const backLabel = (this.step === 0 && this.sub === 0) ? 'QUIT' : 'Q BACK';
+    const backLabel = (this.step === 0 && this.sub === 0) ? 'QUIT' : 'BACK';
     safe(() => UI.button(ctx, 6, y - 1, 48, 14, backLabel, { t: this.t }));
     this.hit(6, y - 1, 48, 14, () => (this.step === 0 && this.sub === 0 ? this.cancelOut() : this.goPrev()));
 
@@ -3378,10 +3428,10 @@ export class CharCreateScene {
     const jumpable = !showMsg && (!!why || (last && gap >= 0));
     const lineW = Math.min(FOOT_LINE_W, tw(line, 'sm') + 2);
     if (jumpable) {
-      fill(ctx, 53, y - 1, lineW + 2, 9, 'rgba(232,134,58,0.14)');
-      this.hit(53, y - 1, lineW + 2, 9, () => this.gotoIssue());
+      fill(ctx, 53, y - 2, lineW + 2, 9, 'rgba(232,134,58,0.14)');
+      this.hit(53, y - 2, lineW + 2, 9, () => this.gotoIssue());
     }
-    txt(ctx, 54, y, ellip(line, FOOT_LINE_W, 'sm'), { size: 'sm', color, shadow: true });
+    txt(ctx, 54, y - 1, ellip(line, FOOT_LINE_W, 'sm'), { size: 'sm', color, shadow: true });
 
     // These have to FIT the slot — the old strings were ellipsised right
     // before "Z Confirm", which is how a player ends up not knowing how to advance.
@@ -3390,7 +3440,7 @@ export class CharCreateScene {
       : this.bucketCount() > 1
         ? 'Z Pick   TAB Section   R Next   Q Back'
         : 'Z Pick   ←→ Adjust   R Next   Q Back';
-    txt(ctx, 54, y + 9, ellip(keys, FOOT_LINE_W, 'sm'), { size: 'sm', color: 'rgba(150,140,115,0.65)', shadow: true });
+    txt(ctx, 54, y + 7, ellip(keys, FOOT_LINE_W, 'sm'), { size: 'sm', color: 'rgba(150,140,115,0.65)', shadow: true });
   }
 
   /**
@@ -3444,53 +3494,63 @@ export class CharCreateScene {
 
     // --- identity ----------------------------------------------------------
     const name = (d.name || '').trim() || 'Unnamed';
-    ctxt(ctx, cx, y, ellip(name, RC_W, 'md'), { size: 'md', color: d.name ? C.goldB : C.dim, shadow: true });
-    y += 9;
+    // A rolled name like "Westra Windriver" is wider than the column at md,
+    // and md is the same glyphs as sm with a bold pass -- so dropping to sm
+    // buys a character per 6px and shows the whole name instead of most of it.
+    const nameSize = tw(name, 'md') > RC_W ? 'sm' : 'md';
+    ctxt(ctx, cx, y, ellip(name, RC_W, nameSize), { size: nameSize, color: d.name ? C.goldB : C.dim, shadow: true });
+    y += 8;
     const sp = getSpecies(d.speciesId);
     const lin = getLineage(d.speciesId, d.lineageId);
     const race = (lin ? lin.name : obj(sp).name || cap(d.speciesId));
     ctxt(ctx, cx, y, ellip(race, RC_W, 'sm'), { size: 'sm', color: C.cyan, shadow: true });
-    y += 8;
+    y += 7;
     const cls = getClass(d.classId);
     const subN = d.subclassId ? obj(getSubclass(d.subclassId)).name : '';
     const clsLine = (obj(cls).name || cap(d.classId)) + ' ' + d.level;
     ctxt(ctx, cx, y, ellip(clsLine, RC_W, 'sm'), { size: 'sm', color: C.ink, shadow: true });
-    y += 8;
+    y += 7;
     if (subN) {
-      ctxt(ctx, cx, y, ellip(subN + (this.subclassActive() ? '' : ' (planned)'), RC_W, 'sm'), {
+      ctxt(ctx, cx, y, ellip(subN + (this.subclassActive() ? '' : ' (lv3)'), RC_W, 'sm'), {
         size: 'sm', color: this.subclassActive() ? C.purple : C.off, shadow: true,
       });
-      y += 8;
+      y += 7;
     } else {
-      y += 2;
+      y += 1;
     }
 
     // --- animated sprite stage --------------------------------------------
-    const stageY = y, stageH = 44;
+    // The sprite is 24px tall drawn at scale 2, so it needs 48px of stage. It
+    // used to get 44 with the feet 4px off the floor, which put 8px of head
+    // above the frame -- and a horned tiefling further still. The stage now
+    // fits the sprite, and clips, so nothing can climb out of it again.
+    const stageY = y, stageH = 50;
     fill(ctx, RC_X, stageY, RC_W, stageH, 'rgba(0,0,0,0.42)');
     frame(ctx, RC_X, stageY, RC_W, stageH, 'rgba(120,100,60,0.45)');
     const dir = DIRS[Math.floor(this.t / 1.7) % DIRS.length];
     const phase = Math.floor(this.t * 7);
-    const footY = stageY + stageH - 4;
+    const footY = stageY + stageH - 1;
     // ground shadow
     ctx.save();
     ctx.globalAlpha = 0.35; ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(cx, footY - 1, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     let drew = false;
+    safe(() => UI.pushClip(ctx, RC_X + 1, stageY + 1, RC_W - 2, stageH - 2));
     if (ch) drew = safe(() => drawActor(ctx, ch, cx, footY, { dir, phase, moving: true, scale: 2, shadow: false }), false);
     if (!drew && ch) safe(() => UI.portrait(ctx, ch, cx - 20, stageY + 6, 40));
+    safe(() => UI.popClip(ctx));
     txt(ctx, RC_X + 3, stageY + 2, dir.toUpperCase(), { size: 'sm', color: 'rgba(160,150,120,0.6)', shadow: true });
     this.hit(RC_X, stageY, RC_W, stageH, () => { this.gotoStep(STEP_INDEX.appearance); sfx('select'); });
-    y = stageY + stageH + 2;
+    y = stageY + stageH + 1;
 
     // --- headline derived stats -------------------------------------------
     const third = Math.floor(RC_W / 3);
     const cell = (i, label, value, color) => {
       const bx = RC_X + i * third;
       fill(ctx, bx, y, third - 2, 16, 'rgba(0,0,0,0.32)');
-      ctxt(ctx, bx + (third - 2) / 2, y + 1, label, { size: 'sm', color: C.goldD, shadow: true });
-      ctxt(ctx, bx + (third - 2) / 2, y + 8, value, { size: 'md', color: color || C.ink, shadow: true });
+      ctxt(ctx, bx + (third - 2) / 2, y + 1, label, { size: 'sm', color: C.goldD, shadow: true, maxWidth: third - 4 });
+      ctxt(ctx, bx + (third - 2) / 2, y + 8, value, { size: 'md', color: color || C.ink, shadow: true, maxWidth: third - 4 });
     };
     cell(0, 'AC', ch ? String(ch.ac) : '—', C.blue);
     cell(1, 'HP', ch ? String(ch.maxHp) : '—', C.hp);
@@ -3535,7 +3595,7 @@ export class CharCreateScene {
       const line = signed(main.attackBonus) + ' ' + (dmg.dice || '') + (dmg.mod ? signed(dmg.mod) : '');
       txt(ctx, RC_X + 24, y, ellip(line, RC_W - 24, 'sm'), { size: 'sm', color: C.ink, shadow: true });
       y += 9;
-      txt(ctx, RC_X + 4, y, ellip(main.name + ' · ' + (dmg.type || ''), RC_W - 4, 'sm'), { size: 'sm', color: C.dim, shadow: true });
+      txt(ctx, RC_X + 4, y, ellip(main.name, RC_W - 4, 'sm'), { size: 'sm', color: C.dim, shadow: true });
     } else {
       txt(ctx, RC_X + 24, y, '—', { size: 'sm', color: C.dim, shadow: true });
       y += 9;

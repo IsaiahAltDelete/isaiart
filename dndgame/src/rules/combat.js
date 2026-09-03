@@ -20,7 +20,7 @@ import { bus, EV } from '../core/events.js';
 import {
   uid as newUid, isDead, isDown, weaponsOf, mechOf, hasPassive, hasFeat,
   hasFightingStyle, classLevel, abilityMod, abilityScore, profBonus,
-  acOf, speedOf, maxHpOf, equippedDef, removeItem,
+  acOf, speedOf, maxHpOf, equippedDef, removeItem, skillMod,
   revive as characterRevive, recalc,
 } from './character.js';
 
@@ -52,6 +52,9 @@ import { MONSTERS, xpOf, xpForCR, profForCR } from '../data/monsters.js';
 // never stop a battle from starting.
 import * as Scaling from './scaling.js';
 import * as Progression from './progression.js';
+// ai.js never imports combat.js, so this is a plain one-way dependency: the threat
+// ledger, the legendary-action brain and the "will it ever run?" test.
+import { noteDamage, legendaryPlan, willFlee } from './ai.js';
 
 // ---------------------------------------------------------------------------
 // Small utilities
@@ -76,6 +79,10 @@ export const COMBAT_EV = Object.freeze({
   INITIATIVE: 'combat:initiative',
   SUMMON: 'combat:summon',
   FLEE: 'combat:flee',
+  LEGENDARY: 'combat:legendary',
+  LAIR: 'combat:lair',
+  MORALE: 'combat:morale',
+  READIED: 'combat:readied',
 });
 
 /** Conditions that only make sense inside a fight and are stripped when it ends. */
@@ -124,6 +131,9 @@ export class Encounter {
     this.seed = o.seed != null ? o.seed : `battle-${Date.now()}`;
     this.rng = makeRNG(this.seed);
     this.biome = o.biome || o.map?.biome || 'plains';
+    // ambush: true | 'foe' — the foes were waiting (the party is surprised);
+    //         'party'      — the party springs the trap (the foes are surprised).
+    this.ambushBy = o.ambush === 'party' ? 'party' : (o.ambush ? 'foe' : null);
     this.ambush = !!o.ambush;
     this.boss = !!o.boss;
     this.depth = num(o.depth, 0);
@@ -160,7 +170,15 @@ export class Encounter {
     this.budget = null;
     this.summons = [];
     this.defeated = [];            // units killed during the fight, for awardXp()
-    this.escaped = [];
+    this.escaped = [];             // units that left the field alive (either side)
+    // Things the engine performs OUTSIDE a unit's own turn — legendary actions,
+    // lair actions, morale flight, readied reactions. The UI drains this after
+    // each turn ends: [{ actor, kind, results, log, name }] where `results` is
+    // exactly what perform() would have returned in res.results.
+    this.replays = [];
+    this.zones = [];          // live terrain spells: fog, darkness, silence, walls
+    this._zoneSeq = 0;
+    this._foeStart = null;         // { count, topUid } for the morale check
     this.rewards = null;
     this._byUid = new Map();
     this._turnToken = null;
@@ -283,15 +301,23 @@ export class Encounter {
     this._deploy();
     this._rollInitiative();
 
+    // What the enemy side looked like when the fight opened, for morale: how many
+    // there were and who their strongest (highest CR) member was.
+    const openingFoes = this.units.filter((u) => u.side === 'foe');
+    const top = openingFoes.slice().sort((a, b) => num(b.cr) - num(a.cr) || num(b.maxHp) - num(a.maxHp))[0];
+    this._foeStart = { count: openingFoes.length, topUid: top?.uid || null };
+
     this.round = 1;
     this.turnIndex = 0;
     this.state = 'active';
     this._turnToken = null;
 
     const foeNames = summarise(this.enemies.map((e) => e?.name || 'a creature'));
-    this._push(this.ambush
-      ? `Ambush! ${foeNames} burst from cover — roll for Initiative!`
-      : `Battle begins: ${foeNames}. Roll for Initiative!`, 'round');
+    this._push(this.ambushBy === 'party'
+      ? `The party springs its ambush on ${foeNames} — roll for Initiative!`
+      : this.ambush
+        ? `Ambush! ${foeNames} burst from cover — roll for Initiative!`
+        : `Battle begins: ${foeNames}. Roll for Initiative!`, 'round');
     for (const uid of this.order) {
       const u = this.byUid(uid);
       const rec = this.initiative[uid];
@@ -322,11 +348,11 @@ export class Encounter {
     const parties = this.units.filter((u) => u.side === 'party');
     const foes = this.units.filter((u) => u.side === 'foe');
 
-    // Fallback formations. Normally two ranks facing off across the arena; on an
-    // ambush the party is bunched in the middle with foes interspersed around them.
+    // Fallback formations. Normally two ranks facing off across the arena; when the
+    // foes spring an ambush the party is bunched in the middle with foes all around.
     const fallbackParty = [];
     const fallbackFoe = [];
-    if (this.ambush) {
+    if (this.ambushBy === 'foe') {
       const cx = Math.floor(this.w / 2), cy = midY;
       for (const [dx, dy] of [[0, 0], [-1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [1, 0], [-1, 1]]) {
         fallbackParty.push({ x: cx + dx, y: cy + dy });
@@ -385,12 +411,15 @@ export class Encounter {
    * 2024 PHB: Surprise is no longer a lost turn — a surprised creature rolls its
    * Initiative with Disadvantage. Rolling twice and keeping the lower total is
    * exactly that, since both rolls carry the same modifier.
+   * Whichever side walked into the ambush is the surprised one; the Alert feat
+   * (2024: "you can't be surprised") always exempts its owner.
    */
   _rollInitiative() {
     const records = [];
+    const surprisedSide = this.ambushBy === 'party' ? 'foe' : (this.ambushBy === 'foe' ? 'party' : null);
     for (const u of this.units) {
       if (!u) continue;
-      const surprised = this.ambush && u.side === 'party' && !hasFeat(u, 'alert');
+      const surprised = !!surprisedSide && u.side === surprisedSide && !hasFeat(u, 'alert');
       if (surprised) this._surprised.add(u.uid);
 
       let rec = safe(() => rollInitiative(this, u), null)
@@ -454,13 +483,18 @@ export class Encounter {
     const unit = this.current;
     if (!unit) { this._turnToken = token; return { ok: false, reason: 'no-unit' }; }
 
-    // A corpse never gets a turn; slide past it.
-    if (isDead(unit)) { this._turnToken = token; return this.endTurn(); }
+    // A corpse never gets a turn, and neither does a creature that ran; slide past.
+    if (isDead(unit) || unit._fled) { this._turnToken = token; return this.endTurn(); }
 
     this._turnToken = token;
     resetTurnUses(unit);
     unit._reactionUsed = false;
     if (unit.flags) unit.flags.reactionUsed = false;
+    // A readied action lasts until the start of your next turn; if it never
+    // triggered, it is simply lost. Legendary actions refresh at the start of the
+    // legendary creature's own turn.
+    unit._readied = null;
+    if (unit.legendary && typeof unit.legendary === 'object') unit.legendary.used = 0;
 
     this.budget = this._makeBudget(unit);
     unit._budget = this.budget;
@@ -553,6 +587,8 @@ export class Encounter {
       this._tickEffects(unit);
       this._tickConcentration(unit);
       bus.emit(EV.TURN_END, { enc: this, unit, uid: unit.uid, round: this.round });
+      // Legendary actions are taken at the end of another creature's turn.
+      this._legendaryActions(unit);
     }
 
     if (this._checkEnd()) return { ok: true, over: true, state: this.state };
@@ -569,6 +605,7 @@ export class Encounter {
       if (this.turnIndex >= this.order.length) {
         this.turnIndex = 0;
         this.round++;
+        this._tickZones();
         this._push(`Round ${this.round}.`, 'round');
         bus.emit(EV.ROUND, { enc: this, round: this.round });
         if (this.round > 200) {      // runaway guard: nobody fights for an hour
@@ -577,9 +614,13 @@ export class Encounter {
           this._finish();
           return { ok: true, over: true, state: this.state };
         }
+        // Initiative count 20: the lair acts, then the enemy checks its nerve.
+        this._lairActions();
+        this._moraleCheck();
+        if (this._checkEnd()) return { ok: true, over: true, state: this.state };
       }
       const next = this.current;
-      if (next && !isDead(next)) {
+      if (next && !isDead(next) && !next._fled) {
         this._turnToken = null;
         return this.beginTurn();
       }
@@ -676,6 +717,7 @@ export class Encounter {
       out.dead = true;
       unit.deathSaves.stable = false;
       safe(() => breakConcentration(unit, 'died'));
+      this._dropZonesOf(unit);
       this._push(`${unit.name} has died. May Kelemvor judge them kindly.`, 'death', unit);
       bus.emit(EV.DEATH, { enc: this, ch: unit, uid: unit.uid });
       this._checkEnd();
@@ -704,6 +746,7 @@ export class Encounter {
       this._push(`${unit.name || 'The creature'} falls.`, 'death', unit);
       bus.emit(EV.KILL, { enc: this, ch: unit, uid: unit.uid, killer: killer?.uid || null });
     }
+    this._dropZonesOf(unit);
     bus.emit(EV.DEATH, { enc: this, ch: unit, uid: unit.uid, killer: killer?.uid || null });
   }
 
@@ -879,6 +922,9 @@ export class Encounter {
       let reason = '';
       if (cm.cannotCast) { enabled = false; reason = 'You cannot cast while Raging'; }
       else if (spell.components?.v && cm.cannotSpeak) { enabled = false; reason = 'You cannot speak'; }
+      // Silence is a bubble a caster cannot speak inside. This is the whole
+      // point of the spell, and the reason to walk out of it.
+      else if (spell.components?.v && this.zoneSilences(unit)) { enabled = false; reason = 'Silenced — no verbal components'; }
       else if (ct === 'reaction') { enabled = false; reason = 'Cast as a Reaction when its trigger occurs'; }
       else if (cost === 'bonus' && b.bonus <= 0) { enabled = false; reason = 'No Bonus Action left'; }
       else if (cost === 'action' && b.action <= 0) { enabled = false; reason = 'No action left'; }
@@ -886,6 +932,15 @@ export class Encounter {
       else if (spell.concentration && cm.cannotConcentrate) { enabled = false; reason = 'You cannot concentrate'; }
 
       const t = spell.target || {};
+      // A self-ranged spell that MOVES you keeps its reach in the teleport
+      // effect, not in `range` — Misty Step is `range:'self'`, and
+      // rangeFeet('self') is 0, so the option offered only the ring of tiles
+      // you were already standing next to: a 2nd-level slot to shuffle five
+      // feet. 99999 is the "anywhere in the world" sentinel the travel spells
+      // use; those target through their own numeric range, so leave them be.
+      const hop = arr(spell.effects).find((e) => e && e.kind === 'teleport'
+        && num(e.distance) > 0 && num(e.distance) < 9999);
+      const reach = rangeFeet(spell) || (hop ? num(hop.distance) : 0);
       out.push(opt({
         id: `spell:${id}`,
         kind: 'spell',
@@ -895,7 +950,7 @@ export class Encounter {
         desc: spellBlurb(spell, dc, atk),
         targeting: {
           kind: t.kind || (spell.range === 'self' ? 'self' : 'creature'),
-          range: rangeFeet(spell),
+          range: reach,
           shape: ['sphere', 'cone', 'line', 'cube', 'cylinder', 'wall'].includes(lower(t.kind)) ? lower(t.kind) : null,
           radius: num(t.radius),
           length: num(t.length),
@@ -1134,6 +1189,45 @@ export class Encounter {
 
       out.push(opt({ ...base, enabled, reason, targeting }));
     }
+
+    // --- situational: Stand Up, Escape, Flee ---------------------------------
+    // 2024 PHB: standing from Prone costs half your Speed in movement, not an action.
+    if (hasCondition(unit, 'prone')) {
+      const cost = Math.ceil(b.moveMax / 2);
+      const can = b.moveMax > 0 && !cm.immobile && b.movement >= cost;
+      out.push(opt({
+        id: 'stand', kind: 'special', name: 'Stand Up', cost: 'free', icon: 'boot',
+        desc: `Get up from Prone. Costs ${cost} ft of movement (half your Speed).`,
+        enabled: can, reason: b.moveMax <= 0 || cm.immobile ? 'Your Speed is 0' : `Needs ${cost} ft of movement`,
+        targeting: { kind: 'self' }, moveCost: cost,
+      }));
+    }
+    // Escaping a grapple (or a creature's hold) is an action: Athletics or
+    // Acrobatics vs the holder's escape DC (8 + its Str mod + its Proficiency Bonus).
+    const held = activeConditions(unit).find((c) => ['grappled', 'restrained'].includes(lower(c.id)) && c.source && this.byUid(c.source));
+    if (held) {
+      const holder = this.byUid(held.source);
+      const dc = escapeDC(holder);
+      out.push(opt({
+        id: 'escape', kind: 'special', name: `Escape ${conditionName(held.id)}`, cost: 'action', icon: 'hand',
+        desc: `Athletics or Acrobatics check vs DC ${dc} to break free of ${holder?.name || 'the hold'}.`,
+        enabled: b.action > 0 && !cm.noActions, reason: cm.noActions ? 'Incapacitated' : 'No action left',
+        targeting: { kind: 'self' }, dc, holder: holder?.uid || null,
+      }));
+    }
+    // Monsters may break and run once bloodied; the AI's self-preservation brain
+    // takes this when it would rather live than win.
+    if (unit.side === 'foe') {
+      const bloodied = unit.hp <= Math.floor(maxHpOf(unit) / 2);
+      const free = !cm.immobile && cm.speed !== 0;
+      out.push(opt({
+        id: 'flee', kind: 'special', name: 'Flee', cost: 'action', icon: 'boot',
+        desc: 'Break and run from the field. Only a bloodied creature that is free to move will.',
+        enabled: b.action > 0 && !cm.noActions && bloodied && free,
+        reason: cm.noActions ? 'Incapacitated' : b.action <= 0 ? 'No action left' : !bloodied ? 'Not yet bloodied' : 'Held fast',
+        targeting: { kind: 'self' },
+      }));
+    }
   }
 
   // =========================================================================
@@ -1155,7 +1249,7 @@ export class Encounter {
     const units = [];
     for (const u of this.units) {
       if (!u || u === unit) continue;
-      if (isDead(u)) continue;
+      if (isDead(u) || u._fled) continue;
       const ally = isAlly(u, unit);
       if (ally && !t.allowAllies) continue;
       if (!ally && t.allowAllies && kind === 'ally') continue;
@@ -1239,7 +1333,17 @@ export class Encounter {
       this._push(`${unit.name || 'The creature'} is Incapacitated and can do nothing.`, 'debuff', unit);
       return { ok: false, results, error: 'incapacitated' };
     }
+    if (unit._fled && id !== 'end' && id !== 'end-turn') return { ok: false, results, error: 'fled' };
 
+    const out = this._dispatch(unit, id, tgt, b, results);
+    // Readied "when an enemy attacks or casts" actions go off right after the
+    // trigger finishes (2024 PHB Ready), so they follow the resolved action.
+    if (out && out.ok && this.state === 'active' && /^(attack:|mact:|mbonus:|spell:)/.test(id)) this._readiedOnAttack(unit);
+    return out;
+  }
+
+  /** The perform() switchboard. */
+  _dispatch(unit, id, tgt, b, results) {
     // --- dispatch ---------------------------------------------------------
     if (id === 'end' || id === 'end-turn') {
       const r = this.endTurn();
@@ -1264,6 +1368,9 @@ export class Encounter {
       case 'help': return this._doHelp(unit, tgt, b, results);
       case 'shove': return this._doShoveGrapple(unit, tgt, b, results, 'shove');
       case 'grapple': return this._doShoveGrapple(unit, tgt, b, results, 'grapple');
+      case 'stand': return this._doStand(unit, b, results);
+      case 'escape': return this._doEscape(unit, tgt, b, results);
+      case 'flee': return this._doFlee(unit, b, results);
       case 'search': return this._doSearch(unit, b, results);
       case 'use-object': return this._doUseObject(unit, tgt, b, results);
       case 'influence': return this._doInfluence(unit, tgt, b, results);
@@ -1296,7 +1403,11 @@ export class Encounter {
     else if (out.unit?.pos) out.point = { ...out.unit.pos };
     if (t.level != null) out.level = parseInt(t.level, 10);
     if (t.slotLevel != null) out.level = parseInt(t.slotLevel, 10);
-    out.extra = t;
+    // Callers write the loose knobs (`mode`, `trigger`, `skill`, `amount`) either
+    // straight onto the target — perform(u,'shove',{unit,mode:'prone'}) — or, as
+    // the action menu does, nested under `extra`. Flatten both into one bag so
+    // `tgt.extra.mode` finds it either way; the nested block wins on a clash.
+    out.extra = (t.extra && typeof t.extra === 'object') ? { ...t, ...t.extra } : t;
     return out;
   }
 
@@ -1373,7 +1484,7 @@ export class Encounter {
     });
     if (unit.flags?.smiteArmed) { unit.flags.smiteArmed = false; unit.flags.smiteLevel = 0; }
 
-    results.push({ kind: 'attack', attacker: unit.uid, target: target.uid, result: res });
+    results.push({ kind: 'attack', attacker: unit.uid, target: target.uid, result: res, concentration: res.concentration || null });
 
     // The Nick mastery turns the Light property's extra attack into a free one.
     for (const e of arr(res?.effects)) {
@@ -1433,10 +1544,18 @@ export class Encounter {
       finalOpts.damage = { ...finalOpts.damage, mod: num(finalOpts.damage.mod) - mods.damageReduction };
     }
 
+    // The spell id has to be read before the blow lands: a failed Concentration
+    // save clears it, and the UI wants to name the spell that was lost.
+    const concSpell = target?.concentration?.spellId || null;
     const res = mods.resistAll
       ? withTemporaryResistAll(target, () => resolveAttack(this, attacker, target, finalOpts))
       : resolveAttack(this, attacker, target, finalOpts);
 
+    if (res) {
+      res.concentration = concInfo(target, res.applied?.concentration, concSpell);
+      // The AI's threat ledger: who is actually hurting whom.
+      if (num(res.applied?.dealt) > 0) safe(() => noteDamage(this, attacker, target, res.applied.dealt));
+    }
     this._postAttackReactions(attacker, target, res, opts);
     this._sweepDeaths(attacker);
     return res;
@@ -1519,7 +1638,7 @@ export class Encounter {
     }
     let best = null, bestD = Infinity;
     for (const u of this.units) {
-      if (!u || isDead(u) || !isHostile(u, unit)) continue;
+      if (!u || isDead(u) || u._fled || !isHostile(u, unit)) continue;
       const d = distanceFt(unit, u);
       if (d < bestD) { best = u; bestD = d; }
     }
@@ -1543,13 +1662,16 @@ export class Encounter {
         onHit: arr(act.effects),
         dc: num(act.save?.dc, 0) || undefined,
       });
-      results.push({ kind: 'attack', attacker: unit.uid, target: target.uid, result: res });
+      results.push({ kind: 'attack', attacker: unit.uid, target: target.uid, result: res, concentration: res.concentration || null });
       return results;
     }
 
     if (kind === 'save') {
-      const shape = act.target && ['sphere', 'cone', 'line', 'cube', 'cylinder'].includes(lower(act.target.kind))
-        ? { kind: lower(act.target.kind), radius: num(act.target.radius, 15), length: num(act.target.length, act.target.radius || 15), width: num(act.target.width, 5) }
+      // Lair actions are written with target.kind 'area': a burst around the aim point.
+      const tk = lower(act.target?.kind);
+      const shapeKind = tk === 'area' ? 'sphere' : tk;
+      const shape = act.target && ['sphere', 'cone', 'line', 'cube', 'cylinder'].includes(shapeKind)
+        ? { kind: shapeKind, radius: num(act.target.radius, 15), length: num(act.target.length, act.target.radius || 15), width: num(act.target.width, 5) }
         : null;
       const aim = tgt.point || (target ? tileOf(target) : tileOf(unit));
       const victims = shape
@@ -1560,6 +1682,7 @@ export class Encounter {
       this._push(`${unit.name || 'The creature'} uses ${act.name || 'a special attack'}!`, 'info', unit);
       for (const v of victims) {
         if (!v || isDead(v)) continue;
+        const concSpell = v.concentration?.spellId || null;
         const sv = resolveSave(this, unit, v, {
           ability: act.save?.ability || 'dex',
           dc: num(act.save?.dc, saveDCFor(unit)),
@@ -1569,7 +1692,9 @@ export class Encounter {
           reason: act.name || 'Special attack',
           magic: act.magic !== false,
         });
-        results.push({ kind: 'save', source: unit.uid, target: v.uid, result: sv });
+        sv.concentration = concInfo(v, sv.applied?.concentration, concSpell);
+        if (num(sv.applied?.dealt) > 0) safe(() => noteDamage(this, unit, v, sv.applied.dealt));
+        results.push({ kind: 'save', source: unit.uid, target: v.uid, result: sv, concentration: sv.concentration });
       }
       results.push({ kind: 'area', tiles, shape: shape?.kind || 'point', origin: tileOf(unit), aim });
       return results;
@@ -1585,7 +1710,12 @@ export class Encounter {
     }
 
     if (kind === 'summon') {
-      results.push(...this._summon(unit, act.monsterId || act.summon, num(act.count, 1)));
+      // Either { monsterId, count } on the action itself, or summon riders in effects.
+      const direct = act.monsterId || act.summon;
+      if (direct) results.push(...this._summon(unit, direct, num(act.count, 1)));
+      else for (const eff of arr(act.effects)) {
+        if (eff && lower(eff.kind) === 'summon') results.push(...this._summon(unit, eff.monsterId, num(eff.count, 1)));
+      }
       return results;
     }
 
@@ -1680,6 +1810,16 @@ export class Encounter {
     }
     victims = victims.filter((u) => u && !isDead(u));
 
+    // --- Counterspell -------------------------------------------------------
+    // A hostile caster within 60 ft who can see the casting may answer with its
+    // Reaction. The slot paid above stays spent either way — a countered spell
+    // "fails and has no effect" but its slot is still expended (2024 PHB).
+    if (spell.level >= 1 && this._offerCounterspell(unit, spell, level, victims)) {
+      this._sweepDeaths(unit);
+      this._checkEnd();
+      return { ok: true, results, level, spellId, countered: true };
+    }
+
     // --- Concentration ------------------------------------------------------
     // Starting a new Concentration spell ends the one you were holding.
     if (spell.concentration) {
@@ -1711,10 +1851,11 @@ export class Encounter {
           label: spell.name,
           onHit: arr(spell.effects).filter((e) => e && e.kind !== 'summon'),
         });
-        results.push({ kind: 'attack', attacker: unit.uid, target: victim.uid, result: res, spellId });
+        results.push({ kind: 'attack', attacker: unit.uid, target: victim.uid, result: res, spellId, concentration: res.concentration || null });
       }
     } else if (spell.save) {
       for (const v of victims) {
+        const concSpell = v.concentration?.spellId || null;
         const sv = resolveSave(this, unit, v, {
           ability: spell.save.ability || 'dex',
           dc,
@@ -1729,16 +1870,23 @@ export class Encounter {
           })),
           spell, magic: true, reason: spell.name,
         });
-        results.push({ kind: 'save', source: unit.uid, target: v.uid, result: sv, spellId });
+        sv.concentration = concInfo(v, sv.applied?.concentration, concSpell);
+        if (num(sv.applied?.dealt) > 0) safe(() => noteDamage(this, unit, v, sv.applied.dealt));
+        results.push({ kind: 'save', source: unit.uid, target: v.uid, result: sv, spellId, concentration: sv.concentration });
       }
     } else {
       // No roll: healing, buffs, utility. Damage without a save (Magic Missile).
       for (const v of victims) {
         if (dmgDice) {
           const roll = rollExpr(dmgDice, this.rng);
+          const concSpell = v.concentration?.spellId || null;
           const applied = applyDamage(this, v, roll.total, spell.damage?.type || 'force', { source: unit, magical: true, label: spell.name });
           this._push(`${spell.name} strikes ${v.name}: ${dmgDice} [${roll.rolls.join(',')}] = ${roll.total} ${spell.damage?.type || 'force'} damage.`, 'damage', unit);
-          results.push({ kind: 'damage', source: unit.uid, target: v.uid, amount: applied.dealt, type: spell.damage?.type || 'force' });
+          if (num(applied.dealt) > 0) safe(() => noteDamage(this, unit, v, applied.dealt));
+          results.push({
+            kind: 'damage', source: unit.uid, target: v.uid, amount: applied.dealt, type: spell.damage?.type || 'force',
+            concentration: concInfo(v, applied.concentration, concSpell),
+          });
         }
         if (healDice) {
           const roll = rollExpr(healDice, this.rng);
@@ -1756,6 +1904,14 @@ export class Encounter {
       if (!eff) continue;
       if (lower(eff.kind) === 'summon') {
         results.push(...this._summon(unit, eff.monsterId, num(eff.count, 1)));
+        continue;
+      }
+      // A patch of ground the spell now owns: fog, darkness, silence, briars,
+      // a wall of force. `terrain` was the last effect kind nothing consumed,
+      // which is why these spells cost a slot and changed nothing.
+      if (lower(eff.kind) === 'terrain') {
+        const z = this._addZone(unit, spell, eff, tgt.point || aim, level);
+        if (z) results.push({ kind: 'zone', unit: unit.uid, id: z.id, tag: z.tag, tiles: z.tiles.length, spellId });
         continue;
       }
       if (lower(eff.kind) === 'teleport') {
@@ -1958,7 +2114,7 @@ export class Encounter {
     // Advantage on its next attack roll against it.
     let foe = null, bestD = Infinity;
     for (const u of this.units) {
-      if (!u || isDead(u) || !isHostile(u, unit)) continue;
+      if (!u || isDead(u) || u._fled || !isHostile(u, unit)) continue;
       const d = distanceFt(unit, u);
       if (d <= 5 && d < bestD) { foe = u; bestD = d; }
     }
@@ -1979,7 +2135,7 @@ export class Encounter {
     }
     const res = mode === 'grapple'
       ? grappleAction(this, unit, target)
-      : shoveAction(this, unit, target, { mode: tgt.extra?.mode === 'push' ? 'push' : 'prone' });
+      : shoveAction(this, unit, target, { mode: tgt.extra?.mode === 'prone' ? 'prone' : 'push' });
     results.push({ kind: mode, unit: unit.uid, target: target.uid, result: res });
     return { ok: !!res.ok, results };
   }
@@ -2033,20 +2189,103 @@ export class Encounter {
     return { ok: true, results };
   }
 
-  /** Ready an action to fire off your Reaction when a trigger you name occurs. */
+  /**
+   * Ready an action to fire off your Reaction when a trigger occurs. Two triggers
+   * are understood: 'approach' (an enemy comes within the readied option's reach)
+   * and 'attack' (an enemy attacks or casts within that reach). With nothing
+   * named, the creature readies its best attack against the first enemy to close.
+   * target.extra may carry { optionId, trigger:'approach'|'attack' }.
+   */
   _doReady(unit, tgt, b, results) {
     if (!this._spend(unit, b, 'action')) return { ok: false, results, error: 'no-action' };
+    const ex = tgt.extra || {};
+    const optionId = ex.optionId || ex.readyOption || this._bestAttackOptionId(unit);
+    const trigger = /attack|cast|spell/.test(lower(ex.trigger || '')) ? 'attack' : 'approach';
+    const option = optionId ? this._findOption(unit, optionId) : null;
+    const r = option?.targeting?.range;
+    const range = Array.isArray(r) ? num(r[1], num(r[0], 5)) : num(r, reachFt(unit));
     const readied = {
-      optionId: tgt.extra?.optionId || tgt.extra?.readyOption || null,
-      trigger: tgt.extra?.trigger || 'an enemy comes within reach',
+      optionId, trigger, range,
       target: tgt.unit?.uid || null,
-      point: tgt.point || null,
+      point: tgt.point && !tgt.unit ? { x: tgt.point.x, y: tgt.point.y } : null,
+      name: option?.name || 'an action',
     };
     b.readied = readied;
     unit._readied = readied;
-    this._push(`${unit.name} readies an action: ${readied.trigger}.`, 'info', unit);
+    this._push(`${unit.name} readies ${readied.name} — ${trigger === 'attack' ? 'when an enemy attacks' : `when an enemy comes within ${range} ft`}.`, 'info', unit);
     results.push({ kind: 'ready', unit: unit.uid, readied });
     return { ok: true, results };
+  }
+
+  /** The option id a creature would ready by default: its main attack. */
+  _bestAttackOptionId(unit) {
+    if (!unit) return null;
+    if (unit.kind === 'monster' && arr(unit.actions).length) {
+      const acts = arr(unit.actions);
+      let i = acts.findIndex((a) => a && lower(a.kind) === 'attack' && !a.range);
+      if (i < 0) i = acts.findIndex((a) => a && lower(a.kind) === 'attack');
+      if (i < 0) i = 0;
+      return `mact:${i}`;
+    }
+    const weapons = safe(() => weaponsOf(unit), []) || [];
+    const w = weapons.find((x) => x.enabled !== false && x.cost !== 'bonus') || weapons[0];
+    return w ? `attack:${w.id}` : null;
+  }
+
+  /** Stand up from Prone: half your Speed in movement, no action (2024 PHB). */
+  _doStand(unit, b, results) {
+    if (!hasCondition(unit, 'prone')) { this._push(`${unit.name} is already on their feet.`, 'info', unit); return { ok: false, results, error: 'not-prone' }; }
+    const cm = conditionMech(unit);
+    const cost = Math.ceil(b.moveMax / 2);
+    if (b.moveMax <= 0 || cm.immobile) { this._push(`${unit.name} cannot stand — their Speed is 0.`, 'miss', unit); return { ok: false, results, error: 'speed-zero' }; }
+    if (b.movement < cost) { this._push(`${unit.name} needs ${cost} ft of movement to stand and has ${b.movement}.`, 'miss', unit); return { ok: false, results, error: 'no-movement' }; }
+    b.movement -= cost;
+    b.moveUsed += cost;
+    removeCondition(unit, 'prone');
+    this._push(`${unit.name} stands up (${cost} ft of movement).`, 'info', unit);
+    results.push({ kind: 'stand', unit: unit.uid, cost, movement: b.movement });
+    return { ok: true, results };
+  }
+
+  /**
+   * Escape a grapple (or a creature's hold): an action, Strength (Athletics) or
+   * Dexterity (Acrobatics) — whichever is better, or target.extra.skill — against
+   * the holder's escape DC of 8 + its Strength modifier + its Proficiency Bonus.
+   */
+  _doEscape(unit, tgt, b, results) {
+    const holds = activeConditions(unit).filter((c) => ['grappled', 'restrained'].includes(lower(c.id)) && c.source && this.byUid(c.source));
+    if (!holds.length) { this._push(`${unit.name} is not being held.`, 'info', unit); return { ok: false, results, error: 'not-held' }; }
+    if (!this._spend(unit, b, 'action')) return { ok: false, results, error: 'no-action' };
+    const inst = holds[0];
+    const holder = this.byUid(inst.source);
+    const dc = escapeDC(holder);
+    const pick = lower(tgt.extra?.skill || '');
+    const acro = pick === 'acrobatics' || (pick !== 'athletics'
+      && num(safe(() => skillMod(unit, 'acrobatics')?.mod, 0)) > num(safe(() => skillMod(unit, 'athletics')?.mod, 0)));
+    const skill = acro ? 'acrobatics' : 'athletics';
+    const check = abilityCheck(this, unit, acro ? 'dex' : 'str', { skill, dc, reason: 'Escape' });
+    if (check.success) {
+      for (const h of holds) if (h.source === inst.source) removeCondition(unit, h.id, { source: h.source });
+      this._push(`${unit.name} wrenches free of ${holder.name} (${skill === 'acrobatics' ? 'Acrobatics' : 'Athletics'} ${check.total} vs DC ${dc}).`, 'buff', unit);
+    } else {
+      this._push(`${unit.name} cannot break ${holder.name}'s hold (${skill === 'acrobatics' ? 'Acrobatics' : 'Athletics'} ${check.total} vs DC ${dc}).`, 'miss', unit);
+    }
+    results.push({ kind: 'escape', unit: unit.uid, target: holder.uid, success: !!check.success, roll: check.roll, total: check.total, dc, skill });
+    return { ok: true, results };
+  }
+
+  /** A monster breaks and runs: it leaves the field alive and is worth half XP. */
+  _doFlee(unit, b, results) {
+    if (unit.side !== 'foe') { this._push(`${unit.name} cannot abandon the field mid-fight — the party runs together.`, 'info', unit); return { ok: false, results, error: 'party-cannot-flee' }; }
+    const cm = conditionMech(unit);
+    if (cm.immobile || cm.speed === 0) { this._push(`${unit.name} is held fast and cannot flee.`, 'miss', unit); return { ok: false, results, error: 'held' }; }
+    if (!this._spend(unit, b, 'action')) return { ok: false, results, error: 'no-action' };
+    const from = { ...tileOf(unit) };
+    this._push(`${unit.name} breaks and flees the field!`, 'debuff', unit);
+    this._routUnit(unit);
+    results.push({ kind: 'flee', unit: unit.uid, from });
+    this._checkEnd();
+    return { ok: true, results, fled: true };
   }
 
   /** Rage, Second Wind, Action Surge, Ki, Bardic Inspiration, Lay on Hands… */
@@ -2102,7 +2341,7 @@ export class Encounter {
         const dc = safe(() => spellDC(unit), 8 + profBonus(unit) + abilityMod(unit, 'wis'));
         this._push(`${unit.name} raises a holy symbol and channels divine power (DC ${dc}).`, 'spell', unit);
         for (const u of this.units) {
-          if (!u || isDead(u) || !isHostile(u, unit)) continue;
+          if (!u || isDead(u) || u._fled || !isHostile(u, unit)) continue;
           if (distanceFt(unit, u) > 30 || !lineOfSight(this, unit, u)) continue;
           if (!['undead', 'fiend'].includes(lower(u.type))) continue;
           const sv = resolveSave(this, unit, u, {
@@ -2140,7 +2379,7 @@ export class Encounter {
             weapon: fist.inst || fist.item, damage: fist.damage, atkBonus: fist.attackBonus,
             range: fist.range, label: 'Unarmed Strike',
           });
-          results.push({ kind: 'attack', attacker: unit.uid, target: t.uid, result: r });
+          results.push({ kind: 'attack', attacker: unit.uid, target: t.uid, result: r, concentration: r.concentration || null });
         }
         this._sweepDeaths(unit);
         this._checkEnd();
@@ -2224,6 +2463,8 @@ export class Encounter {
 
   _isSolid(x, y) {
     if (!this._inBounds(x, y)) return true;
+    // A wall of force is as solid as masonry while it stands.
+    if (this._zoneMech(x, y, 'blocksMovement')) return true;
     const m = this.map;
     if (!m) return false;
     if (typeof m.flagAt === 'function') return (num(m.flagAt(x, y)) & TILE_FLAGS.SOLID) !== 0;
@@ -2231,12 +2472,145 @@ export class Encounter {
     return false;
   }
 
-  /** Difficult terrain: rubble, deep snow, undergrowth, shallow water. */
+  /** Difficult terrain: rubble, deep snow, undergrowth, shallow water — or briars. */
   _isDifficult(x, y) {
+    if (this._zoneMech(x, y, 'difficultTerrain')) return true;
     const m = this.map;
     if (!m || typeof m.flagAt !== 'function') return false;
     const f = num(m.flagAt(x, y));
     return (f & TILE_FLAGS.SLOW) !== 0 || (f & TILE_FLAGS.WATER) !== 0;
+  }
+
+  // =========================================================================
+  // SPELL ZONES
+  // -------------------------------------------------------------------------
+  // Terrain spells own a patch of the field for a while. A zone is a set of
+  // tiles plus the `mech` block its spell authored, and the engine asks the
+  // zone list three questions: is this square hard to cross, does it block
+  // sight, and can you speak in it. `terrain` was the last effect kind nothing
+  // consumed — fog cloud, darkness, silence, plant growth and wall of force
+  // all cost a slot and changed nothing at all.
+  // =========================================================================
+
+  /** Create a zone from a `kind:'terrain'` effect. Returns it, or null. */
+  _addZone(owner, spell, eff, aim, level) {
+    if (!aim) return null;
+    const t = spell.target || {};
+    const kind = lower(t.kind) || 'sphere';
+    // A radius authored in feet, upcast if the effect says so.
+    const perSlot = num((eff.mech || {}).radiusScalePerSlot);
+    const bump = perSlot && level > spell.level ? (level - spell.level) * perSlot : 0;
+    const shape = {
+      kind: ['sphere', 'cube', 'cylinder', 'wall', 'line', 'cone'].includes(kind) ? kind : 'sphere',
+      radius: num(t.radius, 20) + bump,
+      length: num(t.length, 20),
+      width: num(t.width, 5),
+    };
+    // Radii authored for the open world swallow a 22x15 arena whole — Plant
+    // Growth is a hundred feet, which is the entire battlefield and both
+    // armies standing in it. A zone you cannot walk out of is not a tactic, so
+    // cap it: a wall you can go around, and no zone over a third of the field.
+    if (shape.kind === 'wall') shape.length = Math.min(shape.length, 30);
+    if (shape.kind === 'sphere' || shape.kind === 'cylinder') shape.radius = Math.min(shape.radius, 30);
+
+    const budget = Math.max(9, Math.floor((this.w * this.h) / 3));
+    let tiles = [];
+    for (let guard = 0; guard < 6; guard++) {
+      tiles = (safe(() => areaTiles(owner, aim, { ...shape, ctx: this }), []) || [])
+        .filter((p) => this._inBounds(p.x, p.y));
+      if (tiles.length <= budget || shape.radius <= 10) break;
+      shape.radius = Math.max(10, Math.round(shape.radius * 0.7));
+    }
+    if (!tiles.length) tiles = [{ x: aim.x, y: aim.y }];
+
+    const rounds = roundsForDuration(spell.duration);
+    const z = {
+      id: `zone${++this._zoneSeq}`,
+      tag: lower(eff.tag) || 'zone',
+      spellId: spell.id,
+      name: spell.name || 'A spell',
+      owner: owner ? owner.uid : null,
+      concentration: !!spell.concentration,
+      mech: eff.mech || {},
+      vfx: spell.vfx || null,
+      tiles,
+      keys: new Set(tiles.map((p) => kxy(p.x, p.y))),
+      rounds: rounds > 0 ? rounds : 10,
+    };
+    this.zones.push(z);
+    this._push(`${spell.name} takes hold over ${tiles.length} squares.`, 'spell', owner);
+    return z;
+  }
+
+  /** Every live zone covering this square. */
+  _zonesAt(x, y) {
+    if (!this.zones.length) return [];
+    const k = kxy(x, y);
+    const out = [];
+    for (const z of this.zones) if (z.keys.has(k)) out.push(z);
+    return out;
+  }
+
+  /** True when any zone on this square declares `key` in its mech. */
+  _zoneMech(x, y, key) {
+    if (!this.zones.length) return false;
+    const k = kxy(x, y);
+    for (const z of this.zones) if (z.keys.has(k) && z.mech[key]) return true;
+    return false;
+  }
+
+  /**
+   * Does a zone stand between these two squares? Fog and darkness block sight,
+   * so this is what makes them worth casting: you cannot be shot through them.
+   * Walks the line and asks each square, which is enough at this grid size.
+   */
+  zoneBlocksSight(a, b) {
+    if (!this.zones.length) return false;
+    const A = tileOf(a), B = tileOf(b);
+    const dx = B.x - A.x, dy = B.y - A.y;
+    const steps = Math.max(Math.abs(dx), Math.abs(dy));
+    if (steps === 0) return false;
+    for (let i = 0; i <= steps; i++) {
+      const x = Math.round(A.x + (dx * i) / steps);
+      const y = Math.round(A.y + (dy * i) / steps);
+      if (this._zoneMech(x, y, 'blockLoS') || this._zoneMech(x, y, 'heavilyObscured')) return true;
+    }
+    return false;
+  }
+
+  /** A creature standing in heavy obscurement cannot see out of it either. */
+  zoneBlinds(unit) {
+    if (!unit || !this.zones.length) return false;
+    const p = tileOf(unit);
+    return this._zoneMech(p.x, p.y, 'heavilyObscured');
+  }
+
+  /** Silence: no verbal components inside it. */
+  zoneSilences(unit) {
+    if (!unit || !this.zones.length) return false;
+    const p = tileOf(unit);
+    return this._zoneMech(p.x, p.y, 'blocksVerbal');
+  }
+
+  /** Tick zone durations at the top of a round and drop the lapsed ones. */
+  _tickZones() {
+    if (!this.zones.length) return;
+    const live = [];
+    for (const z of this.zones) {
+      z.rounds -= 1;
+      const owner = z.owner ? this.byUid(z.owner) : null;
+      const lostConc = z.concentration && (!owner || isDead(owner)
+        || !owner.concentration || owner.concentration.spellId !== z.spellId);
+      if (z.rounds > 0 && !lostConc) { live.push(z); continue; }
+      this._push(`${z.name} fades.`, 'spell', owner);
+    }
+    this.zones = live;
+  }
+
+  /** Drop a zone when its caster stops concentrating on it. */
+  _dropZonesOf(unit, spellId) {
+    if (!unit || !this.zones.length) return;
+    this.zones = this.zones.filter((z) => !(z.owner === unit.uid && (!spellId || z.spellId === spellId)));
   }
 
   /**
@@ -2274,16 +2648,31 @@ export class Encounter {
 
     const best = new Map();
     const startKey = kxy(start.x, start.y);
-    best.set(startKey, { x: start.x, y: start.y, cost: 0, path: [] });
+    // `diag` and `turns` are tie-breakers, not costs. Every step is 5 ft in 2024
+    // rules, diagonals included, so a straight walk and a zig-zag to the same
+    // square cost exactly the same and the winner used to be whichever the
+    // neighbour loop happened to reach first — which is the diagonal, because
+    // the loop starts at dy=-1. Walking three squares east drew a mountain.
+    // Preferring fewer diagonals, then fewer direction changes, makes the
+    // preview take the line a player would actually walk.
+    best.set(startKey, { x: start.x, y: start.y, cost: 0, path: [], diag: 0, turns: 0, dx: 0, dy: 0 });
 
     // A tiny binary-less priority queue: the frontier stays small on a 22x15 arena.
     const frontier = [best.get(startKey)];
     while (frontier.length) {
       let bi = 0;
-      for (let i = 1; i < frontier.length; i++) if (frontier[i].cost < frontier[bi].cost) bi = i;
+      for (let i = 1; i < frontier.length; i++) {
+        const a = frontier[i], b = frontier[bi];
+        if (a.cost < b.cost
+          || (a.cost === b.cost && (a.diag < b.diag
+            || (a.diag === b.diag && a.turns < b.turns)))) bi = i;
+      }
       const cur = frontier.splice(bi, 1)[0];
       const curKey = kxy(cur.x, cur.y);
-      if (best.get(curKey) && best.get(curKey).cost < cur.cost) continue;
+      const settled = best.get(curKey);
+      if (settled && (settled.cost < cur.cost
+        || (settled.cost === cur.cost && (settled.diag < cur.diag
+          || (settled.diag === cur.diag && settled.turns < cur.turns))))) continue;
 
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
@@ -2300,9 +2689,15 @@ export class Encounter {
           if (cost > limit) continue;
 
           const k = kxy(nx, ny);
+          const diag = cur.diag + (dx && dy ? 1 : 0);
+          const turns = cur.turns + ((cur.dx || cur.dy) && (dx !== cur.dx || dy !== cur.dy) ? 1 : 0);
           const prev = best.get(k);
-          if (prev && prev.cost <= cost) continue;
-          const node = { x: nx, y: ny, cost, path: [...cur.path, { x: nx, y: ny }], difficult, stop: sq.stop };
+          // Strictly cheaper wins; on a tie, the straighter route wins.
+          if (prev && (prev.cost < cost
+            || (prev.cost === cost && (prev.diag < diag
+              || (prev.diag === diag && prev.turns <= turns))))) continue;
+          const node = { x: nx, y: ny, cost, path: [...cur.path, { x: nx, y: ny }], difficult,
+                         stop: sq.stop, diag, turns, dx, dy };
           best.set(k, node);
           frontier.push(node);
         }
@@ -2391,6 +2786,7 @@ export class Encounter {
       // --- commit the step ------------------------------------------------
       budget.movement -= cost;
       budget.moveUsed += cost;
+      const prev = cur;
       cur = { x: step.x, y: step.y };
       unit.pos = { x: cur.x, y: cur.y };
       out.moved += cost;
@@ -2399,6 +2795,10 @@ export class Encounter {
 
       // Moving loudly breaks Hiding.
       if (hasCondition(unit, 'hidden') && !this.rng.chance(0.5)) removeCondition(unit, 'hidden');
+
+      // Readied "when an enemy comes within reach" actions go off the moment the
+      // mover crosses into that reach — right after the trigger, as Ready says.
+      if (this._readiedApproach(unit, prev, out)) { out.stopped = 'dropped'; this._sweepDeaths(); break; }
 
       // Damaging terrain (lava, a caltrop field).
       if (this.map && typeof this.map.flagAt === 'function' && (num(this.map.flagAt(cur.x, cur.y)) & TILE_FLAGS.DAMAGE)) {
@@ -2453,7 +2853,7 @@ export class Encounter {
 
     // --- Protection fighting style (an ally interposes a shield) ------------
     for (const ally of this.units) {
-      if (!ally || ally === target || isDead(ally) || !isAlly(ally, target)) continue;
+      if (!ally || ally === target || isDead(ally) || ally._fled || !isAlly(ally, target)) continue;
       if (ally._reactionUsed || distanceFt(ally, target) > 5) continue;
       if (!hasFightingStyle(ally, 'protection')) continue;
       if (!equippedDef(ally, 'shield') && !equippedDef(ally, 'offHand')) continue;
@@ -2633,6 +3033,258 @@ export class Encounter {
     return res;
   }
 
+  /** Fire one creature's readied action at `target` and record it on `replays`. */
+  _fireReadied(reactor, target, why) {
+    const rd = reactor?._readied;
+    if (!rd) return null;
+    const aim = rd.point ? { x: rd.point.x, y: rd.point.y } : { unit: target };
+    const { out, lines } = this._scope(() => {
+      this._push(`${reactor.name}'s readied ${rd.name || 'action'} triggers — ${target.name} ${why === 'attack' ? 'attacks' : 'comes within reach'}!`, 'info', reactor);
+      return this.triggerReadied(reactor, aim);
+    });
+    const res = out || { ok: false, results: [], log: [] };
+    // perform() collected its own lines in a nested scope; stitch both together.
+    const log = [...lines, ...arr(res.log)];
+    this.replays.push({ actor: reactor, kind: 'readied', name: rd.name || 'Readied action', target: target?.uid || null, results: arr(res.results), log });
+    bus.emit(COMBAT_EV.READIED, { enc: this, unit: reactor, target, results: arr(res.results) });
+    return res;
+  }
+
+  /** Every readied 'approach' whose reach the mover just entered. True if the mover dropped. */
+  _readiedApproach(mover, prev, out) {
+    if (!mover || this.state !== 'active') return false;
+    for (const R of this.units.slice()) {
+      const rd = R?._readied;
+      if (!rd || R === mover || rd.trigger !== 'approach') continue;
+      if (isDead(R) || R.hp <= 0 || R._fled || !isHostile(R, mover)) continue;
+      if (R._reactionUsed || R.flags?.reactionUsed) continue;
+      const range = num(rd.range, reachFt(R));
+      if (distanceFt(R, prev) <= range) continue;          // was already inside
+      if (distanceFt(R, mover) > range) continue;          // still outside
+      if (!lineOfSight(this, R, mover)) continue;
+      const res = this._fireReadied(R, mover, 'approach');
+      if (out && res) (out.readied = out.readied || []).push({ reactor: R.uid, results: arr(res.results) });
+      if (mover.hp <= 0) return true;
+    }
+    return false;
+  }
+
+  /** Every readied 'attack' within reach of a creature that just attacked or cast. */
+  _readiedOnAttack(actor) {
+    if (!actor || this.state !== 'active') return false;
+    for (const R of this.units.slice()) {
+      const rd = R?._readied;
+      if (!rd || R === actor || rd.trigger !== 'attack') continue;
+      if (isDead(R) || R.hp <= 0 || R._fled || !isHostile(R, actor)) continue;
+      if (R._reactionUsed || R.flags?.reactionUsed) continue;
+      if (distanceFt(R, actor) > num(rd.range, reachFt(R))) continue;
+      if (!lineOfSight(this, R, actor)) continue;
+      this._fireReadied(R, actor, 'attack');
+      if (actor.hp <= 0) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Offer Counterspell to every hostile caster who could cast it. Returns true if
+   * the spell was countered. Every attempt is recorded on `replays` as
+   * { actor, kind:'counterspell', results:[{ kind:'counterspell', success }], log }
+   * so the UI banners it under the reactor rather than the interrupted caster.
+   * 2024 PHB Counterspell: the caster of the spell makes a Constitution saving
+   * throw against the counterspeller's spell save DC; on a failure the spell
+   * fails and its slot is wasted.
+   */
+  _offerCounterspell(caster, spell, level, victims) {
+    for (const r of this.units.slice()) {
+      if (!r || r === caster || isDead(r) || r.hp <= 0 || r._fled || !isHostile(r, caster)) continue;
+      if (r._reactionUsed || r.flags?.reactionUsed) continue;
+      if (distanceFt(r, caster) > 60 || !lineOfSight(this, r, caster)) continue;
+      if (!canCastReactionSpell(r, 'counterspell')) continue;
+      const alliesHit = arr(victims).filter((v) => v === r || isAlly(v, r)).length;
+      const taken = this._askReaction(r, {
+        kind: 'counterspell', name: 'Counterspell',
+        desc: `${caster.name || 'A caster'} is casting ${spell.name}. Counter it?`,
+        trigger: { caster, spell, spellId: spell.id, level, victims: arr(victims), alliesHit, damage: !!spell.damage },
+        spellId: 'counterspell',
+      });
+      if (!taken) continue;
+      this._spend(r, this._budgetFor(r), 'reaction');
+      const slots = safe(() => availableSlots(r, 3), []) || [];
+      if (slots.length) safe(() => spendSlot(r, slots[0]));
+      const dc = safe(() => spellDC(r), 13);
+      // The whole interception is played back as a replay under the reactor's own
+      // banner (it is not the acting unit's turn), so its lines are collected in
+      // their own scope rather than folded into the caster's perform() log.
+      const { out: row, lines } = this._scope(() => {
+        this._push(`${r.name} casts Counterspell!`, 'spell', r);
+        bus.emit(COMBAT_EV.REACTION, { enc: this, unit: r, kind: 'counterspell', target: caster });
+        const sv = resolveSave(this, r, caster, {
+          ability: 'con', dc, onSuccess: 'negate', magic: true, reason: 'Counterspell',
+          spell: getSpell('counterspell') || null, cover: false,
+        });
+        const won = !sv.success;
+        if (won) this._push(`${caster.name}'s ${spell.name} unravels in their hands — countered.`, 'miss', caster);
+        else this._push(`${caster.name} holds the Weave together — ${spell.name} goes off.`, 'save', caster);
+        // `success` is the COUNTERSPELL's success, not the caster's save — the UI
+        // reads r.success to choose between "Countered!" and "Counter fails".
+        return { kind: 'counterspell', source: r.uid, target: caster.uid, spellId: spell.id, level, result: sv, countered: won, success: won };
+      });
+      // Replay only — putting the row on `results` too would play the same ring
+      // and floater twice, once under the caster and once under the reactor.
+      this.replays.push({ actor: r, kind: 'counterspell', name: 'Counterspell', spellId: 'counterspell', target: caster.uid, results: [row], log: lines });
+      if (row.countered) return true;
+    }
+    return false;
+  }
+
+  // =========================================================================
+  // BETWEEN TURNS: legendary actions, lair actions, morale
+  // =========================================================================
+
+  /**
+   * Legendary actions: at the end of another creature's turn a legendary creature
+   * may spend one of its uses (the budget refreshes at the start of its own turn,
+   * in beginTurn). One action per turn-end, chosen by ai.legendaryPlan, resolved
+   * here and recorded on `replays` for the UI to play back.
+   */
+  _legendaryActions(justEnded) {
+    if (this.state !== 'active') return;
+    for (const L of this.units.slice()) {
+      if (!L || L === justEnded || isDead(L) || L.hp <= 0 || L._fled) continue;
+      const leg = L.legendary;
+      if (!leg || typeof leg !== 'object' || !arr(leg.actions).length) continue;
+      leg.used = num(leg.used, 0);
+      const left = num(leg.count, 3) - leg.used;
+      if (left <= 0 || conditionMech(L).incapacitated) continue;
+
+      const plans = safe(() => legendaryPlan(this, L, left), []) || [];
+      const plan = plans.find((x) => x && x.kind === 'action');
+      if (!plan) continue;
+      const act = this._legendaryAct(L, plan.optionId);
+      if (!act) continue;
+      const cost = Math.max(1, num(act.cost, 1));
+      if (cost > left) continue;
+
+      const tgt = this._normTarget(plan.target);
+      const target = tgt.unit || this._pickMonsterTarget(L, act, tgt);
+      // A swipe at someone out of reach is a wasted use; keep it for later.
+      if (lower(act.kind) === 'attack') {
+        const reach = act.range ? num(act.range[1], num(act.range[0], 5)) : num(act.reach, 5);
+        if (!target || distanceFt(L, target) > reach) continue;
+      }
+      leg.used += cost;
+      const { out, lines } = this._scope(() => {
+        this._push(`${L.name} takes a legendary action: ${act.name} (${num(leg.count, 3) - leg.used} left).`, 'info', L);
+        const results = this._runMonsterAttack(L, act, target, tgt);
+        this._sweepDeaths(L);
+        return results;
+      });
+      this.replays.push({ actor: L, kind: 'legendary', name: act.name || 'Legendary action', results: out || [], log: lines });
+      bus.emit(COMBAT_EV.LEGENDARY, { enc: this, unit: L, action: act, results: out || [] });
+      if (this._checkEnd()) return;
+    }
+  }
+
+  /** Resolve a legendary action by id, folding in the stat-block action it repeats. */
+  _legendaryAct(unit, optionId) {
+    const id = lower(String(optionId || '').replace(/^legendary:/, ''));
+    const a = arr(unit?.legendary?.actions).find((x) => x && (lower(x.id) === id || lower(x.name) === id));
+    return a ? legendaryWithRef(unit, a) : null;
+  }
+
+  /**
+   * Lair actions: on initiative count 20 of every round (before the first turn) a
+   * creature in its lair takes one lair action, picked by ai.weight and never the
+   * same one two rounds running (MM). It lands on the enemy cluster.
+   */
+  _lairActions() {
+    if (this.state !== 'active') return;
+    for (const L of this.units.slice()) {
+      if (!L || isDead(L) || L.hp <= 0 || L._fled) continue;
+      let acts = arr(L.lair?.actions).filter(Boolean);
+      if (!acts.length) continue;
+      if (acts.length > 1 && L._lastLair) acts = acts.filter((a) => (a.id || a.name) !== L._lastLair);
+      const act = pickWeighted(acts, this.rng, (a) => num(a.ai?.weight, 1));
+      if (!act) continue;
+      L._lastLair = act.id || act.name;
+
+      const hostiles = this.units.filter((u) => u && !isDead(u) && u.hp > 0 && !u._fled && isHostile(u, L));
+      const anchor = hostiles.length ? clusterAnchor(hostiles) : null;
+      const tgt = { unit: anchor, units: [], point: { ...tileOf(anchor || L) }, path: null, level: null, extra: null };
+      const { out, lines } = this._scope(() => {
+        this._push(`Initiative 20 — the lair itself stirs: ${act.name}.`, 'round', L);
+        const results = this._runMonsterAttack(L, act, anchor, tgt);
+        this._sweepDeaths(L);
+        return results;
+      });
+      this.replays.push({ actor: L, kind: 'lair', name: act.name || 'Lair action', results: out || [], log: lines });
+      bus.emit(COMBAT_EV.LAIR, { enc: this, unit: L, action: act, results: out || [] });
+      if (this._checkEnd()) return;
+    }
+  }
+
+  /**
+   * Group morale, checked at the top of each round once the enemy side has lost
+   * more than half its opening number or its strongest member. Every survivor
+   * that could ever run makes a Wisdom save, DC 10 + the number of allies down;
+   * a failure is a rout — it leaves the field alive and is worth half XP.
+   */
+  _moraleCheck() {
+    if (this.state !== 'active') return;
+    const start = this._foeStart;
+    if (!start || !start.count) return;
+    const foes = this.units.filter((u) => u && u.side === 'foe' && !u.summonedBy);
+    const down = foes.filter((u) => isDead(u) || u.hp <= 0);
+    const alive = foes.filter((u) => !isDead(u) && u.hp > 0 && !u._fled);
+    if (!alive.length) return;
+    const top = start.topUid ? this.byUid(start.topUid) : null;
+    const leaderDown = !!top && (isDead(top) || top.hp <= 0);
+    if (!(down.length > start.count / 2 || leaderDown)) return;
+
+    const dc = 10 + down.length;
+    for (const u of alive) {
+      if (!this._canRout(u)) continue;
+      const sv = resolveSave(this, null, u, {
+        ability: 'wis', dc, onSuccess: 'negate', magic: false, reason: 'Morale', allowLegendary: false, cover: false,
+      });
+      if (sv.success) continue;
+      const { out, lines } = this._scope(() => {
+        const from = { ...tileOf(u) };
+        this._push(`${u.name}'s nerve breaks${leaderDown && top ? ` with ${top.name} down` : ''} — it turns and runs!`, 'debuff', u);
+        this._routUnit(u);
+        return [{ kind: 'flee', unit: u.uid, from, morale: true, save: sv }];
+      });
+      this.replays.push({ actor: u, kind: 'morale', name: 'Morale', results: out || [], log: lines });
+      bus.emit(COMBAT_EV.MORALE, { enc: this, unit: u, dc, save: sv });
+    }
+  }
+
+  /** Can this creature's nerve break at all? Bosses, the mindless and fanatics never rout. */
+  _canRout(u) {
+    if (!u || u.boss || u.isBoss) return false;
+    const type = lower(u.creatureType || u.monsterType || u.type || '');
+    if (type === 'undead' || type === 'construct') return false;
+    if (/swarm/.test(lower(u.name)) || /swarm/.test(lower(u.monsterId)) || safe(() => hasPassive(u, 'swarm'), false)) return false;
+    const ai = u.ai || {};
+    if (num(ai.aggression, 0.7) >= 0.9) return false;
+    if (num(ai.selfPreserve, 0.3) < 0.4) return false;
+    if (!safe(() => willFlee(u), true)) return false;      // ai.js: oozes, plants, zealots, neverFlee
+    if (conditionMech(u).immobile) return false;
+    return true;
+  }
+
+  /** Take a creature off the field alive: out of the fight, but not dead. */
+  _routUnit(u) {
+    if (!u || u._fled) return;
+    u._fled = true;
+    u._routed = true;
+    u._readied = null;
+    this.escaped.push(u);
+    safe(() => breakConcentration(u, 'fled the field'));
+    for (const c of TRANSIENT_CONDITIONS) removeCondition(u, c);
+    bus.emit(COMBAT_EV.FLEE, { enc: this, unit: u, success: true, side: u.side, rout: true });
+  }
+
   // =========================================================================
   // END OF THE FIGHT
   // =========================================================================
@@ -2647,7 +3299,8 @@ export class Encounter {
 
     if (!foesUp) {
       this.state = 'victory';
-      this._push('The last of them falls. The field is yours.', 'round');
+      const routed = this.escaped.some((u) => u && u.side === 'foe');
+      this._push(routed ? 'The survivors scatter. The field is yours.' : 'The last of them falls. The field is yours.', 'round');
       this._finish();
       return true;
     }
@@ -2683,7 +3336,8 @@ export class Encounter {
       if (u.flags) { u.flags.reactionUsed = false; u.flags.smiteArmed = false; }
     }
 
-    if (this.state === 'victory') this.rewards = this.awardXp();
+    // A party that escaped still earned what it killed before it ran.
+    if (this.state === 'victory' || this.state === 'fled') this.rewards = this.awardXp();
     bus.emit(EV.COMBAT_END, { enc: this, state: this.state, rewards: this.rewards });
   }
 
@@ -2701,6 +3355,7 @@ export class Encounter {
       fled: this.state === 'fled',
       rounds: this.round,
       defeated: this.defeated.map((u) => ({ uid: u.uid, name: u.name, monsterId: u.monsterId || null, xp: xpValueOf(u) })),
+      routed: this.escaped.filter((u) => u && u.side === 'foe').map((u) => ({ uid: u.uid, name: u.name, monsterId: u.monsterId || null, xp: Math.floor(xpValueOf(u) / 2) })),
       survivors: this.units.filter((u) => u.side === 'party' && u.hp > 0).map((u) => u.uid),
       down: this.units.filter((u) => u.side === 'party' && u.hp <= 0 && !isDead(u)).map((u) => u.uid),
       dead: this.units.filter((u) => u.side === 'party' && isDead(u)).map((u) => u.uid),
@@ -2718,8 +3373,13 @@ export class Encounter {
    */
   awardXp() {
     const foes = this.defeated.filter((u) => u && u.side === 'foe');
+    const routed = this.escaped.filter((u) => u && u.side === 'foe' && !this.defeated.includes(u));
     let xp = 0;
     for (const f of foes) xp += xpValueOf(f);
+    // A creature that ran is a fight you still won — at half the price.
+    for (const r of routed) xp += Math.floor(xpValueOf(r) / 2);
+    // A party that fled did not stop to loot the fallen.
+    const fledField = this.state === 'fled';
 
     const survivors = this.units.filter((u) => u && u.side === 'party' && u.kind !== 'monster' && !isDead(u));
     const share = survivors.length ? Math.floor(xp / survivors.length) : 0;
@@ -2742,11 +3402,11 @@ export class Encounter {
     // printed "Found: [object Object]" and dropped every drop on the floor.
     let gold = 0;
     const raw = [];
-    const fromScaling = safe(() => (typeof Scaling.lootFor === 'function' ? Scaling.lootFor(this) : null), null);
+    const fromScaling = fledField ? null : safe(() => (typeof Scaling.lootFor === 'function' ? Scaling.lootFor(this) : null), null);
     if (fromScaling) {
       gold = num(fromScaling.gold);
       raw.push(...arr(fromScaling.items));
-    } else {
+    } else if (!fledField) {
       for (const f of foes) {
         const loot = f.loot;
         if (!loot) continue;
@@ -2774,7 +3434,7 @@ export class Encounter {
     }
 
     if (xp > 0) {
-      this._push(`The party earns ${xp} experience${survivors.length > 1 ? ` (${share} each)` : ''}.`, 'info');
+      this._push(`The party earns ${xp} experience${survivors.length > 1 ? ` (${share} each)` : ''}${routed.length ? ' — half for those that ran' : ''}.`, 'info');
     }
     if (gold > 0) this._push(`You gather ${gold} gp from the fallen.`, 'info');
     for (const it of items) this._push(`Found: ${it.name}${it.qty > 1 ? ` ×${it.qty}` : ''}.`, 'info');
@@ -2797,8 +3457,8 @@ export class Encounter {
 
     const side = unit.side || (unit.kind === 'monster' ? 'foe' : 'party');
     out.side = side;
-    const runners = this.units.filter((u) => u && u.side === side && u.hp > 0 && !isDead(u));
-    const chasers = this.units.filter((u) => u && u.side !== side && u.hp > 0 && !isDead(u));
+    const runners = this.units.filter((u) => u && u.side === side && u.hp > 0 && !isDead(u) && !u._fled);
+    const chasers = this.units.filter((u) => u && u.side !== side && u.hp > 0 && !isDead(u) && !u._fled);
 
     if (!chasers.length) { out.success = true; }
     else {
@@ -2856,9 +3516,9 @@ export class Encounter {
   // Introspection helpers the UI and ai.js lean on
   // -------------------------------------------------------------------------
 
-  allies(unit) { return this.units.filter((u) => u && u !== unit && !isDead(u) && isAlly(u, unit)); }
-  foes(unit) { return this.units.filter((u) => u && !isDead(u) && isHostile(u, unit)); }
-  livingUnits() { return this.units.filter((u) => u && !isDead(u)); }
+  allies(unit) { return this.units.filter((u) => u && u !== unit && !isDead(u) && !u._fled && isAlly(u, unit)); }
+  foes(unit) { return this.units.filter((u) => u && !isDead(u) && !u._fled && isHostile(u, unit)); }
+  livingUnits() { return this.units.filter((u) => u && !isDead(u) && !u._fled); }
 
   /** Squares this creature currently threatens, for the UI's threat overlay. */
   threatTiles(unit) {
@@ -2984,6 +3644,63 @@ function parseMonsterDamage(act) {
   return { dice: String(dice), mod: 0, type: act.dtype || act.damageType || 'bludgeoning', bonusDice: arr(act.bonusDice) };
 }
 
+/**
+ * The Concentration check a damaged creature just made, in the shape the UI shows
+ * as a die: { unit, name, roll, dc, success, broke, auto, spellId, spellName }.
+ * `spellId` must be captured BEFORE the damage lands — a failed save clears it.
+ */
+function concInfo(target, raw, spellId) {
+  if (!raw || !target) return null;
+  const id = spellId || target.concentration?.spellId || null;
+  return {
+    unit: target.uid, name: target.name || null,
+    roll: raw.roll || null, dc: num(raw.dc), success: !!raw.success, broke: !!raw.broke, auto: !!raw.auto,
+    spellId: id, spellName: id ? (spellName(id) || id) : null,
+  };
+}
+
+/** 2024 PHB escape DC for a grapple: 8 + the grappler's Strength modifier + its Proficiency Bonus. */
+function escapeDC(holder) {
+  return 8 + safe(() => abilityMod(holder, 'str'), 0) + safe(() => profBonus(holder), 2);
+}
+
+/** "Morningstar Swing (ref: morningstar)" — the legendary action IS that attack, at legendary cost. */
+function legendaryWithRef(unit, a) {
+  if (!a || !a.ref) return a;
+  const ref = lower(a.ref);
+  const base = arr(unit?.actions).find((x) => x && (lower(x.id) === ref || lower(x.name) === ref));
+  if (!base) return a;
+  return { ...base, id: a.id, name: a.name || base.name, cost: a.cost, desc: a.desc || base.desc, ai: a.ai || base.ai, legendaryRef: base.id };
+}
+
+/** Pick one entry by weight through the encounter RNG. */
+function pickWeighted(list, r, weightOf) {
+  const items = arr(list).filter(Boolean);
+  if (!items.length) return null;
+  let total = 0;
+  const ws = items.map((it) => { const w = Math.max(0, num(weightOf(it), 1)); total += w; return w; });
+  if (total <= 0) return items[0];
+  let roll = (r?.next ? r.next() : globalRng.next()) * total;
+  for (let i = 0; i < items.length; i++) { roll -= ws[i]; if (roll < 0) return items[i]; }
+  return items[items.length - 1];
+}
+
+/** The creature nearest the centre of a group — where an area effect should land. */
+function clusterAnchor(units) {
+  const list = arr(units).filter(Boolean);
+  if (!list.length) return null;
+  let cx = 0, cy = 0;
+  for (const u of list) { const p = tileOf(u); cx += p.x; cy += p.y; }
+  cx /= list.length; cy /= list.length;
+  let best = list[0], bestD = Infinity;
+  for (const u of list) {
+    const p = tileOf(u);
+    const d = Math.hypot(p.x - cx, p.y - cy);
+    if (d < bestD) { bestD = d; best = u; }
+  }
+  return best;
+}
+
 /** XP a defeated creature is worth. */
 function xpValueOf(u) {
   if (!u) return 0;
@@ -3076,6 +3793,11 @@ function defaultReactionAI(enc, reactor, offer) {
       return true;
     case 'riposte':
       return true;
+    case 'counterspell': {
+      // Worth a 3rd-level slot for a big spell, or one about to splash two friends.
+      const t = offer.trigger || {};
+      return num(t.level) >= 3 || (!!t.damage && num(t.alliesHit) >= 2);
+    }
     default:
       return false;
   }
