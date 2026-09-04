@@ -151,6 +151,16 @@
                                 </div>
                                 <div class="sound-grid" id="soundGrid"></div>
                             </div>
+                            <div class="mb-3">
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="tp-label" style="margin-bottom:0">Volume</label>
+                                    <span id="volumeLabel" class="text-xs subtle-text" style="font-variant-numeric:tabular-nums">100%</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button id="muteToggleBtn" class="p-1 rounded-full custom-hover transition-colors" style="color:var(--subtle);line-height:0" title="Mute" aria-label="Mute notification sound"><span class="material-symbols-outlined" style="font-size:17px">volume_up</span></button>
+                                    <input type="range" id="volumeSlider" min="0" max="100" step="1" value="100" class="flex-grow" aria-label="Notification volume">
+                                </div>
+                            </div>
                             <button id="setReminderBtn" class="w-full accent-bg tt-btn text-sm font-semibold py-2" style="border-radius:0.375rem">Set Reminder</button>
                         </div>
                     </div>
@@ -174,25 +184,30 @@
 
         // AUDIO ENGINE
         const Audio={
-            ctx:null,init(){if(!this.ctx)this.ctx=new(window.AudioContext||window.webkitAudioContext)();if(this.ctx.state==='suspended')this.ctx.resume();},
-            _osc(freq,type,dur,vol=0.1,at=null){const t=at??this.ctx.currentTime,o=this.ctx.createOscillator(),g=this.ctx.createGain();o.connect(g);g.connect(this.ctx.destination);o.type=type;o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.start(t);o.stop(t+dur);},
+            ctx:null,master:null,volume:1,
+            init(){if(!this.ctx){this.ctx=new(window.AudioContext||window.webkitAudioContext)();this.master=this.ctx.createGain();this.master.gain.value=this._curve(this.volume);this.master.connect(this.ctx.destination);}if(this.ctx.state==='suspended')this.ctx.resume();},
+            // perceptual-ish taper: 50% on the slider reads as roughly half as loud
+            _curve(v){return Math.pow(Math.max(0,Math.min(1,v)),1.7);},
+            setVolume(v){this.volume=Math.max(0,Math.min(1,v));if(!this.ctx)return;const t=this.ctx.currentTime;this.master.gain.cancelScheduledValues(t);this.master.gain.setTargetAtTime(this._curve(this.volume),t,0.015);},
+            get out(){return this.master||this.ctx.destination;},
+            _osc(freq,type,dur,vol=0.1,at=null){const t=at??this.ctx.currentTime,o=this.ctx.createOscillator(),g=this.ctx.createGain();o.connect(g);g.connect(this.out);o.type=type;o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.start(t);o.stop(t+dur);},
             play(type){
-                this.init();const ctx=this.ctx,now=ctx.currentTime;
+                this.init();const ctx=this.ctx,out=this.out,now=ctx.currentTime;
                 switch(type){
                     case 'glass':this._osc(1200,'sine',0.55,0.12);break;
-                    case 'digital':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='square';o.frequency.setValueAtTime(700,now);o.frequency.exponentialRampToValueAtTime(120,now+0.15);g.gain.setValueAtTime(0.08,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.15);o.start(now);o.stop(now+0.15);break;}
+                    case 'digital':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='square';o.frequency.setValueAtTime(700,now);o.frequency.exponentialRampToValueAtTime(120,now+0.15);g.gain.setValueAtTime(0.08,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.15);o.start(now);o.stop(now+0.15);break;}
                     case 'chime':this._osc(523.25,'sine',0.55,0.1,now);this._osc(659.25,'sine',0.55,0.09,now+0.06);this._osc(783.99,'sine',0.55,0.08,now+0.12);break;
-                    case 'sonar':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(820,now);g.gain.setValueAtTime(0.18,now);g.gain.exponentialRampToValueAtTime(0.0001,now+1.2);o.start(now);o.stop(now+1.2);setTimeout(()=>{const o2=ctx.createOscillator(),g2=ctx.createGain();o2.connect(g2);g2.connect(ctx.destination);o2.frequency.setValueAtTime(820,ctx.currentTime);g2.gain.setValueAtTime(0.06,ctx.currentTime);g2.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.9);o2.start();o2.stop(ctx.currentTime+0.9);},320);break;}
-                    case 'arcade':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sawtooth';o.frequency.setValueAtTime(220,now);o.frequency.linearRampToValueAtTime(880,now+0.22);g.gain.setValueAtTime(0.05,now);g.gain.linearRampToValueAtTime(0.0001,now+0.22);o.start(now);o.stop(now+0.22);break;}
-                    case 'cash':{this._osc(1568,'sine',0.07,0.15,now);this._osc(1976,'sine',0.15,0.2,now+0.06);const buf=ctx.createBuffer(1,ctx.sampleRate*0.04,ctx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.25));const src=ctx.createBufferSource(),gn=ctx.createGain();src.buffer=buf;src.connect(gn);gn.connect(ctx.destination);gn.gain.setValueAtTime(0.35,now+0.16);src.start(now+0.16);break;}
-                    case 'zen':[220,440,660,880].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(f,now);const v=0.12/(i+1);g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(v,now+0.05);g.gain.exponentialRampToValueAtTime(0.0001,now+3.0);o.start(now);o.stop(now+3.0);});break;
-                    case 'laser':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sawtooth';o.frequency.setValueAtTime(2200,now);o.frequency.exponentialRampToValueAtTime(150,now+0.28);g.gain.setValueAtTime(0.09,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.28);o.start(now);o.stop(now+0.28);break;}
-                    case 'retro8':[330,392,523,659].forEach((n,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='square';o.frequency.setValueAtTime(n,now+i*0.075);g.gain.setValueAtTime(0.06,now+i*0.075);g.gain.exponentialRampToValueAtTime(0.0001,now+i*0.075+0.065);o.start(now+i*0.075);o.stop(now+i*0.075+0.065);});break;
-                    case 'wood':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(420,now);o.frequency.exponentialRampToValueAtTime(180,now+0.09);g.gain.setValueAtTime(0.25,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.1);o.start(now);o.stop(now+0.1);break;}
-                    case 'alarm':for(let i=0;i<4;i++){const f=i%2===0?880:660,o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='square';o.frequency.setValueAtTime(f,now+i*0.13);g.gain.setValueAtTime(0.045,now+i*0.13);g.gain.setValueAtTime(0.045,now+i*0.13+0.11);g.gain.exponentialRampToValueAtTime(0.0001,now+i*0.13+0.13);o.start(now+i*0.13);o.stop(now+i*0.13+0.13);}break;
-                    case 'pop':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(350,now);o.frequency.linearRampToValueAtTime(600,now+0.04);o.frequency.linearRampToValueAtTime(280,now+0.11);g.gain.setValueAtTime(0.22,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.12);o.start(now);o.stop(now+0.12);break;}
-                    case 'wind':[0,0.1,0.22].forEach(delay=>{const base=[523,659,784,1047,1319],f=base[Math.floor(Math.random()*base.length)],o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.setValueAtTime(f,now+delay);g.gain.setValueAtTime(0,now+delay);g.gain.linearRampToValueAtTime(0.09,now+delay+0.02);g.gain.exponentialRampToValueAtTime(0.0001,now+delay+0.8);o.start(now+delay);o.stop(now+delay+0.8);});break;
-                    case 'blip':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='triangle';o.frequency.setValueAtTime(900,now);o.frequency.setValueAtTime(700,now+0.03);g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.07);o.start(now);o.stop(now+0.07);break;}
+                    case 'sonar':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sine';o.frequency.setValueAtTime(820,now);g.gain.setValueAtTime(0.18,now);g.gain.exponentialRampToValueAtTime(0.0001,now+1.2);o.start(now);o.stop(now+1.2);setTimeout(()=>{const o2=ctx.createOscillator(),g2=ctx.createGain();o2.connect(g2);g2.connect(out);o2.frequency.setValueAtTime(820,ctx.currentTime);g2.gain.setValueAtTime(0.06,ctx.currentTime);g2.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.9);o2.start();o2.stop(ctx.currentTime+0.9);},320);break;}
+                    case 'arcade':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sawtooth';o.frequency.setValueAtTime(220,now);o.frequency.linearRampToValueAtTime(880,now+0.22);g.gain.setValueAtTime(0.05,now);g.gain.linearRampToValueAtTime(0.0001,now+0.22);o.start(now);o.stop(now+0.22);break;}
+                    case 'cash':{this._osc(1568,'sine',0.07,0.15,now);this._osc(1976,'sine',0.15,0.2,now+0.06);const buf=ctx.createBuffer(1,ctx.sampleRate*0.04,ctx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.25));const src=ctx.createBufferSource(),gn=ctx.createGain();src.buffer=buf;src.connect(gn);gn.connect(out);gn.gain.setValueAtTime(0.35,now+0.16);src.start(now+0.16);break;}
+                    case 'zen':[220,440,660,880].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sine';o.frequency.setValueAtTime(f,now);const v=0.12/(i+1);g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(v,now+0.05);g.gain.exponentialRampToValueAtTime(0.0001,now+3.0);o.start(now);o.stop(now+3.0);});break;
+                    case 'laser':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sawtooth';o.frequency.setValueAtTime(2200,now);o.frequency.exponentialRampToValueAtTime(150,now+0.28);g.gain.setValueAtTime(0.09,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.28);o.start(now);o.stop(now+0.28);break;}
+                    case 'retro8':[330,392,523,659].forEach((n,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='square';o.frequency.setValueAtTime(n,now+i*0.075);g.gain.setValueAtTime(0.06,now+i*0.075);g.gain.exponentialRampToValueAtTime(0.0001,now+i*0.075+0.065);o.start(now+i*0.075);o.stop(now+i*0.075+0.065);});break;
+                    case 'wood':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sine';o.frequency.setValueAtTime(420,now);o.frequency.exponentialRampToValueAtTime(180,now+0.09);g.gain.setValueAtTime(0.25,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.1);o.start(now);o.stop(now+0.1);break;}
+                    case 'alarm':for(let i=0;i<4;i++){const f=i%2===0?880:660,o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='square';o.frequency.setValueAtTime(f,now+i*0.13);g.gain.setValueAtTime(0.045,now+i*0.13);g.gain.setValueAtTime(0.045,now+i*0.13+0.11);g.gain.exponentialRampToValueAtTime(0.0001,now+i*0.13+0.13);o.start(now+i*0.13);o.stop(now+i*0.13+0.13);}break;
+                    case 'pop':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sine';o.frequency.setValueAtTime(350,now);o.frequency.linearRampToValueAtTime(600,now+0.04);o.frequency.linearRampToValueAtTime(280,now+0.11);g.gain.setValueAtTime(0.22,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.12);o.start(now);o.stop(now+0.12);break;}
+                    case 'wind':[0,0.1,0.22].forEach(delay=>{const base=[523,659,784,1047,1319],f=base[Math.floor(Math.random()*base.length)],o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sine';o.frequency.setValueAtTime(f,now+delay);g.gain.setValueAtTime(0,now+delay);g.gain.linearRampToValueAtTime(0.09,now+delay+0.02);g.gain.exponentialRampToValueAtTime(0.0001,now+delay+0.8);o.start(now+delay);o.stop(now+delay+0.8);});break;
+                    case 'blip':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='triangle';o.frequency.setValueAtTime(900,now);o.frequency.setValueAtTime(700,now+0.03);g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.07);o.start(now);o.stop(now+0.07);break;}
                     default:this._osc(1200,'sine',0.55,0.12);
                 }
             }
@@ -202,11 +217,14 @@
 
         function buildSoundGrid(){const g=document.getElementById('soundGrid');g.innerHTML='';SOUNDS.forEach(s=>{const c=document.createElement('div');c.className='sound-card tt-card'+(state.soundPreference===s.value?' selected':'');c.dataset.value=s.value;c.innerHTML='<span class="s-emoji">'+s.emoji+'</span><span class="s-name">'+s.name+'</span>';c.addEventListener('click',()=>{Audio.init();state.soundPreference=s.value;document.querySelectorAll('.sound-card').forEach(x=>x.classList.toggle('selected',x.dataset.value===s.value));Audio.play(s.value);saveState();});g.appendChild(c);});}
 
+        function volIcon(v,muted){if(muted||v<=0)return'volume_off';if(v<0.34)return'volume_mute';if(v<0.67)return'volume_down';return'volume_up';}
+        function applyVolume(){const v=state.muted?0:(state.volume??1);Audio.setVolume(v);const pct=Math.round((state.volume??1)*100);volLbl.textContent=state.muted?'Muted':pct+'%';volLbl.style.opacity=state.muted?'0.6':'';muteIcon.textContent=volIcon(state.volume??1,state.muted);muteBtn.title=state.muted?'Unmute':'Mute';muteBtn.setAttribute('aria-label',muteBtn.title+' notification sound');muteBtn.style.color=state.muted?'var(--danger)':'var(--subtle)';}
+
         const MSGS=[{text:"Feed the log monster!",emoji:"🦖"},{text:"Ring ring! Log that thing!",emoji:"☎"},{text:"Ghosting your tracker?",emoji:"👻"},{text:"Stats or it didn't happen.",emoji:"📉"},{text:"Your logs are lonely.",emoji:"😢"},{text:"Donut forget to log!",emoji:"🍩"},{text:"You're on fire!",emoji:"🔥"},{text:"Level up!",emoji:"🆙"},{text:"Keep metrics updated.",emoji:"📊"},{text:"Consistency is key.",emoji:"🔑"},{text:"Track your progress.",emoji:"🚀"}];
 
-        const callList=document.getElementById('callListContainer'),emptyState=document.getElementById('emptyState'),progressText=document.getElementById('progressText'),progressMeter=document.getElementById('progressMeter'),addCallBtn=document.getElementById('addCallBtn'),resetDataBtn=document.getElementById('resetDataBtn'),lastUpdTxt=document.getElementById('lastUpdatedText'),rateChart=document.getElementById('rateChart'),reminderBtn=document.getElementById('reminderToggleBtn'),reminderCtrl=document.getElementById('reminderControls'),reminderSldr=document.getElementById('reminderSlider'),reminderLbl=document.getElementById('reminderTimeLabel'),setReminderB=document.getElementById('setReminderBtn'),previewBtn=document.getElementById('previewSoundBtn'),randomBtn=document.getElementById('randomizeSoundBtn');
+        const callList=document.getElementById('callListContainer'),emptyState=document.getElementById('emptyState'),progressText=document.getElementById('progressText'),progressMeter=document.getElementById('progressMeter'),addCallBtn=document.getElementById('addCallBtn'),resetDataBtn=document.getElementById('resetDataBtn'),lastUpdTxt=document.getElementById('lastUpdatedText'),rateChart=document.getElementById('rateChart'),reminderBtn=document.getElementById('reminderToggleBtn'),reminderCtrl=document.getElementById('reminderControls'),reminderSldr=document.getElementById('reminderSlider'),reminderLbl=document.getElementById('reminderTimeLabel'),setReminderB=document.getElementById('setReminderBtn'),previewBtn=document.getElementById('previewSoundBtn'),randomBtn=document.getElementById('randomizeSoundBtn'),volSldr=document.getElementById('volumeSlider'),volLbl=document.getElementById('volumeLabel'),muteBtn=document.getElementById('muteToggleBtn'),muteIcon=muteBtn.querySelector('.material-symbols-outlined');
 
-        const initState=()=>({calls:[],lastUpdated:null,reminderInterval:0,reminderTimerId:null,soundPreference:'glass'});
+        const initState=()=>({calls:[],lastUpdated:null,reminderInterval:0,reminderTimerId:null,soundPreference:'glass',volume:1,muted:false});
         let state=initState();
         let shownPct = 0;
 
@@ -243,6 +261,7 @@
             reminderSldr.value=state.reminderInterval;
             reminderLbl.textContent=state.reminderInterval>0?state.reminderInterval+' min':'Off';
             reminderBtn.style.color=state.reminderInterval>0?'var(--accent)':'var(--subtle)';
+            volSldr.value=Math.round((state.volume??1)*100);applyVolume();
             buildSoundGrid();renderChart();saveState();
         }
 
@@ -261,6 +280,11 @@
         reminderBtn.addEventListener('click',()=>reminderCtrl.classList.toggle('visible'));
         reminderSldr.addEventListener('input',e=>{reminderLbl.textContent=e.target.value>0?e.target.value+' min':'Off';});
         previewBtn.addEventListener('click',()=>{Audio.init();Audio.play(state.soundPreference||'glass');});
+        volSldr.addEventListener('input',e=>{state.volume=parseInt(e.target.value,10)/100;if(state.volume>0)state.muted=false;applyVolume();});
+        // preview at the new level once the drag settles, so you can hear what you picked
+        volSldr.addEventListener('change',()=>{saveState();if(!state.muted&&state.volume>0){Audio.init();Audio.play(state.soundPreference||'glass');}});
+        // the button follows what you can actually hear: silent (muted or at 0) means it brings the sound back
+        muteBtn.addEventListener('click',()=>{const silent=state.muted||(state.volume??1)<=0;state.muted=!silent;if(silent&&(state.volume??0)<=0){state.volume=0.5;volSldr.value=50;}applyVolume();saveState();if(silent){Audio.init();Audio.play(state.soundPreference||'glass');}});
         randomBtn.addEventListener('click',()=>{Audio.init();const s=SOUNDS[Math.floor(Math.random()*SOUNDS.length)];state.soundPreference=s.value;buildSoundGrid();Audio.play(s.value);saveState();});
         setReminderB.addEventListener('click',()=>{const m=parseInt(reminderSldr.value,10);Audio.init();if(m>0&&Notification.permission==='default'){Notification.requestPermission().then(p=>{if(p==='granted')setReminder(m);});}else setReminder(m);reminderCtrl.classList.remove('visible');});
         document.addEventListener('click',e=>{if(!reminderBtn.contains(e.target)&&!reminderCtrl.contains(e.target))reminderCtrl.classList.remove('visible');});
