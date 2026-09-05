@@ -120,6 +120,7 @@ const MARKS = {
   fog: ['.....', 'XXXXX', '.....', 'XXXXX', '.....'],
   ash: ['X...X', '..X..', 'X...X', '..X..', 'X...X'],
   moon: ['.XXX.', 'XX...', 'XX...', 'XX...', '.XXX.'],
+  shield: ['XXXXX', 'XXXXX', 'XXXXX', '.XXX.', '..X..'],
 };
 
 /** Plot a 5x5 mark with its top-left at (x, y). */
@@ -163,6 +164,52 @@ const COND_BADGE = {
   raging: { mark: 'flame', color: '#d4553f', abbr: 'RG' },
   hidden: { mark: 'eye', color: '#7a7a92', abbr: 'HD' },
 };
+
+/**
+ * Badges for BUFFS — the things in `ch.effects` rather than `ch.conditions`.
+ *
+ * The HUD only ever read `conditions`, so every misfortune showed and no
+ * blessing did: you could cast Mage Armor, watch your AC go up in the sheet,
+ * and have nothing anywhere on screen confirm it was running or when it would
+ * lapse. Keyed by effect id with a loose match on the name, because a spell may
+ * write either.
+ */
+const BUFF_BADGE = {
+  'mage-armor': { mark: 'shield', color: '#8ab4e8', abbr: 'MA' },
+  'shield-of-faith': { mark: 'shield', color: '#e3d24a', abbr: 'SF' },
+  'blade-ward': { mark: 'shield', color: '#a8a8c0', abbr: 'BW' },
+  bless: { mark: 'star', color: '#e3d24a', abbr: 'BL' },
+  heroism: { mark: 'heart', color: '#e0a03a', abbr: 'HE' },
+  guidance: { mark: 'star', color: '#8ad8c0', abbr: 'GU' },
+  resistance: { mark: 'shield', color: '#7aa8e8', abbr: 'RS' },
+  longstrider: { mark: 'person', color: '#8ad86a', abbr: 'LS' },
+  haste: { mark: 'person', color: '#e3d24a', abbr: 'HA' },
+  jump: { mark: 'person', color: '#8ad86a', abbr: 'JP' },
+  'water-walk': { mark: 'drop', color: '#7ac8e8', abbr: 'WW' },
+  'spider-climb': { mark: 'person', color: '#a08ad8', abbr: 'SC' },
+  fly: { mark: 'cloud', color: '#a8c8f0', abbr: 'FL' },
+  invisibility: { mark: 'eye', color: '#6aa8e8', abbr: 'IV' },
+  'pass-without-trace': { mark: 'fog', color: '#8a9aa8', abbr: 'PW' },
+  'enhance-ability': { mark: 'fist', color: '#d8a03a', abbr: 'EA' },
+  'protection-from-evil-and-good': { mark: 'shield', color: '#e8e0c0', abbr: 'PE' },
+  'freedom-of-movement': { mark: 'chain', color: '#8ad8c0', abbr: 'FM' },
+  light: { mark: 'sun', color: '#ffe9a3', abbr: 'LT' },
+  familiar: { mark: 'eye', color: '#8ad86a', abbr: 'FA' },
+  steed: { mark: 'person', color: '#c8a86a', abbr: 'ST' },
+  darkvision: { mark: 'eye', color: '#8a7ad8', abbr: 'DV' },
+};
+
+/** A buff badge, matched on id first and then loosely on the display name. */
+function buffBadgeFor(e) {
+  const id = String((e && e.id) || '').toLowerCase();
+  if (BUFF_BADGE[id]) return BUFF_BADGE[id];
+  const name = String((e && e.name) || '').toLowerCase().replace(/[^a-z]+/g, '-');
+  if (BUFF_BADGE[name]) return BUFF_BADGE[name];
+  for (const key of Object.keys(BUFF_BADGE)) {
+    if (id.includes(key) || name.includes(key)) return BUFF_BADGE[key];
+  }
+  return { mark: 'star', color: '#8ad8a0', abbr: String(id || name || '?').slice(0, 2).toUpperCase() };
+}
 let CONDITIONS_CAT = null;
 softImport('../rules/conditions.js').then((m) => { if (m && m.CONDITIONS) CONDITIONS_CAT = m.CONDITIONS; });
 
@@ -589,26 +636,63 @@ export class HUD {
     }
   }
 
+  /**
+   * The badge row: what is currently true about this character.
+   *
+   * It used to read `conditions` only, so every misfortune had an icon and no
+   * blessing did — you could cast Mage Armor, see the AC rise on the sheet, and
+   * find nothing anywhere on screen saying it was up. Buffs live in `effects`,
+   * a separate list, and they are drawn here too: same 7px cell, but with a
+   * lit rim rather than a plain dark one, so good and bad read apart at a
+   * glance without needing colour vision to tell them apart.
+   */
   _drawConditions(ctx, x, y, w, m) {
-    const list = Array.isArray(m.conditions) ? m.conditions : [];
     const seen = new Set();
-    const ids = [];
-    for (const c of list) {
+    const badges = [];
+
+    for (const c of Array.isArray(m.conditions) ? m.conditions : []) {
       const id = typeof c === 'string' ? c : (c && c.id);
       if (!id || seen.has(id)) continue;
-      seen.add(id); ids.push(id);
+      seen.add(id);
+      badges.push({ ...badgeFor(id), good: false });
     }
-    if (m.concentration && !seen.has('concentrating')) ids.unshift('concentrating');
-    if (!ids.length) return;
+    if (m.concentration && !seen.has('concentrating')) {
+      seen.add('concentrating');
+      badges.unshift({ ...badgeFor('concentrating'), good: false });
+    }
+    for (const e of Array.isArray(m.effects) ? m.effects : []) {
+      const key = String((e && e.id) || (e && e.name) || '').toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      badges.push({ ...buffBadgeFor(e), good: true });
+    }
+    if (!badges.length) return;
+
+    // Buffs first: what you did on purpose is more useful than what happened
+    // to you when you are deciding whether to set off.
+    badges.sort((a, b) => (a.good === b.good ? 0 : a.good ? -1 : 1));
+
     const per = 8;
     const maxN = Math.max(1, Math.floor(w / per));
-    let px = x + w - Math.min(ids.length, maxN) * per;
-    for (let i = 0; i < ids.length && i < maxN; i++) {
-      const b = badgeFor(ids[i]);
+    const shown = Math.min(badges.length, maxN);
+    let px = x + w - shown * per;
+    for (let i = 0; i < shown; i++) {
+      const b = badges[i];
       ctx.fillStyle = 'rgba(8,10,16,0.85)';
       ctx.fillRect(px, y, 7, 7);
+      if (b.good) {
+        // A one-pixel lit rim marks a blessing rather than an affliction.
+        ctx.fillStyle = 'rgba(150,220,170,0.35)';
+        ctx.fillRect(px, y, 7, 1); ctx.fillRect(px, y + 6, 7, 1);
+        ctx.fillRect(px, y, 1, 7); ctx.fillRect(px + 6, y, 1, 7);
+      }
       mark(ctx, b.mark, px + 1, y + 1, b.color);
       px += per;
+    }
+    // More than the row can hold: say how many are hiding.
+    if (badges.length > shown) {
+      UI.text(ctx, x + w - shown * per - 2, y, `+${badges.length - shown}`,
+        { size: 'sm', align: 'right', color: C('dim'), shadow: true });
     }
   }
 

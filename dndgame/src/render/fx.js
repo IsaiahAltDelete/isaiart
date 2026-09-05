@@ -325,6 +325,7 @@ for (let i = 0; i < MAX_WEATHER; i++) {
 }
 let wKind = 'none', wIntensity = 0, wCount = 0, wBlend = 0, wNext = null;
 let wWind = 0, wWindTarget = 0, wFogA = 0, wFogB = 0, fogCanvas = null;
+let wGust = 0;                    // seconds left in the current gust swell
 
 // Camera captured by the last FX.draw(), so screen-space weather can parallax.
 let camX = 0, camY = 0, lastCamX = 0, lastCamY = 0;
@@ -774,6 +775,21 @@ export const FX = {
 
   get weatherKind() { return wKind; },
 
+  /**
+   * Called on each lightning strike as (nearness, loudness), both 0..1, where
+   * nearness 0 is directly overhead. The listener plays the thunder — and the
+   * DELAY before it should be the distance, which is what puts the storm
+   * somewhere rather than everywhere. Set to null to stop listening.
+   */
+  onLightning: null,
+
+  /** The colour grade the current sky wants, or null. Read by the overworld. */
+  weatherGrade() {
+    const def = WEATHER_DEF[wKind];
+    if (!def || !def.grade || wBlend <= 0.01) return null;
+    return { color: def.grade, alpha: def.gradeAmt * wIntensity * wBlend };
+  },
+
   /** True while a blocking effect is still playing — battle waits on this. */
   busy() {
     if (!FX.enabled) return false;
@@ -804,9 +820,12 @@ export const FX = {
     slashes.length = 0; novas.length = 0; rains.length = 0; chains.length = 0; auras.length = 0;
     shakeState.trauma = 0; shakeState.x = 0; shakeState.y = 0;
     flashFx = null;
+    for (let i = 0; i < MAX_SPLASH; i++) SPLASH[i].on = false;
+    boltFlash = 0; boltStage = 0;
     if (all) {
       tintFx = null; vignetteFx = null;
       wKind = 'none'; wIntensity = 0; wCount = 0; wBlend = 0; wNext = null;
+      wGust = 0; boltIn = 6;
     }
   },
 
@@ -1519,13 +1538,35 @@ function drawFlash(ctx) {
 // ---------------------------------------------------------------------------
 
 const WEATHER_DEF = {
-  rain: { count: 190, color: '#8fb6d8', wind: -70, fall: 340, sizeMin: 3, sizeMax: 8 },
-  snow: { count: 150, color: '#eef4ff', wind: -18, fall: 34, sizeMin: 1, sizeMax: 2.4 },
-  ash: { count: 120, color: '#9e968c', wind: -10, fall: 20, sizeMin: 1, sizeMax: 2 },
+  rain: { count: 190, color: '#8fb6d8', wind: -70, fall: 340, sizeMin: 3, sizeMax: 8, splash: 1, grade: '#3a4a66', gradeAmt: 0.20 },
+  storm: { count: 300, color: '#a8c4e0', wind: -150, fall: 480, sizeMin: 5, sizeMax: 12, splash: 1.5, bolts: true, grade: '#26304a', gradeAmt: 0.34 },
+  snow: { count: 150, color: '#eef4ff', wind: -18, fall: 34, sizeMin: 1, sizeMax: 2.4, grade: '#93a6c0', gradeAmt: 0.12 },
+  ash: { count: 120, color: '#9e968c', wind: -10, fall: 20, sizeMin: 1, sizeMax: 2, grade: '#6a5a4a', gradeAmt: 0.18 },
   leaves: { count: 60, color: '#c8823a', wind: -34, fall: 40, sizeMin: 2, sizeMax: 3.6 },
-  fog: { count: 0, color: '#c8d2dc', wind: -8, fall: 0, sizeMin: 0, sizeMax: 0 },
+  fog: { count: 0, color: '#c8d2dc', wind: -8, fall: 0, sizeMin: 0, sizeMax: 0, grade: '#8a97a8', gradeAmt: 0.16 },
   none: { count: 0, color: '#ffffff', wind: 0, fall: 0, sizeMin: 0, sizeMax: 0 },
 };
+
+// Rain that stops dead at the bottom of the screen reads as an overlay laid
+// over the game. Rain that BREAKS on the ground reads as weather happening in
+// the world, so every drop is given a ground line somewhere down the view and
+// leaves a splash when it reaches it.
+const MAX_SPLASH = 90;
+const SPLASH = new Array(MAX_SPLASH);
+for (let i = 0; i < MAX_SPLASH; i++) SPLASH[i] = { x: 0, y: 0, age: 0, life: 0.28, size: 2, on: false };
+let sHead = 0;
+
+function addSplash(x, y, size) {
+  const s = SPLASH[sHead];
+  sHead = (sHead + 1) % MAX_SPLASH;
+  s.x = x; s.y = y; s.age = 0; s.life = fxr.float(0.2, 0.34); s.size = size; s.on = true;
+}
+
+// Lightning: a scheduled strike, a two-stage flash (the leader, then the main
+// stroke) and a thunder report whose DELAY is the distance to the bolt. That
+// delay is the whole trick — a crack a beat after the flash puts the storm
+// somewhere, and one three seconds later puts it on the horizon.
+let boltIn = 6, boltFlash = 0, boltStage = 0;
 
 /**
  * Recompute how many motes the current kind/intensity wants, and initialise any
@@ -1556,12 +1597,15 @@ function resetWeatherMote(p, def, anywhere) {
   p.x = fxr.float(-20, VIEW_W + 20);
   p.y = anywhere ? fxr.float(-10, VIEW_H + 10) : fxr.float(-24, -4);
   p.size = fxr.float(def.sizeMin, def.sizeMax) * depth;
-  p.len = p.size * (wKind === 'rain' ? 2.2 : 1);
+  p.len = p.size * (def.splash ? 2.2 : 1);
   p.vy = def.fall * depth * fxr.float(0.85, 1.2);
   p.vx = 0;
   p.phase = fxr.float(0, 6.283);
   p.rot = fxr.float(0, 6.283);
   p.vr = fxr.float(-3, 3);
+  // Where this drop lands. Spread over the lower view so splashes happen at
+  // many depths rather than in a line along the bottom edge.
+  p.ground = def.splash ? fxr.float(VIEW_H * 0.35, VIEW_H + 8) : VIEW_H + 24;
 }
 
 function updateWeather(dt) {
@@ -1579,11 +1623,40 @@ function updateWeather(dt) {
   if (wKind === 'none' && wBlend <= 0) return;
 
   const def = WEATHER_DEF[wKind] || WEATHER_DEF.none;
-  // Wind gusts: a slow drift toward the target plus a lazy noise oscillation.
-  wWindTarget = def.wind * (0.5 + wIntensity);
+  // Wind gusts: a slow drift toward the target, a lazy noise oscillation, and
+  // on top of both a GUST envelope — occasional swells that arrive and pass.
+  // Constant wind is a fan; weather comes in waves.
+  wGust = Math.max(0, wGust - dt);
+  if (wGust <= 0 && fxr.chance(dt * 0.22)) wGust = fxr.float(0.9, 2.4);
+  const gustK = wGust > 0 ? 1 + 0.85 * Math.sin(Math.PI * Math.min(1, wGust / 1.6)) : 1;
+  wWindTarget = def.wind * (0.5 + wIntensity) * gustK;
   wWind += (wWindTarget * (0.75 + 0.5 * noise1(clock * 0.35)) - wWind) * Math.min(1, dt * 1.6);
   wFogA = (wFogA + dt * (wWind * 0.35 - 6)) % 4096;
   wFogB = (wFogB + dt * (wWind * 0.18 - 3)) % 4096;
+
+  // --- lightning -----------------------------------------------------------
+  if (def.bolts) {
+    boltIn -= dt;
+    if (boltIn <= 0) {
+      boltIn = fxr.float(4.5, 13) / (0.5 + wIntensity);
+      boltStage = 1;
+      boltFlash = 0.055;                        // the leader: short and dim
+      const near = fxr.next();                  // 0 = on top of you, 1 = far off
+      // The listener plays the thunder; a throw in it must never stop the storm.
+      if (FX.onLightning) { try { FX.onLightning(near, 0.35 + (1 - near) * 0.65); } catch (e) { /* ignore */ } }
+    }
+  }
+  if (boltFlash > 0) {
+    boltFlash -= dt;
+    if (boltFlash <= 0 && boltStage === 1) {
+      boltStage = 2; boltFlash = fxr.float(0.09, 0.16);   // the main stroke
+      flashFx = { color: '#dce8ff', dur: boltFlash, age: 0, alpha: 0.55 + 0.35 * wIntensity };
+    } else if (boltFlash <= 0) {
+      boltStage = 0;
+    } else if (boltStage === 1) {
+      flashFx = { color: '#c8d8f0', dur: 0.05, age: 0, alpha: 0.22 };
+    }
+  }
 
   for (let i = 0; i < wCount; i++) {
     const p = WEATHER[i];
@@ -1595,7 +1668,20 @@ function updateWeather(dt) {
     else if (wKind === 'ash') drift += Math.sin(clock * 0.8 + p.phase) * 10;
     p.x += drift * dt;
     p.rot += p.vr * dt;
+    // A drop that reaches its ground line breaks there.
+    if (def.splash && p.y >= p.ground) {
+      if (p.z > 0 && fxr.chance(0.55)) addSplash(p.x, p.ground, p.size * 0.5 * def.splash);
+      resetWeatherMote(p, def, false);
+      continue;
+    }
     if (p.y > VIEW_H + 12 || p.x < -40 || p.x > VIEW_W + 40) resetWeatherMote(p, def, false);
+  }
+
+  for (let i = 0; i < MAX_SPLASH; i++) {
+    const s = SPLASH[i];
+    if (!s.on) continue;
+    s.age += dt;
+    if (s.age >= s.life) s.on = false;
   }
 }
 
@@ -1648,6 +1734,34 @@ function drawWeather(ctx) {
   }
 
   ctx.save();
+
+  // Splashes go down FIRST, under the falling drops: the ground is behind the
+  // rain. A splash is a low flat ring with a couple of rebound ticks — a
+  // circle here reads as a bubble, not as water breaking.
+  if (def.splash) {
+    for (let i = 0; i < MAX_SPLASH; i++) {
+      const s = SPLASH[i];
+      if (!s.on) continue;
+      const t = s.age / s.life;
+      const a = wBlend * (1 - t) * 0.7;
+      if (a <= 0.02) continue;
+      const rw = s.size * (1 + t * 3.2);
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = def.color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y, Math.max(1, rw), Math.max(0.6, rw * 0.34), 0, 0, 6.2832);
+      ctx.stroke();
+      if (t < 0.45) {
+        ctx.globalAlpha = a * 0.9;
+        ctx.fillStyle = def.color;
+        const lift = (1 - t / 0.45) * 3;
+        ctx.fillRect(Math.round(s.x - rw * 0.6), Math.round(s.y - lift), 1, 1);
+        ctx.fillRect(Math.round(s.x + rw * 0.6), Math.round(s.y - lift * 0.8), 1, 1);
+      }
+    }
+  }
+
   const baseA = wBlend * (0.35 + 0.5 * wIntensity);
   for (let i = 0; i < wCount; i++) {
     const p = WEATHER[i];
@@ -1661,6 +1775,7 @@ function drawWeather(ctx) {
     ctx.globalAlpha = baseA * (0.45 + p.z * 0.28);
 
     switch (wKind) {
+      case 'storm':
       case 'rain': {
         ctx.strokeStyle = def.color;
         ctx.lineWidth = depth < 0.9 ? 1 : 1.5;

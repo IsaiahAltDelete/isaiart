@@ -2500,10 +2500,30 @@ export class OverworldScene {
     const st = state();
     const kind = (!this.map || this.map.indoor) ? 'none'
       : (this.map.weather || (st && st.weather) || 'clear');
-    const mapped = { clear: 'none', rain: 'rain', snow: 'snow', fog: 'fog', ash: 'ash', leaves: 'leaves' }[kind] || 'none';
+    const mapped = { clear: 'none', rain: 'rain', storm: 'storm', snow: 'snow', fog: 'fog', ash: 'ash', leaves: 'leaves' }[kind] || 'none';
     if (!force && mapped === this._weatherKind) return;
     this._weatherKind = mapped;
-    safe(() => FX.weather(mapped, mapped === 'fog' ? 0.4 : 0.6));
+    const inten = mapped === 'fog' ? 0.4 : mapped === 'storm' ? 0.85 : 0.6;
+    safe(() => FX.weather(mapped, inten));
+    // The sound of the sky. Indoors you hear the weather only faintly, which is
+    // most of what makes stepping into an inn out of the rain feel like shelter.
+    const muffled = this.map && this.map.indoor;
+    safe(() => Audio.ambience(muffled ? null : mapped, inten));
+
+    // Thunder follows its flash by the time the sound takes to arrive. A crack
+    // half a second later is on top of you; four seconds later is over the
+    // horizon — that delay is what places the storm rather than just making
+    // noise. Registered once and left alone; FX calls it only during a storm.
+    if (!this._boltHook) {
+      this._boltHook = (near, loud) => {
+        const delay = 0.25 + near * 3.6;
+        setTimeout(() => {
+          safe(() => Audio.sfx('thunder', { vol: 0.35 + loud * 0.55 }));
+          if (near < 0.35) safe(() => FX.shake(0.18 * (1 - near), 0.5));
+        }, delay * 1000);
+      };
+      FX.onLightning = this._boltHook;
+    }
   }
 
   _syncDiscovered(mapArg) { syncDiscovered(mapArg || this.map); }
@@ -4623,6 +4643,23 @@ export class OverworldScene {
       ctx.fillStyle = `rgb(${tint.r},${tint.g},${tint.b})`;
       ctx.fillRect(0, 0, VIEW_W, VIEW_H);
       ctx.restore();
+    }
+
+    // Overcast. A downpour does not just add drops, it takes the light out of
+    // the day — without this the world stays a bright noon with rain drawn on
+    // top of it, which is the tell that the weather is a screen effect rather
+    // than a sky. Multiplied like the day/night grade, and it fades with the
+    // same blend so a squall arrives and lifts rather than snapping.
+    if (!map.indoor) {
+      const wg = safe(() => FX.weatherGrade(), null);
+      if (wg && wg.alpha > 0.005) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.globalAlpha = clamp(wg.alpha, 0, 1);
+        ctx.fillStyle = wg.color;
+        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        ctx.restore();
+      }
     }
 
     // A map-authored ambient wash (crypts, the Redbrand cellar).

@@ -184,17 +184,19 @@ export function tickWeather(st, dt, biome) {
   st.weatherTimer -= dt;
   if (st.weatherTimer > 0) return st.weather;
   st.weatherTimer = rng.float(90, 260);
+  // `storm` is rain with lightning in it — rare, and only where a real squall
+  // would come in off the Sea of Swords or roll over open ground.
   const table = {
     'pine-forest': [['clear', 5], ['rain', 3], ['fog', 2], ['snow', 1]],
-    forest: [['clear', 6], ['rain', 3], ['fog', 1]],
+    forest: [['clear', 6], ['rain', 3], ['fog', 1], ['storm', 1]],
     mountain: [['clear', 4], ['snow', 4], ['fog', 2]],
     tundra: [['snow', 6], ['clear', 3], ['fog', 1]],
-    marsh: [['fog', 5], ['rain', 4], ['clear', 2]],
-    coast: [['clear', 5], ['rain', 3], ['fog', 2]],
+    marsh: [['fog', 5], ['rain', 4], ['clear', 2], ['storm', 1]],
+    coast: [['clear', 5], ['rain', 3], ['fog', 2], ['storm', 2]],
     'ash-waste': [['ash', 7], ['clear', 3]],
-    city: [['clear', 7], ['rain', 3]],
-    plains: [['clear', 7], ['rain', 2], ['fog', 1]],
-    road: [['clear', 7], ['rain', 2], ['fog', 1]],
+    city: [['clear', 7], ['rain', 3], ['storm', 1]],
+    plains: [['clear', 7], ['rain', 2], ['fog', 1], ['storm', 1]],
+    road: [['clear', 7], ['rain', 2], ['fog', 1], ['storm', 1]],
   }[biome] || [['clear', 8], ['rain', 2]];
   st.weather = rng.pickWeighted(table)[0];
   return st.weather;

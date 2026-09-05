@@ -66,6 +66,8 @@ const state = {
   muted: false,
   noiseBuf: null,     // white noise, 2 s
   pinkBuf: null,      // pink-ish noise (softer, for wind / roars)
+  amb: null,          // the looping weather bed: { kind, intensity, gain, srcs }
+  pendingAmb: null,   // a sky asked for before the context was allowed to run
   voices: 0,          // live sfx voices, for the polyphony cap
   lastAt: Object.create(null), // sfx name -> ctx time of last trigger (machine-gun guard)
   // music
@@ -627,6 +629,13 @@ const SFX = {
 const _pending = [];  // callbacks deferred until the context is actually running
 function flushPending() {
   while (_pending.length) { const f = _pending.shift(); try { f(); } catch (e) { /* ignore */ } }
+  // The sky is usually asked for on the title screen, before a gesture has
+  // unlocked audio; start it now that one has.
+  if (state.pendingAmb) {
+    const p = state.pendingAmb;
+    state.pendingAmb = null;
+    try { Audio.ambience(p.kind, p.intensity); } catch (e) { /* ignore */ }
+  }
 }
 /** Run `fn` now if the context is running, otherwise once it starts (autoplay policy). */
 function whenRunning(fn) {
@@ -1368,6 +1377,92 @@ export const Audio = {
   TRACKS, TRACK_GROUPS, INSTRUMENTS, trackForBiome,
 
   /** Wet/dry balance of the music reverb, 0 = dry closet, 1 = cathedral. */
+  /**
+   * The sound of the sky: a looping bed under everything, crossfaded on change.
+   *
+   * Weather you can only SEE is a screen effect. What sells rain is the hiss of
+   * it, and what sells a gale is the note the wind makes — so each kind is
+   * filtered noise with its own colour: rain is bright and busy, a storm adds a
+   * low roar under it, wind is a slow sweep, and snow is almost nothing, which
+   * is exactly what snow sounds like.
+   *
+   *   Audio.ambience('rain', 0.7)   Audio.ambience(null)  to fade out
+   */
+  ambience(kind, intensity = 0.6) {
+    if (!state.ok) { state.pendingAmb = { kind, intensity }; return; }
+    const ctx = state.ctx;
+    const want = kind && kind !== 'none' && kind !== 'clear' ? String(kind) : null;
+    const inten = clamp01(intensity);
+
+    // Same sky, new strength: ride the gain rather than rebuilding the graph.
+    if (state.amb && state.amb.kind === want) {
+      try { state.amb.gain.gain.setTargetAtTime(AMB_LEVEL[want] * inten, ctx.currentTime, 0.6); } catch (e) { /* ignore */ }
+      state.amb.intensity = inten;
+      return;
+    }
+
+    // Fade the old sky out and let it stop itself.
+    if (state.amb) {
+      const old = state.amb;
+      state.amb = null;
+      try {
+        old.gain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.7);
+        setTimeout(() => { try { old.srcs.forEach((s) => s.stop()); } catch (e) { /* ignore */ } }, 2600);
+      } catch (e) { /* ignore */ }
+    }
+    if (!want || !AMB_LEVEL[want]) return;
+
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, ctx.currentTime);
+    out.connect(state.sfxBus);
+    const srcs = [];
+    const layer = (filter, freq, q, level, sweep) => {
+      const s = ctx.createBufferSource();
+      s.buffer = state.noiseBuf; s.loop = true;
+      const f = ctx.createBiquadFilter();
+      f.type = filter; f.frequency.value = freq; f.Q.value = q;
+      const g = ctx.createGain(); g.gain.value = level;
+      s.connect(f); f.connect(g); g.connect(out);
+      if (sweep) {
+        // A slow wander on the cutoff: wind is never one note for long.
+        const lfo = ctx.createOscillator(), lg = ctx.createGain();
+        lfo.type = 'sine'; lfo.frequency.value = sweep.rate;
+        lg.gain.value = sweep.depth;
+        lfo.connect(lg); lg.connect(f.frequency);
+        lfo.start(); srcs.push(lfo);
+      }
+      try { s.start(0, arng.float(0, 1.5)); } catch (e) { s.start(0); }
+      srcs.push(s);
+    };
+
+    switch (want) {
+      case 'rain':
+        layer('bandpass', 3200, 0.6, 0.55);                       // the hiss on stone
+        layer('lowpass', 700, 0.7, 0.18, { rate: 0.09, depth: 180 });
+        break;
+      case 'storm':
+        layer('bandpass', 3600, 0.5, 0.75);
+        layer('lowpass', 480, 0.8, 0.45, { rate: 0.07, depth: 200 });  // the roar under it
+        layer('bandpass', 900, 1.2, 0.22, { rate: 0.13, depth: 300 });
+        break;
+      case 'fog':
+      case 'snow':
+        layer('lowpass', 340, 0.7, 0.30, { rate: 0.05, depth: 120 });  // near silence
+        break;
+      case 'ash':
+        layer('lowpass', 520, 0.8, 0.34, { rate: 0.06, depth: 150 });
+        break;
+      case 'leaves':
+      case 'wind':
+        layer('bandpass', 1100, 0.7, 0.40, { rate: 0.11, depth: 420 });
+        layer('lowpass', 600, 0.6, 0.22, { rate: 0.08, depth: 160 });
+        break;
+      default: return;
+    }
+    state.amb = { kind: want, intensity: inten, gain: out, srcs };
+    try { out.gain.setTargetAtTime(AMB_LEVEL[want] * inten, ctx.currentTime, 1.1); } catch (e) { /* ignore */ }
+  },
+
   setReverb(amount = 0.34) {
     if (!state.ok || !state.musicWet) return;
     const a = clamp01(amount);
@@ -1376,6 +1471,11 @@ export const Audio = {
       state.musicDry.gain.setTargetAtTime(1 - a * 0.35, state.ctx.currentTime, 0.05);
     } catch (e) { /* ignore */ }
   },
+};
+
+/** How loud each sky sits under the game at full intensity. */
+const AMB_LEVEL = {
+  rain: 0.16, storm: 0.24, fog: 0.05, snow: 0.05, ash: 0.07, leaves: 0.09, wind: 0.11,
 };
 
 function clamp01(v) { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0; }
