@@ -127,6 +127,7 @@ export function defineSprite(name, def) {
     name,
     w: def.w, h: def.h,
     palette: def.palette || {},
+    defaultColorway: def.defaultColorway || null,
     frames,
     anims: def.anims || {},
     anchor: def.anchor || { x: Math.floor(def.w / 2), y: def.h },  // feet-centre
@@ -192,6 +193,7 @@ export function getSprite(name, frame, colorway = null) {
   const rows = def.frames[frame] || def.frames[Object.keys(def.frames)[0]];
   if (!rows) return null;
 
+  colorway = colorway ? (colorway.SKIN ? colorway : makeColorway(colorway)) : def.defaultColorway;
   const ck = `${name}|${frame}|${colorwayKey(colorway)}`;
   let c = cache.get(ck);
   if (c) return c;
@@ -279,7 +281,8 @@ export function getSilhouette(name, frame, color = '#ffffff', colorway = null) {
 export function drawSprite(ctx, name, frame, x, y, opts = {}) {
   const def = sprites.get(name);
   if (!def) return false;
-  const cw = opts.colorway || null;
+  const seed = opts.colorway;
+  const cw = seed ? (seed.SKIN ? seed : makeColorway(seed)) : def.defaultColorway;
   let img = getSprite(name, frame, cw);
   if (!img) return false;
 

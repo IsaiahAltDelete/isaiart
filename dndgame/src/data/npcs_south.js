@@ -48,7 +48,7 @@ function npc(id, name, o = {}) {
     tag: o.tag || null,
     species: o.species || 'human',
     sprite: o.sprite || 'npc-villager-m',
-    colorway: o.colorway || cw('#e0a878', '#3a2416', '#4a3a2a', '#7a6a4a', '#5a4a34', '#9a9aa4', '#6b4a2a', '#c8b58a', '#b08a3a'),
+    colorway: o.colorway || null, // Unspecified colors inherit the profession palette.
     map: o.map || 'phandalin',
     x: o.x | 0,
     y: o.y | 0,

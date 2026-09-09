@@ -13,10 +13,10 @@
 import {
   TILE, DIR_VEC, dirFrom, oppositeDir, WALK_TIME, clamp, timeOfDay,
 } from '../constants.js';
-import { rng, makeRNG } from '../core/rng.js';
+import { rng, makeRNG, hashStr } from '../core/rng.js';
 import { bus, EV } from '../core/events.js';
 import { Audio } from '../core/audio.js';
-import { drawSprite, hasSprite, walkFrame } from '../render/sprites.js';
+import { drawSprite, hasSprite, walkFrame, spriteDef, makeColorway } from '../render/sprites.js';
 import { drawActor } from '../render/actor.js';
 import { drawTile, T } from '../render/tiles.js';
 import { TF } from './tilemap.js';
@@ -88,6 +88,7 @@ export class Entity {
     this.list = null;
 
     this.t = 0;                       // local clock
+    this.idleOffset = (hashStr(this.id) % 1000) / 137;
     this.animPhase = 0;               // walk-cycle position
     this.bumpT = 0;                   // squish when you walk into something
     this.rng = opts.rng || makeRNG(`${this.id}:${this.x},${this.y}`);
@@ -244,7 +245,11 @@ export class Entity {
   frame() {
     if (this.frameOverride) return this.frameOverride;
     if (this.moving) return walkFrame(this.dir, Math.floor(this.animPhase) & 3);
-    return `${this.dir}-0`;
+    return `${this.dir}-${this.idlePose() ? 3 : 0}`;
+  }
+
+  idlePose() {
+    return (this.kind === 'npc' || !!this.char) && (this.t + this.idleOffset) % 4.7 < 0.22;
   }
 
   /**
@@ -272,7 +277,7 @@ export class Entity {
     // Full characters go through the layered actor compositor.
     if (this.char) {
       return drawActor(ctx, this.char, x, y, {
-        dir: this.dir, phase: Math.floor(this.animPhase) & 3, moving: this.moving,
+        idleBob: this.idlePose(), dir: this.dir, phase: Math.floor(this.animPhase) & 3, moving: this.moving,
         ...drawOpts,
       });
     }
@@ -341,6 +346,23 @@ export class NPCEntity extends Entity {
   constructor(opts = {}) {
     super({ kind: 'npc', solid: true, ...opts });
     this.npcId = opts.npcId || opts.id || this.id;
+    // Identity, not spawn order or random state, controls the silhouette.
+    if (this.sprite?.startsWith('npc-') && !/-v[1-3]$/.test(this.sprite)) {
+      const variation = hashStr(this.npcId) % 4;
+      const candidate = `${this.sprite}-v${variation}`;
+      if (variation && hasSprite(candidate)) this.sprite = candidate;
+    }
+    if (!this.colorway && /^npc-(villager-[mf]|farmer|labourer|goodwife|porter|child)(-v[1-3])?$/.test(this.sprite || '')) {
+      const dyes = [
+        ['#526f70', '#b4a079', '#d2c09b'], ['#995b50', '#66516c', '#dbc5a3'],
+        ['#777149', '#725344', '#bcaa81'], ['#696487', '#b08b58', '#d6cabb'],
+        ['#a5784c', '#4d6d68', '#cabc9a'], ['#5b758d', '#845b55', '#d6c9ad'],
+      ];
+      const [main, alt, cloth] = dyes[hashStr(this.npcId + ':dye') % dyes.length];
+      const dye = makeColorway({ main, alt, cloth });
+      this.colorway = { ...spriteDef(this.sprite)?.defaultColorway };
+      for (const key of ['MAIN', 'MAIN_D', 'MAIN_L', 'ALT', 'ALT_D', 'ALT_L', 'CLOTH', 'CLOTH_D']) this.colorway[key] = dye[key];
+    }
     this.title = opts.title || '';       // the authored caption, e.g. "The Inn Cat"
     this.dialogueId = opts.dialogueId || opts.dialogue || null;
     this.shopId = opts.shopId || opts.shop || null;

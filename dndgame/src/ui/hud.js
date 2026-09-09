@@ -3,12 +3,12 @@
 // running while menus are stacked above and can fade out from underneath them.
 //
 // Layout on the 400x240 logical screen:
-//   top-left      party strip (bust, name, HP + damage ghost, slot pips, conditions)
-//   top-centre    toast queue (item gains, level ups, quest completions)
-//   top-right     purse, Calendar of Harptos clock/date, weather
-//   bottom-left   tracked quest and its current objective
-//   bottom-right  round minimap of the explored tiles
-//   bottom strip  the last line from the message log
+//   top-left       compact party cards
+//   left edge      compact party portraits, HP, AC/slots and conditions
+//   top-centre     location banner, with notifications stacked below
+//   top-right      clock, date, weather and purse
+//   bottom-right   explored minimap
+//   lower centre   quest tracker and log, above the compact action belt
 //
 // Everything textual goes through ui/kit.js. The little 5x5 marks (coin, skull,
 // condition badges, weather) are hand-plotted pixels — the kit has no glyph for
@@ -16,6 +16,7 @@
 
 import { Game } from '../engine.js';
 import { UI } from './kit.js';
+import { medievalPanel } from './ornament.js';
 import { bus, EV } from '../core/events.js';
 import { Party } from '../world/party.js';
 import { drawActorBust } from '../render/actor.js';
@@ -45,11 +46,7 @@ function tw(s, size) {
 function txtR(ctx, rx, y, s, o) { txt(ctx, rx - tw(s, (o || {}).size), y, s, o); }
 function txtC(ctx, cx, y, s, o) { txt(ctx, cx - tw(s, (o || {}).size) / 2, y, s, o); }
 function panel(ctx, x, y, w, h, o) {
-  try { UI.panel(ctx, Math.round(x), Math.round(y), Math.round(w), Math.round(h), o || {}); return; } catch (e) { /* below */ }
-  ctx.fillStyle = 'rgba(10,12,20,0.86)';
-  ctx.fillRect(x | 0, y | 0, w | 0, h | 0);
-  ctx.strokeStyle = C('border'); ctx.lineWidth = 1;
-  ctx.strokeRect((x | 0) + 0.5, (y | 0) + 0.5, (w | 0) - 1, (h | 0) - 1);
+  medievalPanel(ctx, x, y, w, h);
 }
 function bar(ctx, x, y, w, h, pct, o) {
   try { if (UI && UI.bar) { UI.bar(ctx, x | 0, y | 0, w | 0, h | 0, clamp(pct, 0, 1), o || {}); return; } } catch (e) { /* below */ }
@@ -223,25 +220,19 @@ function badgeFor(id) {
 // Layout constants
 // ---------------------------------------------------------------------------
 
-// row 21, not 20: each member is three 7px lines (name, bar, slots/AC) and at 20
-// the third line's drop shadow landed on the next member's name.
-const PARTY = { x: 3, y: 3, w: 128, row: 21, pad: 3 };
-const TR = { w: 116, h: 27, x: VIEW_W - 3 - 116, y: 3 };
-// The bottom strip belongs to ui/hotbar.js (BAR sits at VIEW_H - 15), so the
-// quest tracker and the log ribbon stack above it rather than under it.
-// 168px left "The Lost Mine of Phandelver" (161px) 15px short of its own title
-// and cut every objective mid-word. Nothing lives between x=3 and the minimap's
-// left edge at x=340 on this row, so the panel takes the space it needs.
-const QUEST = { x: 3, w: 200, h: 32, y: VIEW_H - 66 };
+// A narrow side rail; each member keeps separate name, health and status rows.
+const PARTY = { x: 3, y: 3, w: 86, row: 31, pad: 3 };
+const TR = { w: 120, h: 28, x: VIEW_W - 123, y: 3 };
+// The quest and log sit beside the party rail and above the toolbar.
+const QUEST = { x: 98, w: 238, h: 32, y: VIEW_H - 79 };
 const MAP = { cx: VIEW_W - 33, cy: VIEW_H - 33, r: 27, px: 2 };
-const RIBBON = { x: 3, w: 334, h: 12, y: VIEW_H - 29 };
+const RIBBON = { x: 3, w: 300, h: 12, y: VIEW_H - 41 };
 
 const TOAST_MAX = 4;
 const TOAST_LIFE = 3.0;
 const TOAST_SLIDE = 0.22;
-// The free band between the party strip (ends x=131) and the purse (starts
-// x=281) is 146px. A 148px toast could not fit it and clipped one or the other.
-const TOAST_W = 144;
+// Notifications occupy the free band between the clock and minimap.
+const TOAST_W = 176;
 const LOG_LIFE = 4.0;
 
 // Tile flag bits, mirrored from world/tilemap.js so the HUD never has to import
@@ -471,7 +462,7 @@ export class HUD {
     if (!p) return false;
     const x = p.sx, y = p.sy;
     const inRect = (r, w, h) => x >= r.x - 6 && x <= r.x + w + 6 && y >= r.y - 10 && y <= r.y + h + 6;
-    const partyH = PARTY.pad * 2 + Math.max(1, (Party.members || []).length) * PARTY.row;
+    const partyH = PARTY.pad * 2 + Math.max(1, Math.min(4, (Party.members || []).length)) * PARTY.row;
     if (inRect(PARTY, PARTY.w, partyH)) return true;
     if (inRect(TR, TR.w, TR.h)) return true;
     if (this._trackedQuest() && inRect(QUEST, QUEST.w, QUEST.h)) return true;
@@ -520,61 +511,34 @@ export class HUD {
     const h = PARTY.pad * 2 + members.length * PARTY.row;
     panel(ctx, PARTY.x, PARTY.y, PARTY.w, h, { style: 'dark' });
 
-    const x0 = PARTY.x + 21;                 // content column, right of the bust
-    const cw = PARTY.w - 24;                 // content width
-
+    const x0 = PARTY.x + 27;
+    const cw = PARTY.w - 31;
     for (let i = 0; i < members.length; i++) {
-      const m = members[i];
-      const ry = PARTY.y + PARTY.pad + i * PARTY.row;
-      const dead = !!m.dead;
-      const down = !dead && (m.hp || 0) <= 0;
-      const grey = dead || down;
-
-      // --- bust ---
+      const m = members[i], ry = PARTY.y + PARTY.pad + i * PARTY.row;
+      const dead = !!m.dead, down = !dead && (m.hp || 0) <= 0, grey = dead || down;
+      if (i) { ctx.fillStyle = '#303342'; ctx.fillRect(PARTY.x + 4, ry - 2, PARTY.w - 8, 1); }
       ctx.save();
-      if (grey) ctx.globalAlpha = ctx.globalAlpha * 0.55;
-      try { drawActorBust(ctx, m, PARTY.x + 3, ry, 16); } catch (e) { /* sprites may not be defined yet */ }
+      if (grey) ctx.globalAlpha *= 0.5;
+      drawActorBust(ctx, m, PARTY.x + 4, ry + 1, 20);
       ctx.restore();
-      if (grey) {
-        ctx.fillStyle = 'rgba(12,14,22,0.45)';
-        ctx.fillRect(PARTY.x + 3, ry, 16, 16);
-        mark(ctx, 'skull', PARTY.x + 8, ry + 5, dead ? '#8a3a30' : '#c8bfa8');
-      }
-      // The leader gets a gold tick so the marching order is obvious.
-      ctx.fillStyle = i === 0 ? C('gold') : 'rgba(92,74,42,0.55)';
-      ctx.fillRect(PARTY.x + 1, ry, 1, 16);
-
-      // --- line 1: name + hp readout ---
-      // The name used to get a flat `cw - 30`, which is right for "41/58" and
-      // wrong for "185/185" (41px) and stingy for "DEAD" (23px). Measure the
-      // readout, then split the row: a long name keeps every pixel the number
-      // is not using, and the number is never printed through it.
-      const nameCol = grey ? 'rgba(154,145,127,0.6)' : C('ink');
+      ctx.fillStyle = i === 0 ? C('gold') : '#576576';
+      ctx.fillRect(PARTY.x + 1, ry + 1, 1, 20);
+      if (grey) mark(ctx, 'skull', PARTY.x + 11, ry + 9, C('red'));
+      txt(ctx, x0, ry + 1, shortName(m.name, cw, 'sm'), { size: 'sm', color: grey ? C('dim') : C('ink') });
       const readout = dead ? 'DEAD' : down ? 'DOWN' : `${Math.max(0, m.hp | 0)}/${m.maxHp | 0}`;
-      const readCol = dead ? '#8a3a30' : down ? C('red') : hpColor(m);
-      const readW = Math.min(tw(readout, 'sm'), Math.round(cw * 0.45));
-      const nameW = cw - 4 - readW;
-      txt(ctx, x0, ry, shortName(m.name, nameW, 'sm'), { size: 'sm', color: nameCol, maxWidth: nameW });
-      txt(ctx, x0 + cw, ry, readout, { size: 'sm', color: readCol, align: 'right', maxWidth: readW });
-
-      // --- line 2: hp bar with a lagging damage ghost, or death saves ---
-      const by = ry + 9;
-      if (down) this._drawDeathSaves(ctx, x0, by, m);
-      else this._drawHpBar(ctx, x0, by, 56, 5, m, dead);
-
-      // --- line 2 right: condition badges ---
-      this._drawConditions(ctx, x0 + 59, by - 1, cw - 59, m);
-
-      // --- line 3: caster pips, or the AC of anyone who does not cast ---
-      const py = ry + 15;
-      if (!this._drawSlotPips(ctx, x0, py, cw, m, grey)) {
-        const ac = m.ac != null ? m.ac : null;
-        if (ac != null) {
-          txt(ctx, x0, py - 1, 'AC', { size: 'sm', color: 'rgba(154,145,127,0.55)' });
-          txt(ctx, x0 + 13, py - 1, String(ac), { size: 'sm', color: grey ? 'rgba(154,145,127,0.5)' : C('dim') });
+      txt(ctx, x0, ry + 10, fit(readout, cw, 'sm'), { size: 'sm', color: grey ? C('red') : hpColor(m) });
+      this._drawHpBar(ctx, x0, ry + 19, cw, 4, m, dead);
+      if (down) {
+        const ds = m.deathSaves || {};
+        for (let j = 0; j < 3; j++) {
+          ctx.fillStyle = j < (ds.success || 0) ? C('green') : '#313b35';ctx.fillRect(PARTY.x + 4 + j * 3, ry + 25, 2, 2);
+          ctx.fillStyle = j < (ds.fail || 0) ? C('red') : '#3c3032';ctx.fillRect(PARTY.x + 15 + j * 3, ry + 25, 2, 2);
         }
-        if (m.tempHp > 0) txtR(ctx, x0 + cw, py - 1, `+${m.tempHp} tmp`, { size: 'sm', color: C('blue') });
+      } else if (!this._drawSlotPips(ctx, PARTY.x + 4, ry + 25, 20, m, grey)) {
+        mark(ctx, 'shield', PARTY.x + 4, ry + 24, C('dim'));
+        txt(ctx, PARTY.x + 11, ry + 24, String(m.ac || 10), { size: 'sm', color: C('dim') });
       }
+      this._drawConditions(ctx, x0, ry + 24, cw, m);
     }
   }
 
@@ -743,26 +707,17 @@ export class HUD {
     const st = Game.state || {};
     panel(ctx, TR.x, TR.y, TR.w, TR.h, { style: 'dark' });
 
-    // Purse
-    icon(ctx, 'coin', TR.x + 5, TR.y + 4, 7, C('gold'), (c, x, y, s, col) => mark(c, 'coin', x, y, col));
-    txt(ctx, TR.x + 15, TR.y + 4, `${Party.gold | 0}`, { size: 'sm', color: C('gold') });
-    txt(ctx, TR.x + 15 + tw(String(Party.gold | 0), 'sm') + 3, TR.y + 4, 'gp', { size: 'sm', color: 'rgba(224,179,82,0.6)' });
-
-    // Weather badge, top-right of the panel
-    const weather = st.weather || 'clear';
     const night = timeOfDay(st.time || 0) === 'night';
-    drawWeatherBadge(ctx, TR.x + TR.w - 13, TR.y + 3, weather, night);
-
-    // Clock and Calendar of Harptos date
-    const clock = clockText(st.time == null ? 480 : st.time);
-    txt(ctx, TR.x + 5, TR.y + 15, clock, { size: 'sm', color: night ? '#8fa8d8' : C('ink') });
-    // "12 Mirtul, 1496 DR" rarely fits beside the clock, and an ellipsis mid-month
-    // reads as a bug. Drop the year first, then let fit() do the rest.
-    const avail = TR.w - 14 - tw(clock, 'sm');
-    const full = dateText(st.day || 1);
-    const short = full.replace(/,.*$/, '');
-    const date = tw(full, 'sm') <= avail ? full : short;
-    txtR(ctx, TR.x + TR.w - 5, TR.y + 15, fit(date, avail, 'sm'), { size: 'sm', color: C('dim') });
+    drawWeatherBadge(ctx, TR.x + 5, TR.y + 4, st.weather || 'clear', night);
+    txt(ctx, TR.x + 17, TR.y + 4, clockText(st.time == null ? 480 : st.time), { size: 'sm', color: night ? '#a5bfea' : C('ink') });
+    const date = dateText(st.day || 1).replace(/,.*$/, '');
+    txt(ctx, TR.x + 5, TR.y + 16, fit(date, 72, 'sm'), { size: 'sm', color: C('dim') });
+    mark(ctx, 'coin', TR.x + 81, TR.y + 17, C('gold'));
+    txtR(ctx, TR.x + TR.w - 5, TR.y + 16, fit(String(Party.gold | 0), 27, 'sm'), { size: 'sm', color: C('gold') });
+    // A quiet day-progress track under the clock.
+    ctx.fillStyle = '#303442'; ctx.fillRect(TR.x + 4, TR.y + TR.h - 3, TR.w - 8, 1);
+    ctx.fillStyle = night ? '#7e9aca' : '#b89457';
+    ctx.fillRect(TR.x + 4, TR.y + TR.h - 3, Math.round((TR.w - 8) * ((st.time || 0) / 1440)), 1);
   }
 
   // --- tracked quest ------------------------------------------------------
@@ -1018,12 +973,10 @@ export class HUD {
       const outT = t.t > t.life - 0.55 ? clamp((t.life - t.t) / 0.55, 0, 1) : 1;
       const ease = 1 - (1 - inT) * (1 - inT);          // ease-out on the slide in
       const w = Math.min(TOAST_W, Math.max(56, tw(t.text, 'sm') + (t.mark ? 20 : 12)));
-      // Centred on the SCREEN, a full-width toast reached x=126 and clipped the
-      // party panel's right border. Centre it on the free band between the
-      // party strip and the purse instead.
-      const bandL = PARTY.x + PARTY.w + 2, bandR = TR.x - 2;
+      // Keep notifications below the location banner, clear of both corner widgets.
+      const bandL = PARTY.x + PARTY.w + 4, bandR = TR.x - 4;
       const x = Math.round(clamp((bandL + bandR) / 2 - w / 2, bandL, Math.max(bandL, bandR - w)));
-      const y = Math.round(5 + t.slot - (1 - ease) * 14);
+      const y = Math.round(36 + t.slot - (1 - ease) * 14);
 
       ctx.save();
       ctx.globalAlpha = ctx.globalAlpha * ease * outT;

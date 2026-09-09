@@ -23,6 +23,7 @@
 // player has handed to the AI never prompt at all.
 
 import { UI } from './kit.js';
+import { medievalPanel } from './ornament.js';
 import { Input } from '../core/input.js';
 import { Audio } from '../core/audio.js';
 import { Save } from '../core/save.js';
@@ -59,26 +60,26 @@ import { GameOverScene } from './title.js';
 const R = Math.round;
 
 /** The battlefield viewport. Menus float over it rather than shrinking it. */
-const FIELD = { x: 0, y: 26, w: VIEW_W, h: VIEW_H - 26 - 28 };
+const FIELD = { x: 0, y: 26, w: VIEW_W, h: VIEW_H - 26 - 38 };
 
 const RIBBON = { x: 0, y: 0, w: VIEW_W, h: 26 };
 // The action bar runs along the bottom rather than down the left, so it never
 // stands between you and your own party. Icon buttons, left to right, the way
 // every modern party RPG does it.
-const MENU = { x: 2, y: VIEW_H - 26, w: VIEW_W - 58, h: 24 };
+const MENU = { x: 2, y: VIEW_H - 36, w: VIEW_W - 58, h: 34 };
 // The End Turn plate, the way every party tactics game puts it: big, round-ish,
 // unmissable, at the right end of the bar and never anywhere else.
-const ENDBTN = { x: VIEW_W - 54, y: VIEW_H - 26, w: 52, h: 24 };
-const MENU_CELL_W = 26;
+const ENDBTN = { x: VIEW_W - 54, y: VIEW_H - 36, w: 52, h: 34 };
+const MENU_CELL_W = 40;
 // The tightest plate we squeeze to before giving up and paging. 18px still
 // holds an 11px icon with a pixel of air either side.
-const MENU_CELL_MIN = 18;
+const MENU_CELL_MIN = 32;
 // A 7px lead-in on the left (the submenu back chevron) and a reserved column on
 // the right for the paging chevrons and the "3/17" counter. The counter used to
 // be drawn right-aligned into a 14px gap, which put it straight across the last
 // button — 23px of text in 14px of gutter.
-const MENU_PAD_L = 7;
-const MENU_GUTTER = 26;
+const MENU_PAD_L = 16;
+const MENU_GUTTER = 36;
 /**
  * The bar sizes itself to what the unit can actually do. Six verbs get six
  * comfortable 26px plates; sixteen get sixteen tighter ones -- but every verb
@@ -106,8 +107,8 @@ function barLayout(n) {
  * for the whole fight, and the "why not" note landed on top of DETAIL as well.
  * Every rect below is now derived from the one under it, so they cannot overlap.
  */
-const BUDGET = { x: 3, y: MENU.y - 14, w: 150, h: 12 };
-const LOGTAIL = { x: VIEW_W - 122, y: 46, w: 120, h: 110 };
+const BUDGET = { x: 3, y: MENU.y - 16, w: 236, h: 14 };
+const LOGTAIL = { x: VIEW_W - 122, y: 46, w: 120, h: 66 };
 // As wide as the log's left edge allows: a spell name is the single most
 // important string in the fight and it was losing 22px of free screen.
 const DETAIL = { x: 2, y: BUDGET.y - 52, w: LOGTAIL.x - 6, h: 50 };
@@ -961,6 +962,11 @@ export class BattleScene {
   }
 
   _globalKeys() {
+    const m = Input.mouse;
+    if (!this.showLog && m.clicked && m.x >= LOGTAIL.x && m.x < LOGTAIL.x + LOGTAIL.w
+      && m.y >= LOGTAIL.y && m.y < LOGTAIL.y + LOGTAIL.h) {
+      m.clicked = false; this.showLog = true; this.logScroll = 0; sfx('open');
+    }
     if (Input.pressed('journal')) {
       this.showLog = !this.showLog;
       this.logScroll = 0;
@@ -1261,10 +1267,11 @@ export class BattleScene {
       });
     }
 
-    for (const id of ['stand', 'escape', 'dash', 'dodge', 'disengage', 'hide', 'help', 'shove', 'grapple', 'search', 'ready']) {
-      const o = byId(id);
-      if (o) rows.push(o);
-    }
+    // Keep frequently used movement defenses on the root bar; group situational
+    // tactics so the main buttons have room for readable names.
+    for (const id of ['dash', 'dodge']) { const o = byId(id); if (o) rows.push(o); }
+    const tactics = ['stand', 'escape', 'disengage', 'hide', 'help', 'shove', 'grapple', 'search', 'ready'].map(byId).filter(Boolean);
+    if (tactics.length) rows.push(group('tactics', 'Tactics', 'shield', tactics, 'No tactics available.'));
 
     // Retreat is the scene's own verb; the engine resolves it as a group check.
     rows.push({
@@ -1278,8 +1285,7 @@ export class BattleScene {
       desc: 'Set how this character answers reaction prompts for the rest of the fight.',
     });
 
-    const end = byId('end');
-    rows.push(end || { id: 'end', name: 'End Turn', icon: 'hourglass', enabled: true, desc: 'Finish your turn.' });
+    // End Turn has its own permanent plate to the right of this toolbar.
     return rows;
   }
 
@@ -1375,7 +1381,9 @@ export class BattleScene {
         // The paging gutter: its two chevrons step the window a page at a time.
         if (m.clicked) {
           const back = m.x < gx + (MENU.x + MENU.w - gx) / 2;
-          idx = clamp(idx + (back ? -L.vis : L.vis), 0, rows.length - 1);
+          const pageTop = clamp(top + (back ? -L.vis : L.vis), 0, Math.floor((rows.length - 1) / L.vis) * L.vis);
+          idx = pageTop;
+          if (inSub) this.subTop = pageTop; else this.menuTop = pageTop;
           if (inSub) this.subIndex = idx; else this.menuIndex = idx;
           sfx('cursor');
         }
@@ -1383,7 +1391,7 @@ export class BattleScene {
         const cell = Math.floor((m.x - (MENU.x + MENU_PAD_L)) / L.cw);
         const hovered = top + cell;
         if (cell >= 0 && cell < L.vis && hovered >= 0 && hovered < rows.length) {
-          if (hovered !== idx) { idx = hovered; sfx('cursor'); }
+          if ((m.moved || m.clicked) && hovered !== idx) { idx = hovered; sfx('cursor'); }
           if (m.clicked) {
             if (inSub) this.subIndex = idx; else this.menuIndex = idx;
             this._chooseRow(rows[idx]);
@@ -1721,9 +1729,10 @@ export class BattleScene {
 
     const m = Input.mouse;
     const onField = this._mouseOnField();
-    if (onField && m.moved) {
+    if (this._updateAimControls()) return;
+    if (onField && (m.moved || m.clicked)) {
       const t = this._screenToTile(m.x, m.y);
-      if (this.reach.has(key(t.x, t.y))) this.cursor = { x: t.x, y: t.y };
+      this.cursor = { x: t.x, y: t.y };
     }
 
     const node = this.reach.get(key(this.cursor.x, this.cursor.y));
@@ -1815,7 +1824,14 @@ export class BattleScene {
       ? option.levels[0]
       : (option.level != null ? option.level : null);
 
-    if (kind === 'self') { this._commitOption(null); return; }
+    if (kind === 'self') {
+      if (option.spellId && option.level > 0 && option.levels?.length > 1) {
+        this.targets = { units: [unit], tiles: [] };
+        this.targetIndex = 0; this.cursor = { ...posOf(unit) };
+        this.phase = 'target'; sfx('select'); return;
+      }
+      this._commitOption(null); return;
+    }
 
     this.targets = safe(() => enc.targetsFor(unit, option), { units: [], tiles: [] }) || { units: [], tiles: [] };
     const areaMode = !!t.shape || kind === 'point' || kind === 'area';
@@ -1902,11 +1918,20 @@ export class BattleScene {
     const area = this._isAreaOption(o);
     const m = Input.mouse;
     const onField = this._mouseOnField();
+    if (this._updateAimControls()) return;
+    // A portrait can select a legal target even when a panel covers its tile.
+    if (!area && m.clicked && m.y < RIBBON.h && m.x >= RIBBON_X0) {
+      const ri = Math.floor((m.x - RIBBON_X0 + this.ribbonScroll) / RIBBON_CELL);
+      const i = this.targets.units.findIndex(u => u.uid === enc.order[ri]);
+      if (i >= 0) { this.targetIndex = i; sfx('cursor'); }
+      else { this.hint = 'That creature is not a legal target.'; sfx('error'); }
+      m.clicked = false;
+    }
 
     if (area) {
       const before = key(this.cursor.x, this.cursor.y);
       this._moveCursor();
-      if (onField && m.moved) {
+      if (onField && (m.moved || m.clicked)) {
         const t = this._screenToTile(m.x, m.y);
         this.cursor = { x: clamp(t.x, 0, enc.w - 1), y: clamp(t.y, 0, enc.h - 1) };
       }
@@ -1924,9 +1949,13 @@ export class BattleScene {
         this.targetIndex = (this.targetIndex + moved + list.length) % list.length;
         sfx('cursor');
       }
-      if (onField && m.moved) {
+      if (onField && (m.moved || m.clicked)) {
         const t = this._screenToTile(m.x, m.y);
         const i = list.findIndex((u) => posOf(u).x === t.x && posOf(u).y === t.y);
+        if (m.clicked && i < 0) {
+          this.hint = 'Choose a highlighted creature or use Confirm.';
+          m.clicked = false; sfx('error'); return;
+        }
         if (i >= 0 && i !== this.targetIndex) { this.targetIndex = i; sfx('cursor'); }
       }
       const tgt = list[this.targetIndex];
@@ -1965,6 +1994,39 @@ export class BattleScene {
       const tgt = this.targets.units[this.targetIndex];
       if (!tgt) { sfx('error'); return; }
       this._commitOption({ unit: tgt });
+    }
+  }
+
+  _aimControls() {
+    const rows = [{ id: 'back', label: 'Back', x: 4, w: 50 }];
+    if (this.phase === 'target') {
+      if (!this._isAreaOption(this.pending)) rows.push({ id: 'next', label: 'Next target', x: 58, w: 88 });
+      if (this.pending?.levels?.length > 1) rows.push({ id: 'slot', label: `Slot ${this.slotLevel}`, x: 150, w: 68 });
+    }
+    rows.push({ id: 'confirm', label: this.phase === 'move' ? 'Move here' : 'Confirm', x: 268, w: 72 });
+    return rows.map(r => ({ ...r, y: MENU.y + 17, h: 16 }));
+  }
+
+  _updateAimControls() {
+    const m = Input.mouse;
+    if (!m.clicked || !m.over) return false;
+    const r = this._aimControls().find(r => m.x >= r.x && m.x < r.x + r.w && m.y >= r.y && m.y < r.y + r.h);
+    if (!r) return false;
+    m.clicked = false;
+    if (r.id === 'back') { this.pending = null; this.areaCells = []; this.phase = 'menu'; this.hint = ''; sfx('back'); }
+    if (r.id === 'next' && this.targets.units.length) { this.targetIndex = (this.targetIndex + 1) % this.targets.units.length; sfx('cursor'); }
+    if (r.id === 'slot') { const levels = this.pending.levels; this.slotLevel = levels[(levels.indexOf(this.slotLevel) + 1) % levels.length]; sfx('cursor'); }
+    if (r.id === 'confirm') {
+      if (this.phase === 'target') this._confirmTarget();
+      else { const node = this.reach.get(key(this.cursor.x, this.cursor.y)); if (node) this._commitMove(this.enc.current, node); else sfx('error'); }
+    }
+    return true;
+  }
+
+  _drawAimControls(ctx) {
+    for (const r of this._aimControls()) {
+      medievalPanel(ctx, r.x, r.y, r.w, r.h, { active: r.id === 'confirm' });
+      UI.text(ctx, r.x + r.w / 2, r.y + 5, r.label, { size: 'sm', align: 'center', color: UI.COLORS.goldBright });
     }
   }
 
@@ -2115,10 +2177,9 @@ export class BattleScene {
     if (st === 'yes') { this._noteReaction(reactor, offer, true); return true; }
     if (st === 'no') { this._noteReaction(reactor, offer, false); return false; }
 
-    // Not decided yet: take the engine's sensible default this once, and ask the
-    // player so every later offer of this kind obeys them.
+    // Hold unarmed reactions; the prompt configures future offers only.
     this._queuePrompt(reactor, offer, kind);
-    return undefined;
+    return false;
   }
 
   _stanceKey(offer) {
@@ -2151,7 +2212,7 @@ export class BattleScene {
       make: () => ({
         reactor, offer, kind,
         title: offer.name || 'Reaction',
-        body: offer.desc || 'Spend your Reaction when this happens?',
+        body: 'Held this time. Use automatically from now on?',
         yes: 'Always', no: 'Never',
         // Costed reactions (a spell slot, a superiority die) default to NO on
         // a timeout: the game should never spend a resource because the
@@ -2174,14 +2235,13 @@ export class BattleScene {
 
     if (Input.pressed('left') || Input.pressed('right')) { p.index = p.index ? 0 : 1; sfx('cursor'); }
     const m = Input.mouse;
-    const bw = 60, by = 128;
-    if (m.over && m.y >= by && m.y <= by + 14) {
-      if (m.x >= 118 && m.x <= 118 + bw) p.index = 0;
-      else if (m.x >= 222 && m.x <= 222 + bw) p.index = 1;
-    }
+    const bw = 84, by = 128, bx = 110, gap = 12;
+    const onYes = m.over && m.y >= by && m.y <= by + 14 && m.x >= bx && m.x <= bx + bw;
+    const onNo = m.over && m.y >= by && m.y <= by + 14 && m.x >= bx + bw + gap && m.x <= bx + bw * 2 + gap;
+    if (onYes || onNo) p.index = onYes ? 0 : 1;
 
     let answer = null;
-    if (Input.consume('confirm') || (m.clicked && m.y >= by && m.y <= by + 14)) answer = p.index === 0;
+    if (Input.consume('confirm') || (m.clicked && (onYes || onNo))) answer = p.index === 0;
     else if (Input.consume('cancel')) answer = false;
     // Timing out never spends a slot or a die: free reactions default on,
     // costed ones default off.
@@ -3340,7 +3400,7 @@ export class BattleScene {
     if (Input.repeat('down', 0.25, 0.05)) this.logScroll = Math.max(0, this.logScroll - 1);
     const w = Input.mouse.wheel;
     if (w) this.logScroll = clamp(this.logScroll + (w > 0 ? 2 : -2), 0, max);
-    if (Input.consume('cancel') || Input.consume('confirm') || this._rightClick()) { this.showLog = false; sfx('close'); }
+    if (Input.consume('cancel') || Input.consume('confirm') || this._rightClick() || Input.mouse.clicked) { Input.mouse.clicked = false; this.showLog = false; sfx('close'); }
   }
 
   /** Is the pointer over open battlefield, rather than a floating panel? */
@@ -3353,7 +3413,7 @@ export class BattleScene {
     // clicks on open battlefield.
     const menuUp = this.phase === 'menu';
     const panelUp = menuUp || this.phase === 'move' || this.phase === 'target';
-    if (menuUp && inRect(MENU)) return false;
+    if (panelUp && (inRect(MENU) || inRect(ENDBTN))) return false;
     if (panelUp && (inRect(BUDGET) || inRect(DETAIL))) return false;
     // The note strip is only a panel while there is a note on it; excluding it
     // unconditionally would leave an invisible dead zone across the field.
@@ -3407,6 +3467,7 @@ export class BattleScene {
       // while aiming by a one-line plate naming the verb you picked.
       if (this.phase === 'menu') { this._drawMenu(ctx); this._drawEndButton(ctx); }
       else if (this.phase === 'target' && this.pending) this._drawPendingChip(ctx);
+      if (this.phase === 'target' || this.phase === 'move') this._drawAimControls(ctx);
       this._drawDetail(ctx);
     }
 
@@ -4039,9 +4100,9 @@ export class BattleScene {
     // more hit finishes them, which is the only thing you actually want to know
     // when deciding where to spend an action — so the unit you are looking at,
     // aiming at, or acting as gets the numbers.
-    const focused = this.inspect === u
-      || this.enc.currentUid === u.uid
-      || (this.phase === 'target' && this.targets.units[this.targetIndex] === u);
+    const focus = this.phase === 'target' ? this.targets.units[this.targetIndex]
+      : (this.inspectPinned || this.inspectHover) && this.inspect ? this.inspect : this.enc.current;
+    const focused = focus === u;
     if (focused) {
       const max = safe(() => maxHpOf(u), u.maxHp || 1) || 1;
       const label = `${Math.max(0, u.hp)}/${max}`;
@@ -4070,7 +4131,7 @@ export class BattleScene {
 
   _drawRibbon(ctx) {
     const enc = this.enc;
-    UI.panel(ctx, RIBBON.x - 2, RIBBON.y - 3, RIBBON.w + 4, RIBBON.h + 3, { style: 'dark', shadow: 0.5, studs: false });
+    medievalPanel(ctx, RIBBON.x - 2, RIBBON.y - 3, RIBBON.w + 4, RIBBON.h + 3);
 
     // round chip
     UI.panel(ctx, 2, 2, 30, 21, { style: 'gold', shadow: 0.3, studs: false });
@@ -4172,20 +4233,18 @@ export class BattleScene {
   _drawBudget(ctx) {
     const b = this._budget();
     const unit = this.enc?.current;
-    UI.panel(ctx, BUDGET.x, BUDGET.y, BUDGET.w, BUDGET.h, { style: 'dark', shadow: 0.35, studs: false });
+    medievalPanel(ctx, BUDGET.x, BUDGET.y, BUDGET.w, BUDGET.h);
 
     let x = BUDGET.x + 3;
     const dot = (label, on, color) => {
-      ctx.fillStyle = '#0a0708';
-      ctx.fillRect(x - 1, BUDGET.y + 2, 9, 8);
-      ctx.fillStyle = on ? color : 'rgba(255,255,255,0.12)';
-      ctx.fillRect(x, BUDGET.y + 3, 7, 6);
-      UI.text(ctx, x + 3, BUDGET.y + 3, label, { size: 'sm', color: on ? '#12100c' : UI.COLORS.disabled, align: 'center', shadow: false });
-      x += 11;
+      ctx.fillStyle = on ? color : '#454753';
+      ctx.fillRect(x, BUDGET.y + 5, 4, 4);
+      UI.text(ctx, x + 7, BUDGET.y + 4, label, { size: 'sm', color: on ? color : UI.COLORS.disabled, shadow: false });
+      x += UI.measure(label, 'sm') + 15;
     };
-    dot('A', (b.action || 0) > 0, UI.COLORS.gold);
-    dot('B', (b.bonus || 0) > 0, UI.COLORS.green);
-    dot('R', (b.reaction || 0) > 0 && !unit?._reactionUsed, UI.COLORS.blue);
+    dot('Action', (b.action || 0) > 0, '#dfc17d');
+    dot('Bonus', (b.bonus || 0) > 0, '#8fc497');
+    dot('React', (b.reaction || 0) > 0 && !unit?._reactionUsed, '#8dafe0');
 
     const mv = `${b.movement || 0}/${b.moveMax || 0} ft`;
     UI.icon(ctx, 'foot', x, BUDGET.y + 2, 8, UI.COLORS.inkDim);
@@ -4204,14 +4263,12 @@ export class BattleScene {
     const inSub = this.menuPath.length > 0;
     const idx = clamp(inSub ? this.subIndex : this.menuIndex, 0, Math.max(0, rows.length - 1));
 
-    UI.panel(ctx, MENU.x, MENU.y, MENU.w, MENU.h, { style: 'window', shadow: 0.55 });
+    medievalPanel(ctx, MENU.x, MENU.y, MENU.w, MENU.h);
 
     // Keep the selected button inside the visible window.
     const L = barLayout(rows.length);
     let top = inSub ? this.subTop : this.menuTop;
-    if (idx < top) top = idx;
-    if (idx > top + L.vis - 1) top = idx - L.vis + 1;
-    top = clamp(top, 0, Math.max(0, rows.length - L.vis));
+    top = L.paged ? Math.floor(idx / L.vis) * L.vis : 0;
     if (inSub) this.subTop = top; else this.menuTop = top;
 
     // A back chevron on the left whenever we are inside a submenu, so the mouse
@@ -4228,20 +4285,26 @@ export class BattleScene {
       const on = r.enabled !== false;
 
       // The button plate: gold for the highlighted verb, sunken for the rest.
-      UI.panel(ctx, c.x, c.y, c.w, c.h, {
-        style: sel ? 'gold' : 'inset', shadow: sel ? 0.35 : 0.15, studs: false,
-      });
+      if (sel) UI.panel(ctx, c.x, c.y, c.w, c.h, { style: 'gold', studs: false });
+      else medievalPanel(ctx, c.x, c.y, c.w, c.h, { inset: true });
 
-      // The cell is a 23x20 plate read as two rows: keycap and cost on top, the
-      // icon below. The cost tag used to sit at `c.y - 1`, half of it on the
-      // bar's own border ring — an 'A' with a rule through its crossbar reads
-      // as an 'H'. Both markers are inside the plate now, and neither touches
-      // the icon.
-      // Icon only: the full name and its maths are on the plate above, which is
-      // how a bar stays readable once a caster has twenty things to click. The
-      // icon has to actually differ per verb for that to work: see verbIcon().
+      const accent = !on ? '#555765' : r.move ? '#8ec6bd' : r.cost === 'bonus' ? '#8fc497' : r.spellId || r.group ? '#a99ad4' : '#d6b271';
+      ctx.fillStyle = sel && on ? '#fff0b9' : accent;
+      ctx.fillRect(c.x + 2, c.y + c.h - 2, c.w - 4, 1);
+      if (sel && on) {
+        ctx.save();ctx.globalAlpha = 0.08 + 0.04 * Math.sin(this.t * 5);
+        ctx.fillStyle = '#fff4ce';ctx.fillRect(c.x + 1, c.y + 1, c.w - 2, c.h - 2);ctx.restore();
+      }
       UI.icon(ctx, verbIcon(r), c.x + R((c.w - 11) / 2), c.y + 8, 11,
-        on ? (sel ? '#2a1c07' : null) : UI.COLORS.disabled);
+        on ? (sel ? '#2a1c07' : accent) : UI.COLORS.disabled);
+      // Short names supplement the icon; the detail card retains the full name.
+      const raw = r.name || r.label || '';
+      const labels = { 'Opportunity Attack': 'React', 'Bonus Actions': 'Bonus', 'Main Hand': 'Hit', 'Second Wind': 'Wind', 'Disengage': 'Evade', 'Spells': 'Magic', 'Attack': 'Hit', 'Class Action': 'Skill', 'Use an Item': 'Pack', 'Cast a Spell': 'Magic', 'Reactions': 'React', 'Retreat': 'Flee', 'Tactics': 'Tact' };
+      const spellLabels = { 'Fire Bolt': 'Bolt', 'Fireball': 'F.ball', 'Ray of Frost': 'Frost', 'Magic Missile': 'Darts', 'Burning Hands': 'Burn', 'Cure Wounds': 'Heal', 'Healing Word': 'Word' };
+      const label = spellLabels[raw] || labels[raw] || raw.split(' ')[0];
+      UI.text(ctx, c.x + c.w / 2, c.y + 21, UI.fit(label, c.w - 4, 'sm'), {
+        size: 'sm', align: 'center', color: !on ? UI.COLORS.disabled : sel ? '#2a1c07' : UI.COLORS.inkDim, shadow: false,
+      });
 
       // Cost pip (A / B / R), or a chevron when the button opens a submenu.
       const tag = r.group ? (UI.G.chevRight || '>') : (r.cost ? costTag(r.cost) : '');
@@ -4256,9 +4319,10 @@ export class BattleScene {
               : tag === 'B' ? UI.COLORS.green : tag === 'R' ? UI.COLORS.blue : UI.COLORS.goldBright,
         });
       }
-      // The number key that fires this button, for the first five.
-      if (!inSub && i < 5) {
-        UI.text(ctx, c.x + 2, c.y + 1, String(i + 1), {
+      // Match the shortcuts in _updateMenu, even when a group is absent.
+      const shortcut = { '@attack': '1', '@cast': '2', '@item': '3', '@move': '4' }[r.id];
+      if (!inSub && shortcut) {
+        UI.text(ctx, c.x + 2, c.y + 1, shortcut, {
           size: 'sm', color: sel ? '#5a4318' : UI.COLORS.gold,
           shadow: sel ? 'rgba(255,225,160,0.45)' : true,
         });
@@ -4279,7 +4343,7 @@ export class BattleScene {
         size: 'sm', align: 'center',
         color: top + L.vis < rows.length ? UI.COLORS.gold : UI.COLORS.disabled,
       });
-      UI.text(ctx, mid, MENU.y + 13, UI.fit(`${idx + 1}/${rows.length}`, gw - 2, 'sm'),
+      UI.text(ctx, mid, MENU.y + 13, UI.fit(`${Math.floor(top / L.vis) + 1}/${Math.ceil(rows.length / L.vis)}`, gw - 2, 'sm'),
         { size: 'sm', align: 'center', color: UI.COLORS.inkDim, shadow: true });
     }
   }
@@ -4321,7 +4385,7 @@ export class BattleScene {
     const row = this.phase === 'target' ? this.pending : rows[idx];
     if (!row) return;
 
-    UI.panel(ctx, DETAIL.x, DETAIL.y, DETAIL.w, DETAIL.h, { style: 'dark', shadow: 0.45, studs: false });
+    medievalPanel(ctx, DETAIL.x, DETAIL.y, DETAIL.w, DETAIL.h);
     const ix = DETAIL.x + 5;
     let y = DETAIL.y + 4;
     const w = DETAIL.w - 10;
@@ -4382,7 +4446,7 @@ export class BattleScene {
 
     // --- live maths for the highlighted target ------------------------------
     if (aiming) this._drawTargetMath(ctx, unit, ix, mathTop, w);
-    else if (Array.isArray(row.levels) && row.levels.length && y + 7 <= DETAIL.y + DETAIL.h - 4) {
+    else if (row.level > 0 && Array.isArray(row.levels) && row.levels.length && y + 7 <= DETAIL.y + DETAIL.h - 4) {
       // "Slots: 1, 2, 3" said which levels could cast it and not how many of
       // each were left, which is the number that decides whether to upcast.
       const slots = unit?.spells?.slots || {};
@@ -4434,7 +4498,7 @@ export class BattleScene {
     const tgt = this.targets.units[this.targetIndex];
     if (!tgt) return;
 
-    const isAttack = o.kind === 'attack' || o.spellAttack != null || (o.spellId && getSpell(o.spellId)?.attack);
+    const isAttack = o.kind === 'attack' || (o.spellId && getSpell(o.spellId)?.attack);
     const spell = o.spellId ? getSpell(o.spellId) : null;
     const dist = safe(() => distanceFt(unit, tgt), 0);
 
@@ -4471,7 +4535,7 @@ export class BattleScene {
       });
 
       const tail = [];
-      if (lethal) tail.push('KILLS');
+      if (lethal) tail.push('Potential KO');
       // Advantage without its cause tells you the odds moved but not whether
       // moving your feet would move them back. computeAdvantage already knows.
       if (ad.adv && !ad.dis) tail.push('ADV: ' + (arr(ad.advReasons)[0] || 'advantage'));
@@ -4482,6 +4546,13 @@ export class BattleScene {
       UI.text(ctx, x, y + 9, UI.fit(tail.join(' · '), w, 'sm'), {
         size: 'sm', color: lethal ? UI.COLORS.gold : UI.COLORS.inkDim, shadow: true,
       });
+      return;
+    }
+
+    if (spell?.damage?.perMissile) {
+      const n = (spell.damage.missiles || 3) + Math.max(0, (this.slotLevel || spell.level) - spell.level) * (spell.damage.scale?.missilesPerSlot || 1);
+      UI.text(ctx, x, y, `${n} darts · auto-hit · ${spell.damage.dice} each`, { size: 'sm', color: UI.COLORS.ink });
+      UI.text(ctx, x, y + 9, UI.fit(`All darts: ${tgt.name} · ${dist} ft · slot ${this.slotLevel}`, w, 'sm'), { size: 'sm', color: UI.COLORS.inkDim });
       return;
     }
 
@@ -4615,7 +4686,7 @@ export class BattleScene {
         if (traits) { UI.text(ctx, X + 4, y, UI.fit(`Traits: ${traits}`, W - 8, 'sm'), { size: 'sm', color: UI.COLORS.gold, shadow: true }); y += 8; }
         if (acts && y < Y + H - 9) UI.text(ctx, X + 4, y, UI.fit(`Actions: ${acts}`, W - 8, 'sm'), { size: 'sm', color: UI.COLORS.inkDim, shadow: true });
       } else if (def) {
-        UI.text(ctx, X + 4, y, 'Slay one to learn its ways.', { size: 'sm', color: UI.COLORS.inkDim, shadow: true });
+        UI.textWrapped(ctx, X + 4, y, W - 8, 'Slay one to learn its ways.', { size: 'sm', color: UI.COLORS.inkDim, shadow: true, maxLines: 2, lineHeight: 8 });
       }
     }
   }
@@ -4633,7 +4704,7 @@ export class BattleScene {
 
     const rowH = 8;
     const pad = 4;
-    const maxRows = Math.floor((LOGTAIL.h - pad * 2) / rowH);
+    const maxRows = Math.floor((LOGTAIL.h - pad * 2 - 10) / rowH);
 
     // Wrap from the newest backwards until the panel is full.
     const wrapped = [];
@@ -4654,12 +4725,13 @@ export class BattleScene {
     ctx.fillRect(LOGTAIL.x, LOGTAIL.y, LOGTAIL.w, LOGTAIL.h);
     ctx.fillStyle = 'rgba(140,110,50,0.40)';
     ctx.fillRect(LOGTAIL.x, LOGTAIL.y, 1, LOGTAIL.h);
+    UI.text(ctx, LOGTAIL.x + pad, LOGTAIL.y + 3, 'Log [J] / click', { size: 'sm', color: UI.COLORS.gold });
 
     let y = LOGTAIL.y + LOGTAIL.h - pad - wrapped.length * rowH;
     for (const w of wrapped) {
       // Older lines recede so the eye lands on what just happened.
       ctx.globalAlpha = w.age === 0 ? 1 : w.age < 3 ? 0.82 : 0.55;
-      UI.text(ctx, LOGTAIL.x + pad, y, w.text, {
+      UI.text(ctx, LOGTAIL.x + pad, y, UI.fit(w.text, LOGTAIL.w - pad * 2, 'sm'), {
         size: 'sm', color: LOG_COLORS[w.kind] || UI.COLORS.ink, shadow: true,
       });
       y += rowH;
@@ -4674,16 +4746,17 @@ export class BattleScene {
     const unit = enc && enc.current;
     const live = this.phase === 'menu' && unit && unit.side === 'party';
     const hot = this.endHover && live;
-    UI.panel(ctx, ENDBTN.x, ENDBTN.y, ENDBTN.w, ENDBTN.h, {
-      style: hot ? 'gold' : live ? 'window' : 'inset',
-      shadow: live ? 0.45 : 0.15, studs: false,
-    });
+    if (hot) UI.panel(ctx, ENDBTN.x, ENDBTN.y, ENDBTN.w, ENDBTN.h, { style: 'gold', studs: false });
+    else medievalPanel(ctx, ENDBTN.x, ENDBTN.y, ENDBTN.w, ENDBTN.h, { active: live });
+    ctx.fillStyle = live ? '#bbaa6c' : '#414452';
+    ctx.fillRect(ENDBTN.x + 5, ENDBTN.y + ENDBTN.h - 4, ENDBTN.w - 10, 1);
+    UI.text(ctx, ENDBTN.x + 4, ENDBTN.y + 3, '5', { size: 'sm', color: live ? UI.COLORS.gold : UI.COLORS.disabled });
     const armed = live && this.endConfirmAt && (this.t - this.endConfirmAt) < 3;
     const ink = !live ? UI.COLORS.disabled : hot ? '#2a1c07' : armed ? UI.COLORS.bad : UI.COLORS.goldBright;
-    UI.text(ctx, ENDBTN.x + ENDBTN.w / 2, ENDBTN.y + 4, armed ? 'SURE?' : 'END', {
+    UI.text(ctx, ENDBTN.x + ENDBTN.w / 2, ENDBTN.y + 6, armed ? 'SURE?' : 'END', {
       size: 'md', color: ink, align: 'center', shadow: !hot,
     });
-    UI.text(ctx, ENDBTN.x + ENDBTN.w / 2, ENDBTN.y + 13, armed ? 'ACTION LEFT' : 'TURN', {
+    UI.text(ctx, ENDBTN.x + ENDBTN.w / 2, ENDBTN.y + 17, armed ? 'ACT LEFT' : 'TURN', {
       size: 'sm', color: ink, align: 'center', shadow: !hot,
     });
   }
@@ -4706,7 +4779,7 @@ export class BattleScene {
       y += 9;
     }
     UI.popClip(ctx);
-    UI.text(ctx, X + W / 2, Y + H - 9, 'Up/Down to scroll  ·  X to close', { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
+    UI.text(ctx, X + W / 2, Y + H - 9, 'Wheel / Up / Down: scroll  ·  Click / X: close', { size: 'sm', color: UI.COLORS.inkDim, align: 'center' });
   }
 
   // --- transient overlays --------------------------------------------------
@@ -4989,7 +5062,7 @@ export class BattleScene {
     else if (this.phase === 'target') {
       hint('X', 'Back');
       if (Array.isArray(this.pending?.levels) && this.pending.levels.length > 1) hint('5', 'Slot');
-      else hint('Z', 'Cast');
+      else hint('Z', this.pending?.spellId ? 'Cast' : 'Use');
     } else if (this.phase === 'menu') { hint('J', 'Log'); hint('Q/R', 'Scan'); hint('Z', 'Pick'); }
     else if (this.beats.length) { hint('Sh', 'Fast'); hint('Z', 'Skip'); }
     else { hint('J', 'Log'); hint('Sh', 'Fast'); }

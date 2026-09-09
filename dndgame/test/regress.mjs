@@ -190,7 +190,7 @@ check('crime: children cannot be attacked', crime.childBlocked !== false);
 // --- the hotbar ------------------------------------------------------------
 // The whole point of it: every verb the overworld has should be on screen with
 // the key that does it, and none of it should need to be read in the source.
-const bar = await page.evaluate(() => {
+const bar = await page.evaluate(async () => {
   const ow = SC.Game.top;
   const ch = SC.Party.members[0];
   ch.spells = ch.spells || {};
@@ -226,10 +226,18 @@ const bar = await page.evaluate(() => {
     out.childAttack = { on: m.attack.enabled, why: m.attack.why };
   }
 
-  // Every button is hit-testable where it is drawn.
+  // Every button is hit-testable where it is drawn. Counted against what the
+  // bar actually lays out — one contextual verb, SLOT_COUNT quick slots and
+  // however many menu buttons the model supplies — rather than a fixed total,
+  // which went stale the moment the belt dropped from two verbs to one.
   const c = document.getElementById('game').getContext('2d');
-  ow.hotbar.draw(c, ow._hotbarModel());
+  const model = ow._hotbarModel();
+  ow.hotbar.draw(c, model);
+  const HB = await import('/dndgame/src/ui/hotbar.js');
+  out.slotCount = HB.SLOT_COUNT;
+  out.menuCount = (model.menus || []).length;
   out.hitRects = ow.hotbar.hot.length;
+  out.deadRects = ow.hotbar.hot.filter((r) => !(r.w > 0 && r.h > 0)).length;
   return out;
 });
 check('hotbar: fills slots, longest ward first', bar.slots[0] === 'Mage Armor', bar.slots.join(', '));
@@ -241,7 +249,9 @@ check('hotbar: facing a townsfolk lights Talk and Attack',
 check('hotbar: attacking a child is refused, in words',
   !bar.childAttack || (!bar.childAttack.on && !!bar.childAttack.why),
   bar.childAttack && bar.childAttack.why);
-check('hotbar: every button is clickable', bar.hitRects >= 10, `${bar.hitRects} hit rects`);
+check('hotbar: every button is clickable',
+  bar.hitRects === 1 + bar.slotCount + bar.menuCount && bar.deadRects === 0,
+  `${bar.hitRects} rects = 1 verb + ${bar.slotCount} slots + ${bar.menuCount} menus, ${bar.deadRects} zero-area`);
 
 // --- portrait captions -----------------------------------------------------
 // The caption under a dialogue bust read `role`, an internal enum whose default

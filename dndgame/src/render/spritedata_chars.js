@@ -28,7 +28,8 @@
 //     rows 14-16  torso only, cols 5-10, NO outline (the body owns cols 3-4/11-12)
 //     rows 17+    hems span cols 4-11 with K at 4 and 11 (the arms are gone by then)
 
-import { defineSprite, shadeHex } from './sprites.js';
+import { defineSprite, shadeHex, makeColorway } from './sprites.js';
+import { SATCHEL } from './satchel-art.js';
 
 // --- palette --------------------------------------------------------------
 // Every humanoid layer shares this key map so layers can be flattened together.
@@ -199,6 +200,9 @@ function define(name, def) { PENDING.push([name, def]); return name; }
 /** Register a humanoid layer and remember its grids for the NPC baker. */
 function layer(name, dirs, anim, paletteExtra) {
   const frames = walkSet(dirs, anim);
+  if (name.startsWith('body-')) for (const d of ['down', 'left', 'right']) {
+    frames[`${d}-3`] = frames[`${d}-3`].map((row, y) => y < 10 ? row.replaceAll('e', 'd') : row);
+  }
   ART[name] = frames;
   return define(name, {
     w: W, h: H,
@@ -2254,9 +2258,9 @@ gear('shield-tower', at(11, [
 // ===========================================================================
 // TOWNSFOLK -- the Phandalin cast baked flat.
 // A town NPC does not need the layered compositor: we flatten the same layer
-// grids once, freeze literal colours into the palette, and register the result
-// as an ordinary single-layer sprite. Toblen Stonehill, Elmar Barthen, Linene
-// Graywind, Sister Garaele and the rest just pick one of these and a tint.
+// grids once and keep semantic color tokens with a profession default palette.
+// Named NPC colors override that default, while identity-based variants change
+// hair, beards and civilian accessories without changing equipment or species.
 // ===========================================================================
 
 /** Turn a handful of hex choices into the full 26-key humanoid palette. */
@@ -2297,8 +2301,28 @@ function npc(name, stack, colors) {
     frames[f] = flatten(stack.map((n) => (ART[n] ? ART[n][f] : null)));
   }
   ART[name] = frames;
-  return define(name, { w: W, h: H, palette: pal(colors), frames, anims: ANIMS });
+  define(name, { w: W, h: H, palette: PAL, defaultColorway: makeColorway(colors), frames, anims: ANIMS });
+  // Alternate silhouettes retain the profession's costume, equipment and species.
+  const hairSets = stack.includes('hair-long') || stack.includes('hair-braid')
+    ? ['hair-braid', 'hair-ponytail', 'hair-bob']
+    : ['hair-curly', 'hair-wild', 'hair-shaved'];
+  for (let v = 1; v <= 3; v++) {
+    const alternate = stack.map(n => n.startsWith('hair-') ? hairSets[v - 1]
+      : n.startsWith('beard-') ? ['beard-mustache', 'beard-goatee', 'beard-full'][v - 1] : n);
+    if (name === 'npc-villager-m') {
+      const i = alternate.indexOf('outfit-tunic');
+      if (i >= 0) alternate[i] = ['outfit-jerkin', 'outfit-doublet', 'outfit-gambeson'][v - 1];
+    }
+    if (['npc-villager-m', 'npc-villager-f', 'npc-merchant', 'npc-farmer', 'npc-innkeeper'].includes(name) && v !== 2)
+      alternate.push('accessory-satchel');
+    const variantFrames = {};
+    for (const f of FRAME_NAMES) variantFrames[f] = flatten(alternate.map(n => ART[n]?.[f]));
+    define(`${name}-v${v}`, { w: W, h: H, palette: PAL, defaultColorway: makeColorway(colors), frames: variantFrames, anims: ANIMS });
+  }
+  return name;
 }
+
+layer('accessory-satchel', SATCHEL);
 
 npc('npc-villager-m', ['body-normal', 'hair-short', 'beard-stubble', 'outfit-tunic'],
   { skin: '#dda171', hair: '#4a3320', main: '#6b7a48', leather: '#5a3f22', accent: '#b08a3a' });

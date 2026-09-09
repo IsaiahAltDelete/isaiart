@@ -1538,8 +1538,8 @@ function drawFlash(ctx) {
 // ---------------------------------------------------------------------------
 
 const WEATHER_DEF = {
-  rain: { count: 190, color: '#8fb6d8', wind: -70, fall: 340, sizeMin: 3, sizeMax: 8, splash: 1, grade: '#3a4a66', gradeAmt: 0.20 },
-  storm: { count: 300, color: '#a8c4e0', wind: -150, fall: 480, sizeMin: 5, sizeMax: 12, splash: 1.5, bolts: true, grade: '#26304a', gradeAmt: 0.34 },
+  rain: { count: 110, color: '#9aafba', wind: -28, fall: 155, sizeMin: 2, sizeMax: 4, splash: 1, grade: '#53616c', gradeAmt: 0.12 },
+  storm: { count: 180, color: '#a5b7c6', wind: -65, fall: 225, sizeMin: 3, sizeMax: 6, splash: 1, bolts: true, grade: '#394958', gradeAmt: 0.24 },
   snow: { count: 150, color: '#eef4ff', wind: -18, fall: 34, sizeMin: 1, sizeMax: 2.4, grade: '#93a6c0', gradeAmt: 0.12 },
   ash: { count: 120, color: '#9e968c', wind: -10, fall: 20, sizeMin: 1, sizeMax: 2, grade: '#6a5a4a', gradeAmt: 0.18 },
   leaves: { count: 60, color: '#c8823a', wind: -34, fall: 40, sizeMin: 2, sizeMax: 3.6 },
@@ -1551,7 +1551,7 @@ const WEATHER_DEF = {
 // over the game. Rain that BREAKS on the ground reads as weather happening in
 // the world, so every drop is given a ground line somewhere down the view and
 // leaves a splash when it reaches it.
-const MAX_SPLASH = 90;
+const MAX_SPLASH = 24;
 const SPLASH = new Array(MAX_SPLASH);
 for (let i = 0; i < MAX_SPLASH; i++) SPLASH[i] = { x: 0, y: 0, age: 0, life: 0.28, size: 2, on: false };
 let sHead = 0;
@@ -1559,7 +1559,7 @@ let sHead = 0;
 function addSplash(x, y, size) {
   const s = SPLASH[sHead];
   sHead = (sHead + 1) % MAX_SPLASH;
-  s.x = x; s.y = y; s.age = 0; s.life = fxr.float(0.2, 0.34); s.size = size; s.on = true;
+  s.x = x; s.y = y; s.age = 0; s.life = fxr.float(0.12, 0.2); s.size = size; s.on = true;
 }
 
 // Lightning: a scheduled strike, a two-stage flash (the leader, then the main
@@ -1588,6 +1588,7 @@ function retargetWeather() {
 
 /** Full re-dress of the layer after a change of weather. */
 function seedWeather() {
+  for (const s of SPLASH) s.on = false;
   for (let i = 0; i < MAX_WEATHER; i++) WEATHER[i].kind = '';
   retargetWeather();
 }
@@ -1597,7 +1598,7 @@ function resetWeatherMote(p, def, anywhere) {
   p.x = fxr.float(-20, VIEW_W + 20);
   p.y = anywhere ? fxr.float(-10, VIEW_H + 10) : fxr.float(-24, -4);
   p.size = fxr.float(def.sizeMin, def.sizeMax) * depth;
-  p.len = p.size * (def.splash ? 2.2 : 1);
+  p.len = p.size;
   p.vy = def.fall * depth * fxr.float(0.85, 1.2);
   p.vx = 0;
   p.phase = fxr.float(0, 6.283);
@@ -1670,7 +1671,7 @@ function updateWeather(dt) {
     p.rot += p.vr * dt;
     // A drop that reaches its ground line breaks there.
     if (def.splash && p.y >= p.ground) {
-      if (p.z > 0 && fxr.chance(0.55)) addSplash(p.x, p.ground, p.size * 0.5 * def.splash);
+      if (p.z > 0 && fxr.chance(0.22)) addSplash(p.x, p.ground, 1);
       resetWeatherMote(p, def, false);
       continue;
     }
@@ -1735,30 +1736,19 @@ function drawWeather(ctx) {
 
   ctx.save();
 
-  // Splashes go down FIRST, under the falling drops: the ground is behind the
-  // rain. A splash is a low flat ring with a couple of rebound ticks — a
-  // circle here reads as a bubble, not as water breaking.
+  // Brief pixel impacts, kept small enough to leave terrain and actors legible.
   if (def.splash) {
     for (let i = 0; i < MAX_SPLASH; i++) {
       const s = SPLASH[i];
       if (!s.on) continue;
       const t = s.age / s.life;
-      const a = wBlend * (1 - t) * 0.7;
+      const a = wBlend * (1 - t) * 0.28;
       if (a <= 0.02) continue;
-      const rw = s.size * (1 + t * 3.2);
+      const spread = t < 0.5 ? 1 : 2;
       ctx.globalAlpha = a;
-      ctx.strokeStyle = def.color;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.ellipse(s.x, s.y, Math.max(1, rw), Math.max(0.6, rw * 0.34), 0, 0, 6.2832);
-      ctx.stroke();
-      if (t < 0.45) {
-        ctx.globalAlpha = a * 0.9;
-        ctx.fillStyle = def.color;
-        const lift = (1 - t / 0.45) * 3;
-        ctx.fillRect(Math.round(s.x - rw * 0.6), Math.round(s.y - lift), 1, 1);
-        ctx.fillRect(Math.round(s.x + rw * 0.6), Math.round(s.y - lift * 0.8), 1, 1);
-      }
+      ctx.fillStyle = def.color;
+      ctx.fillRect(Math.round(s.x) - spread, Math.round(s.y) - 1, 1, 1);
+      ctx.fillRect(Math.round(s.x) + spread, Math.round(s.y), 1, 1);
     }
   }
 
@@ -1767,7 +1757,9 @@ function drawWeather(ctx) {
     const p = WEATHER[i];
     const depth = 0.55 + p.z * 0.32;
     // Parallax: near layers slide against the camera more than far ones.
-    const par = 0.04 + p.z * 0.05;
+    // Rain and its impacts share screen coordinates, so streaks land where
+    // they disappear. Other weather keeps its drifting camera parallax.
+    const par = def.splash ? 0 : 0.04 + p.z * 0.05;
     let x = p.x - lastCamX * par;
     const y = p.y - lastCamY * par * 0.5;
     // Wrap the parallax offset back into view.
@@ -1777,13 +1769,15 @@ function drawWeather(ctx) {
     switch (wKind) {
       case 'storm':
       case 'rain': {
-        ctx.strokeStyle = def.color;
-        ctx.lineWidth = depth < 0.9 ? 1 : 1.5;
-        const sx = wWind * 0.012 * p.len;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + sx, y + p.len * 2);
-        ctx.stroke();
+        ctx.fillStyle = def.color;
+        const alpha = wBlend * (0.12 + p.z * 0.065) * (0.65 + wIntensity * 0.35);
+        const len = Math.max(2, Math.round(p.len));
+        const slope = wWind * depth / p.vy;
+        // One-pixel stepped trail follows the actual velocity, behind the tip.
+        for (let j = 0; j < len; j++) {
+          ctx.globalAlpha = alpha * (1 - j / (len * 1.3));
+          ctx.fillRect(Math.round(x - slope * j), Math.round(y) - j, 1, 1);
+        }
         break;
       }
       case 'snow': {

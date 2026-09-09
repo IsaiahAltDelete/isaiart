@@ -2419,15 +2419,22 @@ function buildTiles() {
     blob(c, PAL.thatchL, x, y, [[3, 6, 3], [4, 5, 4], [5, 4, 4], [6, 3, 4], [7, 2, 4]]);  // lit upper-left slope
   });
 
-  def('CHIMNEY', 'Chimney', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 1, animFrames: 3, fps: 1.5 },
+  def('CHIMNEY', 'Chimney', SOLID, { layer: 'over', group: 'roof', biomes: ['city'], variants: 1, animFrames: 4, fps: 3 },
     (c, x, y, v, w, f) => {
-      R(c, PAL.brick, x + 4, y + 3, 8, 13);
-      for (let row = 0; row < 4; row++) { const oy = y + 4 + row * 3; H(c, PAL.brickD, x + 4, oy, 8); V(c, PAL.brickD, x + ((row % 2) ? 7 : 9), oy - 2, 2); }
-      R(c, PAL.stoneL, x + 3, y + 2, 10, 2); H(c, PAL.stoneH, x + 3, y + 2, 10);
-      R(c, PAL.ink, x + 6, y + 3, 4, 1);
-      // smoke
-      const s = f % 3;
-      P(c, '#9a948e', x + 7 + s, y + 1); P(c, '#b6b0a8', x + 8 - s, y);
+      R(c, PAL.brickD, x + 5, y + 7, 8, 9);
+      R(c, PAL.brick, x + 5, y + 7, 5, 8);
+      for (let row = 0; row < 3; row++) {
+        const oy = y + 8 + row * 3;
+        H(c, PAL.brickD, x + 5, oy, 7);
+        P(c, PAL.brickD, x + (row % 2 ? 7 : 9), oy - 1);
+      }
+      R(c, PAL.stoneD, x + 4, y + 6, 10, 2);
+      H(c, PAL.stoneL, x + 4, y + 6, 10);
+      H(c, PAL.ink, x + 7, y + 6, 4);
+      // Stepped pixel clusters drift upward; the chimney remains fixed.
+      R(c, '#928d91', x + 8 + [0, 1, 0, -1][f], y + 4, 3, 2);
+      R(c, '#b0abad', x + 7 + [0, 0, 1, 2][f], y + 2, 4, 2);
+      R(c, '#c5bfba', x + 8 + [0, 1, 2, 1][f], y, 3, 1);
     });
 
   // --- 4.10 doors, windows, signs ------------------------------------------
@@ -2459,23 +2466,35 @@ function buildTiles() {
     O(c, PAL.ink, x + 1, y, 14, 16);
   });
 
-  def('WINDOW', 'Window', SOLID, { layer: 'deco', group: 'wall', biomes: ['city'], variants: 1 }, (c, x, y) => {
+  // Deep-set panes, painted shutters and planted sills make each facade inhabited.
+  function windowFace(c, x, y, v, lit, f = 0) {
     R(c, PAL.plaster, x, y, 16, 16);
-    R(c, PAL.woodD, x + 2, y + 3, 12, 10);
-    R(c, '#2b3a46', x + 3, y + 4, 10, 8);
-    V(c, PAL.woodD, x + 7, y + 4, 8); H(c, PAL.woodD, x + 3, y + 7, 10);
-    H(c, '#48606e', x + 3, y + 4, 4);
-    R(c, PAL.wood, x + 1, y + 13, 14, 2); H(c, PAL.woodL, x + 1, y + 13, 14);
-  });
-
-  def('WINDOW_LIT', 'Lit Window', SOLID, { layer: 'deco', group: 'wall', biomes: ['city'], variants: 1 }, (c, x, y) => {
-    R(c, PAL.plaster, x, y, 16, 16);
-    R(c, PAL.woodD, x + 2, y + 3, 12, 10);
-    R(c, '#f2c86a', x + 3, y + 4, 10, 8);
-    R(c, '#ffe9a8', x + 4, y + 5, 4, 3);
-    V(c, PAL.woodD, x + 7, y + 4, 8); H(c, PAL.woodD, x + 3, y + 7, 10);
-    R(c, PAL.wood, x + 1, y + 13, 14, 2); H(c, PAL.woodL, x + 1, y + 13, 14);
-  });
+    H(c, PAL.plasterD, x, y, 16);
+    R(c, PAL.plasterM, x, y + 11, 16, 5);
+    R(c, PAL.woodD, x + 2, y + 2, 12, 11);
+    R(c, lit ? '#e4aa53' : '#283c49', x + 3, y + 3, 10, 9);
+    R(c, lit ? (f === 1 ? '#ffe8a1' : '#f6d17e') : '#59818c', x + 3, y + 3, 4, 3);
+    R(c, lit ? '#be793e' : '#3b586a', x + 8, y + 8, 5, 4);
+    P(c, lit ? '#fff2bd' : '#a0b7ac', x + 4, y + 4);
+    V(c, PAL.woodD, x + 7, y + 3, 9); H(c, PAL.woodD, x + 3, y + 7, 10);
+    H(c, PAL.woodL, x + 2, y + 2, 12);
+    const shutter = ['#426b66', '#775064', '#5e7045', '#855437'][v % 4];
+    R(c, shutter, x, y + 4, 2, 8); R(c, shutter, x + 14, y + 4, 2, 8);
+    H(c, PAL.woodD, x, y + 8, 2); H(c, PAL.woodD, x + 14, y + 8, 2);
+    R(c, PAL.woodD, x + 1, y + 13, 14, 3); H(c, PAL.woodL, x + 1, y + 13, 14);
+    if (v % 3 !== 0) {
+      R(c, '#52734a', x + 3, y + 12, 10, 2);
+      for (let i = 0; i < 3; i++) {
+        const dx = 4 + i * 3;
+        P(c, '#8fa35e', x + dx, y + 11);
+        P(c, v % 2 ? '#e9ae8b' : '#c9b0d5', x + dx + 1, y + 12);
+      }
+    }
+  }
+  def('WINDOW', 'Window', SOLID, { layer: 'deco', group: 'wall', biomes: ['city'], variants: 6 },
+    (c, x, y, v) => windowFace(c, x, y, v, false));
+  def('WINDOW_LIT', 'Lit Window', SOLID, { layer: 'deco', group: 'wall', biomes: ['city'], variants: 6, animFrames: 3, fps: 2 },
+    (c, x, y, v, w, f) => windowFace(c, x, y, v, true, f));
 
   def('SHUTTER', 'Shutters', SOLID, { layer: 'deco', group: 'wall', biomes: ['city'], variants: 1 }, (c, x, y) => {
     R(c, PAL.plaster, x, y, 16, 16);

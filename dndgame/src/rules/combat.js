@@ -947,7 +947,7 @@ export class Encounter {
         name: spell.name || id,
         cost,
         icon: 'spell',
-        desc: spellBlurb(spell, dc, atk),
+        desc: spellBlurb(spell, dc, atk, unit.level || 1, levels[0] ?? spell.level),
         targeting: {
           kind: t.kind || (spell.range === 'self' ? 'self' : 'creature'),
           range: reach,
@@ -1536,6 +1536,9 @@ export class Encounter {
   _attack(attacker, target, opts = {}) {
     const mods = this._preAttackReactions(attacker, target, opts);
     const finalOpts = { ...opts };
+    finalOpts.onHitCheck = ({ roll, ac }) => {
+      if (!opts.noReactions && roll.total < ac + 5) this._shieldReaction(attacker, target);
+    };
     if (mods.dis) finalOpts.dis = true;
     if (mods.disReason) finalOpts.disReason = mods.disReason;
     if (mods.damageReduction > 0 && finalOpts.damage) {
@@ -1876,8 +1879,11 @@ export class Encounter {
       }
     } else {
       // No roll: healing, buffs, utility. Damage without a save (Magic Missile).
-      for (const v of victims) {
-        if (dmgDice) {
+      const missiles = spell.damage?.perMissile ? Math.max(1, num(spell.damage.missiles, 3) + Math.max(0, level - spell.level) * num(spell.damage.scale?.missilesPerSlot, 1)) : 0;
+      const damageVictims = missiles && victims.length ? Array.from({ length: missiles }, (_, i) => victims[i % victims.length]) : victims;
+      if (missiles) for (const v of new Set(damageVictims)) this._shieldReaction(unit, v);
+      for (const v of damageVictims) {
+        if (dmgDice && !(missiles && hasCondition(v, 'shielded'))) {
           const roll = rollExpr(dmgDice, this.rng);
           const concSpell = v.concentration?.spellId || null;
           const applied = applyDamage(this, v, roll.total, spell.damage?.type || 'force', { source: unit, magical: true, label: spell.name });
@@ -2871,23 +2877,6 @@ export class Encounter {
       break;
     }
 
-    // --- Shield (the spell): +5 AC, including against the triggering attack --
-    if (!target._reactionUsed && canCastReactionSpell(target, 'shield')) {
-      const taken = this._askReaction(target, {
-        kind: 'spell-shield', name: 'Shield',
-        desc: `${attacker.name || 'A foe'} attacks. Raise a Shield (+5 AC until your next turn)?`,
-        trigger: { attacker, target }, spellId: 'shield',
-      });
-      if (taken) {
-        this._spend(target, this._budgetFor(target), 'reaction');
-        const slots = safe(() => availableSlots(target, 1), []) || [];
-        if (slots.length) safe(() => spendSlot(target, slots[0]));
-        addCondition(target, 'shielded', { source: target.uid, spellId: 'shield' });
-        mods.used.push({ uid: target.uid, kind: 'shield' });
-        this._push(`${target.name} casts Shield — an invisible barrier flares, +5 AC.`, 'buff', target);
-      }
-    }
-
     // --- Uncanny Dodge: halve the damage of one attack you can see ----------
     if (!target._reactionUsed && hasPassive(target, 'uncanny-dodge')) {
       const taken = this._askReaction(target, {
@@ -2922,6 +2911,17 @@ export class Encounter {
     }
 
     return mods;
+  }
+
+  _shieldReaction(attacker, target) {
+    if (target._reactionUsed || hasCondition(target, 'shielded') || !canCastReactionSpell(target, 'shield')) return;
+    if (!this._askReaction(target, { kind: 'spell-shield', name: 'Shield', spellId: 'shield', trigger: { attacker, target } })) return;
+    const slots = availableSlots(target, 1);
+    if (!slots.length) return;
+    this._spend(target, this._budgetFor(target), 'reaction');
+    spendSlot(target, slots[0]);
+    addCondition(target, 'shielded', { source: target.uid, spellId: 'shield' });
+    this._push(`${target.name} casts Shield — +5 AC until their next turn.`, 'buff', target);
   }
 
   /** Riposte and Hellish Rebuke fire after the attack has been resolved. */
@@ -3613,14 +3613,17 @@ function roundsForDuration(duration) {
 }
 
 /** A one-line rules blurb for a spell in the action menu. */
-function spellBlurb(spell, dc, atk) {
+function spellBlurb(spell, dc, atk, characterLevel = 1, slotLevel = spell.level) {
   const bits = [];
   bits.push(spell.level === 0 ? 'Cantrip' : `Level ${spell.level}`);
-  if (spell.damage?.dice) bits.push(`${spell.damage.dice} ${spell.damage.type}`);
+  if (spell.damage?.dice) bits.push(`${spellDamageDice(spell, slotLevel, characterLevel)} ${spell.damage.type}${spell.damage.perMissile ? ' per dart' : ''}`);
   if (spell.heal?.dice) bits.push(`heals ${spell.heal.dice}`);
   if (spell.attack) bits.push(`${signed(atk)} spell attack`);
   if (spell.save) bits.push(`DC ${dc} ${String(spell.save.ability || 'dex').toUpperCase()}`);
   if (spell.concentration) bits.push('Concentration');
+  const conditions = arr(spell.effects).filter(e => e?.kind === 'condition').map(e => conditionName(e.id || e.condition) || e.id || e.condition).filter(Boolean);
+  if (conditions.length) bits.push(conditions.join(', '));
+  else if (!spell.damage && !spell.heal && spell.desc) bits.push(spell.desc);
   return bits.join(' · ');
 }
 

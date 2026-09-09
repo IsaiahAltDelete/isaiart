@@ -211,6 +211,25 @@ export async function boot(hooks = {}) {
   installCheatKeys();
   window.SC = { Game, Party, Save, Audio, Input, FX, bus, EV, newGame, continueGame, writeSave,
                 awardPartyXp, createCharacter, VERSION, cheat, Cheats };
+  window.render_game_to_text = () => {
+    const scene = Game.scenes.find(s => s.id === 'overworld');
+    const active = Game.scenes.at(-1);
+    return JSON.stringify({
+      coordinates: 'tile origin top-left; x right, y down',
+      mode: active?.id, map: scene?.map?.id,
+      combat: active?.enc ? { phase: active.phase, round: active.enc.round, current: active.enc.current?.name, budget: active._budget(), actions: active._currentRows().map(r => ({ id: r.id, name: r.name, enabled: r.enabled })) } : null,
+      player: scene?.player ? { x: scene.player.x, y: scene.player.y, dir: scene.player.dir, moving: scene.player.moving } : null,
+      npcs: (scene?.entities?.list || []).filter(e => e.kind === 'npc' && !e.hidden && !e.removed).map(e => ({ id: e.npcId, x: e.x, y: e.y, sprite: e.sprite })),
+    });
+  };
+  window.advanceTime = (ms) => {
+    const steps = Math.max(1, Math.ceil(ms / (1000 / 60)));
+    for (let i = 0; i < steps; i++) {
+      const dt = ms / steps / 1000;
+      Game.time += dt; Game._update(dt); Input.update(dt);
+    }
+    Game._draw();
+  };
   window.cheat = cheat;   // short alias; `cheat.help()` lists everything
   console.info(`Sword Coast Chronicles v${VERSION}`);
   console.info('%cTesting: type  cheat.help()  — or type "xyzzy" in the game window for explore mode.',

@@ -16,7 +16,7 @@
 export const ACTIONS = Object.freeze([
   'up', 'down', 'left', 'right',
   'confirm', 'cancel', 'menu', 'run', 'interact',
-  'map', 'journal', 'party', 'inventory',
+  'map', 'journal', 'party', 'inventory', 'spells',
   'next', 'prev',
   'tab1', 'tab2', 'tab3', 'tab4', 'tab5',
   'debug',
@@ -45,6 +45,7 @@ const DEFAULTS = {
   journal:   ['KeyJ'],
   party:     ['Tab'],
   inventory: ['KeyI'],
+  spells:    ['KeyK'],
   next:      ['KeyR'],
   prev:      ['KeyQ'],
   tab1:      ['Digit1', 'Numpad1'],

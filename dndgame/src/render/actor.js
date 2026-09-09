@@ -211,7 +211,7 @@ function bodyFor(ch) {
  */
 export function colorwayOf(ch) {
   const a = ch.appearance || {};
-  const sig = [a.skin, a.hair, a.eye, a.outfit, a.outfitAlt, a.accent, a.metal, a.leather].join('|');
+  const sig = [a.skin, a.hair, a.eye, a.outfit, a.outfitAlt, a.accent, a.metal, a.leather, a.cloth, a.hornColor].join('|');
   if (ch._cwSig === sig && ch.colorway) return ch.colorway;
   const cw = makeColorway({
     skin: a.skin || '#e0a878',
@@ -274,7 +274,7 @@ function actorSig(ch, frame) {
     a.cloakStyle, a.helmStyle, a.outfitStyle, a.bootStyle,
     helmFor(ch), cloakFor(ch), bootsFor(ch),
     idOf(eq.armor), idOf(eq.mainHand), idOf(eq.offHand), idOf(eq.helm),
-    a.skin, a.hair, a.eye, a.outfit, a.outfitAlt, a.accent, a.metal, a.leather,
+    a.skin, a.hair, a.eye, a.outfit, a.outfitAlt, a.accent, a.metal, a.leather, a.cloth, a.hornColor,
   ].join('')).toString(36);
 }
 

@@ -1594,9 +1594,9 @@ export class OverworldScene {
     // The hotbar gets first refusal on the pointer, and swallows the click so
     // it never also lands on the world underneath.
     const m = safe(() => Input.mouse, null);
+    this.hotbar.hover(m && m.over ? m.x : -1, m && m.over ? m.y : -1);
     if (m && m.over) {
       if (this.hotbar.contains(m.x, m.y)) {
-        this.hotbar.hover(m.x, m.y);
         if (m.clicked) { m.clicked = false; this.hotbar.click(m.x, m.y); return; }
       }
     }
@@ -1607,6 +1607,7 @@ export class OverworldScene {
     if (Input.consume('journal')) { this._openMenu('journal'); return; }
     if (Input.consume('map')) { this._openMenu('map'); return; }
     if (Input.consume('inventory')) { this._openMenu('inventory'); return; }
+    if (Input.consume('spells')) { this._openMenu('spells'); return; }
 
     // 1..4 fire the quick slots. They were unbound in the overworld.
     for (let i = 0; i < SLOT_COUNT; i++) {
@@ -2601,7 +2602,7 @@ export class OverworldScene {
               : usableTrigger.kind === 'warp' || usableTrigger.kind === 'door' ? 'Enter' : 'Look';
       action = { label: verb, enabled: true, tip: verb, fn: () => this._interact() };
     } else {
-      action = { label: 'Look', enabled: false, why: 'Nothing in front of you.' };
+      action = { label: 'Explore', enabled: false, why: 'Face a person, chest, sign or doorway to interact.' };
     }
 
     // --- the Shift+E verb --------------------------------------------------
@@ -2620,7 +2621,12 @@ export class OverworldScene {
       attack = { label: 'Attack', enabled: true, tip: `Attack ${e.name || 'it'}`, fn: () => this._interact() };
     }
 
+    const aggressive = !!Input.down('run') && !!e && (e.kind === 'npc' || e.kind === 'monster');
+    const context = aggressive ? attack : { ...action,
+      tip: action.enabled ? `${action.tip || action.label} [E]${e?.kind === 'npc' && attack.enabled ? ' / Shift+E: draw steel' : ''}` : action.why,
+    };
     return {
+      context, aggressive,
       action,
       attack,
       slots: this._slots,
@@ -4818,17 +4824,17 @@ export class OverworldScene {
     if (!b) return;
     const fade = b.t < 0.3 ? b.t / 0.3 : b.t > 2.6 ? clamp((3.2 - b.t) / 0.6, 0, 1) : 1;
     if (fade <= 0.01) return;
-    const w = Math.max(96, safe(() => UI.measure(b.text, 'md'), 80) + 28);
-    const x = Math.round((VIEW_W - w) / 2), y = 18;
+    const w = Math.min(176, Math.max(96, safe(() => UI.measure(b.text, 'md'), 80) + 28));
+    const x = Math.round(183 - w / 2), y = 3;
     const h = b.sub ? 28 : 20;
     ctx.save();
     ctx.globalAlpha = fade;
     safe(() => UI.panel(ctx, x, y, w, h, { style: 'dark', alpha: 0.9 }));
-    safe(() => UI.text(ctx, Math.round(VIEW_W / 2), y + 5, b.text, {
+    safe(() => UI.text(ctx, 183, y + 5, UI.fit(b.text, w - 16, 'md'), {
       size: 'md', color: UI.COLORS.gold, align: 'center', shadow: true,
     }));
     if (b.sub) {
-      safe(() => UI.text(ctx, Math.round(VIEW_W / 2), y + 16, b.sub, {
+      safe(() => UI.text(ctx, 183, y + 16, UI.fit(b.sub, w - 16, 'sm'), {
         size: 'sm', color: UI.COLORS.dim, align: 'center',
       }));
     }

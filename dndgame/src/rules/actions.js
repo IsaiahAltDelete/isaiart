@@ -1067,7 +1067,7 @@ export function resolveAttack(ctx, attacker, target, opts = {}) {
   // --- 5. AC, cover and hit determination --------------------------------
   const cover = opts.ignoreCover ? 0 : hasCover(ctx, attacker, target);
   const tcm = conditionMech(target);
-  const ac = acOf(target) + cover + tcm.acBonus;
+  let ac = acOf(target) + cover + tcm.acBonus;
   result.ac = ac;
   result.cover = cover;
 
@@ -1075,6 +1075,12 @@ export function resolveAttack(ctx, attacker, target, opts = {}) {
   const nat1 = roll.natural === 1;
   // A natural 20 always hits and always crits; a natural 1 always misses (2024 PHB).
   let hit = opts.autoHit ? true : nat20 ? true : nat1 ? false : roll.total >= ac;
+  if (hit && !nat20 && !opts.autoHit && typeof opts.onHitCheck === 'function') {
+    opts.onHitCheck({ roll, ac });
+    ac = acOf(target) + cover + conditionMech(target).acBonus;
+    result.ac = ac;
+    hit = roll.total >= ac;
+  }
   let crit = nat20 || !!opts.crit || roll.crit;
 
   // Paralyzed / Unconscious: any hit from within 5 feet is a Critical Hit.
