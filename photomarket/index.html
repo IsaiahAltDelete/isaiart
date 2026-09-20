@@ -67,6 +67,11 @@ body{
   overscroll-behavior:none; touch-action:none;
 }
 button,input,select,textarea{font:inherit;color:inherit;font-family:var(--ui)}
+/* Every glyph from U.icon() is a stroked outline; this is the floor the more
+   specific rules (tools, buttons, rows) size from, so an icon dropped into a
+   new spot is never an unstyled black shape. */
+svg[aria-hidden="true"]{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.opt-tool .glyph svg{width:17px;height:17px}
 /* Poppins has a tall x-height and wide default tracking; pulling it in a
    fraction keeps labels the same physical size they were in the system face. */
 .menu-top,.opt > label,.btn,.lname,.menu-item{letter-spacing:-.1px}
@@ -118,9 +123,14 @@ button,input,select,textarea{font:inherit;color:inherit;font-family:var(--ui)}
   box-shadow:0 14px 40px rgba(0,0,0,.55), var(--hair);
 }
 .menu-item{
-  display:flex; align-items:center; gap:10px; padding:6px 10px; border-radius:var(--r);
+  display:flex; align-items:center; gap:10px; padding:4px 10px; border-radius:var(--r);
   cursor:default; white-space:nowrap; color:var(--text);
 }
+.menu-item .sub-arrow{margin-left:auto;color:var(--dim2);font-size:11px;padding-left:14px}
+.menu-item .key + .sub-arrow{margin-left:0}
+.menu-item.open{background:var(--panel3)}
+.menu-item:hover .sub-arrow,.menu-item.open .sub-arrow{color:inherit}
+.menu-pop.sub{z-index:401}
 .menu-item .key{margin-left:auto;color:var(--dim2);font:var(--mono);letter-spacing:.2px}
 .menu-item:hover{background:var(--accent);color:var(--accent-ink)}
 .menu-item:hover .key{color:rgba(255,255,255,.75)}
@@ -171,7 +181,11 @@ button,input,select,textarea{font:inherit;color:inherit;font-family:var(--ui)}
   box-shadow:0 6px 20px rgba(0,0,0,.5); opacity:0; transition:opacity .09s;
 }
 .tip.show{opacity:1}
-.tip .k{color:#9dbcff;font:var(--mono);margin-left:6px}
+.tip .k{
+  display:inline-block;margin-left:7px;padding:0 5px;border-radius:3px;line-height:16px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#dfe8ff;font:var(--mono);
+}
+.tip .h{color:rgba(255,255,255,.55);margin-left:7px;font-size:11.5px}
 
 /* colour wells at the bottom of the rail */
 .wells{position:relative;width:38px;height:38px;margin:6px 0 2px;flex:none}
@@ -198,8 +212,12 @@ button,input,select,textarea{font:inherit;color:inherit;font-family:var(--ui)}
   border-bottom:1px solid var(--line); cursor:default;
 }
 #rulerCorner:hover{background:var(--panel3)}
-#rulerH{grid-area:rulerh;width:100%;height:var(--ruler);display:block;cursor:ns-resize}
-#rulerV{grid-area:rulerv;width:var(--ruler);height:100%;display:block;cursor:ew-resize}
+/* min-width/height:0 matter: a canvas's attribute size is its min-content size,
+   and a grid item defaults to min-height:auto, so once the ruler canvases had
+   been sized to the stage they held the row at that height and the whole grid
+   grew past the body row and painted over the status bar. */
+#rulerH{grid-area:rulerh;width:100%;height:var(--ruler);min-width:0;display:block;cursor:ns-resize}
+#rulerV{grid-area:rulerv;width:var(--ruler);height:100%;min-height:0;display:block;cursor:ew-resize}
 #stage{
   grid-area:stage; min-width:0; min-height:0; position:relative;
   background:var(--stage); overflow:hidden; contain:strict;
@@ -230,13 +248,36 @@ button,input,select,textarea{font:inherit;color:inherit;font-family:var(--ui)}
   width:var(--dockw); flex:none; background:var(--bg); border-left:1px solid var(--line);
   display:flex; flex-direction:column; overflow:hidden;
 }
-#dockscroll{overflow-y:auto;overflow-x:hidden;flex:1;display:flex;flex-direction:column;gap:1px}
+#dockscroll{overflow-y:auto;overflow-x:hidden;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:1px;padding-bottom:22px}
+/* Layers is pinned below the scrolling stack so it is on screen at every
+   window height; the split bar above it trades room with the stack. */
+#docklayers{flex:none;display:flex;flex-direction:column;min-height:0;height:var(--layersH,440px)}
+#docklayers:has(.panel.collapsed){height:auto}
+#docklayers .panel{flex:1 1 auto;min-height:0}
+.dock-split{
+  height:9px;flex:none;cursor:ns-resize;background:var(--chrome);
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line2);position:relative;
+  transition:background .12s;
+}
+.dock-split::after{
+  content:'';position:absolute;left:50%;top:3px;width:44px;height:3px;margin-left:-22px;
+  border-radius:3px;background:var(--dim2);opacity:.7;
+}
+.dock-split:hover,.dock-split.drag{background:var(--panel3)}
+.dock-split:hover::after,.dock-split.drag::after{background:var(--accent);opacity:1}
+/* When the stack above has more below the fold, fade its last rows out so the
+   cut does not read as a broken panel. */
+.dock-split.more::before{
+  content:'';position:absolute;left:0;right:0;bottom:100%;height:18px;pointer-events:none;
+  background:linear-gradient(rgba(25,25,25,0) 0%,var(--bg) 100%);
+}
+:root[data-theme=light] .dock-split.more::before{background:linear-gradient(rgba(228,228,228,0) 0%,rgba(228,228,228,.85) 55%,var(--bg) 100%)}
 /* A panel must clip its own contents. Without this a squeezed flex column
    lets its children paint straight over the panel below it, which is exactly
    what the layer list did once there were more layers than room. */
 .panel{background:var(--panel);border-bottom:1px solid var(--line);display:flex;
   flex-direction:column;flex:none;overflow:hidden;min-height:0}
-.panel.grow{flex:1 1 auto;min-height:318px}
+.panel.grow{flex:1 1 auto;min-height:0}
 .panel > header{
   display:flex; align-items:center; gap:6px; padding:0 8px; height:28px; flex:none;
   background:var(--chrome); cursor:default; border-bottom:1px solid var(--line);
@@ -317,11 +358,17 @@ label.cb:hover{color:var(--text)}
    shows how far along the value sits, and a knob that grows under the pointer
    so you can see you have hold of it. The whole row is the drag target, not
    just the knob — chasing a 12px circle is the worst part of most sliders. */
+.adjcap{font-size:11px;color:var(--dim2);height:14px;line-height:14px;margin-top:-3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adjcap.lit{color:var(--text)}
+.field{display:inline-flex;align-items:center;gap:5px;flex:none}
+.field > .lab{color:var(--dim);font-size:12px;font-weight:500}
+.field > .num{width:54px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px;padding:0 5px}
 .slider{
   display:flex; align-items:center; gap:9px;
   --sl-h:6px;
 }
 .slider > .lab{color:var(--dim);font-size:12px;flex:none;font-weight:500}
+.panel .slider > .lab{width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .slider > .track{
   position:relative; flex:1; height:22px; display:flex; align-items:center;
   cursor:pointer; min-width:44px; touch-action:none;
@@ -365,7 +412,28 @@ label.cb:hover{color:var(--text)}
 .row{display:flex;align-items:center;gap:6px}
 .row.wrap{flex-wrap:wrap}
 .row.sb{justify-content:space-between}
+.fxdialog{display:flex;gap:14px;align-items:stretch;min-height:300px}
+.fxleft{width:190px;flex:none;display:flex;flex-direction:column;gap:10px}
+.fxlist{background:var(--sunk);border:1px solid var(--line2);border-radius:var(--r);padding:4px;flex:1;display:flex;flex-direction:column;gap:1px}
+.fxrow{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:3px;cursor:default;font-size:12.5px}
+.fxrow label.cb{gap:0}
+.fxrow:hover{background:var(--panel2)}
+.fxrow.sel{background:var(--accent);color:var(--accent-ink)}
+.fxpane{flex:1;min-width:0;display:flex;flex-direction:column;gap:9px;padding:2px 0 0 2px;border-left:1px solid var(--line);padding-left:14px}
+.fxtitle{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:2px}
+.fxtitle b{font-size:13px}
+.fxpane .dimmed{opacity:.5}
+.swatch{width:30px;height:22px;border-radius:4px;cursor:default;flex:none;
+  box-shadow:0 0 0 1px var(--line2),0 0 0 2px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.14)}
+.swatch:hover{box-shadow:0 0 0 1px var(--accent),0 0 0 2px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.14)}
+.swhex{font-size:11px;color:var(--dim2);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.panel .swhex,.fxrow .swhex{display:none}
 .grid2{display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center}
+.grid3{display:grid;grid-template-columns:auto 1fr auto;gap:6px 8px;align-items:center}
+.grid3 .chaincell{grid-row:span 2;align-self:center;display:flex;align-items:center;height:100%}
+.unitwrap{position:relative;display:flex;min-width:0}
+.unitwrap input{flex:1;min-width:0;padding-right:30px;width:100%}
+.unitwrap .unit{position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--dim2);font-size:11px;pointer-events:none}
 .hint{color:var(--dim2);font-size:11.5px;line-height:1.5}
 .chip{
   padding:2px 7px;border-radius:10px;background:var(--panel2);color:var(--dim);font-size:11px;
@@ -380,7 +448,24 @@ label.cb:hover{color:var(--text)}
 }
 .lrow:hover{background:var(--panel2)}
 .lrow.sel{background:var(--accent-dim)}
-.lrow.sel .lname{color:#fff}
+.lrow.sel .lname,.lrow.sel .lvis,.lrow.sel .lmeta,.lrow.sel .gtoggle,.lrow.sel .lchain,.lrow.sel .clipmark,.lrow.sel .lthumb.kind{color:#fff}
+.lrow.sel .lvis.off{color:rgba(255,255,255,.45)}
+.lrow.sel .lthumb:not(.kind):not(.mask){
+  background-color:#cfcfcf;
+  background-image:linear-gradient(45deg,#a9a9a9 25%,transparent 25%,transparent 75%,#a9a9a9 75%),
+                   linear-gradient(45deg,#a9a9a9 25%,transparent 25%,transparent 75%,#a9a9a9 75%);
+}
+.lrow.sel .lvis:hover{background:rgba(255,255,255,.18)}
+:root[data-theme=light] .lrow.sel{background:var(--accent)}
+:root[data-theme=light] .lrow.sel .lthumb.kind{background:rgba(255,255,255,.22)}
+/* 4. no document: the panel is furniture, not controls */
+#panel-layers.nodoc .body > *:not(#layerlist){opacity:.38;pointer-events:none}
+#panel-layers .empty{padding:18px 12px;color:var(--dim2);font-size:12px;text-align:center;line-height:1.5}
+#panel-adjust.nodoc > .body{opacity:.38;pointer-events:none}
+/* 7. mask thumbs: a light frame so a black mask edge is not lost in it, and
+   the active paint target carries the accent ring */
+.lthumb.mask{margin-left:-2px;box-shadow:0 0 0 1px rgba(255,255,255,.28)}
+.lthumb.target{box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 0 2px var(--accent)}
 .lrow.drop-above::before,.lrow.drop-below::after{
   content:'';position:absolute;left:0;right:0;height:2px;background:var(--accent);z-index:3;
 }
@@ -395,13 +480,14 @@ label.cb:hover{color:var(--text)}
 .lvis.off{color:#5a5a5a}
 .lthumb{
   width:34px;height:34px;flex:none;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.55);
-  background-color:#fff;
-  background-image:linear-gradient(45deg,#bbb 25%,transparent 25%,transparent 75%,#bbb 75%),
-                   linear-gradient(45deg,#bbb 25%,transparent 25%,transparent 75%,#bbb 75%);
-  background-size:10px 10px;background-position:0 0,5px 5px;
+  background-color:#e6e6e6;
+  background-image:linear-gradient(45deg,#c4c4c4 25%,transparent 25%,transparent 75%,#c4c4c4 75%),
+                   linear-gradient(45deg,#c4c4c4 25%,transparent 25%,transparent 75%,#c4c4c4 75%);
+  background-size:6px 6px;background-position:0 0,3px 3px;
   image-rendering:auto;
 }
-.lthumb.mask{margin-left:-2px}
+.lthumb.kind{display:grid;place-items:center;background:var(--panel2);background-image:none;color:var(--dim)}
+.lthumb.kind svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .lchain{width:10px;flex:none;text-align:center;color:var(--dim2);font-size:10px}
 .lname{
   flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
@@ -422,10 +508,11 @@ label.cb:hover{color:var(--text)}
 .hrow:hover{background:var(--panel2)}
 .hrow.cur{background:var(--accent-dim);color:#fff}
 .hrow.undone{opacity:.45}
-.hrow .hi{width:14px;height:14px;flex:none;opacity:.75}
+.hrow .hi{width:14px;height:14px;flex:none;opacity:.75;display:grid;place-items:center}
+.hrow .hi svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 
 /* --------------------------------------------------------------- color -- */
-#sv{width:100%;height:110px;border-radius:var(--r);position:relative;cursor:crosshair;box-shadow:var(--hair)}
+#sv{width:100%;height:84px;border-radius:var(--r);position:relative;cursor:crosshair;box-shadow:var(--hair)}
 #hue{width:100%;height:12px;border-radius:3px;position:relative;cursor:ew-resize;margin-top:6px;box-shadow:var(--hair);
   background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
 #alphabar{width:100%;height:12px;border-radius:3px;position:relative;cursor:ew-resize;margin-top:6px;box-shadow:var(--hair)}
@@ -433,9 +520,11 @@ label.cb:hover{color:var(--text)}
   box-shadow:0 0 0 1px rgba(0,0,0,.7);transform:translate(-6px,-6px);pointer-events:none}
 .huedot{position:absolute;top:-2px;width:6px;height:16px;border-radius:2px;border:2px solid #fff;
   box-shadow:0 0 0 1px rgba(0,0,0,.7);transform:translateX(-3px);pointer-events:none}
-#swatches{display:grid;grid-template-columns:repeat(12,1fr);gap:2px}
+#swatches{display:grid;grid-template-columns:repeat(13,1fr);gap:2px}
 #swatches i{aspect-ratio:1;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.5);cursor:default}
 #swatches i:hover{outline:2px solid var(--accent);outline-offset:0}
+#swatches i.add{display:grid;place-items:center;background:var(--panel2);color:var(--dim);font-style:normal;font-size:13px;line-height:1}
+#swatches i.add:hover{color:var(--text);background:var(--panel3)}
 
 /* ------------------------------------------------------------ navigator -- */
 #navbox{position:relative;width:100%;background:var(--sunk);border-radius:var(--r);overflow:hidden;box-shadow:var(--hair)}
@@ -445,14 +534,24 @@ label.cb:hover{color:var(--text)}
 
 /* ------------------------------------------------------------ statusbar -- */
 #statusbar{
-  display:flex;align-items:center;gap:12px;height:24px;padding:0 8px;font:var(--mono);
-  color:var(--dim2);background:var(--chrome);border-top:1px solid var(--line);
+  display:flex;align-items:center;gap:10px;height:26px;padding:0 8px 0 6px;font-size:12px;
+  color:var(--dim);background:var(--chrome);border-top:1px solid var(--line);white-space:nowrap;overflow:hidden;
 }
-#statusbar .sep{width:1px;height:12px;background:var(--line2)}
+#statusbar .sep{width:1px;height:14px;background:var(--line2);flex:none}
 #statusbar .grow{flex:1}
-#zoomin,#zoomout{cursor:default;padding:0 4px;color:var(--dim)}
-#zoomin:hover,#zoomout:hover{color:var(--text)}
-#zoomval{min-width:52px;text-align:right}
+#statusbar .stat{flex:none}
+#statusbar .stat:empty{display:none}
+#statusbar .tab{font-variant-numeric:tabular-nums;color:var(--dim2)}
+#st-doc{color:var(--text)}
+#st-msg{color:var(--dim2);overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+#st-pos{min-width:84px;text-align:right}
+.zoomctl{display:inline-flex;align-items:center;height:20px;border:1px solid var(--line2);border-radius:var(--r);background:var(--sunk);overflow:hidden;flex:none}
+.zoomctl > span{width:20px;height:100%;display:grid;place-items:center;cursor:default;color:var(--dim);font-size:13px}
+.zoomctl > span:hover{background:var(--panel3);color:var(--text)}
+#zoommenu{font-size:9px;border-left:1px solid var(--line2)}
+#zoomval{width:52px;height:100%;border:0;border-left:1px solid var(--line2);border-right:1px solid var(--line2);background:transparent;
+  text-align:center;font-variant-numeric:tabular-nums;font-size:12px;color:var(--text);padding:0;outline:0}
+#zoomval:focus{background:var(--panel2)}
 
 /* -------------------------------------------------------------- modals -- */
 #modals{position:fixed;inset:0;pointer-events:none;z-index:500}
@@ -513,12 +612,18 @@ label.cb:hover{color:var(--text)}
 #welcome p{color:var(--dim);margin-bottom:20px;line-height:1.6}
 #welcome .acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 #welcome .foot{margin-top:22px;color:var(--dim2);font-size:11.5px;line-height:1.8}
-#welcome kbd{
+kbd{
   background:var(--panel2);border:1px solid var(--line2);border-bottom-width:2px;border-radius:3px;
-  padding:1px 5px;font:var(--mono);color:var(--dim);
+  padding:1px 5px;font:var(--mono);color:var(--dim);white-space:nowrap;
 }
+.keytable{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;margin-top:4px}
+.keytable h4{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim2);margin:10px 0 4px}
+.keytable table{border-collapse:collapse;width:100%;font-size:12px}
+.keytable td{padding:2px 0;vertical-align:top;color:var(--dim)}
+.keytable td:first-child{width:124px;color:var(--text);white-space:nowrap}
 
 .mono{font:var(--mono)}
+.readout{font-size:11px;color:var(--dim2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .hidden{display:none !important}
 .nowrap{white-space:nowrap}
 </style>
@@ -565,17 +670,21 @@ label.cb:hover{color:var(--text)}
       </div>
     </div>
 
-    <div id="dock"><div id="dockscroll"></div></div>
+    <div id="dock"><div id="dockscroll"></div><div class="dock-split" id="docksplit" title="Drag to resize the Layers panel"></div><div id="docklayers"></div></div>
   </div>
 
   <div id="statusbar">
-    <span id="zoomout">−</span><span id="zoomval">100%</span><span id="zoomin">+</span>
+    <span class="zoomctl">
+      <span id="zoomout" title="Zoom out  (Ctrl+−)">−</span><input id="zoomval" value="100%" title="Type a zoom level, or click the arrow for presets" spellcheck="false"><span id="zoomin" title="Zoom in  (Ctrl++)">+</span><span id="zoommenu" title="Zoom presets">▾</span>
+    </span>
     <span class="sep"></span>
-    <span id="st-doc">—</span>
-    <span class="sep"></span>
-    <span id="st-pos">—</span>
+    <span id="st-doc" class="stat"></span>
+    <span id="st-size" class="stat tab"></span>
+    <span id="st-mode" class="stat"></span>
     <span class="grow"></span>
-    <span id="st-msg"></span>
+    <span id="st-msg" class="stat"></span>
+    <span id="st-sel" class="stat tab" title="Selection size"></span>
+    <span id="st-pos" class="stat tab" title="Cursor position in document pixels"></span>
   </div>
 </div>
 
@@ -882,6 +991,34 @@ PM.util = (function () {
     patch: '<path d="M4 8a4 4 0 014-4h3v7H4z"/><path d="M13 4h3a4 4 0 014 4v3h-7z"/><path d="M20 13v3a4 4 0 01-4 4h-3v-7z"/><path d="M11 20H8a4 4 0 01-4-4v-3h7z"/>',
     magic: '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3"/>',
     scissors: '<circle cx="6" cy="6" r="2.4"/><circle cx="6" cy="18" r="2.4"/><path d="M8 7.6L20 18M8 16.4L20 6"/>',
+    /* One glyph per adjustment. They share the stroke weight of the tool set
+       and each says what the adjustment does, so the panel can be read
+       without hovering. */
+    adjBC: '<circle cx="12" cy="12" r="4.2"/><path d="M12 7.8v8.4a4.2 4.2 0 000-8.4z" fill="currentColor" stroke="none"/><path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/>',
+    adjLevels: '<path d="M3 20h18"/><path d="M5 20v-6M8.5 20V9M12 20V4M15.5 20V8M19 20v-9"/><path d="M4 16.5h16" stroke-dasharray="1.5 2"/>',
+    adjCurves: '<path d="M4 20V4M4 20h16"/><path d="M6 18.5c3-.5 5.5-3 7.5-7.5S17 5.5 19 5"/><circle cx="9.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8" r="1.5" fill="currentColor" stroke="none"/>',
+    adjExposure: '<rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M6.5 9h5M9 6.5v5"/><path d="M12.5 15.5h5"/><path d="M3.5 20.5l17-17"/>',
+    adjVibrance: '<path d="M12 3.5l8.5 15h-17z"/><path d="M12 10.5c1.4 1.8 2.2 3.1 2.2 4.1a2.2 2.2 0 01-4.4 0c0-1 .8-2.3 2.2-4.1z" fill="currentColor" stroke="none"/>',
+    adjHueSat: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="M12 3.5V9M12 15v5.5M3.5 12H9M15 12h5.5M6 6l3.9 3.9M14.1 14.1L18 18M18 6l-3.9 3.9M9.9 14.1L6 18"/>',
+    adjColorBalance: '<path d="M12 3.5v17M8 20.5h8"/><path d="M4.5 7.5h15"/><path d="M6.5 7.5L3.5 14a3 3 0 006 0z"/><path d="M17.5 7.5l-3 6.5a3 3 0 006 0z"/>',
+    adjBW: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 010 17z" fill="currentColor" stroke="none"/>',
+    adjPhotoFilter: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 018.5 8.5H12z" fill="currentColor" stroke="none" opacity=".55"/><path d="M12 12v8.5A8.5 8.5 0 013.5 12z" fill="currentColor" stroke="none" opacity=".25"/>',
+    adjChannelMixer: '<circle cx="9" cy="9.5" r="5.5"/><circle cx="15" cy="9.5" r="5.5"/><circle cx="12" cy="14.5" r="5.5"/>',
+    adjSelectiveColor: '<rect x="3.5" y="3.5" width="17" height="17" rx="2"/><circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.6" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.6" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8"/>',
+    adjTemperature: '<path d="M10 4a2 2 0 014 0v9.3a4 4 0 11-4 0z"/><path d="M12 9v6"/><circle cx="12" cy="16.5" r="1.6" fill="currentColor" stroke="none"/><path d="M16.5 6h3M16.5 9h2"/>',
+    adjGradientMap: '<rect x="3.5" y="4" width="17" height="8" rx="1.5"/><path d="M8 4v8M12 4v8M16 4v8" opacity=".4"/><path d="M4 20c3-6 5.5 0 8-3.5s4 2 8-3"/>',
+    adjShadowsHighlights: '<path d="M3.5 15.5h17"/><path d="M7 15.5a5 5 0 0110 0"/><path d="M12 5.5v2M5.8 8.3l1.4 1.4M18.2 8.3l-1.4 1.4"/><path d="M6 19.5h12" opacity=".5"/>',
+    adjInvert: '<rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M20.5 5.5v13a2 2 0 01-2 2h-13z" fill="currentColor" stroke="none"/>',
+    adjDesaturate: '<path d="M12 3.5s6.5 7 6.5 11.3a6.5 6.5 0 01-13 0C5.5 10.5 12 3.5 12 3.5z"/><path d="M5 19.5l14-14"/>',
+    adjPosterize: '<path d="M3.5 20V15h4.5v-5h4.5V5h8"/><path d="M3.5 20h17"/>',
+    adjThreshold: '<rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M12 3.5v17"/><path d="M3.5 5.5a2 2 0 012-2H12v17H5.5a2 2 0 01-2-2z" fill="currentColor" stroke="none"/>',
+    transform: '<rect x="5" y="5" width="14" height="14" stroke-dasharray="3 2"/><rect x="3" y="3" width="4" height="4" fill="currentColor" stroke="none"/><rect x="17" y="3" width="4" height="4" fill="currentColor" stroke="none"/><rect x="3" y="17" width="4" height="4" fill="currentColor" stroke="none"/><rect x="17" y="17" width="4" height="4" fill="currentColor" stroke="none"/>',
+    alignL: '<path d="M4 6h16M4 10h10M4 14h16M4 18h10"/>',
+    alignC: '<path d="M4 6h16M7 10h10M4 14h16M7 18h10"/>',
+    alignR: '<path d="M4 6h16M10 10h10M4 14h16M10 18h10"/>',
+    sharpen: '<path d="M12 3l4.5 9L12 21l-4.5-9z"/><path d="M3.5 12h3M17.5 12h3"/>',
+    highpass: '<path d="M3 16.5h4.5l3-10 3 10 3-6h4.5"/>',
+    emboss: '<rect x="5" y="5" width="14" height="14" rx="2"/><path d="M5 19L19 5" opacity=".5"/><path d="M9 9h6v6H9z"/>',
     sponge: '<circle cx="12" cy="12" r="8"/><path d="M9 9.5h.01M14.5 8.5h.01M15.5 14h.01M9.5 14.5h.01M12 11.5h.01"/>'
   };
   function icon(name, cls) {
@@ -913,6 +1050,8 @@ PM.bus = PM.util.bus;
 /* Toasts and the transient canvas HUD live here because everything uses them. */
 PM.toast = function (msg, kind) {
   var host = document.getElementById('toaster');
+  /* A toast belongs to the moment it was raised; a new tool is a new moment. */
+  if (msg === null) { Array.prototype.forEach.call(host.children, function (t) { t.remove(); }); return; }
   var t = PM.util.el('div.toast' + (kind ? '.' + kind : ''), { text: msg });
   host.appendChild(t);
   requestAnimationFrame(function () { t.classList.add('show'); });
@@ -2496,7 +2635,7 @@ PM.adjust = (function () {
   var defs = {};
 
   defs.brightnessContrast = {
-    name: 'Brightness/Contrast', icon: 'sun',
+    name: 'Brightness/Contrast', icon: 'adjBC',
     params: [
       { k: 'brightness', label: 'Brightness', min: -150, max: 150, def: 0 },
       { k: 'contrast', label: 'Contrast', min: -100, max: 100, def: 0 }
@@ -2511,7 +2650,7 @@ PM.adjust = (function () {
   };
 
   defs.levels = {
-    name: 'Levels', icon: 'hist', widget: 'levels',
+    name: 'Levels', icon: 'adjLevels', widget: 'levels',
     def: function () {
       return {
         channel: 'rgb',
@@ -2531,7 +2670,7 @@ PM.adjust = (function () {
   };
 
   defs.curves = {
-    name: 'Curves', icon: 'adjust', widget: 'curves',
+    name: 'Curves', icon: 'adjCurves', widget: 'curves',
     def: function () {
       return {
         channel: 'rgb',
@@ -2548,7 +2687,7 @@ PM.adjust = (function () {
   };
 
   defs.exposure = {
-    name: 'Exposure', icon: 'sun',
+    name: 'Exposure', icon: 'adjExposure',
     params: [
       { k: 'exposure', label: 'Exposure', min: -5, max: 5, step: 0.01, def: 0, unit: ' EV' },
       { k: 'offset', label: 'Offset', min: -0.5, max: 0.5, step: 0.001, def: 0 },
@@ -2567,7 +2706,7 @@ PM.adjust = (function () {
   };
 
   defs.hueSaturation = {
-    name: 'Hue/Saturation', icon: 'palette',
+    name: 'Hue/Saturation', icon: 'adjHueSat',
     params: [
       { k: 'hue', label: 'Hue', min: -180, max: 180, def: 0, unit: '°' },
       { k: 'saturation', label: 'Saturation', min: -100, max: 100, def: 0 },
@@ -2600,7 +2739,7 @@ PM.adjust = (function () {
   };
 
   defs.vibrance = {
-    name: 'Vibrance', icon: 'palette',
+    name: 'Vibrance', icon: 'adjVibrance',
     params: [
       { k: 'vibrance', label: 'Vibrance', min: -100, max: 100, def: 0 },
       { k: 'saturation', label: 'Saturation', min: -100, max: 100, def: 0 }
@@ -2623,7 +2762,7 @@ PM.adjust = (function () {
   };
 
   defs.colorBalance = {
-    name: 'Color Balance', icon: 'palette',
+    name: 'Color Balance', icon: 'adjColorBalance',
     params: [
       { k: 'range', label: 'Tonal range', type: 'select', def: 'mid',
         options: [['shadow', 'Shadows'], ['mid', 'Midtones'], ['high', 'Highlights']] },
@@ -2654,7 +2793,7 @@ PM.adjust = (function () {
   };
 
   defs.blackWhite = {
-    name: 'Black & White', icon: 'adjust',
+    name: 'Black & White', icon: 'adjBW',
     params: [
       { k: 'r', label: 'Reds', min: -200, max: 300, def: 40 },
       { k: 'y', label: 'Yellows', min: -200, max: 300, def: 60 },
@@ -2663,7 +2802,7 @@ PM.adjust = (function () {
       { k: 'b', label: 'Blues', min: -200, max: 300, def: 20 },
       { k: 'm', label: 'Magentas', min: -200, max: 300, def: 80 },
       { k: 'tint', label: 'Tint', type: 'check', def: false },
-      { k: 'tintColor', label: 'Tint colour', type: 'color', def: '#e0c39a', showIf: 'tint' }
+      { k: 'tintColor', label: 'Tint color', type: 'color', def: '#e0c39a', showIf: 'tint' }
     ],
     apply: function (d, p) {
       var wr = (p.r === undefined ? 40 : p.r) / 100, wy = (p.y === undefined ? 60 : p.y) / 100,
@@ -2696,9 +2835,9 @@ PM.adjust = (function () {
   };
 
   defs.photoFilter = {
-    name: 'Photo Filter', icon: 'filter',
+    name: 'Photo Filter', icon: 'adjPhotoFilter',
     params: [
-      { k: 'color', label: 'Colour', type: 'color', def: '#ec8a00' },
+      { k: 'color', label: 'Color', type: 'color', def: '#ec8a00' },
       { k: 'density', label: 'Density', min: 0, max: 100, def: 25 },
       { k: 'preserve', label: 'Preserve luminosity', type: 'check', def: true }
     ],
@@ -2722,7 +2861,7 @@ PM.adjust = (function () {
   };
 
   defs.channelMixer = {
-    name: 'Channel Mixer', icon: 'adjust',
+    name: 'Channel Mixer', icon: 'adjChannelMixer',
     params: [
       { k: 'out', label: 'Output channel', type: 'select', def: 'r',
         options: [['r', 'Red'], ['g', 'Green'], ['b', 'Blue']] },
@@ -2743,9 +2882,9 @@ PM.adjust = (function () {
   };
 
   defs.selectiveColor = {
-    name: 'Selective Color', icon: 'palette',
+    name: 'Selective Color', icon: 'adjSelectiveColor',
     params: [
-      { k: 'target', label: 'Colours', type: 'select', def: 'reds',
+      { k: 'target', label: 'Colors', type: 'select', def: 'reds',
         options: [['reds', 'Reds'], ['yellows', 'Yellows'], ['greens', 'Greens'], ['cyans', 'Cyans'],
                   ['blues', 'Blues'], ['magentas', 'Magentas'], ['whites', 'Whites'],
                   ['neutrals', 'Neutrals'], ['blacks', 'Blacks']] },
@@ -2786,7 +2925,7 @@ PM.adjust = (function () {
   };
 
   defs.shadowsHighlights = {
-    name: 'Shadows/Highlights', icon: 'sun',
+    name: 'Shadows/Highlights', icon: 'adjShadowsHighlights',
     params: [
       { k: 'shadows', label: 'Lift shadows', min: 0, max: 100, def: 30 },
       { k: 'highlights', label: 'Recover highlights', min: 0, max: 100, def: 0 },
@@ -2809,12 +2948,12 @@ PM.adjust = (function () {
   };
 
   defs.gradientMap = {
-    name: 'Gradient Map', icon: 'gradient',
+    name: 'Gradient Map', icon: 'adjGradientMap',
     params: [
-      { k: 'from', label: 'Shadow colour', type: 'color', def: '#12123a' },
-      { k: 'mid', label: 'Midtone colour', type: 'color', def: '#a05a44' },
-      { k: 'to', label: 'Highlight colour', type: 'color', def: '#ffe9c4' },
-      { k: 'useMid', label: 'Use midtone colour', type: 'check', def: true },
+      { k: 'from', label: 'Shadow color', type: 'color', def: '#12123a' },
+      { k: 'mid', label: 'Midtone color', type: 'color', def: '#a05a44' },
+      { k: 'to', label: 'Highlight color', type: 'color', def: '#ffe9c4' },
+      { k: 'useMid', label: 'Use midtone color', type: 'check', def: true },
       { k: 'amount', label: 'Amount', min: 0, max: 100, def: 100 }
     ],
     apply: function (d, p) {
@@ -2841,7 +2980,7 @@ PM.adjust = (function () {
   };
 
   defs.invert = {
-    name: 'Invert', icon: 'adjust', params: [],
+    name: 'Invert', icon: 'adjInvert', params: [],
     apply: function (d) {
       for (var i = 0; i < d.length; i += 4) {
         if (d[i + 3] === 0) continue;
@@ -2851,7 +2990,7 @@ PM.adjust = (function () {
   };
 
   defs.desaturate = {
-    name: 'Desaturate', icon: 'adjust', params: [],
+    name: 'Desaturate', icon: 'adjDesaturate', params: [],
     apply: function (d) {
       for (var i = 0; i < d.length; i += 4) {
         if (d[i + 3] === 0) continue;
@@ -2862,7 +3001,7 @@ PM.adjust = (function () {
   };
 
   defs.posterize = {
-    name: 'Posterize', icon: 'adjust',
+    name: 'Posterize', icon: 'adjPosterize',
     params: [{ k: 'levels', label: 'Levels', min: 2, max: 64, def: 6 }],
     apply: function (d, p) {
       var n = Math.max(2, p.levels || 6);
@@ -2873,7 +3012,7 @@ PM.adjust = (function () {
   };
 
   defs.threshold = {
-    name: 'Threshold', icon: 'adjust',
+    name: 'Threshold', icon: 'adjThreshold',
     params: [{ k: 'level', label: 'Level', min: 1, max: 254, def: 128 }],
     apply: function (d, p) {
       var lv = p.level === undefined ? 128 : p.level;
@@ -2887,7 +3026,7 @@ PM.adjust = (function () {
   };
 
   defs.temperature = {
-    name: 'Temperature & Tint', icon: 'sun',
+    name: 'Temperature & Tint', icon: 'adjTemperature',
     params: [
       { k: 'temp', label: 'Temperature', min: -100, max: 100, def: 0, ramp: ['#6ab6ff', '#ffb45e'] },
       { k: 'tint', label: 'Tint', min: -100, max: 100, def: 0, ramp: ['#5fe08a', '#e879f9'] }
@@ -3199,7 +3338,7 @@ PM.filters = (function () {
 
   /* ---- sharpen ---- */
   def('sharpen', {
-    name: 'Sharpen', group: 'Sharpen', icon: 'adjust',
+    name: 'Sharpen', group: 'Sharpen', icon: 'sharpen',
     params: [{ k: 'amount', label: 'Amount', min: 0, max: 300, def: 60, unit: '%' }],
     apply: function (img, p) {
       var a = p.amount / 100;
@@ -3209,7 +3348,7 @@ PM.filters = (function () {
   });
 
   def('unsharpMask', {
-    name: 'Unsharp Mask', group: 'Sharpen', icon: 'adjust',
+    name: 'Unsharp Mask', group: 'Sharpen', icon: 'sharpen',
     params: [
       { k: 'amount', label: 'Amount', min: 0, max: 500, def: 120, unit: '%' },
       { k: 'radius', label: 'Radius', min: 0.1, max: 60, step: 0.1, def: 2, unit: ' px' },
@@ -3231,7 +3370,7 @@ PM.filters = (function () {
   });
 
   def('highPass', {
-    name: 'High Pass', group: 'Sharpen', icon: 'adjust',
+    name: 'High Pass', group: 'Sharpen', icon: 'highpass',
     params: [{ k: 'radius', label: 'Radius', min: 0.1, max: 100, step: 0.1, def: 3, unit: ' px' }],
     canvasOp: function (canvas, p) {
       var blurC = blurCanvasInto(canvas, p.radius);
@@ -3380,7 +3519,7 @@ PM.filters = (function () {
 
   /* ---- stylise ---- */
   def('emboss', {
-    name: 'Emboss', group: 'Stylize', icon: 'adjust',
+    name: 'Emboss', group: 'Stylize', icon: 'emboss',
     params: [
       { k: 'angle', label: 'Angle', min: -180, max: 180, def: 135, unit: '°' },
       { k: 'amount', label: 'Amount', min: 1, max: 10, step: 0.1, def: 2 },
@@ -3649,8 +3788,8 @@ PM.filters = (function () {
     params: [
       { k: 'scale', label: 'Scale', min: 1, max: 400, def: 90, unit: ' px' },
       { k: 'octaves', label: 'Detail', min: 1, max: 8, def: 5 },
-      { k: 'from', label: 'Colour A', type: 'color', def: '#000000' },
-      { k: 'to', label: 'Colour B', type: 'color', def: '#ffffff' },
+      { k: 'from', label: 'Color A', type: 'color', def: '#000000' },
+      { k: 'to', label: 'Color B', type: 'color', def: '#ffffff' },
       { k: 'seed', label: 'Seed', min: 1, max: 999, def: 7 },
       { k: 'replace', label: 'Replace layer contents', type: 'check', def: true }
     ],
@@ -3686,7 +3825,7 @@ PM.filters = (function () {
       { k: 'x', label: 'Position X', min: 0, max: 100, def: 32, unit: '%' },
       { k: 'y', label: 'Position Y', min: 0, max: 100, def: 30, unit: '%' },
       { k: 'brightness', label: 'Brightness', min: 10, max: 300, def: 120, unit: '%' },
-      { k: 'color', label: 'Colour', type: 'color', def: '#ffe6b0' }
+      { k: 'color', label: 'Color', type: 'color', def: '#ffe6b0' }
     ],
     canvasOp: function (canvas, p) {
       var w = canvas.width, h = canvas.height, x = canvas.getContext('2d');
@@ -4722,7 +4861,7 @@ PM.rulers = (function () {
     var d = PM.state.doc, V = R.V, sr = R.stageRect();
     var css = getComputedStyle(document.body);
     var bg = css.getPropertyValue('--chrome') || '#252525';
-    var ink = css.getPropertyValue('--dim2') || '#8a8a8a';
+    var ink = css.getPropertyValue('--dim') || '#b4b4b4';
     var line = css.getPropertyValue('--line2') || '#4d4d4d';
     var step = tickStep(V.zoom), minor = step / 5;
 
@@ -4735,7 +4874,7 @@ PM.rulers = (function () {
     hctx.fillRect(V.panX, 0, d.width * V.zoom, SIZE);
     hctx.strokeStyle = line; hctx.lineWidth = 1;
     hctx.beginPath(); hctx.moveTo(0, SIZE - 0.5); hctx.lineTo(sr.width, SIZE - 0.5); hctx.stroke();
-    hctx.font = '9px ui-monospace, Consolas, monospace';
+    hctx.font = '500 10px Poppins, ui-sans-serif, system-ui, sans-serif';
     hctx.fillStyle = ink;
     hctx.textBaseline = 'top';
 
@@ -4766,7 +4905,7 @@ PM.rulers = (function () {
     vctx.fillRect(0, V.panY, SIZE, d.height * V.zoom);
     vctx.strokeStyle = line; vctx.lineWidth = 1;
     vctx.beginPath(); vctx.moveTo(SIZE - 0.5, 0); vctx.lineTo(SIZE - 0.5, sr.height); vctx.stroke();
-    vctx.font = '9px ui-monospace, Consolas, monospace';
+    vctx.font = '500 10px Poppins, ui-sans-serif, system-ui, sans-serif';
     vctx.fillStyle = ink;
 
     var fromY = Math.floor((-V.panY / V.zoom) / minor) * minor;
@@ -5294,6 +5433,7 @@ PM.tools = (function () {
     if (!defs[id] || id === currentId) { if (defs[id]) PM.bus.emit('tool'); return; }
     var prev = defs[currentId];
     if (prev && prev.deactivate) prev.deactivate();
+    PM.hud(null); PM.toast(null);
     currentId = id;
     var t = defs[id];
     /* Remember which member of a flyout group was last used. */
@@ -5482,6 +5622,7 @@ PM.tools = (function () {
   /* Circle outline showing the brush footprint, drawn in view space. */
   function drawBrushCursor(ctx, size) {
     if (!pointer.inside || panning || spaceDown) return;
+    if ((PM.dlg && PM.dlg.previewActive()) || document.querySelector('#modals .dlg')) return;
     var V = PM.render.V;
     var v = PM.render.toView(pointer.x, pointer.y);
     var r = Math.max(1.5, size * V.zoom / 2);
@@ -6060,10 +6201,10 @@ PM.tools = (function () {
 
     activate: function () {
       var d = S.doc;
-      if (d) this.rect = { x: 0, y: 0, w: d.width, h: d.height };
+      if (d) { this.rect = { x: 0, y: 0, w: d.width, h: d.height }; PM.bus.emit('measure', { w: d.width, h: d.height }); }
       R.invalidate();
     },
-    deactivate: function () { this.rect = null; this._drag = null; R.invalidate(); },
+    deactivate: function () { this.rect = null; this._drag = null; PM.hud(null); PM.bus.emit('measure', null); R.invalidate(); },
 
     down: function (p) {
       var r = this.rect;
@@ -6093,8 +6234,14 @@ PM.tools = (function () {
       if (ratio && d.kind !== 'move') {
         if (r.w / Math.max(1e-6, r.h) > ratio) r.w = r.h * ratio; else r.h = r.w / ratio;
       }
+      /* The crop lives on the canvas: moving it slides it within the image,
+         resizing it stops at the edge. Growing the canvas is Canvas Size's job. */
+      var D = S.doc;
+      r.w = Math.min(r.w, D.width); r.h = Math.min(r.h, D.height);
+      r.x = U.clamp(r.x, 0, D.width - r.w); r.y = U.clamp(r.y, 0, D.height - r.h);
       R.invalidate();
-      PM.hud(Math.round(r.w) + ' × ' + Math.round(r.h), 0);
+      PM.hud(Math.round(r.w) + ' × ' + Math.round(r.h) + ' px', 0);
+      PM.bus.emit('measure', { w: Math.round(r.w), h: Math.round(r.h) });
     },
     up: function () { this._drag = null; PM.snap.clear(); },
     aspect: function () {
@@ -6116,7 +6263,7 @@ PM.tools = (function () {
     },
     onKey: function (e) {
       if (e.key === 'Enter') { this.apply(); return true; }
-      if (e.key === 'Escape') { this.activate(); return true; }
+      if (e.key === 'Escape') { this.activate(); PM.hud(null); return true; }
     },
     dblclick: function () { this.apply(); },
     apply: function () {
@@ -9479,6 +9626,46 @@ PM.dlg = (function () {
     return wrap;
   }
 
+  /* A slider without the track: the label scrubs, the box takes typing and
+     arrow keys. For places where a full slider would cost more room than the
+     value is worth. */
+  function field(o) {
+    var wrap = el('div.field');
+    var lab = el('span.lab.scrub', { text: o.label });
+    var num = el('input.num', { type: 'text' });
+    var min = o.min, max = o.max, step = o.step || 1, value = o.value;
+    function fmt(v) { return (step < 1 ? U.round(v, 3) : Math.round(v)) + (o.unit || ''); }
+    function paint() { if (document.activeElement !== num) num.value = fmt(value); }
+    function setValue(v, fire) {
+      v = U.clamp(v, min, max);
+      v = Math.round(v / step) * step;
+      if (step >= 1) v = Math.round(v);
+      if (v === value && fire !== 'force') { paint(); return; }
+      value = v; paint();
+      if (fire !== false && o.onChange) o.onChange(value);
+    }
+    num.addEventListener('change', function () {
+      var v = parseFloat(num.value);
+      if (!isNaN(v)) setValue(v); else paint();
+    });
+    num.addEventListener('focus', function () { num.select(); });
+    num.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowUp') { setValue(value + step * (e.shiftKey ? 10 : 1)); e.preventDefault(); }
+      if (e.key === 'ArrowDown') { setValue(value - step * (e.shiftKey ? 10 : 1)); e.preventDefault(); }
+      if (e.key === 'Enter') { num.blur(); }
+      e.stopPropagation();
+    });
+    lab.addEventListener('pointerdown', function (e) {
+      var v0 = value;
+      U.drag(e, function (ev, dx) { setValue(v0 + dx * (max - min) / 240); });
+    });
+    wrap.appendChild(lab); wrap.appendChild(num);
+    paint();
+    wrap.setValue = setValue;
+    wrap.getValue = function () { return value; };
+    return wrap;
+  }
+
   function checkbox(label, value, onChange) {
     var input = el('input', { type: 'checkbox', checked: !!value, onchange: function () { onChange(input.checked); } });
     var l = el('label.cb', null, [input, el('span', { text: label })]);
@@ -9500,21 +9687,20 @@ PM.dlg = (function () {
   }
 
   function colorField(label, value, onChange) {
-    var sw = el('div', {
-      style: {
-        width: '30px', height: '22px', borderRadius: '4px', background: value,
-        boxShadow: '0 0 0 1px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.12)', cursor: 'default'
-      },
+    var sw = el('div.swatch', {
+      style: { background: value }, title: value,
       onclick: function () {
         picker(value, function (c) {
           value = PM.color.rgbToHex(c);
-          sw.style.background = value;
+          sw.style.background = value; sw.title = value; hex.textContent = value;
           onChange(value);
         });
       }
     });
-    var row = el('div.row.sb', null, [el('span', { text: label, style: { color: 'var(--dim)' } }), sw]);
-    row.setValue = function (v) { value = v; sw.style.background = v; };
+    var hex = el('span.swhex', { text: value });
+    var row = el('div.row.sb', null, [el('span', { text: label, style: { color: 'var(--dim)' } }),
+      el('div.row', { style: { gap: '6px' } }, [hex, sw])]);
+    row.setValue = function (v) { value = v; sw.style.background = v; sw.title = v; hex.textContent = v; };
     return row;
   }
 
@@ -9533,6 +9719,14 @@ PM.dlg = (function () {
       if (p.type === 'check') node = checkbox(p.label, values[p.k], function (v) { values[p.k] = v; refreshVisibility(); onChange(p.k); });
       else if (p.type === 'select') node = select(p.label, p.options, values[p.k], function (v) { values[p.k] = v; onChange(p.k); });
       else if (p.type === 'color') node = colorField(p.label, values[p.k], function (v) { values[p.k] = v; onChange(p.k); });
+      else if (p.scale) {
+        /* stored 0..1, shown 0..100: opacities read like every other opacity */
+        var k = p.scale;
+        node = slider({
+          label: p.label, min: p.min * k, max: p.max * k, step: (p.step || 1) * k, value: values[p.k] * k,
+          unit: p.unit, ramp: p.ramp, onChange: function (v) { values[p.k] = v / k; onChange(p.k); }
+        });
+      }
       else node = slider({
         label: p.label, min: p.min, max: p.max, step: p.step || 1, value: values[p.k],
         unit: p.unit, ramp: p.ramp, onChange: function (v) { values[p.k] = v; onChange(p.k); }
@@ -9734,7 +9928,7 @@ PM.dlg = (function () {
     open: open, confirm: confirm, prompt: prompt, previewActive: previewActive,
     beginPreviewMode: function () { previewCount++; PM.bus.emit('previewmode'); },
     endPreviewMode: function () { previewCount = Math.max(0, previewCount - 1); PM.bus.emit('previewmode'); },
-    slider: slider, checkbox: checkbox, select: select, colorField: colorField,
+    slider: slider, field: field, checkbox: checkbox, select: select, colorField: colorField,
     paramControls: paramControls, drawHistogram: drawHistogram, picker: picker,
     livePreview: livePreview, el: el
   };
@@ -9761,6 +9955,11 @@ PM.dialogs = (function () {
     ['Thumbnail 256', 256, 256]
   ];
 
+  /* A number box with its unit printed inside the right edge. */
+  function unitField(input, unit) {
+    return el('div.unitwrap', null, [input, el('span.unit', { text: unit })]);
+  }
+
   function newDoc() {
     var name = el('input', { type: 'text', value: 'Untitled' });
     var w = el('input', { type: 'number', value: 1920, min: 1, max: 16384 });
@@ -9775,7 +9974,7 @@ PM.dialogs = (function () {
       if (p[1]) { w.value = p[1]; h.value = p[2]; }
     });
     var bgSel = D.select('Background', [['white', 'White'], ['transparent', 'Transparent'],
-      ['black', 'Black'], ['bg', 'Background colour']], 'white', function (v) { bg = v; });
+      ['black', 'Black'], ['bg', 'Background color']], 'white', function (v) { bg = v; });
 
     var d = D.open({
       title: 'New Document', width: 340,
@@ -9783,9 +9982,9 @@ PM.dialogs = (function () {
         el('div.grid2', null, [
           el('label', { text: 'Name' }), name,
           el('label', { text: 'Preset' }), preset,
-          el('label', { text: 'Width' }), w,
-          el('label', { text: 'Height' }), h,
-          el('label', { text: 'Resolution' }), res
+          el('label', { text: 'Width' }), unitField(w, 'px'),
+          el('label', { text: 'Height' }), unitField(h, 'px'),
+          el('label', { text: 'Resolution' }), unitField(res, 'ppi')
         ]),
         bgSel
       ],
@@ -9831,10 +10030,10 @@ PM.dialogs = (function () {
       title: 'Image Size', width: 340,
       content: [
         el('div.hint', { text: 'Current: ' + d0.width + ' × ' + d0.height + ' px' }),
-        el('div.grid2', null, [
-          el('label', { text: 'Width' }), el('div.row', null, [w, chain]),
-          el('label', { text: 'Height' }), h,
-          el('label', { text: 'Scale %' }), pct
+        el('div.grid3', null, [
+          el('label', { text: 'Width' }), unitField(w, 'px'), el('div.chaincell', null, [chain]),
+          el('label', { text: 'Height' }), unitField(h, 'px'),
+          el('label', { text: 'Scale' }), unitField(pct, '%'), el('span')
         ]),
         D.checkbox('Resample (smooth)', true, function (v) { resample = v; })
       ],
@@ -10219,9 +10418,18 @@ PM.dialogs = (function () {
   /* --------------------------------------------------- gradient editor -- */
   /* Stops are [position 0..1, css colour]. Drag to move, click the ramp to add,
      double-click a stop to recolour it, drag one off the bar to delete it. */
+  /* Any CSS colour → #rrggbb (alpha dropped), by way of the canvas parser. */
+  function cssToHex(c) {
+    if (/^#[0-9a-f]{6}$/i.test(c)) return c.toLowerCase();
+    var cv = U.mkCanvas(1, 1), x = cv.getContext('2d');
+    x.fillStyle = '#000'; x.fillStyle = c; x.fillRect(0, 0, 1, 1);
+    var d = x.getImageData(0, 0, 1, 1).data;
+    return PM.color.rgbToHex({ r: d[0], g: d[1], b: d[2] });
+  }
+
   function gradientEditor(stops, onApply) {
-    stops = (stops || [[0, '#000000'], [1, '#ffffff']]).map(function (s) { return [s[0], s[1]]; });
-    var W = 300, H = 34;
+    stops = (stops || [[0, '#000000'], [1, '#ffffff']]).map(function (s) { return [s[0], cssToHex(s[1])]; });
+    var W = 360, H = 34;
     var ramp = el('canvas', { width: W * 2, height: H * 2, style: { width: W + 'px', height: H + 'px', display: 'block', borderRadius: '4px' } });
     var bar = el('div', { style: { position: 'relative', height: '16px', width: W + 'px' } });
     var sel = 0;
@@ -10245,8 +10453,43 @@ PM.dialogs = (function () {
       x.fillRect(0, 0, W, H);
     }
 
+    /* The selected stop's colour and position, editable as numbers. */
+    var stopSwatch = D.colorField('Color', stops[0][1], function (v) { stops[sel][1] = v; paintRamp(); paintStops(); });
+    var stopPos = el('input', { type: 'number', min: 0, max: 100, step: 1, value: 0 });
+    stopPos.addEventListener('change', function () {
+      var v = parseFloat(stopPos.value);
+      if (!isNaN(v)) { stops[sel][0] = U.clamp(v, 0, 100) / 100; paintRamp(); paintStops(); }
+    });
+    stopPos.addEventListener('keydown', function (e) { e.stopPropagation(); });
+    var stopHex = el('input', { type: 'text', value: stops[0][1], style: { width: '84px', flex: 'none' } });
+    stopHex.addEventListener('change', function () {
+      var c = PM.color.hexToRgb(stopHex.value);
+      if (c) { stops[sel][1] = PM.color.rgbToHex(c); paintRamp(); paintStops(); } else stopHex.value = stops[sel][1];
+    });
+    stopHex.addEventListener('keydown', function (e) { e.stopPropagation(); });
+    var stopDel = el('button.btn.sm', { text: 'Delete stop', onclick: function () {
+      if (stops.length <= 2) return;
+      stops.splice(sel, 1); sel = 0; paintRamp(); paintStops();
+    } });
+    function syncStopFields() {
+      var st = stops[sel] || stops[0];
+      stopSwatch.setValue(st[1]);
+      stopHex.value = st[1];
+      if (document.activeElement !== stopPos) stopPos.value = Math.round(st[0] * 100);
+      stopDel.disabled = stops.length <= 2;
+    }
+    var stopRow = el('div.row', { style: { gap: '10px', alignItems: 'center' } }, [
+      el('span', { text: 'Stop', style: { color: 'var(--dim2)', fontSize: '11px', letterSpacing: '.06em', textTransform: 'uppercase' } }),
+      stopSwatch.querySelector('.swatch'), stopHex,
+      el('span', { text: 'Position', style: { color: 'var(--dim)' } }),
+      el('div.unitwrap', { style: { width: '72px', flex: 'none' } }, [stopPos, el('span.unit', { text: '%' })]),
+      el('span', { style: { flex: '1' } }),
+      stopDel
+    ]);
+
     function paintStops() {
       U.clear(bar);
+      syncStopFields();
       stops.forEach(function (s, i) {
         var h = el('div', {
           style: {
@@ -10273,7 +10516,7 @@ PM.dialogs = (function () {
         });
         h.addEventListener('dblclick', function (e) {
           e.stopPropagation();
-          picker(s[1], function (c) { s[1] = PM.color.rgbToHex(c); paintRamp(); paintStops(); });
+          D.picker(s[1], function (c) { s[1] = PM.color.rgbToHex(c); paintRamp(); paintStops(); });
         });
         bar.appendChild(h);
       });
@@ -10293,10 +10536,11 @@ PM.dialogs = (function () {
     var nameIn = el('input', { type: 'text', value: 'My gradient', style: { width: '150px' } });
 
     var d = D.open({
-      title: 'Gradient Editor', width: 340,
+      title: 'Gradient Editor', width: 400,
       content: [
         ramp, bar,
-        el('div.hint', { text: 'Click the ramp to add a stop · double-click a stop to recolour it · drag one away to remove it' }),
+        stopRow,
+        el('div.hint', { text: 'Click the ramp to add a stop · drag a stop to move it · drag one away from the bar to remove it' }),
         el('div.row.sb', null, [el('span', { text: 'Save as', style: { color: 'var(--dim)' } }), nameIn])
       ],
       onEnter: go
@@ -10455,50 +10699,50 @@ PM.dialogs = (function () {
 
     var SPEC = {
       shadow: [
-        { k: 'color', label: 'Colour', type: 'color' },
-        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 },
+        { k: 'color', label: 'Color', type: 'color' },
+        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01, scale: 100, unit: '%' },
         { k: 'angle', label: 'Angle', min: -180, max: 180, unit: '°' },
         { k: 'distance', label: 'Distance', min: 0, max: 120, unit: ' px' },
         { k: 'spread', label: 'Spread', min: 0, max: 40, unit: ' px' },
         { k: 'size', label: 'Size', min: 0, max: 120, unit: ' px' }
       ],
       innerShadow: [
-        { k: 'color', label: 'Colour', type: 'color' },
-        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 },
+        { k: 'color', label: 'Color', type: 'color' },
+        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01, scale: 100, unit: '%' },
         { k: 'angle', label: 'Angle', min: -180, max: 180, unit: '°' },
         { k: 'distance', label: 'Distance', min: 0, max: 80, unit: ' px' },
         { k: 'size', label: 'Size', min: 0, max: 80, unit: ' px' }
       ],
       glow: [
-        { k: 'color', label: 'Colour', type: 'color' },
-        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 },
+        { k: 'color', label: 'Color', type: 'color' },
+        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01, scale: 100, unit: '%' },
         { k: 'spread', label: 'Spread', min: 0, max: 40, unit: ' px' },
         { k: 'size', label: 'Size', min: 0, max: 150, unit: ' px' }
       ],
       innerGlow: [
-        { k: 'color', label: 'Colour', type: 'color' },
-        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 },
+        { k: 'color', label: 'Color', type: 'color' },
+        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01, scale: 100, unit: '%' },
         { k: 'size', label: 'Size', min: 0, max: 100, unit: ' px' }
       ],
       stroke: [
-        { k: 'color', label: 'Colour', type: 'color' },
+        { k: 'color', label: 'Color', type: 'color' },
         { k: 'size', label: 'Size', min: 1, max: 60, unit: ' px' },
-        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 },
-        { k: 'position', label: 'Position', type: 'select', options: [['outside', 'Outside'], ['inside', 'Inside'], ['center', 'Centre']] }
+        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01, scale: 100, unit: '%' },
+        { k: 'position', label: 'Position', type: 'select', options: [['outside', 'Outside'], ['inside', 'Inside'], ['center', 'Center']] }
       ],
       colorOverlay: [
-        { k: 'color', label: 'Colour', type: 'color' },
-        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 }
+        { k: 'color', label: 'Color', type: 'color' },
+        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01, scale: 100, unit: '%' }
       ],
       gradientOverlay: [
         { k: 'from', label: 'From', type: 'color' },
         { k: 'to', label: 'To', type: 'color' },
         { k: 'angle', label: 'Angle', min: -180, max: 180, unit: '°' },
-        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 }
+        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01, scale: 100, unit: '%' }
       ],
       satin: [
-        { k: 'color', label: 'Colour', type: 'color' },
-        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 },
+        { k: 'color', label: 'Color', type: 'color' },
+        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01, scale: 100, unit: '%' },
         { k: 'angle', label: 'Angle', min: -180, max: 180, unit: '°' },
         { k: 'distance', label: 'Distance', min: 0, max: 100, unit: ' px' },
         { k: 'size', label: 'Size', min: 1, max: 100, unit: ' px' },
@@ -10507,9 +10751,9 @@ PM.dialogs = (function () {
       pattern: [
         { k: 'kind', label: 'Pattern', type: 'select',
           options: PM.layerfx.PATTERN_KINDS },
-        { k: 'color', label: 'Colour', type: 'color' },
+        { k: 'color', label: 'Color', type: 'color' },
         { k: 'scale', label: 'Scale', min: 4, max: 128, unit: ' px' },
-        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 }
+        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01, scale: 100, unit: '%' }
       ],
       bevel: [
         { k: 'size', label: 'Size', min: 1, max: 60, unit: ' px' },
@@ -10517,29 +10761,54 @@ PM.dialogs = (function () {
         { k: 'angle', label: 'Angle', min: -180, max: 180, unit: '°' },
         { k: 'highlight', label: 'Highlight', type: 'color' },
         { k: 'shadow', label: 'Shadow', type: 'color' },
-        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 }
+        { k: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01, scale: 100, unit: '%' }
       ]
     };
 
     function touch() { layer._fxCache = null; S.markDirty(); }
 
-    var stack = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } });
+    /* Two panes, as every editor lays this out: the effects with their
+       on/off boxes down the left, and the controls for whichever one is
+       highlighted on the right. Ticking an effect also selects it. */
+    var list = el('div.fxlist');
+    var pane = el('div.fxpane');
+    var rows = {};
+    var current = null;
+    function show(key) {
+      current = key;
+      Object.keys(rows).forEach(function (k) { rows[k].classList.toggle('sel', k === key); });
+      U.clear(pane);
+      var eff = fx[key];
+      pane.appendChild(el('div.fxtitle', null, [
+        el('b', { text: PM.layerfx.LABEL[key] }),
+        el('span.hint', { text: eff.on ? 'On' : 'Off — tick it in the list to apply' })
+      ]));
+      var controls = D.paramControls(SPEC[key], eff, touch);
+      controls.classList.toggle('dimmed', !eff.on);
+      pane.appendChild(controls);
+    }
     PM.layerfx.ORDER.forEach(function (key) {
       var eff = fx[key];
-      var head = el('div.row', { style: { padding: '4px 0' } }, [
-        D.checkbox(PM.layerfx.LABEL[key], eff.on, function (v) { eff.on = v; body.style.display = v ? '' : 'none'; touch(); })
-      ]);
-      var body = el('div', { style: { display: eff.on ? '' : 'none', padding: '2px 0 8px 18px', display: eff.on ? 'flex' : 'none', flexDirection: 'column', gap: '7px' } });
-      body.appendChild(D.paramControls(SPEC[key], eff, touch));
-      stack.appendChild(el('div', { style: { borderBottom: '1px solid var(--line)' } }, [head, body]));
+      var cb = D.checkbox('', eff.on, function (v) { eff.on = v; touch(); show(key); });
+      var row = el('div.fxrow', null, [cb, el('span.lbl', { text: PM.layerfx.LABEL[key] })]);
+      row.addEventListener('click', function (e) { if (e.target.closest('label.cb')) return; show(key); });
+      rows[key] = row;
+      list.appendChild(row);
     });
+    var first = PM.layerfx.ORDER.filter(function (k) { return fx[k].on; })[0] || PM.layerfx.ORDER[0];
+    show(first);
 
     var d = D.open({
-      title: 'Layer Style — ' + layer.name, width: 330, modal: false,
+      title: 'Layer Style — ' + layer.name, width: 560, modal: false,
       content: [
-        D.slider({ label: 'Fill opacity', min: 0, max: 100, value: Math.round((layer.fillOpacity === undefined ? 1 : layer.fillOpacity) * 100), unit: '%',
-          onChange: function (v) { layer.fillOpacity = v / 100; touch(); } }),
-        stack
+        el('div.fxdialog', null, [
+          el('div.fxleft', null, [
+            list,
+            D.slider({ label: 'Fill', min: 0, max: 100, value: Math.round((layer.fillOpacity === undefined ? 1 : layer.fillOpacity) * 100), unit: '%',
+              onChange: function (v) { layer.fillOpacity = v / 100; touch(); } })
+          ]),
+          pane
+        ])
       ],
       onClose: function (c) { if (c) PM.history.restoreDoc(before); },
       onEnter: ok
@@ -10668,19 +10937,34 @@ PM.dialogs = (function () {
   }
 
   function about() {
+    function keys(rows) {
+      return '<table>' + rows.map(function (r) {
+        return '<tr><td>' + r[0].split(' / ').map(function (k) { return '<kbd>' + U.keyName(k) + '</kbd>'; }).join(' ') +
+          '</td><td>' + r[1] + '</td></tr>';
+      }).join('') + '</table>';
+    }
+    var tools = [['V', 'Move'], ['M', 'Marquee'], ['L', 'Lasso'], ['P', 'Polygonal lasso'], ['W', 'Magic wand'], ['Y', 'Quick select'],
+      ['C', 'Crop'], ['I', 'Eyedropper'], ['B', 'Brush'], ['E', 'Eraser'], ['S', 'Clone stamp'], ['J', 'Healing'],
+      ['G', 'Gradient'], ['R', 'Blur / smudge'], ['O', 'Dodge / burn'], ['T', 'Type'], ['U', 'Shape'], ['H', 'Hand'], ['Z', 'Zoom']];
+    var edit = [['Ctrl+Z', 'Undo'], ['Ctrl+Shift+Z', 'Redo'], ['Ctrl+T', 'Free transform'], ['Ctrl+J', 'Duplicate layer'],
+      ['Ctrl+G', 'Group layers'], ['Ctrl+E', 'Merge down'], ['Ctrl+A / Ctrl+D', 'Select all / deselect'],
+      ['Ctrl+Shift+I', 'Inverse selection'], ['Ctrl+Alt+G', 'Clipping mask'], ['Ctrl+F', 'Repeat last filter']];
+    var view = [['Space', 'Pan (hold)'], ['Ctrl+0 / Ctrl+1', 'Fit / 100%'], ['Ctrl++ / Ctrl+−', 'Zoom in / out'],
+      ['Ctrl+R', 'Rulers'], ['Ctrl+H', 'Hide selection edges'], ['[ / ]', 'Brush size'], ['X', 'Swap colors'], ['D', 'Default colors'],
+      ['Ctrl+S', 'Save project'], ['Ctrl+Shift+E', 'Export']];
     var d = D.open({
-      title: 'About PhotoMarket', width: 420,
+      title: 'About PhotoMarket', width: 560,
       content: [
         el('div', { html: '<b style="font-size:16px">PhotoMarket</b>' }),
         el('div.hint', { html:
           'A layered raster image editor that runs entirely inside one HTML file. ' +
-          'No server, no upload, no network — your images never leave this machine.<br><br>' +
-          '<b>Projects</b> save as <code>.pmk</code>, a JSON file with every layer stored as a PNG. ' +
-          'Flat exports go to PNG, JPEG or WebP.<br><br>' +
-          '<b>Keyboard</b>: V move · M marquee · L lasso · W wand · C crop · I eyedropper · B brush · ' +
-          'E eraser · S clone · G gradient · O dodge · T type · U shape · H hand · Z zoom<br>' +
-          'Ctrl+Z undo · Ctrl+Shift+Z redo · Ctrl+T transform · Ctrl+J duplicate layer · ' +
-          '[ and ] brush size · X swap colours · D reset colours · Space to pan'
+          'No server, no upload, no network — your images never leave this machine. ' +
+          '<b>Projects</b> save as <code>.pmk</code>, a JSON file with every layer stored as a PNG; ' +
+          'flat exports go to PNG, JPEG or WebP.'
+        }),
+        el('div.keytable', { html:
+          '<div><h4>Tools</h4>' + keys(tools) + '</div>' +
+          '<div><h4>Editing</h4>' + keys(edit) + '<h4>View &amp; color</h4>' + keys(view) + '</div>'
         })
       ]
     });
@@ -10723,7 +11007,7 @@ PM.panels = (function () {
     /* A header both collapses the panel and drags it: a press that never moves
        is a click, a press that travels more than a few pixels is a reorder. */
     head.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('.hbtns')) return;
+      if (e.target.closest('.hbtns') || opts.host) return;
       startPanelDrag(e, root);
     });
     head.addEventListener('click', function (e) {
@@ -10731,9 +11015,11 @@ PM.panels = (function () {
       if (root._justDragged) { root._justDragged = false; return; }
       root.classList.toggle('collapsed');
       saveLayout();
+      /* Panels that skip work while folded catch up the moment they open. */
+      PM.bus.emit('panelToggle', id);
     });
     if (opts.collapsed) root.classList.add('collapsed');
-    dock.appendChild(root);
+    (opts.host || dock).appendChild(root);
     built[id] = { root: root, body: body, head: head };
     return built[id];
   }
@@ -10782,8 +11068,18 @@ PM.panels = (function () {
   /* Bumped whenever the default arrangement changes: a layout saved under an
      older version is thrown away rather than quietly reinstating the old
      order on top of the new default. */
-  var LAYOUT_VERSION = 2;
+  var LAYOUT_VERSION = 3;
+  var layersH = 0;   /* 0 = not set by the user: pick a default from the window */
+  var dockMore = null;
+  function layersSlot() { return document.getElementById('docklayers'); }
+  function applyLayersHeight() {
+    var dockH = document.getElementById('dock').clientHeight || 900;
+    var h = layersH || U.clamp(Math.round(dockH * 0.47), 250, 600);
+    h = Math.min(h, Math.max(200, dockH - 120));
+    layersSlot().style.setProperty('--layersH', h + 'px');
+  }
   function saveLayout() {
+    if (dockMore) setTimeout(dockMore, 0);
     try {
       var order = Array.prototype.map.call(dock.children, function (n) { return n.dataset.panel; }).filter(Boolean);
       var collapsed = {};
@@ -10794,15 +11090,18 @@ PM.panels = (function () {
       Array.prototype.forEach.call(dock.children, function (n) {
         if (n.dataset.panel && n.style.height) heights[n.dataset.panel] = n.style.height;
       });
+      var lp = layersSlot().querySelector('.panel');
+      if (lp) collapsed.layers = lp.classList.contains('collapsed');
       localStorage.setItem(LAYOUT_KEY, JSON.stringify({
-        v: LAYOUT_VERSION, order: order, collapsed: collapsed, heights: heights
+        v: LAYOUT_VERSION, order: order, collapsed: collapsed, heights: heights, layersH: layersH || 0,
+        short: document.getElementById('dock').clientHeight < 800
       }));
     } catch (e) { /* private mode: the layout simply will not persist */ }
   }
   function restoreLayout() {
     var saved;
     try { saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null'); } catch (e) { saved = null; }
-    if (!saved || saved.v !== LAYOUT_VERSION) return;
+    if (!saved || saved.v !== LAYOUT_VERSION) return false;
     (saved.order || []).forEach(function (id) {
       var n = built[id] && built[id].root;
       if (n) dock.appendChild(n);
@@ -10813,8 +11112,34 @@ PM.panels = (function () {
     });
     Object.keys(saved.heights || {}).forEach(function (id) {
       var n = built[id] && built[id].root;
-      if (n) { n.style.height = saved.heights[id]; n.style.flex = '0 0 auto'; }
+      if (n && id !== 'layers') { n.style.height = saved.heights[id]; n.style.flex = '0 0 auto'; }
     });
+    if (saved.layersH > 0) layersH = saved.layersH;
+    return { short: !!saved.short };
+  }
+
+  /* The bar between the stack and Layers: dragging it up gives Layers room. */
+  function wireDockSplit() {
+    var bar = document.getElementById('docksplit');
+    bar.addEventListener('pointerdown', function (e) {
+      var h0 = layersSlot().getBoundingClientRect().height;
+      bar.classList.add('drag');
+      U.drag(e, function (ev, dx, dy) {
+        layersH = Math.max(160, Math.round(h0 - dy));
+        applyLayersHeight();
+      }, function () { bar.classList.remove('drag'); saveLayout(); });
+    });
+    bar.addEventListener('dblclick', function () { layersH = 0; applyLayersHeight(); saveLayout(); });
+    function more() {
+      bar.classList.toggle('more', dock.scrollHeight - dock.clientHeight - dock.scrollTop > 4);
+    }
+    dockMore = more;
+    dock.addEventListener('scroll', more);
+    new ResizeObserver(more).observe(dock);
+    PM.bus.on('activeLayer', function () { setTimeout(more, 0); });
+    PM.bus.on('doc', function () { setTimeout(more, 0); });
+    window.addEventListener('resize', function () { applyLayersHeight(); more(); });
+    applyLayersHeight(); more();
   }
   function resetLayout() {
     try { localStorage.removeItem(LAYOUT_KEY); } catch (e) { }
@@ -10845,7 +11170,7 @@ PM.panels = (function () {
   var layersUI = {};
 
   function buildLayers() {
-    var p = panel('layers', 'Layers', { tight: true, grow: true });
+    var p = panel('layers', 'Layers', { tight: true, grow: true, host: layersSlot() });
 
     var blendSel = el('select', { style: { flex: '1', minWidth: '0' } });
     S.BLENDS.forEach(function (b) {
@@ -10858,24 +11183,27 @@ PM.panels = (function () {
       S.markDirty();
     });
 
-    var opacity = D.slider({ label: 'Opacity', min: 0, max: 100, value: 100, unit: '%',
+    /* Two rows, as in the original: blend mode with opacity beside it, then
+       the locks with fill beside them. The percentages are scrub fields rather
+       than sliders because the panel's height is layer rows, not controls. */
+    var opacity = D.field({ label: 'Opacity', min: 0, max: 100, value: 100, unit: '%',
       onChange: function (v) {
         var L = S.active(); if (!L) return;
         L.opacity = v / 100; S.markDirty(); scheduleThumbs();
       } });
-    var fillOpacity = D.slider({ label: 'Fill', min: 0, max: 100, value: 100, unit: '%',
+    var fillOpacity = D.field({ label: 'Fill', min: 0, max: 100, value: 100, unit: '%',
       onChange: function (v) {
         var L = S.active(); if (!L) return;
         L.fillOpacity = v / 100; L._fxCache = null; S.markDirty();
       } });
 
-    var lockRow = el('div.row', { style: { padding: '0 8px 6px' } }, [
-      el('span', { text: 'Lock', style: { color: 'var(--dim2)', fontSize: '11px' } }),
+    var lockRow = el('div.row', { style: { padding: '0 8px 6px', gap: '2px' } }, [
+      el('span', { text: 'Lock', style: { color: 'var(--dim2)', fontSize: '11px', marginRight: '2px' } }),
       lockBtn('pixels', 'brush', 'Lock pixels'),
       lockBtn('alpha', 'grid', 'Lock transparency'),
       lockBtn('position', 'move', 'Lock position'),
       el('span', { style: { flex: '1' } }),
-      iconBtn('fx', 'Layer style', function () { PM.dialogs.layerStyle(); })
+      fillOpacity
     ]);
 
     function lockBtn(key, icon, title) {
@@ -10891,9 +11219,8 @@ PM.panels = (function () {
       return b;
     }
 
-    var controls = el('div', { style: { padding: '8px 8px 0', display: 'flex', flexDirection: 'column', gap: '6px' } }, [
-      el('div.row', null, [blendSel]),
-      opacity, fillOpacity
+    var controls = el('div', { style: { padding: '7px 8px 6px', display: 'flex', flexDirection: 'column', gap: '6px' } }, [
+      el('div.row', null, [blendSel, opacity])
     ]);
 
     var list = el('div', { id: 'layerlist' });
@@ -10913,7 +11240,6 @@ PM.panels = (function () {
     p.body.appendChild(lockRow);
     p.body.appendChild(list);
     p.body.appendChild(foot);
-    p.root.appendChild(resizeHandle(p.root));
 
     layersUI.blend = blendSel;
     layersUI.opacity = opacity;
@@ -10943,14 +11269,35 @@ PM.panels = (function () {
     }, 220);
   }
 
-  function thumbFor(canvas, size, isMask) {
+  /* A layer's thumbnail is its content, not its canvas: a title in one
+     corner of a poster-sized document is a speck at 34px, so ordinary layers
+     are cropped to their opaque bounds first (measured on a small copy — a
+     full-size alpha scan per layer per stroke would be far too slow). The
+     background and masks keep the whole frame, which is what they mean. */
+  function thumbFor(canvas, size, isMask, cropToContent) {
     var w = canvas.width, h = canvas.height;
-    var k = Math.min(size / w, size / h);
-    var tw = Math.max(1, Math.round(w * k)), th = Math.max(1, Math.round(h * k));
+    var sx = 0, sy = 0, sw = w, sh = h;
+    if (cropToContent) {
+      var pk = Math.min(1, 96 / w, 96 / h);
+      var probe = pk < 1 ? U.scaledCopy(canvas, Math.max(1, Math.round(w * pk)), Math.max(1, Math.round(h * pk)), true) : canvas;
+      var b = U.alphaBounds(probe);
+      if (b && (b.w * b.h) < probe.width * probe.height * 0.8) {
+        var pad = 1 / pk;
+        sx = Math.max(0, Math.floor(b.x / pk - pad)); sy = Math.max(0, Math.floor(b.y / pk - pad));
+        sw = Math.min(w - sx, Math.ceil(b.w / pk + pad * 2)); sh = Math.min(h - sy, Math.ceil(b.h / pk + pad * 2));
+      }
+    }
+    var k = Math.min(size / sw, size / sh);
+    var tw = Math.max(1, Math.round(sw * k)), th = Math.max(1, Math.round(sh * k));
     var t = U.mkCanvas(size, size), x = t.getContext('2d');
     if (isMask) { x.fillStyle = '#000'; x.fillRect(0, 0, size, size); }
     x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
-    var small = U.scaledCopy(canvas, tw, th, true);
+    var src = canvas;
+    if (sx || sy || sw !== w || sh !== h) {
+      src = U.mkCanvas(sw, sh);
+      src.getContext('2d').drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+    }
+    var small = U.scaledCopy(src, tw, th, true);
     x.drawImage(small, (size - tw) / 2, (size - th) / 2);
     return t.toDataURL('image/png');
   }
@@ -10963,7 +11310,8 @@ PM.panels = (function () {
       var img = row.querySelector('.lthumb:not(.mask)');
       if (img && L.canvas) {
         if (L._thumbRev !== S.doc.rev) {
-          L._thumb = thumbFor(L.canvas, 34, false);
+          var isBg = S.doc.layers[0] === L;
+          L._thumb = thumbFor(L.canvas, 34, false, !isBg);
           L._thumbRev = S.doc.rev;
         }
         img.style.backgroundImage = 'url(' + L._thumb + ')';
@@ -10982,7 +11330,16 @@ PM.panels = (function () {
   }
 
   function refreshLayers() {
-    if (!S.doc || !layersUI.list) return;
+    if (!layersUI.list) return;
+    var lp = document.getElementById('panel-layers');
+    if (lp) lp.classList.toggle('nodoc', !S.doc);
+    var ap = document.getElementById('panel-adjust');
+    if (ap) ap.classList.toggle('nodoc', !S.doc);
+    if (!S.doc) {
+      U.clear(layersUI.list);
+      layersUI.list.appendChild(el('div.empty', { text: 'No document open' }));
+      return;
+    }
     var L = S.active();
     if (L) {
       layersUI.blend.value = L.blend;
@@ -11035,21 +11392,18 @@ PM.panels = (function () {
     if (L.clipping) row.appendChild(el('span.clipmark', { html: '&#8735;', title: 'Clipped to the layer below' }));
 
     if (L.type === 'adjustment') {
-      row.appendChild(el('div.lthumb', {
-        style: { display: 'grid', placeItems: 'center', background: 'var(--panel2)', backgroundImage: 'none' },
+      row.appendChild(el('div.lthumb.kind', {
+        title: PM.adjust.defs[L.adj.type] ? PM.adjust.defs[L.adj.type].name + ' — double-click to edit' : 'Adjustment layer',
         html: U.icon(PM.adjust.defs[L.adj.type] ? PM.adjust.defs[L.adj.type].icon : 'adjust')
       }));
     } else if (L.type === 'group') {
-      row.appendChild(el('div.lthumb', {
-        style: { display: 'grid', placeItems: 'center', background: 'var(--panel2)', backgroundImage: 'none', color: 'var(--dim)' },
-        html: U.icon('folder')
-      }));
+      row.appendChild(el('div.lthumb.kind', { html: U.icon('folder') }));
     } else {
       var th = el('div.lthumb', {
         title: 'Layer pixels',
         onclick: function (e) { e.stopPropagation(); S.setActive(L.id); S.maskEditing = false; refreshLayers(); }
       });
-      if (sel && !S.maskEditing && L.mask) th.style.outline = '2px solid var(--accent)';
+      if (sel && !S.maskEditing && L.mask) th.classList.add('target');
       row.appendChild(th);
     }
 
@@ -11065,7 +11419,7 @@ PM.panels = (function () {
           S.setActive(L.id); S.maskEditing = true; refreshLayers();
         }
       });
-      if (sel && S.maskEditing) mth.style.outline = '2px solid var(--accent)';
+      if (sel && S.maskEditing) mth.classList.add('target');
       if (!L.mask.enabled) mth.style.opacity = '.4';
       row.appendChild(mth);
     }
@@ -11109,9 +11463,10 @@ PM.panels = (function () {
     });
     row.addEventListener('contextmenu', function (e) {
       e.preventDefault();
+      var rr = row.getBoundingClientRect();   /* before the refresh replaces the row */
       S.setActive(L.id);
       refreshLayers();
-      PM.menu.popupAt(layerContextItems(L), e.clientX, e.clientY);
+      PM.menu.popupAt(layerContextItems(L), e.clientX, rr.bottom + 2, rr.top);
     });
 
     /* drag to reorder */
@@ -11171,25 +11526,12 @@ PM.panels = (function () {
   /* ================================================= ADJUSTMENTS PANEL == */
   /* Curves, levels and the rest were only reachable through a menu, which made
      the most-used features in the app the hardest ones to find. */
-  var ADJ_BUTTONS = [
-    ['brightnessContrast', 'sun', 'Brightness / Contrast'],
-    ['levels', 'hist', 'Levels'],
-    ['curves', 'adjust', 'Curves'],
-    ['exposure', 'sun', 'Exposure'],
-    ['vibrance', 'palette', 'Vibrance'],
-    ['hueSaturation', 'palette', 'Hue / Saturation'],
-    ['colorBalance', 'palette', 'Colour Balance'],
-    ['blackWhite', 'adjust', 'Black & White'],
-    ['photoFilter', 'filter', 'Photo Filter'],
-    ['channelMixer', 'adjust', 'Channel Mixer'],
-    ['selectiveColor', 'palette', 'Selective Colour'],
-    ['temperature', 'sun', 'Temperature & Tint'],
-    ['gradientMap', 'gradient', 'Gradient Map'],
-    ['shadowsHighlights', 'sun', 'Shadows / Highlights'],
-    ['invert', 'adjust', 'Invert'],
-    ['posterize', 'grid', 'Posterize'],
-    ['threshold', 'adjust', 'Threshold']
-  ];
+  /* Icons come from the adjustment definitions so the panel, the layer
+     thumbnails and the dialogs all show the same glyph for the same thing. */
+  var ADJ_BUTTONS = ['brightnessContrast', 'levels', 'curves', 'exposure', 'vibrance', 'hueSaturation',
+    'colorBalance', 'blackWhite', 'photoFilter', 'channelMixer', 'selectiveColor', 'temperature',
+    'gradientMap', 'shadowsHighlights', 'invert', 'posterize', 'threshold'
+  ].map(function (k) { return [k, PM.adjust.defs[k].icon, PM.adjust.defs[k].name]; });
 
   function buildAdjustments() {
     var p = panel('adjust', 'Adjustments');
@@ -11197,11 +11539,17 @@ PM.panels = (function () {
     var grid = el('div', {
       style: { display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: '3px' }
     });
+    /* The caption names whichever button the pointer is over, so the grid can
+       be read without waiting for a tooltip. */
+    var caption = el('div.adjcap', { text: 'Click an adjustment to add it' });
     ADJ_BUTTONS.forEach(function (a) {
-      grid.appendChild(el('button.btn.ghost.ico', {
+      var b = el('button.btn.ghost.ico', {
         html: U.icon(a[1]), title: a[2],
         onclick: function () { PM.dialogs.adjustment(a[0], asLayer ? 'layer' : 'apply'); }
-      }));
+      });
+      b.addEventListener('pointerenter', function () { caption.textContent = a[2]; caption.classList.add('lit'); });
+      b.addEventListener('pointerleave', function () { caption.textContent = 'Click an adjustment to add it'; caption.classList.remove('lit'); });
+      grid.appendChild(b);
     });
     var modeRow = el('div.row.sb', null, [
       el('span', { text: 'Add as', style: { color: 'var(--dim2)', fontSize: '11px' } }),
@@ -11221,9 +11569,10 @@ PM.panels = (function () {
     ]);
     p.body.appendChild(modeRow);
     p.body.appendChild(grid);
+    p.body.appendChild(caption);
     p.body.appendChild(el('div.row.wrap', null, [
       el('button.btn.sm', { text: 'Auto tone', onclick: function () { PM.cmd('image.autoTone'); } }),
-      el('button.btn.sm', { text: 'Auto colour', onclick: function () { PM.cmd('image.autoColor'); } })
+      el('button.btn.sm', { text: 'Auto color', onclick: function () { PM.cmd('image.autoColor'); } })
     ]));
     p.body.appendChild(el('div.row.wrap', null, [
       el('button.btn.sm', { html: U.icon('scissors') + '<span>Remove background</span>',
@@ -11273,23 +11622,36 @@ PM.panels = (function () {
       fontSel.addEventListener('change', function () { t.font = fontSel.value; touch(); });
       host.appendChild(fontSel);
       host.appendChild(D.slider({ label: 'Size', min: 4, max: 500, value: t.size, unit: ' px', onChange: function (v) { t.size = v; touch(); } }));
-      host.appendChild(D.slider({ label: 'Leading', min: 0.6, max: 3, step: 0.01, value: t.lineHeight, onChange: function (v) { t.lineHeight = v; touch(); } }));
-      host.appendChild(D.slider({ label: 'Tracking', min: -20, max: 60, step: 0.5, value: t.letterSpacing, unit: ' px', onChange: function (v) { t.letterSpacing = v; touch(); } }));
-      host.appendChild(D.select('Weight', [[300, 'Light'], [400, 'Regular'], [600, 'Semibold'], [700, 'Bold'], [900, 'Black']], t.weight, function (v) { t.weight = parseInt(v, 10); touch(); }));
-      host.appendChild(D.select('Align', [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], t.align, function (v) { t.align = v; touch(); }));
-      host.appendChild(D.slider({ label: 'Box width', min: 0, max: 4000, value: t.boxW || 0, unit: ' px',
-        onChange: function (v) { t.boxW = v; touch(); } }));
-      host.appendChild(el('div.hint', { text: t.boxW ? 'Wrapping to the box.' : 'Zero means point text — no wrapping.' }));
-      host.appendChild(D.colorField('Colour', t.color, function (v) { t.color = v; touch(); }));
-      host.appendChild(el('div.row.wrap', null, [
+      var lead = D.field({ label: 'Leading', min: 0.6, max: 3, step: 0.01, value: t.lineHeight, onChange: function (v) { t.lineHeight = v; touch(); } });
+      var track = D.field({ label: 'Tracking', min: -20, max: 60, step: 0.5, value: t.letterSpacing, unit: ' px', onChange: function (v) { t.letterSpacing = v; touch(); } });
+      [lead, track].forEach(function (f) { f.style.flex = '1 1 0'; f.style.justifyContent = 'space-between'; f.querySelector('.num').style.width = '62px'; });
+      host.appendChild(el('div.row', { style: { gap: '8px' } }, [lead, track]));
+      var wSel = D.select('Weight', [[300, 'Light'], [400, 'Regular'], [600, 'Semibold'], [700, 'Bold'], [900, 'Black']], t.weight, function (v) { t.weight = parseInt(v, 10); touch(); });
+      var aSel = D.select('Align', [['left', 'Left'], ['center', 'Center'], ['right', 'Right']], t.align, function (v) { t.align = v; touch(); });
+      [wSel, aSel].forEach(function (r) { r.style.flex = '1 1 0'; r.style.minWidth = '0'; r.querySelector('select').style.width = '92px'; });
+      host.appendChild(el('div.row', { style: { gap: '8px' } }, [wSel, aSel]));
+      var boxW = D.slider({ label: 'Box width', min: 0, max: 4000, value: t.boxW || 0, unit: ' px',
+        onChange: function (v) { t.boxW = v; touch(); } });
+      boxW.title = 'Zero means point text — no wrapping';
+      host.appendChild(boxW);
+      var colorRow = D.colorField('Color', t.color, function (v) { t.color = v; touch(); });
+      colorRow.style.flex = 'none'; colorRow.style.gap = '6px';
+      host.appendChild(el('div.row', { style: { gap: '10px' } }, [
+        colorRow,
         D.checkbox('Italic', t.italic, function (v) { t.italic = v; touch(); }),
         D.checkbox('Underline', t.underline, function (v) { t.underline = v; touch(); })
       ]));
-      host.appendChild(D.checkbox('Stroke', t.strokeOn, function (v) { t.strokeOn = v; touch(); refreshProps(); }));
+      /* Stroke on one line: the switch, then its colour and width when on. */
+      var strokeRow = el('div.row', { style: { gap: '10px' } }, [
+        D.checkbox('Stroke', t.strokeOn, function (v) { t.strokeOn = v; touch(); refreshProps(); })
+      ]);
       if (t.strokeOn) {
-        host.appendChild(D.colorField('Stroke colour', t.stroke, function (v) { t.stroke = v; touch(); }));
-        host.appendChild(D.slider({ label: 'Stroke width', min: 0.5, max: 40, step: 0.5, value: t.strokeWidth, onChange: function (v) { t.strokeWidth = v; touch(); } }));
+        var sc = D.colorField('', t.stroke, function (v) { t.stroke = v; touch(); });
+        sc.style.flex = 'none';
+        var sw = D.field({ label: 'Width', min: 0.5, max: 40, step: 0.5, value: t.strokeWidth, unit: ' px', onChange: function (v) { t.strokeWidth = v; touch(); } });
+        strokeRow.appendChild(sc); strokeRow.appendChild(sw);
       }
+      host.appendChild(strokeRow);
       host.appendChild(el('button.btn.sm', { text: 'Edit text', onclick: function () { PM.tools.select('text'); PM.text.startEdit(L); } }));
       return;
     }
@@ -11371,7 +11733,7 @@ PM.panels = (function () {
     var hdot = el('div.huedot');
     hue.appendChild(hdot);
     var hex = el('input', { type: 'text', style: { width: '84px' } });
-    var rgbTxt = el('span.mono', { style: { color: 'var(--dim2)' } });
+    var rgbTxt = el('span.readout');
 
     var hsv = { h: 0, s: 0, v: 0 };
     var editing = false;
@@ -11389,7 +11751,7 @@ PM.panels = (function () {
         PM.color.css(PM.color.hsvToRgb({ h: hsv.h, s: 1, v: 1 })) + ')';
       var r = sv.getBoundingClientRect();
       dot.style.left = (hsv.s * (r.width || 240)) + 'px';
-      dot.style.top = ((1 - hsv.v) * (r.height || 110)) + 'px';
+      dot.style.top = ((1 - hsv.v) * (r.height || 84)) + 'px';
       hdot.style.left = (hsv.h / 360 * 100) + '%';
       if (document.activeElement !== hex) hex.value = PM.color.rgbToHex(c);
       rgbTxt.textContent = Math.round(c.r) + ', ' + Math.round(c.g) + ', ' + Math.round(c.b);
@@ -11418,6 +11780,12 @@ PM.panels = (function () {
     });
 
     var swatches = el('div', { id: 'swatches' });
+    var addSw = el('i.add', {
+      text: '+', title: 'Add the foreground color as a swatch', onclick: function () {
+        PM.color.state.swatches.push(PM.color.rgbToHex(PM.color.state.fg));
+        buildSwatches();
+      }
+    });
     function buildSwatches() {
       U.clear(swatches);
       PM.color.state.swatches.forEach(function (hexv, i) {
@@ -11434,15 +11802,9 @@ PM.panels = (function () {
           }
         }));
       });
+      swatches.appendChild(addSw);
     }
     buildSwatches();
-
-    var addSw = el('button.btn.sm', {
-      text: 'Add swatch', onclick: function () {
-        PM.color.state.swatches.push(PM.color.rgbToHex(PM.color.state.fg));
-        buildSwatches();
-      }
-    });
 
     var target = el('div.seg', null, [
       el('div.on', { text: 'FG', onclick: function () { setTarget('fg'); } }),
@@ -11465,10 +11827,10 @@ PM.panels = (function () {
       paint();
     }
 
-    p.body.appendChild(el('div.row.sb', null, [target, rgbTxt]));
+    hex.style.width = '76px';
+    p.body.appendChild(el('div.row.sb', null, [target, hex, rgbTxt]));
     p.body.appendChild(sv);
     p.body.appendChild(hue);
-    p.body.appendChild(el('div.row.sb', null, [hex, addSw]));
     p.body.appendChild(swatches);
 
     PM.bus.on('color', syncFromState);
@@ -11485,12 +11847,38 @@ PM.panels = (function () {
       iconBtn('undo', 'Undo  (Ctrl+Z)', function () { PM.cmd('edit.undo'); }),
       iconBtn('redo', 'Redo  (Ctrl+Shift+Z)', function () { PM.cmd('edit.redo'); }),
       el('span', { style: { flex: '1' } }),
-      el('span.mono', { id: 'histmem', style: { color: 'var(--dim2)' } })
+      el('span.readout', { id: 'histmem' })
     ]);
     p.body.appendChild(list);
     p.body.appendChild(foot);
     histUI.list = list;
     histUI.mem = foot.querySelector('#histmem');
+  }
+
+  /* Entries filed without an icon get one from their label, so every row in
+     the list carries the same kind of glyph. */
+  function historyIcon(label) {
+    var l = (label || '').toLowerCase();
+    if (/brush|paint|dab|smudge|dodge|burn|sponge/.test(l)) return 'brush';
+    if (/eras/.test(l)) return 'eraser';
+    if (/fill|bucket/.test(l)) return 'bucket';
+    if (/gradient/.test(l)) return 'gradient';
+    if (/text|type|font/.test(l)) return 'text';
+    if (/select|marquee|lasso|wand|feather|deselect|inverse/.test(l)) return 'marquee';
+    if (/mask/.test(l)) return 'mask';
+    if (/group/.test(l)) return 'folder';
+    if (/delete|remove/.test(l)) return 'trash';
+    if (/duplicate|copy|paste/.test(l)) return 'copy';
+    if (/merge|flatten|rasteri/.test(l)) return 'merge';
+    if (/move|transform|nudge|scale|skew/.test(l)) return 'move';
+    if (/crop|trim|canvas size|image size/.test(l)) return 'crop';
+    if (/rotate/.test(l)) return 'rotate';
+    if (/flip/.test(l)) return 'flip';
+    if (/style|shadow|glow|stroke|bevel/.test(l)) return 'fx';
+    if (/blur|sharpen|filter|noise|pixel|distort|liquify/.test(l)) return 'filter';
+    if (/blend|opacity|rename|layer|visib/.test(l)) return 'layers';
+    if (/open|place|new|revert/.test(l)) return 'image';
+    return 'adjust';
   }
 
   function refreshHistory() {
@@ -11501,7 +11889,7 @@ PM.panels = (function () {
       var row = el('div.hrow' + (i === H.index ? '.cur' : '') + (i > H.index ? '.undone' : ''), {
         onclick: function () { PM.history.gotoIndex(i); }
       }, [
-        el('span.hi', { html: U.icon(e.icon || 'adjust') }),
+        el('span.hi', { html: U.icon(e.icon || historyIcon(e.label)) }),
         el('span', { text: e.label })
       ]);
       histUI.list.appendChild(row);
@@ -11616,13 +12004,21 @@ PM.panels = (function () {
     /* Colour at the top, layers at the bottom. Layers is the panel that grows
        into whatever room is left, so it sits last and takes the slack. */
     buildColor();
-    buildAdjustments();
     buildProps();
+    buildAdjustments();
     buildHistory();
     buildNav();
     buildInfo();
     buildLayers();
-    restoreLayout();
+    var restored = restoreLayout();
+    var short = document.getElementById('dock').clientHeight < 800;
+    if (!restored || restored.short !== short) {
+      /* A laptop-height dock cannot show Color, Properties and Adjustments at
+         once; the wells on the rail still give the colour, so Color folds.
+         A layout saved on a taller (or shorter) screen does not override it. */
+      built.color.root.classList.toggle('collapsed', short);
+    }
+    wireDockSplit();
 
     PM.bus.on('layers', function () { refreshLayers(); refreshProps(); });
     PM.bus.on('activeLayer', function () { refreshLayers(); refreshProps(); });
@@ -11632,6 +12028,10 @@ PM.panels = (function () {
     PM.bus.on('docsize', function () { refreshNav(true); });
     PM.bus.on('doc', function () { refreshLayers(); refreshHistory(); refreshNav(true); refreshInfo(true); });
     PM.bus.on('selection', function () { refreshInfo(); });
+    PM.bus.on('panelToggle', function (id) {
+      if (id === 'info') refreshInfo(true);
+      if (id === 'nav') refreshNav(true);
+    });
 
     refreshLayers(); refreshHistory();
   }
@@ -11903,7 +12303,7 @@ PM.options = (function () {
         onclick: function () {
           pop.remove();
           var cur = tool.stops().map(function (s) { return [s[0], s[1]]; });
-          PM.dlg.gradientEditor(cur, function (stops, name) {
+          PM.dialogs.gradientEditor(cur, function (stops, name) {
             PM.gradients.push({ name: name || 'Custom', stops: stops });
             tool.opts.preset = PM.gradients.length - 1;
             paint();
@@ -11927,12 +12327,13 @@ PM.options = (function () {
     var t = T.currentBase();
     if (!t) return;
 
+    var xf = PM.transform.active();
     bar.appendChild(el('div.opt-tool', null, [
-      el('span.glyph', { html: U.icon(t.icon) }),
-      el('b', { text: t.name })
+      el('span.glyph', { html: U.icon(xf ? 'transform' : t.icon) }),
+      el('b', { text: xf ? 'Transform' : t.name })
     ]));
 
-    if (PM.transform.active()) { transformOptions(); return; }
+    if (xf) { transformOptions(); return; }
 
     var o = t.opts || {};
     switch (t.id) {
@@ -12059,7 +12460,7 @@ PM.options = (function () {
         bar.appendChild(num('Size', o.size, function (v) { o.size = v; }, { min: 4, max: 500 }));
         bar.appendChild(num('Tolerance', o.tolerance, function (v) { o.tolerance = v; }, { min: 1, max: 200 }));
         bar.appendChild(choose('Sampling', [['continuous', 'Continuous'], ['once', 'Once']], o.sampling, function (v) { o.sampling = v; }, 108));
-        bar.appendChild(check('Protect foreground colour', o.protectFg, function (v) { o.protectFg = v; }));
+        bar.appendChild(check('Protect foreground color', o.protectFg, function (v) { o.protectFg = v; }));
         break;
 
       case 'liquify':
@@ -12075,6 +12476,16 @@ PM.options = (function () {
           el('button.btn.sm', { text: 'Clear freeze', onclick: function () { PM.liquify.clearFreeze(); } })
         ]));
         bar.appendChild(el('div.opt', null, [el('span.hint', { text: 'Alt-drag reconstructs' })]));
+        bar.appendChild(sep());
+        bar.appendChild(el('div.opt', null, [
+          el('button.btn.sm', { text: 'Cancel', title: 'Undo the warp (Esc)', onclick: function () {
+            var layer = S.active();
+            if (layer && PM.liquify.active()) { PM.liquify.restoreAll(layer); PM.toast('Liquify reset'); }
+          } }),
+          el('button.btn.sm.primary', { text: 'Apply', title: 'Keep the warp (Enter)', onclick: function () {
+            PM.toast('Liquify applied'); PM.liquify.end(); PM.liquify.ensure(S.active());
+          } })
+        ]));
         break;
 
       case 'blurTool':
@@ -12131,20 +12542,30 @@ PM.options = (function () {
         break;
 
       case 'text':
+        /* The bar describes the text layer under the cursor, not the last
+           thing typed into it: with a text layer selected its settings become
+           the tool's, so the bar and the Properties panel agree. */
+        var textL = PM.text.editingLayer() || (S.active() && S.active().type === 'text' ? S.active() : null);
+        if (textL && textL.text) {
+          ['font', 'size', 'weight', 'italic', 'align', 'lineHeight', 'letterSpacing', 'underline'].forEach(function (k) {
+            if (textL.text[k] !== undefined) o[k] = textL.text[k];
+          });
+        }
         var fontSel = el('select', { style: { width: '150px' } });
         PM.text.FONTS.forEach(function (f) { fontSel.appendChild(el('option', { value: f, text: f })); });
+        if (o.font && PM.text.FONTS.indexOf(o.font) < 0) fontSel.appendChild(el('option', { value: o.font, text: o.font }));
         fontSel.value = o.font;
         fontSel.addEventListener('change', function () { o.font = fontSel.value; applyToEditing(); });
         bar.appendChild(el('div.opt', null, [fontSel]));
         bar.appendChild(num('Size', o.size, function (v) { o.size = v; applyToEditing(); }, { min: 4, max: 500 }));
-        bar.appendChild(seg([['left', '', 'Left', 'text'], ['center', '', 'Centre', 'text'], ['right', '', 'Right', 'text']],
-          o.align, function (v) { o.align = v; applyToEditing(); }));
-        bar.appendChild(seg([[400, 'R', 'Regular'], [700, 'B', 'Bold']], o.weight, function (v) { o.weight = parseInt(v, 10); applyToEditing(); }));
+        bar.appendChild(choose('', [[400, 'Regular'], [700, 'Bold']], String(o.weight), function (v) { o.weight = parseInt(v, 10); applyToEditing(); }, 88));
         bar.appendChild(check('Italic', o.italic, function (v) { o.italic = v; applyToEditing(); }));
-        bar.appendChild(el('div.opt', null, [D.colorField('Colour', PM.color.rgbToHex(PM.color.state.fg), function (v) {
+        bar.appendChild(seg([['left', '', 'Align left', 'alignL'], ['center', '', 'Align center', 'alignC'], ['right', '', 'Align right', 'alignR']],
+          o.align, function (v) { o.align = v; applyToEditing(); }));
+        bar.appendChild(el('div.opt', null, [D.colorField('Color', textL && textL.text ? textL.text.color : PM.color.rgbToHex(PM.color.state.fg), function (v) {
           PM.color.setFg(PM.color.hexToRgb(v));
           var L = PM.text.editingLayer() || (S.active() && S.active().type === 'text' ? S.active() : null);
-          if (L) { L.text.color = v; PM.text.rasterize(L); PM.text.syncBox(); }
+          if (L) { L.text.color = v; PM.text.rasterize(L); PM.text.syncBox(); PM.panels.refreshProps(); }
         })]));
         bar.appendChild(sep());
         bar.appendChild(el('div.opt', null, [
@@ -12243,7 +12664,7 @@ PM.options = (function () {
       attachTip(btn, function () {
         var cur = T.get(g.last || g[0]);
         return cur.name + (cur.key ? '<span class="k">' + cur.key + '</span>' : '') +
-          (g.length > 1 ? '<span class="k">hold for more</span>' : '');
+          (g.length > 1 ? '<span class="h">right-click for more</span>' : '');
       });
       void tip;
       rail.appendChild(btn);
@@ -12255,8 +12676,8 @@ PM.options = (function () {
     var fg = el('div.well.fg'), bg = el('div.well.bg');
     fg.addEventListener('click', function () { PM.dlg.picker(PM.color.rgbToHex(PM.color.state.fg), PM.color.setFg); });
     bg.addEventListener('click', function () { PM.dlg.picker(PM.color.rgbToHex(PM.color.state.bg), PM.color.setBg); });
-    var swap = el('span.swap', { html: '&#8644;', title: 'Swap colours (X)', onclick: PM.color.swap });
-    var reset = el('span.reset', { html: '&#9635;', title: 'Default colours (D)', onclick: PM.color.reset });
+    var swap = el('span.swap', { html: '&#8644;', title: 'Swap colors (X)', onclick: PM.color.swap });
+    var reset = el('span.reset', { html: '&#9635;', title: 'Default colors (D)', onclick: PM.color.reset });
     wells.appendChild(bg); wells.appendChild(fg); wells.appendChild(swap); wells.appendChild(reset);
     rail.appendChild(wells);
     function paintWells() {
@@ -12319,6 +12740,8 @@ PM.options = (function () {
     buildRail();
     PM.bus.on('tool', function () { rebuild(); refreshRail(); });
     PM.bus.on('transform', function () { rebuild(); });
+    /* The type bar mirrors the selected text layer, so it follows selection. */
+    PM.bus.on('activeLayer', function () { if (PM.tools.currentId === 'text') rebuild(); });
     rebuild();
   }
 
@@ -12478,8 +12901,8 @@ PM.menu = (function () {
     var choice = 'fg';
     var d = PM.dlg.open({
       title: 'Fill', width: 300,
-      content: PM.dlg.select('Contents', [['fg', 'Foreground colour'], ['bg', 'Background colour'],
-        ['black', 'Black'], ['white', 'White'], ['gray', '50% grey']], 'fg', function (v) { choice = v; }),
+      content: PM.dlg.select('Contents', [['fg', 'Foreground color'], ['bg', 'Background color'],
+        ['black', 'Black'], ['white', 'White'], ['gray', '50% gray']], 'fg', function (v) { choice = v; }),
       onEnter: go
     });
     function go() {
@@ -12500,7 +12923,7 @@ PM.menu = (function () {
       title: 'Stroke Selection', width: 300,
       content: [
         PM.dlg.slider({ label: 'Width', min: 1, max: 60, value: 3, unit: ' px', onChange: function (v) { width = v; } }),
-        PM.dlg.select('Location', [['inside', 'Inside'], ['center', 'Centre'], ['outside', 'Outside']], 'center', function (v) { where = v; })
+        PM.dlg.select('Location', [['inside', 'Inside'], ['center', 'Center'], ['outside', 'Outside']], 'center', function (v) { where = v; })
       ],
       onEnter: go
     });
@@ -12804,16 +13227,16 @@ PM.menu = (function () {
   def('select.colorRange', function () {
     var fuzz = 40;
     var d = PM.dlg.open({
-      title: 'Colour Range', width: 300,
+      title: 'Color Range', width: 300,
       content: [
-        el('div.hint', { text: 'Selects everything close to the foreground colour. Use the eyedropper first to choose it.' }),
+        el('div.hint', { text: 'Selects everything close to the foreground color. Use the eyedropper first to choose it.' }),
         PM.dlg.slider({ label: 'Fuzziness', min: 1, max: 255, value: 40, onChange: function (v) { fuzz = v; } })
       ],
       onEnter: go
     });
     function go() {
       d.close();
-      PM.selectionHistory('Colour Range', function () {
+      PM.selectionHistory('Color Range', function () {
         PM.selection.colorRange(R.composite(), PM.color.state.fg, fuzz, 'new');
       });
     }
@@ -12908,16 +13331,14 @@ PM.menu = (function () {
     var out = [];
     out.push({ label: 'Liquify', key: 'Ctrl+Shift+X', cmd: 'filter.liquify' });
     out.push({ sep: true });
-    if (PM.dialogs.lastFilter) {
-      out.push({ label: 'Repeat ' + PM.filters.defs[PM.dialogs.lastFilter.id].name, key: 'Ctrl+F',
-        run: function () { PM.dialogs.repeatLastFilter(); } });
-      out.push({ sep: true });
-    }
+    var last = PM.dialogs.lastFilter;
+    out.push({ label: last ? 'Repeat ' + PM.filters.defs[last.id].name : 'Repeat last filter', key: 'Ctrl+F',
+      disabled: !last || !needPixels(), run: function () { PM.dialogs.repeatLastFilter(); } });
+    out.push({ sep: true });
     Object.keys(groups).forEach(function (g) {
-      out.push({ label: g, header: true });
-      groups[g].forEach(function (f) {
-        out.push({ label: '   ' + f.name + '…', run: function () { PM.dialogs.filter(f.id); }, enabled: needPixels });
-      });
+      out.push({ label: g, enabled: needPixels, items: groups[g].map(function (f) {
+        return { label: f.name + '…', run: function () { PM.dialogs.filter(f.id); }, enabled: needPixels };
+      }) });
     });
     return out;
   }
@@ -12978,22 +13399,20 @@ PM.menu = (function () {
       { label: 'Remove background…', cmd: 'image.removeBackground' },
       { sep: true },
       { label: 'Auto tone', cmd: 'image.autoTone' },
-      { label: 'Auto colour', cmd: 'image.autoColor' },
-      { sep: true },
-      { label: 'Adjustments', header: true }
-    ].concat(adjItems('apply').map(function (i) {
-      return i.sep ? i : { label: '   ' + i.label + '…', run: i.run, enabled: i.enabled };
-    })); } },
+      { label: 'Auto color', cmd: 'image.autoColor' },
+      { label: 'Adjustments', enabled: needPixels, items: function () {
+        return adjItems('apply').map(function (i) { return i.sep ? i : { label: i.label + '…', run: i.run, enabled: i.enabled }; });
+      } }
+    ]; } },
     { title: 'Layer', items: function () { return [
       { label: 'New layer', key: 'Ctrl+Shift+N', cmd: 'layer.new' },
       { label: 'Layer via copy', key: 'Ctrl+J', cmd: 'layer.newFromSelection' },
       { label: 'Duplicate layer', cmd: 'layer.duplicate' },
       { label: 'Delete layer', cmd: 'layer.delete' },
       { sep: true },
-      { label: 'New adjustment layer', header: true }
-    ].concat(adjItems('layer').filter(function (i) { return !i.sep; }).map(function (i) {
-      return { label: '   ' + i.label + '…', run: i.run };
-    })).concat([
+      { label: 'New adjustment layer', enabled: needDoc, items: function () {
+        return adjItems('layer').map(function (i) { return i.sep ? i : { label: i.label + '…', run: i.run }; });
+      } },
       { sep: true },
       { label: 'Group layer', key: 'Ctrl+G', cmd: 'layer.group' },
       { label: 'Ungroup', key: 'Ctrl+Shift+G', cmd: 'layer.ungroup' },
@@ -13017,14 +13436,14 @@ PM.menu = (function () {
       { label: 'Merge down', key: 'Ctrl+E', cmd: 'layer.mergeDown' },
       { label: 'Merge visible', key: 'Ctrl+Shift+E', cmd: 'layer.mergeVisible' },
       { label: 'Flatten image', cmd: 'layer.flatten' }
-    ]); } },
+    ]; } },
     { title: 'Select', items: function () { return [
       { label: 'All', key: 'Ctrl+A', cmd: 'select.all' },
       { label: 'Deselect', key: 'Ctrl+D', cmd: 'select.none' },
       { label: 'Inverse', key: 'Ctrl+Shift+I', cmd: 'select.inverse' },
       { sep: true },
       { label: 'Layer pixels', cmd: 'select.layerAlpha' },
-      { label: 'Colour range…', cmd: 'select.colorRange' },
+      { label: 'Color range…', cmd: 'select.colorRange' },
       { sep: true },
       { label: 'Feather…', key: 'Shift+F6', cmd: 'select.feather' },
       { label: 'Expand…', cmd: 'select.expand' },
@@ -13067,17 +13486,48 @@ PM.menu = (function () {
 
   /* ------------------------------------------------------ menu plumbing -- */
   var openPop = null, openTitle = null;
+  var subPops = [];   /* open submenus, outermost first */
+  var subTimers = {}; /* pending open/close per menu depth */
 
+  function closeSubs(fromDepth) {
+    while (subPops.length > (fromDepth || 0)) {
+      var sp = subPops.pop();
+      sp.pop.remove();
+      sp.owner.classList.remove('open');
+    }
+  }
   function closePop() {
+    closeSubs(0);
     if (openPop) { openPop.remove(); openPop = null; }
     if (openTitle) { openTitle.classList.remove('open'); openTitle = null; }
     document.removeEventListener('pointerdown', outsideClose, true);
   }
   function outsideClose(e) {
-    if (openPop && !openPop.contains(e.target) && !e.target.closest('.menu-top')) closePop();
+    if (openPop && !e.target.closest('.menu-pop') && !e.target.closest('.menu-top')) closePop();
   }
 
-  function buildPop(items) {
+  /* A submenu opens beside its row after a short hover, and stays while the
+     pointer is in either the row or the child. Leaving both, or hovering a
+     sibling row, closes it. */
+  function openSub(node, items, depth) {
+    if (subPops.length > depth && subPops[depth].owner === node) return;
+    closeSubs(depth);
+    var list = typeof items === 'function' ? items() : items;
+    var pop = buildPop(list, depth + 1);
+    pop.classList.add('sub');
+    document.body.appendChild(pop);
+    var r = node.getBoundingClientRect(), pr = pop.getBoundingClientRect();
+    var left = r.right - 2, top = r.top - 5;
+    if (left + pr.width > window.innerWidth - 8) left = Math.max(4, r.left - pr.width + 2);
+    if (top + pr.height > window.innerHeight - 8) top = Math.max(4, window.innerHeight - pr.height - 8);
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+    fixInWindow(pop);
+    node.classList.add('open');
+    subPops.push({ pop: pop, owner: node, depth: depth });
+  }
+
+  function buildPop(items, depth) {
+    depth = depth || 0;
     var pop = el('div.menu-pop');
     items.forEach(function (it) {
       if (it.sep) { pop.appendChild(el('div.menu-sep')); return; }
@@ -13088,17 +13538,34 @@ PM.menu = (function () {
         enabled = !c || !c.enabled || c.enabled();
       } else if (it.enabled) enabled = it.enabled();
       if (it.disabled) enabled = false;
-      var node = el('div.menu-item' + (enabled ? '' : '.disabled'), null, [
+      var node = el('div.menu-item' + (enabled ? '' : '.disabled') + (it.items ? '.has-sub' : ''), null, [
         el('span.check', { html: it.checked ? '&#10003;' : '' }),
         el('span', { text: it.label }),
-        it.key ? el('span.key', { text: U.keyName(it.key) }) : null
+        it.key ? el('span.key', { text: U.keyName(it.key) }) : null,
+        it.items ? el('span.sub-arrow', { html: '&#9656;' }) : null
       ]);
-      node.addEventListener('click', function () {
-        closePop();
-        if (it.cmd) run(it.cmd); else if (it.run) it.run();
-      });
+      if (it.items) {
+        node.addEventListener('click', function () { openSub(node, it.items, depth); });
+        node.addEventListener('pointerenter', function () {
+          clearTimeout(subTimers[depth]);
+          subTimers[depth] = setTimeout(function () { openSub(node, it.items, depth); }, 140);
+        });
+      } else {
+        node.addEventListener('pointerenter', function () {
+          clearTimeout(subTimers[depth]);
+          subTimers[depth] = setTimeout(function () { closeSubs(depth); }, 300);
+        });
+        node.addEventListener('click', function () {
+          closePop();
+          if (it.cmd) run(it.cmd); else if (it.run) it.run();
+        });
+      }
       pop.appendChild(node);
     });
+    pop.addEventListener('pointerleave', function () { clearTimeout(subTimers[depth]); });
+    /* Moving from a parent row into its child cancels the close the parent
+       scheduled when the pointer crossed a sibling on the way. */
+    pop.addEventListener('pointerenter', function () { if (depth > 0) clearTimeout(subTimers[depth - 1]); });
     return pop;
   }
 
@@ -13114,22 +13581,30 @@ PM.menu = (function () {
     setTimeout(function () { document.addEventListener('pointerdown', outsideClose, true); }, 0);
     return pop;
   }
-  function popupAt(items, x, y) {
+  function popupAt(items, x, y, flipTop) {
     closePop();
     var pop = buildPop(items);
     pop.style.left = x + 'px'; pop.style.top = y + 'px';
     document.body.appendChild(pop);
-    fixInWindow(pop);
+    fixInWindow(pop, flipTop);
     openPop = pop;
     setTimeout(function () { document.addEventListener('pointerdown', outsideClose, true); }, 0);
     return pop;
   }
-  function fixInWindow(pop) {
+  function fixInWindow(pop, anchorTop) {
     var r = pop.getBoundingClientRect();
+    var sb = document.getElementById('statusbar');
+    var floor = (sb ? sb.getBoundingClientRect().top : window.innerHeight) - 6;
     if (r.right > window.innerWidth - 8) pop.style.left = Math.max(4, window.innerWidth - r.width - 8) + 'px';
-    if (r.bottom > window.innerHeight - 8) {
-      pop.style.maxHeight = (window.innerHeight - r.top - 16) + 'px';
-      pop.style.overflowY = 'auto';
+    if (r.bottom > floor) {
+      /* Open upward when the whole menu fits above the anchor; otherwise
+         scroll it, never lay it over the status bar. */
+      var up = (anchorTop === undefined ? r.top : anchorTop) - 4;
+      if (r.height <= up - 34) pop.style.top = (up - r.height) + 'px';
+      else {
+        pop.style.top = Math.max(34, floor - r.height) + 'px';
+        if (r.height > floor - 34) { pop.style.maxHeight = (floor - 34) + 'px'; pop.style.overflowY = 'auto'; }
+      }
     }
   }
 
@@ -13162,7 +13637,7 @@ PM.menu = (function () {
       el('button.btn.ghost.ico.sm', { html: U.icon('moon'), title: 'Toggle theme', onclick: function () { run('view.theme'); } }),
       el('button.btn.sm', { html: U.icon('save') + '<span>Save</span>', title: 'Save project (Ctrl+S)', onclick: function () { run('file.save'); } }),
       el('button.btn.sm', {
-        html: U.icon('bolt') + '<span>Quick</span>',
+        html: U.icon('bolt') + '<span>Quick export</span>',
         title: 'Quick export — full size PNG, random name, straight to downloads (Ctrl+Alt+E)',
         onclick: function () { run('file.quickExport'); }
       }),
@@ -13393,25 +13868,71 @@ PM.menu = (function () {
   function wireStatusBar() {
     var zoomVal = document.getElementById('zoomval');
     var stDoc = document.getElementById('st-doc');
+    var stSize = document.getElementById('st-size');
+    var stMode = document.getElementById('st-mode');
     var stPos = document.getElementById('st-pos');
+    var stSel = document.getElementById('st-sel');
 
     document.getElementById('zoomin').addEventListener('click', function () { R.zoomStep(1); });
     document.getElementById('zoomout').addEventListener('click', function () { R.zoomStep(-1); });
-    zoomVal.addEventListener('click', function () { R.setZoom(1); });
-
-    function refreshZoom() { zoomVal.textContent = Math.round(R.V.zoom * 100) + '%'; }
-    function refreshDoc() {
-      if (!S.doc) { stDoc.textContent = '—'; return; }
-      var unsaved = S.doc.rev !== S.doc.savedRev ? ' •' : '';
-      stDoc.textContent = S.doc.name + unsaved + '  ' + S.doc.width + ' × ' + S.doc.height;
+    document.getElementById('zoommenu').addEventListener('click', function (e) {
+      var items = [
+        { label: 'Fit on screen', key: 'Ctrl+0', run: function () { R.fit(); } },
+        { label: 'Fill window', run: function () { R.fit(0); } },
+        { sep: true }
+      ];
+      [25, 50, 66, 100, 200, 300, 400, 800].forEach(function (z) {
+        items.push({ label: z + '%', key: z === 100 ? 'Ctrl+1' : null, run: function () { R.setZoom(z / 100); } });
+      });
+      PM.menu.popup(items, e.currentTarget.parentNode);
+    });
+    /* The zoom box takes typing: "150", "150%" or "1.5x" all mean the same. */
+    function commitZoom() {
+      var m = /^\s*([0-9.]+)\s*(%|x)?\s*$/i.exec(zoomVal.value);
+      if (m) {
+        var v = parseFloat(m[1]);
+        if (m[2] && m[2].toLowerCase() === 'x') v *= 100;
+        if (v > 0) R.setZoom(U.clamp(v / 100, 0.01, 64));
+      }
+      refreshZoom(); zoomVal.blur();
     }
+    zoomVal.addEventListener('focus', function () { zoomVal.select(); });
+    zoomVal.addEventListener('keydown', function (e) {
+      e.stopPropagation();
+      if (e.key === 'Enter') commitZoom();
+      if (e.key === 'Escape') { refreshZoom(); zoomVal.blur(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); R.zoomStep(1); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); R.zoomStep(-1); }
+    });
+    zoomVal.addEventListener('change', commitZoom);
+
+    function refreshZoom() {
+      if (document.activeElement === zoomVal) return;
+      var z = R.V.zoom * 100;
+      zoomVal.value = (z >= 10 ? Math.round(z) : U.round(z, 1)) + '%';
+    }
+    function refreshDoc() {
+      if (!S.doc) { stDoc.textContent = ''; stSize.textContent = ''; stMode.textContent = ''; stPos.textContent = ''; stSel.textContent = ''; return; }
+      var unsaved = S.doc.rev !== S.doc.savedRev ? ' •' : '';
+      stDoc.textContent = S.doc.name + unsaved;
+      stSize.textContent = S.doc.width + ' \u00d7 ' + S.doc.height + ' px';
+      stMode.textContent = 'RGB \u00b7 8-bit \u00b7 ' + (S.doc.resolution || 72) + ' ppi';
+    }
+    var measure = null;   /* a tool's own box (crop) outranks the selection */
+    function refreshSel() {
+      var b = measure || (S.doc && S.doc.selection ? PM.selection.bounds : null);
+      stSel.textContent = b ? 'W ' + b.w + '  H ' + b.h : '';
+    }
+    PM.bus.on('measure', function (m) { measure = m || null; refreshSel(); });
+    PM.bus.on('tool', function () { measure = null; refreshSel(); });
     PM.bus.on('view', refreshZoom);
     PM.bus.on('docsize', refreshDoc);
-    PM.bus.on('doc', refreshDoc);
+    PM.bus.on('doc', function () { refreshDoc(); refreshSel(); });
     PM.bus.on('dirty', refreshDoc);
+    PM.bus.on('selection', refreshSel);
     PM.bus.on('pointer', function (p) {
       if (!S.doc) return;
-      stPos.textContent = Math.floor(p.x) + ', ' + Math.floor(p.y);
+      stPos.textContent = 'X ' + Math.floor(p.x) + '  Y ' + Math.floor(p.y);
     });
     refreshZoom(); refreshDoc();
   }
