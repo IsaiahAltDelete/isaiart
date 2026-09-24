@@ -3,326 +3,137 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0a0b0d">
-<title>Search Terminals</title>
+<title>Search</title>
 <meta name="description" content="Advanced search query builders for X, Bluesky and Threads. Every operator each network understands, compiled live in the browser.">
 
 <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../assets/vector.css?v=10">
-<link rel="stylesheet" href="../assets/console.css?v=10">
-<script src="../assets/cassette.js?v=10"></script>
-
+<link rel="stylesheet" href="search.css?v=2">
+<script src="search.js?v=2"></script>
 <style>
-/* The index belongs to no channel, so it keeps the house amber. */
-:root { --accent: var(--s3); }
-
-.page { padding-bottom: 14px; }
-
-/* ── Capability matrix ───────────────────────────────────────────────────
-   A plotted table: hairlines, no fills, no zebra. The only ink that carries
-   meaning is the mark in the cell. */
-
-.matrix-wrap { overflow-x: auto; padding: 0 0 2px; }
-
-table.matrix {
-    width: 100%;
-    min-width: 480px;
-    border-collapse: collapse;
-    font-size: 0.68rem;
-}
-table.matrix th,
-table.matrix td {
-    padding: 8px 10px;
-    text-align: left;
-    border-bottom: var(--hair) solid var(--rule-lo);
-    white-space: nowrap;
-}
-table.matrix thead th {
-    font-family: var(--f-mono);
-    font-size: var(--label-size);
-    font-weight: 500;
-    letter-spacing: var(--label-track);
-    text-transform: uppercase;
-    color: var(--ink-soft);
-    border-bottom: var(--hair) solid var(--rule);
-}
-table.matrix tbody th {
-    font-weight: 400;
-    color: var(--ink-soft);
-    white-space: normal;
-}
-table.matrix td { text-align: center; width: 20%; }
-/* The network headings sit over columns of centred marks, so they centre too —
-   left-aligned they read as belonging to the capability column beside them. */
-table.matrix thead th + th { text-align: center; }
-table.matrix tr:last-child th,
-table.matrix tr:last-child td { border-bottom: 0; }
-
-.mk      { font-weight: 600; }
-.mk-yes  { color: var(--ok); }
-.mk-part { color: var(--s3); }
-.mk-no   { color: var(--ink-faint); }
-
-.mx-x   { color: var(--s3); }
-.mx-b   { color: var(--s6); }
-.mx-t   { color: var(--s2); }
-
-.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding-top: 10px; }
+.page { padding-bottom: 48px; }
+.foot { display: flex; justify-content: center; padding-top: 12px; }
+.foot a { color: var(--ink-soft); font-weight: 500; text-decoration: none; }
+.foot a:hover { color: var(--ink); }
 </style>
 </head>
 <body>
 
 <main class="page">
 
-    <!-- ── HEADER ──────────────────────────────────────────────────────── -->
-    <header class="chassis page-head">
-
-        <div class="head-row">
-
-            <div class="brand">
-                <h1 class="designation">SEARCH TERMINALS</h1>
-                <span class="stripe brand-stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                <span class="label">ISAIART.COM/SEARCH &middot; THREE NETWORKS, ONE CONSOLE</span>
-            </div>
-
-            <div class="bezel head-well">
-                <div class="screen" id="headScreen">
-                    <div class="well-row">
-                        <span class="phos" id="clock" role="timer" aria-label="System clock">--:--:--</span>
-                        <canvas id="scope" width="120" height="28" aria-hidden="true"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <div class="head-ctl">
-                <div class="lamp">
-                    <span class="led on green" aria-hidden="true"></span>
-                    <span class="label">PWR</span>
-                </div>
-                <div class="phos-sw theme-sw">
-                    <svg class="theme-ico ico-moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 10.6A5.8 5.8 0 0 1 5.4 2.8a5.8 5.8 0 1 0 7.8 7.8Z"/></svg>
-                    <label class="rocker">
-                        <input type="checkbox" id="themeSw" aria-label="Light or dark theme">
-                        <span class="rock"></span>
-                    </label>
-                    <svg class="theme-ico ico-sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.1"/><path d="M8 .8v2M8 13.2v2M.8 8h2M13.2 8h2M2.9 2.9l1.4 1.4M11.7 11.7l1.4 1.4M13.1 2.9l-1.4 1.4M4.3 11.7l-1.4 1.4"/></svg>
-                </div>
-            </div>
-
-        </div>
-
-        <nav class="net-nav" aria-label="Search network">
-            <a class="key net" href="x/"><span class="net-ix">01</span> X</a>
-            <a class="key net" href="bluesky/"><span class="net-ix">02</span> BLUESKY</a>
-            <a class="key net" href="threads/"><span class="net-ix">03</span> THREADS</a>
-            <a class="key net" href="./" aria-current="page"><span class="net-ix">&mdash;</span> INDEX</a>
+    <header class="top">
+        <a class="brand" href="./">Search</a>
+        <nav class="tabs" aria-label="Network">
+            <a href="x/">X</a>
+            <a href="bluesky/">Bluesky</a>
+            <a href="threads/">Threads</a>
         </nav>
-
+        <div class="top-actions">
+            <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle dark mode">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>
+                <span class="tip">Light / dark</span>
+            </button>
+        </div>
     </header>
 
-    <!-- ── QUICK LAUNCH ────────────────────────────────────────────────── -->
-    <section class="chassis hub-quick" aria-label="Quick launch">
-        <div class="hub-quick-row">
-            <label class="label" for="hubQ">CARRY A TERM STRAIGHT INTO A TERMINAL</label>
-            <input class="field" type="text" id="hubQ" placeholder="cassette futurism" autocomplete="off"
-                   aria-describedby="hubHint">
-            <div class="hub-quick-keys">
-                <a class="key" id="goX" href="x/">01 &middot; BUILD ON X &rarr;</a>
-                <a class="key" id="goB" href="bluesky/">02 &middot; BUILD ON BLUESKY &rarr;</a>
-                <a class="key" id="goT" href="threads/">03 &middot; BUILD ON THREADS &rarr;</a>
-            </div>
-            <span class="hint" id="hubHint">The term lands in the terminal's first field. Nothing is searched yet — you get the console with the word already loaded.</span>
+    <section class="hero">
+        <h1>Search, precisely.</h1>
+        <div class="fld" style="width:100%;max-width:560px;align-items:center">
+            <input class="field hero-field" type="text" id="hubQ" placeholder="Start with a word…" autocomplete="off" aria-label="Search term">
+            <span class="tip">Your term fills the first field on the next page. Press Enter to go to X.</span>
+        </div>
+        <div class="hero-keys">
+            <a class="btn btn-go" id="goX" href="x/">X</a>
+            <a class="btn" id="goB" href="bluesky/">Bluesky</a>
+            <a class="btn" id="goT" href="threads/">Threads</a>
         </div>
     </section>
 
-    <!-- ── NETWORKS ────────────────────────────────────────────────────── -->
-    <div class="hub-nets">
-
-        <a class="chassis net-card" data-net="x" href="x/">
-            <span class="net-card-ix" aria-hidden="true">01</span>
-            <div class="net-card-body">
-                <span class="designation net-card-name">X</span>
-                <span class="label">TWITTER &middot; X.COM/SEARCH</span>
-                <ul class="net-card-list">
-                    <li>The deepest operator set of the three</li>
-                    <li>Filter by likes, reposts and replies</li>
-                    <li>Search by place, radius or coordinates</li>
-                    <li>Media, links, quotes, threads, clients</li>
-                </ul>
-            </div>
-            <div class="net-card-foot">
-                <span class="row-tight"><span class="led on green" aria-hidden="true"></span><span class="label">40+ OPERATORS</span></span>
-                <span class="spacer"></span>
-                <span class="key" aria-hidden="true">OPEN &rarr;</span>
-            </div>
+    <div class="nets">
+        <a class="net" href="x/">
+            <strong>X</strong>
+            <span>40+ operators: engagement, place, media, threads.</span>
+            <span class="arrow">Open →</span>
         </a>
-
-        <a class="chassis net-card" data-net="bluesky" href="bluesky/">
-            <span class="net-card-ix" aria-hidden="true">02</span>
-            <div class="net-card-body">
-                <span class="designation net-card-name">BLUESKY</span>
-                <span class="label">AT PROTOCOL &middot; BSKY.APP/SEARCH</span>
-                <ul class="net-card-list">
-                    <li>Author, mention, domain and link filters</li>
-                    <li>Exclusions the operators can't express</li>
-                    <li>Phrases match image alt text too</li>
-                    <li>No engagement filters, no boolean OR</li>
-                </ul>
-            </div>
-            <div class="net-card-foot">
-                <span class="row-tight"><span class="led on green" aria-hidden="true"></span><span class="label">8 OPERATORS + PARAMS</span></span>
-                <span class="spacer"></span>
-                <span class="key" aria-hidden="true">OPEN &rarr;</span>
-            </div>
+        <a class="net" href="bluesky/">
+            <strong>Bluesky</strong>
+            <span>Authors, mentions, links and exclusions.</span>
+            <span class="arrow">Open →</span>
         </a>
-
-        <a class="chassis net-card" data-net="threads" href="threads/">
-            <span class="net-card-ix" aria-hidden="true">03</span>
-            <div class="net-card-body">
-                <span class="designation net-card-name">THREADS</span>
-                <span class="label">INSTAGRAM &middot; THREADS.COM/SEARCH</span>
-                <ul class="net-card-list">
-                    <li>Keyword and topic-tag search, Top or Recent</li>
-                    <li>No operators — the network simply has none</li>
-                    <li>Web-index mode borrows a real query language</li>
-                    <li>Author scoping and dates via the crawl</li>
-                </ul>
-            </div>
-            <div class="net-card-foot">
-                <span class="row-tight"><span class="led on" aria-hidden="true"></span><span class="label">NATIVE + WEB INDEX</span></span>
-                <span class="spacer"></span>
-                <span class="key" aria-hidden="true">OPEN &rarr;</span>
-            </div>
+        <a class="net" href="threads/">
+            <strong>Threads</strong>
+            <span>Native search, plus a web index for operators.</span>
+            <span class="arrow">Open →</span>
         </a>
-
     </div>
 
-    <!-- ── MATRIX ──────────────────────────────────────────────────────── -->
-    <section class="chassis rack">
-        <div class="rack-head">
-            <span class="rack-ix" aria-hidden="true">&mdash;</span>
-            <span class="designation rack-name">WHAT EACH NETWORK WILL ANSWER</span>
-        </div>
-        <div class="rack-body">
-            <div class="matrix-wrap">
-                <table class="matrix">
-                    <caption class="sr-only">Search capability comparison across X, Bluesky and Threads</caption>
-                    <thead>
-                        <tr>
-                            <th scope="col">CAPABILITY</th>
-                            <th scope="col" class="mx-x">X</th>
-                            <th scope="col" class="mx-b">BLUESKY</th>
-                            <th scope="col" class="mx-t">THREADS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><th scope="row">Exact phrase</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-yes">●</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">Exclude words</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-yes">●</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">Boolean OR</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-no">○</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">By author</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-yes">●</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">Exclude authors</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-part">◐</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">Replies to an account</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-no">○</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">Date range</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-yes">●</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">Minimum likes / reposts</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-no">○</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">Media / video only</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-yes">●</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">Links to a domain</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-yes">●</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">Language</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-yes">●</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">Place / radius</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-no">○</span></td><td><span class="mk mk-no">○</span></td></tr>
-                        <tr><th scope="row">Newest-first ordering</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-yes">●</span></td><td><span class="mk mk-part">◐</span></td></tr>
-                        <tr><th scope="row">Shareable as a URL</th>
-                            <td><span class="mk mk-yes">●</span></td><td><span class="mk mk-yes">●</span></td><td><span class="mk mk-part">◐</span></td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="legend">
-                <span class="row-tight"><span class="mk mk-yes">●</span><span class="label">SUPPORTED</span></span>
-                <span class="row-tight"><span class="mk mk-part">◐</span><span class="label">PARTIAL / CONDITIONAL</span></span>
-                <span class="row-tight"><span class="mk mk-no">○</span><span class="label">NOT AVAILABLE</span></span>
-            </div>
-            <span class="hint">Threads' partials: Recent ordering exists but only inside a signed-in session, and its in-app date and profile filters aren't addressable from a URL. Bluesky's partial: exclusions ride as URL parameters the current app honours and older clients drop.</span>
+    <section class="card">
+        <h2>What each one can do</h2>
+        <div class="matrix-wrap">
+            <table class="matrix">
+                <caption class="sr-only">Search capability comparison across X, Bluesky and Threads. Filled dot: supported. Half dot: partial. Empty: not available.</caption>
+                <thead>
+                    <tr><th scope="col"></th><th scope="col">X</th><th scope="col">Bluesky</th><th scope="col">Threads</th></tr>
+                </thead>
+                <tbody>
+                    <tr><th scope="row">Exact phrase</th><td class="mk">●</td><td class="mk">●</td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">Exclude words</th><td class="mk">●</td><td class="mk">●</td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">OR</th><td class="mk">●</td><td class="mk mk-no">○</td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">By author</th><td class="mk">●</td><td class="mk">●</td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">Exclude authors</th><td class="mk">●</td><td class="mk"><span class="has">◐<span class="tip">Sent as a URL parameter. The official app honours it; some older clients drop it.</span></span></td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">Replies to someone</th><td class="mk">●</td><td class="mk mk-no">○</td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">Date range</th><td class="mk">●</td><td class="mk">●</td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">Minimum likes / reposts</th><td class="mk">●</td><td class="mk mk-no">○</td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">Media / video only</th><td class="mk">●</td><td class="mk">●</td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">Links to a domain</th><td class="mk">●</td><td class="mk">●</td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">Language</th><td class="mk">●</td><td class="mk">●</td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">Location</th><td class="mk">●</td><td class="mk mk-no">○</td><td class="mk mk-no">○</td></tr>
+                    <tr><th scope="row">Newest first</th><td class="mk">●</td><td class="mk">●</td><td class="mk"><span class="has">◐<span class="tip">Only when you're signed in.</span></span></td></tr>
+                    <tr><th scope="row">Shareable link</th><td class="mk">●</td><td class="mk">●</td><td class="mk"><span class="has">◐<span class="tip">The term and ordering carry over. Threads' in-app date and profile filters don't.</span></span></td></tr>
+                </tbody>
+            </table>
         </div>
     </section>
 
-    <!-- ── FOOTER ──────────────────────────────────────────────────────── -->
-    <footer class="chassis page-foot">
-        <a class="key" href="https://isaiart.com">&larr; ISAIART.COM</a>
-        <div class="foot-right">
-            <span class="row-tight"><span class="led on green" aria-hidden="true"></span><span class="label">STATIC &middot; NO BACKEND &middot; NOTHING LEAVES THE BROWSER</span></span>
-        </div>
+    <footer class="foot">
+        <a href="https://isaiart.com">isaiart.com</a>
     </footer>
 
 </main>
 
-<script src="../assets/console.js?v=10"></script>
 <script>
 (function () {
     'use strict';
 
     var S = window.SRCH;
 
-    CAS.bootOnce(S.el('headScreen'));
-    S.clock(S.el('clock'));
-    var trace = S.scope(S.el('scope'));
-    S.themeSwitch(S.el('themeSw'), function () { if (trace) trace.repaint(); });
-
-    /* ── Quick launch ────────────────────────────────────────────────────────
-       The three keys are real links whose href tracks the field, so the page
-       wipe fires on click exactly as it does everywhere else — a click handler
-       calling location.href would skip it.
-
-       The terminals are addressed as directories, which is what keeps the
-       deployed URLs clean — isaiart.com/search/x/ rather than .../x/index.html
-       — and Pages resolves them to index.html. cassette.js patches the same
-       links for the file:// scheme, which does not.
-
-       It cannot patch THESE, though: its fixup only recognises an href ending
-       in a slash, and the moment a term is typed these end in a query string.
-       So the file name is written in here, off disk only. */
+    /* The keys are real links whose href tracks the field. Off disk
+       (file://) the directory links need index.html written in, and
+       search.js's fixup only handles hrefs ending in a slash. */
     var file = location.protocol === 'file:';
-    var TARGETS = {
-        goX: 'x/',
-        goB: 'bluesky/',
-        goT: 'threads/'
-    };
-
+    var TARGETS = { goX: 'x/', goB: 'bluesky/', goT: 'threads/' };
     var field = S.el('hubQ');
 
     function retarget() {
         var q = field.value.trim();
         Object.keys(TARGETS).forEach(function (id) {
             var base = TARGETS[id] + (file ? 'index.html' : '');
-            S.el(id).href = q ? base + '?q=' + encodeURIComponent(q) : TARGETS[id];
+            S.el(id).href = q ? base + '?q=' + encodeURIComponent(q) : base;
         });
     }
 
     field.addEventListener('input', retarget);
 
-    /* Enter goes to X — the deepest of the three, so the likeliest intent. */
+    /* Enter goes to X, the deepest of the three. */
     field.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); S.el('goX').click(); }
     });
 
     retarget();
-
-    CAS.pageTransition();
 })();
 </script>
 </body>
