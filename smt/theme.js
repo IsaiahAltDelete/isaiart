@@ -302,104 +302,1675 @@ var goop = (function () {
 })();
 
 
-/* ── Pixel-art parallax scene ─────────────────────────────────────────────
-   Rendered into a genuinely low-resolution canvas (≈1/6 scale) then
-   upscaled with image-rendering:pixelated, so every pixel is a real, hard
-   pixel. Repaints at 12fps on purpose — that chunky cadence is half of
-   what makes it read as a sprite game rather than a webpage. */
+/* ── Pixel-art world ──────────────────────────────────────────────────────
+   The endless scroller from isaiart.com/text, ported near line-for-line
+   (only let/const → var to match this file) so the two can be diffed and
+   kept in sync. Fifteen biomes — meadow, castle
+   country, desert, sakura, the feywild, neo city, ocean, tundra, volcanoes
+   and more — drift past on three parallax ridges and blend into each other
+   at the borders, dressed with props, landmarks and rare world events (UFO
+   abductions, dragons, whales, parades, the /text cat out for a walk), under
+   rolling weather and a sun or moon crossing the sky.
+
+   Rendered into a genuinely low-res canvas (¼ scale, ⅓ on phones) and
+   upscaled with image-rendering:pixelated, so every pixel is a hard pixel.
+   The journey is keyed to the wall clock, so hopping between /flow and
+   /transfer picks it up exactly where it left off. Light mode rides the
+   daytime, dark mode the night. */
 var pixel = (function () {
-    var cv, ctx, id = null, t = 0, timer = null, SCALE = 6, W = 0, H = 0, stars = [];
-    function size() {
-        cv = $('pixelCanvas'); ctx = cv.getContext('2d');
-        W = Math.max(80, Math.ceil(innerWidth / SCALE));
-        H = Math.max(60, Math.ceil(innerHeight / SCALE));
-        cv.width = W; cv.height = H;
-        ctx.imageSmoothingEnabled = false;
-        stars = [];
-        for (var i = 0; i < Math.floor(W * H / 900); i++) {
-            stars.push({ x: Math.random() * W, y: Math.random() * H * 0.6, s: Math.random() < 0.25 ? 2 : 1, p: Math.random() * 60 | 0 });
+    var cv, g, id = null, last = 0;
+
+    /* ---- math / colour / noise ---- */
+    function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+    function lerp(a,b,t){ return a+(b-a)*t; }
+    function smooth(t){ return t*t*(3-2*t); }
+    function hex(h){ var n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+    function mix(a,b,t){ return [lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t)]; }
+    function rgb(c,a){
+        return a===undefined?'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')'
+                            :'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+a+')';
+    }
+    /* integer hash -> 0..1  (32-bit mixing; plain * would lose precision past 2^53) */
+    function hash1(n){
+        var h=Math.imul((n|0)^((n|0)>>>15),0x2c1b3c6d);
+        h=Math.imul(h^(h>>>12),0x297a2d39);
+        h^=h>>>15;
+        return (h>>>0)/4294967296;
+    }
+    function hash2(a,b){ return hash1(Math.imul(a|0,73856093)^Math.imul(b|0,19349663)); }
+    /* value noise, -1..1 */
+    function vnoise(x,seed){
+        var i=Math.floor(x), f=x-i;
+        var a=hash2(i,seed)*2-1, b=hash2(i+1,seed)*2-1;
+        return lerp(a,b,smooth(f));
+    }
+    function fbm(x,seed,oct){
+        var s=0,amp=.5,fr=1;
+        for(var i=0;i<oct;i++){ s+=vnoise(x*fr,seed+i*101)*amp; amp*=.5; fr*=2.03; }
+        return s;
+    }
+    /* deterministic per-index stream */
+    function seeded(n){
+        var s=n|0;
+        return function(){ s=(s+0x9E3779B9)|0; var t=Math.imul(s^(s>>>16),0x21F0AAAD); t=Math.imul(t^(t>>>15),0x735A2D97); return ((t^(t>>>15))>>>0)/4294967296; };
+    }
+    function pick(list,r){
+        var tot=0; for(var i=0;i<list.length;i++) tot+=list[i][0];
+        var v=r*tot;
+        for(var i=0;i<list.length;i++){ v-=list[i][0]; if(v<=0) return list[i][1]; }
+        return list[list.length-1][1];
+    }
+
+    /* ---- time ----
+       One clock shared by both apps. /text runs a full day every 12 minutes;
+       here the hour swings slowly back and forth inside the band that
+       matches the chosen mode instead — morning → golden hour in light,
+       dusk → pre-dawn in dark — so the panel always sits on a sky that
+       suits it. */
+    var EPOCH = Date.UTC(2026, 0, 1), SWING = 16*60*1000;
+    function elapsed(){ return Date.now()-EPOCH; }
+    function hourNow(){
+        var c=Math.cos(elapsed()/SWING*Math.PI*2);
+        return state.mode==='light' ? 12.5-4.7*c : (24.4-4*c)%24;
+    }
+    var SKY = [
+        [0   ,'#0a0e23','#131a3d','#20264f'],
+        [3.6 ,'#0b1029','#171f47','#2b2b60'],
+        [5.2 ,'#241f52','#5c3f74','#c9636b'],
+        [6.4 ,'#3f57a3','#a86a8e','#ffb27a'],
+        [7.6 ,'#4a8ed2','#8fc7ef','#d7ecff'],
+        [12  ,'#2d7ed6','#6fb8f0','#bde6ff'],
+        [16  ,'#3b8ad4','#8cc6ec','#ffe6c2'],
+        [17.8,'#5a6cc0','#cf8a86','#ffb374'],
+        [19  ,'#33306e','#8a4a72','#ff7a5c'],
+        [20.2,'#181a46','#3a2a5e','#7a3f66'],
+        [21.6,'#0c1029','#181f45','#2a2f5c'],
+        [24  ,'#0a0e23','#131a3d','#20264f']
+    ].map(function(k){ return [k[0],hex(k[1]),hex(k[2]),hex(k[3])]; });
+
+    function skyKeys(h){
+        var i=0; while(i<SKY.length-2 && h>=SKY[i+1][0]) i++;
+        var a=SKY[i], b=SKY[i+1];
+        var t=clamp((h-a[0])/(b[0]-a[0]),0,1);
+        return [mix(a[1],b[1],t), mix(a[2],b[2],t), mix(a[3],b[3],t)];
+    }
+
+    /* ---- weather ---- */
+    var WX = {
+        clear : {cloud:.14, rain:0,  snow:0,  dark:0   },
+        cloudy: {cloud:.86, rain:0,  snow:0,  dark:.50 },
+        rain  : {cloud:.92, rain:.55,snow:0,  dark:.68 },
+        storm : {cloud:1,   rain:1,  snow:0,  dark:.88 },
+        snow  : {cloud:.80, rain:0,  snow:.85,dark:.55 }
+    };
+    var wxKey='clear', wxNext=0;
+    var cur = {cloud:.14, rain:0, snow:0, dark:0, cover:0};
+    function pickWeather(force){
+        if(force){ wxKey=force; }
+        else{
+            var roll=Math.random();
+            var k = roll<.40?'clear' : roll<.66?'cloudy' : roll<.85?'rain' : roll<.93?'storm' : 'snow';
+            if(k===wxKey) k = k==='clear'?'cloudy':'clear';
+            wxKey=k;
+        }
+        wxNext = performance.now() + (55+Math.random()*95)*1000;
+    }
+
+    /* ---- biomes ----
+       amp   terrain roughness multiplier
+       lift  raises(+) / sinks(-) the land, as a fraction of H
+       pal   [farHill, midHill, midTop, ground, groundTop, dirt]
+       sky   [tintColour, amount] */
+    function B(o){
+        o.pal=o.pal.map(hex);
+        o.sky[0]=hex(o.sky[0]);
+        if(o.tree) {o.tree.t=hex(o.tree.t); o.tree.a=hex(o.tree.a); o.tree.b=hex(o.tree.b);}
+        if(o.house){o.house.w=hex(o.house.w); o.house.d=hex(o.house.d); o.house.r=hex(o.house.r); o.house.rd=hex(o.house.rd);}
+        if(o.tower){o.tower.a=hex(o.tower.a); o.tower.b=hex(o.tower.b);}
+        o.rockC=hex(o.rockC);
+        o.accent=hex(o.accent);
+        if(o.water) o.water.c=hex(o.water.c);
+        return o;
+    }
+
+    var BIOMES=[
+    B({id:'meadow',amp:1,lift:0,
+        pal:['#5b7fae','#3f7a5a','#5d9c6f','#4b8c46','#6fb95c','#6b4a35'],
+        sky:['#bfe6ff',.04],grass:1,accent:'#ff9ec4',rockC:'#8a8f96',
+        tree:{s:'round',t:'#5a3b2a',a:'#3f8a48',b:'#5cb45c'},
+        house:{s:'cottage',w:'#e8cfa0',d:'#c9a97c',r:'#b4544a',rd:'#8e3f39',lit:1},
+        small:['flower','bush','fence'],sig:'well',far:'hills',
+        dens:[.9,.7,.5],amb:'pollen',ev:['balloon','cat','deer']}),
+
+    B({id:'medieval',amp:1.15,lift:.01,
+        pal:['#6b7a94','#4a6b52','#5f8560','#58803f','#79a552','#6a5136'],
+        sky:['#e8dcc0',.07],grass:1,accent:'#c8443c',rockC:'#8c8a86',
+        tree:{s:'round',t:'#4e3628',a:'#356e3f',b:'#4c944f'},
+        house:{s:'timber',w:'#e0cfae',d:'#b8a184',r:'#7a4a3a',rd:'#5c3628',lit:1},
+        tower:{s:'castle',a:'#9a9690',b:'#7c7872'},
+        small:['barrel','fence','banner'],sig:'gate',far:'castle',
+        dens:[1.0,.8,.5],amb:null,ev:['parade','dragon','knight']}),
+
+    B({id:'desert',amp:1.7,lift:-.005,
+        pal:['#b08a63','#c99a63','#e0b47e','#dcb87e','#f0d39a','#a37c4f'],
+        sky:['#ffcf8c',.22],grass:0,accent:'#e0d0a8',rockC:'#b08a5f',
+        tree:{s:'cactus',t:'#4f7a45',a:'#5b8f4f',b:'#78ad63'},
+        house:{s:'adobe',w:'#d9b183',d:'#b8905f',r:'#c49a6a',rd:'#9c7448',lit:1},
+        small:['bones','rock','skull'],sig:'obelisk',far:'mesa',
+        dens:[.45,.4,.35],amb:'sand',ev:['caravan','mirage','vulture']}),
+
+    B({id:'cherry',amp:1.05,lift:.008,
+        pal:['#8a7fa8','#5f7a63','#7a9a72','#6d9a5c','#8fbc6e','#7a5a44'],
+        sky:['#ffc2dd',.16],grass:1,accent:'#ff9ec4',rockC:'#9a94a0',
+        tree:{s:'cherry',t:'#6b4a3a',a:'#ff9ec4',b:'#ffc2dd'},
+        house:{s:'pagoda',w:'#f0e2cc',d:'#cdbca4',r:'#b0505c',rd:'#8a3a46',lit:1},
+        small:['lantern','bush','flower'],sig:'torii',far:'peaks',
+        dens:[1.2,.9,.6],amb:'petal',ev:['crane','festival']}),
+
+    B({id:'feywild',amp:1.35,lift:.012,
+        pal:['#6a4a8f','#4a2f6b','#6b4a94','#45336b','#7a4fb0','#2f2450'],
+        sky:['#c46bff',.30],grass:1,accent:'#7fffd4',rockC:'#6a5a94',
+        tree:{s:'spiral',t:'#4a3468',a:'#8a4fd0','b':'#c47fff'},
+        house:{s:'mush',w:'#e8d8f0',d:'#c2aed6',r:'#ff6b9d',rd:'#c44a76',lit:1},
+        small:['mushroom','crystal','glowflower'],sig:'portal',far:'isles',
+        dens:[1.3,1.0,.7],amb:'wisp',ev:['rift','pixie','moonbeast']}),
+
+    B({id:'city',amp:.30,lift:0,
+        pal:['#6b7280','#4a5260','#606a7a','#55606b','#6b7784','#3a4048'],
+        sky:['#c8ccd8',.16],grass:0,accent:'#ffd45c',rockC:'#6a707a',
+        tree:{s:'round',t:'#4a3f38',a:'#3f6b45',b:'#578a56'},
+        house:{s:'modern',w:'#8a94a4',d:'#6a7484',r:'#5a6474',rd:'#48505e',lit:1},
+        tower:{s:'sky',a:'#7c8698',b:'#616b7c'},
+        small:['streetlight','car','hydrant'],sig:'crane',far:'skyline',
+        dens:[1.1,.9,.7],amb:null,ev:['parade','blimp','helicopter']}),
+
+    B({id:'arcane',amp:1.5,lift:.02,
+        pal:['#5a5a8c','#464678','#5e5e96','#4a4a74','#6a6a9c','#3a3a5c'],
+        sky:['#9c8cff',.22],grass:0,accent:'#7fd4ff',rockC:'#5e5e8a',
+        tree:{s:'dead',t:'#3f3a5c',a:'#4a4478',b:'#5e5896'},
+        tower:{s:'wizard',a:'#6a5f9c',b:'#4e4478'},
+        house:{s:'cottage',w:'#c4b8e0',d:'#a094c0',r:'#5f4a9c',rd:'#453472',lit:1},
+        small:['crystal','rune','candle'],sig:'monolith',far:'spires',
+        dens:[.8,.7,.55],amb:'spark',ev:['rift','dragon','comet']}),
+
+    B({id:'ocean',amp:.5,lift:-.035,
+        pal:['#4a6f96','#3d5f80','#527a9c','#2f4a66','#3f6180','#26384c'],
+        sky:['#a8dcff',.18],grass:0,accent:'#7fe0ff',rockC:'#5a7490',
+        water:{c:'#2f7fb0',rise:.022,alpha:.86},
+        tree:{s:'palm',t:'#6b5236',a:'#3f8a55',b:'#5cb46c'},
+        house:{s:'cottage',w:'#e0dcd0',d:'#bab6aa',r:'#4a6f8a',rd:'#365468',lit:1},
+        tower:{s:'light',a:'#e8e4dc',b:'#c8483c'},
+        small:['buoy','shell','crab'],sig:'wreck',far:'isles',
+        dens:[.35,.3,.35],amb:null,ev:['whale','ship','kraken']}),
+
+    B({id:'farm',amp:.5,lift:.004,
+        pal:['#6b8aa8','#6a8a4a','#87a85f','#8a9a4a','#a8bc63','#7a5c3a'],
+        sky:['#ffe9b0',.10],grass:1,accent:'#e8c45c',rockC:'#8a8474',
+        tree:{s:'round',t:'#5a3f2a',a:'#4a8a45',b:'#6aac58'},
+        house:{s:'barn',w:'#b8483c',d:'#8e3630',r:'#e8e0d0',rd:'#bab2a2',lit:1},
+        tower:{s:'silo',a:'#d8d2c2',b:'#b0aa9a'},
+        small:['crops','hay','fence'],sig:'windmill',far:'hills',
+        dens:[1.0,.9,.6],amb:'pollen',ev:['ufo','tractor','crop']}),
+
+    B({id:'ruins',amp:1.2,lift:.006,
+        pal:['#7a7a8a','#5a6b5a','#7a8a70','#6b7060','#8a8f74','#5a5044'],
+        sky:['#d8d0bc',.12],grass:1,accent:'#a8a294',rockC:'#8a8578',
+        tree:{s:'dead',t:'#4a4238',a:'#5a6b4a',b:'#74875c'},
+        house:{s:'ruin',w:'#b8b2a0',d:'#948e7c',r:'#8a8474',rd:'#6a6454',lit:0},
+        small:['column','rubble','grave'],sig:'arch',far:'brokentowers',
+        dens:[1.0,.8,.5],amb:null,ev:['raven','ghost','digsite']}),
+
+    B({id:'tundra',amp:1.25,lift:.008,
+        pal:['#8aa0c0','#7f96b4','#a4b8d4','#d8e6f0','#f4faff','#6a7a8a'],
+        sky:['#cfe6ff',.22],grass:0,accent:'#a8e0ff',rockC:'#7e8ea0',
+        tree:{s:'snowpine',t:'#4a4038',a:'#2f5a45',b:'#c8e4f0'},
+        house:{s:'igloo',w:'#e8f2fa',d:'#c2d4e4',r:'#dcebf6',rd:'#b4c8dc',lit:1},
+        small:['icespike','rock','snowman'],sig:'wolfrock',far:'snowpeaks',
+        dens:[.6,.5,.4],amb:'drift',ev:['aurora','sled','mammoth']}),
+
+    B({id:'volcanic',amp:1.6,lift:.014,
+        pal:['#4a3a3f','#3a2a2f','#54383c','#2f2226','#4a3236','#1f1618'],
+        sky:['#ff6a3c',.30],grass:0,accent:'#ff8a3c',rockC:'#3f3034',
+        tree:{s:'dead',t:'#2a2022',a:'#3a2c2e',b:'#4e3a3c'},
+        house:{s:'ruin',w:'#4a3c3e',d:'#332728',r:'#3a2e30',rd:'#251d1e',lit:0},
+        small:['obsidian','lava','ember'],sig:'forge',far:'volcano',
+        dens:[.7,.6,.5],amb:'ember',ev:['meteor','phoenix','lavaburst']}),
+
+    B({id:'swamp',amp:.65,lift:-.006,
+        pal:['#4a5a4a','#3a4a3a','#4f6349','#3f4a35','#576445','#2a3226'],
+        sky:['#8aa87c',.22],grass:1,accent:'#8ade6a',rockC:'#5a6450',
+        water:{c:'#3f5540',rise:.008,alpha:.7},
+        tree:{s:'gnarled',t:'#3a3228',a:'#46603c',b:'#5e7a4c'},
+        house:{s:'stilt',w:'#6a5c46',d:'#4e4232',r:'#5a4c38',rd:'#3e3426',lit:1},
+        small:['reed','lily','toadstool'],sig:'shrine',far:'mist',
+        dens:[1.2,.9,.7],amb:'wisp',ev:['heron','bubble','witch']}),
+
+    B({id:'industrial',amp:.45,lift:.004,
+        pal:['#6a6a72','#55555c','#6e6e77','#4a4a50','#62626a','#3a3a40'],
+        sky:['#d8c8a8',.20],grass:0,accent:'#e08a3c',rockC:'#5e5e66',
+        tree:{s:'dead',t:'#3a3630',a:'#4a4640',b:'#5c5850'},
+        house:{s:'factory',w:'#7a6a5c',d:'#5c5044',r:'#6a6a72',rd:'#4e4e56',lit:1},
+        tower:{s:'stack',a:'#8a7a6c',b:'#6a5e52'},
+        small:['pipe','crate','gear'],sig:'gearworks',far:'stacks',
+        dens:[1.0,.8,.6],amb:'ash',ev:['airship','train','steamburst']}),
+
+    B({id:'outpost',amp:.9,lift:.006,
+        pal:['#7a6a94','#5f5280','#7a6aa0','#6b5f8a','#8779ac','#4a4066'],
+        sky:['#c48cff',.26],grass:0,accent:'#7fffe0',rockC:'#6a5e88',
+        tree:{s:'spiral',t:'#4a4068',a:'#4a8a9c',b:'#6ab4c4'},
+        house:{s:'dome',w:'#c4bcd8',d:'#a099bc',r:'#7fffe0',rd:'#4ac0a8',lit:1},
+        tower:{s:'antenna',a:'#a89ec4',b:'#7f76a0'},
+        small:['crate','panel','probe'],sig:'dish',far:'domes',
+        dens:[.7,.6,.5],amb:'spark',ev:['ufo','drone','satellite']})
+    ];
+
+    /* ---- world: endless regions, terrain, prop chunks ---- */
+    var SPEED=5.5;             /* world px per second */
+    var SLOT=1300, JIT=760, BLEND=210;
+    function camX(){ return elapsed()/1000*SPEED; }
+
+    function bound(i){ return i*SLOT + (hash1(Math.imul(i,7919)+3)-.5)*JIT; }
+    function regionAt(wx){
+        var i=Math.floor(wx/SLOT);
+        while(bound(i)>wx) i--;
+        while(bound(i+1)<=wx) i++;
+        return i;
+    }
+    function rawBiome(i){ return Math.floor(hash1(Math.imul(i,104729)+13)*BIOMES.length)%BIOMES.length; }
+    function biomeOf(i){
+        var k=rawBiome(i);
+        if(k===rawBiome(i-1)) k=(k+1+Math.floor(hash1(Math.imul(i,31337)+7)*(BIOMES.length-1)))%BIOMES.length;
+        return k;
+    }
+    /* {a,b,t} — a and b are biome indices, t is the blend toward b */
+    function blendAt(wx){
+        var i=regionAt(wx), b0=bound(i);
+        var d=wx-b0;
+        if(d<BLEND) return {a:biomeOf(i-1),b:biomeOf(i),t:smooth(d/BLEND)};
+        var k=biomeOf(i);
+        return {a:k,b:k,t:1};
+    }
+    function biomeIdxAt(wx){ var b=blendAt(wx); return b.t<.5?b.a:b.b; }
+
+    /* terrain: shape from noise, palette/biome from the same world x (fully coherent) */
+    var LAYER=[{base:.150,amp:.060,freq:.0024},
+               {base:.070,amp:.038,freq:.0050},
+               {base:.000,amp:.017,freq:.0078}];
+    function layerYFor(wx,l,B_){
+        var L=LAYER[l];
+        return horizon - L.base*H - B_.lift*H*(l===2?1:.6)
+             - fbm(wx*L.freq,l*257+11,3)*L.amp*H*B_.amp;
+    }
+    function terrainY(wx,l){
+        var bl=blendAt(wx);
+        if(bl.a===bl.b) return Math.round(layerYFor(wx,l,BIOMES[bl.a]));
+        return Math.round(lerp(layerYFor(wx,l,BIOMES[bl.a]),layerYFor(wx,l,BIOMES[bl.b]),bl.t));
+    }
+
+    /* ---- prop chunks ---- */
+    var CHUNK=110;
+    var chunkCache={}, chunkCount=0;
+    function chunkProps(l,ci){
+        var key=l+':'+ci;
+        var v=chunkCache[key];
+        if(v) return v;
+        var r=seeded(Math.imul(ci,7919)+Math.imul(l,104729)+5);
+        var wx0=ci*CHUNK;
+        var bi=biomeIdxAt(wx0+CHUNK/2), Bm=BIOMES[bi];
+        var list=[];
+        /* dens is authored [most-distant .. nearest]; the near layer carries the detail */
+        var n=Math.round(Bm.dens[2-l]*(CHUNK/110)*(l===0?2.0:l===1?2.8:3.6)*(.55+r()));
+        for(var i=0;i<n;i++){
+            var wx=wx0+r()*CHUNK;
+            var kind;
+            if(l===0) kind='far';
+            else{
+                var tbl=l===1
+                    ? [[3,'tree'],[1.1,'house'],[.5,'rock'],[1.4,'small']]
+                    : [[2.6,'tree'],[1.5,'house'],[.9,'rock'],[2.6,'small'],[(Bm.tower?0.7:0),'tower'],[.45,'sig']];
+                kind=pick(tbl,r());
+            }
+            if(kind==='tree'&&!Bm.tree) kind='rock';
+            if(kind==='house'&&!Bm.house) kind='rock';
+            list.push({k:kind,wx:wx,b:bi,a:r(),c:r(),d:r()});
+        }
+        /* rare world events, near layer only */
+        if(l===2 && Bm.ev.length && r()<.30){
+            list.push({k:'event',ev:Bm.ev[Math.floor(r()*Bm.ev.length)],wx:wx0+r()*CHUNK,b:bi,a:r(),c:r(),d:r()});
+        }
+        chunkCache[key]=list; chunkCount++;
+        if(chunkCount>900){
+            var cut=Math.floor(camX()/CHUNK);
+            for(var k in chunkCache){
+                var ci2=parseInt(k.split(':')[1],10);
+                if(Math.abs(ci2-cut)>60){ delete chunkCache[k]; chunkCount--; }
+            }
+        }
+        return list;
+    }
+
+    /* ---- prop art ---- */
+    function px(x,y,w,h,c){ g.fillStyle=c; g.fillRect(x|0,y|0,Math.max(1,w|0),Math.max(1,h|0)); }
+    function disc(x,y,r,c){
+        g.fillStyle=c;
+        for(var dy=-r;dy<=r;dy++){
+            var w=Math.floor(Math.sqrt(Math.max(0,r*r-dy*dy)));
+            g.fillRect((x-w)|0,(y+dy)|0,w*2+1,1);
         }
     }
-    function css(v, fb) { return (getComputedStyle(html).getPropertyValue(v).trim() || fb); }
-    function rect(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w | 0, h | 0); }
-    function draw() {
-        var dark = state.mode === 'dark';
-        var accent = css('--accent', '#FFA300');
-        var sky1 = dark ? '#12132A' : '#BFE3F0';
-        var sky2 = dark ? '#2D2B55' : '#E8F0E8';
-        var far  = dark ? '#1A1C2C' : '#8FB68C';
-        var mid  = dark ? '#232649' : '#6E9C6C';
-        var gnd  = dark ? '#151626' : '#4F7A50';
-
-        // Banded sky (hard bands, no gradient — gradients aren't pixel art)
-        var bands = 7, bh = Math.ceil(H * 0.62 / bands);
-        for (var i = 0; i < bands; i++) {
-            rect(0, i * bh, W, bh, mix(sky1, sky2, i / (bands - 1)));
+    /* staircase triangle, point up */
+    function tri(x,y,w,h,c){
+        g.fillStyle=c;
+        for(var i=0;i<h;i++){
+            var ww=Math.max(1,Math.round(w*(i/h)));
+            g.fillRect((x-ww/2)|0,(y-h+i)|0,ww,1);
         }
-        // Bayer dithering along each band seam
-        for (var i = 1; i < bands; i++) {
-            var y = i * bh;
-            for (var x = 0; x < W; x += 2) if (((x >> 1) + i) % 2 === 0) rect(x, y - 1, 1, 1, mix(sky1, sky2, (i - 1) / (bands - 1)));
+    }
+    var hazeCol=[140,170,200];
+    var LSCALE=[.42,.66,1];
+    function C(c,l){ return rgb(l?mix(tint(c),hazeCol,l===1?.16:0):tint(c)); }
+    function CF(c){ return rgb(mix(tint(c),hazeCol,.45)); }
+
+    function drawProp(p,l,sx,gy,now){
+        var Bm=BIOMES[p.b], s=LSCALE[l];
+        switch(p.k){
+            case 'far'  : farSil(Bm,sx,gy,p,now); break;
+            case 'tree' : drawTree(Bm,sx,gy,p,l,s,now); break;
+            case 'house': drawHouse(Bm,sx,gy,p,l,s,now); break;
+            case 'tower': drawTower(Bm,sx,gy,p,l,s,now); break;
+            case 'rock' : drawRock(Bm,sx,gy,p,l,s); break;
+            case 'small': drawSmall(Bm,sx,gy,p,l,s,now); break;
+            case 'sig'  : drawSig(Bm,sx,gy,p,l,s,now); break;
+            case 'event': drawEvent(p.ev,Bm,sx,gy,p,now); break;
+        }
+    }
+
+    /* ---------- trees ---------- */
+    function drawTree(Bm,x,gy,p,l,s,now){
+        var T=Bm.tree, h=Math.round((9+p.a*11)*s)+2;
+        var sway=reduceMotion?0:Math.round(Math.sin(now/1500+p.wx*.07)*(l===2?1:.6));
+        var tc=C(T.t,l), a=C(T.a,l), b=C(T.b,l);
+        switch(T.s){
+            case 'round':
+                px(x,gy-h+2,Math.max(1,Math.round(s*1.6)),h-2,tc);
+                disc(x+sway,gy-h,Math.max(2,Math.round(h*.42)),a);
+                disc(x-1+sway,gy-h-1,Math.max(1,Math.round(h*.30)),b);
+                break;
+            case 'pine': case 'snowpine':
+                px(x,gy-3,1,3,tc);
+                for(var i=0;i<3;i++){
+                    var w=Math.round(h*.62-i*h*.16), yy=gy-3-Math.round(h*.30*i)-Math.round(h*.30);
+                    tri(x+Math.round(sway*i/2),yy+3,w,Math.round(h*.34),i===0?a:a);
+                }
+                if(T.s==='snowpine'){ tri(x+sway,gy-3-Math.round(h*.90),Math.round(h*.30),Math.round(h*.22),b); }
+                else tri(x+sway,gy-3-Math.round(h*.86),Math.round(h*.28),Math.round(h*.20),b);
+                break;
+            case 'cherry':
+                px(x,gy-h+3,Math.max(1,Math.round(s*1.6)),h-3,tc);
+                px(x-2,gy-h+4,2,1,tc); px(x+2,gy-h+5,2,1,tc);
+                disc(x+sway,gy-h,Math.max(2,Math.round(h*.44)),a);
+                disc(x-2+sway,gy-h-2,Math.max(1,Math.round(h*.26)),b);
+                disc(x+3+sway,gy-h+1,Math.max(1,Math.round(h*.22)),b);
+                break;
+            case 'dead':
+                px(x,gy-h,1,h,tc);
+                px(x-2,gy-h+2,2,1,tc); px(x+1,gy-h+4,3,1,tc);
+                px(x-3,gy-h+1,1,2,tc); px(x+3,gy-h+3,1,2,tc);
+                break;
+            case 'gnarled':
+                px(x,gy-h,2,h,tc);
+                px(x-3,gy-h+3,3,1,tc); px(x+2,gy-h+5,3,1,tc);
+                disc(x+sway,gy-h-1,Math.max(2,Math.round(h*.34)),a);
+                disc(x+3+sway,gy-h+2,Math.max(1,Math.round(h*.20)),b);
+                /* hanging moss */
+                px(x-2,gy-h+2,1,Math.round(h*.25),b);
+                break;
+            case 'palm':
+                for(var i=0;i<h;i++) px(x+Math.round(Math.sin(i/h*1.2)*2),gy-i,1,1,tc);
+                var tx=x+Math.round(Math.sin(1.2)*2);
+                for(var k=-2;k<=2;k++){
+                    if(!k) continue;
+                    for(var i=1;i<=4;i++) px(tx+k*i,gy-h+Math.abs(k)*i*.4+(i*i*.18)|0,1,1,k%2?a:b);
+                }
+                disc(tx,gy-h,1,b);
+                break;
+            case 'cactus':
+                px(x,gy-h,2,h,a);
+                px(x,gy-h,1,h,b);
+                if(p.a>.4){ px(x-3,gy-Math.round(h*.6),3,1,a); px(x-3,gy-Math.round(h*.6)-3,1,3,a); }
+                if(p.c>.5){ px(x+2,gy-Math.round(h*.75),3,1,a); px(x+4,gy-Math.round(h*.75)-4,1,4,a); }
+                if(p.d>.75) px(x,gy-h-1,2,1,C(Bm.accent,l));
+                break;
+            case 'spiral':
+                for(var i=0;i<h;i++) px(x+Math.round(Math.sin(i*.55)*2.4),gy-i,1,1,tc);
+                for(var i=0;i<5;i++){
+                    var ang=i*1.25+p.a*6, rr=3+i*.7;
+                    disc(x+Math.round(Math.cos(ang)*rr),gy-h+Math.round(Math.sin(ang)*rr*.5),Math.max(1,Math.round(2*s)),i%2?a:b);
+                }
+                break;
+        }
+    }
+
+    /* ---------- houses ---------- */
+    function drawHouse(Bm,x,gy,p,l,s,now){
+        var Hs=Bm.house, lit=clamp(night*1.4,0,1)*(Hs.lit?1:0);
+        var w=Math.round((10+p.a*7)*s), hh=Math.round((8+p.c*6)*s);
+        var wall=C(Hs.w,l), dark=C(Hs.d,l), roof=C(Hs.r,l), roofD=C(Hs.rd,l);
+        var x0=x-(w>>1);
+        var winC=lit>.15?rgb(mix([120,150,180],[255,206,110],lit)):C([126,152,174],l);
+        switch(Hs.s){
+            case 'modern': {
+                var th=Math.round(hh*(1.6+p.a*2.6));
+                px(x0,gy-th,w,th,wall); px(x0,gy-th,Math.max(1,w>>2),th,dark);
+                for(var r=1;r<th-1;r+=3) for(var c=1;c<w-1;c+=3){
+                    var on=hash2(p.wx+r*13,c*7)>(.42-lit*.34);
+                    px(x0+c,gy-th+r,1,1,on?rgb(mix([90,110,130],[255,226,140],lit)):dark);
+                }
+                px(x0-1,gy-th-1,w+2,1,dark);
+                if(p.d>.7) px(x,gy-th-4,1,4,dark),px(x,gy-th-5,1,1,rgb([255,80,80],.9));
+                break; }
+            case 'timber':
+                px(x0,gy-hh,w,hh,wall);
+                for(var i=1;i<w;i+=3) px(x0+i,gy-hh,1,hh,dark);
+                px(x0,gy-hh+Math.round(hh/2),w,1,dark);
+                for(var i=0;i<5;i++) px(x0-1-i,gy-hh-i*1.6,w+2+i*2,2,i?roof:roofD);
+                break;
+            case 'cottage':
+                px(x0,gy-hh,w,hh,wall); px(x0,gy-3,w,3,dark);
+                for(var i=0;i<4;i++) px(x0-2+i,gy-hh-i*1.7,w+4-i*2,2,i?roof:roofD);
+                break;
+            case 'pagoda':
+                px(x0,gy-hh,w,hh,wall); px(x0,gy-hh,w,1,dark);
+                for(var t=0;t<2;t++){
+                    var yy=gy-hh-t*Math.round(hh*.55), ww=w+5-t*3;
+                    px(x-(ww>>1),yy-2,ww,2,roof);
+                    px(x-(ww>>1)-1,yy,ww+2,1,roofD);
+                    if(t) px(x0+1,yy,w-2,Math.round(hh*.5),wall);
+                }
+                break;
+            case 'adobe':
+                px(x0,gy-hh,w,hh,wall); px(x0,gy-hh,w,2,roof);
+                px(x0+1,gy-hh-1,w-2,1,roofD);
+                for(var i=2;i<w-1;i+=4) px(x0+i,gy-hh+2,1,1,dark);
+                break;
+            case 'mush': {
+                var cap=Math.round(w*.85);
+                px(x-1,gy-hh,3,hh,wall);
+                disc(x,gy-hh,cap>>1,roof);
+                px(x-(cap>>1),gy-hh,cap,1,roofD);
+                disc(x-2,gy-hh-1,1,C([255,255,255],l)); disc(x+2,gy-hh-2,1,C([255,255,255],l));
+                break; }
+            case 'stilt':
+                px(x0+1,gy-4,1,4,dark); px(x0+w-2,gy-4,1,4,dark);
+                px(x0,gy-hh-4,w,hh,wall);
+                for(var i=0;i<3;i++) px(x0-1+i,gy-hh-4-i*1.5,w+2-i*2,2,i?roof:roofD);
+                break;
+            case 'barn':
+                px(x0,gy-hh,w,hh,wall); px(x0,gy-hh,w,1,dark);
+                px(x-1,gy-Math.round(hh*.7),2,Math.round(hh*.7),dark);
+                for(var i=0;i<3;i++) px(x0-1+i,gy-hh-i*2,w+2-i*2,2,i?roof:roofD);
+                break;
+            case 'factory':
+                px(x0,gy-hh,w,hh,wall);
+                for(var i=0;i<w-2;i+=4){ tri(x0+i+2,gy-hh,4,3,roof); }
+                for(var i=1;i<w-1;i+=3) px(x0+i,gy-hh+3,2,2,winC);
+                break;
+            case 'dome':
+                disc(x,gy-2,Math.max(3,w>>1),wall);
+                px(x-(w>>1),gy-1,w,2,dark);
+                disc(x,gy-3,Math.max(2,(w>>1)-2),roof);
+                px(x-1,gy-2,2,2,winC);
+                break;
+            case 'igloo':
+                disc(x,gy,Math.max(3,w>>1),wall);
+                px(x-(w>>1),gy+1,w,2,dark);
+                disc(x,gy,Math.max(2,(w>>1)-2),roof);
+                px(x-1,gy-1,3,2,dark);
+                break;
+            case 'ruin':
+                px(x0,gy-hh,w,hh,wall);
+                px(x0+Math.round(w*.4),gy-hh-2,Math.round(w*.3),2,dark);
+                px(x0+1,gy-hh+1,2,3,dark); px(x0+w-4,gy-hh+2,2,4,dark);
+                px(x0,gy-hh,w,1,dark);
+                break;
+        }
+        /* door + window on ground-level styles */
+        if(['cottage','timber','pagoda','adobe','barn','stilt','factory'].indexOf(Hs.s)>=0){
+            var dy=Hs.s==='stilt'?gy-4:gy;
+            px(x-1,dy-4,3,4,dark);
+            if(w>8) px(x0+2,dy-hh+2,2,2,winC);
+            if(lit>.2){ px(x0+1,dy-hh+1,4,4,rgb([255,214,130],lit*.18)); }
+        }
+    }
+
+    /* ---------- towers ---------- */
+    function drawTower(Bm,x,gy,p,l,s,now){
+        var T=Bm.tower; if(!T) return;
+        var a=C(T.a,l), b=C(T.b,l), acc=C(Bm.accent,l);
+        var h=Math.round((20+p.a*16)*s), w=Math.max(3,Math.round(6*s));
+        var lit=clamp(night*1.4,0,1);
+        switch(T.s){
+            case 'castle':
+                px(x-(w>>1),gy-h,w,h,a);
+                px(x-(w>>1),gy-h,2,h,b);
+                for(var i=0;i<w;i+=2) px(x-(w>>1)+i,gy-h-2,1,2,a);
+                px(x-(w>>1)-1,gy-h,w+2,1,b);
+                if(lit>.2) px(x-1,gy-Math.round(h*.6),2,2,rgb(mix([80,90,110],[255,206,110],lit)));
+                break;
+            case 'wizard': {
+                for(var i=0;i<h;i++){
+                    var ww=Math.max(2,Math.round(w*(1-i/h*.35)))+ (Math.sin(i*.5)>0?0:0);
+                    px(x-(ww>>1),gy-i,ww,1,i%5===0?b:a);
+                }
+                tri(x,gy-h,w+3,Math.round(h*.32),b);
+                px(x,gy-h-Math.round(h*.32)-2,1,2,acc);
+                disc(x,gy-h-Math.round(h*.32)-3,1,acc);
+                if(lit>.15){ px(x-1,gy-Math.round(h*.55),2,2,rgb([255,226,140],lit)); disc(x,gy-Math.round(h*.55),3,rgb([255,226,140],lit*.15)); }
+                break; }
+            case 'sky': {
+                var th=Math.round(h*1.5);
+                px(x-(w>>1),gy-th,w,th,a);
+                px(x-(w>>1),gy-th,1,th,b);
+                for(var r=2;r<th-1;r+=3) for(var c=1;c<w-1;c+=2){
+                    var on=hash2(p.wx+r*7,c*11)>(.45-lit*.35);
+                    px(x-(w>>1)+c,gy-th+r,1,1,on?rgb(mix([90,110,130],[255,230,150],lit)):b);
+                }
+                px(x,gy-th-3,1,3,b); px(x,gy-th-4,1,1,rgb([255,90,90],.85));
+                break; }
+            case 'silo':
+                px(x-(w>>1),gy-h,w,h,a);
+                px(x-(w>>1),gy-h,1,h,b);
+                for(var i=2;i<h;i+=4) px(x-(w>>1),gy-i,w,1,b);
+                disc(x,gy-h,(w>>1)+1,b);
+                break;
+            case 'light':
+                for(var i=0;i<h;i++){ var ww=Math.max(2,Math.round(w*(1-i/h*.4))); px(x-(ww>>1),gy-i,ww,1,(Math.floor(i/3)%2)?a:b); }
+                px(x-2,gy-h-3,5,3,b);
+                { var on=(now/900|0)%2===0;
+                    px(x-1,gy-h-2,3,1,on?rgb([255,240,170]):a);
+                    if(on){ disc(x,gy-h-2,7,rgb([255,240,170],.10)); px(x+2,gy-h-2,14,1,rgb([255,240,170],.14)); } }
+                break;
+            case 'stack':
+                px(x-(w>>1),gy-h,w,h,a);
+                px(x-(w>>1),gy-h,1,h,b);
+                px(x-(w>>1)-1,gy-h,w+2,2,b);
+                if(!reduceMotion) for(var i=0;i<4;i++){
+                    var t=((now/1100)+i*.25)%1;
+                    px(x+Math.round(Math.sin(t*4+i)*3),gy-h-2-t*16,1+(t>.5?1:0),1,rgb(mix([90,90,96],[40,40,46],t),(1-t)*.5));
+                }
+                break;
+            case 'antenna':
+                px(x-1,gy-h,2,h,a);
+                for(var i=1;i<4;i++) px(x-3,gy-h+i*Math.round(h/4),7,1,b);
+                disc(x,gy-h-2,2,C(Bm.accent,l));
+                if(!reduceMotion){ var pl=.4+.6*Math.abs(Math.sin(now/500)); disc(x,gy-h-2,4,rgb(tint(Bm.accent),pl*.22)); }
+                break;
+        }
+    }
+
+    /* ---------- rocks ---------- */
+    function drawRock(Bm,x,gy,p,l,s){
+        var c=C(Bm.rockC,l), d=rgb(mix(tint(Bm.rockC),[0,0,0],.28));
+        var w=Math.max(2,Math.round((3+p.a*5)*s)), h=Math.max(1,Math.round((2+p.c*3)*s));
+        px(x-(w>>1),gy-h,w,h,c);
+        px(x-(w>>1),gy-1,w,1,d);
+        px(x-(w>>1)+1,gy-h,Math.max(1,w-3),1,rgb(mix(tint(Bm.rockC),[255,255,255],.18)));
+    }
+
+    /* ---------- small details ---------- */
+    function drawSmall(Bm,x,gy,p,l,s,now){
+        var kind=Bm.small[Math.floor(p.a*Bm.small.length)%Bm.small.length];
+        var acc=C(Bm.accent,l), lit=clamp(night*1.4,0,1);
+        var sway=reduceMotion?0:Math.round(Math.sin(now/800+p.wx*.1)*.6);
+        switch(kind){
+            case 'flower':
+                px(x,gy-2,1,2,C([90,150,80],l)); px(x+sway,gy-3,1,1,acc); break;
+            case 'glowflower':
+                px(x,gy-3,1,3,C([90,150,120],l));
+                disc(x+sway,gy-4,1,acc);
+                if(night>.2) disc(x+sway,gy-4,3,rgb(tint(Bm.accent),night*.20));
+                break;
+            case 'bush':
+                disc(x,gy-1,Math.max(1,Math.round(2*s)),C(Bm.tree?Bm.tree.a:[70,120,70],l));
+                disc(x-1,gy-2,Math.max(1,Math.round(1.4*s)),C(Bm.tree?Bm.tree.b:[100,160,90],l)); break;
+            case 'fence':
+                for(var i=0;i<4;i++) px(x+i*3,gy-3,1,3,C([120,92,60],l));
+                px(x,gy-3,10,1,C([140,108,72],l)); px(x,gy-1,10,1,C([120,92,60],l)); break;
+            case 'crops':
+                for(var i=0;i<6;i++){ var hh=3+((i*7+p.wx)%3); px(x+i*2,gy-hh,1,hh,C([180,160,70],l)); px(x+i*2+sway,gy-hh-1,1,1,acc);} break;
+            case 'hay':
+                disc(x,gy-2,Math.max(2,Math.round(2.6*s)),C([200,175,95],l));
+                px(x-3,gy-2,7,1,C([170,145,75],l)); break;
+            case 'bones':
+                px(x-3,gy-1,7,1,C([224,214,190],l)); px(x-3,gy-2,1,1,C([224,214,190],l)); px(x+3,gy-2,1,1,C([224,214,190],l)); break;
+            case 'skull':
+                disc(x,gy-2,2,C([228,220,198],l)); px(x-1,gy-2,1,1,C([60,50,44],l)); px(x+1,gy-2,1,1,C([60,50,44],l)); break;
+            case 'rock': drawRock(Bm,x,gy,p,l,s*.7); break;
+            case 'obsidian':
+                tri(x,gy,Math.max(2,Math.round(3*s)),Math.max(3,Math.round(6*s)),C([40,30,40],l));
+                px(x,gy-4,1,2,C([120,60,90],l)); break;
+            case 'lava': {
+                var pulse=.55+.45*Math.sin(now/420+p.wx);
+                px(x-3,gy-1,7,1,rgb(mix([255,120,40],[255,220,120],pulse)));
+                disc(x,gy-1,5,rgb([255,120,40],.10*pulse)); break; }
+            case 'ember': {
+                var t=((now/1400)+p.a)%1;
+                px(x,gy-2-t*14,1,1,rgb([255,150,60],(1-t)*.9)); break; }
+            case 'crystal': {
+                var hh=Math.max(3,Math.round((4+p.c*5)*s));
+                tri(x,gy,Math.max(2,Math.round(2.6*s)),hh,acc);
+                if(night>.15) disc(x,gy-hh/2,hh,rgb(tint(Bm.accent),night*.13));
+                break; }
+            case 'rune':
+                px(x-2,gy-1,5,1,C([90,84,140],l));
+                px(x,gy-3,1,2,rgb(tint(Bm.accent),.5+.5*Math.sin(now/700+p.wx))); break;
+            case 'candle':
+                px(x,gy-3,1,3,C([220,210,190],l));
+                px(x,gy-4,1,1,rgb([255,200,90],.6+.4*Math.sin(now/220+p.wx)));
+                if(night>.2) disc(x,gy-4,3,rgb([255,200,90],night*.16)); break;
+            case 'mushroom': {
+                var hh=Math.max(2,Math.round((3+p.c*4)*s));
+                px(x,gy-hh,1,hh,C([230,220,240],l));
+                disc(x,gy-hh,Math.max(1,Math.round(2*s)),C(Bm.house?Bm.house.r:[255,110,150],l));
+                if(night>.2) disc(x,gy-hh,Math.max(3,Math.round(4*s)),rgb(tint(Bm.accent),night*.14));
+                break; }
+            case 'toadstool':
+                px(x,gy-2,1,2,C([200,196,180],l)); disc(x,gy-2,1,C([180,70,60],l)); break;
+            case 'lantern':
+                px(x,gy-6,1,6,C([90,70,50],l));
+                px(x-1,gy-8,3,3,rgb(mix(tint([200,90,70]),[255,200,120],lit)));
+                if(lit>.15) disc(x,gy-7,5,rgb([255,190,110],lit*.18)); break;
+            case 'banner':
+                px(x,gy-9,1,9,C([90,70,50],l));
+                px(x+1,gy-9,4,5,C(Bm.accent,l)); px(x+1,gy-4,4,1,C(Bm.accent,l)); break;
+            case 'barrel':
+                px(x-2,gy-4,4,4,C([130,96,58],l)); px(x-2,gy-3,4,1,C([100,72,44],l)); break;
+            case 'crate':
+                px(x-2,gy-4,5,4,C([150,124,86],l)); px(x-2,gy-2,5,1,C([116,94,64],l)); break;
+            case 'pipe':
+                px(x-1,gy-5,3,5,C([120,116,110],l)); px(x-2,gy-6,5,1,C([148,144,138],l)); break;
+            case 'gear':
+                disc(x,gy-3,Math.max(2,Math.round(2.4*s)),C([140,120,90],l));
+                px(x-4,gy-3,9,1,C([140,120,90],l)); px(x,gy-7,1,9,C([140,120,90],l)); break;
+            case 'panel':
+                px(x-3,gy-4,7,3,C([90,110,140],l)); px(x-3,gy-4,7,1,C(Bm.accent,l)); px(x,gy-1,1,1,C([80,76,100],l)); break;
+            case 'probe':
+                px(x,gy-4,1,4,C([160,150,180],l)); disc(x,gy-5,1,C(Bm.accent,l));
+                if(!reduceMotion) disc(x,gy-5,3,rgb(tint(Bm.accent),.10+.10*Math.sin(now/400))); break;
+            case 'streetlight': {
+                var hh=Math.round(11*s);
+                px(x,gy-hh,1,hh,C([70,74,82],l)); px(x,gy-hh,3,1,C([70,74,82],l));
+                px(x+2,gy-hh+1,1,1,rgb(mix([120,124,132],[255,226,150],lit)));
+                if(lit>.15){ disc(x+2,gy-hh+2,6,rgb([255,220,140],lit*.13)); }
+                break; }
+            case 'car': {
+                var col=[[200,70,70],[70,110,200],[220,200,90],[230,230,235]][Math.floor(p.c*4)%4];
+                px(x-4,gy-3,9,2,C(col,l)); px(x-2,gy-5,5,2,C(col,l));
+                px(x-3,gy-1,2,1,C([30,30,34],l)); px(x+2,gy-1,2,1,C([30,30,34],l));
+                if(lit>.3) px(x+5,gy-3,1,1,rgb([255,240,190],lit)); break; }
+            case 'hydrant': px(x,gy-3,2,3,C([200,70,60],l)); px(x-1,gy-4,4,1,C([200,70,60],l)); break;
+            case 'column': {
+                var hh=Math.max(4,Math.round((7+p.c*9)*s));
+                px(x-1,gy-hh,3,hh,C([190,184,166],l));
+                px(x-1,gy-hh,1,hh,C([160,154,138],l));
+                px(x-2,gy-hh-1,5,1,C([200,194,176],l)); px(x-2,gy-1,5,1,C([200,194,176],l));
+                break; }
+            case 'rubble':
+                px(x-3,gy-1,3,1,C([170,164,150],l)); px(x+1,gy-2,2,2,C([150,144,130],l)); break;
+            case 'grave':
+                px(x-1,gy-4,3,4,C([150,150,156],l)); px(x-2,gy-4,5,1,C([150,150,156],l));
+                px(x,gy-3,1,1,C([100,100,108],l)); break;
+            case 'icespike':
+                tri(x,gy,Math.max(2,Math.round(2.4*s)),Math.max(3,Math.round(7*s)),C([200,232,248],l)); break;
+            case 'snowman':
+                disc(x,gy-2,2,C([245,250,255],l)); disc(x,gy-5,1,C([245,250,255],l));
+                px(x-1,gy-5,1,1,C([40,40,50],l)); px(x+1,gy-5,1,1,C([40,40,50],l));
+                px(x,gy-5,1,1,C([230,120,50],l)); break;
+            case 'reed':
+                for(var i=0;i<3;i++){ px(x+i*2+sway,gy-5-i,1,5+i,C([110,140,80],l)); px(x+i*2+sway,gy-6-i,1,1,C([120,90,60],l)); } break;
+            case 'lily':
+                px(x-2,gy,5,1,C([80,120,70],l)); px(x,gy-1,1,1,C([240,230,250],l)); break;
+            case 'shell':
+                disc(x,gy-1,1,C([240,220,215],l)); break;
+            case 'crab':
+                px(x-1,gy-1,3,1,C([210,90,70],l)); px(x-2,gy-2,1,1,C([210,90,70],l)); px(x+2,gy-2,1,1,C([210,90,70],l)); break;
+            case 'buoy':
+                px(x,gy-4,2,4,C([220,80,60],l)); px(x,gy-5,2,1,C([240,240,240],l)); break;
+            default:
+                drawRock(Bm,x,gy,p,l,s*.7);
+        }
+    }
+
+    /* ---------- biome signature landmarks ---------- */
+    function drawSig(Bm,x,gy,p,l,s,now){
+        var acc=C(Bm.accent,l), lit=clamp(night*1.4,0,1);
+        switch(Bm.sig){
+            case 'well':
+                px(x-4,gy-4,9,4,C([140,134,120],l)); px(x-4,gy-4,9,1,C([170,164,150],l));
+                px(x-4,gy-10,1,6,C([110,84,54],l)); px(x+4,gy-10,1,6,C([110,84,54],l));
+                px(x-5,gy-11,11,2,C([130,80,60],l)); px(x,gy-8,1,3,C([90,80,70],l)); break;
+            case 'gate':
+                px(x-9,gy-14,4,14,C([150,146,138],l)); px(x+6,gy-14,4,14,C([150,146,138],l));
+                px(x-9,gy-16,19,2,C([130,126,118],l));
+                for(var i=0;i<19;i+=3) px(x-9+i,gy-18,2,2,C([150,146,138],l));
+                px(x-4,gy-9,9,9,C([90,64,44],l)); px(x,gy-9,1,9,C([70,48,32],l));
+                px(x-1,gy-19,3,4,C(Bm.accent,l)); break;
+            case 'obelisk': {
+                var hh=Math.round(26*s);
+                for(var i=0;i<hh;i++){ var ww=Math.max(2,Math.round(5*(1-i/hh*.45))); px(x-(ww>>1),gy-i,ww,1,i%6===0?C([170,140,100],l):C([196,166,120],l)); }
+                tri(x,gy-hh,4,4,C([214,186,140],l));
+                px(x-1,gy-Math.round(hh*.6),3,1,acc); break; }
+            case 'torii': {
+                var hh=Math.round(15*s), w=Math.round(14*s);
+                px(x-(w>>1),gy-hh,3,hh,C([200,60,60],l)); px(x+(w>>1)-2,gy-hh,3,hh,C([200,60,60],l));
+                px(x-(w>>1)-3,gy-hh,w+6,3,C([214,70,70],l));
+                px(x-(w>>1)-1,gy-hh+5,w+2,2,C([200,60,60],l));
+                px(x-(w>>1)-4,gy-hh-2,w+8,2,C([40,34,40],l)); break; }
+            case 'portal': {
+                var hh=Math.round(16*s), pulse=.55+.45*Math.sin(now/600+p.wx);
+                for(var i=0;i<hh;i++){
+                    var ww=Math.round(7*Math.sin(i/hh*Math.PI))+1;
+                    px(x-(ww>>1),gy-i,ww,1,rgb(mix(tint(Bm.accent),[255,255,255],.25*pulse),.55+.35*pulse));
+                }
+                px(x-5,gy-hh,2,hh,C([70,60,100],l)); px(x+4,gy-hh,2,hh,C([70,60,100],l));
+                disc(x,gy-Math.round(hh*.55),Math.round(9*s),rgb(tint(Bm.accent),.10*pulse)); break; }
+            case 'monolith': {
+                var hh=Math.round(24*s);
+                px(x-3,gy-hh,7,hh,C([56,52,84],l)); px(x-3,gy-hh,2,hh,C([74,68,110],l));
+                for(var i=3;i<hh;i+=5) px(x-1,gy-i,3,1,rgb(tint(Bm.accent),.4+.4*Math.sin(now/700+i)));
+                if(night>.2) disc(x,gy-hh/2,Math.round(11*s),rgb(tint(Bm.accent),night*.10)); break; }
+            case 'arch': {
+                var hh=Math.round(16*s), w=Math.round(16*s);
+                px(x-(w>>1),gy-hh,4,hh,C([186,180,162],l)); px(x+(w>>1)-3,gy-hh+3,4,hh-3,C([186,180,162],l));
+                for(var i=0;i<6;i++){ var yy=gy-hh-2+i, ww=w-i*2; px(x-(ww>>1),yy,ww,1,C([196,190,172],l)); }
+                px(x+(w>>1)-3,gy-hh,4,2,C([160,154,138],l)); break; }
+            case 'windmill': {
+                var hh=Math.round(22*s);
+                for(var i=0;i<hh;i++){ var ww=Math.max(3,Math.round(8*(1-i/hh*.4))); px(x-(ww>>1),gy-i,ww,1,C([224,216,196],l)); }
+                px(x-2,gy-6,4,6,C([120,90,60],l));
+                var ang=reduceMotion?.6:now/2600;
+                for(var b=0;b<4;b++){
+                    var a2=ang+b*Math.PI/2;
+                    for(var r=2;r<Math.round(11*s);r++)
+                        px(x+Math.round(Math.cos(a2)*r),gy-hh+Math.round(Math.sin(a2)*r),1,1,C([150,116,78],l));
+                }
+                disc(x,gy-hh,1,C([90,70,50],l)); break; }
+            case 'lighthouse': drawTower(Bm,x,gy,p,l,s,now); break;
+            case 'wreck': {
+                px(x-8,gy-3,17,3,C([90,70,54],l));
+                px(x-6,gy-9,2,7,C([110,86,64],l)); px(x+3,gy-7,2,5,C([110,86,64],l));
+                px(x-5,gy-9,7,1,C([80,62,48],l)); break; }
+            case 'shrine':
+                px(x-4,gy-6,9,6,C([110,104,88],l)); px(x-5,gy-8,11,2,C([90,84,70],l));
+                px(x-1,gy-5,3,4,C([50,46,40],l));
+                px(x,gy-4,1,1,rgb(tint(Bm.accent),.5+.5*Math.sin(now/600))); break;
+            case 'forge': {
+                px(x-6,gy-8,13,8,C([60,48,50],l)); px(x-6,gy-8,13,1,C([84,68,70],l));
+                var pulse=.5+.5*Math.sin(now/380);
+                px(x-2,gy-5,5,4,rgb(mix([255,110,40],[255,220,130],pulse)));
+                disc(x,gy-4,9,rgb([255,120,50],.13*pulse));
+                px(x+3,gy-14,3,6,C([70,56,58],l));
+                if(!reduceMotion) for(var i=0;i<3;i++){ var t=((now/900)+i*.33)%1; px(x+4,gy-15-t*12,1,1,rgb([120,110,110],(1-t)*.5)); }
+                break; }
+            case 'gearworks': {
+                px(x-7,gy-10,15,10,C([88,84,80],l));
+                var ang=reduceMotion?0:now/1400;
+                for(var k=0;k<2;k++){
+                    var cx=x-3+k*7, r=3;
+                    disc(cx,gy-5,r,C([140,120,90],l));
+                    for(var t2=0;t2<6;t2++){ var a2=ang*(k?-1:1)+t2*1.047;
+                        px(cx+Math.round(Math.cos(a2)*(r+1)),gy-5+Math.round(Math.sin(a2)*(r+1)),1,1,C([160,138,104],l)); }
+                }
+                break; }
+            case 'dish': {
+                px(x,gy-10,2,10,C([150,142,170],l));
+                for(var i=0;i<7;i++){ var ww=7-Math.abs(i-3)*1.4; px(x-3+Math.round(Math.abs(i-3)*.6),gy-14-i+3,Math.max(1,Math.round(ww)),1,C([190,182,210],l)); }
+                px(x+1,gy-13,1,3,C(Bm.accent,l));
+                if(night>.2) disc(x,gy-13,7,rgb(tint(Bm.accent),night*.10)); break; }
+            case 'wolfrock': {
+                tri(x,gy,Math.round(10*s),Math.round(12*s),C([120,134,150],l));
+                tri(x,gy-Math.round(8*s),Math.round(5*s),Math.round(5*s),C([220,238,250],l)); break; }
+            default:
+                drawRock(Bm,x,gy,p,l,s);
+        }
+    }
+
+    /* ---------- far silhouettes ---------- */
+    function farSil(Bm,x,gy,p,now){
+        var c=CF(Bm.pal[0]), c2=CF(mix(Bm.pal[0],[255,255,255],.18));
+        var s=.6+p.a*.8;
+        switch(Bm.far){
+            case 'hills': disc(x,gy+3,Math.round(14*s),c); break;
+            case 'peaks': case 'snowpeaks': {
+                var hh=Math.round(30*s);
+                tri(x,gy,Math.round(30*s),hh,c);
+                if(Bm.far==='snowpeaks') tri(x,gy-hh+Math.round(hh*.34),Math.round(11*s),Math.round(hh*.34),c2);
+                break; }
+            case 'mesa': {
+                var hh=Math.round(18*s), w=Math.round(26*s);
+                px(x-(w>>1),gy-hh,w,hh,c); px(x-(w>>1),gy-hh,w,2,c2); break; }
+            case 'castle': {
+                var hh=Math.round(24*s);
+                px(x-14,gy-hh*.6,28,hh*.6,c);
+                for(var i=0;i<28;i+=4) px(x-14+i,gy-hh*.6-2,2,2,c);
+                px(x-6,gy-hh,5,hh,c); px(x+3,gy-hh*.85,5,hh*.85,c);
+                tri(x-4,gy-hh,7,5,c); tri(x+5,gy-hh*.85,7,5,c); break; }
+            case 'skyline': {
+                var hh=Math.round((22+p.c*30)*s), w=Math.round((7+p.a*7));
+                px(x-(w>>1),gy-hh,w,hh,c);
+                var lit=clamp(night*1.5,0,1);
+                if(lit>.1) for(var r=2;r<hh-1;r+=3) for(var cc=1;cc<w-1;cc+=2)
+                    if(hash2(p.wx+r*5,cc*3)>.55) px(x-(w>>1)+cc,gy-hh+r,1,1,rgb([255,226,150],lit*.5));
+                px(x,gy-hh-3,1,3,c); break; }
+            case 'spires': {
+                var hh=Math.round((26+p.c*18)*s);
+                for(var i=0;i<hh;i++){ var ww=Math.max(1,Math.round(6*(1-i/hh))); px(x-(ww>>1),gy-i,ww,1,c); }
+                tri(x,gy-hh,5,7,c); break; }
+            case 'brokentowers': {
+                var hh=Math.round((16+p.c*14)*s);
+                px(x-3,gy-hh,7,hh,c);
+                px(x-3,gy-hh,3,3,c2);
+                px(x+5,gy-Math.round(hh*.5),3,Math.round(hh*.5),c); break; }
+            case 'isles': {
+                var w=Math.round(18*s);
+                disc(x,gy+2,w>>1,c);
+                if(p.c>.55){ px(x-2,gy-6,1,6,c); disc(x-2,gy-7,2,c2); }
+                break; }
+            case 'volcano': {
+                var hh=Math.round(34*s), w=Math.round(40*s);
+                tri(x,gy,w,hh,c);
+                px(x-3,gy-hh,7,2,rgb(mix(tint([255,90,40]),hazeCol,.35),.85));
+                if(!reduceMotion) for(var i=0;i<3;i++){ var t=((now/2200)+i*.33)%1;
+                    px(x+Math.round(Math.sin(t*5+i)*5),gy-hh-2-t*22,1+(t>.6?1:0),1,rgb([90,80,84],(1-t)*.45)); }
+                break; }
+            case 'stacks': {
+                var hh=Math.round((24+p.c*14)*s);
+                px(x-2,gy-hh,5,hh,c); px(x-3,gy-hh,7,2,c2);
+                if(!reduceMotion) for(var i=0;i<3;i++){ var t=((now/1800)+i*.33)%1;
+                    px(x+Math.round(Math.sin(t*4+i)*4),gy-hh-2-t*18,1,1,rgb([110,105,100],(1-t)*.4)); }
+                break; }
+            case 'domes': {
+                disc(x,gy+1,Math.round(11*s),c);
+                if(p.c>.6){ px(x+6,gy-9,1,9,c); disc(x+6,gy-10,2,c2); }
+                break; }
+            case 'mist': {
+                px(x-14,gy-6,28,6,rgb(mix(tint(Bm.pal[0]),hazeCol,.6),.5));
+                disc(x,gy-2,Math.round(10*s),c); break; }
+            default: disc(x,gy+3,Math.round(12*s),c);
+        }
+    }
+
+    /* ============================================================
+          6b. WORLD EVENTS  (the easter eggs)
+          ============================================================ */
+    function drawEvent(ev,Bm,x,gy,p,now){
+        var lit=clamp(night*1.4,0,1);
+        var bob=reduceMotion?0:Math.sin(now/900+p.a*6)*2;
+        switch(ev){
+
+        case 'ufo': {                      /* farmland abduction */
+            var hy=gy-34+Math.round(bob);
+            var beam=.5+.5*Math.sin(now/1300+p.a*6);
+            /* beam */
+            for(var i=0;i<32;i++){
+                var t=i/32, ww=2+t*9;
+                px(x-(ww>>1),hy+4+i,ww,1,rgb([180,255,200],(.30-t*.22)*beam));
+            }
+            /* cow, rising and spinning */
+            var cy=gy-4-beam*22, spin=Math.sin(now/300)>0;
+            px(x-3,cy-3,7,3,rgb(tint([245,245,245])));
+            px(spin?x-3:x+1,cy-3,3,2,rgb(tint([40,36,40])));
+            px(x-2,cy,1,1,rgb(tint([220,220,220]))); px(x+2,cy,1,1,rgb(tint([220,220,220])));
+            px(spin?x-4:x+4,cy-4,1,1,rgb(tint([245,245,245])));
+            /* saucer */
+            disc(x,hy,9,rgb(tint([150,158,176])));
+            px(x-9,hy,19,2,rgb(tint([110,118,138])));
+            disc(x,hy-3,4,rgb(mix(tint([170,220,255]),[220,255,255],.4)));
+            for(var i=0;i<5;i++){
+                var a2=now/500+i*1.26;
+                px(x+Math.round(Math.cos(a2)*7),hy+1,1,1,rgb([255,240,140],.5+.5*Math.sin(now/200+i)));
+            }
+            disc(x,hy,16,rgb([160,255,200],.06*beam));
+            break; }
+
+        case 'parade': {                   /* marchers with flags */
+            var n=6;
+            for(var i=0;i<n;i++){
+                var off=((now/34)+i*17)%150;
+                var mx=Math.round(x-70+off), step=Math.floor(now/160+i)%2;
+                var my=gy;
+                var col=[[210,80,80],[80,120,210],[230,200,90],[120,200,130],[200,120,210],[240,240,240]][i%6];
+                px(mx,my-6,2,4,rgb(tint(col)));
+                px(mx,my-8,2,2,rgb(tint([240,208,170])));
+                px(mx,my-2,1,2,rgb(tint([50,44,50]))); px(mx+1,my-2,1,2,rgb(tint(step?[50,44,50]:[70,64,70])));
+                if(i%2===0){ px(mx+2,my-13,1,7,rgb(tint([120,90,60]))); px(mx+3,my-13,4,3,rgb(tint(Bm.accent))); }
+            }
+            if(!reduceMotion) for(var i=0;i<8;i++){
+                var t=((now/1600)+i*.125)%1;
+                px(x-60+((i*37)%120),gy-30-t*10,1,1,rgb([255,220,120],(1-t)*.7));
+            }
+            break; }
+
+        case 'dragon': {
+            var dx=x+Math.sin(now/2600+p.a*6)*70, dy=gy-70+Math.sin(now/1400+p.a*6)*12;
+            var flap=Math.sin(now/220)>0?-3:2;
+            var c=rgb(tint(p.c>.5?[150,60,70]:[70,80,140]));
+            px(dx-6,dy,13,2,c);
+            px(dx+6,dy-1,3,2,c); px(dx+8,dy-2,2,2,c);
+            px(dx-9,dy,4,1,c);
+            px(dx-2,dy+flap,5,Math.abs(flap),c);
+            px(dx+1,dy-flap,5,Math.abs(flap),c);
+            px(dx+9,dy-1,1,1,rgb([255,200,60],.9));
+            break; }
+
+        case 'knight': {
+            var off=((now/40)+p.a*100)%180, mx=Math.round(x-90+off);
+            px(mx,gy-9,3,5,rgb(tint([180,186,196])));
+            px(mx,gy-12,3,3,rgb(tint([200,206,216])));
+            px(mx+1,gy-12,1,1,rgb(tint([40,40,50])));
+            px(mx+3,gy-16,1,10,rgb(tint([140,120,90])));
+            px(mx+3,gy-16,4,3,rgb(tint(Bm.accent)));
+            px(mx,gy-4,1,4,rgb(tint([60,54,60]))); px(mx+2,gy-4,1,4,rgb(tint([60,54,60])));
+            break; }
+
+        case 'whale': {
+            var t=(now/9000+p.a)%1;
+            var wx2=x-60+t*120, arc=Math.sin(t*Math.PI);
+            var wy=waterY-arc*26+8;
+            var c=rgb(tint([70,96,130])), c2=rgb(tint([120,150,180]));
+            disc(wx2,wy,7,c); px(wx2-9,wy+1,20,4,c);
+            px(wx2-11,wy-2,5,3,c);          /* tail */
+            px(wx2+6,wy+1,8,2,c2);
+            px(wx2+4,wy-2,1,1,rgb(tint([240,240,250])));
+            if(arc>.7){ for(var i=0;i<7;i++) px(wx2+2,wy-8-i,1,1,rgb([220,240,255],(1-i/7)*.7)); }
+            break; }
+
+        case 'ship': {
+            var wx2=x+Math.sin(now/6000+p.a*6)*40, wy=waterY-2+Math.sin(now/900)*1;
+            var c=rgb(tint([104,74,50])), s2=rgb(tint([238,234,224]));
+            px(wx2-8,wy-3,17,3,c); px(wx2-6,wy-4,13,1,rgb(tint([130,96,66])));
+            px(wx2,wy-16,1,13,c);
+            px(wx2-6,wy-15,6,10,s2); px(wx2+1,wy-13,6,8,s2);
+            px(wx2,wy-17,4,2,rgb(tint(Bm.accent)));
+            break; }
+
+        case 'kraken': {
+            var t=(now/11000+p.a)%1;
+            if(t<.55){
+                var a2=Math.sin(t/.55*Math.PI);
+                for(var k=0;k<4;k++){
+                    var bx=x-18+k*12, len=Math.round(16*a2*(.6+k*.13));
+                    for(var i=0;i<len;i++)
+                        px(bx+Math.round(Math.sin(i*.4+k+now/600)*3),waterY-i,2,1,rgb(tint([90,60,110])));
+                    px(bx,waterY-len,2,2,rgb(tint([120,80,150])));
+                }
+            }
+            break; }
+
+        case 'airship': {
+            var ax=x+Math.sin(now/5000+p.a*6)*60, ay=gy-58+Math.sin(now/1700)*4;
+            var c=rgb(tint([176,150,110])), c2=rgb(tint([130,108,78]));
+            disc(ax,ay,6,c); px(ax-13,ay-4,27,9,c); px(ax-13,ay+3,27,2,c2);
+            px(ax-4,ay+5,9,4,rgb(tint([110,84,58])));
+            px(ax+13,ay-1,4,3,c2);
+            if(!reduceMotion) px(ax-16,ay+1,3,1,rgb(tint([90,80,70])));
+            for(var i=0;i<3;i++) px(ax-9+i*8,ay+5,1,1,rgb([255,220,140],lit));
+            break; }
+
+        case 'blimp': case 'satellite': {
+            var ax=x+Math.sin(now/6000+p.a*6)*70, ay=gy-72;
+            px(ax-9,ay,19,7,rgb(tint([220,220,230])));
+            px(ax-9,ay+5,19,2,rgb(tint([180,180,195])));
+            px(ax-3,ay+7,7,3,rgb(tint([80,84,96])));
+            px(ax-4,ay+2,9,2,rgb(tint(Bm.accent)));
+            break; }
+
+        case 'helicopter': case 'drone': {
+            var ax=x+Math.sin(now/2200+p.a*6)*46, ay=gy-52+Math.sin(now/700)*3;
+            var c=rgb(tint([90,96,110]));
+            px(ax-4,ay,9,4,c); px(ax+4,ay+1,6,1,c);
+            var spin=Math.floor(now/60)%2;
+            px(ax-(spin?8:3),ay-2,spin?17:7,1,rgb(tint([150,156,170])));
+            px(ax,ay-3,1,1,c);
+            if(lit>.2) px(ax-4,ay+2,1,1,rgb([255,90,90],lit));
+            break; }
+
+        case 'balloon': {
+            var ax=x+Math.sin(now/4000+p.a*6)*36, ay=gy-64+Math.sin(now/2000)*7;
+            var c1=rgb(tint([225,90,90])), c2=rgb(tint([240,225,200]));
+            for(var i=-7;i<=7;i++){
+                var ww=Math.round(Math.sqrt(Math.max(0,49-i*i)));
+                px(ax-ww,ay+i,ww*2+1,1,(Math.floor((i+7)/3)%2)?c1:c2);
+            }
+            px(ax-2,ay+8,5,1,rgb(tint([120,96,64])));
+            px(ax-2,ay+9,5,4,rgb(tint([150,116,76])));
+            break; }
+
+        case 'rift': {                     /* a tear showing another reality */
+            var rx=x, ry=gy-30+bob, pulse=.55+.45*Math.sin(now/700+p.a*6);
+            var other=BIOMES[Math.floor(hash1(Math.floor(p.wx/97))*BIOMES.length)%BIOMES.length];
+            for(var i=-14;i<=14;i++){
+                var ww=Math.round(Math.cos(i/14*1.55)*7*pulse);
+                if(ww<1) continue;
+                px(rx-ww,ry+i,ww*2,1,rgb(mix(other.pal[3],other.sky[0],.5)));
+            }
+            for(var i=-15;i<=15;i++){
+                var ww=Math.round(Math.cos(i/15*1.55)*8*pulse);
+                px(rx-ww-1,ry+i,1,1,rgb(mix(tint(Bm.accent),[255,255,255],.4),.9));
+                px(rx+ww,ry+i,1,1,rgb(mix(tint(Bm.accent),[255,255,255],.4),.9));
+            }
+            disc(rx,ry,Math.round(20*pulse),rgb(tint(Bm.accent),.08));
+            break; }
+
+        case 'pixie': case 'crane': case 'raven': case 'vulture': case 'heron': {
+            var n=ev==='pixie'?5:3;
+            for(var i=0;i<n;i++){
+                var t=((now/7000)+i*.14+p.a)%1;
+                var bx=x-80+t*160, by=gy-40-Math.sin(t*Math.PI)*22+Math.sin(now/300+i)*2;
+                if(ev==='pixie'){
+                    px(bx,by,1,1,rgb(tint(Bm.accent)));
+                    disc(bx,by,3,rgb(tint(Bm.accent),.16+.10*Math.sin(now/200+i)));
+                }else{
+                    var up=Math.sin(now/180+i)>0?-1:1;
+                    var c=rgb(tint(ev==='crane'?[240,240,244]:ev==='raven'?[36,32,40]:[70,60,54]));
+                    px(bx,by,1,1,c); px(bx-1,by+up,1,1,c); px(bx+1,by+up,1,1,c);
+                }
+            }
+            break; }
+
+        case 'deer': case 'mammoth': case 'sled': case 'tractor': case 'caravan': case 'cart': {
+            var off=((now/(ev==='mammoth'?70:46))+p.a*200)%260, mx=Math.round(x-130+off);
+            if(ev==='deer'){
+                var c=rgb(tint([150,104,66]));
+                px(mx,gy-6,7,3,c); px(mx+6,gy-9,2,4,c); px(mx+5,gy-11,1,2,c); px(mx+8,gy-11,1,2,c);
+                var st=Math.floor(now/200)%2;
+                px(mx+1,gy-3,1,3,c); px(mx+5,gy-3,1,3,c); px(mx+(st?2:4),gy-3,1,3,c);
+            }else if(ev==='mammoth'){
+                var c=rgb(tint([120,86,70]));
+                px(mx,gy-11,15,8,c); px(mx+14,gy-10,4,5,c);
+                px(mx+16,gy-6,4,1,rgb(tint([230,226,210])));
+                px(mx+2,gy-3,2,3,c); px(mx+10,gy-3,2,3,c);
+            }else if(ev==='tractor'){
+                px(mx,gy-7,11,4,rgb(tint([200,80,60])));
+                px(mx+7,gy-11,5,4,rgb(tint([200,80,60])));
+                disc(mx+2,gy-2,2,rgb(tint([50,46,50]))); disc(mx+9,gy-3,3,rgb(tint([50,46,50])));
+                if(!reduceMotion) for(var i=0;i<2;i++){ var t=((now/700)+i*.5)%1; px(mx+9,gy-13-t*8,1,1,rgb([120,110,105],(1-t)*.5)); }
+            }else if(ev==='sled'){
+                px(mx,gy-4,11,3,rgb(tint([140,100,60]))); px(mx-1,gy-1,13,1,rgb(tint([180,190,205])));
+                px(mx+3,gy-8,3,4,rgb(tint([200,80,80])));
+                for(var d2=0;d2<2;d2++){ var dx2=mx+13+d2*6, st=Math.floor(now/160+d2)%2;
+                    px(dx2,gy-5,5,3,rgb(tint([200,196,190]))); px(dx2+4,gy-7,2,2,rgb(tint([200,196,190])));
+                    px(dx2+1,gy-2,1,2,rgb(tint([170,166,160]))); px(dx2+(st?2:3),gy-2,1,2,rgb(tint([170,166,160]))); }
+            }else{ /* caravan / cart */
+                var c=rgb(tint([150,116,72]));
+                px(mx,gy-8,13,5,c); px(mx,gy-10,13,2,rgb(tint(Bm.accent)));
+                disc(mx+3,gy-2,2,rgb(tint([90,70,50]))); disc(mx+10,gy-2,2,rgb(tint([90,70,50])));
+                if(ev==='caravan'){ var cx2=mx+17; px(cx2,gy-9,5,5,rgb(tint([190,160,110]))); px(cx2+4,gy-12,2,4,rgb(tint([190,160,110])));
+                    px(cx2+1,gy-4,1,4,rgb(tint([170,140,95]))); px(cx2+3,gy-4,1,4,rgb(tint([170,140,95]))); }
+            }
+            break; }
+
+        case 'ghost': case 'witch': case 'moonbeast': {
+            var t=(now/6000+p.a)%1;
+            var gx=x-50+t*100, gy2=gy-26+Math.sin(now/700)*4;
+            if(ev==='witch'){
+                px(gx-5,gy2+3,13,1,rgb(tint([110,86,58])));
+                px(gx,gy2-4,3,7,rgb(tint([60,50,80])));
+                tri(gx+1,gy2-4,7,4,rgb(tint([60,50,80])));
+                px(gx+1,gy2-1,1,1,rgb(tint([250,220,190])));
+            }else{
+                var a2=.55+.25*Math.sin(now/800);
+                disc(gx,gy2,4,rgb([230,235,255],a2*.55));
+                px(gx-4,gy2,9,4,rgb([230,235,255],a2*.4));
+                px(gx-2,gy2-1,1,1,rgb([40,40,60],a2)); px(gx+2,gy2-1,1,1,rgb([40,40,60],a2));
+            }
+            break; }
+
+        case 'meteor': case 'comet': {
+            var t=(now/5200+p.a)%1;
+            if(t<.42){
+                var mt=t/.42, mx=x-70+mt*150, my=gy-100+mt*70;
+                for(var i=0;i<10;i++) px(mx-i*2.2,my-i*1.1,2,1,rgb([255,180+i*4,90],(1-i/10)*.8));
+                px(mx,my,2,2,rgb([255,240,200]));
+            }
+            break; }
+
+        case 'lavaburst': case 'steamburst': case 'bubble': case 'crop': {
+            var t=(now/3400+p.a)%1;
+            var hot=ev==='lavaburst';
+            for(var i=0;i<7;i++){
+                var a2=i/7*Math.PI, sp=t*20;
+                var bx=x+Math.cos(a2)*sp*1.3, by=gy-Math.sin(a2)*sp+t*t*14;
+                if(ev==='crop'){ if(t<.05) px(x-14,gy-1,29,1,rgb(tint([210,190,110]))); break; }
+                px(bx,by,1,1,rgb(hot?[255,140,50]:ev==='bubble'?[170,210,170]:[210,215,220],(1-t)*.75));
+            }
+            if(ev==='crop'){ /* crop circle glyph */
+                for(var i=0;i<12;i++){ var a2=i/12*6.283;
+                    px(x+Math.round(Math.cos(a2)*11),gy-1+Math.round(Math.sin(a2)*3),1,1,rgb(tint([190,170,95]))); }
+                disc(x,gy-1,3,rgb(tint([190,170,95])));
+            }
+            break; }
+
+        case 'phoenix': {
+            var t=(now/8000+p.a)%1;
+            var fx2=x-80+t*160, fy=gy-70-Math.sin(t*Math.PI)*20;
+            var up=Math.sin(now/160)>0?-3:2;
+            px(fx2-4,fy,9,2,rgb([255,150,50]));
+            px(fx2-2,fy+up,5,Math.abs(up),rgb([255,200,80]));
+            px(fx2+1,fy-up,5,Math.abs(up),rgb([255,200,80]));
+            for(var i=1;i<7;i++) px(fx2-4-i*2,fy+1,2,1,rgb([255,120,40],(1-i/7)*.7));
+            break; }
+
+        case 'aurora': break;              /* handled in the sky pass */
+        case 'digsite': {
+            px(x-9,gy-1,19,1,rgb(tint([150,130,100])));
+            px(x-6,gy-6,1,5,rgb(tint([120,96,64]))); px(x-7,gy-7,3,1,rgb(tint([120,96,64])));
+            px(x+3,gy-4,5,3,rgb(tint([210,200,180])));
+            px(x+4,gy-7,1,3,rgb(tint([180,170,150])));
+            break; }
+        case 'mirage': {
+            var a2=.25+.2*Math.sin(now/1600+p.a*6);
+            for(var i=0;i<9;i++) px(x-11+i*3,gy-9-Math.round(Math.sin(now/500+i)*1.5),2,7,rgb([170,220,235],a2*.4));
+            px(x-11,gy-2,25,1,rgb([200,235,245],a2)); break; }
+        case 'festival': {
+            for(var i=0;i<9;i++){
+                var lx=x-32+i*8, ly=gy-24+Math.sin(i*.9)*3;
+                px(lx,ly,2,3,rgb(mix(tint([255,120,150]),[255,230,160],(i%3)/2)));
+                if(lit>.2) disc(lx,ly+1,4,rgb([255,180,140],lit*.13));
+            }
+            px(x-34,gy-26,70,1,rgb(tint([90,70,60])));
+            break; }
+        case 'cat': {                       /* the mascot, out for a walk */
+            var c=rgb(tint([255,217,160])), o=rgb(tint([43,29,47]));
+            var bobc=Math.floor(now/500)%2;
+            px(x-3,gy-5,7,4,c); px(x-3,gy-5,7,1,o);
+            px(x-4,gy-7,4,3,c); px(x-4,gy-8,1,1,c); px(x-1,gy-8,1,1,c);
+            px(x-3,gy-6,1,1,o); px(x-1,gy-6,1,1,o);
+            px(x+4,gy-7-bobc,1,3,c);
+            px(x-2,gy-1,1,1,o); px(x+2,gy-1,1,1,o);
+            break; }
+        }
+    }
+
+    /* ---- scene render ---- */
+    var W=0,H=0,PX=4,horizon=0,vign=null,waterY=0;
+    var stars=[],clouds=[],flies=[],birds=[],rainP=[],snowP=[],splash=[],amb=[];
+    var colH=[null,null,null], colW=null;
+    var builtW=-1,builtH=-1;
+
+    function build(){
+        cv=$('pixelCanvas'); g=cv.getContext('2d',{alpha:false});
+        builtW=innerWidth; builtH=innerHeight;
+        PX = innerWidth<640 ? 3 : 4;
+        W = Math.max(16,Math.ceil(innerWidth/PX)); H = Math.max(16,Math.ceil(innerHeight/PX));
+        cv.width=W; cv.height=H;
+        g.imageSmoothingEnabled=false;
+        horizon = Math.round(H*.87);
+        colH=[new Int16Array(W),new Int16Array(W),new Int16Array(W)];
+        colW=new Float32Array(W);
+
+        var r=seeded(20260811);
+        stars=[];
+        for(var i=0;i<120;i++) stars.push({x:(r()*W)|0,y:(r()*horizon*.86)|0,p:r()*6.283,s:r()<.10?2:1});
+        clouds=[];
+        for(var i=0;i<15;i++){
+            var w=(10+r()*24)|0, parts=[];
+            for(var j=0;j<4+((r()*3)|0);j++)
+                parts.push({dx:(r()*w)|0,dy:((r()*4)|0),w:(4+r()*9)|0,h:(3+r()*3)|0});
+            clouds.push({x:r()*W,y:5+r()*(horizon*.50),w:w,sp:.8+r()*1.8,parts:parts,th:i/15});
+        }
+        flies=[]; for(var i=0;i<16;i++) flies.push({x:r()*W,y:horizon-6-r()*26,p:r()*6.283,q:r()*6.283,sp:.35+r()*.5});
+        amb=[];  for(var i=0;i<34;i++) amb.push({x:r()*W,y:r()*horizon,p:r()*6.283,v:.3+r(),s:r()});
+        var grd=g.createRadialGradient(W/2,H*.45,H*.2,W/2,H*.5,H*.95);
+        grd.addColorStop(0,'rgba(0,0,0,0)'); grd.addColorStop(1,'rgba(0,0,0,.18)');
+        vign=grd;
+        birds=[];rainP=[];snowP=[];splash=[];
+        chunkCache={}; chunkCount=0;
+    }
+
+    var light=1,night=0,warm=0,sunAlt=0,skyBands=[],bandH=1;
+    var NIGHT_MUL=[.24,.28,.50];
+    function tint(base,extraWarm){
+        var c=[base[0]*lerp(NIGHT_MUL[0],1,light),base[1]*lerp(NIGHT_MUL[1],1,light),base[2]*lerp(NIGHT_MUL[2],1,light)];
+        var w=warm*(extraWarm===undefined?1:extraWarm);
+        var out=w>0?mix(c,[255,152,96],w*.30):c;
+        return cur.dark>.02?mix(out,[78,88,104],cur.dark*.30):out;
+    }
+    function skyAt(y){ return skyBands[clamp((y/bandH)|0,0,skyBands.length-1)]||skyBands[0]; }
+
+    function capRidge(l,color,thick){
+        var a=colH[l];
+        g.beginPath();
+        for(var x=0;x<W;x++) g.rect(x,a[x],1,thick);
+        g.fillStyle=color; g.fill();
+    }
+    /* per-column palette blend, so biome borders are spatial not sudden */
+    function colColor(x,cx,idx){
+        var bl=blendAt(cx+x);
+        var A=BIOMES[bl.a].pal[idx], Bp=BIOMES[bl.b].pal[idx];
+        return bl.a===bl.b?A:mix(A,Bp,bl.t);
+    }
+    /* draws a terrain layer, recolouring wherever the biome changes across the screen */
+    function paintLayer(l,idx,hazeAmt,snowAmt){
+        var a=colH[l], cx=camX();
+        var runStart=0, runCol=colColor(0,cx,idx);
+        var flush=function(x0,x1,col){
+            var c=tint(col);
+            if(hazeAmt) c=mix(c,hazeCol,hazeAmt);
+            if(snowAmt) c=mix(c,tint(SNOWC),snowAmt);
+            g.fillStyle=rgb(c);
+            g.beginPath(); g.moveTo(x0,H);
+            for(var x=x0;x<x1;x++){ g.lineTo(x,a[x]); g.lineTo(x+1,a[x]); }
+            g.lineTo(x1,H); g.closePath(); g.fill();
+        };
+        var STEP=6;
+        for(var x=STEP;x<W;x+=STEP){
+            var c=colColor(x,cx,idx);
+            if(Math.abs(c[0]-runCol[0])+Math.abs(c[1]-runCol[1])+Math.abs(c[2]-runCol[2])>6){
+                flush(runStart,x+1,runCol); runStart=x; runCol=c;
+            }
+        }
+        flush(runStart,W,runCol);
+    }
+    var SNOWC=hex('#f3f8ff');
+
+    var lightning=0,lightningNext=3000;
+
+    function drawScene(dt,now){
+        var h=hourNow(), cx=camX();
+        sunAlt=Math.sin((h-6)/12*Math.PI);
+        var gloom=cur.dark;
+        light=clamp(sunAlt*1.10+.34,0,1)*(1-gloom*.42);
+        night=clamp(-sunAlt*1.8+.06,0,1);
+        warm=clamp(1-Math.abs(sunAlt)*4.2,0,1)*(1-gloom*.6);
+
+        /* biome at screen centre drives sky mood + ambient */
+        var bc=blendAt(cx+W/2);
+        var BA=BIOMES[bc.a], BB=BIOMES[bc.b];
+
+        /* ---- sky ---- */
+        var k=skyKeys(h);
+        var top=k[0],midc=k[1],bot=k[2];
+        var bTint=mix(BA.sky[0],BB.sky[0],bc.t), bAmt=lerp(BA.sky[1],BB.sky[1],bc.t)*(0.35+light*.65);
+        top=mix(top,bTint,bAmt*.85); midc=mix(midc,bTint,bAmt); bot=mix(bot,bTint,bAmt*.75);
+        if(gloom>0){
+            var overcast=mix([124,128,138],[62,66,78],clamp(gloom*1.15,0,1));
+            var gray=mix([20,24,36],overcast,clamp(sunAlt*1.2+.35,0,1));
+            top =mix(top ,gray,                       clamp(gloom*1.15,0,.93));
+            midc=mix(midc,mix(gray,[255,255,255],.06),clamp(gloom*1.05,0,.88));
+            bot =mix(bot ,mix(gray,[255,255,255],.16),clamp(gloom*.92 ,0,.85));
+        }
+        var N=20; bandH=horizon/N; skyBands=[];
+        for(var i=0;i<N;i++){
+            var p=i/(N-1), e=p*p*.55+p*.45;
+            skyBands.push(e<.5?mix(top,midc,e*2):mix(midc,bot,(e-.5)*2));
+        }
+        for(var i=0;i<N;i++){ g.fillStyle=rgb(skyBands[i]); g.fillRect(0,Math.round(i*bandH),W,Math.ceil(bandH)+1); }
+        g.fillStyle=rgb(skyBands[N-1]); g.fillRect(0,horizon-2,W,H-horizon+2);
+        hazeCol=skyBands[N-1];
+
+        /* ---- stars ---- */
+        if(night>.02){
+            for(var i=0;i<stars.length;i++){
+                var s=stars[i], tw=.55+.45*Math.sin(now/620+s.p);
+                g.fillStyle=rgb([255,252,236],night*tw*.95);
+                g.fillRect(s.x,s.y,s.s,s.s);
+            }
+        }
+        /* aurora — tundra nights */
+        var auroraAmt=(BA.id==='tundra'?1-bc.t:0)+(BB.id==='tundra'?bc.t:0);
+        if(auroraAmt>.02&&night>.35&&cur.cloud<.6){
+            for(var b2=0;b2<3;b2++)
+                for(var x=0;x<W;x+=2){
+                    var yy=horizon*.22+Math.sin(x*.026+now/2600+b2*1.7)*13+b2*9;
+                    var a2=(.16-b2*.035)*night*auroraAmt*(1-cur.cloud);
+                    g.fillStyle=rgb(b2===1?[120,255,190]:[150,120,255],a2);
+                    g.fillRect(x,yy,2,Math.round(16+Math.sin(x*.04+now/1900)*7));
+                }
+        }
+        /* second moon / ringed planet for the stranger realities */
+        var oddAmt=(BA.id==='outpost'||BA.id==='feywild'?1-bc.t:0)+(BB.id==='outpost'||BB.id==='feywild'?bc.t:0);
+        if(oddAmt>.03){
+            var px2=Math.round(W*.20), py2=Math.round(horizon*.24);
+            var col=BB.id==='feywild'||BA.id==='feywild'?[255,150,210]:[170,220,255];
+            disc(px2,py2,10,rgb(col,.5*oddAmt*(0.35+night*.65)));
+            disc(px2-2,py2-2,4,rgb(mix(col,[255,255,255],.4),.35*oddAmt));
+            for(var i=-16;i<=16;i++) px(px2+i,py2+Math.round(i*.28),1,1,rgb(mix(col,[255,255,255],.5),.28*oddAmt));
         }
 
-        if (dark) {
-            stars.forEach(function (s) {
-                if (((t + s.p) % 60) < 46) rect(s.x, s.y, s.s, s.s, s.s > 1 ? accent : '#FFF1E8');
-            });
-        } else {
-            // drifting clouds
-            for (var c = 0; c < 4; c++) {
-                var cx = ((t * (0.35 + c * 0.12) + c * W / 3) % (W + 40)) - 20;
-                var cy = 8 + c * 9;
-                rect(cx, cy, 16, 4, '#FFFFFF'); rect(cx + 4, cy - 3, 9, 3, '#FFFFFF'); rect(cx + 2, cy + 4, 12, 2, '#E3EEF3');
+        /* ---- sun / moon ---- */
+        var arcTop=horizon*.14, arcH=horizon-arcTop;
+        var sunX=-999,sunY=0;
+        if(sunAlt>-.18){
+            sunX=Math.round(W*clamp((h-5.6)/12.8,-.1,1.1));
+            sunY=Math.round(horizon-8-Math.max(0,sunAlt)*arcH*.96);
+            var glow=mix([255,214,120],[255,150,90],warm);
+            disc(sunX,sunY,10,rgb(glow,.10*clamp(sunAlt*3,0,1)));
+            disc(sunX,sunY,7,rgb(glow,.20*clamp(sunAlt*3,0,1)));
+            disc(sunX,sunY,5,rgb(mix([255,240,190],[255,168,96],warm)));
+            disc(sunX,sunY,4,rgb(mix([255,252,226],[255,206,140],warm*.8)));
+        }
+        if(night>.02){
+            var mh=(h+12)%24, mAlt=Math.sin((mh-6)/12*Math.PI);
+            if(mAlt>-.18){
+                var px2=Math.round(W*clamp((mh-5.6)/12.8,-.1,1.1));
+                var py2=Math.round(horizon-8-Math.max(0,mAlt)*arcH*.90);
+                disc(px2,py2,8,rgb([210,224,255],.10*night));
+                disc(px2,py2,5,rgb([246,246,226],night));
+                disc(px2-1,py2-1,1,rgb([214,214,196],night));
+                disc(px2+2,py2+1,1,rgb([214,214,196],night));
+                disc(px2+3,py2-2,3,rgb(skyAt(py2),night*.92));
+                if(sunX<-100){ sunX=px2; sunY=py2; }
             }
         }
 
-        // Far ridge — deterministic sine so it never shimmers
-        var horizon = Math.floor(H * 0.62);
-        for (var x = 0; x < W; x++) {
-            var h1 = Math.floor(Math.sin(x * 0.045) * 6 + Math.sin(x * 0.017) * 10 + 14);
-            rect(x, horizon - h1, 1, h1, far);
+        /* ---- clouds ---- */
+        for(var i=0;i<clouds.length;i++){
+            var c=clouds[i];
+            c.x-=(c.sp*(reduceMotion?.25:1)*(1+cur.rain*.9)+SPEED*.055)*dt;
+            if(c.x<-c.w-18) c.x=W+8+Math.random()*44;
+            var vis=clamp((cur.cloud-c.th*.92)*4,0,1);
+            if(vis<=.02) continue;
+            var body=mix(tint([255,255,255],1.2),[186,196,214],cur.dark*.7);
+            var shade=mix(body,[120,132,158],.35);
+            g.globalAlpha=vis*(.85+light*.15);
+            for(var j=0;j<c.parts.length;j++){
+                var q=c.parts[j], x2=Math.round(c.x+q.dx), y2=Math.round(c.y+q.dy);
+                g.fillStyle=rgb(shade); g.fillRect(x2,y2+q.h-1,q.w,1);
+                g.fillStyle=rgb(body);  g.fillRect(x2,y2,q.w,q.h-1);
+            }
+            g.globalAlpha=1;
         }
-        for (var x = 0; x < W; x++) {
-            var h2 = Math.floor(Math.sin(x * 0.08 + 2) * 4 + Math.sin(x * 0.03) * 7 + 9);
-            rect(x, horizon - h2 + 6, 1, h2, mid);
-        }
-        rect(0, horizon, W, H - horizon, gnd);
 
-        // Scrolling ground tiles
-        var off = Math.floor(t * 0.6) % 8;
-        for (var x = -8; x < W + 8; x += 8) {
-            rect(x - off, horizon, 4, 1, mix(gnd, accent, 0.22));
-            rect(x - off + 4, horizon + 3, 3, 1, mix(gnd, '#000000', 0.25));
+        /* ---- terrain columns ---- */
+        for(var l=0;l<3;l++){
+            var a=colH[l];
+            for(var x=0;x<W;x++) a[x]=terrainY(cx+x,l);
         }
-        for (var y = horizon + 7; y < H; y += 6) {
-            for (var x = ((y / 6) | 0) % 2 ? 0 : 3; x < W; x += 6) rect(x, y, 1, 1, mix(gnd, '#000000', 0.3));
+        /* water level + per-column water amount */
+        var anyWater=0;
+        waterY=horizon;
+        for(var x=0;x<W;x++){
+            var bl=blendAt(cx+x);
+            var wa=(BIOMES[bl.a].water?1-bl.t:0)+(BIOMES[bl.b].water?bl.t:0);
+            colW[x]=wa; if(wa>anyWater) anyWater=wa;
         }
-        // Accent sun/moon
-        var sx = Math.floor(W * 0.78), sy = Math.floor(H * 0.16);
-        rect(sx - 5, sy - 3, 11, 7, accent); rect(sx - 3, sy - 5, 7, 11, accent);
-        rect(sx - 4, sy - 4, 9, 9, accent);
-        t++;
+        if(anyWater>.02){
+            var wb=BA.water||BB.water;
+            waterY=Math.round(horizon-(wb?wb.rise:.02)*H);
+        }
+        var cov=clamp(cur.cover,0,1);
+
+        paintLayer(0,0,.45,cov*.45);
+        drawLayerProps(0,now,cx);
+        paintLayer(1,1,.16,cov*.6);
+        capRidge(1,rgb(mix(mix(tint(colColor(W>>1,cx,2)),hazeCol,.16),tint(SNOWC),cov*.65)),1);
+        drawLayerProps(1,now,cx);
+        paintLayer(2,3,0,cov*.82);
+        capRidge(2,rgb(mix(tint(colColor(W>>1,cx,4)),tint(SNOWC),cov*.9)),2);
+        px(0,H-Math.round(H*.035),W,Math.round(H*.035),rgb(tint(colColor(W>>1,cx,5))));
+
+        /* ground speckle — keeps the foreground from reading as a flat slab */
+        var dirtTop=H-Math.round(H*.035);
+        for(var x=0;x<W;x+=2){
+            if(colW[x]>.5) continue;
+            var wx=Math.floor(cx+x), gy=colH[2][x];
+            var sc=rgb(mix(tint(mix(colColor(x,cx,3),SNOWC,cov*.82)),[0,0,0],.16));
+            for(var k2=0;k2<3;k2++){
+                if(hash2(wx+k2*4099,k2*31)>.34) continue;
+                var yy=gy+5+k2*8+Math.floor(hash2(wx,k2*17)*7);
+                if(yy>=dirtTop) continue;
+                px(x,yy,1+(hash2(wx,k2)<.3?1:0),1,sc);
+            }
+        }
+
+        /* ---- water ---- */
+        if(anyWater>.02){
+            var wb=BA.water||BB.water||{c:hex('#2f7fb0'),alpha:.85};
+            var wc=tint(wb.c);
+            var shallow=mix(wc,[255,255,255],.30), deep=mix(wc,[0,0,0],.30);
+            for(var x=0;x<W;x++){
+                var a2=colW[x]*wb.alpha; if(a2<=.02) continue;
+                var wave=Math.round(Math.sin((cx+x)*.09+now/700)*1.2
+                                    +Math.sin((cx+x)*.031-now/1500)*1.6);
+                var wtop=waterY+wave;
+                g.fillStyle=rgb(deep,a2);   g.fillRect(x,wtop,1,H-wtop);
+                g.fillStyle=rgb(wc,a2);     g.fillRect(x,wtop,1,Math.round(H*.06));
+                g.fillStyle=rgb(shallow,a2);g.fillRect(x,wtop,1,3);
+            }
+            /* crest highlights + swell lines */
+            g.fillStyle=rgb(mix(wc,[255,255,255],.62),.75*anyWater);
+            for(var x=0;x<W;x++){
+                if(colW[x]<.3) continue;
+                var wave=Math.round(Math.sin((cx+x)*.09+now/700)*1.2
+                                    +Math.sin((cx+x)*.031-now/1500)*1.6);
+                if(Math.sin((cx+x)*.21+now/520)>.55) g.fillRect(x,waterY+wave,1,1);
+            }
+            g.fillStyle=rgb(mix(wc,[255,255,255],.35),.30*anyWater);
+            for(var row=0;row<5;row++){
+                var yy=waterY+6+row*Math.round(H*.022);
+                if(yy>=H) break;
+                for(var x=0;x<W;x+=3){
+                    if(colW[x]<.3) continue;
+                    if(Math.sin((cx+x)*.055+now/900+row*2.1)>.60) g.fillRect(x,yy,2,1);
+                }
+            }
+            /* sun / moon glitter */
+            if(sunX>-100&&sunX<W+40&&anyWater>.3){
+                for(var i=0;i<12;i++){
+                    var yy=waterY+2+i*2;
+                    if(yy>=H) break;
+                    var jitter=Math.round(Math.sin(now/300+i*1.3)*(1+i*.4));
+                    g.fillStyle=rgb(mix([255,240,190],wc,.25),(.30-i*.022)*anyWater*(light*.6+.4));
+                    g.fillRect(sunX+jitter-1,yy,2+((i%3)|0),1);
+                }
+            }
+        }
+
+        drawLayerProps(2,now,cx);
+        drawGrass(now,cx,cov);
+
+        /* ---- ambient per-biome particles ---- */
+        drawAmbient(dt,now,BA,BB,bc.t);
+
+        /* ---- fireflies ---- */
+        if(night>.45&&cur.rain<.2&&cur.snow<.2){
+            var a2=night*(1-cur.rain);
+            for(var i=0;i<flies.length;i++){
+                var f=flies[i];
+                var x2=Math.round(f.x+Math.sin(now/900*f.sp+f.p)*9);
+                var y2=Math.round(f.y+Math.cos(now/1100*f.sp+f.q)*5);
+                var pulse=.35+.65*Math.abs(Math.sin(now/700+f.p));
+                g.fillStyle=rgb([190,255,120],a2*pulse*.22); g.fillRect(x2-1,y2-1,3,3);
+                g.fillStyle=rgb([226,255,168],a2*pulse);     g.fillRect(x2,y2,1,1);
+            }
+        }
+
+        drawBirds(dt,now);
+        drawRain(dt); drawSnow(dt,now);
+
+        if(!reduceMotion&&wxKey==='storm'&&cur.rain>.6){
+            lightningNext-=dt*1000;
+            if(lightningNext<=0){ lightning=1; lightningNext=2600+Math.random()*7000; }
+        }
+        if(lightning>0){
+            lightning=Math.max(0,lightning-dt*3.2);
+            g.fillStyle='rgba(226,238,255,'+(lightning>.7?.30:lightning*.20)+')';
+            g.fillRect(0,0,W,H);
+        }
+        g.fillStyle=vign; g.fillRect(0,0,W,H);
     }
-    function mix(a, b, f) {
-        function p(h) { h = h.replace('#',''); if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; return [parseInt(h.substr(0,2),16), parseInt(h.substr(2,2),16), parseInt(h.substr(4,2),16)]; }
-        try {
-            var A = p(a), B = p(b);
-            var r = Math.round(A[0] + (B[0]-A[0])*f), g = Math.round(A[1] + (B[1]-A[1])*f), bl = Math.round(A[2] + (B[2]-A[2])*f);
-            // quantise to a 5-bit-ish ramp so the palette stays limited
-            r = Math.round(r/8)*8; g = Math.round(g/8)*8; bl = Math.round(bl/8)*8;
-            return 'rgb(' + r + ',' + g + ',' + bl + ')';
-        } catch (e) { return a; }
+
+    /* props for one layer across the visible span */
+    function drawLayerProps(l,now,cx){
+        var c0=Math.floor((cx-90)/CHUNK), c1=Math.floor((cx+W+90)/CHUNK);
+        for(var ci=c0;ci<=c1;ci++){
+            var list=chunkProps(l,ci);
+            for(var i=0;i<list.length;i++){
+                var p=list[i], sx=Math.round(p.wx-cx);
+                if(sx<-70||sx>W+70) continue;
+                var gx=clamp(sx,0,W-1);
+                var gy=colH[l][gx];
+                if(colW[gx]>.5&&(p.k==='event'||p.k==='small')&&BIOMES[p.b].water) gy=waterY;
+                drawProp(p,l,sx,gy,now);
+            }
+        }
     }
+
+    function drawGrass(now,cx,cov){
+        var step=Math.max(2,Math.round(W/110));
+        for(var x=1;x<W;x+=step){
+            var bl=blendAt(cx+x);
+            var gr=(BIOMES[bl.a].grass?1-bl.t:0)+(BIOMES[bl.b].grass?bl.t:0);
+            if(gr<.35||colW[x]>.5) continue;
+            var base=mix(colColor(x,cx,4),SNOWC,cov*.75);
+            var hh=1+(Math.floor(hash2(Math.floor(cx+x),7)*3));
+            var s=reduceMotion?0:Math.round(Math.sin(now/700+(cx+x)*.1)*.6);
+            var c=rgb(tint(x%3===0?mix(base,[255,255,255],.22):base));
+            var gy=colH[2][x];
+            for(var k2=0;k2<hh;k2++) px(x+(k2===hh-1?s:0),gy-1-k2,1,1,c);
+            if(hash2(Math.floor(cx+x),19)<.13){
+                px(x+1,gy-hh-1,1,1,rgb(tint(BIOMES[bl.t<.5?bl.a:bl.b].accent)));
+            }
+        }
+    }
+
+    /* biome ambient particles */
+    function drawAmbient(dt,now,BA,BB,t){
+        var kind=(t<.5?BA.amb:BB.amb);
+        if(!kind) return;
+        var strength=t<.5?1-t*2:(t-.5)*2;
+        for(var i=0;i<amb.length;i++){
+            var a=amb[i];
+            switch(kind){
+                case 'petal':
+                    a.y+=a.v*7*dt; a.x+=Math.sin(now/1200+a.p)*.5-SPEED*dt*.5;
+                    px(a.x,a.y,1,1,rgb([255,170,205],.75*strength)); break;
+                case 'sand':
+                    a.x-=(28+a.v*30)*dt; a.y+=Math.sin(now/500+a.p)*.25;
+                    px(a.x,a.y,2,1,rgb([226,200,150],.30*strength)); break;
+                case 'ember':
+                    a.y-=(9+a.v*13)*dt; a.x+=Math.sin(now/600+a.p)*.4;
+                    px(a.x,a.y,1,1,rgb([255,140,50],.75*strength*(a.s*.6+.4))); break;
+                case 'ash':
+                    a.y+=(5+a.v*7)*dt; a.x+=Math.sin(now/900+a.p)*.35;
+                    px(a.x,a.y,1,1,rgb([170,168,164],.42*strength)); break;
+                case 'wisp': {
+                    var yy=a.y+Math.sin(now/1100+a.p)*8;
+                    a.x-=SPEED*dt*.4;
+                    var pu=.4+.6*Math.abs(Math.sin(now/900+a.p));
+                    px(a.x,yy,1,1,rgb([150,255,210],.8*strength*pu));
+                    disc(a.x,yy,2,rgb([120,255,190],.10*strength*pu)); break; }
+                case 'spark': {
+                    var pu=.3+.7*Math.abs(Math.sin(now/500+a.p*3));
+                    a.y-=(4+a.v*6)*dt;
+                    px(a.x,a.y,1,1,rgb([180,240,255],.7*strength*pu)); break; }
+                case 'pollen':
+                    a.y+=Math.sin(now/1500+a.p)*.22; a.x-=(4+a.v*5)*dt;
+                    px(a.x,a.y,1,1,rgb([255,244,180],.45*strength)); break;
+                case 'drift':
+                    a.x-=(20+a.v*22)*dt; a.y+=Math.sin(now/800+a.p)*.3;
+                    px(a.x,a.y,1,1,rgb([236,246,255],.5*strength)); break;
+            }
+            if(a.x<-4) a.x=W+4; if(a.x>W+4) a.x=-4;
+            if(a.y>horizon) a.y=0; if(a.y<-4) a.y=horizon;
+        }
+    }
+
+    function drawBirds(dt,now){
+        if(light>.55&&cur.rain<.2&&birds.length===0&&Math.random()<dt*.05){
+            var n=3+((Math.random()*3)|0), dir=Math.random()<.5?1:-1;
+            var by=8+Math.random()*(horizon*.35);
+            for(var i=0;i<n;i++)
+                birds.push({x:dir>0?-8-i*7:W+8+i*7,y:by+(i%2?2:-1)+i*1.2,d:dir,sp:9+Math.random()*5,p:Math.random()*6.283});
+        }
+        for(var i=birds.length-1;i>=0;i--){
+            var b=birds[i];
+            b.x+=b.d*b.sp*dt;
+            if(b.x<-20||b.x>W+20){ birds.splice(i,1); continue; }
+            var up=Math.sin(now/110+b.p)>0?-1:1;
+            g.fillStyle=rgb(tint([46,52,70],0));
+            var bx=Math.round(b.x), by=Math.round(b.y+Math.sin(now/700+b.p));
+            g.fillRect(bx,by,1,1); g.fillRect(bx-1,by+up,1,1); g.fillRect(bx+1,by+up,1,1);
+        }
+    }
+
+    function drawRain(dt){
+        var want=Math.round(W*.95*cur.rain*(reduceMotion?.4:1));
+        while(rainP.length<want) rainP.push({x:Math.random()*W,y:Math.random()*horizon,v:60+Math.random()*55,l:2+((Math.random()*3)|0)});
+        while(rainP.length>want) rainP.pop();
+        if(!rainP.length) return;
+        g.fillStyle=rgb(tint(hex('#a9dcff'),0),.62);
+        var wind=cur.rain*.30;
+        for(var i=0;i<rainP.length;i++){
+            var p=rainP[i];
+            p.y+=p.v*dt; p.x+=p.v*dt*wind;
+            var gx=clamp(p.x|0,0,W-1);
+            var gy=colW[gx]>.5?waterY:colH[2][gx];
+            if(p.y>gy){
+                if(splash.length<26) splash.push({x:p.x,y:gy,t:.22});
+                p.y=-2-Math.random()*10; p.x=Math.random()*W;
+            }
+            g.fillRect(p.x|0,p.y|0,1,p.l);
+        }
+        for(var i=splash.length-1;i>=0;i--){
+            var s=splash[i]; s.t-=dt;
+            if(s.t<=0){ splash.splice(i,1); continue; }
+            g.fillStyle=rgb(tint([210,240,255],0),s.t*3.2);
+            g.fillRect((s.x|0)-1,(s.y|0)-1,3,1);
+        }
+    }
+    function drawSnow(dt,now){
+        var want=Math.round(W*.36*cur.snow*(reduceMotion?.4:1));
+        while(snowP.length<want) snowP.push({x:Math.random()*W,y:Math.random()*horizon,v:9+Math.random()*13,p:Math.random()*6.283,s:Math.random()<.25?2:1});
+        while(snowP.length>want) snowP.pop();
+        if(!snowP.length) return;
+        g.fillStyle=rgb(tint(SNOWC,0),.92);
+        for(var i=0;i<snowP.length;i++){
+            var p=snowP[i];
+            p.y+=p.v*dt;
+            var x2=p.x+Math.sin(now/1000+p.p)*5;
+            var gx=clamp(x2|0,0,W-1);
+            if(p.y>colH[2][gx]){ p.y=-2; p.x=Math.random()*W; }
+            g.fillRect(x2|0,p.y|0,p.s,p.s);
+        }
+    }
+
+    /* ---- loop ----
+       ~30fps: the world only scrolls 5.5px a second, so a backdrop behind a
+       work app gains nothing from 60 and the battery notices. */
+    function frame(now){
+        id = raf(frame);
+        if(document.hidden){ last=now; return; }
+        if(now-last<30) return;
+        var dt=Math.min(.06,(now-last)/1000); last=now;
+        if(innerWidth!==builtW||innerHeight!==builtH) build();
+
+        if(now>wxNext) pickWeather();
+        var tgt=WX[wxKey], k=Math.min(1,dt*.35);
+        cur.cloud=lerp(cur.cloud,tgt.cloud,k);
+        cur.rain =lerp(cur.rain ,tgt.rain ,k);
+        cur.snow =lerp(cur.snow ,tgt.snow ,k);
+        cur.dark =lerp(cur.dark ,tgt.dark ,k);
+        cur.cover=clamp(cur.cover+(cur.snow>.3?dt*.035:-dt*.07),0,1);
+
+        drawScene(dt,now);
+    }
+
     return {
         start: function () {
-            if (timer) return;
-            size(); draw();
-            if (!reduceMotion) timer = setInterval(draw, 1000 / 12);   // 12fps on purpose
+            if (id !== null) return;
+            build();
+            if (!wxNext) pickWeather('clear');
+            last = performance.now();
+            drawScene(0, last);
+            if (!reduceMotion) id = raf(frame);            // reduced motion: one still frame
         },
-        stop: function () { if (timer) clearInterval(timer); timer = null; },
-        resize: function () { if (timer || reduceMotion) { size(); draw(); } }
+        stop: function () { if (id !== null) cancelAnimationFrame(id); id = null; },
+        resize: function () {
+            if (id === null && !(reduceMotion && state.style === 'pixelart')) return;
+            build(); drawScene(0, performance.now());
+        }
     };
 })();
 
