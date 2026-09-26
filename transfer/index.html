@@ -26,7 +26,11 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
     <!-- Shared theme system — same file the Call Flow Tracker loads. -->
-    <link rel="stylesheet" href="../smt/theme.css">
+    <!-- The ?v= stamps make a new page always fetch the matching shared theme
+         files: the host caches .js/.css for 4 hours but pages for 10 minutes, so an
+         unversioned URL can pair a new page with a stale theme.js. Bump both
+         stamps (here and in the other app) whenever smt/theme.* changes. -->
+    <link rel="stylesheet" href="../smt/theme.css?v=20260926">
 
     <style>
         /* ── App-specific layout only. Everything themed lives in theme.css. ── */
@@ -159,7 +163,7 @@
         </div>
     </div>
 
-    <script src="../smt/theme.js"></script>
+    <script src="../smt/theme.js?v=20260926"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const panel = document.getElementById('trackerPanel');
