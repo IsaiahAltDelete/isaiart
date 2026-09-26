@@ -17,6 +17,30 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
     <style>
+        /* Motion — same curves as the apps (smt/theme.css). Nothing overshoots. */
+        :root {
+            --ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
+            --ease-in:   cubic-bezier(0.4, 0, 1, 1);
+            --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+        }
+
+        /* Hub ⇄ app navigation cross-fades instead of flashing (same-origin,
+           Chrome/Edge 126+; elsewhere it is an ordinary page load). */
+        @view-transition { navigation: auto; types: tt-nav; }
+        html:active-view-transition-type(tt-nav)::view-transition-old(root) { animation: ttNavOut 180ms var(--ease-in) both; }
+        html:active-view-transition-type(tt-nav)::view-transition-new(root) { animation: ttNavIn 420ms var(--ease-out) 60ms both; }
+        @keyframes ttNavOut { to { opacity: 0; transform: scale(0.99); } }
+        @keyframes ttNavIn  { from { opacity: 0; transform: translateY(10px); } }
+        /* Light/dark: the new theme spreads out as a circle from the toggle you
+           pressed (a cross-fade went through a muddy grey half-frame and felt
+           late). Transitions are held off while it runs so the page is
+           captured already settled. */
+        html.tt-theming *, html.tt-theming *::before, html.tt-theming *::after { transition: none !important; }
+        html.tt-reveal::view-transition-old(root) { animation: none; }
+        html.tt-reveal::view-transition-new(root) { animation: ttReveal 560ms var(--ease-out) both; mix-blend-mode: normal; }
+        @keyframes ttReveal { from { clip-path: circle(0px at var(--tt-vt-x) var(--tt-vt-y)); }
+                              to   { clip-path: circle(var(--tt-vt-r) at var(--tt-vt-x) var(--tt-vt-y)); } }
+
         :root {
             --accent-color: #6366F1; /* Indigo for the hub */
             --accent-color-hover: #4F46E5;
@@ -67,7 +91,7 @@
             max-width: 700px;
             padding: 2.5rem;
             transform-style: preserve-3d;
-            transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0); 
+            transition: transform 720ms var(--ease-out), background-color 0.3s ease, border-color 0.3s ease;
             cursor: grab;
             user-select: none;
             border-radius: 1.5rem;
@@ -86,22 +110,33 @@
         .subtle-text { color: var(--subtle-text-color); }
         
         .app-card {
+            position: relative;
             background-color: var(--hover-bg-color);
             border: 1px solid var(--border-color);
             transform: translateZ(20px);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 280ms var(--ease-out), border-color 200ms ease, background-color 0.3s ease;
+        }
+        /* The glow is pre-rendered on a layer and faded, rather than animating
+           box-shadow (which repaints the blur every frame). */
+        .app-card::after {
+            content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none;
+            box-shadow: 0 0 25px 0 rgba(99, 102, 241, 0.3); /* Accent color glow */
+            opacity: 0; transition: opacity 280ms var(--ease-out);
         }
         .app-card:hover {
             transform: translateZ(20px) scale(1.05);
-            box-shadow: 0 0 25px 0 rgba(99, 102, 241, 0.3); /* Accent color glow */
             border-color: var(--accent-color);
         }
+        .app-card:hover::after { opacity: 1; }
+        .app-card:active { transform: translateZ(20px) scale(1.03); transition-duration: 90ms; }
         .app-card .launch-text .material-symbols-outlined {
-            transition: transform 0.3s ease;
+            transition: transform 280ms var(--ease-out);
         }
         .app-card:hover .launch-text .material-symbols-outlined {
             transform: translateX(4px);
         }
+        #themeToggle { transition: background-color 150ms ease, transform 200ms var(--ease-out); }
+        #themeToggle:active { transform: scale(0.94); transition-duration: 90ms; }
     </style>
 </head>
 <body>
@@ -160,31 +195,49 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
         // --- 3D Panel Interaction ---
+        // The pointer sets a target; a frame loop eases the panel toward it at
+        // a per-time rate (same feel on 60Hz and 144Hz). It used to write the
+        // transform straight from mousemove behind a 50ms linear transition,
+        // which lagged and stuttered. Letting go returns it on the same 720ms
+        // curve the apps use, and grabbing it mid-return picks it up where it is.
         const panel = document.getElementById('hubPanel');
         let isDragging = false;
         let previousMouseX, previousMouseY;
-        let currentRotationX = 0;
-        let currentRotationY = 0;
+        let targetX = 0, targetY = 0, currentRotationX = 0, currentRotationY = 0, loop = null, lastT = 0;
         const SENSITIVITY = 0.20;
         const MAX_ROTATION_X = 15;
 
+        function follow(now) {
+            const dt = lastT ? Math.min(64, now - lastT) : 16.67; lastT = now;
+            const k = 1 - Math.pow(1 - 0.3, dt / 16.67);
+            currentRotationX += (targetX - currentRotationX) * k;
+            currentRotationY += (targetY - currentRotationY) * k;
+            panel.style.transform = `rotateX(${currentRotationX.toFixed(2)}deg) rotateY(${currentRotationY.toFixed(2)}deg)`;
+            loop = isDragging ? requestAnimationFrame(follow) : null;
+        }
+
         panel.addEventListener('mousedown', (e) => {
-            if (e.target.closest('a, button')) return;
+            if (e.target.closest('a, button') || reduceMotion) return;
+            const m = new DOMMatrixReadOnly(getComputedStyle(panel).transform);
+            currentRotationY = targetY = Math.atan2(-m.m31, m.m11) * 180 / Math.PI;
+            currentRotationX = targetX = Math.asin(Math.max(-1, Math.min(1, m.m32))) * 180 / Math.PI;
             isDragging = true;
             previousMouseX = e.clientX;
             previousMouseY = e.clientY;
-            panel.style.transition = 'transform 0.05s linear';
+            panel.style.transition = 'none';
+            panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
+            lastT = 0;
+            if (!loop) loop = requestAnimationFrame(follow);
         });
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            const dx = e.clientX - previousMouseX;
-            const dy = e.clientY - previousMouseY;
-            currentRotationY += dx * SENSITIVITY;
-            currentRotationX -= dy * SENSITIVITY;
-            currentRotationX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, currentRotationX));
-            panel.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
+            targetY += (e.clientX - previousMouseX) * SENSITIVITY;
+            targetX -= (e.clientY - previousMouseY) * SENSITIVITY;
+            targetX = Math.max(-MAX_ROTATION_X, Math.min(MAX_ROTATION_X, targetX));
             previousMouseX = e.clientX;
             previousMouseY = e.clientY;
         });
@@ -192,13 +245,34 @@
         document.addEventListener('mouseup', () => {
             if (isDragging) {
                 isDragging = false;
-                panel.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)';
+                if (loop) { cancelAnimationFrame(loop); loop = null; }
+                panel.style.transition = '';
                 panel.style.transform = `rotateX(0deg) rotateY(0deg)`;
-                currentRotationX = 0;
-                currentRotationY = 0;
+                targetX = targetY = currentRotationX = currentRotationY = 0;
             }
         });
         panel.ondragstart = () => false;
+
+        // --- Arrival ---
+        // The panel rises into place and the two cards follow. Skipped when the
+        // page arrived through a cross-document view transition (already
+        // animated) or under reduced motion. Uses `translate`, never `transform`,
+        // so it can't fight the tilt.
+        const arrival = [];
+        let revealedByVT = false;
+        window.addEventListener('pagereveal', (e) => {
+            if (!e.viewTransition) return;
+            revealedByVT = true;
+            arrival.forEach(a => a.finish());
+        });
+        if (!reduceMotion && !revealedByVT) {
+            const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
+            arrival.push(document.getElementById('scene').animate(
+                [{ opacity: 0, translate: '0 14px' }, { opacity: 1, translate: '0 0' }], { duration: 560, easing: ease }));
+            document.querySelectorAll('.app-card').forEach((c, i) => arrival.push(c.animate(
+                [{ opacity: 0, translate: '0 10px' }, { opacity: 1, translate: '0 0' }],
+                { duration: 480, easing: ease, delay: 140 + i * 70, fill: 'backwards' })));
+        }
 
         // --- THEME MANAGEMENT ---
         const themeToggle = document.getElementById('themeToggle');
@@ -218,10 +292,28 @@
             }
         };
 
+        // The whole page changes as one (the panel used to snap while only the
+        // body faded), spreading from the toggle, and the incoming icon turns
+        // into place.
         themeToggle.addEventListener('click', () => {
             const newTheme = htmlEl.classList.contains('light-mode') ? 'dark' : 'light';
             localStorage.setItem('theme', newTheme);
-            applyTheme(newTheme);
+            const swap = () => {
+                applyTheme(newTheme);
+                if (!reduceMotion) (newTheme === 'light' ? darkIcon : lightIcon).animate(
+                    [{ opacity: 0, transform: 'rotate(-90deg) scale(0.7)' }, { opacity: 1, transform: 'none' }],
+                    { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+            };
+            if (!reduceMotion && document.startViewTransition) {
+                const r = themeToggle.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+                htmlEl.style.setProperty('--tt-vt-x', x + 'px');
+                htmlEl.style.setProperty('--tt-vt-y', y + 'px');
+                htmlEl.style.setProperty('--tt-vt-r', Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 'px');
+                htmlEl.classList.add('tt-reveal');
+                const vt = document.startViewTransition(() => { htmlEl.classList.add('tt-theming'); swap(); });
+                const ready = () => htmlEl.classList.remove('tt-theming'), done = () => htmlEl.classList.remove('tt-reveal');
+                vt.ready.then(ready, ready); vt.finished.then(done, done);
+            } else swap();
         });
 
         const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');

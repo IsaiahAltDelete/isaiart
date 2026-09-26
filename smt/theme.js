@@ -148,6 +148,13 @@ function buildLayers() {
     document.body.appendChild(el('div', { id:'medievalCorners', 'aria-hidden':'true', html: flourish + flourish + flourish + flourish }));
 
     // Blueprint title block
+    // Pixel-art icons: sample the glyph on a 2px grid and harden the alpha,
+    // so the icon font renders as real pixels (theme.css applies it).
+    document.body.appendChild(el('div', { 'aria-hidden':'true', style:'position:absolute;width:0;height:0;overflow:hidden', html:
+        '<svg width="0" height="0"><filter id="ttPixel" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">' +
+        '<feFlood x="0" y="0" width="1" height="1" flood-color="#000"/><feComposite width="2" height="2"/><feTile result="grid"/>' +
+        '<feComposite in="SourceGraphic" in2="grid" operator="in"/><feMorphology operator="dilate" radius="1"/>' +
+        '<feComponentTransfer><feFuncA type="discrete" tableValues="0 1"/></feComponentTransfer></filter></svg>' }));
     document.body.appendChild(el('div', { id:'blueprintTitleBlock', 'aria-hidden':'true', html:
         '<div class="bp-row"><span class="bp-k">Title</span><span class="bp-v">' + (cfg.title || '') + '</span></div>' +
         '<div class="bp-row"><span class="bp-k">Drawn</span><span class="bp-v">isaiart</span></div>' +
@@ -159,12 +166,13 @@ function buildLayers() {
 /* ── Matrix rain (cyberpunk) ─────────────────────────────────────────── */
 var matrix = (function () {
     var cv, ctx, id = null, drops = [], CH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*!?+-=><アイウエオカキクケコサシスセソ';
+    var accent = '#33FF66', last = 0, acc = 0, n = 0, STEP = 1000 / 60;
     function size() {
         cv.width = innerWidth; cv.height = innerHeight;
         drops = Array.from({ length: Math.floor(cv.width / 14) }, function () { return Math.random() * -cv.height; });
     }
-    function tick() {
-        var accent = getComputedStyle(html).getPropertyValue('--accent').trim() || '#33FF66';
+    function readAccent() { accent = getComputedStyle(html).getPropertyValue('--accent').trim() || '#33FF66'; }
+    function draw() {
         ctx.fillStyle = 'rgba(0,0,0,0.05)';
         ctx.fillRect(0, 0, cv.width, cv.height);
         ctx.font = '14px "Share Tech Mono",monospace';
@@ -174,14 +182,26 @@ var matrix = (function () {
             if (drops[i] > cv.height && Math.random() > 0.975) drops[i] = 0;
             drops[i] += 14;
         }
+    }
+    /* Fixed 60Hz step. It used to advance once per display frame, so on a
+       120/144Hz screen the rain fell twice as fast with half-length trails,
+       and it restyled the whole document every frame to read --accent. */
+    function tick(now) {
         id = raf(tick);
+        acc += last ? Math.min(100, now - last) : STEP; last = now;
+        while (acc >= STEP) {
+            acc -= STEP;
+            if (++n % 30 === 0) readAccent();
+            draw();
+        }
     }
     return {
         start: function () {
             if (id) return;
             cv = $('matrixCanvas'); ctx = cv.getContext('2d'); size();
-            tick();
-            if (reduceMotion) { cancelAnimationFrame(id); id = -1; }   // one static frame
+            readAccent(); draw();
+            if (reduceMotion) { id = -1; return; }                       // one static frame
+            last = 0; acc = 0; id = raf(tick);
         },
         stop:  function () { if (id && id !== -1) cancelAnimationFrame(id); id = null; if (ctx) ctx.clearRect(0, 0, cv.width, cv.height); },
         resize: function () { if (id) size(); }
@@ -2394,20 +2414,41 @@ function commit() {
     html.setAttribute('data-color', state.color);
     html.setAttribute('data-mode',  state.mode);
     activateBackground(state.style);
+    iconMap = ICONS[state.style] || {};
+    applyIcons(document);
     syncPanelUI();
     save();
     if (cfg.onChange) cfg.onChange(Object.assign({}, state));
 }
 
-/* Cross-fade the whole document when the theme changes, where supported. */
-function transition(fn) {
-    if (!reduceMotion && document.startViewTransition) { document.startViewTransition(fn); }
-    else fn();
+/* The new theme spreads out from the control you clicked, as a circle,
+   over the old one (View Transitions, Chrome/Edge/Safari 18+). A plain
+   cross-fade went through a muddy half-and-half frame and responded late;
+   this answers the click at the click. tt-theming holds every CSS
+   transition off while the new state is captured (see theme.css), so the
+   revealed page is already settled; tt-reveal carries the animation until
+   it has finished. */
+function transition(fn, from) {
+    if (reduceMotion || !document.startViewTransition) { fn(); resetAnchors(); return; }
+    var r = from && from.getBoundingClientRect ? from.getBoundingClientRect() : null;
+    var x = r ? r.left + r.width / 2 : innerWidth - 40, y = r ? r.top + r.height / 2 : 40;
+    html.style.setProperty('--tt-vt-x', x + 'px');
+    html.style.setProperty('--tt-vt-y', y + 'px');
+    html.style.setProperty('--tt-vt-r', Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 'px');
+    html.classList.add('tt-reveal');
+    var vt = document.startViewTransition(function () { html.classList.add('tt-theming'); fn(); });
+    var ready = function () { html.classList.remove('tt-theming'); };
+    // The anchored panel stays exactly where it was under the reveal (so the
+    // circle never crosses a panel drawn at two heights) and glides back to
+    // centre once the new theme is fully in.
+    var done = function () { html.classList.remove('tt-reveal'); recentreAnchors(); };
+    vt.ready.then(ready, ready);
+    vt.finished.then(done, done);
 }
 
-function setStyle(s) { if (VALID_STYLES.indexOf(s) < 0) return; state.style = s; transition(commit); }
-function setColor(c) { if (VALID_COLORS.indexOf(c) < 0) return; state.color = c; transition(commit); }
-function setMode(m)  { state.mode = (m === 'light' ? 'light' : 'dark'); transition(commit); }
+function setStyle(s, from) { if (VALID_STYLES.indexOf(s) < 0) return; state.style = s; transition(commit, from); }
+function setColor(c, from) { if (VALID_COLORS.indexOf(c) < 0) return; state.color = c; transition(commit, from); }
+function setMode(m, from)  { state.mode = (m === 'light' ? 'light' : 'dark'); transition(commit, from); }
 
 
 /* ═══════════ PICKER UI ══════════════════════════════════════════════════ */
@@ -2415,9 +2456,12 @@ function panelToggle(open) {
     var p = $('themePanel'); if (!p) return;
     var next = (open === undefined) ? !p.classList.contains('visible') : open;
     p.classList.toggle('visible', next);
-    if (next) p.querySelectorAll('.style-btn').forEach(function (b, i) {
-        b.style.animation = 'none'; void b.offsetWidth; b.style.animation = '';
-        b.style.setProperty('--i', i);
+    // The panel's contents settle top to bottom with it (heading, mode,
+    // styles, colours), all inside ~130ms, so it reads in order and is
+    // complete almost as soon as the shell is.
+    if (next && !reduceMotion) Array.prototype.forEach.call(p.children, function (c, i) {
+        c.animate([{ opacity:0, transform:'translateY(4px)' }, { opacity:1, transform:'none' }],
+                  { duration:240, easing:EASE.out, delay:i * 22, fill:'backwards' });
     });
 }
 
@@ -2441,17 +2485,17 @@ function buildUI() {
     var pill = el('div', { class:'mode-pill' });
     pill.appendChild(el('button', { class:'mode-pill-btn', id:'ttModeDark', type:'button',
         html:'<span class="material-symbols-outlined">dark_mode</span><span>Dark</span>',
-        onclick: function () { setMode('dark'); } }));
+        onclick: function () { setMode('dark', this); } }));
     pill.appendChild(el('button', { class:'mode-pill-btn', id:'ttModeLight', type:'button',
         html:'<span class="material-symbols-outlined">light_mode</span><span>Light</span>',
-        onclick: function () { setMode('light'); } }));
+        onclick: function () { setMode('light', this); } }));
     panel.appendChild(pill);
 
     panel.appendChild(el('span', { class:'tp-label', text:'UI Style' }));
     var grid = el('div', { class:'style-grid', id:'ttStyleGrid' });
     THEMES.forEach(function (t, i) {
         var b = el('button', { class:'style-btn', type:'button', 'data-style':t.id, style:'--i:' + i,
-            onclick: function () { setStyle(t.id); } });
+            onclick: function () { setStyle(t.id, this); } });
         b.appendChild(el('div', { class:'style-preview', html:t.preview }));
         b.appendChild(el('span', { text:t.name }));
         grid.appendChild(b);
@@ -2462,7 +2506,7 @@ function buildUI() {
     var row = el('div', { class:'color-row' });
     COLORS.forEach(function (c) {
         row.appendChild(el('button', { class:'color-dot', type:'button', 'data-color':c.id, title:c.title,
-            'aria-label':c.title, style:'background:' + c.swatch, onclick: function () { setColor(c.id); } }));
+            'aria-label':c.title, style:'background:' + c.swatch, onclick: function () { setColor(c.id, this); } }));
     });
     panel.appendChild(row);
     document.body.appendChild(panel);
@@ -2492,14 +2536,17 @@ function syncPanelUI() {
 function tilt(panel, opts) {
     opts = opts || {};
     var max = opts.max || 16, sens = opts.sensitivity || 0.25;
-    var dragging = false, px = 0, py = 0, tx = 0, ty = 0, cx = 0, cy = 0, loop = null;
+    var dragging = false, px = 0, py = 0, tx = 0, ty = 0, cx = 0, cy = 0, loop = null, lastT = 0;
 
     var settleTimer = null, settleDone = null;
 
-    // While dragging, lerp toward the pointer so the motion is smooth rather
-    // than a raw jump per mousemove.
-    function frame() {
-        cx += (tx - cx) * 0.28; cy += (ty - cy) * 0.28;
+    // While dragging, ease toward the pointer so the motion is smooth rather
+    // than a raw jump per mousemove. The follow rate is per unit of time, not
+    // per frame, so it feels the same on a 60Hz and a 144Hz screen.
+    function frame(now) {
+        var dt = lastT ? Math.min(64, now - lastT) : 16.67; lastT = now;
+        var k = 1 - Math.pow(1 - 0.28, dt / 16.67);
+        cx += (tx - cx) * k; cy += (ty - cy) * k;
         panel.style.transform = 'rotateX(' + cy.toFixed(2) + 'deg) rotateY(' + cx.toFixed(2) + 'deg)';
         loop = dragging ? raf(frame) : null;
     }
@@ -2507,21 +2554,29 @@ function tilt(panel, opts) {
     // Let go and it springs back on a fixed-duration CSS transition. A
     // proportional lerp decelerates forever near the end, so a two-turn spin
     // would crawl home; this returns just as snappily from 700deg as from 7.
+    // The raised layers sink on the same beat (tt-lifted comes off now) and
+    // the 3D context is dropped only once everything is flat — dropping it
+    // while the layers were still raised made the whole panel jump 2% smaller
+    // at the very end of every release.
     function settle() {
         cancelSettle();
         panel.style.transition = 'transform 720ms cubic-bezier(0.22,1,0.36,1)';
         panel.style.transform = 'rotateX(0deg) rotateY(0deg)';
+        panel.classList.remove('tt-lifted');
         tx = ty = cx = cy = 0;
-        settleDone = function () {
+        function finish() {
             cancelSettle();
             // Drop the transform AND preserve-3d so the panel is rasterised at
             // native resolution again — this is what keeps the text crisp.
             panel.style.transition = '';
             panel.style.transform = '';
             panel.classList.remove('tt-tilting');
-        };
-        panel.addEventListener('transitionend', settleDone, { once: true });
-        settleTimer = setTimeout(settleDone, 820);   // if transitionend never fires
+        }
+        // Children's transitions bubble up here too (a hovered button, the
+        // sinking layers); only the panel's own transform ends the settle.
+        settleDone = function (e) { if (e.target === panel && e.propertyName === 'transform') finish(); };
+        panel.addEventListener('transitionend', settleDone);
+        settleTimer = setTimeout(finish, 820);   // if transitionend never fires
     }
     function cancelSettle() {
         if (settleTimer) { clearTimeout(settleTimer); settleTimer = null; }
@@ -2543,8 +2598,9 @@ function tilt(panel, opts) {
         cx = tx = Math.atan2(-m.m31, m.m11) * 180 / Math.PI;
         cy = ty = Math.asin(Math.max(-1, Math.min(1, m.m32))) * 180 / Math.PI;
         dragging = true; px = e.clientX; py = e.clientY;
-        panel.classList.add('tt-tilting');
+        panel.classList.add('tt-tilting', 'tt-lifted');
         panel.style.transition = 'none';
+        lastT = 0;
         if (!loop) loop = raf(frame);
     }
     document.addEventListener('mousemove', function (e) {
@@ -2568,54 +2624,693 @@ function tilt(panel, opts) {
     panel.ondragstart = function () { return false; };
 }
 
-/* Rolls a number instead of snapping it.
-   Each run stamps a token on the node and bails the moment a newer run takes
-   over. Without this, two overlapping rolls on the same element race and
-   whichever finishes last wins — so a quick add-then-toggle could leave the
-   old figure on screen while the meter beside it showed the new one. */
-function countUp(node, to, opts) {
-    opts = opts || {};
-    var token = (node.__ttCount = (node.__ttCount || 0) + 1);
-    var from = parseFloat(String(node.textContent).replace(/[^0-9.\-]/g, '')) || 0;
-    var dec = opts.decimals || 0, suffix = opts.suffix || '';
-    if (reduceMotion || from === to) { node.textContent = to.toFixed(dec) + suffix; return; }
-    var dur = opts.duration || 480, t0 = performance.now();
-    (function step(now) {
-        if (node.__ttCount !== token) return;          // superseded
-        var p = Math.min(1, (now - t0) / dur);
-        var e = 1 - Math.pow(1 - p, 3);
-        node.textContent = (from + (to - from) * e).toFixed(dec) + suffix;
-        if (p < 1) raf(step); else node.textContent = to.toFixed(dec) + suffix;
-    })(t0);
+/* Curves for WAAPI, mirroring the CSS tokens in theme.css. */
+var EASE = {
+    out:  'cubic-bezier(0.22, 1, 0.36, 1)',
+    in:   'cubic-bezier(0.4, 0, 1, 1)',
+    move: 'cubic-bezier(0.2, 0, 0, 1)'
+};
+function STEPS(n, pos) { return 'steps(' + n + ', ' + (pos || 'jump-end') + ')'; }
+
+
+/* ═══════════ PER-THEME MOTION LANGUAGE ══════════════════════════════════
+   Every helper below asks mo() how the active theme moves instead of
+   hard-coding one curve. The soft styles glide; glass comes into focus;
+   goop is viscous; neumorphic rises out of the surface; minimal only fades;
+   the blueprint is plotted on; the terminal glitches and powers on like a
+   CRT; the 8-bit world steps; Win95 snaps and zooms its outline; the
+   manuscript inks in; brutalism cuts; the newsroom wipes like a graphics
+   package. Each entry is K(keyframes, ms, easing, {delay, gap}). */
+function K(k, d, e, x) { var o = { k: k, d: d, e: e || 'linear', delay: 0 }; if (x) for (var i in x) o[i] = x[i]; return o; }
+var PLOT = 'cubic-bezier(0.45, 0, 0.2, 1)', WIPE = 'cubic-bezier(0.8, 0, 0.2, 1)',
+    INK  = 'cubic-bezier(0.3, 0.1, 0.3, 1)',  GOO  = 'cubic-bezier(0.3, 0.6, 0.35, 1)';
+var HOLD = 'steps(1, jump-end)';
+var GLITCH = [
+    { opacity:0, clipPath:'inset(0 0 100% 0)', transform:'translateX(0)', easing:HOLD },
+    { opacity:1, clipPath:'inset(35% 0 40% 0)', transform:'translateX(-8px)', offset:0.2, easing:HOLD },
+    { opacity:1, clipPath:'inset(70% 0 8% 0)',  transform:'translateX(6px)',  offset:0.4, easing:HOLD },
+    { opacity:1, clipPath:'inset(10% 0 55% 0)', transform:'translateX(-3px)', offset:0.6, easing:HOLD },
+    { opacity:1, clipPath:'inset(0 0 0 0)',     transform:'translateX(2px)',  offset:0.8, easing:HOLD },
+    { opacity:1, clipPath:'inset(0 0 0 0)',     transform:'none' }
+];
+var CRT_ON = [
+    { opacity:0, transform:'scale(0.3, 0.006)', filter:'brightness(3)' },
+    { opacity:1, transform:'scale(1, 0.006)',   filter:'brightness(3)',   offset:0.35 },
+    { opacity:1, transform:'scale(1, 1)',       filter:'brightness(1.7)', offset:0.72 },
+    { opacity:1, transform:'none',              filter:'brightness(1)' }
+];
+var CRT_OFF = [
+    { opacity:1, transform:'none',              filter:'brightness(1)' },
+    { opacity:1, transform:'scale(1, 0.006)',   filter:'brightness(2.5)', offset:0.55 },
+    { opacity:0, transform:'scale(0, 0.006)',   filter:'brightness(3)' }
+];
+var FLICKER = [
+    { opacity:1, easing:HOLD }, { opacity:0.25, offset:0.2, easing:HOLD }, { opacity:1, offset:0.4, easing:HOLD },
+    { opacity:0.45, offset:0.6, easing:HOLD }, { opacity:1 }
+];
+
+var MOTION = {
+    base: {
+        rowIn:    K([{ opacity:0, transform:'scale(0.98)' }, { opacity:1, transform:'none' }], 300, EASE.out),
+        rowFirst: K([{ opacity:0, transform:'translateY(10px)' }, { opacity:1, transform:'none' }], 460, EASE.out, { delay:80, gap:40 }),
+        // Leaving rows are mostly gone within ~100ms, so the gap never closes
+        // over a still-visible row. From the row's current opacity (dimmed
+        // completed calls included), hence a single keyframe.
+        rowOut:   K([{ opacity:0, transform:'translateX(12px)' }], 130, 'cubic-bezier(0.3, 0, 0.6, 1)'),
+        lag: 100,                                       // gap waits this long for a leaving row
+        move:     K(null, 380, EASE.move),
+        reveal:   K([{ opacity:0, transform:'translateY(6px)' }, { opacity:1, transform:'none' }], 360, EASE.out),
+        scrimIn:  K([{ opacity:0 }, { opacity:1 }], 220, EASE.out),
+        scrimOut: K([{ opacity:1 }, { opacity:0 }], 200, EASE.in),
+        boxIn:   [K([{ opacity:0 }, { opacity:1 }], 200, EASE.out, { delay:30 }),
+                  K([{ transform:'translateY(12px) scale(0.97)' }, { transform:'none' }], 360, EASE.out, { delay:30 })],
+        boxOut:  [K([{ opacity:1, transform:'none' }, { opacity:0, transform:'translateY(6px) scale(0.98)' }], 160, EASE.in)],
+        arrive:   K([{ opacity:0, translate:'0 14px' }, { opacity:1, translate:'0 0' }], 560, EASE.out),
+        roll:     { mode:'reel', d:340, e:EASE.move, gap:45 },
+        // Short-tailed ease-out, so a rate or % lands together with the
+        // odometers beside it instead of crawling in its last 0.x% afterwards.
+        count:    { d:420, e:'cubic-bezier(0.33, 1, 0.68, 1)' },
+        chart:    { d:560, e:EASE.out, draw:900 },     // line morph / first draw-on (flow)
+        origin:   true,                                // dialogs grow from the control that opened them
+        toggleOn: null, toggleOff: null,
+        ripple:   true
+    },
+    glass: {                                            // frosted: things come into focus
+        rowIn:    K([{ opacity:0, transform:'scale(0.98)', filter:'blur(6px)' }, { opacity:1, transform:'none', filter:'blur(0px)' }], 380, EASE.out),
+        rowFirst: K([{ opacity:0, transform:'translateY(10px)', filter:'blur(6px)' }, { opacity:1, transform:'none', filter:'blur(0px)' }], 520, EASE.out, { delay:80, gap:45 }),
+        rowOut:   K([{ opacity:0, transform:'scale(0.98)', filter:'blur(6px)' }], 150, EASE.in),
+        lag: 120,
+        reveal:   K([{ opacity:0, filter:'blur(6px)' }, { opacity:1, filter:'blur(0px)' }], 400, EASE.out),
+        boxIn:   [K([{ opacity:0, filter:'blur(12px)' }, { opacity:1, filter:'blur(0px)' }], 320, EASE.out, { delay:20 }),
+                  K([{ transform:'scale(0.96)' }, { transform:'none' }], 420, EASE.out, { delay:20 })],
+        boxOut:  [K([{ opacity:1, filter:'blur(0px)', transform:'none' }, { opacity:0, filter:'blur(10px)', transform:'scale(0.98)' }], 200, EASE.in)]
+    },
+    goop: {                                             // viscous: things ooze in and settle like a drop
+        rowIn:    K([{ opacity:0, transform:'scale(0.9, 0.7)' }, { opacity:1, transform:'scale(1.015, 0.99)', offset:0.6 }, { opacity:1, transform:'none' }], 560, GOO),
+        rowFirst: K([{ opacity:0, transform:'translateY(12px) scale(0.92, 0.8)' }, { opacity:1, transform:'scale(1.015, 0.99)', offset:0.6 }, { opacity:1, transform:'none' }], 600, GOO, { delay:80, gap:55 }),
+        rowOut:   K([{ opacity:0, transform:'scale(0.86, 0.6)' }], 170, EASE.in),
+        lag: 140,
+        move:     K(null, 460, GOO),
+        boxIn:   [K([{ opacity:0 }, { opacity:1 }], 220, EASE.out),
+                  K([{ transform:'scale(0.86, 0.72)' }, { transform:'scale(1.015, 0.99)', offset:0.6 }, { transform:'none' }], 560, GOO)],
+        boxOut:  [K([{ opacity:1, transform:'none' }, { opacity:0, transform:'scale(0.88, 0.75)' }], 220, EASE.in)],
+        toggleOn: K([{ transform:'scale(1.1, 0.86)' }, { transform:'none' }], 420, GOO),
+        toggleOff:K([{ transform:'scale(1.1, 0.86)' }, { transform:'none' }], 420, GOO)
+    },
+    neumorphic: {                                       // soft UI: rises out of / sinks back into the surface
+        rowIn:    K([{ opacity:0, transform:'scale(0.95)' }, { opacity:1, transform:'none' }], 420, 'cubic-bezier(0.2, 0.7, 0.2, 1)'),
+        rowOut:   K([{ opacity:0, transform:'scale(0.95)' }], 150, EASE.in),
+        lag: 120,
+        boxIn:   [K([{ opacity:0 }, { opacity:1 }], 260, EASE.out),
+                  K([{ transform:'scale(0.94)' }, { transform:'none' }], 440, 'cubic-bezier(0.2, 0.7, 0.2, 1)')],
+        boxOut:  [K([{ opacity:1, transform:'none' }, { opacity:0, transform:'scale(0.95)' }], 200, EASE.in)]
+    },
+    minimal: {                                          // nothing travels; things are simply there
+        rowIn:    K([{ opacity:0 }, { opacity:1 }], 180, 'ease-out'),
+        rowFirst: K([{ opacity:0 }, { opacity:1 }], 260, 'ease-out', { delay:40, gap:25 }),
+        rowOut:   K([{ opacity:0 }], 110, 'ease-out'),
+        lag: 80,
+        move:     K(null, 240, EASE.move),
+        reveal:   K([{ opacity:0 }, { opacity:1 }], 200, 'ease-out'),
+        scrimIn:  K([{ opacity:0 }, { opacity:1 }], 150, 'ease-out'),
+        scrimOut: K([{ opacity:1 }, { opacity:0 }], 120, 'ease-in'),
+        boxIn:   [K([{ opacity:0, transform:'translateY(4px)' }, { opacity:1, transform:'none' }], 180, 'ease-out')],
+        boxOut:  [K([{ opacity:1 }, { opacity:0 }], 110, 'ease-in')],
+        arrive:   K([{ opacity:0 }, { opacity:1 }], 320, 'ease-out'),
+        roll:     { mode:'reel', d:220, e:EASE.move, gap:30 },
+        count:    { d:300, e:'ease-out' },
+        chart:    { d:300, e:'ease-out', draw:500 },
+        ripple:   false
+    },
+    blueprint: {                                        // drafted: plotted on left to right, erased the same way
+        rowIn:    K([{ clipPath:'inset(0 100% 0 0)' }, { clipPath:'inset(0 0 0 0)' }], 420, PLOT),
+        rowFirst: K([{ clipPath:'inset(0 100% 0 0)' }, { clipPath:'inset(0 0 0 0)' }], 460, PLOT, { delay:80, gap:70 }),
+        rowOut:   K([{ clipPath:'inset(0 0 0 0)' }, { clipPath:'inset(0 0 0 100%)' }], 220, PLOT),
+        lag: 180,
+        move:     K(null, 360, PLOT),
+        chart:    { d:520, e:PLOT, draw:1100 },
+        reveal:   K([{ clipPath:'inset(0 100% 0 0)' }, { clipPath:'inset(0 0 0 0)' }], 380, PLOT),
+        boxIn:   [K([{ clipPath:'inset(-60px -60px 100% -60px)' }, { clipPath:'inset(-60px -60px -60px -60px)' }], 400, PLOT)],
+        boxOut:  [K([{ clipPath:'inset(-60px -60px -60px -60px)' }, { clipPath:'inset(-60px -60px 100% -60px)' }], 220, PLOT)],
+        origin:   false,
+        ripple:   false
+    },
+    cyberpunk: {                                        // terminal: glitches in, powers off like a CRT
+        rowIn:    K(GLITCH, 280, 'linear'),
+        rowFirst: K(GLITCH, 300, 'linear', { delay:60, gap:60 }),
+        rowOut:   K(CRT_OFF, 220, 'linear'),
+        lag: 130,                                       // by then it has collapsed to a line
+        move:     K(null, 180, STEPS(3, 'jump-start')),
+        reveal:   K(GLITCH, 240, 'linear'),
+        scrimIn:  K([{ opacity:0 }, { opacity:1 }], 160, STEPS(3, 'jump-start')),
+        scrimOut: K([{ opacity:1 }, { opacity:0 }], 140, STEPS(2)),
+        boxIn:   [K(CRT_ON, 380, 'ease-out')],
+        boxOut:  [K(CRT_OFF, 240, 'linear')],
+        arrive:   K(CRT_ON, 480, 'ease-out'),
+        roll:     { mode:'scramble', d:320 },
+        count:    { d:520, e:STEPS(12, 'jump-start') },
+        chart:    { d:320, e:STEPS(8, 'jump-start'), draw:600 },
+        toggleOn: K(FLICKER, 220, 'linear'),
+        origin:   false,
+        ripple:   false
+    },
+    pixelart: {                                         // 8-bit: everything moves on whole steps
+        rowIn:    K([{ opacity:0, transform:'translateX(-24px)' }, { opacity:1, transform:'none' }], 240, STEPS(4, 'jump-start')),
+        rowFirst: K([{ opacity:0, transform:'translateX(-24px)' }, { opacity:1, transform:'none' }], 280, STEPS(4, 'jump-start'), { delay:60, gap:70 }),
+        rowOut:   K([{ opacity:1, transform:'none' }, { opacity:0, transform:'translateX(24px)' }], 160, STEPS(3)),
+        lag: 160,                                       // a stepped exit is only gone on its last step
+        move:     K(null, 240, STEPS(4, 'jump-start')),
+        reveal:   K([{ opacity:0 }, { opacity:1 }], 200, STEPS(3, 'jump-start')),
+        scrimIn:  K([{ opacity:0 }, { opacity:1 }], 150, STEPS(3, 'jump-start')),
+        scrimOut: K([{ opacity:1 }, { opacity:0 }], 120, STEPS(2)),
+        // RPG text box: opens as a line, then drops open
+        boxIn:   [K([{ transform:'scale(0.1, 0.12)' }, { transform:'scale(1, 0.12)', offset:0.5 }, { transform:'none' }], 300, STEPS(8, 'jump-start'))],
+        boxOut:  [K([{ opacity:1, transform:'none' }, { opacity:1, transform:'scale(1, 0.12)', offset:0.5 }, { opacity:0, transform:'scale(0.1, 0.12)' }], 220, STEPS(6))],
+        arrive:   K([{ opacity:0, translate:'0 16px' }, { opacity:1, translate:'0 0' }], 400, STEPS(5, 'jump-start')),
+        roll:     { mode:'reel', d:240, e:STEPS(3, 'jump-start'), gap:60 },
+        count:    { d:420, e:STEPS(8, 'jump-start') },
+        chart:    { d:360, e:STEPS(6, 'jump-start'), draw:600 },
+        origin:   false,
+        ripple:   false
+    },
+    retro: {                                            // Windows 95: no easing anywhere; windows zoom an outline
+        rowIn:    K([{ outlineStyle:'dotted', outlineWidth:'1px', outlineColor:'#000', outlineOffset:'-3px' },
+                     { outlineStyle:'dotted', outlineWidth:'1px', outlineColor:'#000', outlineOffset:'-3px' }], 1400, 'linear'),  // the new item takes focus
+        rowFirst: null,
+        rowOut:   K([{ opacity:0 }], 1, 'linear'),
+        lag: 0,
+        move:     K(null, 0),
+        reveal:   null,
+        scrimIn:  null, scrimOut: null,
+        boxIn:   'zoom', boxOut: 'zoom',
+        arrive:  'zoom',
+        roll:     { mode:'snap' },
+        count:    { d:0 },
+        chart:    { d:0, draw:0 },                     // System Monitor just redraws
+        origin:   false,
+        ripple:   false
+    },
+    medieval: {                                         // manuscript: ink soaks in, and fades like smoke
+        // Unhurried, but every response is readable within ~500ms.
+        rowIn:    K([{ opacity:0, filter:'blur(3px)', transform:'translateY(-3px)' }, { opacity:1, filter:'blur(0px)', transform:'none' }], 480, INK),
+        rowFirst: K([{ opacity:0, filter:'blur(3px)', transform:'translateY(-3px)' }, { opacity:1, filter:'blur(0px)', transform:'none' }], 600, INK, { delay:100, gap:70 }),
+        rowOut:   K([{ opacity:0, filter:'blur(3px) sepia(1)', transform:'translateY(-8px)' }], 280, 'cubic-bezier(0.2, 0, 0.6, 1)'),
+        lag: 210,
+        move:     K(null, 460, 'cubic-bezier(0.45, 0, 0.25, 1)'),
+        reveal:   K([{ opacity:0, filter:'blur(3px)' }, { opacity:1, filter:'blur(0px)' }], 480, INK),
+        scrimIn:  K([{ opacity:0 }, { opacity:1 }], 300, 'ease'),
+        scrimOut: K([{ opacity:1 }, { opacity:0 }], 240, 'ease'),
+        // the dialog unrolls like a scroll from its middle
+        boxIn:   [K([{ clipPath:'inset(47% -80px 47% -80px)', opacity:0.4 }, { clipPath:'inset(-80px -80px -80px -80px)', opacity:1 }], 460, 'cubic-bezier(0.6, 0, 0.2, 1)')],
+        boxOut:  [K([{ clipPath:'inset(-80px -80px -80px -80px)', opacity:1 }, { clipPath:'inset(47% -80px 47% -80px)', opacity:0 }], 300, EASE.in)],
+        arrive:   K([{ opacity:0, filter:'blur(4px)' }, { opacity:1, filter:'blur(0px)' }], 800, INK),
+        roll:     { mode:'reel', d:420, e:INK, gap:70 },
+        count:    { d:480, e:INK },
+        chart:    { d:520, e:INK, draw:1100 },
+        origin:   false,
+        // pressing the seal: it comes down onto the page
+        toggleOn: K([{ transform:'scale(1.5)', opacity:0.15 }, { transform:'scale(0.92)', opacity:1, offset:0.7 }, { transform:'none', opacity:1 }], 380, 'cubic-bezier(0.5, 0, 0.3, 1)')
+    },
+    brutalist: {                                        // hard cuts: no easing, things land by their offset
+        rowIn:    K([{ opacity:0, transform:'translate(10px, 10px)' }, { opacity:1, transform:'none' }], 120, STEPS(2, 'jump-start')),
+        rowFirst: K([{ opacity:0, transform:'translate(10px, 10px)' }, { opacity:1, transform:'none' }], 140, STEPS(2, 'jump-start'), { delay:40, gap:45 }),
+        rowOut:   K([{ opacity:0, transform:'translateX(-12px)' }], 80, STEPS(1)),
+        lag: 80,
+        move:     K(null, 150, STEPS(3, 'jump-start')),
+        reveal:   K([{ opacity:0 }, { opacity:1 }], 80, STEPS(1, 'jump-start')),
+        scrimIn:  K([{ opacity:0 }, { opacity:1 }], 60, STEPS(1, 'jump-start')),
+        scrimOut: K([{ opacity:1 }, { opacity:0 }], 60, STEPS(1)),
+        boxIn:   [K([{ opacity:0, transform:'translate(18px, 18px)' }, { opacity:1, transform:'none' }], 130, STEPS(2, 'jump-start'))],
+        boxOut:  [K([{ opacity:1 }, { opacity:0 }], 70, STEPS(1))],
+        arrive:   K([{ opacity:0, translate:'20px 20px' }, { opacity:1, translate:'0 0' }], 200, STEPS(3, 'jump-start')),
+        roll:     { mode:'reel', d:140, e:STEPS(2, 'jump-start'), gap:40 },
+        count:    { d:260, e:STEPS(5, 'jump-start') },
+        chart:    { d:180, e:STEPS(3, 'jump-start'), draw:300 },
+        origin:   false,
+        ripple:   false
+    },
+    newsroom: {                                         // broadcast package: hard wipes on a fast in-out
+        rowIn:    K([{ clipPath:'inset(0 100% 0 0)', transform:'translateX(-14px)' }, { clipPath:'inset(0 0 0 0)', transform:'none' }], 380, WIPE),
+        rowFirst: K([{ clipPath:'inset(0 100% 0 0)', transform:'translateX(-14px)' }, { clipPath:'inset(0 0 0 0)', transform:'none' }], 420, WIPE, { delay:80, gap:70 }),
+        rowOut:   K([{ clipPath:'inset(0 0 0 0)' }, { clipPath:'inset(0 0 0 100%)' }], 220, 'cubic-bezier(0.7, 0, 0.9, 0.6)'),
+        lag: 180,
+        move:     K(null, 360, WIPE),
+        reveal:   K([{ clipPath:'inset(0 100% 0 0)' }, { clipPath:'inset(0 0 0 0)' }], 360, WIPE),
+        boxIn:   [K([{ clipPath:'inset(-60px 100% -60px -60px)', transform:'translateX(-30px)' }, { clipPath:'inset(-60px -60px -60px -60px)', transform:'none' }], 440, WIPE)],
+        boxOut:  [K([{ clipPath:'inset(-60px -60px -60px -60px)', transform:'none' }, { clipPath:'inset(-60px -60px -60px 100%)', transform:'translateX(20px)' }], 260, 'cubic-bezier(0.7, 0, 0.9, 0.6)')],
+        arrive:   K([{ clipPath:'inset(-80px 100% -80px -80px)' }, { clipPath:'inset(-80px -80px -80px -80px)' }], 620, WIPE),
+        chart:    { d:420, e:WIPE, draw:700 },
+        origin:   false,
+        toggleOn: K([{ filter:'brightness(1.9)' }, { filter:'brightness(1)' }], 320, EASE.out)
+    }
+};
+function mo() {
+    var m = MOTION[state.style] || {}, b = MOTION.base, o = {};
+    for (var k in b) o[k] = (k in m) ? m[k] : b[k];
+    return o;
+}
+/* When (as a fraction of its duration) does a timing curve reach progress p?
+   Measured through WAAPI itself so it is exact for any easing, including
+   steps() and in-out curves, and cached per curve. Used to start a new row
+   only once the rows making room for it have (nearly) finished moving. */
+var reachCache = {};
+function timeTo(easing, p) {
+    var key = easing + '|' + p;
+    if (key in reachCache) return reachCache[key];
+    var a = document.documentElement.animate([], { duration:1000, easing:easing }); a.pause();
+    var lo = 0, hi = 1;
+    for (var i = 0; i < 14; i++) {
+        var mid = (lo + hi) / 2; a.currentTime = mid * 1000;
+        if ((a.effect.getComputedTiming().progress || 0) >= p) hi = mid; else lo = mid;
+    }
+    a.cancel();
+    return (reachCache[key] = hi);
+}
+/* Play one motion spec on an element (null / zero-length specs are no-ops). */
+function run(elm, s, x) {
+    if (!elm || !s || !s.k || !(s.d > 0) || reduceMotion) return null;
+    x = x || {};
+    return elm.animate(s.k, { duration: s.d, easing: s.e, delay: (s.delay || 0) + (x.delay || 0),
+                              fill: x.fill || 'backwards', composite: x.composite || 'replace' });
 }
 
-/* One meter, rendered in whatever form the active theme calls for. */
+/* A JS-driven tween whose clock is a keyframe-less WAAPI animation. The
+   browser owns timing and easing, so these run on the same timeline as the
+   CSS around them (they pause and slow down with it in DevTools), and never
+   mix performance.now() with rAF timestamps, which is what let the old
+   countUp tick backwards for a frame before it started. cancel() stops it. */
+function tween(host, duration, easing, fn, delay) {
+    var a = host.animate([], { duration: duration, easing: easing || EASE.out, delay: delay || 0 });
+    (function step() {
+        if (a.playState === 'idle') return;                     // cancelled
+        if (a.playState === 'finished') { fn(1); return; }
+        var p = a.effect.getComputedTiming().progress;
+        fn(p == null ? 0 : p);
+        raf(step);
+    })();
+    return a;
+}
+
+/* Rolls a number through its in-between values (for rates and percentages).
+   A newer call cancels the running one and starts from whatever figure is
+   on screen, so quick successive changes never race or jump back. */
+function countUp(node, to, opts) {
+    opts = opts || {};
+    var dec = opts.decimals || 0, suffix = opts.suffix || '', c = mo().count;
+    if (node.__ttCount) { node.__ttCount.cancel(); node.__ttCount = null; }
+    var from = parseFloat(String(node.textContent).replace(/[^0-9.\-]/g, '')) || 0;
+    var step = opts.onStep || null;                   // e.g. colour the figure by the value SHOWN
+    if (reduceMotion || from === to || !(c.d > 0)) { node.textContent = to.toFixed(dec) + suffix; if (step) step(to); return; }
+    node.__ttCount = tween(node, opts.duration || c.d, c.e, function (e) {
+        var v = from + (to - from) * e;
+        node.textContent = v.toFixed(dec) + suffix;
+        if (step) step(v);
+    });
+}
+
+/* Odometer for whole-number counters. Each changed column is a clipped reel:
+   the old digit and the new one sit a full line apart and travel together,
+   up for an increase and down for a decrease, units first and carries a
+   beat later. A press that lands mid-roll continues the reel from exactly
+   where it is instead of snapping it to rest. A column that gains or loses
+   a digit opens or closes smoothly. Themes may snap it (Win95) or decrypt
+   it (terminal). */
+function roll(node, to) {
+    var next = String(to), r = mo().roll;
+    var prev = node.__ttRollTo != null ? node.__ttRollTo : node.textContent.trim();
+    // Where each column of an unfinished roll is right now, in lines.
+    var carry = {};
+    if (node.__ttRoll) {
+        (node.__ttCells || []).forEach(function (c) {
+            var h = c.cell.offsetHeight || 1, m = new DOMMatrixReadOnly(getComputedStyle(c.inn).transform);
+            carry[c.col] = { y: m.m42 / h, out: c.outChar, dir: c.dir };
+        });
+        var old = node.__ttRoll; node.__ttRoll = null; old.forEach(function (a) { a.cancel(); });
+    }
+    node.__ttRollTo = next; node.__ttCells = null;
+    if (reduceMotion || prev === next || r.mode === 'snap') { node.textContent = next; return; }
+    var n = Math.max(prev.length, next.length), a = prev, b = next;
+    while (a.length < n) a = ' ' + a;
+    while (b.length < n) b = ' ' + b;
+    // Split into text + cells the number gains line-break opportunities it
+    // didn't have as one word; in a tight card it would wrap mid-roll.
+    node.style.whiteSpace = 'nowrap';
+
+    if (r.mode === 'scramble') {                       // terminal: columns decrypt left to right
+        // New glyphs on a fixed 35ms tick (not per display frame, which would
+        // flicker 2.4x faster on a 144Hz screen); every column has resolved
+        // by 60% of the run, the rest is the settled figure.
+        var anim = tween(node, r.d, 'linear', function (p) {
+            var tick = Math.floor(p * r.d / 35), s = '';
+            for (var i = 0; i < n; i++)
+                s += (a[i] === b[i] || p >= 0.2 + 0.4 * (i + 1) / n) ? b[i] : String((tick * 7 + i * 3 + (tick * i) % 5) % 10);
+            node.textContent = p >= 1 ? next : s.replace(/^ +/, '');
+        });
+        node.__ttRoll = [anim];
+        anim.finished.then(function () { if (node.__ttRoll && node.__ttRoll[0] === anim) { node.__ttRoll = null; node.textContent = next; } }, function () {});
+        return;
+    }
+
+    var dir = (parseFloat(next) || 0) >= (parseFloat(prev) || 0) ? 1 : -1;
+    node.textContent = '';
+    var cells = [];
+    for (var i = 0; i < n; i++) {
+        var col = n - 1 - i, cy = carry[col];
+        if (a[i] === b[i] && !(cy && Math.abs(cy.y) > 0.01)) { if (b[i] !== ' ') node.appendChild(document.createTextNode(b[i])); continue; }
+        var cell = el('span', { class:'tt-roll' });
+        var outChar = a[i] === b[i] ? (cy ? cy.out : a[i]) : a[i];
+        var inn = el('span', { class:'tt-roll-in', text: b[i] === ' ' ? '' : b[i] });
+        var out = el('span', { class:'tt-roll-out', text: outChar === ' ' ? '' : outChar, 'aria-hidden':'true' });
+        cell.appendChild(inn); cell.appendChild(out); node.appendChild(cell);
+        // A column already in flight keeps its own direction and position.
+        var d = (a[i] === b[i] && cy) ? cy.dir : dir, y0 = cy ? cy.y : 0;
+        cells.push({ cell: cell, inn: inn, out: out, col: col, dir: d, y0: y0, outChar: outChar,
+                     cont: a[i] === b[i], delay: cy ? 0 : col * r.gap });
+    }
+    cells.forEach(function (c) { c.w0 = c.out.offsetWidth; c.w1 = c.inn.offsetWidth; c.h = c.cell.offsetHeight || 1; });   // measure once
+    var anims = [];
+    cells.forEach(function (c) {
+        var t = { duration: r.d, easing: r.e, delay: c.delay, fill: 'backwards' };
+        // One strip: the new digit is always a full line behind the old one.
+        // A column still settling from the last press keeps settling (its digit
+        // is already the right one); a changing column's in-flight digit
+        // becomes the one that leaves.
+        var inFrom = c.cont ? c.y0 : c.y0 + c.dir, outFrom = c.cont ? c.y0 - c.dir : c.y0;
+        anims.push(c.inn.animate([{ transform:'translateY(' + (inFrom * c.h) + 'px)' }, { transform:'translateY(0px)' }], t));
+        anims.push(c.out.animate([{ transform:'translateY(' + (outFrom * c.h) + 'px)' }, { transform:'translateY(' + (-c.dir * c.h) + 'px)' }],
+                                 { duration: r.d, easing: r.e, delay: c.delay, fill: 'both' }));
+        if (c.w0 !== c.w1) anims.push(c.cell.animate([{ width:c.w0 + 'px' }, { width:c.w1 + 'px' }], t));
+    });
+    node.__ttRoll = anims; node.__ttCells = cells;
+    Promise.all(anims.map(function (x) { return x.finished; })).then(function () {
+        if (node.__ttRoll === anims) { node.__ttRoll = null; node.__ttCells = null; node.textContent = next; }
+    }, function () {});
+}
+
+/* One meter, rendered in whatever form the active theme calls for, and
+   updated in place. The bar is a full-width fill slid along its track with
+   a transform (compositor-only; the track's rounded clip keeps the ends
+   identical to the old width-based fill). Segments and hearts switch on one
+   after another in the direction the value moved. A theme swap rebuilds the
+   meter straight at its value; only the very first build fills from empty. */
 function renderMeter(node, pct, opts) {
     if (!node) return;
     opts = opts || {};
     var p = Math.max(0, Math.min(100, pct || 0));
-    node.className = (opts.baseClass || 'tt-meter');
-    node.innerHTML = '';
-    if (['pixelart','cyberpunk','retro','brutalist','blueprint'].indexOf(state.style) > -1) {
-        node.classList.add('seg-meter');
-        var N = opts.segments || 10, filled = Math.round(p / (100 / N));
-        for (var i = 0; i < N; i++) {
-            var s = el('span', { class:'seg' + (i < filled ? ' on' : ''), style:'--i:' + i });
-            node.appendChild(s);
+    var kind = ['pixelart','cyberpunk','retro','brutalist','blueprint'].indexOf(state.style) > -1 ? 'seg'
+             : state.style === 'medieval' ? 'heart' : 'bar';
+    var N = kind === 'seg' ? (opts.segments || 10) : kind === 'heart' ? (opts.hearts || 5) : 0;
+    var sig = kind + N, first = node.__ttMeter == null, fresh = node.__ttMeter !== sig;
+    var lit = N ? Math.round(p / (100 / N)) : 0;
+    if (fresh) {
+        node.className = (opts.baseClass || 'tt-meter');
+        node.innerHTML = '';
+        if (kind === 'bar') {
+            node.appendChild(el('div', { class:'meter-fill', style:'transform:translateX(' + ((first ? 0 : p) - 100) + '%)' }));
+        } else {
+            node.classList.add(kind === 'seg' ? 'seg-meter' : 'heart-meter');
+            for (var i = 0; i < N; i++) {
+                var on = !first && i < lit;
+                node.appendChild(el('span', kind === 'seg' ? { class:'seg' + (on ? ' on' : '') }
+                                                           : { class:'heart' + (on ? ' on' : ''), text:'♥' }));
+            }
         }
-    } else if (state.style === 'medieval') {
-        node.classList.add('heart-meter');
-        var H = opts.hearts || 5, full = Math.round(p / (100 / H));
-        for (var j = 0; j < H; j++) node.appendChild(el('span', { class:'heart' + (j < full ? ' on' : ''), style:'--i:' + j, text:'♥' }));
-    } else {
-        var f = el('div', { class:'meter-fill', style:'width:0%' });
-        node.appendChild(f);
-        void f.offsetWidth;
-        f.style.width = p + '%';
+        node.__ttMeter = sig; node.__ttLit = first ? 0 : lit;
+        if (first) void node.offsetWidth;              // commit the empty state so the fill transitions
     }
+    if (kind === 'bar') { node.firstChild.style.transform = 'translateX(' + (p - 100) + '%)'; return; }
+    var was = node.__ttLit, step = kind === 'seg' ? 26 : 70;
+    Array.prototype.forEach.call(node.children, function (c, i) {
+        var want = i < lit;
+        if (c.classList.contains('on') === want) return;
+        c.style.setProperty('--d', Math.max(0, lit > was ? i - was : was - 1 - i) * step + 'ms');
+        c.classList.toggle('on', want);
+    });
+    node.__ttLit = lit;
 }
 
-/* Staggered entry for a freshly rendered list. */
+/* Keyed list rendering with FLIP.
+     list(container, items, { key: it => id, create: it => node,
+                              update: (node, it) => void, empty: node, anchor: panel })
+   Rows that survive keep their DOM node, so a switch you just flipped
+   finishes its own slide instead of being rebuilt mid-motion. Rows that move
+   glide to their new slot; new rows arrive into the gap the others open for
+   them; removed rows lift out and are mostly gone before the rest close up.
+   `empty` is shown when there are no items and cross-fades with the first
+   row. Only the very first render cascades the list in (and settles its
+   layout silently). How each of those moves is the theme's (mo()).
+
+   If the container itself changes height (a panel that sizes to its
+   content), its height is animated, and `anchor` (the centred panel) is
+   held by its top edge with a compensating translate, so the header, the
+   input and whatever is under the pointer stay still while the list grows
+   or shrinks below them. Returns the new rows. */
+var anchors = [];
+function list(container, items, o) {
+    var first = !container.__ttList, animate = !reduceMotion, empty = o.empty || null, p = mo(), A = o.anchor || null;
+    container.__ttList = true;
+    if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+    if (A && anchors.indexOf(A) < 0) anchors.push(A);
+
+    var live = [], byKey = {};
+    Array.prototype.forEach.call(container.children, function (c) {
+        if (c.__ttKey != null && !c.__ttLeaving) { live.push(c); byKey[c.__ttKey] = c; }
+    });
+
+    // FIRST: where every row is on screen right now (mid-flight included),
+    // how tall the list is, and where the anchored panel currently sits.
+    var before = new Map(), h0 = 0, shift0 = 0;
+    if (animate && !first) {
+        live.forEach(function (c) { before.set(c, c.getBoundingClientRect()); });
+        h0 = container.offsetHeight;
+        if (A) shift0 = parseFloat(String(getComputedStyle(A).translate).split(' ')[1]) || 0;
+    }
+
+    var keep = {}, added = [];
+    var nodes = items.map(function (it) {
+        var k = String(o.key(it)), n = byKey[k];
+        if (n) { if (o.update) o.update(n, it); }
+        else { n = o.create(it); n.__ttKey = k; added.push(n); }
+        keep[k] = true;
+        return n;
+    });
+
+    // Rows on their way out are lifted out of the flow exactly where they
+    // stand (all measured first, then all moved, so there is one layout) and
+    // parked at the end, where they can't disturb sibling spacing. The empty
+    // state leaves the same way when the first row arrives, except on the
+    // very first render, where it just goes (it was only placeholder markup).
+    var leaving = live.filter(function (c) { return !keep[c.__ttKey]; });
+    if (empty && items.length && empty.parentNode === container && !empty.__ttLeaving) {
+        if (first || !animate) empty.remove(); else leaving.push(empty);
+    }
+    var boxes = leaving.map(function (c) { return [c.offsetTop, c.offsetLeft, c.offsetWidth, c.offsetHeight]; });
+    leaving.forEach(function (c, i) {
+        if (!animate) { c.remove(); return; }
+        c.__ttLeaving = true;
+        c.getAnimations().forEach(function (a) { a.cancel(); });
+        var b = boxes[i], s = c.style;
+        s.position = 'absolute'; s.top = b[0] + 'px'; s.left = b[1] + 'px';
+        s.width = b[2] + 'px'; s.height = b[3] + 'px'; s.margin = '0'; s.pointerEvents = 'none';
+        container.appendChild(c);
+    });
+
+    // Put the kept and new rows in order, touching only nodes that are out of
+    // place (moving a node would cancel any transition running inside it).
+    var cur = live.filter(function (c) { return keep[c.__ttKey]; });
+    var ghost = null;
+    Array.prototype.some.call(container.children, function (c) { return c.__ttLeaving && (ghost = c); });
+    nodes.forEach(function (n, i) {
+        if (cur[i] === n) return;
+        container.insertBefore(n, cur[i] || ghost);
+        var j = cur.indexOf(n); if (j > -1) cur.splice(j, 1);
+        cur.splice(i, 0, n);
+    });
+    var emptyIn = !!(empty && !items.length && (empty.parentNode !== container || empty.__ttLeaving));
+    if (emptyIn) {
+        if (empty.__ttLeaving) resetGhost(empty);
+        container.insertBefore(empty, container.firstChild);
+    }
+    if (!animate) return added;
+
+    if (first) {                                       // cascade in; nothing else moves
+        var sf = p.rowFirst;
+        if (sf) added.forEach(function (n, i) { run(n, sf, { delay: Math.min(i, 10) * (sf.gap || 0) }); });
+        return added;
+    }
+
+    // LAST, measured with the list held at its old height so the layout
+    // matches the first frame of the animation exactly; the height is then
+    // released and animated separately.
+    if (container.__ttH) { container.__ttH.cancel(); container.__ttH = null; }
+    if (A && A.__ttShiftAnim) { A.__ttShiftAnim.cancel(); A.__ttShiftAnim = null; }
+    var h1 = container.offsetHeight;
+    container.style.height = h0 + 'px';
+    if (A) A.style.translate = '0 ' + shift0 + 'px';
+    var moving = nodes.filter(function (n) { return before.has(n); });
+    moving.forEach(function (n) { if (n.__ttFlip) { n.__ttFlip.cancel(); n.__ttFlip = null; } });
+    var shifts = moving.map(function (n) { var a = before.get(n), b = n.getBoundingClientRect(); return [a.left - b.left, a.top - b.top]; });
+    container.style.height = '';
+
+    // INVERT, PLAY. When something left and nothing arrived, the gap waits
+    // for the leaving row to be (nearly) gone before it closes.
+    var lag = leaving.length && !added.length ? p.lag : 0, mv = p.move;
+    if (mv.d > 0) moving.forEach(function (n, i) {
+        var dx = shifts[i][0], dy = shifts[i][1];
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+        n.__ttFlip = n.animate([{ transform:'translate(' + dx + 'px,' + dy + 'px)' }, { transform:'translate(0,0)' }],
+                               { duration: mv.d, easing: mv.e, delay: lag, fill:'backwards', composite:'add' });
+    });
+    if (Math.abs(h1 - h0) > 0.5 && mv.d > 0) {
+        // Clip while it resizes: rows mid-slide would otherwise flash a
+        // scrollbar for a few frames.
+        if (container.__ttOv == null) container.__ttOv = container.style.overflowY;
+        container.style.overflowY = 'hidden';
+        var ha = container.__ttH = container.animate([{ height:h0 + 'px' }, { height:h1 + 'px' }],
+                                                      { duration: mv.d, easing: mv.e, delay: lag, fill:'backwards' });
+        var done = function () {
+            if (container.__ttH !== ha && container.__ttH) return;       // superseded; the newer run restores it
+            container.__ttH = null;
+            container.style.overflowY = container.__ttOv; container.__ttOv = null;
+        };
+        ha.finished.then(done, done);
+    }
+    if (A && Math.abs(h1 - h0) > 0.5) {
+        // Layout re-centres the panel by half the change; hold the top edge
+        // still instead (never letting the bottom leave the screen).
+        var r = A.getBoundingClientRect(), want = shift0 + (h1 - h0) / 2;
+        var over = r.top + r.height + (h1 - h0) - (innerHeight - 12);
+        if (over > 0) want -= over;
+        A.style.translate = '0 ' + want + 'px';
+        if (mv.d > 0) A.__ttShiftAnim = A.animate([{ translate:'0 ' + shift0 + 'px' }, { translate:'0 ' + want + 'px' }],
+                                                  { duration: mv.d, easing: mv.e, delay: lag, fill:'backwards' });
+    }
+    var enter = moving.length && mv.d > 0 ? lag + Math.round(mv.d * timeTo(mv.e, 0.8)) : 0;
+    added.forEach(function (n) { run(n, p.rowIn, { delay: enter }); });
+    if (emptyIn) run(empty, p.reveal, { delay: 160 });
+    var rows = leaving.filter(function (c) { return c !== empty; }), bulk = rows.length > 1;
+    leaving.forEach(function (c) {
+        var isEmpty = c === empty, i = rows.indexOf(c);
+        var a = isEmpty ? c.animate([{ opacity:0 }], { duration:120, easing:'ease-out', fill:'forwards' })
+                        : run(c, p.rowOut, { fill:'forwards', delay: bulk ? Math.min(i, 8) * 30 : 0 });
+        c.__ttExit = a;
+        var gone = function () {
+            if (!c.__ttLeaving || c.__ttExit !== a) return;     // brought back meanwhile
+            if (isEmpty) resetGhost(c);                  // the empty state is reused: clear it fully
+            c.remove();
+        };
+        if (a) a.finished.then(gone, gone); else gone();
+    });
+    return added;
+}
+function resetGhost(c) {
+    c.__ttLeaving = false;
+    if (c.__ttExit) { c.__ttExit.cancel(); c.__ttExit = null; }
+    c.getAnimations().forEach(function (a) { a.cancel(); });
+    ['position','top','left','width','height','margin','pointerEvents'].forEach(function (p) { c.style[p] = ''; });
+}
+function resetAnchors() { anchors.forEach(function (A) { if (A.__ttShiftAnim) A.__ttShiftAnim.cancel(); A.__ttShiftAnim = null; A.style.translate = ''; }); }
+function recentreAnchors() {
+    anchors.forEach(function (A) {
+        var y = parseFloat(String(getComputedStyle(A).translate).split(' ')[1]) || 0;
+        if (A.__ttShiftAnim) { A.__ttShiftAnim.cancel(); A.__ttShiftAnim = null; }
+        A.style.translate = '';
+        if (Math.abs(y) > 0.5 && !reduceMotion)
+            A.__ttShiftAnim = A.animate([{ translate:'0 ' + y + 'px' }, { translate:'0 0' }], { duration:420, easing:EASE.move });
+    });
+}
+global.addEventListener('resize', resetAnchors);
+
+/* Fade something into place (empty states, freshly edited text). */
+function reveal(node, delay) { run(node, mo().reveal, { delay: delay || 0 }); }
+
+/* Win95's window "explode": a hollow frame steps from one rectangle to
+   another, then the window is simply there. */
+function zoomRect(from, to, d) {
+    var z = el('div', { class:'tt-zoomrect', 'aria-hidden':'true' });
+    document.body.appendChild(z);
+    var a = z.animate([from, to].map(function (r) { return { left:r.left + 'px', top:r.top + 'px', width:r.width + 'px', height:r.height + 'px' }; }),
+                      { duration: d, easing: STEPS(6, 'jump-start'), fill:'forwards' });
+    a.finished.then(function () { z.remove(); }, function () { z.remove(); });
+    return a;
+}
+function shrink(r, f) { var w = r.width * f, h = r.height * f; return { left: r.left + (r.width - w) / 2, top: r.top + (r.height - h) / 2, width: w, height: h }; }
+
+/* Modals: the scrim and the dialog each move the theme's way; closing is
+   quicker, the overlay is hidden only once it has actually gone, and the
+   returned promise resolves then — so a confirmed change can play out on a
+   clear screen instead of underneath the closing dialog. Works on any
+   `.hidden`-toggled overlay whose first child is the dialog box. */
+function stopModal(m) {
+    if (m.__ttModal) { var l = m.__ttModal; m.__ttModal = null; l.forEach(function (a) { a.cancel(); }); }
+    m.style.pointerEvents = '';
+}
+function rectOf(from) { return from && from.getBoundingClientRect ? from.getBoundingClientRect() : null; }
+function showModal(m, from) {
+    if (!m) return;
+    stopModal(m);
+    m.classList.remove('hidden');
+    m.__ttFrom = from || null;                         // closes back to where it came from
+    if (reduceMotion) return;
+    var p = mo(), box = m.firstElementChild, l = [], fr = rectOf(from);
+    var s = run(m, p.scrimIn); if (s) l.push(s);
+    if (box) {
+        var r = box.getBoundingClientRect();
+        // The dialog grows out of the control that opened it.
+        box.style.transformOrigin = (p.origin && fr)
+            ? (fr.left + fr.width / 2 - r.left) + 'px ' + (fr.top + fr.height / 2 - r.top) + 'px' : '';
+        if (p.boxIn === 'zoom') {                      // Win95: the outline explodes out of the button
+            l.push(box.animate([{ opacity:0 }, { opacity:0 }], { duration:170 }), zoomRect(fr || shrink(r, 0.08), r, 170));
+        } else (p.boxIn || []).forEach(function (x) { var a = run(box, x); if (a) l.push(a); });
+    }
+    m.__ttModal = l;
+}
+function hideModal(m) {
+    if (!m) return Promise.resolve();
+    stopModal(m);
+    if (reduceMotion || m.classList.contains('hidden')) { m.classList.add('hidden'); return Promise.resolve(); }
+    var p = mo(), box = m.firstElementChild, l = [], to = rectOf(m.__ttFrom);
+    var s = run(m, p.scrimOut, { fill:'forwards' }); if (s) l.push(s);
+    if (box) {
+        if (p.boxOut === 'zoom') {
+            var r = box.getBoundingClientRect();
+            l.push(box.animate([{ opacity:0 }, { opacity:0 }], { duration:130, fill:'forwards' }), zoomRect(r, to || shrink(r, 0.08), 130));
+        } else (p.boxOut || []).forEach(function (x) { var a = run(box, x, { fill:'forwards' }); if (a) l.push(a); });
+    }
+    if (!l.length) { m.classList.add('hidden'); return Promise.resolve(); }
+    m.__ttModal = l;
+    m.style.pointerEvents = 'none';                    // a second click can't restart it
+    return Promise.all(l.map(function (a) { return a.finished; })).then(function () {
+        if (m.__ttModal === l) { m.classList.add('hidden'); stopModal(m); }
+    }, function () {});
+}
+
+/* Page arrival: the panel comes in once, on first load, the theme's way.
+   It animates the independent `translate` property (never `transform`, so
+   it can't fight the tilt) and opacity on the panel itself (on a wrapper it
+   would cut the panel's frosted blur off from the background until the
+   fade ended). Skipped when the page arrived through a cross-document view
+   transition, which has already animated it in. */
+var arrival = null, revealedByVT = false;
+global.addEventListener('pagereveal', function (e) {
+    if (!e.viewTransition) return;
+    revealedByVT = true;
+    if (arrival) arrival.finish();
+});
+function arrive(node) {
+    if (reduceMotion || revealedByVT || !node) return;
+    var a = mo().arrive;
+    if (a === 'zoom') {                                // from the taskbar button, like opening a window
+        var r = node.getBoundingClientRect();
+        arrival = node.animate([{ opacity:0 }, { opacity:0 }], { duration:220 });
+        zoomRect({ left:4, top: innerHeight - 30, width:150, height:24 }, r, 220);
+        return;
+    }
+    arrival = run(node, a, { fill:'none' });
+}
+
+/* Staggered entry for a freshly rendered list (older API; list() above
+   replaces it in both apps). */
 function stagger(nodes) {
     Array.prototype.forEach.call(nodes, function (n, i) {
         n.style.setProperty('--i', Math.min(i, 12));
@@ -2623,15 +3318,75 @@ function stagger(nodes) {
     });
 }
 
+/* A small settle for anything that still asks for emphasis. It used to be a
+   1.22x spring; now it is a short, restrained ease back from 1.06x. */
 function pop(node) {
     if (!node || reduceMotion) return;
     node.classList.remove('tt-pop'); void node.offsetWidth; node.classList.add('tt-pop');
 }
 
+/* Switches get the theme's own "it's done" gesture (a wax seal pressed
+   down, a phosphor flicker, a gooey squish) when the user flips them. */
+document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (!t || !t.matches || !t.matches('.toggle-switch input')) return;
+    var s = t.checked ? mo().toggleOn : mo().toggleOff;
+    if (s) run(t.nextElementSibling, s, { fill:'none' });
+});
+
+
+/* ═══════════ PER-THEME ICONS ════════════════════════════════════════════
+   Same meaning, the glyph each world would draw: a castle for home and a
+   quill for writing in the manuscript, a terminal prompt in cyberpunk, a
+   newspaper in the newsroom. Pages keep writing the original ligature
+   names; the observer swaps them, remembers the original in data-icon, and
+   adopts any glyph a page changes itself (the mute button). Weight, fill
+   and effects per theme live in theme.css. */
+var ICONS = {
+    medieval:  { home:'castle', palette:'auto_fix_high', delete:'local_fire_department', add_call:'history_edu', edit:'history_edu',
+                 edit_note:'ink_pen', restart_alt:'hourglass_empty', history:'hourglass_bottom', add_circle:'history_edu',
+                 phone_in_talk:'history_edu', warning:'swords', add:'add', remove:'remove', notifications:'notifications_active' },
+    cyberpunk: { home:'terminal', palette:'memory', delete:'close', restart_alt:'power_settings_new', notifications:'sensors',
+                 history:'schedule', add_call:'add', add_circle:'add_box', edit_note:'chevron_right', edit:'code',
+                 phone_in_talk:'terminal', warning:'error' },
+    pixelart:  { palette:'sports_esports', history:'hourglass_bottom', restart_alt:'replay', add_circle:'add_box',
+                 phone_in_talk:'sports_esports', edit_note:'chevron_right', delete:'close', add_call:'add' },
+    retro:     { home:'desktop_windows', palette:'display_settings', history:'schedule', delete:'close',
+                 add_circle:'note_add', phone_in_talk:'call', restart_alt:'refresh' },
+    newsroom:  { home:'newspaper', palette:'live_tv', history:'schedule', notifications:'campaign', phone_in_talk:'podcasts',
+                 add_circle:'add', add_call:'add_call' },
+    blueprint: { palette:'architecture', home:'grid_on', history:'schedule', edit_note:'straighten', add_circle:'add',
+                 phone_in_talk:'architecture', restart_alt:'layers_clear' },
+    brutalist: { add_circle:'add', delete:'close', restart_alt:'refresh', history:'schedule', edit_note:'arrow_forward' },
+    goop:      { palette:'bubble_chart', phone_in_talk:'bubble_chart' }
+};
+var iconMap = {};
+function iconize(n) {
+    var cur = n.textContent.trim(), orig = n.getAttribute('data-icon');
+    if (orig == null || (cur !== orig && cur !== n.__ttShown)) { orig = cur; n.setAttribute('data-icon', orig); }
+    var want = iconMap[orig] || orig;
+    n.__ttShown = want;
+    if (cur !== want) n.textContent = want;
+}
+function applyIcons(root) {
+    if (root.classList && root.classList.contains('material-symbols-outlined')) iconize(root);
+    if (root.querySelectorAll) root.querySelectorAll('.material-symbols-outlined').forEach(iconize);
+}
+function isIcon(n) { return n && n.classList && n.classList.contains('material-symbols-outlined'); }
+function watchIcons() {
+    new MutationObserver(function (list) {
+        list.forEach(function (m) {
+            if (m.type === 'characterData') { if (isIcon(m.target.parentNode)) iconize(m.target.parentNode); return; }
+            if (isIcon(m.target)) { iconize(m.target); return; }
+            m.addedNodes.forEach(function (n) { if (n.nodeType === 1) applyIcons(n); });
+        });
+    }).observe(document.body, { childList:true, subtree:true, characterData:true });
+}
+
 /* Accent ripple on any button that opts in via .tt-btn / .accent-bg. */
 function wireRipples() {
     document.addEventListener('pointerdown', function (e) {
-        if (reduceMotion) return;
+        if (reduceMotion || !mo().ripple) return;     // stepped / hard-edged themes don't ripple
         var b = e.target.closest('.tt-btn, .accent-bg');
         if (!b) return;
         var r = b.getBoundingClientRect(), size = Math.max(r.width, r.height);
@@ -2653,7 +3408,9 @@ function init(options) {
     buildLayers();
     buildUI();
     wireRipples();
+    watchIcons();
     commit();
+    arrive($('trackerPanel'));
 
     var rt = null;
     global.addEventListener('resize', function () {
@@ -2666,9 +3423,17 @@ global.SMTTheme = {
     init: init,
     tilt: tilt,
     countUp: countUp,
+    roll: roll,
     renderMeter: renderMeter,
+    list: list,
+    reveal: reveal,
+    showModal: showModal,
+    hideModal: hideModal,
+    tween: tween,
+    EASE: EASE,
     stagger: stagger,
     pop: pop,
+    motion: mo,
     setStyle: setStyle, setColor: setColor, setMode: setMode,
     openPicker: function () { panelToggle(true); },
     get style() { return state.style; },

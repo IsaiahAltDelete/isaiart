@@ -22,7 +22,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=VT323&family=Share+Tech+Mono&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=VT323&family=Share+Tech+Mono&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700;900&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Fredoka:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=UnifrakturMaguntia&family=Space+Mono:wght@400;700&family=Archivo+Black&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
     <!-- Shared theme system — same file the Transfer Rate Tracker loads. -->
@@ -53,19 +53,30 @@
             display: flex; flex-direction: column;
         }
         #trackerPanel:active { cursor: grabbing; }
-        #trackerPanel.tt-tilting .depth-1 { transform: translateZ(10px); }
-        #trackerPanel.tt-tilting .depth-2 { transform: translateZ(20px); }
-        #trackerPanel.tt-tilting .depth-3 { transform: translateZ(30px); }
-        .depth-1, .depth-2, .depth-3 { transition: transform var(--dur-mid) var(--ease-out); }
+        #trackerPanel.tt-lifted .depth-1 { transform: translateZ(10px); }
+        #trackerPanel.tt-lifted .depth-2 { transform: translateZ(20px); }
+        #trackerPanel.tt-lifted .depth-3 { transform: translateZ(30px); }
+        .depth-1, .depth-2, .depth-3 { transition: transform var(--dur-settle) var(--ease-out); }
 
         #callListContainer::-webkit-scrollbar { width: 5px; }
         #callListContainer::-webkit-scrollbar-track { background: transparent; }
 
-        #chartContainer { padding: 0.75rem 0; height: 120px; }
+        /* The panel's right padding is slimmer than its left (room for the list's
+           scrollbar), so the chart takes 1rem more on the right to sit exactly
+           centred on the card. Overflow is visible so the end points aren't
+           cut in half at the edges. */
+        #chartContainer { padding: 0.75rem 2rem 0.75rem 1rem; height: 120px; }
+        #rateChart { overflow: visible; }
         #rateChart .grid-line  { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2,4; }
         #rateChart .chart-line { stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: url(#chartGradient); transition: stroke var(--dur-mid); }
         #rateChart .chart-point { fill: var(--accent); stroke: var(--card-bg); stroke-width: 2; transition: r 0.2s; }
         #rateChart .chart-point:hover { r: 6; }
+
+        /* Completing a call fades the strike in with the colour change instead
+           of stamping it on; at rest it looks exactly as before. */
+        .call-item .flex-grow > p:first-child { text-decoration-line: line-through; text-decoration-color: transparent;
+            transition: color var(--dur-mid) ease, text-decoration-color var(--dur-mid) ease; }
+        .call-item .flex-grow > p.line-through:first-child { text-decoration-color: currentColor; }
 
         .is-reminding { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%,90%{transform:translate3d(-1px,0,0)} 20%,80%{transform:translate3d(2px,0,0)} 30%,50%,70%{transform:translate3d(-4px,0,0)} 40%,60%{transform:translate3d(4px,0,0)} }
@@ -80,30 +91,34 @@
             background: var(--dropdown-bg); border: 1px solid var(--border);
             border-radius: 0.875rem; padding: 1.1rem; margin-bottom: 0.5rem;
             box-shadow: 0 12px 32px var(--shadow);
-            opacity: 0; transform: translateY(10px) scale(0.97); pointer-events: none;
-            transition: opacity var(--dur-mid) var(--ease-out), transform var(--dur-mid) var(--ease-spring);
+            /* grows out of the bell it hangs from; closes quicker than it opens */
+            opacity: 0; transform: translateY(8px) scale(0.97); transform-origin: 17px calc(100% + 25px); pointer-events: none;
+            transition: opacity 150ms var(--ease-in), transform 170ms var(--ease-in);
             z-index: 50;
         }
-        #reminderControls.visible { opacity: 1; transform: none; pointer-events: auto; }
+        #reminderControls.visible { opacity: 1; transform: none; pointer-events: auto;
+            transition: opacity 180ms var(--ease-out), transform 280ms var(--ease-out); }
 
         .sound-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin-top: 6px; }
         .sound-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
             padding: 6px 3px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 0.5rem;
             cursor: pointer; font-family: var(--font-main);
-            transition: transform var(--dur-fast) var(--ease-spring), background-color var(--dur-fast), border-color var(--dur-fast); }
+            transition: transform 200ms var(--ease-out), background-color var(--dur-fast), border-color var(--dur-fast); }
         .sound-card:hover { background: var(--hover-bg); border-color: var(--accent); transform: translateY(-2px); }
+        .sound-card:active { transform: translateY(0) scale(0.97); transition-duration: var(--dur-press); }
         .sound-card.selected { background: var(--accent-trans); border-color: var(--accent); }
         .sound-card .s-emoji { font-size: 1.15rem; line-height: 1; }
         .sound-card .s-name { font-size: 0.55rem; color: var(--subtle); text-align: center; line-height: 1.2; }
         .sound-card.selected .s-name { color: var(--accent); font-weight: 600; }
 
-        #newThemesToast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(120px);
+        #newThemesToast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(24px);
             z-index: 90; display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 14px;
             background: var(--dropdown-bg); color: var(--text); border: 1px solid var(--border);
             box-shadow: 0 10px 30px var(--shadow); font-family: var(--font-main); font-size: 0.9rem; font-weight: 600;
             opacity: 0; pointer-events: none;
-            transition: transform var(--dur-slow) var(--ease-spring), opacity var(--dur-slow) ease; }
-        #newThemesToast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+            transition: transform 240ms var(--ease-in), opacity 200ms var(--ease-in); }
+        #newThemesToast.show { transform: translateX(-50%) translateY(0); opacity: 1;
+            transition: transform 460ms var(--ease-out), opacity 260ms var(--ease-out); }
         #newThemesToast .material-symbols-outlined { color: var(--accent); font-size: 1.3rem; }
     </style>
 </head>
@@ -183,37 +198,100 @@
         const panel = document.getElementById('trackerPanel');
 
         // AUDIO ENGINE
+        // Each sound is modelled on the real thing rather than being a stock
+        // oscillator sweep: struck glass and bells use their inharmonic partials,
+        // the singing bowl beats slowly, the alarm is a hammer on twin bells, the
+        // wood block is a short resonant knock, the sonar ping echoes. Everything
+        // starts from silence (no clicks) and runs through a gentle limiter so
+        // the sounds sit at a similar loudness.
         const Audio={
-            ctx:null,master:null,volume:1,
-            init(){if(!this.ctx){this.ctx=new(window.AudioContext||window.webkitAudioContext)();this.master=this.ctx.createGain();this.master.gain.value=this._curve(this.volume);this.master.connect(this.ctx.destination);}if(this.ctx.state==='suspended')this.ctx.resume();},
+            ctx:null,master:null,bus:null,volume:1,_noise:null,
+            init(){if(!this.ctx){this.ctx=new(window.AudioContext||window.webkitAudioContext)();this.master=this.ctx.createGain();this.master.gain.value=this._curve(this.volume);const lim=this.ctx.createDynamicsCompressor();lim.threshold.value=-10;lim.knee.value=6;lim.ratio.value=8;lim.attack.value=0.003;lim.release.value=0.2;this.master.connect(lim);lim.connect(this.ctx.destination);}if(this.ctx.state==='suspended')this.ctx.resume();},
             // perceptual-ish taper: 50% on the slider reads as roughly half as loud
             _curve(v){return Math.pow(Math.max(0,Math.min(1,v)),1.7);},
             setVolume(v){this.volume=Math.max(0,Math.min(1,v));if(!this.ctx)return;const t=this.ctx.currentTime;this.master.gain.cancelScheduledValues(t);this.master.gain.setTargetAtTime(this._curve(this.volume),t,0.015);},
             get out(){return this.master||this.ctx.destination;},
-            _osc(freq,type,dur,vol=0.1,at=null){const t=at??this.ctx.currentTime,o=this.ctx.createOscillator(),g=this.ctx.createGain();o.connect(g);g.connect(this.out);o.type=type;o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.start(t);o.stop(t+dur);},
+
+            // ── building blocks ──
+            // One enveloped partial: rises from silence in `a`, decays exponentially over `d`.
+            tone(f,{t,peak=0.1,a=0.004,d=0.5,type='sine',wave=null,to=null,glide=0.05,dest=null}){
+                const c=this.ctx,o=c.createOscillator(),g=c.createGain();
+                if(wave)o.setPeriodicWave(wave);else o.type=type;
+                o.frequency.setValueAtTime(f,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+glide);
+                g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+d);
+                o.connect(g);g.connect(dest||this.out);o.start(t);o.stop(t+a+d+0.05);return o;
+            },
+            // A struck metal/glass body: a fundamental plus its (inharmonic) overtones.
+            strike(f,t,parts,dest){parts.forEach(([ratio,peak,d,det=0])=>{this.tone(f*ratio,{t,peak,a:0.002,d,dest});if(det)this.tone(f*ratio+det,{t,peak:peak*0.6,a:0.002,d:d*1.05,dest});});},
+            // Filtered noise burst (clicks, knocks, breath).
+            noiseBuf(){if(!this._noise){const c=this.ctx,b=c.createBuffer(1,c.sampleRate,c.sampleRate),x=b.getChannelData(0);for(let i=0;i<x.length;i++)x[i]=Math.random()*2-1;this._noise=b;}return this._noise;},
+            noise(t,{peak=0.2,d=0.03,type='bandpass',freq=2000,q=1,a=0.001,dest=null}){
+                const c=this.ctx,s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();s.buffer=this.noiseBuf();f.type=type;f.frequency.value=freq;f.Q.value=q;
+                g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+d);
+                s.connect(f);f.connect(g);g.connect(dest||this.out);s.start(t,Math.random()*0.5);s.stop(t+a+d+0.05);
+            },
+            // Narrow pulse wave (the NES square channels), cached per duty.
+            pulse(duty){this._pw=this._pw||{};if(this._pw[duty])return this._pw[duty];const n=48,re=new Float32Array(n),im=new Float32Array(n);for(let k=1;k<n;k++)re[k]=2/(k*Math.PI)*Math.sin(k*Math.PI*duty);return this._pw[duty]=this.ctx.createPeriodicWave(re,im);},
+
             play(type){
-                this.init();const ctx=this.ctx,out=this.out,now=ctx.currentTime;
+                this.init();const c=this.ctx,now=c.currentTime+0.01;
                 switch(type){
-                    case 'glass':this._osc(1200,'sine',0.55,0.12);break;
-                    case 'digital':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='square';o.frequency.setValueAtTime(700,now);o.frequency.exponentialRampToValueAtTime(120,now+0.15);g.gain.setValueAtTime(0.08,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.15);o.start(now);o.stop(now+0.15);break;}
-                    case 'chime':this._osc(523.25,'sine',0.55,0.1,now);this._osc(659.25,'sine',0.55,0.09,now+0.06);this._osc(783.99,'sine',0.55,0.08,now+0.12);break;
-                    case 'sonar':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sine';o.frequency.setValueAtTime(820,now);g.gain.setValueAtTime(0.18,now);g.gain.exponentialRampToValueAtTime(0.0001,now+1.2);o.start(now);o.stop(now+1.2);setTimeout(()=>{const o2=ctx.createOscillator(),g2=ctx.createGain();o2.connect(g2);g2.connect(out);o2.frequency.setValueAtTime(820,ctx.currentTime);g2.gain.setValueAtTime(0.06,ctx.currentTime);g2.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.9);o2.start();o2.stop(ctx.currentTime+0.9);},320);break;}
-                    case 'arcade':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sawtooth';o.frequency.setValueAtTime(220,now);o.frequency.linearRampToValueAtTime(880,now+0.22);g.gain.setValueAtTime(0.05,now);g.gain.linearRampToValueAtTime(0.0001,now+0.22);o.start(now);o.stop(now+0.22);break;}
-                    case 'cash':{this._osc(1568,'sine',0.07,0.15,now);this._osc(1976,'sine',0.15,0.2,now+0.06);const buf=ctx.createBuffer(1,ctx.sampleRate*0.04,ctx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.25));const src=ctx.createBufferSource(),gn=ctx.createGain();src.buffer=buf;src.connect(gn);gn.connect(out);gn.gain.setValueAtTime(0.35,now+0.16);src.start(now+0.16);break;}
-                    case 'zen':[220,440,660,880].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sine';o.frequency.setValueAtTime(f,now);const v=0.12/(i+1);g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(v,now+0.05);g.gain.exponentialRampToValueAtTime(0.0001,now+3.0);o.start(now);o.stop(now+3.0);});break;
-                    case 'laser':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sawtooth';o.frequency.setValueAtTime(2200,now);o.frequency.exponentialRampToValueAtTime(150,now+0.28);g.gain.setValueAtTime(0.09,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.28);o.start(now);o.stop(now+0.28);break;}
-                    case 'retro8':[330,392,523,659].forEach((n,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='square';o.frequency.setValueAtTime(n,now+i*0.075);g.gain.setValueAtTime(0.06,now+i*0.075);g.gain.exponentialRampToValueAtTime(0.0001,now+i*0.075+0.065);o.start(now+i*0.075);o.stop(now+i*0.075+0.065);});break;
-                    case 'wood':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sine';o.frequency.setValueAtTime(420,now);o.frequency.exponentialRampToValueAtTime(180,now+0.09);g.gain.setValueAtTime(0.25,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.1);o.start(now);o.stop(now+0.1);break;}
-                    case 'alarm':for(let i=0;i<4;i++){const f=i%2===0?880:660,o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='square';o.frequency.setValueAtTime(f,now+i*0.13);g.gain.setValueAtTime(0.045,now+i*0.13);g.gain.setValueAtTime(0.045,now+i*0.13+0.11);g.gain.exponentialRampToValueAtTime(0.0001,now+i*0.13+0.13);o.start(now+i*0.13);o.stop(now+i*0.13+0.13);}break;
-                    case 'pop':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sine';o.frequency.setValueAtTime(350,now);o.frequency.linearRampToValueAtTime(600,now+0.04);o.frequency.linearRampToValueAtTime(280,now+0.11);g.gain.setValueAtTime(0.22,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.12);o.start(now);o.stop(now+0.12);break;}
-                    case 'wind':[0,0.1,0.22].forEach(delay=>{const base=[523,659,784,1047,1319],f=base[Math.floor(Math.random()*base.length)],o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='sine';o.frequency.setValueAtTime(f,now+delay);g.gain.setValueAtTime(0,now+delay);g.gain.linearRampToValueAtTime(0.09,now+delay+0.02);g.gain.exponentialRampToValueAtTime(0.0001,now+delay+0.8);o.start(now+delay);o.stop(now+delay+0.8);});break;
-                    case 'blip':{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(out);o.type='triangle';o.frequency.setValueAtTime(900,now);o.frequency.setValueAtTime(700,now+0.03);g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.07);o.start(now);o.stop(now+0.07);break;}
-                    default:this._osc(1200,'sine',0.55,0.12);
+                    case 'glass':   // a clean crystal "ting": bright tick, then a long, gently beating ring
+                        this.noise(now,{peak:0.05,d:0.012,type:'highpass',freq:6000});
+                        this.strike(1568,now,[[1,0.11,1.7,1.4],[2.32,0.035,0.7],[4.25,0.018,0.35],[6.8,0.006,0.15]]);break;
+                    case 'digital': // digital-watch "beep-beep"
+                        [0,0.13].forEach(dt=>{const t=now+dt,o=c.createOscillator(),lp=c.createBiquadFilter(),g=c.createGain();o.type='square';o.frequency.value=2093;lp.type='lowpass';lp.frequency.value=5000;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.075,t+0.003);g.gain.setValueAtTime(0.075,t+0.07);g.gain.linearRampToValueAtTime(0,t+0.08);o.connect(lp);lp.connect(g);g.connect(this.out);o.start(t);o.stop(t+0.1);});break;
+                    case 'chime':   // three-note bell chime, rising
+                        [[1047,0],[1319,0.11],[1568,0.22]].forEach(([f,dt])=>this.strike(f,now+dt,[[1,0.075,1.5],[2.0,0.02,0.6],[3.01,0.01,0.3],[4.1,0.004,0.15]]));break;
+                    case 'sonar': { // submarine ping, then its echoes coming back darker and quieter
+                        const split=c.createGain(),dl=c.createDelay(1),lp=c.createBiquadFilter(),fb=c.createGain();
+                        dl.delayTime.value=0.42;lp.type='lowpass';lp.frequency.value=1600;fb.gain.value=0.38;
+                        split.connect(this.out);split.connect(dl);dl.connect(lp);lp.connect(this.out);lp.connect(fb);fb.connect(dl);
+                        this.tone(1180,{t:now,peak:0.13,a:0.006,d:1.2,to:1130,glide:1.0,dest:split});break; }
+                    case 'arcade':  // the classic coin pickup: B5 blip into a ringing E6
+                        this.tone(988,{t:now,peak:0.09,a:0.002,d:0.07,wave:this.pulse(0.5)});
+                        this.tone(1319,{t:now+0.075,peak:0.09,a:0.002,d:0.42,wave:this.pulse(0.5)});break;
+                    case 'cash':    // register: two mechanical clacks, the bell, then coins settling
+                        this.noise(now,{peak:0.35,d:0.018,freq:2400,q:1.4});this.noise(now+0.055,{peak:0.25,d:0.022,freq:1600,q:1.2});
+                        this.strike(2637,now+0.1,[[1,0.07,1.1],[2.02,0.025,0.5],[2.99,0.015,0.3],[4.07,0.006,0.18]]);
+                        this.strike(3136,now+0.16,[[1,0.04,0.9],[2.02,0.012,0.35]]);
+                        for(let i=0;i<6;i++)this.noise(now+0.3+Math.random()*0.28,{peak:0.05+Math.random()*0.04,d:0.01,type:'highpass',freq:5500});break;
+                    case 'zen':     // singing bowl: soft mallet, inharmonic partials, slow beating, long bloom
+                        this.noise(now,{peak:0.08,d:0.03,type:'lowpass',freq:500});
+                        [[1,0.072,5.2,0.9],[2.76,0.036,3.6,1.6],[5.4,0.015,2.0,2.4],[8.93,0.005,1.0]].forEach(([r,p,d,det=0])=>{this.tone(293.7*r,{t:now,peak:p,a:0.02,d});if(det)this.tone(293.7*r+det,{t:now,peak:p*0.8,a:0.025,d:d*1.1});});break;
+                    case 'laser': { // "pew": a bright pitch dive with a sub layer for body
+                        const o=c.createOscillator(),lp=c.createBiquadFilter(),g=c.createGain();o.type='sawtooth';o.frequency.setValueAtTime(2400,now);o.frequency.exponentialRampToValueAtTime(220,now+0.2);
+                        lp.type='lowpass';lp.frequency.setValueAtTime(8000,now);lp.frequency.exponentialRampToValueAtTime(900,now+0.2);
+                        g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(0.16,now+0.004);g.gain.exponentialRampToValueAtTime(0.0001,now+0.22);
+                        o.connect(lp);lp.connect(g);g.connect(this.out);o.start(now);o.stop(now+0.25);
+                        this.tone(1200,{t:now,peak:0.1,a:0.003,d:0.18,to:110,glide:0.18,type:'square'});break; }
+                    case 'retro8':  // NES-style level-up jingle on a 25% pulse
+                        [[784,0],[1047,0.065],[1319,0.13],[1568,0.195],[2093,0.26]].forEach(([f,dt],i,a)=>this.tone(f,{t:now+dt,peak:0.09,a:0.002,d:i===a.length-1?0.35:0.06,wave:this.pulse(0.25)}));break;
+                    case 'wood':    // hollow wooden "tok": a resonant knock, no boom
+                        this.noise(now,{peak:0.3,d:0.008,freq:3200,q:2});
+                        this.tone(1040,{t:now,peak:0.3,a:0.001,d:0.075,to:960,glide:0.06});
+                        this.tone(2480,{t:now,peak:0.06,a:0.001,d:0.03});break;
+                    case 'alarm': { // wind-up alarm clock: a hammer rattling between two bells
+                        const bells=[1760,1976].map(f=>{const g=c.createGain();g.gain.value=0;g.connect(this.out);[[1,0.5],[2.03,0.22],[2.76,0.16],[4.1,0.07]].forEach(([r,p])=>{const o=c.createOscillator(),pg=c.createGain();o.frequency.value=f*r;pg.gain.value=p;o.connect(pg);pg.connect(g);o.start(now);o.stop(now+1.7);});return g;});
+                        for(let i=0;i<22;i++){const t=now+i*0.052,g=bells[i%2].gain;g.setValueAtTime(0.11,t);g.exponentialRampToValueAtTime(0.03,t+0.048);}
+                        bells.forEach(b=>b.gain.exponentialRampToValueAtTime(0.0001,now+22*0.052+0.45));break; }
+                    case 'pop':     // bubble pop: a quick upward "blop"
+                        this.tone(300,{t:now,peak:0.3,a:0.002,d:0.075,to:1150,glide:0.035});
+                        this.noise(now,{peak:0.06,d:0.006,type:'lowpass',freq:2500});break;
+                    case 'wind': {  // wind chimes: a breath of air, then tubes touching at random
+                        const s=c.createBufferSource(),bp=c.createBiquadFilter(),g=c.createGain();s.buffer=this.noiseBuf();s.loop=true;bp.type='bandpass';bp.Q.value=0.8;bp.frequency.setValueAtTime(500,now);bp.frequency.linearRampToValueAtTime(1100,now+1.0);bp.frequency.linearRampToValueAtTime(600,now+2.0);
+                        g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(0.035,now+0.6);g.gain.linearRampToValueAtTime(0,now+2.0);s.connect(bp);bp.connect(g);g.connect(this.out);s.start(now);s.stop(now+2.1);
+                        const notes=[1568,1760,2093,2349,2637,3136];
+                        [0.12,0.38,0.61,0.9,1.22].forEach(dt=>this.strike(notes[Math.floor(Math.random()*notes.length)],now+dt+Math.random()*0.08,[[1,0.045,2.2],[2.76,0.014,0.9],[5.4,0.005,0.35]]));break; }
+                    case 'blip':    // soft, clean interface blip
+                        this.tone(1100,{t:now,peak:0.24,a:0.002,d:0.06,to:1320,glide:0.02});
+                        this.tone(2640,{t:now,peak:0.03,a:0.002,d:0.03});break;
+                    default: this.play('glass');
                 }
             }
         };
 
-        const SOUNDS=[{value:'glass',emoji:'🔔',name:'Glass'},{value:'digital',emoji:'💻',name:'Digital'},{value:'chime',emoji:'🎵',name:'Chime'},{value:'sonar',emoji:'📡',name:'Sonar'},{value:'arcade',emoji:'🞹',name:'Arcade'},{value:'cash',emoji:'💰',name:'Ca-Ching'},{value:'zen',emoji:'🫔',name:'Zen Bowl'},{value:'laser',emoji:'⚡',name:'Laser'},{value:'retro8',emoji:'👾',name:'8-Bit'},{value:'wood',emoji:'🪵',name:'Wood Block'},{value:'alarm',emoji:'⏰',name:'Old Alarm'},{value:'pop',emoji:'💬',name:'Pop'},{value:'wind',emoji:'🌬',name:'Wind'},{value:'blip',emoji:'🔵',name:'UI Blip'}];
+        const SOUNDS=[{value:'glass',emoji:'🥂',name:'Glass'},{value:'digital',emoji:'⌚',name:'Digital'},{value:'chime',emoji:'🔔',name:'Chime'},{value:'sonar',emoji:'📡',name:'Sonar'},{value:'arcade',emoji:'🕹️',name:'Arcade Coin'},{value:'cash',emoji:'💰',name:'Ca-Ching'},{value:'zen',emoji:'🧘',name:'Zen Bowl'},{value:'laser',emoji:'⚡',name:'Laser'},{value:'retro8',emoji:'👾',name:'8-Bit'},{value:'wood',emoji:'🪵',name:'Wood Block'},{value:'alarm',emoji:'⏰',name:'Old Alarm'},{value:'pop',emoji:'🫧',name:'Pop'},{value:'wind',emoji:'🎐',name:'Wind Chimes'},{value:'blip',emoji:'🔵',name:'UI Blip'}];
 
         function buildSoundGrid(){const g=document.getElementById('soundGrid');g.innerHTML='';SOUNDS.forEach(s=>{const c=document.createElement('div');c.className='sound-card tt-card'+(state.soundPreference===s.value?' selected':'');c.dataset.value=s.value;c.innerHTML='<span class="s-emoji">'+s.emoji+'</span><span class="s-name">'+s.name+'</span>';c.addEventListener('click',()=>{Audio.init();state.soundPreference=s.value;document.querySelectorAll('.sound-card').forEach(x=>x.classList.toggle('selected',x.dataset.value===s.value));Audio.play(s.value);saveState();});g.appendChild(c);});}
 
@@ -232,10 +310,46 @@
         function saveState(){state.lastUpdated=new Date().toISOString();const{reminderTimerId,...save}=state;localStorage.setItem('callFlowV8',JSON.stringify(save));}
         function relTime(d){if(!d)return'No updates yet.';const sc=Math.round((Date.now()-new Date(d))/1000),mn=Math.round(sc/60);if(sc<10)return'just now';if(sc<60)return sc+'s ago';if(mn<60)return mn+'m ago';return new Date(d).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
 
-        function renderChart(){const dp=[];let done=0;const sorted=[...state.calls].sort((a,b)=>a.number-b.number);sorted.forEach((c,i)=>{if(c.completed)done++;dp.push((done/(i+1))*100);});const W=500,H=100,P=5;rateChart.innerHTML='<defs><linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:var(--accent);stop-opacity:0.3"/><stop offset="100%" style="stop-color:var(--accent);stop-opacity:0"/></linearGradient></defs><line class="grid-line" x1="0" y1="'+(H/2)+'" x2="'+W+'" y2="'+(H/2)+'"/>';if(dp.length<2)return;const pts=dp.map((r,i)=>((i/(dp.length-1))*W)+','+(((H-P*2)-(r/100)*(H-P*2)+P))).join(' ');const poly=document.createElementNS('http://www.w3.org/2000/svg','polyline');poly.setAttribute('class','chart-line');poly.setAttribute('points',pts);rateChart.appendChild(poly);
-            // draw the line on rather than snapping it in
-            if(!SMTTheme.reduceMotion){const len=poly.getTotalLength?poly.getTotalLength():0;if(len){poly.style.strokeDasharray=len;poly.style.strokeDashoffset=len;poly.getBoundingClientRect();poly.style.transition='stroke-dashoffset 700ms cubic-bezier(0.22,1,0.36,1)';poly.style.strokeDashoffset=0;}}
-            dp.forEach((r,i)=>{const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('class','chart-point');c.setAttribute('cx',(i/(dp.length-1))*W);c.setAttribute('cy',(H-P*2)-(r/100)*(H-P*2)+P);c.setAttribute('r',4);rateChart.appendChild(c);});}
+        // CHART — one persistent line and set of points. The first time there's
+        // a line it draws on; after that every change morphs from what's on
+        // screen to the new shape (a new call grows a segment out of the last
+        // point) instead of wiping the chart and redrawing it from nothing.
+        const SVGNS='http://www.w3.org/2000/svg',CW=500,CH=100,CP=5;
+        let chartLine=null,chartShown=null,chartTween=null;
+        function chartTarget(){const dp=[];let done=0;const sorted=[...state.calls].sort((a,b)=>a.number-b.number);sorted.forEach((c,i)=>{if(c.completed)done++;dp.push((done/(i+1))*100);});return dp.map((r,i)=>[dp.length>1?(i/(dp.length-1))*CW:0,(CH-CP*2)-(r/100)*(CH-CP*2)+CP]);}
+        function drawChart(pts){chartShown=pts;chartLine.setAttribute('points',pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join(' '));const dots=rateChart.querySelectorAll('.chart-point');pts.forEach((p,i)=>{dots[i].setAttribute('cx',p[0]);dots[i].setAttribute('cy',p[1]);});}
+        function yAt(pts,x){for(let i=1;i<pts.length;i++){if(x<=pts[i][0]){const a=pts[i-1],b=pts[i],t=(x-a[0])/((b[0]-a[0])||1);return a[1]+(b[1]-a[1])*t;}}return pts[pts.length-1][1];}
+        function morphFrom(cur,next){
+            if(cur.length===next.length)return cur;
+            if(next.length===cur.length+1)return cur.concat([cur[cur.length-1].slice()]);
+            return next.map(p=>[p[0],yAt(cur,p[0])]);                      // resample the old shape
+        }
+        function renderChart(){
+            if(!chartLine){
+                rateChart.innerHTML='<defs><linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:var(--accent);stop-opacity:0.3"/><stop offset="100%" style="stop-color:var(--accent);stop-opacity:0"/></linearGradient></defs><line class="grid-line" x1="0" y1="'+(CH/2)+'" x2="'+CW+'" y2="'+(CH/2)+'"/>';
+                chartLine=document.createElementNS(SVGNS,'polyline');chartLine.setAttribute('class','chart-line');rateChart.appendChild(chartLine);
+            }
+            const next=chartTarget(),had=chartShown&&chartShown.length>=2;
+            if(chartTween){chartTween.cancel();chartTween=null;}
+            if(next.length<2){rateChart.querySelectorAll('.chart-point').forEach(d=>d.remove());chartLine.setAttribute('points','');chartShown=null;return;}
+            const dots=rateChart.querySelectorAll('.chart-point');
+            for(let i=dots.length;i<next.length;i++){const c=document.createElementNS(SVGNS,'circle');c.setAttribute('class','chart-point');c.setAttribute('r',4);rateChart.appendChild(c);}
+            for(let i=next.length;i<dots.length;i++)dots[i].remove();
+            const cm=SMTTheme.motion().chart;      // the theme's timing (Win95 just redraws)
+            if(!had||SMTTheme.reduceMotion||!(cm.d>0)){
+                drawChart(next);
+                if(!had&&!SMTTheme.reduceMotion&&cm.draw>0){
+                    // draw the line on; each point appears as the stroke reaches it
+                    const len=chartLine.getTotalLength(),D=cm.draw;
+                    chartLine.animate([{strokeDasharray:len+' '+len,strokeDashoffset:len,fillOpacity:0},{strokeDasharray:len+' '+len,strokeDashoffset:0,fillOpacity:1}],{duration:D,easing:SMTTheme.EASE.out});
+                    rateChart.querySelectorAll('.chart-point').forEach((d,i)=>{const f=i/(next.length-1);d.animate([{opacity:0},{opacity:1}],{duration:220,delay:D*(1-Math.pow(1-f,0.2)),easing:'ease-out',fill:'backwards'});});
+                }
+                return;
+            }
+            const from=morphFrom(chartShown,next);
+            if(from.every((p,i)=>Math.abs(p[0]-next[i][0])<0.01&&Math.abs(p[1]-next[i][1])<0.01)){drawChart(next);return;}
+            chartTween=SMTTheme.tween(rateChart,cm.d,cm.e,e=>drawChart(from.map((p,i)=>[p[0]+(next[i][0]-p[0])*e,p[1]+(next[i][1]-p[1])*e])));
+        }
 
         function render(){
             const total=state.calls.length,done=state.calls.filter(c=>c.completed).length,pct=total>0?(done/total)*100:0;
@@ -244,20 +358,9 @@
             shownPct=pct;
             SMTTheme.renderMeter(progressMeter,pct,{segments:20,hearts:10});
             lastUpdTxt.textContent='Updated '+relTime(state.lastUpdated);
-            callList.innerHTML='';
-            if(total===0){callList.appendChild(emptyState);emptyState.style.display='flex';}
-            else{
-                emptyState.style.display='none';
-                [...state.calls].reverse().forEach(call=>{
-                    const el=document.createElement('div');
-                    el.className='call-item flex items-center justify-between p-3 rounded-lg transition-all duration-300 '+(call.completed?'opacity-50':'opacity-100');
-                    el.dataset.id=call.id;
-                    const time=new Date(call.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-                    el.innerHTML='<div class="flex-grow pr-2"><p class="'+(call.completed?'line-through subtle-text':'')+'">Call #'+call.number+'</p><p class="text-xs subtle-text">'+time+'</p></div><div class="flex items-center gap-2"><button class="delete-btn p-2 rounded-full transition-colors" style="color:var(--subtle)" onmouseover="this.style.background=\'var(--danger)\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'\';this.style.color=\'var(--subtle)\'" data-id="'+call.id+'" data-number="'+call.number+'"><span class="material-symbols-outlined" style="font-size:16px">delete</span></button><label class="toggle-switch"><input type="checkbox" '+(call.completed?'checked':'')+'><span class="slider"></span></label></div>';
-                    callList.appendChild(el);
-                });
-                SMTTheme.stagger(callList.children);
-            }
+            // Rows are keyed by id and patched in place (see SMTTheme.list), so a
+            // toggle, add or delete animates just the row it touched.
+            SMTTheme.list(callList,[...state.calls].reverse(),{key:c=>c.id,create:callRow,update:patchCallRow,empty:emptyState});
             reminderSldr.value=state.reminderInterval;
             reminderLbl.textContent=state.reminderInterval>0?state.reminderInterval+' min':'Off';
             reminderBtn.style.color=state.reminderInterval>0?'var(--accent)':'var(--subtle)';
@@ -265,16 +368,32 @@
             buildSoundGrid();renderChart();saveState();
         }
 
+        function callRow(call){
+            const el=document.createElement('div');
+            el.className='call-item flex items-center justify-between p-3 rounded-lg transition-all duration-300 '+(call.completed?'opacity-50':'opacity-100');
+            el.dataset.id=call.id;
+            const time=new Date(call.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+            el.innerHTML='<div class="flex-grow pr-2"><p class="'+(call.completed?'line-through subtle-text':'')+'">Call #'+call.number+'</p><p class="text-xs subtle-text">'+time+'</p></div><div class="flex items-center gap-2"><button class="delete-btn p-2 rounded-full transition-colors" style="color:var(--subtle)" onmouseover="this.style.background=\'var(--danger)\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'\';this.style.color=\'var(--subtle)\'" data-id="'+call.id+'" data-number="'+call.number+'"><span class="material-symbols-outlined" style="font-size:16px">delete</span></button><label class="toggle-switch"><input type="checkbox" '+(call.completed?'checked':'')+'><span class="slider"></span></label></div>';
+            return el;
+        }
+        function patchCallRow(el,call){
+            el.classList.toggle('opacity-50',call.completed);el.classList.toggle('opacity-100',!call.completed);
+            el.querySelector('p').className=call.completed?'line-through subtle-text':'';
+            const cb=el.querySelector('input[type="checkbox"]');if(cb.checked!==call.completed)cb.checked=call.completed;
+        }
+
         function nextNum(){return state.calls.length===0?1:Math.max(...state.calls.map(c=>c.number))+1;}
         function addCall(){state.calls.push({id:Date.now(),number:nextNum(),completed:false,createdAt:new Date().toISOString()});render();callList.scrollTop=0;}
         function toggleCall(id){const c=state.calls.find(c=>c.id==id);if(c){c.completed=!c.completed;render();}}
-        function deleteCall(id){state.calls=state.calls.filter(c=>c.id!=id);render();}
-        function resetAll(){cancelReminder();state=initState();shownPct=0;render();}
+        function deleteCall(id,after){state.calls=state.calls.filter(c=>c.id!=id);saveState();(after||Promise.resolve()).then(render);}
+        // The change is saved at once but shown once the confirm dialog has gone,
+        // so it plays out on a clear screen; the % counts down from what's shown.
+        function resetAll(after){cancelReminder();state=initState();saveState();(after||Promise.resolve()).then(render);}
         function notify(){panel.classList.add('is-reminding');panel.addEventListener('animationend',()=>panel.classList.remove('is-reminding'),{once:true});Audio.play(state.soundPreference||'glass');const msg=MSGS[Math.floor(Math.random()*MSGS.length)];if(Notification.permission==='granted')new Notification('Call Flow Reminder',{body:msg.text});setReminder(state.reminderInterval);}
         function setReminder(mins){cancelReminder();state.reminderInterval=mins;if(mins>0)state.reminderTimerId=setTimeout(notify,mins*60*1000);render();}
         function cancelReminder(){if(state.reminderTimerId){clearTimeout(state.reminderTimerId);state.reminderTimerId=null;}}
 
-        callList.addEventListener('click',e=>{const d=e.target.closest('.delete-btn');if(d)openDeleteModal(d.dataset.id,d.dataset.number);});
+        callList.addEventListener('click',e=>{const d=e.target.closest('.delete-btn');if(d)openDeleteModal(d.dataset.id,d.dataset.number,d);});
         callList.addEventListener('change',e=>{if(e.target.matches('input[type="checkbox"]'))toggleCall(e.target.closest('.call-item').dataset.id);});
         addCallBtn.addEventListener('click',addCall);resetDataBtn.addEventListener('click',openResetModal);
         reminderBtn.addEventListener('click',()=>reminderCtrl.classList.toggle('visible'));
@@ -291,8 +410,8 @@
 
         const resetModal=document.getElementById('resetConfirmModal'),deleteModal=document.getElementById('deleteConfirmModal');
         function mHTML(title,icon,body,cid,clabel){return '<div style="background:var(--dropdown-bg);border:1px solid var(--danger)" class="tt-surface rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl"><h3 class="text-base font-semibold flex items-center gap-2" style="color:var(--danger)"><span class="material-symbols-outlined">'+icon+'</span>'+title+'</h3><p class="subtle-text text-sm">'+body+'</p><div class="flex justify-end gap-3"><button class="cancel-btn px-4 py-2 rounded-lg text-sm custom-hover" style="color:var(--text)">Cancel</button><button id="'+cid+'" class="text-white font-bold px-4 py-2 rounded-lg text-sm" style="background:var(--danger)">'+clabel+'</button></div></div>';}
-        function openResetModal(){resetModal.innerHTML=mHTML('Reset All','warning','Are you sure? All calls will be permanently deleted.','confirmReset','Yes, Reset');resetModal.classList.remove('hidden');resetModal.querySelector('.cancel-btn').addEventListener('click',()=>resetModal.classList.add('hidden'));resetModal.querySelector('#confirmReset').addEventListener('click',()=>{resetAll();resetModal.classList.add('hidden');});}
-        function openDeleteModal(id,num){deleteModal.innerHTML=mHTML('Delete Call','delete','Delete <strong>Call #'+num+'</strong>? This cannot be undone.','confirmDelete','Yes, Delete');deleteModal.classList.remove('hidden');deleteModal.querySelector('.cancel-btn').addEventListener('click',()=>deleteModal.classList.add('hidden'));deleteModal.querySelector('#confirmDelete').addEventListener('click',()=>{deleteCall(id);deleteModal.classList.add('hidden');});}
+        function openResetModal(e){resetModal.innerHTML=mHTML('Reset All','warning','Are you sure? All calls will be permanently deleted.','confirmReset','Yes, Reset');SMTTheme.showModal(resetModal,e&&e.currentTarget);resetModal.querySelector('.cancel-btn').addEventListener('click',()=>SMTTheme.hideModal(resetModal));resetModal.querySelector('#confirmReset').addEventListener('click',()=>resetAll(SMTTheme.hideModal(resetModal)));}
+        function openDeleteModal(id,num,from){deleteModal.innerHTML=mHTML('Delete Call','delete','Delete <strong>Call #'+num+'</strong>? This cannot be undone.','confirmDelete','Yes, Delete');SMTTheme.showModal(deleteModal,from);deleteModal.querySelector('.cancel-btn').addEventListener('click',()=>SMTTheme.hideModal(deleteModal));deleteModal.querySelector('#confirmDelete').addEventListener('click',()=>deleteCall(id,SMTTheme.hideModal(deleteModal)));}
 
         loadState();
 
