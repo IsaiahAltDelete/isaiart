@@ -321,7 +321,10 @@
         const SVGNS='http://www.w3.org/2000/svg',CW=500,CH=100,CP=5;
         let chartLine=null,chartShown=null,chartTween=null;
         function chartTarget(){const dp=[];let done=0;const sorted=[...state.calls].sort((a,b)=>a.number-b.number);sorted.forEach((c,i)=>{if(c.completed)done++;dp.push((done/(i+1))*100);});return dp.map((r,i)=>[dp.length>1?(i/(dp.length-1))*CW:0,(CH-CP*2)-(r/100)*(CH-CP*2)+CP]);}
-        function drawChart(pts){chartShown=pts;chartLine.setAttribute('points',pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join(' '));const dots=rateChart.querySelectorAll('.chart-point');pts.forEach((p,i)=>{dots[i].setAttribute('cx',p[0]);dots[i].setAttribute('cy',p[1]);});}
+        // Pixel Art draws on whole pixels: vertices and markers land on even screen
+        // pixels, so every marker rasterises as the same sprite. Other themes are untouched.
+        function snapPx(pts){if(document.documentElement.getAttribute('data-style')!=='pixelart')return pts;const r=rateChart.getBoundingClientRect();if(!r.width||!r.height)return pts;const sx=r.width/CW,sy=r.height/CH;return pts.map(p=>[(Math.round((r.left+p[0]*sx)/2)*2-r.left)/sx,(Math.round((r.top+p[1]*sy)/2)*2-r.top)/sy]);}
+        function drawChart(pts){chartShown=pts;const d=snapPx(pts);chartLine.setAttribute('points',d.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join(' '));const dots=rateChart.querySelectorAll('.chart-point');d.forEach((p,i)=>{dots[i].setAttribute('cx',p[0]);dots[i].setAttribute('cy',p[1]);});}
         function yAt(pts,x){for(let i=1;i<pts.length;i++){if(x<=pts[i][0]){const a=pts[i-1],b=pts[i],t=(x-a[0])/((b[0]-a[0])||1);return a[1]+(b[1]-a[1])*t;}}return pts[pts.length-1][1];}
         function morphFrom(cur,next){
             if(cur.length===next.length)return cur;

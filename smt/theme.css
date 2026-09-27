@@ -578,6 +578,8 @@ html[data-mode="light"][data-style="pixelart"]:not([data-color="auto"]) {
     --subtle:       color-mix(in srgb, var(--px-hue) 55%, #3A3A36);
     --hover-bg:     color-mix(in srgb, var(--px-hue) 14%, transparent);
 }
+html[data-mode="dark"][data-style="pixelart"]  { --px-strike: color-mix(in srgb, var(--accent) 62%, #000000); }
+html[data-mode="light"][data-style="pixelart"] { --px-strike: color-mix(in srgb, var(--accent) 72%, #FFFFFF); }
 html[data-style="pixelart"] #pixelArtBg  { display:block !important; }
 html[data-style="pixelart"] #crtOverlay  { display:block !important; }
 html[data-style="pixelart"] img, html[data-style="pixelart"] canvas { image-rendering: pixelated; }
@@ -591,7 +593,8 @@ html[data-style="pixelart"] #scene { position:relative; z-index:1; }
    From the outside in, each ring one art pixel (2px): ink outline with
    stepped corners (two crossed bars), a bevel lit on the top and left edges
    and shaded on the bottom and right, the frame body, an inner keyline,
-   then the card. Sizes are whole pixels, so every edge is hard. */
+   then the card. Sizes are whole pixels, so every edge is hard. The last
+   layer fills the bottom-right notch, which sits inside the drop shadow. */
 html[data-style="pixelart"] #trackerPanel {
     --pxf: linear-gradient(var(--card-bg), var(--card-bg)) center / calc(100% - 16px) calc(100% - 16px),
            linear-gradient(var(--px-keyline), var(--px-keyline)) center / calc(100% - 12px) calc(100% - 12px),
@@ -600,7 +603,8 @@ html[data-style="pixelart"] #trackerPanel {
            linear-gradient(var(--px-hi), var(--px-hi)) 2px 2px / 2px calc(100% - 6px),
            linear-gradient(var(--px-lo), var(--px-lo)) center / calc(100% - 4px) calc(100% - 4px),
            linear-gradient(var(--px-ink), var(--px-ink)) center / calc(100% - 4px) 100%,
-           linear-gradient(var(--px-ink), var(--px-ink)) center / 100% calc(100% - 4px);
+           linear-gradient(var(--px-ink), var(--px-ink)) center / 100% calc(100% - 4px),
+           linear-gradient(var(--px-shade), var(--px-shade)) right bottom / 2px 2px;
     background: var(--pxf) !important; background-repeat: no-repeat !important;
     background-origin: border-box !important; background-clip: border-box !important;
     border:8px solid transparent !important; border-radius:0 !important;
@@ -1412,13 +1416,15 @@ html[data-style="pixelart"] #trackerPanel button.custom-hover:hover { background
 html[data-style="pixelart"] #trackerPanel:has(#callListContainer) { padding-right:1.5rem !important; }
 html[data-style="pixelart"] #trackerPanel > header { padding-left:12px !important; padding-right:12px !important; }
 html[data-style="pixelart"] #callListContainer { padding-right:0 !important; }
-html[data-style="pixelart"] #trackerPanel > footer { padding-left:4px !important; padding-right:12px !important; }
+@media (max-width: 480px) {
+    html[data-style="pixelart"] #trackerPanel:has(#callListContainer) { padding-left:16px !important; padding-right:16px !important; }
+    html[data-style="pixelart"] #chartContainer { height:88px; }
+}
+html[data-style="pixelart"] #trackerPanel:has(#callListContainer) > footer { padding-left:4px !important; padding-right:12px !important; }
 /* Etched rules between the window's sections: a dark groove with a lit edge. */
 html[data-style="pixelart"] #trackerPanel > header { border-bottom:2px solid var(--px-rule) !important; box-shadow: 0 2px 0 var(--px-rule-hi); }
 html[data-style="pixelart"] #callListContainer,
-html[data-style="pixelart"] #trackerPanel > footer { border-top:2px solid var(--px-rule) !important; }
-html[data-style="pixelart"] #callListContainer { box-shadow: inset 0 2px 0 var(--px-rule-hi); }
-html[data-style="pixelart"] #trackerPanel > footer { box-shadow: inset 0 2px 0 var(--px-rule-hi); }
+html[data-style="pixelart"] #trackerPanel:has(#callListContainer) > footer { border-top:2px solid var(--px-rule) !important; box-shadow: inset 0 2px 0 var(--px-rule-hi); }
 
 /* Type tiers, all on a whole-pixel grid: Press Start 2P 16px for the title
    and headline figures (24px in the stat wells), Tiny5 16px for everything
@@ -1431,26 +1437,32 @@ html[data-style="pixelart"] #progressText { font-family: var(--font-display); fo
 html[data-style="pixelart"] #totalCalls, html[data-style="pixelart"] #totalTransfers, html[data-style="pixelart"] #keptRate { font-family: var(--font-display) !important;
     text-shadow: 3px 3px 0 var(--px-drop) !important; }
 
-/* The chart is a small sunken screen: flat 2px line, square-ish points, no
-   alpha ribbon (the polyline fill closed end to end and crossed the line). */
-html[data-style="pixelart"] #chartContainer { margin:14px 0 12px; padding:12px !important; height:112px;
+/* The chart is a small sunken screen: flat 2px line on whole pixels, one
+   marker sprite, no alpha ribbon (the polyline fill closed end to end and
+   crossed the line). */
+html[data-style="pixelart"] #chartContainer { margin:12px 0 10px; padding:12px !important; height:104px;
     background: var(--px-well); border:2px solid var(--px-ink); box-shadow: inset 2px 2px 0 var(--px-shade), 0 2px 0 var(--px-well-lip); }
 html[data-style="pixelart"] #rateChart .chart-line { fill:none !important; stroke-width:2; vector-effect: non-scaling-stroke;
     shape-rendering: crispEdges; stroke-linejoin: miter; stroke-linecap: square; }
-html[data-style="pixelart"] #rateChart .chart-point { r:3px; stroke: var(--px-ink); stroke-width:2; vector-effect: non-scaling-stroke; shape-rendering: crispEdges; }
-html[data-style="pixelart"] #rateChart .chart-point:hover { r:4px; }
+/* Markers: flow's drawChart snaps every one to even screen pixels, so all of
+   them land on the same pixel phase and rasterise as one identical sprite. */
+html[data-style="pixelart"] #rateChart .chart-point { r:4px; fill: var(--accent); stroke: var(--px-ink); stroke-width:2; vector-effect: non-scaling-stroke;
+    shape-rendering: crispEdges; }
+html[data-style="pixelart"] #rateChart .chart-point:hover { r:5px; }
 html[data-style="pixelart"] #rateChart .grid-line { stroke: var(--px-lo); stroke-width:2; stroke-dasharray:4,4; vector-effect: non-scaling-stroke; shape-rendering: crispEdges; }
 
-/* Call rows. Done rows dim to a readable level, and the strike is a 2px
-   accent mark on the art grid, overhanging the word: in the text colour a
-   strike fuses with 5px-tall capitals (C read as G); in its own colour the
-   letters keep their shape under it. */
+/* Call rows. Done rows dim to a readable level. The strike is a 2px bar on
+   the art grid drawn BEHIND the glyphs in a dark accent: in the text colour
+   a strike fuses with 5px-tall capitals, and on top it erases their middle
+   row (C read as O); behind, every letter pixel stays and the bar shows in
+   the gaps. The overhang is 2px each side (Tiny5 already ends in a 2px
+   right bearing, so only the left needs padding). */
 html[data-style="pixelart"] .call-item { padding-top:10px; padding-bottom:10px; }
 html[data-style="pixelart"] .call-item.opacity-50 { opacity:0.8 !important; }
 html[data-style="pixelart"] .call-item + .call-item { box-shadow: 0 -2px 0 var(--px-rule); }
-html[data-style="pixelart"] .call-item .flex-grow > p:first-child { position:relative; display:inline-block; text-decoration:none !important; }
-html[data-style="pixelart"] .call-item .flex-grow > p.line-through:first-child::after { content:''; position:absolute; left:-2px; right:-2px; top:9px; height:2px;
-    background: var(--accent); }
+html[data-style="pixelart"] .call-item .flex-grow > p:first-child { display:inline-block; text-decoration:none !important;
+    margin-left:-2px; padding-left:2px; background: linear-gradient(var(--px-strike), var(--px-strike)) 0 9px / 0 2px no-repeat; }
+html[data-style="pixelart"] .call-item .flex-grow > p.line-through:first-child { background-size: 100% 2px; }
 html[data-style="pixelart"] .call-item .flex-grow > p.text-xs { display:block; }
 html[data-style="pixelart"] #transferListContainer > [data-id] p.text-xs { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
@@ -1492,16 +1504,27 @@ html[data-style="pixelart"] .call-item .delete-btn { padding:5px !important; lin
 html[data-style="pixelart"] #transferListContainer .delete-btn:hover,
 html[data-style="pixelart"] .call-item .delete-btn:hover { background: var(--danger) !important; color:#fff !important; }
 
-/* Reminder popover: labels and sound names on the same 16px grid, the sound
-   emoji resampled to hard pixels like the old icon treatment. */
-html[data-style="pixelart"] #reminderControls .tp-label { font-family: var(--font-main) !important; font-size:16px !important; line-height:20px; letter-spacing:0; text-transform:uppercase; }
+/* Reminder popover: labels and sound names on the same 16px grid (Tiny5 has
+   one weight, so no faux bold), square slider knobs, and each sound tile a
+   fixed icon row over two reserved label lines. The emoji are replaced by
+   PixelForge sprites (sound-* in smt/icons/pixel-icons.pxa). */
+html[data-style="pixelart"] #reminderControls { padding:14px !important; }
+html[data-style="pixelart"] #reminderControls .tp-label { font-family: var(--font-main) !important; font-size:16px !important; line-height:20px;
+    font-weight:400 !important; letter-spacing:0; text-transform:uppercase; text-shadow:none; }
+html[data-style="pixelart"] input[type=range]::-webkit-slider-runnable-track { height:6px; border-radius:0; background: var(--px-well); box-shadow: 0 0 0 2px var(--px-ink); }
+html[data-style="pixelart"] input[type=range]::-webkit-slider-thumb { width:14px; height:18px; margin-top:-6px; border-radius:0; border:2px solid var(--px-ink);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,0.4), inset 0 -2px 0 rgba(0,0,0,0.3); }
+html[data-style="pixelart"] .sound-grid { gap:4px; }
 html[data-style="pixelart"] #randomizeSoundBtn { font-size:16px !important; line-height:16px; padding:3px 8px 3px 6px !important; }
 html[data-style="pixelart"] #previewSoundBtn { padding:3px 5px !important; line-height:0; }
-html[data-style="pixelart"] .sound-card { padding:8px 2px 6px; gap:4px; }
-html[data-style="pixelart"] .sound-card .s-emoji { font-size:18px; filter: url(#ttPixel); }
-html[data-style="pixelart"] .sound-card .s-name { font-size:16px; line-height:16px; }
+html[data-style="pixelart"] .sound-card { justify-content:flex-start; padding:8px 0 6px; gap:4px; }
+html[data-style="pixelart"] .sound-card .s-emoji { font-size:18px; color: var(--text); }
+html[data-style="pixelart"] .sound-card .s-name { font-size:16px; line-height:16px; min-height:32px; max-width:58px; display:flex; align-items:center;
+    justify-content:center; font-weight:400 !important; }
+html[data-style="pixelart"] .sound-card[data-value="cash"] .s-name { white-space:nowrap; }   /* not "Ca-" / "Ching" */
 html[data-style="pixelart"] .sound-card.selected { background: var(--accent) !important; }
-html[data-style="pixelart"] .sound-card.selected .s-name { color: var(--accent-text); }
+html[data-style="pixelart"] .sound-card.selected .s-name,
+html[data-style="pixelart"] .sound-card.selected .s-emoji { color: var(--accent-text); }
 
 /* Meters: ink-outlined blocks, lit on top when on. */
 html[data-style="pixelart"] .tt-meter.seg-meter { gap:2px; height:16px; }
@@ -1509,7 +1532,7 @@ html[data-style="pixelart"] .tt-meter.seg-meter .seg { border:2px solid var(--px
 html[data-style="pixelart"] .tt-meter.seg-meter .seg.on { background: var(--accent); box-shadow: inset 0 2px 0 rgba(255,255,255,0.45); }
 
 /* BEGIN pixel-icons (generated by smt/icons/build.py from smt/icons/pixel-icons.pxa; do not edit) */
-html[data-style="pixelart"] .material-symbols-outlined:is([data-icon="add"],[data-icon="remove"],[data-icon="add_call"],[data-icon="add_circle"],[data-icon="close"],[data-icon="delete"],[data-icon="edit"],[data-icon="edit_note"],[data-icon="restart_alt"],[data-icon="history"],[data-icon="notifications"],[data-icon="home"],[data-icon="palette"],[data-icon="phone_in_talk"],[data-icon="play_arrow"],[data-icon="shuffle"],[data-icon="volume_up"],[data-icon="volume_down"],[data-icon="volume_mute"],[data-icon="volume_off"],[data-icon="warning"],[data-icon="dark_mode"],[data-icon="light_mode"]) {
+html[data-style="pixelart"] :is(.material-symbols-outlined[data-icon="add"],.material-symbols-outlined[data-icon="remove"],.material-symbols-outlined[data-icon="add_call"],.material-symbols-outlined[data-icon="add_circle"],.material-symbols-outlined[data-icon="close"],.material-symbols-outlined[data-icon="delete"],.material-symbols-outlined[data-icon="edit"],.material-symbols-outlined[data-icon="edit_note"],.material-symbols-outlined[data-icon="restart_alt"],.material-symbols-outlined[data-icon="history"],.material-symbols-outlined[data-icon="notifications"],.material-symbols-outlined[data-icon="home"],.material-symbols-outlined[data-icon="palette"],.material-symbols-outlined[data-icon="phone_in_talk"],.material-symbols-outlined[data-icon="play_arrow"],.material-symbols-outlined[data-icon="shuffle"],.material-symbols-outlined[data-icon="volume_up"],.material-symbols-outlined[data-icon="volume_down"],.material-symbols-outlined[data-icon="volume_mute"],.material-symbols-outlined[data-icon="volume_off"],.material-symbols-outlined[data-icon="warning"],.material-symbols-outlined[data-icon="dark_mode"],.material-symbols-outlined[data-icon="light_mode"],.sound-card[data-value="glass"] .s-emoji,.sound-card[data-value="digital"] .s-emoji,.sound-card[data-value="chime"] .s-emoji,.sound-card[data-value="sonar"] .s-emoji,.sound-card[data-value="arcade"] .s-emoji,.sound-card[data-value="cash"] .s-emoji,.sound-card[data-value="zen"] .s-emoji,.sound-card[data-value="laser"] .s-emoji,.sound-card[data-value="retro8"] .s-emoji,.sound-card[data-value="wood"] .s-emoji,.sound-card[data-value="alarm"] .s-emoji,.sound-card[data-value="pop"] .s-emoji,.sound-card[data-value="wind"] .s-emoji,.sound-card[data-value="blip"] .s-emoji) {
     width:18px; height:18px; width:round(up, 1em, 9px); height:round(up, 1em, 9px);
     flex-shrink:0; overflow:hidden; filter:none; -webkit-text-fill-color:transparent; background-color:currentColor;
     -webkit-mask:var(--px-icon) center / 100% 100% no-repeat; mask:var(--px-icon) center / 100% 100% no-repeat; }
@@ -1521,7 +1544,7 @@ html[data-style="pixelart"] [data-icon="close"] { --px-icon:url("data:image/svg+
 html[data-style="pixelart"] [data-icon="delete"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h3v1H3zM1 1h7v1H1zM1 3h7v1H1zM1 4h1v1H1zM3 4h1v1H3zM5 4h1v1H5zM7 4h1v1H7zM1 5h1v1H1zM3 5h1v1H3zM5 5h1v1H5zM7 5h1v1H7zM1 6h1v1H1zM3 6h1v1H3zM5 6h1v1H5zM7 6h1v1H7zM1 7h1v1H1zM3 7h1v1H3zM5 7h1v1H5zM7 7h1v1H7zM2 8h5v1H2z'/%3E%3C/svg%3E"); }
 html[data-style="pixelart"] [data-icon="edit"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M6 0h2v1H6zM5 1h1v1H5zM7 1h2v1H7zM4 2h2v1H4zM7 2h1v1H7zM3 3h4v1H3zM2 4h4v1H2zM1 5h4v1H1zM1 6h3v1H1zM1 7h2v1H1zM0 8h1v1H0z'/%3E%3C/svg%3E"); }
 html[data-style="pixelart"] [data-icon="edit_note"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M1 1h2v1H1zM2 2h2v1H2zM3 3h2v1H3zM4 4h2v1H4zM3 5h2v1H3zM2 6h2v1H2zM1 7h2v1H1z'/%3E%3C/svg%3E"); }
-html[data-style="pixelart"] [data-icon="restart_alt"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h1v1H1zM3 0h3v1H3zM1 1h7v1H1zM1 2h3v1H1zM6 2h3v1H6zM1 3h4v1H1zM7 3h2v1H7zM7 4h2v1H7zM0 5h2v1H0zM7 5h2v1H7zM0 6h3v1H0zM6 6h3v1H6zM1 7h7v1H1zM2 8h5v1H2z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] [data-icon="restart_alt"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h1v1H4zM3 1h5v1H3zM2 2h7v1H2zM3 3h2v1H3zM7 3h2v1H7zM4 4h1v1H4zM7 4h2v1H7zM7 5h2v1H7zM0 6h2v1H0zM7 6h2v1H7zM1 7h7v1H1zM2 8h5v1H2z'/%3E%3C/svg%3E"); }
 html[data-style="pixelart"] [data-icon="history"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h7v1H1zM2 1h1v1H2zM6 1h1v1H6zM2 2h5v1H2zM3 3h3v1H3zM4 4h1v1H4zM3 5h1v1H3zM5 5h1v1H5zM2 6h1v1H2zM6 6h1v1H6zM2 7h5v1H2zM1 8h7v1H1z'/%3E%3C/svg%3E"); }
 html[data-style="pixelart"] [data-icon="notifications"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h1v1H4zM3 1h3v1H3zM2 2h5v1H2zM2 3h5v1H2zM2 4h5v1H2zM1 5h7v1H1zM0 6h9v1H0zM3 8h3v1H3z'/%3E%3C/svg%3E"); }
 html[data-style="pixelart"] [data-icon="home"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h1v1H4zM3 1h3v1H3zM2 2h5v1H2zM1 3h7v1H1zM0 4h9v1H0zM1 5h7v1H1zM1 6h2v1H1zM6 6h2v1H6zM1 7h2v1H1zM6 7h2v1H6zM1 8h2v1H1zM6 8h2v1H6z'/%3E%3C/svg%3E"); }
@@ -1536,6 +1559,20 @@ html[data-style="pixelart"] [data-icon="volume_off"] { --px-icon:url("data:image
 html[data-style="pixelart"] [data-icon="warning"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h1v1H4zM3 1h3v1H3zM3 2h1v1H3zM5 2h1v1H5zM2 3h2v1H2zM5 3h2v1H5zM2 4h2v1H2zM5 4h2v1H5zM1 5h7v1H1zM1 6h3v1H1zM5 6h3v1H5zM0 7h9v1H0z'/%3E%3C/svg%3E"); }
 html[data-style="pixelart"] [data-icon="dark_mode"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h3v1H2zM1 1h3v1H1zM0 2h3v1H0zM0 3h3v1H0zM0 4h3v1H0zM0 5h4v1H0zM7 5h1v1H7zM1 6h7v1H1zM2 7h5v1H2z'/%3E%3C/svg%3E"); }
 html[data-style="pixelart"] [data-icon="light_mode"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h1v1H4zM1 1h1v1H1zM7 1h1v1H7zM3 2h3v1H3zM2 3h5v1H2zM0 4h1v1H0zM2 4h5v1H2zM8 4h1v1H8zM2 5h5v1H2zM3 6h3v1H3zM1 7h1v1H1zM7 7h1v1H7zM4 8h1v1H4z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="glass"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h1v1H1zM7 0h1v1H7zM1 1h7v1H1zM1 2h7v1H1zM2 3h5v1H2zM3 4h3v1H3zM4 5h1v1H4zM4 6h1v1H4zM4 7h1v1H4zM2 8h5v1H2z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="digital"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h5v1H2zM2 1h5v1H2zM0 2h9v1H0zM0 3h2v1H0zM7 3h2v1H7zM0 4h2v1H0zM3 4h1v1H3zM5 4h1v1H5zM7 4h2v1H7zM0 5h2v1H0zM7 5h2v1H7zM0 6h9v1H0zM2 7h5v1H2zM2 8h5v1H2z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="chime"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h1v1H4zM3 1h3v1H3zM2 2h5v1H2zM2 3h5v1H2zM2 4h5v1H2zM1 5h7v1H1zM0 6h9v1H0zM4 7h1v1H4zM4 8h1v1H4z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="sonar"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M1 1h1v1H1zM7 1h1v1H7zM0 2h1v1H0zM3 2h1v1H3zM5 2h1v1H5zM8 2h1v1H8zM0 3h1v1H0zM2 3h1v1H2zM6 3h1v1H6zM8 3h1v1H8zM0 4h1v1H0zM2 4h1v1H2zM4 4h1v1H4zM6 4h1v1H6zM8 4h1v1H8zM0 5h1v1H0zM2 5h1v1H2zM6 5h1v1H6zM8 5h1v1H8zM0 6h1v1H0zM3 6h1v1H3zM5 6h1v1H5zM8 6h1v1H8zM1 7h1v1H1zM7 7h1v1H7z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="arcade"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h3v1H3zM2 1h5v1H2zM3 2h3v1H3zM4 3h1v1H4zM4 4h1v1H4zM1 5h7v1H1zM0 6h3v1H0zM4 6h5v1H4zM0 7h9v1H0z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="cash"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h5v1H2zM1 1h3v1H1zM5 1h3v1H5zM0 2h3v1H0zM6 2h3v1H6zM0 3h2v1H0zM3 3h6v1H3zM0 4h3v1H0zM6 4h3v1H6zM0 5h6v1H0zM7 5h2v1H7zM0 6h3v1H0zM6 6h3v1H6zM1 7h3v1H1zM5 7h3v1H5zM2 8h5v1H2z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="zen"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M6 0h2v1H6zM5 1h2v1H5zM4 2h2v1H4zM0 4h9v1H0zM1 5h7v1H1zM2 6h5v1H2zM3 7h3v1H3z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="laser"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h4v1H4zM3 1h4v1H3zM2 2h4v1H2zM1 3h7v1H1zM4 4h3v1H4zM3 5h3v1H3zM2 6h2v1H2zM1 7h1v1H1z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="retro8"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h1v1H2zM6 0h1v1H6zM3 1h1v1H3zM5 1h1v1H5zM2 2h5v1H2zM1 3h2v1H1zM4 3h1v1H4zM6 3h2v1H6zM0 4h9v1H0zM0 5h1v1H0zM2 5h5v1H2zM8 5h1v1H8zM0 6h1v1H0zM2 6h1v1H2zM6 6h1v1H6zM8 6h1v1H8zM3 7h1v1H3zM5 7h1v1H5z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="wood"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M1 1h7v1H1zM0 2h9v1H0zM0 3h2v1H0zM7 3h2v1H7zM0 4h9v1H0zM0 5h9v1H0zM1 6h7v1H1zM2 7h1v1H2zM6 7h1v1H6z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="alarm"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h2v1H0zM7 0h2v1H7zM0 1h1v1H0zM2 1h5v1H2zM8 1h1v1H8zM1 2h1v1H1zM4 2h1v1H4zM7 2h1v1H7zM0 3h1v1H0zM4 3h1v1H4zM8 3h1v1H8zM0 4h1v1H0zM4 4h2v1H4zM8 4h1v1H8zM0 5h1v1H0zM8 5h1v1H8zM1 6h1v1H1zM7 6h1v1H7zM2 7h5v1H2zM1 8h1v1H1zM7 8h1v1H7z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="pop"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M6 0h2v1H6zM5 1h1v1H5zM8 1h1v1H8zM5 2h1v1H5zM8 2h1v1H8zM2 3h2v1H2zM6 3h2v1H6zM1 4h1v1H1zM4 4h1v1H4zM0 5h1v1H0zM5 5h1v1H5zM0 6h1v1H0zM5 6h1v1H5zM1 7h1v1H1zM4 7h1v1H4zM2 8h2v1H2z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="wind"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h9v1H0zM1 1h1v1H1zM4 1h1v1H4zM7 1h1v1H7zM1 2h1v1H1zM4 2h1v1H4zM7 2h1v1H7zM0 3h3v1H0zM4 3h1v1H4zM6 3h3v1H6zM0 4h3v1H0zM4 4h1v1H4zM6 4h3v1H6zM0 5h3v1H0zM4 5h1v1H4zM6 5h3v1H6zM0 6h3v1H0zM4 6h1v1H4zM4 7h1v1H4zM3 8h3v1H3z'/%3E%3C/svg%3E"); }
+html[data-style="pixelart"] .sound-card[data-value="blip"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M2 1h5v1H2zM1 2h7v1H1zM1 3h2v1H1zM6 3h2v1H6zM1 4h2v1H1zM4 4h1v1H4zM6 4h2v1H6zM1 5h2v1H1zM6 5h2v1H6zM1 6h7v1H1zM2 7h5v1H2z'/%3E%3C/svg%3E"); }
 /* END pixel-icons */
 
 

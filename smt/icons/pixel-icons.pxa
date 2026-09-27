@@ -3,6 +3,8 @@
 
 # Pixel Art theme icon set (smt/theme.css). One 9x9 frame per icon, named by
 # the Material Symbols ligature the page writes (the data-icon attribute).
+# Frames named sound-<value> replace the emoji on the Call Flow reminder's
+# sound cards (.sound-card[data-value]).
 # X is ink: the build paints it in currentColor, so every icon follows the
 # text colour it sits in. Edit here, then run: python smt/icons/build.py
 
@@ -98,13 +100,13 @@ X........
 .........
 
 @frame restart_alt
-.X.XXX...
-.XXXXXXX.
-.XXX..XXX
-.XXXX..XX
+....X....
+...XXXXX.
+..XXXXXXX
+...XX..XX
+....X..XX
 .......XX
 XX.....XX
-XXX...XXX
 .XXXXXXX.
 ..XXXXX..
 
@@ -261,3 +263,157 @@ X.XXXXX.X
 ...XXX...
 .X.....X.
 ....X....
+
+@frame sound-glass
+.X.....X.
+.XXXXXXX.
+.XXXXXXX.
+..XXXXX..
+...XXX...
+....X....
+....X....
+....X....
+..XXXXX..
+
+@frame sound-digital
+..XXXXX..
+..XXXXX..
+XXXXXXXXX
+XX.....XX
+XX.X.X.XX
+XX.....XX
+XXXXXXXXX
+..XXXXX..
+..XXXXX..
+
+@frame sound-chime
+....X....
+...XXX...
+..XXXXX..
+..XXXXX..
+..XXXXX..
+.XXXXXXX.
+XXXXXXXXX
+....X....
+....X....
+
+@frame sound-sonar
+.........
+.X.....X.
+X..X.X..X
+X.X...X.X
+X.X.X.X.X
+X.X...X.X
+X..X.X..X
+.X.....X.
+.........
+
+@frame sound-arcade
+...XXX...
+..XXXXX..
+...XXX...
+....X....
+....X....
+.XXXXXXX.
+XXX.XXXXX
+XXXXXXXXX
+.........
+
+@frame sound-cash
+..XXXXX..
+.XXX.XXX.
+XXX...XXX
+XX.XXXXXX
+XXX...XXX
+XXXXXX.XX
+XXX...XXX
+.XXX.XXX.
+..XXXXX..
+
+@frame sound-zen
+......XX.
+.....XX..
+....XX...
+.........
+XXXXXXXXX
+.XXXXXXX.
+..XXXXX..
+...XXX...
+.........
+
+@frame sound-laser
+....XXXX.
+...XXXX..
+..XXXX...
+.XXXXXXX.
+....XXX..
+...XXX...
+..XX.....
+.X.......
+.........
+
+@frame sound-retro8
+..X...X..
+...X.X...
+..XXXXX..
+.XX.X.XX.
+XXXXXXXXX
+X.XXXXX.X
+X.X...X.X
+...X.X...
+.........
+
+@frame sound-wood
+.........
+.XXXXXXX.
+XXXXXXXXX
+XX.....XX
+XXXXXXXXX
+XXXXXXXXX
+.XXXXXXX.
+..X...X..
+.........
+
+@frame sound-alarm
+XX.....XX
+X.XXXXX.X
+.X..X..X.
+X...X...X
+X...XX..X
+X.......X
+.X.....X.
+..XXXXX..
+.X.....X.
+
+@frame sound-pop
+......XX.
+.....X..X
+.....X..X
+..XX..XX.
+.X..X....
+X....X...
+X....X...
+.X..X....
+..XX.....
+
+@frame sound-wind
+XXXXXXXXX
+.X..X..X.
+.X..X..X.
+XXX.X.XXX
+XXX.X.XXX
+XXX.X.XXX
+XXX.X....
+....X....
+...XXX...
+
+@frame sound-blip
+.........
+..XXXXX..
+.XXXXXXX.
+.XX...XX.
+.XX.X.XX.
+.XX...XX.
+.XXXXXXX.
+..XXXXX..
+.........
