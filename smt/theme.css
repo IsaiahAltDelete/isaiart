@@ -579,7 +579,8 @@ html[data-mode="light"][data-style="pixelart"]:not([data-color="auto"]) {
     --hover-bg:     color-mix(in srgb, var(--px-hue) 14%, transparent);
 }
 html[data-mode="dark"][data-style="pixelart"]  { --px-strike: color-mix(in srgb, var(--accent) 62%, #000000); }
-html[data-mode="light"][data-style="pixelart"] { --px-strike: color-mix(in srgb, var(--accent) 72%, #FFFFFF); }
+html[data-mode="dark"][data-style="pixelart"]:not([data-color="auto"]) { --px-strike: color-mix(in srgb, var(--accent) 76%, #000000); }
+html[data-mode="light"][data-style="pixelart"] { --px-strike: color-mix(in srgb, var(--accent) 85%, #FFFFFF); }
 html[data-style="pixelart"] #pixelArtBg  { display:block !important; }
 html[data-style="pixelart"] #crtOverlay  { display:block !important; }
 html[data-style="pixelart"] img, html[data-style="pixelart"] canvas { image-rendering: pixelated; }
@@ -1421,6 +1422,7 @@ html[data-style="pixelart"] #callListContainer { padding-right:0 !important; }
     html[data-style="pixelart"] #chartContainer { height:88px; }
 }
 html[data-style="pixelart"] #trackerPanel:has(#callListContainer) > footer { padding-left:4px !important; padding-right:12px !important; }
+html[data-style="pixelart"] #lastUpdatedEl { padding-left:12px; padding-right:12px; }   /* matches Reset Data's inset on the left */
 /* Etched rules between the window's sections: a dark groove with a lit edge. */
 html[data-style="pixelart"] #trackerPanel > header { border-bottom:2px solid var(--px-rule) !important; box-shadow: 0 2px 0 var(--px-rule-hi); }
 html[data-style="pixelart"] #callListContainer,
@@ -1443,7 +1445,7 @@ html[data-style="pixelart"] #totalCalls, html[data-style="pixelart"] #totalTrans
 html[data-style="pixelart"] #chartContainer { margin:12px 0 10px; padding:12px !important; height:104px;
     background: var(--px-well); border:2px solid var(--px-ink); box-shadow: inset 2px 2px 0 var(--px-shade), 0 2px 0 var(--px-well-lip); }
 html[data-style="pixelart"] #rateChart .chart-line { fill:none !important; stroke-width:2; vector-effect: non-scaling-stroke;
-    shape-rendering: crispEdges; stroke-linejoin: miter; stroke-linecap: square; }
+    shape-rendering: crispEdges; stroke-linejoin: miter; stroke-linecap: butt; }
 /* Markers: flow's drawChart snaps every one to even screen pixels, so all of
    them land on the same pixel phase and rasterise as one identical sprite. */
 html[data-style="pixelart"] #rateChart .chart-point { r:4px; fill: var(--accent); stroke: var(--px-ink); stroke-width:2; vector-effect: non-scaling-stroke;
@@ -1508,7 +1510,7 @@ html[data-style="pixelart"] .call-item .delete-btn:hover { background: var(--dan
    one weight, so no faux bold), square slider knobs, and each sound tile a
    fixed icon row over two reserved label lines. The emoji are replaced by
    PixelForge sprites (sound-* in smt/icons/pixel-icons.pxa). */
-html[data-style="pixelart"] #reminderControls { padding:14px !important; }
+html[data-style="pixelart"] #reminderControls { padding:12px 14px !important; }
 html[data-style="pixelart"] #reminderControls .tp-label { font-family: var(--font-main) !important; font-size:16px !important; line-height:20px;
     font-weight:400 !important; letter-spacing:0; text-transform:uppercase; text-shadow:none; }
 html[data-style="pixelart"] input[type=range]::-webkit-slider-runnable-track { height:6px; border-radius:0; background: var(--px-well); box-shadow: 0 0 0 2px var(--px-ink); }
@@ -1517,7 +1519,7 @@ html[data-style="pixelart"] input[type=range]::-webkit-slider-thumb { width:14px
 html[data-style="pixelart"] .sound-grid { gap:4px; }
 html[data-style="pixelart"] #randomizeSoundBtn { font-size:16px !important; line-height:16px; padding:3px 8px 3px 6px !important; }
 html[data-style="pixelart"] #previewSoundBtn { padding:3px 5px !important; line-height:0; }
-html[data-style="pixelart"] .sound-card { justify-content:flex-start; padding:8px 0 6px; gap:4px; }
+html[data-style="pixelart"] .sound-card { justify-content:flex-start; padding:6px 0 2px; gap:2px; }
 html[data-style="pixelart"] .sound-card .s-emoji { font-size:18px; color: var(--text); }
 html[data-style="pixelart"] .sound-card .s-name { font-size:16px; line-height:16px; min-height:32px; max-width:58px; display:flex; align-items:center;
     justify-content:center; font-weight:400 !important; }
