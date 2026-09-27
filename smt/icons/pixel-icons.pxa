@@ -77,14 +77,14 @@ XXXXXXXXX
 
 @frame edit
 ......XX.
-.....X..X
-....X..X.
-...X..X..
-..X..X...
-.X..X....
+.....X.XX
+....XX.X.
+...XXXX..
+..XXXX...
+.XXXX....
 .XXX.....
 .XX......
-.........
+X........
 
 @frame edit_note
 .........
@@ -98,14 +98,14 @@ XXXXXXXXX
 .........
 
 @frame restart_alt
-.........
-.X.XXXX..
-.XX....X.
-.XXX....X
-........X
-X.......X
-X.......X
-.X.....X.
+.X.XXX...
+.XXXXXXX.
+.XXX..XXX
+.XXXX..XX
+.......XX
+XX.....XX
+XXX...XXX
+.XXXXXXX.
 ..XXXXX..
 
 @frame history
