@@ -496,6 +496,7 @@ html[data-mode="dark"][data-style="pixelart"] {
     --px-key-hi:#6E6CAE;    /* key top light */
     --px-rule:#1C1D38;      /* etched rule, dark line */
     --px-rule-hi:#3E3C72;   /* etched rule, light line */
+    --px-keyline:#15162A;   /* inner line of the window frame */
 }
 html[data-mode="dark"][data-style="pixelart"][data-color="auto"],
 html[data-mode="dark"][data-style="pixelart"][data-color="orange"] { --accent:#FFA300; --accent-hover:#CC8200; --accent-text:#1A1C2C; }
@@ -513,7 +514,7 @@ html[data-mode="light"][data-style="pixelart"] {
     --px-ink:#1C2A12; --px-hi:#FFFFFF; --px-lo:#4A6A3A;
     --px-well:#E6EFE1; --px-well-lip:#FFFFFF;
     --px-key:#EAF2E6; --px-key-hi:#FFFFFF;
-    --px-rule:#8DAE7E; --px-rule-hi:#F2F8EF;
+    --px-rule:#8DAE7E; --px-rule-hi:#F2F8EF; --px-keyline:#2E4222;
 }
 html[data-mode="light"][data-style="pixelart"][data-color="auto"],
 html[data-mode="light"][data-style="pixelart"][data-color="orange"] { --accent:#A85A00; --accent-hover:#804500; --accent-text:#FFFFFF; }
@@ -522,6 +523,55 @@ html[data-mode="light"][data-style="pixelart"][data-color="white"]  { --accent:#
 html[data-mode="light"][data-style="pixelart"][data-color="blue"]   { --accent:#2A3A8A; --accent-hover:#1A2870; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-style="pixelart"][data-color="green"]  { --accent:#2C6A10; --accent-hover:#1A4A08; --accent-text:#FFFFFF; }
 html[data-mode="light"][data-style="pixelart"][data-color="pink"]   { --accent:#8A2A4A; --accent-hover:#6A1A38; --accent-text:#FFFFFF; }
+/* The colour dots tint the whole window, not just the accent. Signature
+   keeps the theme's own hand-tuned palette above (indigo by night, GameBoy
+   green by day); every other dot re-inks the card, frame, wells, keys and
+   rules from its hue. The page background (--bg) is left alone. */
+html[data-mode="dark"][data-style="pixelart"]:not([data-color="auto"]) {
+    --px-hue: var(--accent);
+    --card-bg:      color-mix(in srgb, var(--px-hue) 21%, #13141C);
+    --dropdown-bg:  var(--card-bg);
+    --bg-alt:       color-mix(in srgb, var(--px-hue) 16%, #111219);
+    --list-item-bg: color-mix(in srgb, var(--px-hue) 28%, #1A1B25);
+    --input-bg:     color-mix(in srgb, var(--px-hue)  8%, #0B0C11);
+    --px-well:      color-mix(in srgb, var(--px-hue) 13%, #0E0F15);
+    --px-well-lip:  color-mix(in srgb, var(--px-hue) 44%, #262733);
+    --border:       color-mix(in srgb, var(--px-hue) 55%, #2E2F3B);
+    --px-hi:        color-mix(in srgb, var(--px-hue) 40%, #F2F2F5);
+    --px-lo:        color-mix(in srgb, var(--px-hue) 42%, #1D1E28);
+    --px-keyline:   color-mix(in srgb, var(--px-hue) 12%, #0C0D13);
+    --px-ink:       color-mix(in srgb, var(--px-hue)  8%, #06070B);
+    --px-shade:     color-mix(in srgb, var(--px-hue) 12%, #0A0B10);
+    --px-key:       color-mix(in srgb, var(--px-hue) 40%, #272834);
+    --px-key-hi:    color-mix(in srgb, var(--px-hue) 55%, #62647A);
+    --px-rule:      color-mix(in srgb, var(--px-hue) 12%, #0D0E14);
+    --px-rule-hi:   color-mix(in srgb, var(--px-hue) 38%, #272833);
+    --subtle:       color-mix(in srgb, var(--px-hue) 28%, #D6D7E0);
+    --hover-bg:     color-mix(in srgb, var(--px-hue) 30%, transparent);
+}
+html[data-mode="light"][data-style="pixelart"]:not([data-color="auto"]) {
+    --px-hue: var(--accent);
+    --card-bg:      color-mix(in srgb, var(--px-hue) 15%, #F7F6F1);
+    --dropdown-bg:  var(--card-bg);
+    --bg-alt:       color-mix(in srgb, var(--px-hue) 10%, #FAF9F5);
+    --list-item-bg: color-mix(in srgb, var(--px-hue)  6%, #FFFFFF);
+    --input-bg:     color-mix(in srgb, var(--px-hue)  3%, #FFFFFF);
+    --px-well:      color-mix(in srgb, var(--px-hue)  7%, #FCFBF8);
+    --px-well-lip:  #FFFFFF;
+    --border:       color-mix(in srgb, var(--px-hue) 45%, #A4A39C);
+    --px-hi:        #FFFFFF;
+    --px-lo:        color-mix(in srgb, var(--px-hue) 70%, #3A3A36);
+    --px-keyline:   color-mix(in srgb, var(--px-hue) 55%, #222220);
+    --px-ink:       color-mix(in srgb, var(--px-hue) 35%, #141412);
+    --px-shade:     color-mix(in srgb, var(--px-hue) 30%, #7C8084);
+    --px-key:       color-mix(in srgb, var(--px-hue)  6%, #FFFFFF);
+    --px-key-hi:    #FFFFFF;
+    --px-rule:      color-mix(in srgb, var(--px-hue) 40%, #A6A59E);
+    --px-rule-hi:   #FFFFFF;
+    --text:         color-mix(in srgb, var(--px-hue) 22%, #111110);
+    --subtle:       color-mix(in srgb, var(--px-hue) 55%, #3A3A36);
+    --hover-bg:     color-mix(in srgb, var(--px-hue) 14%, transparent);
+}
 html[data-style="pixelart"] #pixelArtBg  { display:block !important; }
 html[data-style="pixelart"] #crtOverlay  { display:block !important; }
 html[data-style="pixelart"] img, html[data-style="pixelart"] canvas { image-rendering: pixelated; }
@@ -531,11 +581,23 @@ html[data-style="pixelart"] img, html[data-style="pixelart"] canvas { image-rend
 html[data-style="pixelart"] #crtOverlay { z-index:0; }
 html[data-style="pixelart"] #scene { position:relative; z-index:1; }
 
-/* The window: a 9-slice frame sprite (border-image) plus a hard drop shadow. */
+/* The window frame is stacked flat fills, so it takes the theme colours.
+   From the outside in, each ring one art pixel (2px): ink outline with
+   stepped corners (two crossed bars), a bevel lit on the top and left edges
+   and shaded on the bottom and right, the frame body, an inner keyline,
+   then the card. Sizes are whole pixels, so every edge is hard. */
 html[data-style="pixelart"] #trackerPanel {
-    background: var(--card-bg) !important; background-clip: padding-box !important;
+    --pxf: linear-gradient(var(--card-bg), var(--card-bg)) center / calc(100% - 16px) calc(100% - 16px),
+           linear-gradient(var(--px-keyline), var(--px-keyline)) center / calc(100% - 12px) calc(100% - 12px),
+           linear-gradient(var(--border), var(--border)) center / calc(100% - 8px) calc(100% - 8px),
+           linear-gradient(var(--px-hi), var(--px-hi)) 2px 2px / calc(100% - 4px) 2px,
+           linear-gradient(var(--px-hi), var(--px-hi)) 2px 2px / 2px calc(100% - 6px),
+           linear-gradient(var(--px-lo), var(--px-lo)) center / calc(100% - 4px) calc(100% - 4px),
+           linear-gradient(var(--px-ink), var(--px-ink)) center / calc(100% - 4px) 100%,
+           linear-gradient(var(--px-ink), var(--px-ink)) center / 100% calc(100% - 4px);
+    background: var(--pxf) !important; background-repeat: no-repeat !important;
+    background-origin: border-box !important; background-clip: border-box !important;
     border:8px solid transparent !important; border-radius:0 !important;
-    border-image: var(--px-frame-window) 4 / 8px stretch !important;   /* after the shorthand, which resets it */
     backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
     box-shadow: 8px 8px 0 0 var(--px-shade) !important;
 }
@@ -1384,7 +1446,7 @@ html[data-style="pixelart"] .tt-meter.seg-meter { gap:2px; height:16px; }
 html[data-style="pixelart"] .tt-meter.seg-meter .seg { border:2px solid var(--px-ink); background: var(--px-well); }
 html[data-style="pixelart"] .tt-meter.seg-meter .seg.on { background: var(--accent); box-shadow: inset 0 2px 0 rgba(255,255,255,0.45); }
 html[data-style="pixelart"] #keptRateMeter { height:12px; }
-/* BEGIN pixel-icons (generated by smt/icons/build.py from smt/icons/*.pxa; do not edit) */
+/* BEGIN pixel-icons (generated by smt/icons/build.py from smt/icons/pixel-icons.pxa; do not edit) */
 html[data-style="pixelart"] .material-symbols-outlined:is([data-icon="add"],[data-icon="remove"],[data-icon="add_call"],[data-icon="add_circle"],[data-icon="close"],[data-icon="delete"],[data-icon="edit"],[data-icon="edit_note"],[data-icon="restart_alt"],[data-icon="history"],[data-icon="notifications"],[data-icon="home"],[data-icon="palette"],[data-icon="phone_in_talk"],[data-icon="play_arrow"],[data-icon="shuffle"],[data-icon="volume_up"],[data-icon="volume_down"],[data-icon="volume_mute"],[data-icon="volume_off"],[data-icon="warning"],[data-icon="dark_mode"],[data-icon="light_mode"]) {
     width:18px; height:18px; width:round(up, 1em, 9px); height:round(up, 1em, 9px);
     flex-shrink:0; overflow:hidden; filter:none; -webkit-text-fill-color:transparent; background-color:currentColor;
@@ -1412,8 +1474,6 @@ html[data-style="pixelart"] [data-icon="volume_off"] { --px-icon:url("data:image
 html[data-style="pixelart"] [data-icon="warning"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h1v1H4zM3 1h3v1H3zM3 2h1v1H3zM5 2h1v1H5zM2 3h2v1H2zM5 3h2v1H5zM2 4h2v1H2zM5 4h2v1H5zM1 5h7v1H1zM1 6h3v1H1zM5 6h3v1H5zM0 7h9v1H0z'/%3E%3C/svg%3E"); }
 html[data-style="pixelart"] [data-icon="dark_mode"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h3v1H2zM1 1h3v1H1zM0 2h3v1H0zM0 3h3v1H0zM0 4h3v1H0zM0 5h4v1H0zM7 5h1v1H7zM1 6h7v1H1zM2 7h5v1H2z'/%3E%3C/svg%3E"); }
 html[data-style="pixelart"] [data-icon="light_mode"] { --px-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h1v1H4zM1 1h1v1H1zM7 1h1v1H7zM3 2h3v1H3zM2 3h5v1H2zM0 4h1v1H0zM2 4h5v1H2zM8 4h1v1H8zM2 5h5v1H2zM3 6h3v1H3zM1 7h1v1H1zM7 7h1v1H7zM4 8h1v1H4z'/%3E%3C/svg%3E"); }
-html[data-mode="dark"][data-style="pixelart"] { --px-frame-window:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23C4C4F2' d='M1 1h7v1H1zM1 2h1v1H1zM1 3h1v1H1zM1 4h1v1H1zM1 5h1v1H1zM1 6h1v1H1z'/%3E%3Cpath fill='%230B0C18' d='M1 0h7v1H1zM0 1h1v1H0zM8 1h1v1H8zM0 2h1v1H0zM8 2h1v1H8zM0 3h1v1H0zM8 3h1v1H8zM0 4h1v1H0zM8 4h1v1H8zM0 5h1v1H0zM8 5h1v1H8zM0 6h1v1H0zM8 6h1v1H8zM0 7h1v1H0zM8 7h1v1H8zM1 8h7v1H1z'/%3E%3Cpath fill='%2345457E' d='M7 2h1v1H7zM7 3h1v1H7zM7 4h1v1H7zM7 5h1v1H7zM7 6h1v1H7zM1 7h7v1H1z'/%3E%3Cpath fill='%236B6BAE' d='M2 2h5v1H2zM2 3h1v1H2zM6 3h1v1H6zM2 4h1v1H2zM6 4h1v1H6zM2 5h1v1H2zM6 5h1v1H6zM2 6h5v1H2z'/%3E%3Cpath fill='%2315162A' d='M3 3h3v1H3zM3 4h1v1H3zM5 4h1v1H5zM3 5h3v1H3z'/%3E%3C/svg%3E"); }
-html[data-mode="light"][data-style="pixelart"] { --px-frame-window:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23FFFFFF' d='M1 1h7v1H1zM1 2h1v1H1zM1 3h1v1H1zM1 4h1v1H1zM1 5h1v1H1zM1 6h1v1H1z'/%3E%3Cpath fill='%231C2A12' d='M1 0h7v1H1zM0 1h1v1H0zM8 1h1v1H8zM0 2h1v1H0zM8 2h1v1H8zM0 3h1v1H0zM8 3h1v1H8zM0 4h1v1H0zM8 4h1v1H8zM0 5h1v1H0zM8 5h1v1H8zM0 6h1v1H0zM8 6h1v1H8zM0 7h1v1H0zM8 7h1v1H8zM1 8h7v1H1z'/%3E%3Cpath fill='%234A6A3A' d='M7 2h1v1H7zM7 3h1v1H7zM7 4h1v1H7zM7 5h1v1H7zM7 6h1v1H7zM1 7h7v1H1z'/%3E%3Cpath fill='%238DB07A' d='M2 2h5v1H2zM2 3h1v1H2zM6 3h1v1H6zM2 4h1v1H2zM6 4h1v1H6zM2 5h1v1H2zM6 5h1v1H6zM2 6h5v1H2z'/%3E%3Cpath fill='%232E4222' d='M3 3h3v1H3zM3 4h1v1H3zM5 4h1v1H5zM3 5h3v1H3z'/%3E%3C/svg%3E"); }
 /* END pixel-icons */
 
 
