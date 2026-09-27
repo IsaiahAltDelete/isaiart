@@ -1,0 +1,27 @@
+@name   pixel-frame
+@scale  12
+
+# Pixel Art theme window frames (smt/theme.css), drawn as 9-slices: the four
+# 4x4 corners stay fixed and the one-pixel middle row/column stretches, so
+# border-image slice 4 at an 8px border paints every art pixel as 2x2.
+# Keys are roles, not colours; build.py paints them from FRAME_COLORS per
+# light/dark mode. The preview palette below is the dark one.
+#   K outline   H lit edge   M frame   L shaded edge   k inner keyline
+
+@palette
+K #0b0c18  outline
+H #c4c4f2  lit edge
+M #6b6bae  frame
+L #45457e  shaded edge
+k #15162a  keyline
+
+@frame window
+.KKKKKKK.
+KHHHHHHHK
+KHMMMMMLK
+KHMkkkMLK
+KHMk.kMLK
+KHMkkkMLK
+KHMMMMMLK
+KLLLLLLLK
+.KKKKKKK.
