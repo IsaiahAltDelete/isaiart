@@ -22,7 +22,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=VT323&family=Share+Tech+Mono&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700;900&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Fredoka:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=UnifrakturMaguntia&family=Space+Mono:wght@400;700&family=Archivo+Black&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=VT323&family=Share+Tech+Mono&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Tiny5&family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700;900&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Fredoka:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=UnifrakturMaguntia&family=Space+Mono:wght@400;700&family=Archivo+Black&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
     <!-- Shared theme system — same file the Transfer Rate Tracker loads. -->
@@ -30,7 +30,7 @@
          files: the host caches .js/.css for 4 hours but pages for 10 minutes, so an
          unversioned URL can pair a new page with a stale theme.js. Bump both
          stamps (here and in the other app) whenever smt/theme.* changes. -->
-    <link rel="stylesheet" href="../smt/theme.css?v=20260926">
+    <link rel="stylesheet" href="../smt/theme.css?v=20260927">
 
     <style>
         /* ── App-specific layout only. Everything themed lives in theme.css. ── */
@@ -196,7 +196,7 @@
     <div id="resetConfirmModal"  class="fixed inset-0 z-[80] flex items-center justify-center p-4 hidden" style="background:rgba(0,0,0,0.55);backdrop-filter:blur(6px)"></div>
     <div id="deleteConfirmModal" class="fixed inset-0 z-[80] flex items-center justify-center p-4 hidden" style="background:rgba(0,0,0,0.55);backdrop-filter:blur(6px)"></div>
 
-    <script src="../smt/theme.js?v=20260926"></script>
+    <script src="../smt/theme.js?v=20260927"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const panel = document.getElementById('trackerPanel');
@@ -321,7 +321,10 @@
         const SVGNS='http://www.w3.org/2000/svg',CW=500,CH=100,CP=5;
         let chartLine=null,chartShown=null,chartTween=null;
         function chartTarget(){const dp=[];let done=0;const sorted=[...state.calls].sort((a,b)=>a.number-b.number);sorted.forEach((c,i)=>{if(c.completed)done++;dp.push((done/(i+1))*100);});return dp.map((r,i)=>[dp.length>1?(i/(dp.length-1))*CW:0,(CH-CP*2)-(r/100)*(CH-CP*2)+CP]);}
-        function drawChart(pts){chartShown=pts;chartLine.setAttribute('points',pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join(' '));const dots=rateChart.querySelectorAll('.chart-point');pts.forEach((p,i)=>{dots[i].setAttribute('cx',p[0]);dots[i].setAttribute('cy',p[1]);});}
+        // Pixel Art draws on whole pixels: vertices and markers land on even screen
+        // pixels, so every marker rasterises as the same sprite. Other themes are untouched.
+        function snapPx(pts){if(document.documentElement.getAttribute('data-style')!=='pixelart')return pts;const r=rateChart.getBoundingClientRect();if(!r.width||!r.height)return pts;const sx=r.width/CW,sy=r.height/CH;return pts.map(p=>[(Math.round((r.left+p[0]*sx)/2)*2-r.left)/sx,(Math.round((r.top+p[1]*sy)/2)*2-r.top)/sy]);}
+        function drawChart(pts){chartShown=pts;const d=snapPx(pts);chartLine.setAttribute('points',d.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join(' '));const dots=rateChart.querySelectorAll('.chart-point');d.forEach((p,i)=>{dots[i].setAttribute('cx',p[0]);dots[i].setAttribute('cy',p[1]);});}
         function yAt(pts,x){for(let i=1;i<pts.length;i++){if(x<=pts[i][0]){const a=pts[i-1],b=pts[i],t=(x-a[0])/((b[0]-a[0])||1);return a[1]+(b[1]-a[1])*t;}}return pts[pts.length-1][1];}
         function morphFrom(cur,next){
             if(cur.length===next.length)return cur;
