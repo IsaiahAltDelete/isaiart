@@ -1,21 +1,14 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Daily Sports Desk | isaiart.com</title>
-<style>
-:root{--paper:#f4f1ea;--card:#fff;--ink:#181a17;--muted:#676b65;--rule:#d5d2ca}
-*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.45 Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
-main{width:min(900px,calc(100% - 28px));margin:auto;padding:34px 0 60px}header{border-top:5px solid var(--ink);border-bottom:1px solid var(--rule);padding:18px 0}
-.kicker{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--muted)}h1{font-size:clamp(30px,6vw,54px);line-height:1;margin:7px 0 10px;letter-spacing:-.04em}
-.meta{color:var(--muted);font-size:12px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:22px 0}.card{background:var(--card);border:1px solid var(--rule);border-left:3px solid #6c6258;padding:15px}
-.rank{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:800}.card h2{font-size:17px;margin:7px 0}.time{font-size:19px;font-weight:750}.note{margin-top:22px;border-top:1px solid var(--rule);padding-top:15px}.small{font-size:11px;color:var(--muted)}
-@media(max-width:700px){.grid{grid-template-columns:1fr}}
-</style></head><body><main><header><div class="kicker">Private phone-support quick reference</div><h1>Daily Sports Desk</h1><div class="meta">Sunday, September 27, 2026 · isaiart.com/sports</div></header>
-<section class="grid">
-<article class="card"><div class="rank">NFL · International</div><h2>Ravens vs. Cowboys</h2><div class="time">4:25 PM ET</div><p>CBS / Paramount+ · Rio de Janeiro. Week 3 international-window matchup.</p></article>
-<article class="card"><div class="rank">WNBA Playoffs · Game 1</div><h2>Liberty vs. Lynx</h2><div class="time">2:00 PM ET</div><p>ABC / ESPN Unlimited. One of four first-round playoff series opening today.</p></article>
-<article class="card"><div class="rank">Presidents Cup · Singles</div><h2>Final-day singles</h2><div class="time">12:00 PM ET</div><p>NBC / Peacock. International Team entered the day leading 10½–7½.</p></article>
-</section>
-<section class="note"><div class="kicker">Today's desk</div><p>Today's full research run covers 32 major U.S.-relevant events, including NFL Week 3, four WNBA playoff openers, final-day MLB postseason implications, Presidents Cup singles, Laver Cup Day 3, MLS/NWSL and Liga MX.</p>
-<p class="small">Regional note: Sunday-afternoon NFL assignments depend on ZIP and the local CBS/FOX affiliate; Sunday Ticket is the out-of-market option. MLB.TV remains subject to territorial restrictions. Arizona matches Pacific daylight time today; Hawaii is six hours behind Eastern daylight time.</p>
-<p class="small">This route is now part of the main isaiart.com GitHub Pages repository. Future Daily Sports Desk runs can replace this page while keeping the public URL unchanged.</p></section>
-</main></body></html>
+<title>Daily Sports Desk | Sunday, September 27, 2026</title>
+<link rel="stylesheet" href="./styles.css"></head><body><div class="wrap">
+<header><div class="eyebrow">Private phone-support quick reference</div><div class="header-row"><div><h1>Daily Sports Desk</h1><div class="date-line">Sunday, September 27, 2026 | Updated 8:28 AM ET</div></div><div class="zone-readout">All times shown in<strong id="active-zone">Eastern Time (ET)</strong></div></div></header>
+<section class="tools"><div><div class="label" style="margin-bottom:5px">Timezone</div><div class="button-row" id="tz-buttons"></div></div><div class="search-wrap"><label class="label" for="search">Search teams, leagues, networks, venues</label><input class="search" id="search" type="search" placeholder="Try CBS, Lynx, Medinah..." autocomplete="off"></div></section>
+<section class="subtools"><div class="filter-row" id="filters"></div><div class="summary-line"><span id="visible-count"></span><span class="dst">DST heads-up: ET/CT/MT/PT are on daylight time. Arizona stays on MST and matches PDT today; Hawaii is HST, six hours behind EDT.</span></div></section>
+<main id="schedule"></main><div class="empty" id="empty">No events match this search and league filter.</div>
+<footer class="source-note">Listings checked at 8:28 AM ET against official schedules and current national listings. Laver Cup Day 3 was in progress; no other listed event had started. Local availability can vary by provider. Primary references: <a href="https://www.sportsmediawatch.com/sports-on-tv-today-games-time-channel/">Sports Media Watch</a>, <a href="https://www.nfl.com/schedules/2026/by-week/reg-3">NFL</a>, <a href="https://www.wnba.com/playoffs/2026">WNBA</a>, <a href="https://www.mlb.com/schedule/2026-09-27">MLB schedule</a>, <a href="https://www.mlb.com/standings/wild-card">MLB standings</a>, <a href="https://www.golfmonthly.com/news/presidents-cup-2026-tee-times-format-and-full-schedule">Presidents Cup</a>, <a href="https://www.cyclingnews.com/pro-cycling/races/2026-uci-road-world-championships/">UCI Worlds</a>, <a href="https://lavercup.com/">Laver Cup</a>, and official league schedules.</footer></div>
+<script src="./config.js"></script>
+<script src="./events-1.js"></script>
+<script src="./events-2.js"></script>
+<script src="./events-3.js"></script>
+<script src="./app.js"></script></body></html>
