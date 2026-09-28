@@ -1,14 +1,87 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Daily Sports Desk | Sunday, September 27, 2026</title>
-<link rel="stylesheet" href="./styles.css"></head><body><div class="wrap">
-<header><div class="eyebrow">Private phone-support quick reference</div><div class="header-row"><div><h1>Daily Sports Desk</h1><div class="date-line">Sunday, September 27, 2026 | Updated 8:28 AM ET</div></div><div class="zone-readout">All times shown in<strong id="active-zone">Eastern Time (ET)</strong></div></div></header>
-<section class="tools"><div><div class="label" style="margin-bottom:5px">Timezone</div><div class="button-row" id="tz-buttons"></div></div><div class="search-wrap"><label class="label" for="search">Search teams, leagues, networks, venues</label><input class="search" id="search" type="search" placeholder="Try CBS, Lynx, Medinah..." autocomplete="off"></div></section>
-<section class="subtools"><div class="filter-row" id="filters"></div><div class="summary-line"><span id="visible-count"></span><span class="dst">DST heads-up: ET/CT/MT/PT are on daylight time. Arizona stays on MST and matches PDT today; Hawaii is HST, six hours behind EDT.</span></div></section>
-<main id="schedule"></main><div class="empty" id="empty">No events match this search and league filter.</div>
-<footer class="source-note">Listings checked at 8:28 AM ET against official schedules and current national listings. Laver Cup Day 3 was in progress; no other listed event had started. Local availability can vary by provider. Primary references: <a href="https://www.sportsmediawatch.com/sports-on-tv-today-games-time-channel/">Sports Media Watch</a>, <a href="https://www.nfl.com/schedules/2026/by-week/reg-3">NFL</a>, <a href="https://www.wnba.com/playoffs/2026">WNBA</a>, <a href="https://www.mlb.com/schedule/2026-09-27">MLB schedule</a>, <a href="https://www.mlb.com/standings/wild-card">MLB standings</a>, <a href="https://www.golfmonthly.com/news/presidents-cup-2026-tee-times-format-and-full-schedule">Presidents Cup</a>, <a href="https://www.cyclingnews.com/pro-cycling/races/2026-uci-road-world-championships/">UCI Worlds</a>, <a href="https://lavercup.com/">Laver Cup</a>, and official league schedules.</footer></div>
-<script src="./config.js"></script>
-<script src="./events-1.js"></script>
-<script src="./events-2.js"></script>
-<script src="./events-3.js"></script>
-<script src="./app.js"></script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Daily Sports Desk | September 28, 2026</title>
+  <style>
+    :root{--paper:#f5f2eb;--ink:#20201e;--muted:#6d6b65;--rule:#c9c6bd;--card:#fff;--nfl:#4a6572;--active:#232b2f}
+    *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font:13px/1.42 Arial,Helvetica,sans-serif}
+    .wrap{width:min(980px,calc(100% - 28px));margin:0 auto;padding:24px 0 38px}
+    header{border-top:4px solid var(--ink);border-bottom:1px solid var(--rule);padding:14px 0 12px}
+    .kicker,.section-title,.label{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+    h1{font-size:30px;line-height:1;margin:5px 0 7px;letter-spacing:-.035em}
+    .meta{display:flex;gap:9px 18px;flex-wrap:wrap;color:var(--muted);font-size:11px}.meta strong{color:var(--ink)}
+    .toolbar{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:13px 0;border-bottom:1px solid var(--rule)}
+    .zones,.search-wrap,.filters{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+    button,input{border:1px solid #aaa79f;border-radius:0;background:#fff;color:var(--ink);font:inherit;height:29px}
+    button{padding:0 10px;cursor:pointer}button.active{background:var(--active);color:#fff;border-color:var(--active)}
+    input{width:230px;padding:0 9px}.filters{padding:10px 0 12px;border-bottom:1px solid var(--rule)}
+    .filter{height:27px;font-size:11px}.swatch{display:inline-block;width:7px;height:7px;margin-right:6px;background:var(--nfl)}
+    .notice{margin:12px 0 18px;padding:9px 10px;border-left:3px solid #8b877c;background:#ece9e1;color:#55534d;font-size:11px}
+    .summary{display:flex;justify-content:space-between;gap:12px;align-items:end;margin:20px 0 8px}
+    .summary p{margin:3px 0 0;color:var(--muted);font-size:11px}.count{color:var(--muted);font-size:11px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .card{background:var(--card);border:1px solid #d4d1ca;border-left:3px solid var(--nfl);padding:13px 14px}
+    .topline{display:flex;justify-content:space-between;gap:12px}.flags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+    .flag{border:1px solid #aaa79f;padding:2px 5px;font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    .teams{margin:10px 0 9px}.team{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:15px;font-weight:750}
+    .team img,.fallback{width:26px;height:26px;object-fit:contain}.fallback{display:none;place-items:center;border:1px solid #aaa79f;font-size:8px;font-weight:800}
+    .record{color:var(--muted);font-size:11px;font-weight:400}.time{font-size:19px;font-weight:800;letter-spacing:-.02em;margin-bottom:9px}
+    dl{display:grid;grid-template-columns:70px 1fr;margin:0;border-top:1px solid #e1ded7}dt,dd{margin:0;padding:5px 0;border-bottom:1px solid #e1ded7}dt{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}dd{font-size:11px}
+    .notes,.blackout{margin:9px 0 0;font-size:11px}.blackout{color:#5f5d57}.empty{display:none;padding:26px;border:1px solid var(--rule);text-align:center;color:var(--muted)}
+    footer{margin-top:22px;border-top:1px solid var(--rule);padding-top:10px;color:var(--muted);font-size:10px}footer a{color:inherit}
+    @media(max-width:680px){.wrap{width:min(100% - 20px,980px)}.toolbar{display:block}.search-wrap{margin-top:9px}input{width:100%}.grid{grid-template-columns:1fr}h1{font-size:26px}}
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div class="kicker">Internal quick reference • Monday desk</div>
+    <h1>Daily Sports Desk</h1>
+    <div class="meta"><span><strong>Monday, September 28, 2026</strong></span><span>12:00 AM–11:59 PM Eastern</span><span>Active zone: <strong id="zoneName">ET</strong></span><span>Updated 8:10 AM ET</span></div>
+  </header>
+
+  <div class="toolbar">
+    <div class="zones" aria-label="Timezone"><button class="zone active" data-zone="ET">ET</button><button class="zone" data-zone="CT">CT</button><button class="zone" data-zone="MT">MT</button><button class="zone" data-zone="PT">PT</button></div>
+    <div class="search-wrap"><label class="label" for="search">Search</label><input id="search" type="search" placeholder="Team, league, network, venue"></div>
+  </div>
+  <div class="filters"><button class="filter active" data-league="all">All</button><button class="filter" data-league="NFL"><span class="swatch"></span>NFL</button></div>
+  <div class="notice"><strong>DST heads-up:</strong> Eastern, Central, Mountain and Pacific locations are on daylight time. Arizona matches Pacific time today; Hawaii is six hours behind Eastern. The timezone buttons convert kickoff natively and flag date changes when needed.</div>
+
+  <section class="league-section" data-section="NFL">
+    <div class="summary"><div><div class="section-title">NFL • 1 event</div><p>Week 3 closes with one national Monday-night window.</p></div><div class="count"><span id="visibleCount">1</span> visible</div></div>
+    <div class="grid">
+      <article class="card" data-league="NFL" data-search="philadelphia eagles chicago bears nfl monday night football espn abc espn unlimited soldier field chicago">
+        <div class="topline"><span class="label">NFL • Week 3</span><div class="flags"><span class="flag">National</span></div></div>
+        <div class="teams">
+          <div class="team"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/phi.png" alt="Philadelphia Eagles" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="fallback">PHI</span><span>Philadelphia Eagles <span class="record">2–0</span></span></div>
+          <div class="team"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/chi.png" alt="Chicago Bears" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="fallback">CHI</span><span>Chicago Bears <span class="record">1–1</span></span></div>
+        </div>
+        <div class="time" data-base="2026-09-28T20:15:00-04:00">8:15 PM ET</div>
+        <dl>
+          <dt>Watch</dt><dd>ABC, ESPN • ESPN Unlimited (also via participating TV-provider authentication in the ESPN app)</dd>
+          <dt>Venue</dt><dd>Soldier Field, Chicago • Central Daylight Time</dd>
+          <dt>Coverage</dt><dd>National broadcast; no RSN assignment</dd>
+        </dl>
+        <p class="notes"><strong>Notes:</strong> Philadelphia is trying to reach 3–0 after two close wins. Chicago is coming off a 9–3 loss to Minnesota, and quarterback availability is a central storyline after Caleb Williams’ hamstring injury.</p>
+        <p class="blackout"><strong>Blackout:</strong> No standard local-market blackout is expected for the ABC/ESPN national window. Streaming access and authentication still depend on the viewer’s service and plan.</p>
+      </article>
+    </div>
+  </section>
+  <div class="empty" id="empty">No events match the current filters.</div>
+
+  <footer>Verified against NFL/team schedule pages and the Associated Press national TV listing. MLB has no games today; the WNBA first round resumes Tuesday. Schedule and platform availability can change. Sources: <a href="https://www.nfl.com/schedules/2026/by-week/reg-3">NFL</a> · <a href="https://www.chicagobears.com/news/how-to-watch-chicago-bears-philadelphia-eagles-monday-night-football-2026-week-3-listen-stream-tv-radio-online-nfl">Bears</a> · <a href="https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-bears-2026-nfl-week-3-monday-night-football">Eagles</a> · <a href="https://www.mlb.com/schedule/2026-09-28">MLB</a> · <a href="https://www.wnba.com/news/2026-wnba-postseason-faq">WNBA</a></footer>
+</main>
+<script>
+  const zoneMap={ET:'America/New_York',CT:'America/Chicago',MT:'America/Denver',PT:'America/Los_Angeles'};
+  let activeZone='ET',activeLeague='all';
+  const search=document.getElementById('search'),cards=[...document.querySelectorAll('.card')],empty=document.getElementById('empty');
+  function renderTimes(){document.getElementById('zoneName').textContent=activeZone;document.querySelectorAll('.time').forEach(el=>{const d=new Date(el.dataset.base);const parts=new Intl.DateTimeFormat('en-US',{timeZone:zoneMap[activeZone],hour:'numeric',minute:'2-digit',hour12:true,weekday:'short',month:'short',day:'numeric'}).formatToParts(d);const get=t=>parts.find(p=>p.type===t)?.value;const localDate=`${get('month')} ${get('day')}`;const baseDate='Sep 28';const dayLabel=localDate===baseDate?'':` • ${get('weekday')}, ${localDate}`;el.textContent=`${get('hour')}:${get('minute')} ${get('dayPeriod')} ${activeZone}${dayLabel}`})}
+  function apply(){const q=search.value.trim().toLowerCase();let count=0;cards.forEach(c=>{const show=(activeLeague==='all'||c.dataset.league===activeLeague)&&(!q||c.dataset.search.includes(q));c.style.display=show?'block':'none';if(show)count++});document.querySelectorAll('.league-section').forEach(s=>s.style.display=[...s.querySelectorAll('.card')].some(c=>c.style.display!=='none')?'block':'none');document.getElementById('visibleCount').textContent=count;empty.style.display=count?'none':'block'}
+  document.querySelectorAll('.zone').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.zone').forEach(x=>x.classList.remove('active'));b.classList.add('active');activeZone=b.dataset.zone;renderTimes()}));
+  document.querySelectorAll('.filter').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');activeLeague=b.dataset.league;apply()}));
+  search.addEventListener('input',apply);renderTimes();apply();
+</script>
+</body>
+</html>
