@@ -2,140 +2,583 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Daily Sports Desk | September 28, 2026</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Sports Desk | September 29, 2026</title>
+  <meta name="description" content="Daily Sports Desk for Tuesday, September 29, 2026, with U.S. broadcast details and instant time-zone conversion.">
   <style>
-    :root{--paper:#f5f2eb;--ink:#20201e;--muted:#6d6b65;--rule:#c9c6bd;--card:#fff;--nfl:#4a6572;--unl:#765b6f;--active:#232b2f}
-    *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font:13px/1.42 Arial,Helvetica,sans-serif}
-    .wrap{width:min(980px,calc(100% - 28px));margin:0 auto;padding:24px 0 38px}
-    header{border-top:4px solid var(--ink);border-bottom:1px solid var(--rule);padding:14px 0 12px}
-    .kicker,.section-title,.label{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
-    h1{font-size:30px;line-height:1;margin:5px 0 7px;letter-spacing:-.035em}
-    .meta{display:flex;gap:9px 18px;flex-wrap:wrap;color:var(--muted);font-size:11px}.meta strong{color:var(--ink)}
-    .toolbar{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:13px 0;border-bottom:1px solid var(--rule)}
-    .zones,.search-wrap,.filters{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
-    button,input{border:1px solid #aaa79f;border-radius:0;background:#fff;color:var(--ink);font:inherit;height:29px}
-    button{padding:0 10px;cursor:pointer}button.active{background:var(--active);color:#fff;border-color:var(--active)}
-    input{width:230px;padding:0 9px}.filters{padding:10px 0 12px;border-bottom:1px solid var(--rule)}
-    .filter{height:27px;font-size:11px}.swatch{display:inline-block;width:7px;height:7px;margin-right:6px;background:var(--nfl)}
-    .notice{margin:12px 0 18px;padding:9px 10px;border-left:3px solid #8b877c;background:#ece9e1;color:#55534d;font-size:11px}
-    .summary{display:flex;justify-content:space-between;gap:12px;align-items:end;margin:20px 0 8px}
-    .summary p{margin:3px 0 0;color:var(--muted);font-size:11px}.count{color:var(--muted);font-size:11px}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-    .card{background:var(--card);border:1px solid #d4d1ca;border-left:3px solid var(--nfl);padding:13px 14px}
-    .topline{display:flex;justify-content:space-between;gap:12px}.flags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
-    .flag{border:1px solid #aaa79f;padding:2px 5px;font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-    .teams{margin:10px 0 9px}.team{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:15px;font-weight:750}
-    .team img,.fallback{width:26px;height:26px;object-fit:contain}.fallback{display:none;place-items:center;border:1px solid #aaa79f;font-size:8px;font-weight:800}
-    .record{color:var(--muted);font-size:11px;font-weight:400}.time{font-size:19px;font-weight:800;letter-spacing:-.02em;margin-bottom:9px}
-    dl{display:grid;grid-template-columns:70px 1fr;margin:0;border-top:1px solid #e1ded7}dt,dd{margin:0;padding:5px 0;border-bottom:1px solid #e1ded7}dt{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}dd{font-size:11px}
-    .notes,.blackout{margin:9px 0 0;font-size:11px}.blackout{color:#5f5d57}.empty{display:none;padding:26px;border:1px solid var(--rule);text-align:center;color:var(--muted)}
-    footer{margin-top:22px;border-top:1px solid var(--rule);padding-top:10px;color:var(--muted);font-size:10px}footer a{color:inherit}
-    @media(max-width:680px){.wrap{width:min(100% - 20px,980px)}.toolbar{display:block}.search-wrap{margin-top:9px}input{width:100%}.grid{grid-template-columns:1fr}h1{font-size:26px}}
+    :root {
+      --paper: #f5f2eb;
+      --ink: #242321;
+      --muted: #6f6b65;
+      --rule: #d4d0c7;
+      --card: #fffefa;
+      --control: #ebe7df;
+      --active: #2f3131;
+      --mlb: #6d7f91;
+      --wnba: #956f82;
+      --usmnt: #617b6a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.42;
+    }
+
+    button, input { font: inherit; }
+
+    .shell {
+      width: min(980px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 26px 0 42px;
+    }
+
+    .masthead {
+      border-top: 4px solid var(--ink);
+      border-bottom: 1px solid var(--rule);
+      padding: 18px 0 16px;
+    }
+
+    .kicker,
+    .league-title,
+    .label,
+    .flag,
+    .control-label {
+      text-transform: uppercase;
+      letter-spacing: .095em;
+      font-weight: 750;
+    }
+
+    .kicker { color: var(--muted); font-size: 11px; }
+
+    h1 {
+      margin: 5px 0 8px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(29px, 5vw, 45px);
+      font-weight: 500;
+      letter-spacing: -.025em;
+      line-height: 1.04;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 16px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr minmax(220px, 330px);
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .control-label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .button-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .zone-button,
+    .filter-button {
+      min-height: 30px;
+      border: 1px solid #bdb8ae;
+      border-radius: 2px;
+      padding: 5px 11px;
+      color: var(--ink);
+      background: var(--control);
+      cursor: pointer;
+    }
+
+    .zone-button:hover,
+    .zone-button:focus-visible,
+    .filter-button:hover,
+    .filter-button:focus-visible { border-color: var(--ink); outline: none; }
+
+    .zone-button.active,
+    .filter-button.active {
+      border-color: var(--active);
+      color: #fff;
+      background: var(--active);
+    }
+
+    #search {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid #bdb8ae;
+      border-radius: 2px;
+      padding: 7px 9px;
+      color: var(--ink);
+      background: var(--card);
+    }
+
+    #search:focus { border-color: var(--ink); outline: none; }
+
+    .filter-strip {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .filter-wrap { min-width: 0; }
+
+    .visible-count {
+      flex: 0 0 auto;
+      padding-bottom: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .notice {
+      margin: 12px 0 4px;
+      border: 1px solid var(--rule);
+      border-left: 3px solid #88837a;
+      padding: 9px 11px;
+      color: #595650;
+      background: rgba(255, 254, 250, .55);
+      font-size: 12px;
+    }
+
+    .section { margin-top: 25px; }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid var(--rule);
+      padding-bottom: 7px;
+    }
+
+    .league-title { margin: 0; font-size: 13px; }
+    .section-note { color: var(--muted); font-size: 11px; text-align: right; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .card {
+      min-width: 0;
+      border: 1px solid var(--rule);
+      border-left: 3px solid var(--league-color, #7a7771);
+      border-radius: 2px;
+      padding: 12px 13px 13px;
+      background: var(--card);
+    }
+
+    .card[data-league="MLB"] { --league-color: var(--mlb); }
+    .card[data-league="WNBA"] { --league-color: var(--wnba); }
+    .card[data-league="USMNT"] { --league-color: var(--usmnt); }
+
+    .flags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+
+    .flag {
+      border: 1px solid #cbc6bd;
+      border-radius: 2px;
+      padding: 2px 5px;
+      color: #625e58;
+      background: #f4f1ea;
+      font-size: 9px;
+    }
+
+    .matchup { display: grid; gap: 6px; }
+
+    .team {
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr);
+      align-items: center;
+      gap: 9px;
+    }
+
+    .fallback {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      border: 1px solid #aaa59c;
+      border-radius: 2px;
+      color: #514e49;
+      background: #faf8f3;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .03em;
+    }
+
+    .team-name { font-weight: 750; line-height: 1.15; }
+    .team-detail { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .at { margin-left: 41px; color: var(--muted); font-size: 10px; font-weight: 750; text-transform: uppercase; }
+
+    .time {
+      margin: 11px 0 10px;
+      border-top: 1px solid #e2ded6;
+      border-bottom: 1px solid #e2ded6;
+      padding: 7px 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .details { display: grid; gap: 7px; margin: 0; }
+    .details > div { display: grid; grid-template-columns: 66px minmax(0, 1fr); gap: 8px; }
+    .details dt, .details dd { margin: 0; }
+    .label { color: var(--muted); font-size: 9px; padding-top: 2px; }
+    .details dd { font-size: 12px; overflow-wrap: anywhere; }
+
+    .empty {
+      display: none;
+      margin-top: 22px;
+      border: 1px solid var(--rule);
+      padding: 22px;
+      color: var(--muted);
+      background: var(--card);
+      text-align: center;
+    }
+
+    .sources {
+      margin-top: 28px;
+      border-top: 1px solid var(--rule);
+      padding-top: 13px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .sources p { margin: 0 0 6px; }
+    .sources a { color: #4e5e67; text-underline-offset: 2px; }
+
+    @media (max-width: 680px) {
+      .shell { width: min(100% - 20px, 980px); padding-top: 16px; }
+      .toolbar { grid-template-columns: 1fr; }
+      .filter-strip { align-items: flex-start; flex-direction: column; }
+      .visible-count { padding: 0; }
+      .cards { grid-template-columns: 1fr; }
+      .section-head { align-items: flex-start; }
+      .details > div { grid-template-columns: 60px minmax(0, 1fr); }
+    }
   </style>
 </head>
 <body>
-<main class="wrap">
-  <header>
-    <div class="kicker">Internal quick reference • Monday desk</div>
-    <h1>Daily Sports Desk</h1>
-    <div class="meta"><span><strong>Monday, September 28, 2026</strong></span><span>12:00 AM–11:59 PM Eastern</span><span>Active zone: <strong id="zoneName">ET</strong></span><span>Updated 8:50 AM ET</span></div>
-  </header>
+  <main class="shell">
+    <header class="masthead">
+      <div class="kicker">Internal quick reference • Tuesday desk</div>
+      <h1>Daily Sports Desk</h1>
+      <div class="meta">
+        <span><strong>Tuesday, September 29, 2026</strong></span>
+        <span>Today's window: 12:00 AM–11:59 PM Eastern</span>
+        <span>Active timezone: <strong id="activeZone">ET</strong></span>
+        <span>Last updated: September 29, 2026 at 9:13 AM ET</span>
+      </div>
+    </header>
 
-  <div class="toolbar">
-    <div class="zones" aria-label="Timezone"><button class="zone active" data-zone="ET">ET</button><button class="zone" data-zone="CT">CT</button><button class="zone" data-zone="MT">MT</button><button class="zone" data-zone="PT">PT</button></div>
-    <div class="search-wrap"><label class="label" for="search">Search</label><input id="search" type="search" placeholder="Team, league, network, venue"></div>
-  </div>
-  <div class="filters"><button class="filter active" data-league="all">All</button><button class="filter" data-league="NFL"><span class="swatch"></span>NFL</button><button class="filter" data-league="NATIONS"><span class="swatch" style="background:var(--unl)"></span>UEFA Nations League</button></div>
-  <div class="notice"><strong>DST heads-up:</strong> Eastern, Central, Mountain and Pacific locations are on daylight time. Arizona matches Pacific time today; Hawaii is six hours behind Eastern. The timezone buttons convert kickoff natively and flag date changes when needed.</div>
-
-  <section class="league-section" data-section="NFL">
-    <div class="summary"><div><div class="section-title">NFL • 1 event</div><p>Week 3 closes with one national Monday-night window.</p></div><div class="count"><span id="visibleCount">4</span> visible total</div></div>
-    <div class="grid">
-      <article class="card" data-league="NFL" data-search="philadelphia eagles chicago bears nfl monday night football espn abc espn unlimited soldier field chicago">
-        <div class="topline"><span class="label">NFL • Week 3</span><div class="flags"><span class="flag">National</span></div></div>
-        <div class="teams">
-          <div class="team"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/phi.png" alt="Philadelphia Eagles" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="fallback">PHI</span><span>Philadelphia Eagles <span class="record">2–0</span></span></div>
-          <div class="team"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/chi.png" alt="Chicago Bears" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="fallback">CHI</span><span>Chicago Bears <span class="record">1–1</span></span></div>
+    <div class="toolbar" aria-label="Desk controls">
+      <div>
+        <span class="control-label">Display timezone</span>
+        <div class="button-row" id="zoneButtons">
+          <button class="zone-button active" type="button" data-zone="ET" aria-pressed="true">ET</button>
+          <button class="zone-button" type="button" data-zone="CT" aria-pressed="false">CT</button>
+          <button class="zone-button" type="button" data-zone="MT" aria-pressed="false">MT</button>
+          <button class="zone-button" type="button" data-zone="PT" aria-pressed="false">PT</button>
         </div>
-        <div class="time" data-base="2026-09-28T20:15:00-04:00">8:15 PM ET</div>
-        <dl>
-          <dt>Watch</dt><dd>ABC, ESPN • ESPN Unlimited (also via participating TV-provider authentication in the ESPN app)</dd>
-          <dt>Venue</dt><dd>Soldier Field, Chicago • Central Daylight Time</dd>
-          <dt>Coverage</dt><dd>National broadcast; no RSN assignment</dd>
-        </dl>
-        <p class="notes"><strong>Notes:</strong> Philadelphia is trying to reach 3–0 after two close wins. Chicago is coming off a 9–3 loss to Minnesota, and quarterback availability is a central storyline after Caleb Williams’ hamstring injury.</p>
-        <p class="blackout"><strong>Blackout:</strong> No standard local-market blackout is expected for the ABC/ESPN national window. Streaming access and authentication still depend on the viewer’s service and plan.</p>
-      </article>
+      </div>
+      <label>
+        <span class="control-label">Live search</span>
+        <input id="search" type="search" placeholder="Team, league, network, venue…" autocomplete="off">
+      </label>
     </div>
-  </section>
 
-  <section class="league-section" data-section="NATIONS">
-    <div class="summary"><div><div class="section-title">UEFA NATIONS LEAGUE • 3 marquee matches</div><p>Expanded light-day coverage: major international soccer with confirmed U.S. availability.</p></div></div>
-    <div class="grid">
-      <article class="card" style="border-left-color:var(--unl)" data-league="NATIONS" data-search="belgium france uefa nations league fox one fox sports 2 vix fubo king baudouin stadium brussels">
-        <div class="topline"><span class="label">UEFA Nations League • League A Group 1</span><div class="flags"><span class="flag">National</span></div></div>
-        <div class="teams">
-          <div class="team"><span class="fallback" style="display:grid">BEL</span><span>Belgium <span class="record">1–0–0 • 3 pts</span></span></div>
-          <div class="team"><span class="fallback" style="display:grid">FRA</span><span>France <span class="record">1–0–0 • 3 pts</span></span></div>
+    <div class="filter-strip">
+      <div class="filter-wrap">
+        <span class="control-label">League filters</span>
+        <div class="button-row" id="filterButtons">
+          <button class="filter-button active" type="button" data-filter="ALL" aria-pressed="true">All</button>
+          <button class="filter-button" type="button" data-filter="MLB" aria-pressed="false">MLB</button>
+          <button class="filter-button" type="button" data-filter="WNBA" aria-pressed="false">WNBA</button>
+          <button class="filter-button" type="button" data-filter="USMNT" aria-pressed="false">USMNT</button>
         </div>
-        <div class="time" data-base="2026-09-28T20:45:00+02:00">2:45 PM ET</div>
-        <dl>
-          <dt>Watch</dt><dd>FOX One, FOX Sports 2, FOX Sports online • ViX • FuboTV</dd>
-          <dt>Venue</dt><dd>King Baudouin Stadium, Brussels • Central European Summer Time</dd>
-          <dt>Coverage</dt><dd>National U.S. TV/streaming; no RSN assignment</dd>
-        </dl>
-        <p class="notes"><strong>Notes:</strong> Both teams won their Matchday 1 openers: Belgium beat Italy 2–0 and France beat Türkiye 1–0. Early control of League A Group 1 is at stake.</p>
-        <p class="blackout"><strong>Blackout:</strong> No standard U.S. local blackout expected; subscription/authentication depends on platform.</p>
-      </article>
-
-      <article class="card" style="border-left-color:var(--unl)" data-league="NATIONS" data-search="turkiye turkey italy uefa nations league vix fubo ataturk spor kompleksi bursa">
-        <div class="topline"><span class="label">UEFA Nations League • League A Group 1</span><div class="flags"><span class="flag">National</span></div></div>
-        <div class="teams">
-          <div class="team"><span class="fallback" style="display:grid">TUR</span><span>Türkiye <span class="record">0–0–1 • 0 pts</span></span></div>
-          <div class="team"><span class="fallback" style="display:grid">ITA</span><span>Italy <span class="record">0–0–1 • 0 pts</span></span></div>
-        </div>
-        <div class="time" data-base="2026-09-28T21:45:00+03:00">2:45 PM ET</div>
-        <dl>
-          <dt>Watch</dt><dd>ViX • FuboTV</dd>
-          <dt>Venue</dt><dd>Atatürk Spor Kompleksi Matlı Stadyumu, Bursa • Türkiye Time (UTC+3)</dd>
-          <dt>Coverage</dt><dd>National U.S. streaming; linear U.S. channel TBD</dd>
-        </dl>
-        <p class="notes"><strong>Notes:</strong> Both sides lost their opener, making this an immediate pressure match in a group that also contains unbeaten Belgium and France.</p>
-        <p class="blackout"><strong>Blackout:</strong> No standard U.S. local blackout expected; subscription required where applicable.</p>
-      </article>
-
-      <article class="card" style="border-left-color:var(--unl)" data-league="NATIONS" data-search="sweden poland uefa nations league fox soccer plus fox sports vix fubo strawberry arena solna">
-        <div class="topline"><span class="label">UEFA Nations League • League B Group 4</span><div class="flags"><span class="flag">National</span></div></div>
-        <div class="teams">
-          <div class="team"><span class="fallback" style="display:grid">SWE</span><span>Sweden <span class="record">1–0–0 • 3 pts</span></span></div>
-          <div class="team"><span class="fallback" style="display:grid">POL</span><span>Poland <span class="record">0–1–0 • 1 pt</span></span></div>
-        </div>
-        <div class="time" data-base="2026-09-28T20:45:00+02:00">2:45 PM ET</div>
-        <dl>
-          <dt>Watch</dt><dd>FOX Soccer Plus / FOX Sports online • ViX • FuboTV</dd>
-          <dt>Venue</dt><dd>Strawberry Arena, Solna, Sweden • Central European Summer Time</dd>
-          <dt>Coverage</dt><dd>National U.S. TV/streaming; no RSN assignment</dd>
-        </dl>
-        <p class="notes"><strong>Notes:</strong> Sweden leads Group B4 after beating Romania 2–1; Poland opened with a scoreless draw against Bosnia and Herzegovina.</p>
-        <p class="blackout"><strong>Blackout:</strong> No standard U.S. local blackout expected; platform availability may vary by package.</p>
-      </article>
+      </div>
+      <div class="visible-count" aria-live="polite"><strong id="visibleCount">7</strong> of 7 events visible</div>
     </div>
-  </section>
 
-  <div class="empty" id="empty">No events match the current filters.</div>
+    <aside class="notice">
+      Eastern, Central, Mountain, and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.
+    </aside>
 
-  <footer>Verified against NFL/team schedule pages plus UEFA and current U.S. soccer TV listings. Today now includes three marquee Nations League matches under the expanded light-day rule. MLB has no games today; the WNBA first round resumes Tuesday. Schedule and platform availability can change. Sources: <a href="https://www.nfl.com/schedules/2026/by-week/reg-3">NFL</a> · <a href="https://www.chicagobears.com/news/how-to-watch-chicago-bears-philadelphia-eagles-monday-night-football-2026-week-3-listen-stream-tv-radio-online-nfl">Bears</a> · <a href="https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-bears-2026-nfl-week-3-monday-night-football">Eagles</a> · <a href="https://www.mlb.com/schedule/2026-09-28">MLB</a> · <a href="https://www.wnba.com/news/2026-wnba-postseason-faq">WNBA</a> · <a href="https://www.uefa.com/uefanationsleague/news/02a2-1fea18abbcbc-456e846509e7-1000--2026-27-uefa-nations-league-all-the-league-phase-fixtures/">UEFA Nations League</a></footer>
-</main>
-<script>
-  const zoneMap={ET:'America/New_York',CT:'America/Chicago',MT:'America/Denver',PT:'America/Los_Angeles'};
-  let activeZone='ET',activeLeague='all';
-  const search=document.getElementById('search'),cards=[...document.querySelectorAll('.card')],empty=document.getElementById('empty');
-  function renderTimes(){document.getElementById('zoneName').textContent=activeZone;document.querySelectorAll('.time').forEach(el=>{const d=new Date(el.dataset.base);const parts=new Intl.DateTimeFormat('en-US',{timeZone:zoneMap[activeZone],hour:'numeric',minute:'2-digit',hour12:true,weekday:'short',month:'short',day:'numeric'}).formatToParts(d);const get=t=>parts.find(p=>p.type===t)?.value;const localDate=`${get('month')} ${get('day')}`;const baseDate='Sep 28';const dayLabel=localDate===baseDate?'':` • ${get('weekday')}, ${localDate}`;el.textContent=`${get('hour')}:${get('minute')} ${get('dayPeriod')} ${activeZone}${dayLabel}`})}
-  function apply(){const q=search.value.trim().toLowerCase();let count=0;cards.forEach(c=>{const show=(activeLeague==='all'||c.dataset.league===activeLeague)&&(!q||c.dataset.search.includes(q));c.style.display=show?'block':'none';if(show)count++});document.querySelectorAll('.league-section').forEach(s=>s.style.display=[...s.querySelectorAll('.card')].some(c=>c.style.display!=='none')?'block':'none');document.getElementById('visibleCount').textContent=count;empty.style.display=count?'none':'block'}
-  document.querySelectorAll('.zone').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.zone').forEach(x=>x.classList.remove('active'));b.classList.add('active');activeZone=b.dataset.zone;renderTimes()}));
-  document.querySelectorAll('.filter').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');activeLeague=b.dataset.league;apply()}));
-  search.addEventListener('input',apply);renderTimes();apply();
-</script>
+    <section class="section" data-section="MLB">
+      <div class="section-head">
+        <h2 class="league-title">MLB • Wild Card Series</h2>
+        <span class="section-note">Four best-of-three Game 1s • higher seed hosts throughout</span>
+      </div>
+      <div class="cards">
+        <article class="card" data-league="MLB" data-search="philadelphia phillies atlanta braves mlb wild card nbc peacock truist park game 1 national">
+          <div class="flags"><span class="flag">MLB</span><span class="flag">National</span><span class="flag">Wild Card • Game 1</span></div>
+          <div class="matchup">
+            <div class="team"><span class="fallback" aria-hidden="true">PHI</span><div><div class="team-name">Philadelphia Phillies</div><div class="team-detail">NL No. 6 seed • 88–74</div></div></div>
+            <div class="at">at</div>
+            <div class="team"><span class="fallback" aria-hidden="true">ATL</span><div><div class="team-name">Atlanta Braves</div><div class="team-detail">NL No. 3 seed • 94–68</div></div></div>
+          </div>
+          <div class="time" data-base="2026-09-29T14:00:00-04:00">2:00 PM ET</div>
+          <dl class="details">
+            <div><dt class="label">Watch</dt><dd>NBC • Peacock</dd></div>
+            <div><dt class="label">Venue</dt><dd>Truist Park, Atlanta • Eastern Daylight Time</dd></div>
+            <div><dt class="label">Coverage</dt><dd>National postseason window. No Braves or Phillies RSN telecast.</dd></div>
+            <div><dt class="label">Notes</dt><dd>Best-of-three opener. Philadelphia claimed the final NL berth in Game 162; Atlanta won the NL East. Winner advances to face the Dodgers.</dd></div>
+            <div><dt class="label">Blackout</dt><dd>U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBC/Peacock live coverage. Local NBC carriage varies by affiliate and provider.</dd></div>
+          </dl>
+        </article>
+
+        <article class="card" data-league="MLB" data-search="chicago white sox houston astros mlb wild card nbcsn peacock daikin park game 1 national">
+          <div class="flags"><span class="flag">MLB</span><span class="flag">National</span><span class="flag">Wild Card • Game 1</span></div>
+          <div class="matchup">
+            <div class="team"><span class="fallback" aria-hidden="true">CWS</span><div><div class="team-name">Chicago White Sox</div><div class="team-detail">AL No. 6 seed • 84–78</div></div></div>
+            <div class="at">at</div>
+            <div class="team"><span class="fallback" aria-hidden="true">HOU</span><div><div class="team-name">Houston Astros</div><div class="team-detail">AL No. 3 seed • 81–81</div></div></div>
+          </div>
+          <div class="time" data-base="2026-09-29T17:00:00-04:00">5:00 PM ET</div>
+          <dl class="details">
+            <div><dt class="label">Watch</dt><dd>NBCSN • Peacock</dd></div>
+            <div><dt class="label">Venue</dt><dd>Daikin Park, Houston • Central Daylight Time</dd></div>
+            <div><dt class="label">Coverage</dt><dd>National postseason window. No Astros or White Sox RSN telecast.</dd></div>
+            <div><dt class="label">Notes</dt><dd>Best-of-three opener. Houston won the AL West at .500; Chicago secured the final AL seed. Winner advances to face Cleveland.</dd></div>
+            <div><dt class="label">Blackout</dt><dd>U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBCSN/Peacock live coverage. NBCSN access depends on provider.</dd></div>
+          </dl>
+        </article>
+
+        <article class="card" data-league="MLB" data-search="boston red sox new york yankees mlb wild card nbc peacock yankee stadium game 1 national">
+          <div class="flags"><span class="flag">MLB</span><span class="flag">National</span><span class="flag">Wild Card • Game 1</span></div>
+          <div class="matchup">
+            <div class="team"><span class="fallback" aria-hidden="true">BOS</span><div><div class="team-name">Boston Red Sox</div><div class="team-detail">AL No. 5 seed • 87–75</div></div></div>
+            <div class="at">at</div>
+            <div class="team"><span class="fallback" aria-hidden="true">NYY</span><div><div class="team-name">New York Yankees</div><div class="team-detail">AL No. 4 seed • 93–68</div></div></div>
+          </div>
+          <div class="time" data-base="2026-09-29T20:00:00-04:00">8:00 PM ET</div>
+          <dl class="details">
+            <div><dt class="label">Watch</dt><dd>NBC • Peacock</dd></div>
+            <div><dt class="label">Venue</dt><dd>Yankee Stadium, Bronx • Eastern Daylight Time</dd></div>
+            <div><dt class="label">Coverage</dt><dd>National postseason window. No YES Network or NESN game telecast.</dd></div>
+            <div><dt class="label">Notes</dt><dd>Best-of-three rivalry opener. New York hosts as the No. 4 seed; its weather-canceled finale left a 161-game record. Winner advances to face Tampa Bay.</dd></div>
+            <div><dt class="label">Blackout</dt><dd>U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBC/Peacock live coverage. Local NBC carriage varies by affiliate and provider.</dd></div>
+          </dl>
+        </article>
+
+        <article class="card" data-league="MLB" data-search="chicago cubs san diego padres mlb wild card nbcsn peacock petco park game 1 national">
+          <div class="flags"><span class="flag">MLB</span><span class="flag">National</span><span class="flag">Wild Card • Game 1</span></div>
+          <div class="matchup">
+            <div class="team"><span class="fallback" aria-hidden="true">CHC</span><div><div class="team-name">Chicago Cubs</div><div class="team-detail">NL No. 5 seed • 89–73</div></div></div>
+            <div class="at">at</div>
+            <div class="team"><span class="fallback" aria-hidden="true">SD</span><div><div class="team-name">San Diego Padres</div><div class="team-detail">NL No. 4 seed • 91–71</div></div></div>
+          </div>
+          <div class="time" data-base="2026-09-29T22:00:00-04:00">10:00 PM ET</div>
+          <dl class="details">
+            <div><dt class="label">Watch</dt><dd>NBCSN • Peacock</dd></div>
+            <div><dt class="label">Venue</dt><dd>Petco Park, San Diego • Pacific Daylight Time</dd></div>
+            <div><dt class="label">Coverage</dt><dd>National postseason window. No Padres or Cubs RSN telecast.</dd></div>
+            <div><dt class="label">Notes</dt><dd>Best-of-three opener. San Diego earned home field as the No. 4 seed. Winner advances to face Milwaukee.</dd></div>
+            <div><dt class="label">Blackout</dt><dd>U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBCSN/Peacock live coverage. NBCSN access depends on provider.</dd></div>
+          </dl>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" data-section="WNBA">
+      <div class="section-head">
+        <h2 class="league-title">WNBA • First Round</h2>
+        <span class="section-note">Game 2 elimination pressure in both series</span>
+      </div>
+      <div class="cards">
+        <article class="card" data-league="WNBA" data-search="las vegas aces indiana fever wnba playoffs prime video gainbridge fieldhouse game 2 elimination national">
+          <div class="flags"><span class="flag">WNBA</span><span class="flag">National</span><span class="flag">Playoffs • Game 2</span><span class="flag">Elimination</span></div>
+          <div class="matchup">
+            <div class="team"><span class="fallback" aria-hidden="true">LVA</span><div><div class="team-name">Las Vegas Aces</div><div class="team-detail">No. 3 seed • 31–13 • lead 1–0</div></div></div>
+            <div class="at">at</div>
+            <div class="team"><span class="fallback" aria-hidden="true">IND</span><div><div class="team-name">Indiana Fever</div><div class="team-detail">No. 6 seed • 28–16</div></div></div>
+          </div>
+          <div class="time" data-base="2026-09-29T18:30:00-04:00">6:30 PM ET</div>
+          <dl class="details">
+            <div><dt class="label">Watch</dt><dd>Prime Video</dd></div>
+            <div><dt class="label">Venue</dt><dd>Gainbridge Fieldhouse, Indianapolis • Eastern Daylight Time</dd></div>
+            <div><dt class="label">Coverage</dt><dd>National streaming window. No regional team telecast listed.</dd></div>
+            <div><dt class="label">Notes</dt><dd>Best-of-three Game 2. Las Vegas won the opener 102–85; Indiana must win at home to extend the series.</dd></div>
+            <div><dt class="label">Blackout</dt><dd>No territorial blackout is expected on Prime Video. Subscription or eligible access is required; WNBA League Pass restrictions may apply to live national playoff games.</dd></div>
+          </dl>
+        </article>
+
+        <article class="card" data-league="WNBA" data-search="minnesota lynx new york liberty wnba playoffs usa network cnbc barclays center game 2 elimination national">
+          <div class="flags"><span class="flag">WNBA</span><span class="flag">National</span><span class="flag">Playoffs • Game 2</span><span class="flag">Elimination</span></div>
+          <div class="matchup">
+            <div class="team"><span class="fallback" aria-hidden="true">MIN</span><div><div class="team-name">Minnesota Lynx</div><div class="team-detail">No. 1 seed • 33–11</div></div></div>
+            <div class="at">at</div>
+            <div class="team"><span class="fallback" aria-hidden="true">NYL</span><div><div class="team-name">New York Liberty</div><div class="team-detail">No. 8 seed • 26–18 • lead 1–0</div></div></div>
+          </div>
+          <div class="time" data-base="2026-09-29T20:30:00-04:00">8:30 PM ET</div>
+          <dl class="details">
+            <div><dt class="label">Watch</dt><dd>USA Network • CNBC • Streaming: TBD</dd></div>
+            <div><dt class="label">Venue</dt><dd>Barclays Center, Brooklyn • Eastern Daylight Time</dd></div>
+            <div><dt class="label">Coverage</dt><dd>National cable window. No regional team telecast listed.</dd></div>
+            <div><dt class="label">Notes</dt><dd>Best-of-three Game 2. New York upset the top seed 91–75 in Game 1; Minnesota faces elimination.</dd></div>
+            <div><dt class="label">Blackout</dt><dd>No territorial blackout is expected. TV-provider access is required; WNBA League Pass restrictions may apply to live national playoff games.</dd></div>
+          </dl>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" data-section="USMNT">
+      <div class="section-head">
+        <h2 class="league-title">USMNT • International Friendly</h2>
+        <span class="section-note">National-team window • St. Louis</span>
+      </div>
+      <div class="cards">
+        <article class="card" data-league="USMNT" data-search="united states usa usmnt chile international friendly tnt trutv hbo max telemundo universo peacock energizer park st louis national soccer">
+          <div class="flags"><span class="flag">USMNT</span><span class="flag">National</span><span class="flag">Friendly</span></div>
+          <div class="matchup">
+            <div class="team"><span class="fallback" aria-hidden="true">USA</span><div><div class="team-name">United States</div><div class="team-detail">FIFA No. 16</div></div></div>
+            <div class="at">vs.</div>
+            <div class="team"><span class="fallback" aria-hidden="true">CHI</span><div><div class="team-name">Chile</div><div class="team-detail">FIFA No. 49</div></div></div>
+          </div>
+          <div class="time" data-base="2026-09-29T20:00:00-04:00">8:00 PM ET</div>
+          <dl class="details">
+            <div><dt class="label">Watch</dt><dd>TNT • truTV • HBO Max • Telemundo • Universo • Peacock</dd></div>
+            <div><dt class="label">Venue</dt><dd>Energizer Park, St. Louis • Central Daylight Time</dd></div>
+            <div><dt class="label">Coverage</dt><dd>National. English on TNT/truTV and HBO Max; Spanish on Telemundo/Universo and Peacock.</dd></div>
+            <div><dt class="label">Notes</dt><dd>The U.S. enters after a 4–1 win over Peru. Chile lost to Canada in its first match after missing the World Cup; both sides begin the next-cycle build.</dd></div>
+            <div><dt class="label">Blackout</dt><dd>No territorial blackout is expected. Channel and stream access depend on plan, provider, and language feed availability.</dd></div>
+          </dl>
+        </article>
+      </div>
+    </section>
+
+    <div class="empty" id="emptyState" role="status">No events match the current league filter and search.</div>
+
+    <footer class="sources">
+      <p><strong>Editorial scope:</strong> Seven qualifying events fall inside Tuesday's Eastern calendar day. Preseason and exhibition games, lower-interest non-national regular-season games, and non-major individual-sport events are excluded. No Next 48 Hours events are mixed into today's count.</p>
+      <p><strong>Sources checked September 29:</strong>
+        <a href="https://www.mlb.com/schedule/2026-09-29" rel="noopener">MLB schedule</a> ·
+        <a href="https://www.peacocktv.com/sports/mlb" rel="noopener">Peacock MLB</a> ·
+        <a href="https://www.wnba.com/playoffs/2026" rel="noopener">WNBA playoffs</a> ·
+        <a href="https://www.wnba.com/news/2026-playoffs-series-preview-first-round" rel="noopener">WNBA first-round preview</a> ·
+        <a href="https://fever.wnba.com/news/no-6-indiana-fever-to-face-no-3-las-vegas-aces-in-first-round-of-2026-wnba-playoffs-fever-to-make-their-16th-wnba-playoff-appearance" rel="noopener">Indiana Fever schedule release</a> ·
+        <a href="https://www.starsandstripesfc.com/usmnt/45866/usa-vs-chile-2026-usmnt-friendly-scouting-chile" rel="noopener">USA vs. Chile preview</a>.
+      </p>
+      <p>Broadcast and streaming access can vary by provider. Unconfirmed details are labeled TBD.</p>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      const targetDate = '2026-09-29';
+      const zones = {
+        ET: 'America/New_York',
+        CT: 'America/Chicago',
+        MT: 'America/Denver',
+        PT: 'America/Los_Angeles'
+      };
+      const timeElements = [...document.querySelectorAll('.time[data-base]')];
+      const cards = [...document.querySelectorAll('.card[data-league]')];
+      const sections = [...document.querySelectorAll('.section[data-section]')];
+      const zoneButtons = [...document.querySelectorAll('.zone-button')];
+      const filterButtons = [...document.querySelectorAll('.filter-button')];
+      const activeZone = document.getElementById('activeZone');
+      const visibleCount = document.getElementById('visibleCount');
+      const emptyState = document.getElementById('emptyState');
+      const search = document.getElementById('search');
+      let selectedLeague = 'ALL';
+
+      function dateKey(date, timeZone) {
+        const parts = new Intl.DateTimeFormat('en-US', {
+          timeZone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).formatToParts(date);
+        const part = type => parts.find(item => item.type === type).value;
+        return `${part('year')}-${part('month')}-${part('day')}`;
+      }
+
+      function renderTimes(zone) {
+        const timeZone = zones[zone];
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone,
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+
+        timeElements.forEach(element => {
+          const date = new Date(element.dataset.base);
+          const localDate = dateKey(date, timeZone);
+          const crossing = localDate > targetDate
+            ? ' (next day)'
+            : localDate < targetDate
+              ? ' (previous day)'
+              : '';
+          element.textContent = `${formatter.format(date)} ${zone}${crossing}`;
+        });
+
+        activeZone.textContent = zone;
+        zoneButtons.forEach(button => {
+          const isActive = button.dataset.zone === zone;
+          button.classList.toggle('active', isActive);
+          button.setAttribute('aria-pressed', String(isActive));
+        });
+      }
+
+      function applyFilters() {
+        const query = search.value.trim().toLowerCase();
+        let shown = 0;
+
+        cards.forEach(card => {
+          const leagueMatches = selectedLeague === 'ALL' || card.dataset.league === selectedLeague;
+          const searchMatches = !query || card.dataset.search.includes(query) || card.textContent.toLowerCase().includes(query);
+          const shouldShow = leagueMatches && searchMatches;
+          card.hidden = !shouldShow;
+          if (shouldShow) shown += 1;
+        });
+
+        sections.forEach(section => {
+          section.hidden = ![...section.querySelectorAll('.card')].some(card => !card.hidden);
+        });
+
+        visibleCount.textContent = String(shown);
+        emptyState.style.display = shown === 0 ? 'block' : 'none';
+      }
+
+      zoneButtons.forEach(button => {
+        button.addEventListener('click', () => renderTimes(button.dataset.zone));
+      });
+
+      filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          selectedLeague = button.dataset.filter;
+          filterButtons.forEach(candidate => {
+            const isActive = candidate === button;
+            candidate.classList.toggle('active', isActive);
+            candidate.setAttribute('aria-pressed', String(isActive));
+          });
+          applyFilters();
+        });
+      });
+
+      search.addEventListener('input', applyFilters);
+      renderTimes('ET');
+      applyFilters();
+    })();
+  </script>
 </body>
 </html>
