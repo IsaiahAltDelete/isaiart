@@ -273,6 +273,35 @@
       .section-head { align-items: flex-start; }
       .details > div { grid-template-columns: 60px minmax(0, 1fr); }
     }
+  
+    .desk-nav {
+      display: flex;
+      justify-content: flex-end;
+      gap: 7px;
+      margin: 10px 0 0;
+    }
+
+    .archive-button {
+      display: inline-flex;
+      align-items: center;
+      min-height: 31px;
+      padding: 5px 10px;
+      border: 1px solid var(--rule);
+      background: var(--control, #ebe7df);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .08em;
+      line-height: 1;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+
+    .archive-button:hover,
+    .archive-button:focus-visible {
+      background: #e1ddd4;
+      outline: none;
+    }
   </style>
 </head>
 <body>
@@ -287,6 +316,8 @@
         <span>Last updated: September 29, 2026 at 9:13 AM ET</span>
       </div>
     </header>
+
+    <nav class="desk-nav" aria-label="Sports Desk navigation"><a class="archive-button" href="/sports/archive/">Archive</a></nav>
 
     <div class="toolbar" aria-label="Desk controls">
       <div>

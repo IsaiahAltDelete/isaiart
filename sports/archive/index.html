@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Sports Desk Archive</title>
+  <meta name="description" content="Previous editions of the Daily Sports Desk, listed newest first.">
+  <style>
+    :root {
+      --paper: #f5f2eb;
+      --ink: #242321;
+      --muted: #6f6b65;
+      --rule: #d4d0c7;
+      --card: #fffefa;
+      --control: #ebe7df;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.42;
+    }
+    .shell {
+      width: min(760px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 26px 0 42px;
+    }
+    .masthead {
+      border-top: 4px solid var(--ink);
+      border-bottom: 1px solid var(--rule);
+      padding: 18px 0 16px;
+    }
+    .kicker,
+    .archive-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 4px 0 8px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(28px, 6vw, 44px);
+      font-weight: 500;
+      line-height: 1;
+    }
+    .header-row {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .intro { margin: 0; color: var(--muted); }
+    .current-button {
+      display: inline-flex;
+      align-items: center;
+      min-height: 31px;
+      padding: 5px 10px;
+      border: 1px solid var(--rule);
+      background: var(--control);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .08em;
+      line-height: 1;
+      text-decoration: none;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .current-button:hover,
+    .current-button:focus-visible { background: #e1ddd4; outline: none; }
+    .archive-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .archive-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 15px 16px;
+      border: 1px solid var(--rule);
+      border-left: 3px solid #7d8582;
+      background: var(--card);
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .archive-card:hover,
+    .archive-card:focus-visible { border-color: #aaa69f; outline: none; }
+    .archive-date {
+      display: block;
+      margin-top: 3px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 20px;
+      line-height: 1.15;
+    }
+    .archive-meta {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .note {
+      margin-top: 20px;
+      padding-top: 13px;
+      border-top: 1px solid var(--rule);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 20px, 760px); padding-top: 16px; }
+      .header-row { align-items: flex-start; flex-direction: column; }
+      .archive-card { grid-template-columns: 1fr; }
+      .archive-meta { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div class="kicker">Previous editions</div>
+      <div class="header-row">
+        <div>
+          <h1>Daily Sports Desk Archive</h1>
+          <p class="intro">Completed desks are preserved here and listed newest first.</p>
+        </div>
+        <a class="current-button" href="/sports/">Current desk</a>
+      </div>
+    </header>
+
+    <section class="archive-list" aria-label="Archived Daily Sports Desks">
+      <a class="archive-card" href="./2026-09-28.html">
+        <span>
+          <span class="archive-label">Daily Sports Desk</span>
+          <time class="archive-date" datetime="2026-09-28">Monday, September 28, 2026</time>
+        </span>
+        <span class="archive-meta">4 events</span>
+      </a>
+
+      <a class="archive-card" href="./2026-09-27.html">
+        <span>
+          <span class="archive-label">Daily Sports Desk</span>
+          <time class="archive-date" datetime="2026-09-27">Sunday, September 27, 2026</time>
+        </span>
+        <span class="archive-meta">32 events</span>
+      </a>
+    </section>
+
+    <p class="note">Each archive entry is a preserved HTML edition. The current desk remains at <a href="/sports/">isaiart.com/sports</a>.</p>
+  </main>
+</body>
+</html>
