@@ -1,0 +1,285 @@
+{
+ "date": "2026-09-29",
+ "updated": "2026-09-29T15:37:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "headlines": [
+  "Red Sox at Yankees, AL Wild Card Game 1 (8:00 PM ET, NBC/Peacock)",
+  "Lynx at Liberty, WNBA elimination Game 2 (8:30 PM ET, USA/CNBC)",
+  "USA vs. Chile friendly (8:00 PM ET, TNT/truTV/HBO Max)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "Wild Card Series",
+   "note": "Four best-of-three Game 1s • higher seed hosts throughout"
+  },
+  {
+   "key": "WNBA",
+   "name": "WNBA",
+   "subtitle": "First Round",
+   "note": "Game 2 elimination pressure in both series",
+   "color": "#956f82"
+  },
+  {
+   "key": "USMNT",
+   "name": "USMNT",
+   "subtitle": "International Friendly",
+   "note": "National-team window • St. Louis"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-phi-atl",
+   "league": "MLB",
+   "label": "MLB • Wild Card Series",
+   "flags": [
+    "Wild Card • Game 1"
+   ],
+   "status": "In Progress",
+   "competitors": [
+    {
+     "name": "Philadelphia Phillies",
+     "abbr": "PHI",
+     "detail": "NL No. 6 seed • 88–74",
+     "logo": "mlb/phi"
+    },
+    {
+     "name": "Atlanta Braves",
+     "abbr": "ATL",
+     "detail": "NL No. 3 seed • 94–68",
+     "logo": "mlb/atl"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-29T14:00:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No Braves or Phillies RSN telecast.",
+   "venue": "Truist Park, Atlanta",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Best-of-three opener. Philadelphia claimed the final NL berth in Game 162; Atlanta won the NL East. Winner advances to face the Dodgers.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBC/Peacock live coverage. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "mlb-cws-hou",
+   "league": "MLB",
+   "label": "MLB • Wild Card Series",
+   "flags": [
+    "Wild Card • Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "Chicago White Sox",
+     "abbr": "CWS",
+     "detail": "AL No. 6 seed • 84–78",
+     "logo": "mlb/chw"
+    },
+    {
+     "name": "Houston Astros",
+     "abbr": "HOU",
+     "detail": "AL No. 3 seed • 81–81",
+     "logo": "mlb/hou"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-29T17:00:00-04:00",
+   "watch": "NBCSN",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No Astros or White Sox RSN telecast.",
+   "venue": "Daikin Park, Houston",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Best-of-three opener. Houston won the AL West at .500; Chicago secured the final AL seed. Winner advances to face Cleveland.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBCSN/Peacock live coverage. NBCSN access depends on provider."
+  },
+  {
+   "id": "mlb-bos-nyy",
+   "league": "MLB",
+   "label": "MLB • Wild Card Series",
+   "flags": [
+    "Wild Card • Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "Boston Red Sox",
+     "abbr": "BOS",
+     "detail": "AL No. 5 seed • 87–75",
+     "logo": "mlb/bos"
+    },
+    {
+     "name": "New York Yankees",
+     "abbr": "NYY",
+     "detail": "AL No. 4 seed • 93–68",
+     "logo": "mlb/nyy"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-29T20:00:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No YES Network or NESN game telecast.",
+   "venue": "Yankee Stadium, Bronx",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Best-of-three rivalry opener. New York hosts as the No. 4 seed; its weather-canceled finale left a 161-game record. Winner advances to face Tampa Bay.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBC/Peacock live coverage. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "mlb-chc-sd",
+   "league": "MLB",
+   "label": "MLB • Wild Card Series",
+   "flags": [
+    "Wild Card • Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "Chicago Cubs",
+     "abbr": "CHC",
+     "detail": "NL No. 5 seed • 89–73",
+     "logo": "mlb/chc"
+    },
+    {
+     "name": "San Diego Padres",
+     "abbr": "SD",
+     "detail": "NL No. 4 seed • 91–71",
+     "logo": "mlb/sd"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-29T22:00:00-04:00",
+   "watch": "NBCSN",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No Padres or Cubs RSN telecast.",
+   "venue": "Petco Park, San Diego",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Best-of-three opener. San Diego earned home field as the No. 4 seed. Winner advances to face Milwaukee.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBCSN/Peacock live coverage. NBCSN access depends on provider."
+  },
+  {
+   "id": "wnba-lva-ind",
+   "league": "WNBA",
+   "label": "WNBA • First Round",
+   "flags": [
+    "Playoffs • Game 2",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Las Vegas Aces",
+     "abbr": "LVA",
+     "detail": "No. 3 seed • 31–13 • lead 1–0",
+     "logo": "wnba/lv"
+    },
+    {
+     "name": "Indiana Fever",
+     "abbr": "IND",
+     "detail": "No. 6 seed • 28–16",
+     "logo": "wnba/ind"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-29T18:30:00-04:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "National",
+   "coverage": "National streaming window. No regional team telecast listed.",
+   "venue": "Gainbridge Fieldhouse, Indianapolis",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Best-of-three Game 2. Las Vegas won the opener 102–85; Indiana must win at home to extend the series.",
+   "blackout": "No territorial blackout is expected on Prime Video. Subscription or eligible access is required; WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "wnba-min-nyl",
+   "league": "WNBA",
+   "label": "WNBA • First Round",
+   "flags": [
+    "Playoffs • Game 2",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Minnesota Lynx",
+     "abbr": "MIN",
+     "detail": "No. 1 seed • 33–11",
+     "logo": "wnba/min"
+    },
+    {
+     "name": "New York Liberty",
+     "abbr": "NYL",
+     "detail": "No. 8 seed • 26–18 • lead 1–0",
+     "logo": "wnba/ny"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-29T20:30:00-04:00",
+   "watch": "USA Network • CNBC",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National cable window. No regional team telecast listed.",
+   "venue": "Barclays Center, Brooklyn",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Best-of-three Game 2. New York upset the top seed 91–75 in Game 1; Minnesota faces elimination.",
+   "blackout": "No territorial blackout is expected. TV-provider access is required; WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "usmnt-usa-chi",
+   "league": "USMNT",
+   "label": "USMNT • International Friendly",
+   "flags": [
+    "Friendly"
+   ],
+   "competitors": [
+    {
+     "name": "United States",
+     "abbr": "USA",
+     "detail": "FIFA No. 16"
+    },
+    {
+     "name": "Chile",
+     "abbr": "CHI",
+     "detail": "FIFA No. 49"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-09-29T20:00:00-04:00",
+   "watch": "TNT • truTV • Telemundo • Universo",
+   "streaming": "HBO Max (English) • Peacock (Spanish)",
+   "coverage_type": "National",
+   "coverage": "National. English on TNT/truTV and HBO Max; Spanish on Telemundo/Universo and Peacock.",
+   "venue": "Energizer Park, St. Louis",
+   "venue_tz": "Central Daylight Time",
+   "notes": "The U.S. enters after a 4–1 win over Peru. Chile lost to Canada in its first match after missing the World Cup; both sides begin the next-cycle build.",
+   "blackout": "No territorial blackout is expected. Channel and stream access depend on plan, provider, and language feed availability."
+  }
+ ],
+ "footer_note": "Seven qualifying events fall inside Tuesday's Eastern calendar day. Preseason and exhibition games, lower-interest non-national regular-season games, and non-major individual-sport events are excluded.",
+ "sources": [
+  {
+   "label": "MLB schedule",
+   "url": "https://www.mlb.com/schedule/2026-09-29"
+  },
+  {
+   "label": "Peacock MLB",
+   "url": "https://www.peacocktv.com/sports/mlb"
+  },
+  {
+   "label": "WNBA playoffs",
+   "url": "https://www.wnba.com/playoffs/2026"
+  },
+  {
+   "label": "WNBA first-round preview",
+   "url": "https://www.wnba.com/news/2026-playoffs-series-preview-first-round"
+  },
+  {
+   "label": "Indiana Fever schedule release",
+   "url": "https://fever.wnba.com/news/no-6-indiana-fever-to-face-no-3-las-vegas-aces-in-first-round-of-2026-wnba-playoffs-fever-to-make-their-16th-wnba-playoff-appearance"
+  },
+  {
+   "label": "USA vs. Chile preview",
+   "url": "https://www.starsandstripesfc.com/usmnt/45866/usa-vs-chile-2026-usmnt-friendly-scouting-chile"
+  }
+ ]
+}

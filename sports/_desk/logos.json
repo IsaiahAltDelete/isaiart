@@ -1,0 +1,17 @@
+{
+ "_comment": "Verified ESPN CDN logo URLs only. Add a key only after confirming the URL returns an image (WebFetch reports 'Image content is not supported' for a real image, 404 for a missing one). Key format: league/espn-abbr.",
+ "mlb/phi": "https://a.espncdn.com/i/teamlogos/mlb/500/phi.png",
+ "mlb/atl": "https://a.espncdn.com/i/teamlogos/mlb/500/atl.png",
+ "mlb/chw": "https://a.espncdn.com/i/teamlogos/mlb/500/chw.png",
+ "mlb/hou": "https://a.espncdn.com/i/teamlogos/mlb/500/hou.png",
+ "mlb/bos": "https://a.espncdn.com/i/teamlogos/mlb/500/bos.png",
+ "mlb/nyy": "https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png",
+ "mlb/chc": "https://a.espncdn.com/i/teamlogos/mlb/500/chc.png",
+ "mlb/sd": "https://a.espncdn.com/i/teamlogos/mlb/500/sd.png",
+ "wnba/lv": "https://a.espncdn.com/i/teamlogos/wnba/500/lv.png",
+ "wnba/ind": "https://a.espncdn.com/i/teamlogos/wnba/500/ind.png",
+ "wnba/min": "https://a.espncdn.com/i/teamlogos/wnba/500/min.png",
+ "wnba/ny": "https://a.espncdn.com/i/teamlogos/wnba/500/ny.png",
+ "nfl/phi": "https://a.espncdn.com/i/teamlogos/nfl/500/phi.png",
+ "nfl/chi": "https://a.espncdn.com/i/teamlogos/nfl/500/chi.png"
+}
