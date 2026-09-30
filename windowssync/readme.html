@@ -45,7 +45,7 @@
 
 <table>
   <tr><th style="width:210px">Script</th><th>What it does</th></tr>
-  <tr><td><code>Pull.cmd</code></td><td>Fast-forwards every local repository from its remote</td></tr>
+  <tr><td><code>Pull.cmd</code></td><td>Updates every local repository from GitHub, replaying any local commits on top</td></tr>
   <tr><td><code>Push.cmd</code></td><td>Stages, commits, rebases onto the remote, and pushes every repository</td></tr>
   <tr><td><code>Clone New Repos.cmd</code></td><td>Clones any repository on the account that isn't local yet</td></tr>
 </table>
@@ -105,11 +105,11 @@
 <span class="d">────────────────────────────────────────────────────────</span></pre>
 
 <h3>Pull.cmd</h3>
-<p>Runs <code>git pull --ff-only</code> in each repository. If local changes block the fast-forward, it retries with <code>--rebase --autostash</code> and notes that it set your changes aside. Each repository reports <code>up to date</code>, <code>updated (n file(s))</code>, <code>empty repository</code>, or <code>failed</code> with the Git error underneath.</p>
+<p>Runs <code>git pull --rebase --autostash</code> in each repository. If this PC has commits GitHub doesn't, they are replayed on top of the new remote commits rather than refused, and uncommitted edits are set aside and restored automatically. Each repository reports <code>up to date</code>, <code>updated · n files</code> (noting kept edits or local commits still to push), <code>empty repository</code>, <code>conflict — needs a manual merge</code>, or <code>failed</code> with the Git error underneath. A conflicted rebase is always rolled back, so no repository is ever left half-merged. Branches that have never been published are skipped.</p>
 
 <h3>Push.cmd</h3>
 <p>Prompts for a commit message — press Enter for a computer-and-timestamp default — then, per repository: <code>git add -A</code>, commit, <code>git pull --rebase --autostash</code>, and push. Repositories with nothing to publish report <code>no changes</code> and are skipped.</p>
-<p>The rebase step exists so a push can't be rejected for being behind. If it hits a genuine conflict the rebase is aborted and the repository is reported as <code>conflict — needs manual merge</code>, leaving the working tree intact. Repositories without an upstream branch are pushed with <code>-u origin &lt;branch&gt;</code>; repositories with no <code>origin</code> remote at all are reported as <code>skipped</code> rather than attempted.</p>
+<p>The sync step exists so a push can't be rejected for being behind — commits made on another machine, by a cloud agent or through a merged pull request are pulled in first. A genuine conflict rolls the rebase back and is reported as <code>conflict — needs a manual merge</code>; a network or sign-in problem is reported separately as <code>couldn't reach GitHub</code>. Branches that have never been published skip the sync and are pushed with <code>-u origin &lt;branch&gt;</code>; repositories with no <code>origin</code> remote at all are reported as <code>skipped</code> rather than attempted.</p>
 
 <h3>Clone New Repos.cmd</h3>
 <p>Lists the account's non-archived repositories via <code>gh repo list</code> and clones anything missing. Existing repositories are left untouched. If the GitHub session has expired it starts the sign-in flow first.</p>
@@ -134,7 +134,9 @@
   <tr><td>Boxes or question marks instead of lines</td><td>The console is using a legacy font. Right-click the title bar → <b>Properties</b> → <b>Font</b> and pick <i>Consolas</i> or <i>Cascadia Mono</i>. Windows Terminal shows them correctly by default.</td></tr>
   <tr><td><code>git</code> or <code>gh</code> is not recognised</td><td>The user <code>PATH</code> changed during install and this window predates it. Close and reopen it. If it persists, run <code>Install.cmd</code> again.</td></tr>
   <tr><td><code>failed to push</code> / <code>authentication failed</code></td><td>The GitHub session expired. Run <code>Clone New Repos.cmd</code>, which re-runs <code>gh auth login</code> when it detects a signed-out state, then push again.</td></tr>
-  <tr><td><code>conflict — needs manual merge</code></td><td>The same file diverged locally and remotely. Nothing was lost or committed over. Resolve that repository by hand, then push again.</td></tr>
+  <tr><td><code>conflict — needs a manual merge</code></td><td>The same lines changed locally and on GitHub. The rebase was rolled back, so nothing was lost or committed over. Resolve that repository by hand, then push again.</td></tr>
+  <tr><td><code>couldn't reach GitHub</code></td><td>The network dropped or the sign-in expired. Nothing was changed. Check the connection, run <code>Clone New Repos.cmd</code> to sign in again if needed, then retry.</td></tr>
+  <tr><td><code>updated, but your uncommitted edits clashed</code></td><td>The update succeeded, but your uncommitted edits overlap it. They are safe in the stash: run <code>git stash pop</code> in that repository.</td></tr>
   <tr><td>Changing account or folder</td><td>Re-run <code>Install.cmd</code>, or edit <code>%USERPROFILE%\.githubsync.conf</code> directly.</td></tr>
 </table>
 
