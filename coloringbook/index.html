@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COLORING BOOK</title>
+<meta name="description" content="Turn line art into print-ready coloring pages: strips grey shading, sharpens the lines to pure black, and upscales to 300 DPI on a real page size.">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="../assets/studio.css?v=1">
+
+<style>
+/* ── Page queue ───────────────────────────────────────────────────────
+   The metadata page's bulk list: a row per file, thumbnail, name, size,
+   a remove button. Rows drag to reorder — the order is the PDF's. */
+.queue { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; padding-right: 2px; }
+.queue:empty { display: none; }
+.qi {
+    display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px;
+    padding: 6px 6px 6px 6px; border-radius: 8px; border: 1px solid var(--g200); background: #fff;
+    cursor: pointer; user-select: none; animation: card-in .3s ease both;
+    transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease, opacity .2s ease;
+}
+.qi:hover { border-color: var(--g300); background: var(--g50); }
+.qi[aria-current="true"] { border-color: #fca5a5; background: var(--accent-50); }
+.qi.dragging { opacity: .45; }
+.qi.drop-above { box-shadow: 0 -2px 0 var(--accent); }
+.qi.drop-below { box-shadow: 0 2px 0 var(--accent); }
+.qi canvas { width: 40px; height: 40px; border-radius: 6px; background: #fff; border: 1px solid var(--g200); display: block; }
+.qi .nm { min-width: 0; }
+.qi .nm b { display: block; font-size: 13px; font-weight: 500; color: var(--g700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qi .nm span { display: block; font-family: var(--mono); font-size: 11px; color: var(--g500); }
+.qi .x { width: 28px; height: 28px; padding: 0; background: transparent; color: var(--g400); }
+.qi .x:hover { background: var(--accent-100); color: var(--accent); }
+.qi .x .material-symbols-outlined { font-size: 18px; }
+.qi:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,.92); box-shadow: var(--shadow-md); font-size: 12px; color: var(--g600); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+    <header class="head">
+        <a class="back" href="https://isaiart.com"><span class="material-symbols-outlined">arrow_back</span>isaiart</a>
+        <h1><span class="material-symbols-outlined">draw</span>Coloring Book</h1>
+        <p>Remove grays, sharpen lines and upscale line art to print-ready pages.</p>
+    </header>
+
+    <div class="seg tabs" role="radiogroup" aria-label="View">
+        <label><input type="radio" name="view" value="result" checked><span class="material-symbols-outlined">auto_fix_high</span>Result</label>
+        <label><input type="radio" name="view" value="split"><span class="material-symbols-outlined">compare</span>Split</label>
+        <label><input type="radio" name="view" value="source"><span class="material-symbols-outlined">image</span>Before</label>
+        <label><input type="radio" name="view" value="removed"><span class="material-symbols-outlined">layers_clear</span>Removed</label>
+    </div>
+
+    <main class="content">
+
+        <aside class="sidebar">
+
+            <details class="panel rise" style="--i:0" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">collections</span>
+                    <h2>Pages</h2>
+                    <span class="badge" id="qCount">0</span>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <input type="file" id="file" accept="image/*" multiple class="sr-only">
+                    <div class="drop" id="pickBtn" role="button" tabindex="0">
+                        <span class="material-symbols-outlined">upload_file</span>
+                        <b>Drop Images Here</b>
+                        <span class="s">or click to select</span>
+                    </div>
+                    <div class="queue scroll" id="queue" role="list" aria-label="Pages"></div>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:1" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">invert_colors_off</span>
+                    <h2>Grays</h2>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <div class="ctl" data-def="125">
+                        <div class="ctl-top"><label for="cut">Ink cutoff</label><output id="cutVal">125</output></div>
+                        <input class="range" type="range" id="cut" min="40" max="220" step="1" value="125">
+                        <p class="help">Raise if faint lines vanish. Lower if shading survives.</p>
+                    </div>
+                    <div class="ctl" data-def="8">
+                        <div class="ctl-top"><label for="speck">Despeckle</label><output id="speckVal">8 px</output></div>
+                        <input class="range" type="range" id="speck" min="0" max="120" step="1" value="8">
+                    </div>
+                    <label class="switch"><input type="checkbox" id="flatten" checked><span class="track"></span><span>Flatten paper</span></label>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:2" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">gesture</span>
+                    <h2>Lines</h2>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <div class="ctl" data-def="0">
+                        <div class="ctl-top"><label for="weight">Line weight</label><output id="weightVal">0</output></div>
+                        <input class="range" type="range" id="weight" min="-5" max="5" step="0.5" value="0">
+                    </div>
+                    <div class="ctl" data-def="35">
+                        <div class="ctl-top"><label for="smooth">Smoothing</label><output id="smoothVal">35%</output></div>
+                        <input class="range" type="range" id="smooth" min="0" max="100" step="1" value="35">
+                    </div>
+                    <div class="seg" role="radiogroup" aria-label="Edges">
+                        <label><input type="radio" name="edges" value="smooth" checked>Smooth edges</label>
+                        <label><input type="radio" name="edges" value="bw">Pure B&amp;W</label>
+                    </div>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:3" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">print</span>
+                    <h2>Print</h2>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <div class="ctl">
+                        <div class="ctl-top"><label for="page">Page size</label></div>
+                        <select class="select" id="page">
+                            <option value="letter" selected>US Letter · 8.5 × 11 in</option>
+                            <option value="a4">A4 · 210 × 297 mm</option>
+                            <option value="8x10">8 × 10 in</option>
+                            <option value="square">Square · 8.5 × 8.5 in</option>
+                            <option value="6x9">6 × 9 in</option>
+                            <option value="none">No page · upscale only</option>
+                        </select>
+                    </div>
+                    <div class="seg" role="radiogroup" aria-label="Resolution">
+                        <label><input type="radio" name="dpi" value="300" checked>300 DPI</label>
+                        <label><input type="radio" name="dpi" value="600">600 DPI</label>
+                    </div>
+                    <div class="seg" role="radiogroup" aria-label="Layout" id="pageOnly">
+                        <label><input type="radio" name="layout" value="page" checked>Full page</label>
+                        <label><input type="radio" name="layout" value="fit">Art only</label>
+                    </div>
+                    <div class="ctl" data-def="0.25" id="marginRow">
+                        <div class="ctl-top"><label for="margin">Margin</label><output id="marginVal">0.25 in</output></div>
+                        <input class="range" type="range" id="margin" min="0" max="1" step="0.125" value="0.25">
+                    </div>
+                    <div class="seg" role="radiogroup" aria-label="Scale" id="factorRow" hidden>
+                        <label><input type="radio" name="factor" value="2">2×</label>
+                        <label><input type="radio" name="factor" value="3" checked>3×</label>
+                        <label><input type="radio" name="factor" value="4">4×</label>
+                        <label><input type="radio" name="factor" value="6">6×</label>
+                    </div>
+                    <div class="vit">
+                        <div><span class="v num" id="oK">—</span><span class="label">Upscale</span></div>
+                        <div><span class="v num" id="oW">—</span><span class="label">Width</span></div>
+                        <div><span class="v num" id="oH">—</span><span class="label">Height</span></div>
+                    </div>
+                    <div class="stats">
+                        <div class="stat"><span>Output</span><b id="oDim">—</b></div>
+                        <div class="stat"><span>Source</span><b id="oSrc">—</b></div>
+                    </div>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:4">
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">analytics</span>
+                    <h2>Report</h2>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <div class="stats">
+                        <div class="stat"><span>Ink coverage</span><b id="rInk">—</b></div>
+                        <div class="stat"><span>Gray removed</span><b id="rGrey">—</b></div>
+                        <div class="stat"><span>Specks removed</span><b id="rSpeck">—</b></div>
+                        <div class="stat"><span>Black point</span><b id="rBlack">—</b></div>
+                        <div class="stat"><span>Render time</span><b id="fMs">—</b></div>
+                    </div>
+                </div></div>
+            </details>
+
+        </aside>
+
+        <section class="stage">
+            <div class="canvas-wrap" id="wrap">
+                <div class="progress" id="prog"><i></i></div>
+                <canvas id="view"></canvas>
+                <div class="float tr">
+                    <div class="zoom">
+                        <button class="btn" type="button" id="zOut" aria-label="Zoom out"><span class="material-symbols-outlined">remove</span></button>
+                        <output id="zVal">—</output>
+                        <button class="btn" type="button" id="zIn" aria-label="Zoom in"><span class="material-symbols-outlined">add</span></button>
+                        <button class="btn fitb" type="button" id="zOne">1:1</button>
+                        <button class="btn fitb" type="button" id="zFit">Fit</button>
+                    </div>
+                </div>
+                <div class="float bl" id="legend" hidden>
+                    <div class="legend">
+                        <span><i style="background:#262a2f"></i>Kept</span>
+                        <span><i style="background:#e5484d"></i>Gray removed</span>
+                        <span><i style="background:#ffb000"></i>Speck removed</span>
+                    </div>
+                </div>
+                <div class="empty" id="empty">
+                    <div class="empty-card">
+                        <span class="material-symbols-outlined big">upload_file</span>
+                        <h3>Drop Line Art Here</h3>
+                        <p>One page or a whole book</p>
+                        <button class="btn primary" type="button" id="browseBtn"><span class="material-symbols-outlined">add_photo_alternate</span>Choose Images</button>
+                    </div>
+                </div>
+            </div>
+            <div class="actions">
+                <div class="stage-foot"><b id="fOut">—</b><span id="vStat"></span></div>
+                <span class="grow"></span>
+                <button class="btn ghost danger" type="button" id="resetBtn"><span class="material-symbols-outlined">delete_sweep</span>Clear</button>
+                <button class="btn dark" type="button" id="zipBtn" disabled><span class="material-symbols-outlined">folder_zip</span>ZIP</button>
+                <button class="btn primary" type="button" id="pdfBtn" disabled><span class="material-symbols-outlined">picture_as_pdf</span>PDF Book</button>
+                <button class="btn go" type="button" id="saveBtn" disabled><span class="material-symbols-outlined">download</span>Save PNG</button>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script src="../assets/studio.js?v=1"></script>
+<script src="../assets/print.js?v=1"></script>
+<script src="lineart.js?v=2"></script>
+<script src="coloringbook.js?v=2"></script>
+</body>
+</html>

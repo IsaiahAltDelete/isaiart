@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KDP COVER STUDIO</title>
+<meta name="description" content="Build a print-ready KDP paperback cover: front, back, spine, bleed and barcode area, exported as a 300 DPI PDF.">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<!-- Spine faces -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@800&family=Playfair+Display:wght@800&family=Fredoka:wght@700&family=Bebas+Neue&family=Merriweather:wght@700&family=Caveat+Brush&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/studio.css?v=1">
+
+<style>
+/* ── Slot cards ───────────────────────────────────────────────────────
+   One per image the cover holds; each is a selector and a drop target.
+   The selected card gets the red ring the metadata page uses on focus,
+   and the canvas rings the same image. */
+.slots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.slot {
+    position: relative; display: flex; flex-direction: column; gap: 8px;
+    padding: 8px 8px 10px; border-radius: 12px; text-align: left; cursor: pointer;
+    background: #fff; border: 1px solid var(--g200);
+    transition: border-color .2s ease, box-shadow .2s ease, transform .12s ease, background-color .2s ease;
+}
+.slot:hover { border-color: var(--g300); box-shadow: var(--shadow-subtle); }
+.slot:active { transform: scale(.98); }
+.slot[aria-selected="true"] { border-color: #f87171; box-shadow: 0 0 0 3px var(--accent-ring); }
+.slot.over { border-color: var(--accent); background: var(--accent-50); transform: scale(1.01); }
+.slot .thumb {
+    position: relative; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden;
+    background: var(--g100); border: 2px dashed var(--g300);
+    display: grid; place-items: center; color: var(--g400);
+    transition: border-color .3s ease, color .3s ease, background-color .3s ease;
+}
+.slot:hover .thumb { border-color: #ef4444; color: var(--accent-hover); background: var(--accent-50); }
+.slot.filled .thumb { border: 0; }
+.slot .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .3s ease; }
+.slot .thumb img.on { opacity: 1; }
+.slot .thumb .material-symbols-outlined { font-size: 28px; }
+.slot .meta { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 2px; }
+.slot .meta b { font-size: 13px; font-weight: 600; color: var(--g700); white-space: nowrap; }
+.slot .meta .badge { margin-left: auto; height: 20px; font-size: 10.5px; padding: 0 6px; }
+.slot .sub { padding: 0 2px; font-size: 11.5px; color: var(--g500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -6px; }
+
+.selctl { display: flex; flex-direction: column; gap: 14px; padding: 14px; border-radius: 12px; background: var(--g100); border: 1px solid var(--g200); animation: card-in .3s ease both; }
+.selctl .seg:not(.tabs) { background: var(--g200); }
+.selctl-h { display: flex; align-items: center; gap: 2px; }
+.selctl-h #selName { font-size: 14px; font-weight: 600; color: var(--g700); margin-right: auto; }
+
+.num { display: flex; align-items: center; gap: 6px; }
+.num .input { text-align: center; padding: 0 6px; }
+.num .btn { flex: none; }
+
+.warnline { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: #b45309;
+            padding: 8px 12px; border-radius: 8px; background: var(--warn-50); border: 1px solid #fde68a; }
+.warnline .material-symbols-outlined { font-size: 18px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--g500); }
+.legend i { width: 14px; height: 0; border-top: 2px solid; }
+.legend i.box { height: 10px; border: 0; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+    <header class="head">
+        <a class="back" href="https://isaiart.com"><span class="material-symbols-outlined">arrow_back</span>isaiart</a>
+        <h1><span class="material-symbols-outlined">menu_book</span>KDP Cover Studio</h1>
+        <p>Paperback wrap covers with the spine, bleed and barcode area worked out for you.</p>
+    </header>
+
+    <div class="seg tabs" role="radiogroup" aria-label="Preview">
+        <label><input type="radio" name="pv" value="guides" checked><span class="material-symbols-outlined">grid_guides</span>Guides</label>
+        <label><input type="radio" name="pv" value="clean"><span class="material-symbols-outlined">visibility</span>Clean</label>
+        <label><input type="radio" name="pv" value="print"><span class="material-symbols-outlined">crop</span>Trimmed</label>
+    </div>
+
+    <main class="content">
+
+        <aside class="sidebar">
+
+            <details class="panel rise" style="--i:0" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">straighten</span>
+                    <h2>Book</h2>
+                    <span class="badge" id="spineBadge">—</span>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <div class="ctl">
+                        <div class="ctl-top"><label for="trim">Trim size</label></div>
+                        <select class="select" id="trim"></select>
+                    </div>
+                    <div class="two">
+                        <div class="ctl">
+                            <div class="ctl-top"><label for="pages">Pages</label></div>
+                            <div class="num">
+                                <button class="btn icon sm" type="button" data-step="-2" aria-label="Fewer pages"><span class="material-symbols-outlined">remove</span></button>
+                                <input class="input" type="number" id="pages" min="24" max="828" step="2" value="100">
+                                <button class="btn icon sm" type="button" data-step="2" aria-label="More pages"><span class="material-symbols-outlined">add</span></button>
+                            </div>
+                        </div>
+                        <div class="ctl">
+                            <div class="ctl-top"><label for="paper">Paper</label></div>
+                            <select class="select" id="paper">
+                                <option value="white" selected>White · B&amp;W</option>
+                                <option value="cream">Cream · B&amp;W</option>
+                                <option value="std">Color · Standard</option>
+                                <option value="prem">Color · Premium</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="vit">
+                        <div><span class="v num" id="oSpine">—</span><span class="label">Spine</span></div>
+                        <div><span class="v num" id="oW">—</span><span class="label">Width</span></div>
+                        <div><span class="v num" id="oH">—</span><span class="label">Height</span></div>
+                    </div>
+                    <div class="stats">
+                        <div class="stat"><span>Full sheet</span><b id="oSize">—</b></div>
+                        <div class="stat"><span>At 300 DPI</span><b id="oPx">—</b></div>
+                    </div>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:1" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">imagesmode</span>
+                    <h2>Artwork</h2>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <input type="file" id="file" accept="image/*" class="sr-only">
+                    <div class="slots" id="slots" role="listbox" aria-label="Cover images"></div>
+
+                    <div class="selctl" id="selctl" hidden>
+                        <div class="selctl-h">
+                            <span id="selName">Front cover</span>
+                            <button class="btn sm ghost" type="button" id="swapBtn" title="Swap front and back"><span class="material-symbols-outlined">swap_horiz</span>Swap</button>
+                            <button class="btn sm ghost" type="button" id="replaceBtn" title="Replace"><span class="material-symbols-outlined">cached</span></button>
+                            <button class="btn sm ghost danger" type="button" id="removeBtn" title="Remove"><span class="material-symbols-outlined">delete</span></button>
+                        </div>
+                        <div class="ctl" id="fitRow">
+                            <div class="seg" role="radiogroup" aria-label="Fit">
+                                <label><input type="radio" name="fit" value="fill" checked>Fill</label>
+                                <label><input type="radio" name="fit" value="fit">Fit</label>
+                            </div>
+                        </div>
+                        <div class="ctl" data-def="100" id="zoomRow">
+                            <div class="ctl-top"><label for="izoom">Scale</label><output id="izoomVal">100%</output></div>
+                            <input class="range" type="range" id="izoom" min="100" max="400" step="1" value="100">
+                        </div>
+                        <div class="ctl" id="opRow" data-def="45" hidden>
+                            <div class="ctl-top"><label for="tplOp">Opacity</label><output id="tplOpVal">45%</output></div>
+                            <input class="range" type="range" id="tplOp" min="5" max="100" step="1" value="45">
+                        </div>
+                        <div class="row" id="posRow">
+                            <button class="btn sm" type="button" id="centerBtn"><span class="material-symbols-outlined">center_focus_strong</span>Center</button>
+                            <span class="help grow" id="dpiNote"></span>
+                        </div>
+                    </div>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:2" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">format_paint</span>
+                    <h2>Background</h2>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <div class="seg" role="radiogroup" aria-label="Background fill">
+                        <label><input type="radio" name="bgmode" value="color" checked>Color</label>
+                        <label><input type="radio" name="bgmode" value="blur">Blur</label>
+                        <label><input type="radio" name="bgmode" value="image">Image</label>
+                    </div>
+                    <div class="row" id="colorRow">
+                        <input class="color" type="color" id="bgColor" value="#ffffff" aria-label="Background color">
+                        <div class="swatches grow" id="swatches"></div>
+                    </div>
+                    <div id="blurRows" hidden>
+                        <div class="ctl" data-def="60">
+                            <div class="ctl-top"><label for="blur">Blur</label><output id="blurVal">60</output></div>
+                            <input class="range" type="range" id="blur" min="0" max="100" step="1" value="60">
+                        </div>
+                    </div>
+                    <div class="ctl" data-def="0" id="dimRow" hidden>
+                        <div class="ctl-top"><label for="dim">Darken / lighten</label><output id="dimVal">0</output></div>
+                        <input class="range" type="range" id="dim" min="-60" max="60" step="1" value="0">
+                    </div>
+                    <div class="divider"></div>
+                    <div class="ctl" data-def="0">
+                        <div class="ctl-top"><label for="inset">Border</label><output id="insetVal">None</output></div>
+                        <input class="range" type="range" id="inset" min="0" max="1" step="0.0625" value="0">
+                    </div>
+                    <div class="ctl" data-def="0" id="radiusRow">
+                        <div class="ctl-top"><label for="radius">Corner radius</label><output id="radiusVal">0 in</output></div>
+                        <input class="range" type="range" id="radius" min="0" max="0.75" step="0.03125" value="0">
+                    </div>
+                    <label class="switch"><input type="checkbox" id="outline"><span class="track"></span><span>Outline</span></label>
+                    <div class="row" id="outlineRow" hidden>
+                        <input class="color" type="color" id="outlineColor" value="#111111" aria-label="Outline color">
+                        <div class="ctl grow" data-def="0.04">
+                            <div class="ctl-top"><label for="outlineW">Width</label><output id="outlineWVal">0.04 in</output></div>
+                            <input class="range" type="range" id="outlineW" min="0.01" max="0.2" step="0.01" value="0.04">
+                        </div>
+                    </div>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:3" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">vertical_split</span>
+                    <h2>Spine</h2>
+                    <span class="badge" id="spineTextBadge">—</span>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <div class="seg" role="radiogroup" aria-label="Spine fill">
+                        <label><input type="radio" name="spinemode" value="bg" checked>Match fill</label>
+                        <label><input type="radio" name="spinemode" value="color">Own color</label>
+                    </div>
+                    <div class="row" id="spineColorRow" hidden>
+                        <input class="color" type="color" id="spineColor" value="#1f2937" aria-label="Spine color">
+                        <div class="swatches grow" id="spineSwatches"></div>
+                    </div>
+                    <div class="warnline" id="spineWarn" hidden>
+                        <span class="material-symbols-outlined">warning</span>
+                        <span>KDP needs 80+ pages for spine text.</span>
+                    </div>
+                    <div class="ctl">
+                        <div class="ctl-top"><label for="sTitle">Title</label></div>
+                        <input class="input" type="text" id="sTitle" placeholder="Book title" maxlength="120">
+                    </div>
+                    <div class="ctl">
+                        <div class="ctl-top"><label for="sAuthor">Author</label></div>
+                        <input class="input" type="text" id="sAuthor" placeholder="Author name" maxlength="80">
+                    </div>
+                    <div class="two">
+                        <div class="ctl">
+                            <div class="ctl-top"><label for="sFont">Font</label></div>
+                            <select class="select" id="sFont">
+                                <option value="Inter" data-w="800">Inter</option>
+                                <option value="Fredoka" data-w="700">Fredoka</option>
+                                <option value="Playfair Display" data-w="800">Playfair</option>
+                                <option value="Merriweather" data-w="700">Merriweather</option>
+                                <option value="Bebas Neue" data-w="400">Bebas Neue</option>
+                                <option value="Caveat Brush" data-w="400">Caveat Brush</option>
+                            </select>
+                        </div>
+                        <div class="ctl">
+                            <div class="ctl-top"><label for="sInk">Text color</label></div>
+                            <div class="row">
+                                <input class="color" type="color" id="sInk" value="#111111" aria-label="Spine text color">
+                                <button class="btn sm" type="button" id="autoInk">Auto</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ctl" data-def="100">
+                        <div class="ctl-top"><label for="sSize">Text size</label><output id="sSizeVal">100%</output></div>
+                        <input class="range" type="range" id="sSize" min="40" max="100" step="1" value="100">
+                    </div>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:4">
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">grid_guides</span>
+                    <h2>Guides</h2>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <label class="switch"><input type="checkbox" id="gBleed" checked><span class="track"></span><span>Bleed &amp; trim</span></label>
+                    <label class="switch"><input type="checkbox" id="gSafe" checked><span class="track"></span><span>Safe area</span></label>
+                    <label class="switch"><input type="checkbox" id="gSpine" checked><span class="track"></span><span>Spine folds</span></label>
+                    <label class="switch"><input type="checkbox" id="gBarcode" checked><span class="track"></span><span>Barcode area</span></label>
+                    <div class="legend">
+                        <span><i class="box" style="background:rgba(239,68,68,.28)"></i>Bleed</span>
+                        <span><i style="border-color:#ef4444"></i>Trim</span>
+                        <span><i style="border-color:#10b981;border-top-style:dashed"></i>Safe</span>
+                        <span><i style="border-color:#3b82f6;border-top-style:dashed"></i>Fold</span>
+                    </div>
+                </div></div>
+            </details>
+
+        </aside>
+
+        <section class="stage">
+            <div class="canvas-wrap" id="wrap">
+                <div class="progress" id="prog"><i></i></div>
+                <canvas id="view"></canvas>
+                <div class="float tr">
+                    <div class="zoom">
+                        <button class="btn" type="button" id="zOut" aria-label="Zoom out"><span class="material-symbols-outlined">remove</span></button>
+                        <output id="zVal">100%</output>
+                        <button class="btn" type="button" id="zIn" aria-label="Zoom in"><span class="material-symbols-outlined">add</span></button>
+                        <button class="btn fitb" type="button" id="zFit">Fit</button>
+                    </div>
+                </div>
+                <div class="empty" id="empty">
+                    <div class="empty-card">
+                        <span class="material-symbols-outlined big">upload_file</span>
+                        <h3>Drop Cover Art Here</h3>
+                        <p>Front first, then back</p>
+                        <button class="btn primary" type="button" id="browseBtn"><span class="material-symbols-outlined">add_photo_alternate</span>Choose Images</button>
+                    </div>
+                </div>
+            </div>
+            <div class="actions">
+                <div class="stage-foot"><b id="fSize">—</b><span id="fHint"></span></div>
+                <span class="grow"></span>
+                <button class="btn dark" type="button" id="pngBtn" disabled><span class="material-symbols-outlined">image</span>PNG</button>
+                <button class="btn primary" type="button" id="pdfBtn" disabled><span class="material-symbols-outlined">picture_as_pdf</span>Export PDF</button>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script src="../assets/studio.js?v=1"></script>
+<script src="../assets/print.js?v=1"></script>
+<script src="kdp.js?v=1"></script>
+</body>
+</html>
