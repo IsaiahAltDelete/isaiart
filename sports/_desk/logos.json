@@ -13,5 +13,9 @@
  "wnba/min": "https://a.espncdn.com/i/teamlogos/wnba/500/min.png",
  "wnba/ny": "https://a.espncdn.com/i/teamlogos/wnba/500/ny.png",
  "nfl/phi": "https://a.espncdn.com/i/teamlogos/nfl/500/phi.png",
- "nfl/chi": "https://a.espncdn.com/i/teamlogos/nfl/500/chi.png"
+ "nfl/chi": "https://a.espncdn.com/i/teamlogos/nfl/500/chi.png",
+ "wnba/atl": "https://a.espncdn.com/i/teamlogos/wnba/500/atl.png",
+ "wnba/wsh": "https://a.espncdn.com/i/teamlogos/wnba/500/wsh.png",
+ "wnba/gs": "https://a.espncdn.com/i/teamlogos/wnba/500/gs.png",
+ "wnba/dal": "https://a.espncdn.com/i/teamlogos/wnba/500/dal.png"
 }

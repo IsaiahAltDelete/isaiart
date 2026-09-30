@@ -1,0 +1,289 @@
+{
+ "date": "2026-09-30",
+ "updated": "2026-09-30T07:58:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Red Sox at Yankees, AL Wild Card Game 2, Boston faces elimination (8:00 PM ET, NBC/Peacock)",
+  "Phillies at Braves, NL Wild Card Game 2, Philadelphia faces elimination (2:00 PM ET, NBC/Peacock)",
+  "Valkyries at Wings, WNBA elimination Game 2 (9:00 PM ET, ESPN)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "Wild Card Series",
+   "note": "Four Game 2s • every road team faces elimination"
+  },
+  {
+   "key": "WNBA",
+   "name": "WNBA",
+   "subtitle": "First Round",
+   "note": "Two Game 2s • both home teams face elimination",
+   "color": "#956f82"
+  },
+  {
+   "key": "MLS",
+   "name": "MLS",
+   "subtitle": "Regular Season",
+   "note": "Weather makeup • playoff race"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-phi-atl",
+   "league": "MLB",
+   "label": "MLB • Wild Card Series",
+   "flags": [
+    "Wild Card • Game 2",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Philadelphia Phillies",
+     "abbr": "PHI",
+     "detail": "NL No. 6 seed • 88–74",
+     "logo": "mlb/phi"
+    },
+    {
+     "name": "Atlanta Braves",
+     "abbr": "ATL",
+     "detail": "NL No. 3 seed • 94–68 • lead 1–0",
+     "logo": "mlb/atl"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-30T14:00:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No Braves or Phillies RSN telecast.",
+   "venue": "Truist Park, Atlanta",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Atlanta leads 1–0 after a 5–3 Game 1 win. Philadelphia must win to force Thursday's Game 3; the winner faces the Dodgers.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBC/Peacock live coverage. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "wnba-atl-wsh",
+   "league": "WNBA",
+   "label": "WNBA • First Round",
+   "flags": [
+    "Playoffs • Game 2",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Atlanta Dream",
+     "abbr": "ATL",
+     "detail": "No. 4 seed • 30–14 • lead 1–0",
+     "logo": "wnba/atl"
+    },
+    {
+     "name": "Washington Mystics",
+     "abbr": "WSH",
+     "detail": "No. 5 seed • 28–16",
+     "logo": "wnba/wsh"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-30T19:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app • Fubo",
+   "coverage_type": "National",
+   "coverage": "National ESPN window. No regional team telecast listed.",
+   "venue": "CareFirst Arena, Washington",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Best-of-three Game 2. Atlanta won the opener 92–77; Washington hosts its first playoff game since the 2019 title run and must win to force Game 3 in Atlanta.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required; WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "mlb-cws-hou",
+   "league": "MLB",
+   "label": "MLB • Wild Card Series",
+   "flags": [
+    "Wild Card • Game 2",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Chicago White Sox",
+     "abbr": "CWS",
+     "detail": "AL No. 6 seed • 84–78 • lead 1–0",
+     "logo": "mlb/chw"
+    },
+    {
+     "name": "Houston Astros",
+     "abbr": "HOU",
+     "detail": "AL No. 3 seed • 81–81",
+     "logo": "mlb/hou"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-30T17:00:00-04:00",
+   "watch": "NBCSN",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No Astros or White Sox RSN telecast.",
+   "venue": "Daikin Park, Houston",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Chicago leads 1–0 after a 6–3 Game 1 win in Houston. The Astros must win to force Game 3; the winner faces Cleveland.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBCSN/Peacock live coverage. NBCSN access depends on provider."
+  },
+  {
+   "id": "mlb-bos-nyy",
+   "league": "MLB",
+   "label": "MLB • Wild Card Series",
+   "flags": [
+    "Wild Card • Game 2",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Boston Red Sox",
+     "abbr": "BOS",
+     "detail": "AL No. 5 seed • 87–75",
+     "logo": "mlb/bos"
+    },
+    {
+     "name": "New York Yankees",
+     "abbr": "NYY",
+     "detail": "AL No. 4 seed • 93–68 • lead 1–0",
+     "logo": "mlb/nyy"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-30T20:00:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No YES Network or NESN game telecast.",
+   "venue": "Yankee Stadium, Bronx",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "New York leads 1–0 after a 9–0 Game 1 rout. Boston must win to force Game 3; the winner faces Tampa Bay.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBC/Peacock live coverage. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "wnba-gsv-dal",
+   "league": "WNBA",
+   "label": "WNBA • First Round",
+   "flags": [
+    "Playoffs • Game 2",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Golden State Valkyries",
+     "abbr": "GSV",
+     "detail": "No. 2 seed • 32–12 • lead 1–0",
+     "logo": "wnba/gs"
+    },
+    {
+     "name": "Dallas Wings",
+     "abbr": "DAL",
+     "detail": "No. 7 seed • 27–17",
+     "logo": "wnba/dal"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-30T21:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app • Fubo",
+   "coverage_type": "National",
+   "coverage": "National ESPN window. No regional team telecast listed.",
+   "venue": "College Park Center, Arlington, Texas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Best-of-three Game 2. Golden State won its first-ever playoff game 104–80; Dallas must win at home to force Game 3 at Chase Center.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required; WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "mlb-chc-sd",
+   "league": "MLB",
+   "label": "MLB • Wild Card Series",
+   "flags": [
+    "Wild Card • Game 2",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Chicago Cubs",
+     "abbr": "CHC",
+     "detail": "NL No. 5 seed • 89–73",
+     "logo": "mlb/chc"
+    },
+    {
+     "name": "San Diego Padres",
+     "abbr": "SD",
+     "detail": "NL No. 4 seed • 91–71 • lead 1–0",
+     "logo": "mlb/sd"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-30T22:00:00-04:00",
+   "watch": "NBCSN",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No Padres or Cubs RSN telecast.",
+   "venue": "Petco Park, San Diego",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "San Diego leads 1–0 after an 8–0 Game 1 shutout. The Cubs must win to force Game 3; the winner faces Milwaukee.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBCSN/Peacock live coverage. NBCSN access depends on provider."
+  },
+  {
+   "id": "mls-stl-rbny",
+   "league": "MLS",
+   "label": "MLS • Regular Season",
+   "flags": [
+    "Rescheduled"
+   ],
+   "competitors": [
+    {
+     "name": "St. Louis CITY SC",
+     "abbr": "STL",
+     "detail": "12–6–8 • 5th in West"
+    },
+    {
+     "name": "Red Bull New York",
+     "abbr": "RBNY",
+     "detail": "9–11–6 • 33 pts"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-09-30T19:30:00-04:00",
+   "watch": "Apple TV",
+   "streaming": "Apple TV",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "Streaming on Apple TV in English and Spanish. No local TV listed.",
+   "venue": "Sports Illustrated Stadium, Harrison, N.J.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Moved from Saturday by the nor'easter. St. Louis brings a 16-game unbeaten run; the Red Bulls, on consecutive 1–0 shutouts, are chasing an Eastern Conference playoff spot.",
+   "blackout": "No local blackout on Apple TV. An Apple TV subscription is required."
+  }
+ ],
+ "footer_note": "Seven qualifying events fall inside Wednesday's Eastern calendar day. Preseason and exhibition games, lower-interest non-national regular-season games, and non-major individual-sport events are excluded.",
+ "sources": [
+  {
+   "label": "MLB postseason schedule",
+   "url": "https://www.mlb.com/news/2026-mlb-playoff-and-world-series-schedule"
+  },
+  {
+   "label": "NBC Sports Wild Card schedule",
+   "url": "https://www.nbcsports.com/mlb/news/2026-mlb-wild-card-series-full-schedule-on-nbc-peacock-and-nbcsn-matchups-times-preview"
+  },
+  {
+   "label": "WNBA first-round preview",
+   "url": "https://www.wnba.com/news/2026-playoffs-series-preview-first-round"
+  },
+  {
+   "label": "CBS Sports WNBA bracket",
+   "url": "https://www.cbssports.com/wnba/news/2026-wnba-playoffs-bracket-schedule/"
+  },
+  {
+   "label": "Valkyries Game 2 preview",
+   "url": "https://valkyries.wnba.com/news/gameday-preview-20260930"
+  },
+  {
+   "label": "MLS reschedule notice",
+   "url": "https://www.mlssoccer.com/news/red-bull-new-york-st-louis-city-sc-match-rescheduled"
+  }
+ ]
+}
