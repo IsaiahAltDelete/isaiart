@@ -1,11 +1,11 @@
 {
-  "date": "2026-09-30",
-  "updated": "2026-09-30T07:58:00-04:00",
-  "events": 7,
+  "date": "2026-10-01",
+  "updated": "2026-10-01T07:56:00-04:00",
+  "events": 4,
   "headlines": [
-    "Red Sox at Yankees, AL Wild Card Game 2, Boston faces elimination (8:00 PM ET, NBC/Peacock)",
-    "Phillies at Braves, NL Wild Card Game 2, Philadelphia faces elimination (2:00 PM ET, NBC/Peacock)",
-    "Valkyries at Wings, WNBA elimination Game 2 (9:00 PM ET, ESPN)"
+    "Phillies at Braves, NL Wild Card Game 3, winner take all (8:00 PM ET, NBC/Peacock)",
+    "Fever at Aces, WNBA first-round Game 3, winner take all (9:00 PM ET, USA Network)",
+    "Steelers at Browns, Thursday Night Football (8:15 PM ET, Prime Video)"
   ],
   "template": "2026-09-29.1"
 }

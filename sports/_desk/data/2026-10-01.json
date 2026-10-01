@@ -1,0 +1,196 @@
+{
+ "date": "2026-10-01",
+ "updated": "2026-10-01T07:56:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Phillies at Braves, NL Wild Card Game 3, winner take all (8:00 PM ET, NBC/Peacock)",
+  "Fever at Aces, WNBA first-round Game 3, winner take all (9:00 PM ET, USA Network)",
+  "Steelers at Browns, Thursday Night Football (8:15 PM ET, Prime Video)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "Wild Card Series",
+   "note": "Only series left • NLDS vs. Dodgers awaits"
+  },
+  {
+   "key": "WNBA",
+   "name": "WNBA",
+   "subtitle": "First Round",
+   "note": "Winner-take-all Game 3 in Las Vegas",
+   "color": "#956f82"
+  },
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 4",
+   "note": "Thursday Night Football"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 5",
+   "note": "Thursday national window"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-phi-atl",
+   "league": "MLB",
+   "label": "MLB • Wild Card Series",
+   "flags": [
+    "Wild Card • Game 3",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Philadelphia Phillies",
+     "abbr": "PHI",
+     "detail": "NL No. 6 seed • 88–74",
+     "logo": "mlb/phi"
+    },
+    {
+     "name": "Atlanta Braves",
+     "abbr": "ATL",
+     "detail": "NL No. 3 seed • 94–68",
+     "logo": "mlb/atl"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-01T20:00:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No Braves or Phillies RSN telecast.",
+   "venue": "Truist Park, Atlanta",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Winner-take-all Game 3, series tied 1–1. Atlanta won the opener 5–3; Philadelphia forced a decider with a 4–3 win in 10 innings. The winner opens the NLDS against the Dodgers on Saturday.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace NBC/Peacock live coverage. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "wnba-ind-lva",
+   "league": "WNBA",
+   "label": "WNBA • First Round",
+   "flags": [
+    "Playoffs • Game 3",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Indiana Fever",
+     "abbr": "IND",
+     "detail": "No. 6 seed • 28–16",
+     "logo": "wnba/ind"
+    },
+    {
+     "name": "Las Vegas Aces",
+     "abbr": "LVA",
+     "detail": "No. 3 seed • 31–13",
+     "logo": "wnba/lv"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-01T21:00:00-04:00",
+   "watch": "USA Network",
+   "streaming": "Fubo",
+   "coverage_type": "National",
+   "coverage": "National cable window. No regional team telecast listed.",
+   "venue": "Michelob ULTRA Arena, Las Vegas",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Winner-take-all Game 3, series tied 1–1. Las Vegas won the opener 102–85; Indiana answered 99–89 behind Caitlin Clark's 25 points and 15 assists. The winner meets Golden State or Dallas in the semifinals.",
+   "blackout": "No territorial blackout is expected. TV-provider access is required; WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "nfl-pit-cle",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [
+    "Thursday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Pittsburgh Steelers",
+     "abbr": "PIT",
+     "detail": "2–1",
+     "logo": "nfl/pit"
+    },
+    {
+     "name": "Cleveland Browns",
+     "abbr": "CLE",
+     "detail": "2–1",
+     "logo": "nfl/cle"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-01T20:15:00-04:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video exclusive. Local over-the-air simulcasts in the Pittsburgh and Cleveland markets.",
+   "rsn": "",
+   "venue": "Huntington Bank Field, Cleveland",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "AFC North rivalry with both teams at 2–1. First meeting between new head coaches Mike McCarthy (Pittsburgh) and Todd Monken (Cleveland).",
+   "blackout": "Amazon Prime membership required outside the two home markets. NFL+ mobile restrictions may apply."
+  },
+  {
+   "id": "ncaaf-unt-tulsa",
+   "league": "NCAAF",
+   "label": "NCAAF • American Conference",
+   "flags": [
+    "Conference game"
+   ],
+   "competitors": [
+    {
+     "name": "North Texas Mean Green",
+     "abbr": "UNT",
+     "detail": "2–2"
+    },
+    {
+     "name": "Tulsa Golden Hurricane",
+     "abbr": "TLSA",
+     "detail": "3–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-01T21:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "H.A. Chapman Stadium, Tulsa, Okla.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Tulsa opens American Conference play as a narrow home favorite against a North Texas team led by running back Jahiem White.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  }
+ ],
+ "footer_note": "Four qualifying events fall inside Thursday's Eastern calendar day. Preseason and exhibition games, lower-interest non-national regular-season games, and non-major individual-sport events are excluded.",
+ "sources": [
+  {
+   "label": "MLB postseason schedule",
+   "url": "https://www.mlb.com/news/2026-mlb-playoff-and-world-series-schedule"
+  },
+  {
+   "label": "CBS Sports MLB bracket",
+   "url": "https://www.cbssports.com/mlb/news/2026-mlb-playoff-bracket-schedule-scores-results-how-to-watch/"
+  },
+  {
+   "label": "CBS Sports WNBA bracket",
+   "url": "https://www.cbssports.com/wnba/news/2026-wnba-playoffs-bracket-schedule/"
+  },
+  {
+   "label": "Fever Game 3 preview",
+   "url": "https://fever.wnba.com/news/game-preview-fever-aces-261001"
+  },
+  {
+   "label": "NFL Thursday Night Football",
+   "url": "https://www.nfl.com/schedules/2026/prime-time/thursday-night-football"
+  },
+  {
+   "label": "North Texas at Tulsa",
+   "url": "https://www.nbcdfw.com/news/sports/ncaaf/tulsa-hosts-north-texas-in-aac-action/4084102/"
+  }
+ ]
+}
