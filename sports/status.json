@@ -1,11 +1,11 @@
 {
-  "date": "2026-10-01",
-  "updated": "2026-10-01T07:56:00-04:00",
-  "events": 4,
+  "date": "2026-10-02",
+  "updated": "2026-10-02T07:57:00-04:00",
+  "events": 5,
   "headlines": [
-    "Phillies at Braves, NL Wild Card Game 3, winner take all (8:00 PM ET, NBC/Peacock)",
-    "Fever at Aces, WNBA first-round Game 3, winner take all (9:00 PM ET, USA Network)",
-    "Steelers at Browns, Thursday Night Football (8:15 PM ET, Prime Video)"
+    "Wings at Valkyries, WNBA first-round Game 3, winner take all (9:00 PM ET, ESPN2)",
+    "Pitt at Virginia Tech, unbeaten ACC matchup (7:00 PM ET, ESPN)",
+    "No. 22 Penn State at Northwestern (8:00 PM ET, FOX)"
   ],
   "template": "2026-09-29.1"
 }

@@ -1,0 +1,218 @@
+{
+ "date": "2026-10-02",
+ "updated": "2026-10-02T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Wings at Valkyries, WNBA first-round Game 3, winner take all (9:00 PM ET, ESPN2)",
+  "Pitt at Virginia Tech, unbeaten ACC matchup (7:00 PM ET, ESPN)",
+  "No. 22 Penn State at Northwestern (8:00 PM ET, FOX)"
+ ],
+ "leagues": [
+  {
+   "key": "WNBA",
+   "name": "WNBA",
+   "subtitle": "First Round",
+   "note": "Last first-round series • winner faces Las Vegas",
+   "color": "#956f82"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 5",
+   "note": "Friday national windows"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular Season",
+   "note": "TNT doubleheader • two home openers"
+  }
+ ],
+ "events": [
+  {
+   "id": "wnba-dal-gsv",
+   "league": "WNBA",
+   "label": "WNBA • First Round",
+   "flags": [
+    "Playoffs • Game 3",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Dallas Wings",
+     "abbr": "DAL",
+     "detail": "No. 7 seed • 27–17",
+     "logo": "wnba/dal"
+    },
+    {
+     "name": "Golden State Valkyries",
+     "abbr": "GSV",
+     "detail": "No. 2 seed • 32–12",
+     "logo": "wnba/gs"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-02T21:00:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window. No regional team telecast listed.",
+   "venue": "Chase Center, San Francisco",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Winner-take-all Game 3, series tied 1–1. Golden State won the opener 104–80; Dallas forced a decider 108–100 in overtime behind Arike Ogunbowale's playoff-record 45 points. The winner meets Las Vegas in the semifinals.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required; WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "nhl-nyr-det",
+   "league": "NHL",
+   "label": "NHL • Regular Season",
+   "flags": [
+    "Red Wings opener"
+   ],
+   "competitors": [
+    {
+     "name": "New York Rangers",
+     "abbr": "NYR",
+     "detail": "1–1–0",
+     "logo": "nhl/nyr"
+    },
+    {
+     "name": "Detroit Red Wings",
+     "abbr": "DET",
+     "detail": "0–0–0",
+     "logo": "nhl/det"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-02T18:30:00-04:00",
+   "watch": "TNT • truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National TNT window. No regional team telecast.",
+   "venue": "Little Caesars Arena, Detroit",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Original Six matchup and Detroit's season opener. The Red Wings start without captain Dylan Larkin (upper body).",
+   "blackout": "National TNT exclusive in the U.S.; no RSN telecast. Out-of-market streaming services do not carry national exclusive games."
+  },
+  {
+   "id": "nhl-stl-dal",
+   "league": "NHL",
+   "label": "NHL • Regular Season",
+   "flags": [
+    "Stars opener"
+   ],
+   "competitors": [
+    {
+     "name": "St. Louis Blues",
+     "abbr": "STL",
+     "detail": "0–0–0",
+     "logo": "nhl/stl"
+    },
+    {
+     "name": "Dallas Stars",
+     "abbr": "DAL",
+     "detail": "0–0–0",
+     "logo": "nhl/dal"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-02T21:00:00-04:00",
+   "watch": "TNT • truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National TNT window. No regional team telecast.",
+   "venue": "American Airlines Center, Dallas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Season opener for both Central Division rivals. Dallas returns Rantanen, Johnston, Hintz, Heiskanen and Oettinger; Matt Duchene is on LTIR.",
+   "blackout": "National TNT exclusive in the U.S.; no RSN telecast. Out-of-market streaming services do not carry national exclusive games."
+  },
+  {
+   "id": "ncaaf-pitt-vt",
+   "league": "NCAAF",
+   "label": "NCAAF • ACC",
+   "flags": [
+    "Conference game"
+   ],
+   "competitors": [
+    {
+     "name": "Pittsburgh Panthers",
+     "abbr": "PITT",
+     "detail": "4–0"
+    },
+    {
+     "name": "Virginia Tech Hokies",
+     "abbr": "VT",
+     "detail": "4–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-02T19:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Lane Stadium, Blacksburg, Va.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Unbeaten ACC matchup. Pitt allows 8.5 points per game; Virginia Tech leads the nation in tackles for loss.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-psu-nw",
+   "league": "NCAAF",
+   "label": "NCAAF • Big Ten",
+   "flags": [
+    "Conference game"
+   ],
+   "competitors": [
+    {
+     "name": "Penn State Nittany Lions",
+     "abbr": "PSU",
+     "detail": "No. 22 (Coaches) • 3–1"
+    },
+    {
+     "name": "Northwestern Wildcats",
+     "abbr": "NU",
+     "detail": "2–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-02T20:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Ryan Field, Evanston, Ill.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Northwestern opens its new Ryan Field. Both teams are 0–1 in Big Ten play after Week 4 losses.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  }
+ ],
+ "footer_note": "Five qualifying events fall inside Friday's Eastern calendar day. MLB is off before the Division Series begins Saturday. Preseason and exhibition games, lower-interest non-national regular-season games, and non-major individual-sport events are excluded.",
+ "sources": [
+  {
+   "label": "CBS Sports WNBA bracket",
+   "url": "https://www.cbssports.com/wnba/news/2026-wnba-playoffs-bracket-schedule/"
+  },
+  {
+   "label": "Valkyries Game 3 preview",
+   "url": "https://valkyries.wnba.com/news/gameday-preview-20261002"
+  },
+  {
+   "label": "TNT NHL schedule",
+   "url": "https://www.nhl.com/news/tnt-releases-schedule-of-72-nhl-regular-season-games-for-2026-27"
+  },
+  {
+   "label": "Blues at Stars preview",
+   "url": "https://www.nhl.com/blues/news/preview-blues-at-stars-100226"
+  },
+  {
+   "label": "ACC Friday preview",
+   "url": "https://theacc.com/news/2026/10/1/week-5-friday-preview-unbeaten-pitt-virginia-tech-kick-off-acc-football-action.aspx"
+  },
+  {
+   "label": "Northwestern game release",
+   "url": "https://nusports.com/news/2026/10/1/northwestern-to-open-new-ryan-field-on-friday-night-against-penn-state"
+  }
+ ]
+}
