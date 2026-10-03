@@ -23,5 +23,9 @@
  "nhl/nyr": "https://a.espncdn.com/i/teamlogos/nhl/500/nyr.png",
  "nhl/det": "https://a.espncdn.com/i/teamlogos/nhl/500/det.png",
  "nhl/stl": "https://a.espncdn.com/i/teamlogos/nhl/500/stl.png",
- "nhl/dal": "https://a.espncdn.com/i/teamlogos/nhl/500/dal.png"
+ "nhl/dal": "https://a.espncdn.com/i/teamlogos/nhl/500/dal.png",
+ "mlb/cle": "https://a.espncdn.com/i/teamlogos/mlb/500/cle.png",
+ "mlb/tb": "https://a.espncdn.com/i/teamlogos/mlb/500/tb.png",
+ "mlb/lad": "https://a.espncdn.com/i/teamlogos/mlb/500/lad.png",
+ "mlb/mil": "https://a.espncdn.com/i/teamlogos/mlb/500/mil.png"
 }

@@ -1,0 +1,604 @@
+{
+ "date": "2026-10-03",
+ "updated": "2026-10-03T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Yankees at Rays, ALDS Game 1 (6:30 PM ET, TBS)",
+  "Braves at Dodgers, NLDS Game 1 (4:00 PM ET, FOX)",
+  "No. 5 Ohio State at No. 14 Iowa (3:30 PM ET, CBS)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "Division Series",
+   "note": "All four best-of-five series open today"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 5",
+   "note": "Games involving AP Top 25 teams • ranks from the Sept. 27 AP poll"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-cws-cle",
+   "league": "MLB",
+   "label": "MLB • ALDS",
+   "flags": [
+    "ALDS • Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "Chicago White Sox",
+     "abbr": "CWS",
+     "detail": "AL No. 6 seed • 84–78",
+     "logo": "mlb/chw"
+    },
+    {
+     "name": "Cleveland Guardians",
+     "abbr": "CLE",
+     "detail": "AL No. 2 seed • 85–77",
+     "logo": "mlb/cle"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T13:00:00-04:00",
+   "watch": "TBS • truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Progressive Field, Cleveland",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Best-of-five opener and the first October meeting between the AL Central rivals. Parker Messick (2.56 ERA) faces White Sox opener Hagen Smith.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "mlb-atl-lad",
+   "league": "MLB",
+   "label": "MLB • NLDS",
+   "flags": [
+    "NLDS • Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "Atlanta Braves",
+     "abbr": "ATL",
+     "detail": "NL No. 3 seed • 94–68",
+     "logo": "mlb/atl"
+    },
+    {
+     "name": "Los Angeles Dodgers",
+     "abbr": "LAD",
+     "detail": "NL No. 2 seed • 100 wins",
+     "logo": "mlb/lad"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T16:00:00-04:00",
+   "watch": "FOX • FOX Deportes",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Dodger Stadium, Los Angeles",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Best-of-five opener. Atlanta beat Philadelphia 6–2 in Thursday's Wild Card Game 3; the two-time defending champion Dodgers rested on a bye.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "mlb-nyy-tb",
+   "league": "MLB",
+   "label": "MLB • ALDS",
+   "flags": [
+    "ALDS • Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "New York Yankees",
+     "abbr": "NYY",
+     "detail": "AL No. 4 seed • 93–68",
+     "logo": "mlb/nyy"
+    },
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL No. 1 seed • 98–64",
+     "logo": "mlb/tb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T18:30:00-04:00",
+   "watch": "TBS • truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Tropicana Field, St. Petersburg",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Best-of-five opener. Gerrit Cole faces Drew Rasmussen; Aaron Judge is managing a right calf strain after New York swept Boston.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "mlb-sd-mil",
+   "league": "MLB",
+   "label": "MLB • NLDS",
+   "flags": [
+    "NLDS • Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "San Diego Padres",
+     "abbr": "SD",
+     "detail": "NL No. 4 seed • 91–71",
+     "logo": "mlb/sd"
+    },
+    {
+     "name": "Milwaukee Brewers",
+     "abbr": "MIL",
+     "detail": "NL No. 1 seed • 103 wins",
+     "logo": "mlb/mil"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T20:30:00-04:00",
+   "watch": "FS1 • FOX Deportes",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "American Family Field, Milwaukee",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Best-of-five opener. San Diego swept the Cubs 8–0 and 4–1; Milwaukee won 103 games and the NL's top seed.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "ncaaf-nd-unc",
+   "league": "NCAAF",
+   "label": "NCAAF • ACC",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Notre Dame Fighting Irish",
+     "abbr": "ND",
+     "detail": "No. 3 • 4–0"
+    },
+    {
+     "name": "North Carolina Tar Heels",
+     "abbr": "UNC",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T12:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Kenan Stadium, Chapel Hill, N.C.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Unbeaten Notre Dame goes on the road to Chapel Hill.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-ala-msst",
+   "league": "NCAAF",
+   "label": "NCAAF • SEC",
+   "flags": [
+    "Top 25 matchup"
+   ],
+   "competitors": [
+    {
+     "name": "Alabama Crimson Tide",
+     "abbr": "ALA",
+     "detail": "No. 7 • 4–0"
+    },
+    {
+     "name": "Mississippi State Bulldogs",
+     "abbr": "MSST",
+     "detail": "No. 16 • 4–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T12:00:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Davis Wade Stadium, Starkville, Miss.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Top-25 SEC matchup of unbeatens. Mississippi State is 2–0 in conference play after beating Missouri.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ucf-hou",
+   "league": "NCAAF",
+   "label": "NCAAF • Big 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "UCF Knights",
+     "abbr": "UCF",
+     "detail": ""
+    },
+    {
+     "name": "Houston Cougars",
+     "abbr": "HOU",
+     "detail": "No. 20 • 3–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T12:00:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "TDECU Stadium, Houston",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Ranked Houston hosts UCF in Big 12 play.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-bc-smu",
+   "league": "NCAAF",
+   "label": "NCAAF • ACC",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Boston College Eagles",
+     "abbr": "BC",
+     "detail": ""
+    },
+    {
+     "name": "SMU Mustangs",
+     "abbr": "SMU",
+     "detail": "No. 21 • 3–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T12:00:00-04:00",
+   "watch": "The CW",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National The CW window.",
+   "venue": "Gerald J. Ford Stadium, Dallas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "SMU hosts Boston College in ACC play.",
+   "blackout": "No territorial blackout is expected. Local CW carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-van-uga",
+   "league": "NCAAF",
+   "label": "NCAAF • SEC",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Vanderbilt Commodores",
+     "abbr": "VAN",
+     "detail": ""
+    },
+    {
+     "name": "Georgia Bulldogs",
+     "abbr": "UGA",
+     "detail": "No. 2 • 4–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T12:45:00-04:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "Sanford Stadium, Athens, Ga.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Unbeaten No. 2 Georgia hosts Vanderbilt.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-osu-iowa",
+   "league": "NCAAF",
+   "label": "NCAAF • Big Ten",
+   "flags": [
+    "Top 25 matchup"
+   ],
+   "competitors": [
+    {
+     "name": "Ohio State Buckeyes",
+     "abbr": "OSU",
+     "detail": "No. 5 • 3–1"
+    },
+    {
+     "name": "Iowa Hawkeyes",
+     "abbr": "IOWA",
+     "detail": "No. 14 • 4–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T15:30:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "National",
+   "coverage": "National CBS window.",
+   "venue": "Kinnick Stadium, Iowa City, Iowa",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Top-15 Big Ten showdown as unbeaten Iowa hosts Ohio State.",
+   "blackout": "No territorial blackout is expected. Local CBS carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-fla-mizz",
+   "league": "NCAAF",
+   "label": "NCAAF • SEC",
+   "flags": [
+    "Top 25 matchup"
+   ],
+   "competitors": [
+    {
+     "name": "Florida Gators",
+     "abbr": "FLA",
+     "detail": "No. 8 • 4–0"
+    },
+    {
+     "name": "Missouri Tigers",
+     "abbr": "MIZ",
+     "detail": "No. 25 • 3–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T15:30:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Faurot Field, Columbia, Mo.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Florida jumped 13 spots to No. 8 after routing Ole Miss 52–28.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-aub-tenn",
+   "league": "NCAAF",
+   "label": "NCAAF • SEC",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Auburn Tigers",
+     "abbr": "AUB",
+     "detail": ""
+    },
+    {
+     "name": "Tennessee Volunteers",
+     "abbr": "TENN",
+     "detail": "No. 17 • 3–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T15:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Neyland Stadium, Knoxville, Tenn.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Tennessee hosts Auburn in SEC play.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-byu-tcu",
+   "league": "NCAAF",
+   "label": "NCAAF • Big 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "BYU Cougars",
+     "abbr": "BYU",
+     "detail": "No. 10 • 3–0"
+    },
+    {
+     "name": "TCU Horned Frogs",
+     "abbr": "TCU",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T19:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Amon G. Carter Stadium, Fort Worth, Texas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Unbeaten BYU visits TCU in Big 12 play.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-mia-clem",
+   "league": "NCAAF",
+   "label": "NCAAF • ACC",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Miami Hurricanes",
+     "abbr": "MIA",
+     "detail": "No. 4 • 4–0"
+    },
+    {
+     "name": "Clemson Tigers",
+     "abbr": "CLEM",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T19:30:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Memorial Stadium, Clemson, S.C.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Unbeaten Miami heads to Death Valley in prime time.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ttu-colo",
+   "league": "NCAAF",
+   "label": "NCAAF • Big 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Texas Tech Red Raiders",
+     "abbr": "TTU",
+     "detail": "No. 12 • 4–0"
+    },
+    {
+     "name": "Colorado Buffaloes",
+     "abbr": "COLO",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T19:30:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Folsom Field, Boulder, Colo.",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "Unbeaten Texas Tech visits Boulder.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-wash-usc",
+   "league": "NCAAF",
+   "label": "NCAAF • Big Ten",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Washington Huskies",
+     "abbr": "WASH",
+     "detail": ""
+    },
+    {
+     "name": "USC Trojans",
+     "abbr": "USC",
+     "detail": "No. 18 • 4–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T19:30:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Los Angeles Memorial Coliseum",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "USC dropped six spots after a home loss to Oregon.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-usu-bsu",
+   "league": "NCAAF",
+   "label": "NCAAF • Mountain West",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Utah State Aggies",
+     "abbr": "USU",
+     "detail": ""
+    },
+    {
+     "name": "Boise State Broncos",
+     "abbr": "BSU",
+     "detail": "No. 22 • 3–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T19:30:00-04:00",
+   "watch": "CBSSN",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National CBSSN window.",
+   "venue": "Albertsons Stadium, Boise, Idaho",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "Boise State entered the poll this week.",
+   "blackout": "No territorial blackout is expected. TV-provider access is required."
+  },
+  {
+   "id": "ncaaf-mcn-lsu",
+   "league": "NCAAF",
+   "label": "NCAAF • Nonconference",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "McNeese Cowboys",
+     "abbr": "MCN",
+     "detail": ""
+    },
+    {
+     "name": "LSU Tigers",
+     "abbr": "LSU",
+     "detail": "No. 11 • 3–1"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T19:45:00-04:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "Tiger Stadium, Baton Rouge, La.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "No. 11 LSU hosts FCS McNeese.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-ind-rutg",
+   "league": "NCAAF",
+   "label": "NCAAF • Big Ten",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Indiana Hoosiers",
+     "abbr": "IND",
+     "detail": "No. 6 • 4–0"
+    },
+    {
+     "name": "Rutgers Scarlet Knights",
+     "abbr": "RUTG",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-03T20:00:00-04:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "SHI Stadium, Piscataway, N.J.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Unbeaten Indiana visits Rutgers.",
+   "blackout": "No territorial blackout is expected. TV-provider access is required."
+  }
+ ],
+ "footer_note": "Nineteen qualifying events fall inside Saturday's Eastern calendar day: the four Division Series openers and the nationally televised games involving AP Top 25 teams. Regional NHL games, preseason and exhibition games, and non-major individual-sport events are excluded. The WNBA semifinals begin Sunday.",
+ "sources": [
+  {
+   "label": "Yahoo Division Series schedule",
+   "url": "https://sports.yahoo.com/mlb/article/mlb-playoffs-2026-alds-nlds-matchups-schedule-and-start-times-030600744.html"
+  },
+  {
+   "label": "CBS Sports MLB bracket",
+   "url": "https://www.cbssports.com/mlb/news/2026-mlb-playoff-bracket-schedule-scores-results-how-to-watch/"
+  },
+  {
+   "label": "College football TV selections",
+   "url": "https://fbschedules.com/college-football-schedule-tv-selections-for-october-3-2026/"
+  },
+  {
+   "label": "AP Top 25, Week 5",
+   "url": "https://www.ncaa.com/news/football/article/2026-09-27/florida-flies-top-10-latest-ap-top-25-college-football-rankings"
+  },
+  {
+   "label": "Yahoo Top 25 TV guide",
+   "url": "https://sports.yahoo.com/articles/college-football-games-tv-today-043001714.html"
+  }
+ ]
+}
