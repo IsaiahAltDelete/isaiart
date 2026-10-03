@@ -37,10 +37,10 @@
     var DEF = {
         trim: '8.5x11', pages: 100, paper: 'white',
         bgmode: 'color', bgColor: '#ffffff', bgAuto: true, blur: 60, dim: 0,
-        pattern: 'checker', patColor: '#f9c4d2', patScale: 0.75, patAngle: 0,
+        pattern: 'checker', patColor: '#f9c4d2', patScale: 1, patAngle: 0,
         inset: 0, radius: 0, outline: false, outlineColor: '#111111', outlineW: 0.04,
         spinemode: 'bg', spineColor: '#1f2937', title: '', author: '', font: 'Inter',
-        ink: '#111111', inkAuto: true, sSize: 100, sCaps: true,
+        ink: '#111111', inkAuto: true, sSize: 100, sCaps: true, spineWrap: true,
         gBleed: true, gSafe: true, gSpine: true, gBarcode: true, pv: 'guides', tplOp: 45
     };
     var STORE = 'isa.kdp.v1';
@@ -236,6 +236,22 @@
     }
     function dot(c, x, y, r) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
 
+    /* The "motif" patterns are separate shapes on a ground. They are the
+       ones that get sliced when a framed art panel cuts across a tile, so
+       around framed art they are laid out as whole motifs in the border
+       band instead (drawBand). Continuous patterns — checker, stripes,
+       waves — are fabric-like, and cutting them at the frame reads as
+       intended. */
+    var MOTIFS = { dots: 1, stars: 1, hearts: 1, swirls: 1 };
+    function drawMotif(c, name, x, y, T, alt) {
+        switch (name) {
+            case 'dots':   dot(c, x, y, T * 0.15); break;
+            case 'stars':  star(c, x, y, T * 0.17); break;
+            case 'hearts': heart(c, x, y, T * 0.15); break;
+            case 'swirls': spiral(c, x, y, T * 0.2, T * 0.035, alt); break;
+        }
+    }
+
     /* One T×T tile: ground colour a, ink colour b. */
     function drawTile(c, name, T, a, b) {
         var h = T / 2, q = T / 4, i, dx, dy;
@@ -244,12 +260,8 @@
         switch (name) {
             case 'checker': c.fillRect(0, 0, h, h); c.fillRect(h, h, h, h); break;
             case 'stripes': c.fillRect(0, 0, h, T); break;
-            case 'dots': dot(c, q, q, T * 0.15); dot(c, 3 * q, 3 * q, T * 0.15); break;
-            case 'swirls':
-                spiral(c, q, q, T * 0.2, T * 0.035, false);
-                spiral(c, 3 * q, 3 * q, T * 0.2, T * 0.035, true);
-                dot(c, 3 * q, q, T * 0.035); dot(c, q, 3 * q, T * 0.035);
-                break;
+            case 'dots': case 'stars': case 'hearts': case 'swirls':
+                drawMotif(c, name, q, q, T, false); drawMotif(c, name, 3 * q, 3 * q, T, true); break;
             case 'waves':
                 c.lineWidth = T * 0.07;
                 [q, 3 * q].forEach(function (y0) {
@@ -268,8 +280,6 @@
                     c.stroke();
                 });
                 break;
-            case 'stars': star(c, q, q, T * 0.17); star(c, 3 * q, 3 * q, T * 0.17); break;
-            case 'hearts': heart(c, q, q, T * 0.15); heart(c, 3 * q, 3 * q, T * 0.15); break;
             case 'gingham':
                 c.globalAlpha = 0.5; c.fillRect(0, 0, h, T); c.fillRect(0, 0, T, h); c.globalAlpha = 1;
                 break;
@@ -308,10 +318,47 @@
         }
         return patCache.tile;
     }
-    function fillPattern(ctx, g, tile, angle) {
+    /* The tile's origin sits on the trim corner, not the sheet corner, so
+       the first whole row of the pattern starts where the cut is — what
+       the reader sees — instead of 0.125 in out in the bleed. */
+    function fillPattern(ctx, g, tile, angle, ox, oy) {
         var p = ctx.createPattern(tile, 'repeat');
-        if (angle && p.setTransform && window.DOMMatrix) p.setTransform(new DOMMatrix().rotateSelf(angle));
+        if (p.setTransform && window.DOMMatrix) {
+            var m = new DOMMatrix().translateSelf(ox || 0, oy || 0);
+            if (angle) m.rotateSelf(angle);
+            p.setTransform(m);
+        }
         ctx.save(); ctx.fillStyle = p; ctx.fillRect(0, 0, g.W, g.H); ctx.restore();
+    }
+
+    /* Whole motifs in the frame around a piece of art: rows of motifs run
+       round the band between the trim and the art, evenly spaced along each
+       side so every corner gets one, alternate rows staggered. Motif size
+       and row pitch come from the band width, so nothing touches the trim
+       or slips under the art, whatever border the user picked. */
+    function drawBand(ctx, R, inset, T) {
+        var rows = Math.max(1, Math.round(inset / (T / 2)));
+        var pitch = inset / rows;
+        var size = Math.min(T, pitch * 2);
+        ctx.save(); ctx.fillStyle = cfg.patColor; ctx.strokeStyle = cfg.patColor;
+        for (var j = 0; j < rows; j++) {
+            var d = pitch * (j + 0.5);
+            var x0 = R.x + d, y0 = R.y + d, w = R.w - 2 * d, h = R.h - 2 * d;
+            var step = size * 0.62;
+            var nx = Math.max(1, Math.round(w / step)), ny = Math.max(1, Math.round(h / step));
+            var sx = w / nx, sy = h / ny, off = j % 2 ? 0.5 : 0, i, n = 0;
+            for (i = 0; i <= nx; i++) {
+                var t = i + off; if (t > nx) continue;
+                drawMotif(ctx, cfg.pattern, x0 + t * sx, y0, size, (n++) % 2 === 1);
+                drawMotif(ctx, cfg.pattern, x0 + t * sx, y0 + h, size, (n++) % 2 === 1);
+            }
+            for (i = 1; i < ny; i++) {
+                var u = i + off; if (u >= ny) continue;
+                drawMotif(ctx, cfg.pattern, x0, y0 + u * sy, size, (n++) % 2 === 1);
+                drawMotif(ctx, cfg.pattern, x0 + w, y0 + u * sy, size, (n++) % 2 === 1);
+            }
+        }
+        ctx.restore();
     }
     /* Sunburst isn't a tile: rays fan out from the centre of the front. */
     function drawSunburst(ctx, x0, y0, R, n, angle, b) {
@@ -324,18 +371,40 @@
         }
         ctx.fill(); ctx.restore();
     }
+    /* The wrap is drawn as three regions — back, spine, front — each
+       clipped to itself, so each cover can lay its pattern out around its
+       own art. */
     function drawPattern(ctx, g) {
-        if (cfg.pattern === 'sunburst') {
-            var n = Math.max(8, Math.min(72, Math.round(24 / cfg.patScale / 2) * 2));
-            /* Clipped to the sheet: the export canvas would crop the rays
-               anyway, but the preview draws onto a much larger stage. */
+        var framed = cfg.inset > 0;
+        var regions = [
+            { id: 'back',  x: 0,    w: g.s0,       trim: { x: g.b, y: g.b, w: g.tw, h: g.th } },
+            { id: 'spine', x: g.s0, w: g.s1 - g.s0 },
+            { id: 'front', x: g.s1, w: g.W - g.s1, trim: { x: g.s1, y: g.b, w: g.tw, h: g.th } }
+        ];
+        var bandFront = framed && !!slots.front.img, bandBack = framed && !!slots.back.img;
+        regions.forEach(function (rg) {
+            if (rg.w <= 0) return;
             ctx.save();
-            ctx.beginPath(); ctx.rect(0, 0, g.W, g.H); ctx.clip();
-            drawSunburst(ctx, (g.s1 + g.W) / 2, g.H / 2, Math.hypot(g.W, g.H), n, cfg.patAngle, cfg.patColor);
+            ctx.beginPath(); ctx.rect(rg.x, 0, rg.w, g.H); ctx.clip();
+            var banded = rg.id === 'front' ? bandFront : rg.id === 'back' ? bandBack : false;
+            if (cfg.pattern === 'sunburst') {
+                /* One burst behind each cover, centred on it, so the rays
+                   radiate evenly out of the frame instead of from one
+                   off-centre point. The spine stays plain under its text. */
+                if (rg.trim) {
+                    var n = Math.max(12, Math.min(96, Math.round(40 / cfg.patScale / 2) * 2));
+                    drawSunburst(ctx, rg.trim.x + rg.trim.w / 2, rg.trim.y + rg.trim.h / 2,
+                                 Math.hypot(g.tw, g.th), n, cfg.patAngle, cfg.patColor);
+                }
+            } else if (MOTIFS[cfg.pattern] && (banded || (rg.id === 'spine' && (bandFront || bandBack)))) {
+                /* The spine between framed covers is left plain, so its
+                   text reads cleanly and the two frames stay symmetrical. */
+                if (banded) drawBand(ctx, rg.trim, cfg.inset * g.k, cfg.patScale * g.k);
+            } else {
+                fillPattern(ctx, g, patternTile(g), cfg.patAngle, g.b, g.b);
+            }
             ctx.restore();
-            return;
-        }
-        fillPattern(ctx, g, patternTile(g), cfg.patAngle);
+        });
     }
     /* Average colour of the pattern, for automatic spine-text contrast. */
     function patternAvg(g) {
@@ -371,8 +440,13 @@
             ctx.fillRect(0, 0, g.W, g.H);
         }
         if (cfg.spinemode === 'color' && g.s1 > g.s0) {
+            /* KDP's binding can sit up to 1/16 in either side of the fold.
+               Wrapping the spine colour that far onto each cover means a
+               drift shows a little more spine colour, never a sliver of
+               cover on the spine. */
+            var wrapW = cfg.spineWrap ? SPINE_SAFE * g.k : 0;
             ctx.fillStyle = cfg.spineColor;
-            ctx.fillRect(g.s0, 0, g.s1 - g.s0, g.H);
+            ctx.fillRect(g.s0 - wrapW, 0, g.s1 - g.s0 + 2 * wrapW, g.H);
         }
 
         drawSlot(ctx, 'back', g);
@@ -543,6 +617,7 @@
     var wrap = el('wrap');
     var snapX = false, snapY = false, dragging = null, hoverId = null;
     var css = {};
+    var SEL = '#7c3aed';   /* violet: distinct from every guide colour */
     function readCss() {
         var st = getComputedStyle(document.documentElement);
         css.muted = st.getPropertyValue('--g500').trim() || '#6b7280';
@@ -553,7 +628,8 @@
     document.addEventListener('studio:theme', readCss);
 
     var vp = S.viewport(wrap, el('view'), {
-        pad: 44,
+        pad: 40,
+        padTop: 78,
         size: function () { var g = G(); return { w: g.W, h: g.H }; },
         draw: function (ctx, v) {
             var g = G();
@@ -585,17 +661,28 @@
             var X = function (x) { return v.x + x * v.s; }, Y = function (y) { return v.y + y * v.s; };
             /* Eyedropper loupe: the colour under the cursor, beside it. */
             if (picking && pickHex && pickPt) {
-                var lx = X(pickPt.x) + 22, ly0 = Y(pickPt.y) + 22;
+                /* Magnifier: the 11×11 screen pixels around the cursor at 8×,
+                   centre pixel outlined, ringed in the colour it will pick. */
+                var R = 46, cx = X(pickPt.x) + 30 + R, cy = Y(pickPt.y) + 30 + R;
                 ctx.save();
-                ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 10;
-                ctx.beginPath(); ctx.arc(lx + 18, ly0 + 18, 18, 0, Math.PI * 2);
-                ctx.fillStyle = pickHex; ctx.fill();
-                ctx.shadowBlur = 0; ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
+                ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 12;
+                ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R - 3, 0, Math.PI * 2); ctx.clip();
+                if (pickGrid) {
+                    ctx.imageSmoothingEnabled = false;
+                    ctx.drawImage(pickGrid, cx - 44, cy - 44, 88, 88);
+                } else { ctx.fillStyle = pickHex; ctx.fillRect(cx - R, cy - R, 2 * R, 2 * R); }
+                ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(cx - 4, cy - 4, 8, 8);
+                ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 1; ctx.strokeRect(cx - 5, cy - 5, 10, 10);
+                ctx.restore();
+                ctx.beginPath(); ctx.arc(cx, cy, R - 1.5, 0, Math.PI * 2);
+                ctx.lineWidth = 5; ctx.strokeStyle = pickHex; ctx.stroke();
                 ctx.font = '500 11px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-                var tw = ctx.measureText(pickHex).width + 12;
-                ctx.fillStyle = 'rgba(17,24,39,.85)';
-                ctx.fillRect(lx + 18 - tw / 2, ly0 + 42, tw, 18);
-                ctx.fillStyle = '#fff'; ctx.fillText(pickHex.toUpperCase(), lx + 18, ly0 + 45);
+                var label = pickHex.toUpperCase(), tw = ctx.measureText(label).width + 14;
+                ctx.fillStyle = 'rgba(17,24,39,.88)';
+                ctx.fillRect(cx - tw / 2, cy + R + 6, tw, 19);
+                ctx.fillStyle = '#fff'; ctx.fillText(label, cx, cy + R + 10);
                 ctx.restore();
                 return;
             }
@@ -616,14 +703,17 @@
                 var b = id === 'bg' ? { x: 0, y: 0, w: g.W, h: g.H } : boxOf(id, g);
                 ctx.save();
                 ctx.globalAlpha = alpha;
-                ctx.strokeStyle = css.accent; ctx.lineWidth = w;
+                ctx.strokeStyle = SEL; ctx.lineWidth = w;
                 var r = (id !== 'bg' && cfg.inset > 0) ? cfg.radius * g.k * v.s : 0;
                 rrect(ctx, X(b.x) - 1, Y(b.y) - 1, b.w * v.s + 2, b.h * v.s + 2, r + 1);
                 ctx.stroke();
                 ctx.restore();
             };
-            if (hoverId && hoverId !== sel && !dragging) ring(hoverId, 0.45, 1.5);
-            ring(sel, dragging ? 1 : 0.85, 2);
+            /* The selection ring is editing chrome: it belongs in the
+               Guides view and during a drag, never in Clean or Trimmed,
+               whose job is to show the finished cover. */
+            if (hoverId && hoverId !== sel && !dragging) ring(hoverId, 0.5, 1.5);
+            if (cfg.pv === 'guides' || dragging) ring(sel, dragging ? 1 : 0.85, 2);
             /* Centre snap lines while dragging. */
             if (dragging && (snapX || snapY)) {
                 var bb = boxOf(dragging.id, g);
@@ -678,6 +768,7 @@
                         pickQueued = false;
                         if (!picking || !pickPt) return;
                         pickHex = sampleAt(pickPt);
+                        pickGrid = grabGrid(pickPt);
                         vp.redraw();
                     });
                 }
@@ -703,7 +794,21 @@
        preview or from anything else on screen. Elsewhere the preview itself
        becomes the picker. Either way guides are hidden while picking, so a
        sample can't land on a red trim line instead of the art. */
-    var picking = null, pickHex = null, pickPt = null, pickQueued = false, hideGuides = false;
+    var picking = null, pickHex = null, pickPt = null, pickGrid = null, pickQueued = false, hideGuides = false;
+
+    /* 11×11 device pixels of the preview around an art point, for the loupe.
+       Read before the overlay draws the loupe, which sits well clear of the
+       cursor, so the grid never contains the loupe itself. */
+    function grabGrid(pt) {
+        try {
+            var cv = el('view'), dpr = cv.width / Math.max(1, wrap.clientWidth), v = vp.view;
+            var px = Math.round((v.x + pt.x * v.s) * dpr), py = Math.round((v.y + pt.y * v.s) * dpr);
+            var id = cv.getContext('2d').getImageData(px - 5, py - 5, 11, 11);
+            var c = document.createElement('canvas'); c.width = c.height = 11;
+            c.getContext('2d').putImageData(id, 0, 0);
+            return c;
+        } catch (e) { return null; }
+    }
 
     /* The true composed colour at an art point: render the scene into a
        1×1 canvas positioned over that point. Exact at any zoom. */
@@ -729,11 +834,11 @@
         }
         picking = apply;
         wrap.classList.add('picking');
-        S.toast('Click the cover to pick a colour · Esc to cancel');
+        S.toast('Click the cover to pick a color · Esc to cancel', 'info', 'colorize');
         vp.redraw();
     }
     function endPick() {
-        picking = null; pickHex = null; pickPt = null;
+        picking = null; pickHex = null; pickPt = null; pickGrid = null;
         wrap.classList.remove('picking');
         vp.redraw();
     }
@@ -1011,7 +1116,7 @@
                colours, since a pattern usually wants contrast with the ground. */
             var extras = key === 'patColor' ? ['#f9c4d2', '#a7d8f0', '#ffe08a', '#b8e6b0', '#111111']
                                             : ['#ffffff', '#111111', '#f4ecd8'];
-            var list = artColours.concat(extras).filter(function (c, i, a) { return a.indexOf(c) === i; });
+            var list = artColours.concat(extras).filter(function (c, i, a) { return a.indexOf(c) === i; }).slice(0, 8);
             list.forEach(function (hex) {
                 var b = document.createElement('button');
                 b.type = 'button'; b.className = 'swatch';
@@ -1069,8 +1174,11 @@
             var g = { W: c.width, H: c.height };
             x.fillStyle = cfg.bgColor; x.fillRect(0, 0, g.W, g.H);
             if (name === 'sunburst') { drawSunburst(x, g.W / 2, g.H / 2, g.W, 16, 0, cfg.patColor); return; }
-            var t = document.createElement('canvas'); t.width = t.height = 40;
-            drawTile(t.getContext('2d'), name, 40, cfg.bgColor, cfg.patColor);
+            /* A larger tile than the cover default, so a star reads as a
+               star and a heart as a heart at thumbnail size. */
+            var T = MOTIFS[name] ? 64 : 44;
+            var t = document.createElement('canvas'); t.width = t.height = T;
+            drawTile(t.getContext('2d'), name, T, cfg.bgColor, cfg.patColor);
             fillPattern(x, g, t, PAT_ANGLE[name] || 0);
         });
     }
@@ -1120,6 +1228,13 @@
         el('outlineColor').value = cfg.outlineColor;
 
         el('spineColorRow').hidden = cfg.spinemode !== 'color';
+        el('spineWrapRow').hidden = cfg.spinemode !== 'color';
+        el('spineWrap').checked = cfg.spineWrap;
+        /* Flag a hard-edged spine only when it would actually show: own
+           colour, no wrap, and strongly different from the covers. */
+        var coverAvg = cfg.bgmode === 'pattern' ? patternAvg(g) : hexRgb(cfg.bgColor);
+        el('driftWarn').hidden = !(cfg.spinemode === 'color' && !cfg.spineWrap &&
+            Math.abs(lum(hexRgb(cfg.spineColor)) - lum(coverAvg)) > 0.25);
         el('spineColor').value = cfg.spineColor;
         if (document.activeElement !== el('sTitle')) el('sTitle').value = cfg.title;
         if (document.activeElement !== el('sAuthor')) el('sAuthor').value = cfg.author;
@@ -1189,6 +1304,7 @@
     el('autoInk').addEventListener('click', function () { setCfg('inkAuto', !cfg.inkAuto); if (!cfg.inkAuto) setCfg('ink', el('sInk').value); });
     el('outline').addEventListener('change', function () { setCfg('outline', this.checked); });
     el('sCaps').addEventListener('change', function () { setCfg('sCaps', this.checked); });
+    el('spineWrap').addEventListener('change', function () { setCfg('spineWrap', this.checked); });
     el('patColor').addEventListener('input', function () { setCfg('patColor', this.value); });
 
     /* Eyedropper buttons: data-pick names the setting they write. */

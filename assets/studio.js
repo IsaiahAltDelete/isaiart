@@ -29,13 +29,15 @@
 
     /* ── Toast ───────────────────────────────────────────────────────────── */
     var host = null;
-    S.toast = function (msg, bad) {
+    /* toast(msg) success · toast(msg, true) error · toast(msg, 'info', icon) */
+    S.toast = function (msg, bad, icon) {
         if (!host) { host = document.createElement('div'); host.className = 'toast-host'; host.setAttribute('role', 'status'); host.setAttribute('aria-live', 'polite'); document.body.appendChild(host); }
         var t = document.createElement('div');
-        t.className = 'toast' + (bad ? ' bad' : '');
+        var info = bad === 'info';
+        t.className = 'toast' + (info ? ' info' : (bad ? ' bad' : ''));
         var ic = document.createElement('span'), span = document.createElement('span');
         ic.className = 'material-symbols-outlined';
-        ic.textContent = bad ? 'error' : 'check_circle';
+        ic.textContent = icon || (info ? 'info' : (bad ? 'error' : 'check_circle'));
         span.textContent = msg;
         t.appendChild(ic); t.appendChild(span);
         host.appendChild(t);
@@ -43,7 +45,7 @@
         setTimeout(function () {
             t.classList.add('out');
             setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 240);
-        }, bad ? 3600 : 2400);
+        }, bad ? 3600 : 2400);   /* info and errors linger */
     };
 
     S.download = function (blob, name) {
@@ -206,15 +208,18 @@
         var v = { s: 1, x: 0, y: 0 };
         var fitMode = true, anim = null, frame = 0, dpr = 1;
         var pad = o.pad == null ? 32 : o.pad;
+        /* Extra room at the top for toolbars that float over the stage, so
+           a fitted sheet (and any labels above it) never sits under them. */
+        var padTop = o.padTop == null ? pad : o.padTop;
         var MAXS = o.maxScale || 16;
 
         function box() { return { w: wrap.clientWidth, h: wrap.clientHeight }; }
         function fitState() {
             var c = o.size(), b = box();
             if (!c || !b.w || !b.h) return { s: 1, x: 0, y: 0 };
-            var s = Math.min((b.w - 2 * pad) / c.w, (b.h - 2 * pad) / c.h);
+            var s = Math.min((b.w - 2 * pad) / c.w, (b.h - pad - padTop) / c.h);
             if (!(s > 0)) s = 0.01;
-            return { s: s, x: (b.w - c.w * s) / 2, y: (b.h - c.h * s) / 2 };
+            return { s: s, x: (b.w - c.w * s) / 2, y: padTop + (b.h - pad - padTop - c.h * s) / 2 };
         }
         function minS() { return fitState().s * 0.4; }
 

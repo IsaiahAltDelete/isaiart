@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <!-- Spine faces -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@800&family=Playfair+Display:wght@800&family=Fredoka:wght@700&family=Bebas+Neue&family=Merriweather:wght@700&family=Caveat+Brush&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/studio.css?v=2">
+<link rel="stylesheet" href="../assets/studio.css?v=4">
 
 <style>
 /* ── Slot cards ───────────────────────────────────────────────────────
@@ -75,6 +75,14 @@
 .dropper:hover { color: var(--accent); }
 .canvas-wrap.picking, .canvas-wrap.picking * { cursor: crosshair !important; }
 
+/* The view switch floats in the preview's top-left, matching the zoom pill. */
+.viewseg { background: rgba(255,255,255,.94) !important; box-shadow: var(--shadow-md); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.viewseg label { min-height: 28px !important; padding: 0 10px !important; font-size: 12.5px !important; }
+.viewseg .material-symbols-outlined { font-size: 17px; }
+@media (max-width: 560px) { .viewseg .material-symbols-outlined { display: none; } }
+/* On a phone the view switch takes the top edge; zoom drops to the bottom corner. */
+@media (max-width: 560px) { .float.tr { top: auto; bottom: 10px; } }
+
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--g500); }
 .legend i { width: 14px; height: 0; border-top: 2px solid; }
@@ -91,11 +99,6 @@
         <p>Paperback wrap covers with the spine, bleed and barcode area worked out for you.</p>
     </header>
 
-    <div class="seg tabs" role="radiogroup" aria-label="Preview">
-        <label><input type="radio" name="pv" value="guides" checked><span class="material-symbols-outlined">grid_guides</span>Guides</label>
-        <label><input type="radio" name="pv" value="clean"><span class="material-symbols-outlined">visibility</span>Clean</label>
-        <label><input type="radio" name="pv" value="print"><span class="material-symbols-outlined">crop</span>Trimmed</label>
-    </div>
 
     <main class="content">
 
@@ -275,6 +278,11 @@
                         <button class="btn icon sm ghost dropper" type="button" data-pick="spineColor" title="Pick a colour from the cover" aria-label="Eyedropper"><span class="material-symbols-outlined">colorize</span></button>
                         <div class="swatches grow" id="spineSwatches"></div>
                     </div>
+                    <label class="switch" id="spineWrapRow" hidden><input type="checkbox" id="spineWrap" checked><span class="track"></span><span>Wrap color 1/16 in onto covers<span class="sub">Hides KDP's binding drift.</span></span></label>
+                    <div class="warnline" id="driftWarn" hidden>
+                        <span class="material-symbols-outlined">warning</span>
+                        <span>Binding can drift 1/16 in. This edge may show.</span>
+                    </div>
                     <div class="warnline" id="spineWarn" hidden>
                         <span class="material-symbols-outlined">warning</span>
                         <span>KDP needs 80+ pages for spine text.</span>
@@ -319,7 +327,7 @@
             <details class="panel rise" style="--i:4">
                 <summary class="panel-h">
                     <span class="material-symbols-outlined">grid_guides</span>
-                    <h2>Guides</h2>
+                    <h2>Guide lines</h2>
                     <span class="material-symbols-outlined chev">chevron_right</span>
                 </summary>
                 <div class="panel-body-wrap"><div class="panel-b">
@@ -342,6 +350,13 @@
             <div class="canvas-wrap" id="wrap">
                 <div class="progress" id="prog"><i></i></div>
                 <canvas id="view"></canvas>
+                <div class="float tl">
+                    <div class="seg viewseg" role="radiogroup" aria-label="Preview">
+                        <label><input type="radio" name="pv" value="guides" checked><span class="material-symbols-outlined">grid_guides</span>Guides</label>
+                        <label><input type="radio" name="pv" value="clean"><span class="material-symbols-outlined">visibility</span>Clean</label>
+                        <label><input type="radio" name="pv" value="print"><span class="material-symbols-outlined">crop</span>Trimmed</label>
+                    </div>
+                </div>
                 <div class="float tr">
                     <div class="zoom">
                         <button class="btn" type="button" id="zOut" aria-label="Zoom out"><span class="material-symbols-outlined">remove</span></button>
@@ -370,8 +385,8 @@
     </main>
 </div>
 
-<script src="../assets/studio.js?v=1"></script>
+<script src="../assets/studio.js?v=2"></script>
 <script src="../assets/print.js?v=1"></script>
-<script src="kdp.js?v=2"></script>
+<script src="kdp.js?v=4"></script>
 </body>
 </html>
