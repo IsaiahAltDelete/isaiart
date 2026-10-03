@@ -41,9 +41,9 @@ body {
     font-family: var(--font); font-size: 14px; line-height: 1.5; color: var(--g800);
     background: linear-gradient(to bottom right, var(--g50), var(--g200)) fixed;
     -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-    padding: 16px;
+    padding: 10px;
 }
-@media (min-width: 640px) { body { padding: 32px; } }
+@media (min-width: 640px) { body { padding: 14px; } }
 [hidden] { display: none !important; }
 a { color: inherit; }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -70,22 +70,24 @@ button, input, select, textarea { font: inherit; color: inherit; }
    tabs stay put, the settings column scrolls on its own, and the canvas
    takes whatever height is left. On a phone it becomes a normal page. */
 .shell {
-    width: 100%; max-width: 1440px; margin: 0 auto;
+    /* Full width: these are workbenches, and every pixel the card gives
+       back goes to the canvas. */
+    width: 100%; margin: 0 auto;
     background: #fff; border-radius: 16px; box-shadow: var(--shadow-card);
     padding: 20px; display: flex; flex-direction: column;
     animation: card-in .45s var(--ease) both;
 }
-@media (min-width: 768px) { .shell { padding: 28px 36px 30px; } }
+@media (min-width: 768px) { .shell { padding: 18px 22px 20px; } }
 @media (min-width: 1024px) {
     body { height: 100dvh; overflow: hidden; }
-    .shell { height: 100%; max-height: calc(100dvh - 64px); }
+    .shell { height: 100%; max-height: calc(100dvh - 28px); }
 }
 
 /* Header */
-.head { position: relative; text-align: center; border-bottom: 1px solid var(--g200); padding-bottom: 16px; margin-bottom: 4px; flex-shrink: 0; }
+.head { position: relative; text-align: center; border-bottom: 1px solid var(--g200); padding-bottom: 12px; margin-bottom: 2px; flex-shrink: 0; }
 .head h1 {
     margin: 0; display: flex; align-items: center; justify-content: center; gap: 12px;
-    font-size: clamp(24px, 3.2vw, 34px); font-weight: 700; letter-spacing: -.025em; color: var(--g800); text-transform: uppercase;
+    font-size: clamp(22px, 2.6vw, 30px); font-weight: 700; letter-spacing: -.025em; color: var(--g800); text-transform: uppercase;
 }
 .head h1 .material-symbols-outlined { color: var(--accent); font-size: 1.15em; }
 .head p { margin: 4px auto 0; max-width: 72ch; font-size: 13.5px; color: var(--g500); }
@@ -102,7 +104,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* Tabs — a radio group drawn as the metadata page's tab bar, with the red
    underline sliding between choices (studio.js positions .seg-pill). */
 .tabs {
-    position: relative; display: flex; flex-shrink: 0; margin-bottom: 20px;
+    position: relative; display: flex; flex-shrink: 0; margin-bottom: 14px;
     border-bottom: 1px solid var(--g200); overflow-x: auto; scrollbar-width: none;
 }
 .tabs::-webkit-scrollbar { display: none; }
@@ -129,7 +131,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .stage { display: flex; flex-direction: column; gap: 12px; min-width: 0; order: -1; }
 @media (min-width: 1024px) {
     .content { flex-direction: row; gap: 28px; }
-    .sidebar { width: 370px; flex: none; overflow-y: auto; padding-right: 8px; margin-right: -8px; }
+    .sidebar { width: 380px; flex: none; overflow-y: auto; padding-right: 8px; margin-right: -8px; }
     .stage { flex: 1; order: 0; min-height: 0; }
 }
 

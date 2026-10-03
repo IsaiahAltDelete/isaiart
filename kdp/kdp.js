@@ -37,9 +37,10 @@
     var DEF = {
         trim: '8.5x11', pages: 100, paper: 'white',
         bgmode: 'color', bgColor: '#ffffff', bgAuto: true, blur: 60, dim: 0,
+        pattern: 'checker', patColor: '#f9c4d2', patScale: 0.75, patAngle: 0,
         inset: 0, radius: 0, outline: false, outlineColor: '#111111', outlineW: 0.04,
         spinemode: 'bg', spineColor: '#1f2937', title: '', author: '', font: 'Inter',
-        ink: '#111111', inkAuto: true, sSize: 100,
+        ink: '#111111', inkAuto: true, sSize: 100, sCaps: true,
         gBleed: true, gSafe: true, gSpine: true, gBarcode: true, pv: 'guides', tplOp: 45
     };
     var STORE = 'isa.kdp.v1';
@@ -192,13 +193,174 @@
         }
     }
 
+    /* ── Patterns ────────────────────────────────────────────────────────────
+       Drawn, not bitmaps: each pattern is one tile painted with canvas paths
+       at the export resolution (scale × 300 px) and repeated with
+       createPattern, so a printed checker or swirl has the same crisp edges
+       as the vector art it sits behind. Every tile is built to repeat
+       seamlessly — shapes that cross an edge are drawn on both sides. */
+    var PATTERNS = [
+        ['checker', 'Checker'], ['stripes', 'Stripes'], ['dots', 'Polka dots'], ['swirls', 'Swirls'],
+        ['waves', 'Waves'], ['chevron', 'Chevron'], ['stars', 'Stars'], ['hearts', 'Hearts'],
+        ['gingham', 'Gingham'], ['grid', 'Grid'], ['confetti', 'Confetti'], ['sunburst', 'Sunburst']
+    ];
+    /* Picking a pattern sets the angle it looks best at. */
+    var PAT_ANGLE = { stripes: 45 };
+
+    function rng(seed) { return function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+    function shade(hex, k) {
+        return rgbHex(hexRgb(hex).map(function (v) { return k < 0 ? v * (1 + k) : v + (255 - v) * k; }));
+    }
+    function star(c, x, y, r) {
+        c.beginPath();
+        for (var i = 0; i < 10; i++) {
+            var a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+            c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+        }
+        c.closePath(); c.fill();
+    }
+    function heart(c, x, y, r) {
+        c.beginPath();
+        c.moveTo(x, y + r * 0.9);
+        c.bezierCurveTo(x - r * 1.5, y - r * 0.1, x - r * 0.6, y - r * 1.15, x, y - r * 0.35);
+        c.bezierCurveTo(x + r * 0.6, y - r * 1.15, x + r * 1.5, y - r * 0.1, x, y + r * 0.9);
+        c.fill();
+    }
+    function spiral(c, x, y, r, lw, flip) {
+        c.beginPath();
+        for (var i = 0, n = 140; i <= n; i++) {
+            var t = i / n, a = t * 2.6 * Math.PI * 2 * (flip ? -1 : 1);
+            c.lineTo(x + Math.cos(a) * r * t, y + Math.sin(a) * r * t);
+        }
+        c.lineWidth = lw; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke();
+    }
+    function dot(c, x, y, r) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
+
+    /* One T×T tile: ground colour a, ink colour b. */
+    function drawTile(c, name, T, a, b) {
+        var h = T / 2, q = T / 4, i, dx, dy;
+        c.fillStyle = a; c.fillRect(0, 0, T, T);
+        c.fillStyle = b; c.strokeStyle = b;
+        switch (name) {
+            case 'checker': c.fillRect(0, 0, h, h); c.fillRect(h, h, h, h); break;
+            case 'stripes': c.fillRect(0, 0, h, T); break;
+            case 'dots': dot(c, q, q, T * 0.15); dot(c, 3 * q, 3 * q, T * 0.15); break;
+            case 'swirls':
+                spiral(c, q, q, T * 0.2, T * 0.035, false);
+                spiral(c, 3 * q, 3 * q, T * 0.2, T * 0.035, true);
+                dot(c, 3 * q, q, T * 0.035); dot(c, q, 3 * q, T * 0.035);
+                break;
+            case 'waves':
+                c.lineWidth = T * 0.07;
+                [q, 3 * q].forEach(function (y0) {
+                    c.beginPath();
+                    for (var x = -2; x <= T + 2; x += T / 64) c.lineTo(x, y0 + Math.sin(x / T * Math.PI * 2) * T * 0.1);
+                    c.stroke();
+                });
+                break;
+            case 'chevron':
+                /* Drawn from -T/2 to 3T/2 so the zigzag runs through both
+                   edges and meets itself when the tile repeats. */
+                c.lineWidth = T * 0.1; c.lineJoin = 'miter'; c.lineCap = 'butt';
+                [q, 3 * q].forEach(function (y0) {
+                    c.beginPath();
+                    for (var k = -1; k <= 3; k++) c.lineTo(k * h, y0 + (k % 2 ? -1 : 1) * T * 0.1);
+                    c.stroke();
+                });
+                break;
+            case 'stars': star(c, q, q, T * 0.17); star(c, 3 * q, 3 * q, T * 0.17); break;
+            case 'hearts': heart(c, q, q, T * 0.15); heart(c, 3 * q, 3 * q, T * 0.15); break;
+            case 'gingham':
+                c.globalAlpha = 0.5; c.fillRect(0, 0, h, T); c.fillRect(0, 0, T, h); c.globalAlpha = 1;
+                break;
+            case 'grid':
+                var lw = Math.max(1, T * 0.035);
+                c.fillRect(0, 0, lw, T); c.fillRect(0, 0, T, lw);
+                break;
+            case 'confetti':
+                var r = rng(11), cols = [b, shade(b, 0.4), shade(b, -0.3)];
+                for (i = 0; i < 16; i++) {
+                    var x = r() * T, y = r() * T, s = T * (0.028 + r() * 0.03), rot = r() * Math.PI, kind = i % 3;
+                    c.fillStyle = cols[i % 3];
+                    /* Each piece is drawn at all nine offsets, so one that
+                       straddles an edge reappears on the opposite side. */
+                    for (dx = -T; dx <= T; dx += T) for (dy = -T; dy <= T; dy += T) {
+                        c.save(); c.translate(x + dx, y + dy); c.rotate(rot);
+                        if (kind === 0) dot(c, 0, 0, s);
+                        else if (kind === 1) c.fillRect(-s * 1.5, -s * 0.5, s * 3, s);
+                        else { c.beginPath(); c.moveTo(0, -s * 1.2); c.lineTo(s, s * 0.8); c.lineTo(-s, s * 0.8); c.closePath(); c.fill(); }
+                        c.restore();
+                    }
+                }
+                break;
+        }
+    }
+
+    var patCache = { key: '', tile: null, avg: null };
+    function patternTile(g) {
+        var T = Math.max(8, Math.round(cfg.patScale * g.k));
+        var key = [cfg.pattern, T, cfg.bgColor, cfg.patColor].join('|');
+        if (patCache.key !== key) {
+            var c = document.createElement('canvas');
+            c.width = c.height = T;
+            drawTile(c.getContext('2d'), cfg.pattern, T, cfg.bgColor, cfg.patColor);
+            patCache = { key: key, tile: c, avg: null };
+        }
+        return patCache.tile;
+    }
+    function fillPattern(ctx, g, tile, angle) {
+        var p = ctx.createPattern(tile, 'repeat');
+        if (angle && p.setTransform && window.DOMMatrix) p.setTransform(new DOMMatrix().rotateSelf(angle));
+        ctx.save(); ctx.fillStyle = p; ctx.fillRect(0, 0, g.W, g.H); ctx.restore();
+    }
+    /* Sunburst isn't a tile: rays fan out from the centre of the front. */
+    function drawSunburst(ctx, x0, y0, R, n, angle, b) {
+        var step = Math.PI * 2 / n, a0 = angle * Math.PI / 180;
+        ctx.save(); ctx.fillStyle = b; ctx.beginPath();
+        for (var i = 0; i < n; i += 2) {
+            ctx.moveTo(x0, y0);
+            ctx.arc(x0, y0, R, a0 + i * step, a0 + (i + 1) * step);
+            ctx.closePath();
+        }
+        ctx.fill(); ctx.restore();
+    }
+    function drawPattern(ctx, g) {
+        if (cfg.pattern === 'sunburst') {
+            var n = Math.max(8, Math.min(72, Math.round(24 / cfg.patScale / 2) * 2));
+            /* Clipped to the sheet: the export canvas would crop the rays
+               anyway, but the preview draws onto a much larger stage. */
+            ctx.save();
+            ctx.beginPath(); ctx.rect(0, 0, g.W, g.H); ctx.clip();
+            drawSunburst(ctx, (g.s1 + g.W) / 2, g.H / 2, Math.hypot(g.W, g.H), n, cfg.patAngle, cfg.patColor);
+            ctx.restore();
+            return;
+        }
+        fillPattern(ctx, g, patternTile(g), cfg.patAngle);
+    }
+    /* Average colour of the pattern, for automatic spine-text contrast. */
+    function patternAvg(g) {
+        if (cfg.pattern === 'sunburst') {
+            var A = hexRgb(cfg.bgColor), B = hexRgb(cfg.patColor);
+            return [0, 1, 2].map(function (i) { return (A[i] + B[i]) / 2; });
+        }
+        var t = patternTile(g);
+        if (!patCache.avg) {
+            var d = t.getContext('2d').getImageData(0, 0, t.width, t.height).data, s = [0, 0, 0], n = d.length / 4;
+            for (var i = 0; i < d.length; i += 4) { s[0] += d[i]; s[1] += d[i + 1]; s[2] += d[i + 2]; }
+            patCache.avg = s.map(function (v) { return v / n; });
+        }
+        return patCache.avg;
+    }
+
     function compose(ctx, g) {
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.fillStyle = cfg.bgColor;
         ctx.fillRect(0, 0, g.W, g.H);
 
-        if (cfg.bgmode === 'blur') {
+        if (cfg.bgmode === 'pattern') {
+            drawPattern(ctx, g);
+        } else if (cfg.bgmode === 'blur') {
             var bc = blurCanvas(g);
             if (bc) ctx.drawImage(bc, 0, 0, g.W, g.H);
         } else if (cfg.bgmode === 'image') {
@@ -241,14 +403,31 @@
     function drawSpineText(ctx, g) {
         if (cfg.pages < SPINE_TEXT_MIN) return;
         var title = (cfg.title || '').trim(), author = (cfg.author || '').trim();
+        if (cfg.sCaps) { title = title.toUpperCase(); author = author.toUpperCase(); }
         if (!title && !author) return;
         var sw = g.s1 - g.s0, avail = sw - 2 * SPINE_SAFE * g.k;
         if (avail < 6) return;
         var len = g.th - 2 * 0.25 * g.k;
         var fam = '"' + cfg.font + '", Inter, sans-serif', wt = fontWeight();
-        var size = avail * 0.78 * (cfg.sSize / 100);
-        var aScale = 0.72, gap;
+        var aScale = 0.82, gap;
         function f(sz) { return wt + ' ' + sz + 'px ' + fam; }
+
+        /* Size from the letters' real ink height, not the font size. The old
+           rule (font size = 78% of the spine) left the actual capitals at
+           about half the spine's printable width — on a 0.27 in spine that
+           printed 5-point text. Measuring the rendered glyphs and filling
+           94% of the safe band makes caps roughly 1.7× taller, and it adapts
+           per font: Bebas Neue's tall caps and Fredoka's round ones both end
+           up exactly as wide as the spine allows. */
+        function inkHeight(text, sz) {
+            ctx.font = f(sz);
+            var m = ctx.measureText(text), a = m.actualBoundingBoxAscent, d = m.actualBoundingBoxDescent;
+            if (!(a > 0)) return sz * (cfg.sCaps ? 0.72 : 0.95);
+            return a + (d > 0 ? d : 0);
+        }
+        var REF = 100;
+        var hMax = Math.max(title ? inkHeight(title, REF) : 0, author ? inkHeight(author, REF * aScale) : 0) || REF * 0.72;
+        var size = REF * (avail * 0.94 / hMax) * (cfg.sSize / 100);
         function widths(sz) {
             ctx.font = f(sz);
             var tw = title ? ctx.measureText(title).width : 0;
@@ -289,6 +468,7 @@
     function spineBg() {
         if (cfg.spinemode === 'color') return hexRgb(cfg.spineColor);
         if (cfg.bgmode === 'color') return hexRgb(cfg.bgColor);
+        if (cfg.bgmode === 'pattern') return patternAvg(G());
         var g = G(), c = cfg.bgmode === 'blur' ? blurCanvas(g) : null;
         if (!c) return hexRgb(cfg.bgColor);
         var x = Math.round((g.s0 + g.s1) / 2 / g.W * c.width);
@@ -397,12 +577,28 @@
                 ctx.drawImage(slots.tpl.img, 0, 0, g.W, g.H);
                 ctx.restore();
             }
-            if (cfg.pv === 'guides') drawGuides(ctx, g, v);
+            if (cfg.pv === 'guides' && !picking && !hideGuides) drawGuides(ctx, g, v);
             if (needsFrame) vp.redraw();
         },
         overlay: function (ctx, v) {
             var g = G();
             var X = function (x) { return v.x + x * v.s; }, Y = function (y) { return v.y + y * v.s; };
+            /* Eyedropper loupe: the colour under the cursor, beside it. */
+            if (picking && pickHex && pickPt) {
+                var lx = X(pickPt.x) + 22, ly0 = Y(pickPt.y) + 22;
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 10;
+                ctx.beginPath(); ctx.arc(lx + 18, ly0 + 18, 18, 0, Math.PI * 2);
+                ctx.fillStyle = pickHex; ctx.fill();
+                ctx.shadowBlur = 0; ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
+                ctx.font = '500 11px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+                var tw = ctx.measureText(pickHex).width + 12;
+                ctx.fillStyle = 'rgba(17,24,39,.85)';
+                ctx.fillRect(lx + 18 - tw / 2, ly0 + 42, tw, 18);
+                ctx.fillStyle = '#fff'; ctx.fillText(pickHex.toUpperCase(), lx + 18, ly0 + 45);
+                ctx.restore();
+                return;
+            }
             /* Panel labels above the sheet. */
             ctx.font = '600 11px Poppins, sans-serif';
             ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
@@ -439,6 +635,12 @@
             }
         },
         down: function (pt) {
+            if (picking) {
+                var fn = picking, hex = sampleAt(pt);
+                endPick();
+                if (hex) { fn(hex); S.toast('Picked ' + hex.toUpperCase()); }
+                return { move: function () {}, up: function () {} };
+            }
             var id = hitArt(pt);
             var panel = panelAt(pt);
             if (!id) {
@@ -467,6 +669,20 @@
             };
         },
         hover: function (pt) {
+            if (picking) {
+                pickPt = pt;
+                /* One sample per frame, however fast the mouse moves. */
+                if (!pickQueued) {
+                    pickQueued = true;
+                    requestAnimationFrame(function () {
+                        pickQueued = false;
+                        if (!picking || !pickPt) return;
+                        pickHex = sampleAt(pickPt);
+                        vp.redraw();
+                    });
+                }
+                return;
+            }
             var id = hitArt(pt);
             if (id !== hoverId) { hoverId = id; vp.redraw(); }
             wrap.style.cursor = id ? 'move' : '';
@@ -481,6 +697,47 @@
         },
         change: function (v) { el('zVal').textContent = Math.round(v.s / vp.fitScale() * 100) + '%'; }
     });
+
+    /* ── Eyedropper ──────────────────────────────────────────────────────────
+       Chrome and Edge have a native screen eyedropper — it can pick from the
+       preview or from anything else on screen. Elsewhere the preview itself
+       becomes the picker. Either way guides are hidden while picking, so a
+       sample can't land on a red trim line instead of the art. */
+    var picking = null, pickHex = null, pickPt = null, pickQueued = false, hideGuides = false;
+
+    /* The true composed colour at an art point: render the scene into a
+       1×1 canvas positioned over that point. Exact at any zoom. */
+    function sampleAt(pt) {
+        var g = G();
+        if (pt.x < 0 || pt.y < 0 || pt.x >= g.W || pt.y >= g.H) return null;
+        var c = document.createElement('canvas');
+        c.width = c.height = 1;
+        var x = c.getContext('2d', { willReadFrequently: true });
+        x.translate(-Math.floor(pt.x), -Math.floor(pt.y));
+        compose(x, g);
+        var d = x.getImageData(0, 0, 1, 1).data;
+        return rgbHex([d[0], d[1], d[2]]);
+    }
+    function pickColor(apply) {
+        if (window.EyeDropper) {
+            hideGuides = true; vp.redraw();
+            new EyeDropper().open()
+                .then(function (r) { apply(r.sRGBHex); S.toast('Picked ' + r.sRGBHex.toUpperCase()); })
+                .catch(function () {})
+                .then(function () { hideGuides = false; vp.redraw(); });
+            return;
+        }
+        picking = apply;
+        wrap.classList.add('picking');
+        S.toast('Click the cover to pick a colour · Esc to cancel');
+        vp.redraw();
+    }
+    function endPick() {
+        picking = null; pickHex = null; pickPt = null;
+        wrap.classList.remove('picking');
+        vp.redraw();
+    }
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && picking) endPick(); });
 
     function panelAt(pt) {
         var g = G();
@@ -744,12 +1001,17 @@
             cfg.bgColor = artColours[0]; el('bgColor').value = cfg.bgColor; save();
         }
         renderSwatches();
+        renderPatternThumbs();
     }
     function renderSwatches() {
-        [['swatches', 'bgColor'], ['spineSwatches', 'spineColor']].forEach(function (pair) {
+        [['swatches', 'bgColor'], ['spineSwatches', 'spineColor'], ['patSwatches', 'patColor']].forEach(function (pair) {
             var box = el(pair[0]), key = pair[1];
             box.innerHTML = '';
-            var list = artColours.concat(['#ffffff', '#111111', '#f4ecd8']).filter(function (c, i, a) { return a.indexOf(c) === i; });
+            /* Pattern ink gets a few playful extras on top of the art's own
+               colours, since a pattern usually wants contrast with the ground. */
+            var extras = key === 'patColor' ? ['#f9c4d2', '#a7d8f0', '#ffe08a', '#b8e6b0', '#111111']
+                                            : ['#ffffff', '#111111', '#f4ecd8'];
+            var list = artColours.concat(extras).filter(function (c, i, a) { return a.indexOf(c) === i; });
             list.forEach(function (hex) {
                 var b = document.createElement('button');
                 b.type = 'button'; b.className = 'swatch';
@@ -781,6 +1043,38 @@
     }
 
     
+    var SWATCH_KEYS = { swatches: 'bgColor', spineSwatches: 'spineColor', patSwatches: 'patColor' };
+
+    /* Pattern picker: a tile per pattern, previewed in the current colours. */
+    var patThumbKey = '';
+    PATTERNS.forEach(function (p) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'pat'; b.dataset.pat = p[0];
+        b.setAttribute('role', 'radio'); b.title = p[1];
+        b.innerHTML = '<canvas width="112" height="80"></canvas><span></span>';
+        b.querySelector('span').textContent = p[1];
+        b.addEventListener('click', function () {
+            if (cfg.pattern !== p[0] && PAT_ANGLE[p[0]] != null) cfg.patAngle = PAT_ANGLE[p[0]];
+            else if (cfg.pattern !== p[0] && PAT_ANGLE[cfg.pattern] != null) cfg.patAngle = 0;
+            setCfg('pattern', p[0]);
+        });
+        el('patterns').appendChild(b);
+    });
+    function renderPatternThumbs() {
+        var key = [cfg.bgColor, cfg.patColor].join('|');
+        if (key === patThumbKey) return;
+        patThumbKey = key;
+        document.querySelectorAll('.pat').forEach(function (b) {
+            var name = b.dataset.pat, c = b.querySelector('canvas'), x = c.getContext('2d');
+            var g = { W: c.width, H: c.height };
+            x.fillStyle = cfg.bgColor; x.fillRect(0, 0, g.W, g.H);
+            if (name === 'sunburst') { drawSunburst(x, g.W / 2, g.H / 2, g.W, 16, 0, cfg.patColor); return; }
+            var t = document.createElement('canvas'); t.width = t.height = 40;
+            drawTile(t.getContext('2d'), name, 40, cfg.bgColor, cfg.patColor);
+            fillPattern(x, g, t, PAT_ANGLE[name] || 0);
+        });
+    }
+
     /* One place that pushes cfg into every control and readout. */
     function syncUI() {
         var g = G();
@@ -802,8 +1096,17 @@
         });
         el('colorRow').hidden = false;
         el('blurRows').hidden = cfg.bgmode !== 'blur';
-        el('dimRow').hidden = cfg.bgmode === 'color';
+        el('dimRow').hidden = cfg.bgmode === 'color' || cfg.bgmode === 'pattern';
         el('bgColor').value = cfg.bgColor;
+        el('colorLbl').textContent = cfg.bgmode === 'pattern' ? 'Background color' : 'Fill color';
+        el('patRows').hidden = cfg.bgmode !== 'pattern';
+        el('patRows2').hidden = cfg.bgmode !== 'pattern';
+        el('patColor').value = cfg.patColor;
+        setRange('patScale', cfg.patScale, cfg.patScale + ' in');
+        setRange('patAngle', cfg.patAngle, cfg.patAngle + '°');
+        el('patScaleLbl').textContent = cfg.pattern === 'sunburst' ? 'Ray width' : 'Scale';
+        document.querySelectorAll('.pat').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.pat === cfg.pattern)); });
+        renderPatternThumbs();
 
         setRange('blur', cfg.blur, String(cfg.blur));
         setRange('dim', cfg.dim, (cfg.dim > 0 ? '+' : '') + cfg.dim);
@@ -821,6 +1124,7 @@
         if (document.activeElement !== el('sTitle')) el('sTitle').value = cfg.title;
         if (document.activeElement !== el('sAuthor')) el('sAuthor').value = cfg.author;
         el('sFont').value = cfg.font;
+        el('sCaps').checked = cfg.sCaps;
         el('sInk').value = spineInk();
         el('autoInk').setAttribute('aria-pressed', String(cfg.inkAuto));
         
@@ -833,7 +1137,8 @@
         ['gBleed', 'gSafe', 'gSpine', 'gBarcode'].forEach(function (k) { el(k).checked = cfg[k]; });
 
         document.querySelectorAll('.swatch').forEach(function (b) {
-            var key = b.parentNode.id === 'swatches' ? 'bgColor' : 'spineColor';
+            var key = SWATCH_KEYS[b.parentNode.id];
+            if (!key) return;
             b.setAttribute('aria-pressed', String(cfg[key].toLowerCase() === (b.title || '').toLowerCase()));
         });
 
@@ -883,13 +1188,27 @@
     el('sInk').addEventListener('input', function () { cfg.inkAuto = false; setCfg('ink', this.value); });
     el('autoInk').addEventListener('click', function () { setCfg('inkAuto', !cfg.inkAuto); if (!cfg.inkAuto) setCfg('ink', el('sInk').value); });
     el('outline').addEventListener('change', function () { setCfg('outline', this.checked); });
+    el('sCaps').addEventListener('change', function () { setCfg('sCaps', this.checked); });
+    el('patColor').addEventListener('input', function () { setCfg('patColor', this.value); });
+
+    /* Eyedropper buttons: data-pick names the setting they write. */
+    var PICKERS = {
+        bgColor:      function (h) { cfg.bgAuto = false; setCfg('bgColor', h); },
+        patColor:     function (h) { setCfg('patColor', h); },
+        spineColor:   function (h) { if (cfg.spinemode !== 'color') cfg.spinemode = 'color'; setCfg('spineColor', h); },
+        sInk:         function (h) { cfg.inkAuto = false; setCfg('ink', h); },
+        outlineColor: function (h) { setCfg('outlineColor', h); }
+    };
+    document.querySelectorAll('[data-pick]').forEach(function (b) {
+        b.addEventListener('click', function () { pickColor(PICKERS[b.getAttribute('data-pick')]); });
+    });
     ['gBleed', 'gSafe', 'gSpine', 'gBarcode'].forEach(function (k) {
         el(k).addEventListener('change', function () {
             setCfg(k, this.checked);
             if (this.checked && cfg.pv !== 'guides') setCfg('pv', 'guides');
         });
     });
-    [['blur', 1], ['dim', 1], ['inset', 1], ['radius', 1], ['outlineW', 1], ['sSize', 1]].forEach(function (p) {
+    [['blur', 1], ['dim', 1], ['inset', 1], ['radius', 1], ['outlineW', 1], ['sSize', 1], ['patScale', 1], ['patAngle', 1]].forEach(function (p) {
         el(p[0]).addEventListener('input', function () { setCfg(p[0], +this.value); if (p[0] === 'inset') renderCards(); });
     });
     el('sTitle').addEventListener('input', function () { setCfg('title', this.value); });
