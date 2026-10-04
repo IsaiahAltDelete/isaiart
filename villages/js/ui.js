@@ -108,6 +108,7 @@ export class UI {
     $('#info').addEventListener('change', e => this.modalChange(e));
     this.seenLog = 0;
     this.hammer = svg('hammer', 16);
+    $('#coach').addEventListener('click', e => { if (e.target.closest('[data-skip]')) { this.sim.s.tutorial = 99; this.drawCoach(); } });
     $('#alert').onclick = () => { const t = $('#alert').dataset.go; this.doGo({ kind: 'build', key: t }); };
   }
 
@@ -121,6 +122,7 @@ export class UI {
       this.timer = 0;
       this.drawInfo();
       this.drawAlert();
+      this.drawCoach();
       if (this.modal && ['villagers', 'inventory', 'stats', 'worldmap'].includes(this.modal) && !$('#modal').contains(document.activeElement)) this.drawModal(true);
       this.drawQuests();
       if (this.tray) this.refreshCards();
@@ -195,6 +197,33 @@ export class UI {
     }
   }
 
+  // first-time tips, one step at a time
+  drawCoach() {
+    const s = this.sim.s, g = this.g, el = $('#coach');
+    const has = t => s.buildings.some(b => b.type === t);
+    const touch = g.lastPointer && g.lastPointer !== 'mouse';
+    const steps = [
+      { text: 'Welcome to your village! Tap <b>Build</b> to see what you can make.', target: '#dockbar [data-tab=build]', done: () => this.tray === 'build' || has('lumber') },
+      { text: 'Pick the <b>Lumber Hut</b>. Woodcutters will chop trees and bring you wood.', target: '#cards .card[data-type=lumber]', done: () => g.place?.type === 'lumber' || has('lumber') },
+      { text: touch ? 'Tap a green spot near the campfire, then press <b>✓</b>.' : 'Click a green spot near the campfire to build it.', target: '#pOk', done: () => has('lumber') },
+      { text: 'Idle villagers build it for you. Now add a <b>Forager Hut</b> so everyone has food.', target: this.tray === 'build' ? '#cards .card[data-type=forager]' : '#dockbar [data-tab=build]', done: () => has('forager') },
+      { text: 'Tap any building to add workers, upgrade or move it. Claim quest rewards on the left. Have fun!', target: '#quests', done: () => (this.coachT = (this.coachT || 0) + 0.5) > 14 || g.selected },
+    ];
+    if (s.tutorial >= steps.length) { el.classList.add('hidden'); this.coachTarget(null); return; }
+    const st = steps[s.tutorial];
+    if (st.done()) { s.tutorial++; sfx.pop(); return this.drawCoach(); }
+    el.classList.remove('hidden');
+    const html = `<span class="cnum">${s.tutorial + 1}/${steps.length}</span><span>${st.text}</span><button data-skip>Skip tips</button>`;
+    if (el.dataset.step !== String(s.tutorial)) { el.dataset.step = s.tutorial; el.innerHTML = html; }
+    this.coachTarget(st.target);
+  }
+  coachTarget(sel) {
+    const t = sel ? document.querySelector(sel) : null;
+    if (this.coached && this.coached !== t) this.coached.classList.remove('coach-target');
+    if (t && !t.classList.contains('coach-target')) t.classList.add('coach-target');
+    this.coached = t;
+  }
+
   // alert chip: the most urgent problem in the village
   drawAlert() {
     const sim = this.sim, s = sim.s, pop = s.villagers.length;
@@ -266,7 +295,7 @@ export class UI {
       h += `<div class="upbox"><div><b>Upgrade to Lv ${lvlOf(b) + 1}</b><span>${esc(sim.upgradeEffect(b))}</span><span class="cost">${costHtml(cost, s.res)}</span></div>
         <button class="btn gold sm" data-act="upgrade" ${can.ok ? '' : 'disabled'} title="${esc(can.why || '')}">${svg('star', 14)} ${can.ok ? 'Upgrade' : esc(can.why)}</button></div>`;
     }
-    if (b.type !== 'campfire') h += `<div class="actions"><button class="btn red sm" data-act="demolish">${svg('trash', 14)} Demolish</button></div>`;
+    if (b.type !== 'campfire') h += `<div class="actions"><button class="btn blue sm" data-act="move">${svg('rotate', 14)} Move</button><button class="btn red sm" data-act="demolish">${svg('trash', 14)} Demolish</button></div>`;
     return h;
   }
   villagerInfo(v) {
@@ -307,6 +336,7 @@ export class UI {
     if (act === 'follow') { this.g.followV = this.g.followV === sel.v ? null : sel.v; this.drawInfo(true); return; }
     if (!sel || sel.kind !== 'b') return;
     const b = sel.b;
+    if (act === 'move') { this.g.startPlace(b.type, b); return; }
     if (act === 'upgrade') { if (sim.upgrade(b)) this.toast('Builders are on their way!', 'hammer'); }
     if (act === 'staff') { if (!sim.assign(b, null)) { this.toast(b.workers.length >= workersOf(b) ? 'This building is fully staffed' : 'No idle villagers — build more cottages!', 'person'); sfx.error(); } else sfx.pop(); }
     if (act === 'unstaff') { const id = b.workers[b.workers.length - 1]; if (id) { sim.unassign(sim.vById.get(id)); sfx.click(); } }
@@ -405,8 +435,13 @@ export class UI {
         <span class="chip">${svg('smile', 18)}Happiness <span class="happy"><i style="width:${s.happiness}%"></i></span>${Math.round(s.happiness)}</span>
         <span class="chip">${svg('person', 18)}${idle} idle</span>
         <span class="chip">${svg('apple', 18)}${s.villagers.filter(v => v.hungry).length} hungry</span></div>`;
+      const jobs = [...new Set(s.villagers.map(v => v.job))];
+      const f = this.vFilter && jobs.includes(this.vFilter) ? this.vFilter : 'all';
+      h += `<div class="chips"><button class="chipf ${f === 'all' ? 'on' : ''}" data-act="vf" data-f="all">All ${s.villagers.length}</button>${jobs.map(j =>
+        `<button class="chipf ${f === j ? 'on' : ''}" data-act="vf" data-f="${j}">${JOBS[j].name} ${s.villagers.filter(v => v.job === j).length}</button>`).join('')}</div>`;
+      h += `<div class="actions" style="margin:0 0 8px"><button class="btn sm" data-act="autoassign" ${idle ? '' : 'disabled'}>${svg('people', 16)} Give idle villagers jobs</button></div>`;
       h += `<div class="sub" style="font-size:12px;color:var(--ink2);margin-bottom:6px">Idle villagers build construction sites and clear marked trees. Pick a job to send someone to work.</div>`;
-      h += s.villagers.map(v => `<div class="vrow"><span class="face" style="background:${hex(v.shirt)}"></span>
+      h += s.villagers.filter(v => f === 'all' || v.job === f).map(v => `<div class="vrow"><span class="face" style="background:radial-gradient(circle at 50% 40%, ${hex(v.skin)} 0 33%, transparent 34%), radial-gradient(circle at 50% 125%, ${hex(v.shirt)} 0 58%, ${hex(v.hair)} 59%)"></span>
         <div><b>${esc(v.name)}</b> ${v.hungry ? '<span style="color:#c0392b;font-size:11px">hungry</span>' : ''}<div class="doing">${esc(v.task?.label ?? 'Idle')} · ${esc(SETTLEMENTS.find(o => o.id === v.home)?.name ?? '')}</div></div>
         <select data-act="job" data-id="${v.id}">${this.workOptions(v)}</select></div>`).join('');
     } else if (k === 'inventory') {
@@ -446,7 +481,7 @@ export class UI {
     } else if (k === 'settings') {
       const st = this.g.settings;
       h += `<div class="summary"><button class="btn ${st.sound ? '' : 'ghost'}" data-act="sound">${svg(st.sound ? 'sound' : 'mute', 18)} Sound ${st.sound ? 'on' : 'off'}</button>
-        <button class="btn blue" data-act="quality">Graphics: ${st.quality === 'high' ? 'High' : 'Low'}</button>
+        <button class="btn blue" data-act="quality">Graphics: ${{ high: 'High', medium: 'Medium', low: 'Low' }[st.quality] || 'High'}</button>
         <button class="btn gold" data-act="savenow">Save now</button></div>
         <div class="help"><p><b>How to play.</b> Build a Lumber Hut and a Forager Hut first so you have wood and food. Idle villagers automatically build construction sites. Tap a building to add or remove workers, or use the Villagers tab to give anyone a job.</p>
         <p>Cottages bring new villagers, as long as there is food and folks are happy. Decorations raise happiness, which makes everyone work faster. Level up to unlock new buildings, then settle more clearings from the World map.</p>
@@ -494,6 +529,8 @@ export class UI {
       const k = a.dataset.k, half = Math.max(1, Math.floor(GOODS[k].price / 2));
       if (s.res[k] >= 10) { s.res[k] -= 10; s.res.coins += half * 10; s.stats.earned += half * 10; sfx.coin(); this.dirty.res = true; }
     }
+    if (act === 'vf') { this.vFilter = a.dataset.f; this.drawModal(true); return; }
+    if (act === 'autoassign') { const n = sim.autoAssign(); this.toast(n ? `${n} villager${n > 1 ? 's' : ''} got a job` : 'No open jobs — build or upgrade workplaces', 'people'); sfx.pop(); }
     if (act === 'travel') { this.g.flyToSettlement(a.dataset.sid); this.closeModal(); return; }
     if (act === 'settle') {
       if (sim.unlock(a.dataset.sid)) { this.g.flyToSettlement(a.dataset.sid); this.closeModal(); sfx.level(); return; }
@@ -507,7 +544,7 @@ export class UI {
       }
     }
     if (act === 'sound') { this.g.setSetting('sound', !this.g.settings.sound); }
-    if (act === 'quality') { this.g.setSetting('quality', this.g.settings.quality === 'high' ? 'low' : 'high'); this.g.save(); location.reload(); return; }
+    if (act === 'quality') { const q = this.g.settings.quality; this.g.setSetting('quality', q === 'high' ? 'medium' : q === 'medium' ? 'low' : 'high'); this.g.save(); location.reload(); return; }
     if (act === 'savenow') { this.g.save(); this.toast('Village saved', 'star'); }
     if (act === 'reset') {
       if (a.dataset.sure) { this.g.reset(); return; }

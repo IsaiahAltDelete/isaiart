@@ -58,10 +58,10 @@ export class Life {
     u.ty = 0.5 + Math.random() * 0.9;
   }
 
-  update(dt, time, night) {
+  update(dt, time, night, rain = 0) {
     const W = this.sim.world, rig = this.view.rig;
     // butterflies (day only)
-    const day = night < 0.6;
+    const day = night < 0.6 && rain < 0.4;
     for (const b of this.bflies) {
       b.visible = day;
       if (!day) continue;

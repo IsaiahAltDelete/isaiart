@@ -430,7 +430,7 @@ export function villagerModel(v) {
   body.add(armL, armR);
   const tool = new THREE.Group(); tool.position.set(0, -0.2, 0.04); armR.add(tool);
   const sack = ball(0.11, 0xc9a46a, 0, 0.35, -0.15); sack.visible = false; body.add(sack);
-  g.scale.setScalar(1.05);
+  g.scale.setScalar(1.3);
   return { group: g, body, hipL, hipR, armL, armR, tool, sack, toolKind: null };
 }
 

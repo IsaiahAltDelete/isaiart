@@ -50,7 +50,7 @@ export class Sim {
       buildings: [], villagers: [], unlocked: {},
       quests: { claimed: [] }, stats: { built: {}, produced: {}, earned: 0, decor: 0 },
       sell: Object.fromEntries(SELLABLE.map(k => [k, k === 'food' || k === 'grain'])),
-      log: [], popTimer: 0, tutorial: 0,
+      log: [], popTimer: 0, tutorial: 0, weather: { rain: false, t: 150 },
     };
     this.unlock('meadow', true);
     const c = CENTERS.meadow;
@@ -141,7 +141,7 @@ export class Sim {
   }
 
   // ── placement ──
-  checkPlace(type, tx, tz, rot) {
+  checkPlace(type, tx, tz, rot, ignoreId = -1) {
     const W = this.world, def = defOf(type);
     const [w, d] = footprint(type, rot);
     let sid = null;
@@ -149,7 +149,7 @@ export class Sim {
       if (!inMap(x, z)) return { ok: false, why: 'Out of bounds' };
       const i = idx(x, z);
       if (W.type[i] === T_WATER) return { ok: false, why: 'Can\'t build on water' };
-      if (W.occ[i] >= 0) return { ok: false, why: 'Something is already here' };
+      if (W.occ[i] >= 0 && W.occ[i] !== ignoreId) return { ok: false, why: 'Something is already here' };
       if (isDecor(type) && W.rock[i] >= 0) return { ok: false, why: 'A boulder is in the way' };
       const s = this.settlementAt(x, z);
       if (!s) return { ok: false, why: 'Outside your settlements' };
@@ -157,7 +157,7 @@ export class Sim {
     }
     if (!isDecor(type) || type === 'well' || type === 'statue') {
       for (const o of this.s.buildings) {
-        if (isDecor(o.type)) continue;
+        if (isDecor(o.type) || o.id === ignoreId) continue;
         const [ex, ez] = this.entryTile(o);
         if (ex >= tx && ex < tx + w && ez >= tz && ez < tz + d) return { ok: false, why: `That would block the ${defOf(o.type).name}'s door` };
       }
@@ -165,10 +165,12 @@ export class Sim {
     if (!isDecor(type)) {
       const [ex, ez] = this.entryTile({ type, tx, tz, rot });
       const ei = idx(ex, ez);
-      if (!inMap(ex, ez) || (W.type[ei] === T_WATER && !W.bridge[ei]) || W.block[ei] || W.rock[ei] >= 0) return { ok: false, why: 'The door needs open ground in front' };
+      if (!inMap(ex, ez) || (W.type[ei] === T_WATER && !W.bridge[ei]) || (W.block[ei] && W.occ[ei] !== ignoreId) || W.rock[ei] >= 0) return { ok: false, why: 'The door needs open ground in front' };
     }
-    if (def.lvl && this.s.level < def.lvl) return { ok: false, why: `Needs level ${def.lvl}` };
-    if (!this.canAfford(def.cost)) return { ok: false, why: 'Not enough resources' };
+    if (ignoreId < 0) {
+      if (def.lvl && this.s.level < def.lvl) return { ok: false, why: `Needs level ${def.lvl}` };
+      if (!this.canAfford(def.cost)) return { ok: false, why: 'Not enough resources' };
+    }
     if (def.needsWater) {
       const f = this.facingTiles(tx, tz, rot, w, d);
       const wet = f.filter(([x, z]) => inMap(x, z) && W.type[idx(x, z)] === T_WATER).length;
@@ -300,6 +302,31 @@ export class Sim {
     this.emit('removed', b); this.emit('res');
   }
 
+  // pick a building up and set it down somewhere else, for free
+  move(b, tx, tz, rot) {
+    if (b.type === 'campfire') return { ok: false, why: 'The campfire stays put' };
+    const chk = this.checkPlace(b.type, tx, tz, rot, b.id);
+    if (!chk.ok) return chk;
+    const W = this.world;
+    let [w, d] = footprint(b.type, b.rot);
+    for (let z = b.tz; z < b.tz + d; z++) for (let x = b.tx; x < b.tx + w; x++) { const i = idx(x, z); W.occ[i] = -1; W.block[i] = 0; this.emit('tile', i); }
+    b.tx = tx; b.tz = tz; b.rot = rot; b.sid = chk.sid; b.clear = [];
+    [w, d] = footprint(b.type, rot);
+    for (let z = tz; z < tz + d; z++) for (let x = tx; x < tx + w; x++) {
+      const i = idx(x, z);
+      W.occ[i] = b.id; if (!isDecor(b.type)) W.block[i] = 1; if (!W.road[i]) W.wear[i] = 0;
+      if (W.tree[i] >= 0) { if (b.built) { this.fellTree(W.tree[i], false); this.add('wood', 3); } else b.clear.push(['t', W.tree[i]]); }
+      if (W.rock[i] >= 0) { if (b.built) this.breakRock(W.rock[i]); else b.clear.push(['r', W.rock[i]]); }
+      if (W.bush[i] >= 0) { if (b.built) this.clearBush(W.bush[i]); else b.clear.push(['b', W.bush[i]]); }
+      this.emit('tile', i);
+    }
+    delete b._field;
+    for (const v of this.s.villagers) if (v.work === b.id || v.task?.bid === b.id) this.dropTask(v);
+    this.emit('moved', b);
+    this.emit('sfx', 'place');
+    return { ok: true };
+  }
+
   // geometry helpers
   bCenter(b) { const [w, d] = footprint(b.type, b.rot); return { x: toWorld(b.tx) + (w - 1) / 2, z: toWorld(b.tz) + (d - 1) / 2, w, d }; }
   local(b, lx, lz) {
@@ -344,6 +371,16 @@ export class Sim {
     this.dropTask(v);
     this.emit('villagerJob', v); this.emit('building', b);
     return true;
+  }
+  // fill empty job slots with idle villagers; food jobs first when food is short
+  autoAssign() {
+    const s = this.s, foodJobs = ['forager', 'fisher', 'farmer', 'baker'];
+    const short = s.res.food < s.villagers.length * 4;
+    const open = s.buildings.filter(b => b.built && !b.up && workersOf(b) > b.workers.length);
+    open.sort((a, b) => short ? foodJobs.includes(defOf(b.type).job) - foodJobs.includes(defOf(a.type).job) : a.workers.length - b.workers.length);
+    let n = 0;
+    for (const b of open) while (b.workers.length < workersOf(b) && s.villagers.some(v => v.job === 'idle')) { if (!this.assign(b, null)) break; n++; }
+    return n;
   }
   unassign(v) {
     if (!v || !v.work) { if (v) v.job = 'idle'; return; }
@@ -721,7 +758,7 @@ export class Sim {
     for (const b of s.buildings) {
       if (b.type === 'farm' && b.built && b.data.stage === 'growing') {
         const before = b.data.grow;
-        b.data.grow = Math.min(1, b.data.grow + dt / 50);
+        b.data.grow = Math.min(1, b.data.grow + dt / 50 * (s.weather?.rain ? 1.6 : 1));
         if (b.data.grow >= 1) { b.data.stage = 'ripe'; this.emit('farm', b); }
         else if (((before * 20) | 0) !== ((b.data.grow * 20) | 0)) this.emit('farm', b);
       }
@@ -747,6 +784,14 @@ export class Sim {
     let target = 55 + Math.min(30, joy * 1.5) + (s.res.food > pop * 3 ? 10 : 0) - (hungry ? 15 + 30 * hungry / pop : 0) - (pop > housing ? 15 : 0);
     target = Math.max(0, Math.min(100, target));
     s.happiness += (target - s.happiness) * 0.05;
+    // weather: the occasional rain shower
+    const wx = s.weather || (s.weather = { rain: false, t: 60 });
+    if ((wx.t -= 1) <= 0) {
+      if (wx.rain) { wx.rain = false; wx.t = 180 + this.rng() * 260; wx.rainbow = 30; this.emit('weather', false); }
+      else if (this.rng() < 0.5) { wx.rain = true; wx.t = 45 + this.rng() * 60; this.emit('weather', true); this.log('A gentle rain falls. Crops grow faster.'); }
+      else wx.t = 90 + this.rng() * 120;
+    }
+    if (wx.rainbow > 0) wx.rainbow -= 1;
     // production flow history (10-second buckets)
     if (++this.flowT >= 10) { this.flowT = 0; this.flowHist.push(this.flow); this.flow = {}; if (this.flowHist.length > 6) this.flowHist.shift(); }
     // newcomers
@@ -952,6 +997,7 @@ export class Sim {
       for (let z = b.tz; z < b.tz + d; z++) for (let x = b.tx; x < b.tx + w; x++) { W.occ[idx(x, z)] = b.id; if (!isDecor(b.type)) W.block[idx(x, z)] = 1; }
     }
     for (const v of s.villagers) { this.vById.set(v.id, v); v.task = null; v.act = null; }
+    if (s.tutorial === undefined || s.buildings.length > 4) s.tutorial = 99;
   }
 }
 

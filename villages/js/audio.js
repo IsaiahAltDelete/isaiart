@@ -54,3 +54,18 @@ export function ambient(dt) {
   const base = 2200 + Math.random() * 1600, n = 2 + (Math.random() * 4 | 0);
   for (let i = 0; i < n; i++) tone(base + Math.random() * 400, 0.07, { type: 'sine', vol: 0.035, slide: (Math.random() - 0.3) * 900, delay: i * 0.11 });
 }
+
+// soft looping rain hiss; k = 0..1 intensity
+let rainNode = null, rainGain = null;
+export function rainSound(k) {
+  if (!ctx) return;
+  if (!rainNode && k > 0.02) {
+    const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    rainNode = ctx.createBufferSource(); rainNode.buffer = buf; rainNode.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1400;
+    rainGain = ctx.createGain(); rainGain.gain.value = 0;
+    rainNode.connect(f); f.connect(rainGain); rainGain.connect(master); rainNode.start();
+  }
+  if (rainGain) rainGain.gain.value = enabled ? k * 0.18 : 0;
+}

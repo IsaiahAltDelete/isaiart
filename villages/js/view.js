@@ -31,7 +31,9 @@ export class View {
     this.canvas = canvas;
     this.quality = quality;
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    r.setPixelRatio(Math.min(devicePixelRatio, quality === 'high' ? 2 : 1.25));
+    this.maxRatio = Math.min(devicePixelRatio, quality === 'high' ? 2 : quality === 'medium' ? 1.5 : 1);
+    this.ratio = this.maxRatio;
+    r.setPixelRatio(this.ratio);
     r.shadowMap.enabled = quality !== 'low';
     r.shadowMap.type = THREE.PCFSoftShadowMap;
     const scene = this.scene = new THREE.Scene();
@@ -401,6 +403,18 @@ export class View {
     const p = tmpV.copy(v).project(this.camera);
     const rect = this.canvas.getBoundingClientRect();
     return { x: (p.x * 0.5 + 0.5) * rect.width + rect.left, y: (-p.y * 0.5 + 0.5) * rect.height + rect.top, vis: p.z < 1 && p.z > -1 };
+  }
+
+  // dynamic resolution: drop pixel ratio when frames are slow, recover when fast
+  adapt(dt) {
+    this.ft = (this.ft ?? 16) * 0.95 + dt * 1000 * 0.05;
+    this.adaptT = (this.adaptT || 0) + dt;
+    if (this.adaptT < 2) return;
+    this.adaptT = 0;
+    let r = this.ratio;
+    if (this.ft > 38 && r > 0.75) r = Math.max(0.75, r - 0.25);
+    else if (this.ft < 22 && r < this.maxRatio) r = Math.min(this.maxRatio, r + 0.25);
+    if (r !== this.ratio) { this.ratio = r; this.renderer.setPixelRatio(r); this.resize(); }
   }
 
   render() { this.renderer.render(this.scene, this.camera); }
