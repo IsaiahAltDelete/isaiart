@@ -1132,7 +1132,11 @@ class Game {
     view.updateCamera(dt);
     view.adapt(dt);
 
-    if (this.tilesDirty.size) { for (const i of this.tilesDirty) { view.paintTile(i, false); view.updateGrass(i); view.updatePave(i); } view.terrainColor.needsUpdate = true; this.tilesDirty.clear(); }
+    if (this.tilesDirty.size) {
+      for (const i of this.tilesDirty) { view.paintTile(i, false); view.updateGrass(i); view.updatePave(i); }
+      view.terrainColor.needsUpdate = true; view.terrainSurface.needsUpdate = true;
+      this.tilesDirty.clear();
+    }
     while (this.stumpList.length && this.stumpList[0].t < sim.s.time) view.removeStump(this.stumpList.shift().slot);
 
     const t = now / 1000;

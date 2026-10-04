@@ -2,6 +2,7 @@
 // from primitives here so the game ships without any model files.
 import * as THREE from '../vendor/three.module.min.js';
 import { mulberry32 } from './rng.js';
+import { surfaceTexture, mapBoxSurface, stripedCloth } from './textures.js';
 
 const matCache = new Map();
 export function mat(color, opts = {}) {
@@ -39,7 +40,7 @@ export function prismGeo(w, h, d) {
   ];
   // UVs in world units (u along the ridge, v down the slope) so the shingle
   // texture keeps the same scale on every roof size
-  const sl = Math.hypot(hd, h), U = 2.2, V = 3.2;
+  const sl = Math.hypot(hd, h), U = 0.95, V = 1.45;
   const uv = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     -hw * U, 0, hw * U, 0, hw * U, sl * V, -hw * U, 0, hw * U, sl * V, -hw * U, sl * V,
@@ -53,41 +54,24 @@ export function prismGeo(w, h, d) {
   return g;
 }
 
-// soft shingle rows: a white tile drawn on canvas, tinted by each roof colour
-let shingleTex = null;
-function shingles() {
-  if (shingleTex) return shingleTex;
-  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
-  const g = cv.getContext('2d');
-  g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 64);
-  for (let row = 0; row < 2; row++) {
-    const y = row * 32, off = row ? 8 : 0;
-    // each row darkens toward its lower lip, then a scalloped shadow line marks the overlap
-    const grd = g.createLinearGradient(0, y, 0, y + 32);
-    grd.addColorStop(0, 'rgba(255,255,255,0.10)'); grd.addColorStop(0.55, 'rgba(0,0,0,0.0)'); grd.addColorStop(0.85, 'rgba(0,0,0,0.12)'); grd.addColorStop(1, 'rgba(0,0,0,0.22)');
-    g.fillStyle = grd; g.fillRect(0, y, 64, 32);
-    g.fillStyle = 'rgba(0,0,0,0.30)';
-    for (let x = -16 + off; x < 64 + 16; x += 16) { g.beginPath(); g.ellipse(x + 8, y + 29, 8, 4.5, 0, 0, Math.PI); g.fill(); }
-    g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, y + 29, 64, 3);
-  }
-  shingleTex = new THREE.CanvasTexture(cv);
-  shingleTex.wrapS = shingleTex.wrapT = THREE.RepeatWrapping;
-  shingleTex.colorSpace = THREE.SRGBColorSpace;
-  shingleTex.anisotropy = 4;
-  return shingleTex;
+// Cool roofs use cut slate; warm roofs use rounded terracotta shingles.
+export function roofMat(color, surface = null) {
+  const c = new THREE.Color(color);
+  return mat(color, { map: surfaceTexture(surface || (c.b > c.r * 0.85 || c.g > c.r * 1.05 ? 'slate' : 'shingle')) });
 }
-export function roofMat(color) { return mat(color, { map: shingles() }); }
 
 // a hip roof: four slopes meeting at a short ridge
 export function hipGeo(w, h, d) {
   const hw = w / 2, hd = d / 2, r = Math.max(0.01, (w - d) / 2);
   const A = [-hw, 0, hd], B = [hw, 0, hd], Cc = [hw, 0, -hd], D = [-hw, 0, -hd], E = [-r, h, 0], F = [r, h, 0];
   const tris = [[A, B, F], [A, F, E], [Cc, D, E], [Cc, E, F], [D, A, E], [B, Cc, F]];
-  const pos = [], uv = [], sl = Math.hypot(hd, h), U = 2.2, V = 3.2;
+  const pos = [], uv = [], sl = Math.hypot(hd, h), U = 0.95, V = 1.45;
   for (const t of tris) for (const p of t) {
     pos.push(...p);
     const slope = 1 - p[1] / h;
-    uv.push((p[0] + p[2]) * U * 0.7, slope * sl * V);
+    // Front/back faces run along x; end faces run along z. No diagonal skew.
+    const end = t === tris[4] || t === tris[5];
+    uv.push((end ? p[2] : p[0]) * U, slope * (end ? Math.hypot(hw - r, h) : sl) * V);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -104,9 +88,9 @@ export function hipRoof(w, h, d, c, x = 0, y = 0, z = 0) {
 }
 
 // a gable roof with shingles, an eave lip and a darker ridge cap
-export function roof(w, h, d, c, x = 0, y = 0, z = 0, ry = 0) {
+export function roof(w, h, d, c, x = 0, y = 0, z = 0, ry = 0, surface = null) {
   const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry;
-  const m = mesh(prismGeo(w, h, d), roofMat(c)); g.add(m);
+  const m = mesh(prismGeo(w, h, d), roofMat(c, surface)); g.add(m);
   const dark = new THREE.Color(c).multiplyScalar(0.62).getHex();
   const ridge = mesh(new THREE.BoxGeometry(w + 0.06, 0.08, 0.14), dark); ridge.position.y = h - 0.01; g.add(ridge);
   const sl = Math.atan2(h, d / 2);
@@ -117,19 +101,7 @@ export function roof(w, h, d, c, x = 0, y = 0, z = 0, ry = 0) {
   return g;
 }
 
-let stripeTex = null;
-function stripes(a = '#d9433b', b = '#fbf3e4') {
-  if (stripeTex) return stripeTex;
-  const cv = document.createElement('canvas'); cv.width = 64; cv.height = 8;
-  const g = cv.getContext('2d');
-  for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? b : a; g.fillRect(i * 8, 0, 8, 8); }
-  stripeTex = new THREE.CanvasTexture(cv);
-  stripeTex.colorSpace = THREE.SRGBColorSpace;
-  stripeTex.magFilter = THREE.NearestFilter;
-  stripeTex.wrapS = stripeTex.wrapT = THREE.RepeatWrapping;
-  stripeTex.repeat.set(0.35, 1);
-  return stripeTex;
-}
+const stripes = stripedCloth;
 
 // palette
 export const C = {
@@ -184,6 +156,36 @@ function pad(w, d, color = 0xb89466) {
 
 const WALLS = [C.wall, 0xf7f1e3, 0xdde8f0, 0xf2d8d4, 0xdfe8cf, 0xf6e6b4, 0xe9dccb];
 const ROOFS = [C.red, C.blue, 0x4f8a3a, 0x7a5236, 0x66788a, 0xc8643a, 0x8a4f8f];
+const SURFACES = new Map([
+  ...[...WALLS, C.wall2, 0xe8e1d0, 0xd9c8b0, 0xefe3cf].map(c => [c, 'plaster']),
+  ...[C.timber, C.darkwood, C.log, C.plank, C.door, C.red, 0x4a6a8a, 0x8a4a3a, 0x3f6f4a, 0xa9744a, 0xb98450, 0x7a5232].map(c => [c, 'wood']),
+  ...[C.stone, C.stone2, 0xb3aa9a, 0xb9b3c4, 0x8f86a3, 0xb9b6ae].map(c => [c, 'stone']),
+  [C.brick, 'brick'], [C.hay, 'straw'], [0xd9b44a, 'straw'], [C.soil, 'earth'], [0xb89466, 'earth'],
+]);
+
+// Only building parts receive these materials; villagers, livestock and the
+// instanced forest keep their original simple colours. Shared maps/materials
+// avoid allocating a texture for each cottage or stretching it over each face.
+function finishSurfaces(group) {
+  group.traverse(m => {
+    if (!m.isMesh || !m.material?.color || m.material.map || m.material.transparent) return;
+    const c = m.material.color.getHex(), p = m.geometry.parameters;
+    const kind = SURFACES.get(c) || (c === C.white && p?.height > 0.4 && p?.width > 0.4 ? 'plaster' : null);
+    if (!kind || !m.geometry.attributes.uv) return;
+    if (!['BoxGeometry', 'CylinderGeometry'].includes(m.geometry.type)) return;
+    if (m.geometry.type === 'BoxGeometry') mapBoxSurface(m.geometry, kind);
+    else {
+      const uv = m.geometry.attributes.uv;
+      const circumference = Math.PI * (p.radiusTop + p.radiusBottom);
+      for (let i = 0; i < uv.count; i++) {
+        // Cylinder side UVs occupy the first vertices; caps keep circular UVs.
+        if (Math.abs(m.geometry.attributes.normal.getY(i)) < 0.5) uv.setXY(i, uv.getX(i) * circumference, uv.getY(i) * p.height);
+      }
+      uv.needsUpdate = true;
+    }
+    m.material = mat(c, { map: surfaceTexture(kind), emissive: m.material.emissive.getHex() });
+  });
+}
 // Each cottage is seeded by its building id: wall and roof colours, roof
 // shape, porch, window boxes, dormer, chimney side, garden, and at level 3 an
 // upper storey.
@@ -301,11 +303,11 @@ function lumber(g, a) {
 
 function forager(g, a) {
   // round yurt with a striped conical roof
-  g.add(cyl(0.55, 0.6, 0.62, 10, 0xe9d8b4, 0, 0, 0));
+  g.add(at(mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.62, 10), 0xe9d8b4, { map: surfaceTexture('cloth') }), 0, 0.31, 0));
   g.add(cyl(0.61, 0.61, 0.06, 10, C.timber, 0, 0.58, 0));
-  g.add(cone(0.74, 0.62, 10, C.blue, 0, 0.62, 0));
-  g.add(cone(0.42, 0.36, 10, 0xeaf1f8, 0, 0.9, 0));
-  g.add(cone(0.16, 0.16, 10, C.blue, 0, 1.18, 0));
+  g.add(at(mesh(new THREE.ConeGeometry(0.74, 0.62, 10), C.blue, { map: surfaceTexture('cloth') }), 0, 0.93, 0));
+  g.add(at(mesh(new THREE.ConeGeometry(0.42, 0.36, 10), 0xeaf1f8, { map: surfaceTexture('cloth') }), 0, 1.08, 0));
+  g.add(at(mesh(new THREE.ConeGeometry(0.16, 0.16, 10), C.blue, { map: surfaceTexture('cloth') }), 0, 1.26, 0));
   g.add(door(0, 0, 0.58));
   for (const [x, z, c] of [[0.7, 0.55, C.berry], [-0.7, 0.6, 0x5a4ab0], [0.78, -0.35, C.berry]]) {
     g.add(cyl(0.15, 0.11, 0.16, 8, C.plank, x, 0, z)); g.add(ball(0.11, c, x, 0.2, z));
@@ -536,7 +538,7 @@ function coop(g, a) {
   fenceRing(g, 1.9, 1.9);
   const house = new THREE.Group(); house.position.set(-0.35, 0, -0.35); g.add(house);
   for (const [x, z] of [[-0.3, -0.25], [0.3, -0.25], [-0.3, 0.25], [0.3, 0.25]]) house.add(box(0.06, 0.3, 0.06, C.timber, x, 0, z));
-  house.add(box(0.75, 0.42, 0.6, 0xc9473d, 0, 0.3, 0)); house.add(roof(0.9, 0.32, 0.78, C.timber, 0, 0.72, 0));
+  house.add(box(0.75, 0.42, 0.6, 0xc9473d, 0, 0.3, 0)); house.add(roof(0.9, 0.32, 0.78, C.hay, 0, 0.72, 0, 0, 'straw'));
   house.add(box(0.16, 0.18, 0.04, 0x3a2a20, 0, 0.36, 0.31));
   const ramp = box(0.14, 0.03, 0.5, C.plank, 0, 0.14, 0.5); ramp.rotation.x = 0.55; house.add(ramp);
   g.add(cyl(0.12, 0.1, 0.12, 8, C.plank, 0.55, 0, 0.45)); g.add(cyl(0.1, 0.1, 0.03, 8, C.hay, 0.55, 0.12, 0.45));
@@ -709,6 +711,7 @@ export function buildModel(type, size = [2, 2], seed = 0, lvl = 1) {
   const inner = new THREE.Group(); g.add(inner);
   if (!['campfire', 'farm', 'dock', 'fence', 'flowers', 'sign', 'lantern', 'bench', 'torch', 'palisade', 'coop', 'orchard', 'beehive', 'pasture', 'dairy', 'memorial'].includes(type)) inner.add(pad(size[0] * 0.92, size[1] * 0.92));
   BUILDERS[type](inner, a, seed ? { seed, lvl } : {});
+  finishSurfaces(inner);
   a.inner = inner;
   return { group: g, anim: a };
 }
@@ -720,6 +723,7 @@ export function scaffold(size) {
   for (const y of [0.45, 0.95]) { g.add(box(w, 0.05, 0.05, C.plank, 0, y, d / 2)); g.add(box(w, 0.05, 0.05, C.plank, 0, y, -d / 2));
     g.add(box(0.05, 0.05, d, C.plank, w / 2, y, 0)); g.add(box(0.05, 0.05, d, C.plank, -w / 2, y, 0)); }
   g.add(box(0.4, 0.15, 0.3, C.plank, w / 2 + 0.1, 0, d / 2 + 0.1));
+  finishSurfaces(g);
   return g;
 }
 

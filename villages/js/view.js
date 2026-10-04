@@ -4,6 +4,7 @@ import { N, HALF, idx, tileX, tileZ, T_WATER, T_SAND, toWorld } from './world.js
 import { fbm, mulberry32, hash2 } from './rng.js';
 import { pineGeo, roundGeo, stumpGeo, rockGeo, bushGeo, berriesGeo } from './models.js';
 import { iconImage } from './icons.js';
+import { surfaceTexture, mapBoxSurface } from './textures.js';
 
 const CH = 16;               // chunk size for instanced forest culling
 const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpV = new THREE.Vector3(), tmpS = new THREE.Vector3(), tmpC = new THREE.Color();
@@ -95,6 +96,8 @@ export class View {
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     this.terrainColor = new THREE.BufferAttribute(col, 3);
     g.setAttribute('color', this.terrainColor);
+    this.terrainSurface = new THREE.BufferAttribute(new Float32Array(N * N * 12), 2);
+    g.setAttribute('surfaceMix', this.terrainSurface);
     g.computeVertexNormals();
     this.terrainGeo = g;
     this.tc = new Float32Array(N * N * 3);
@@ -105,7 +108,22 @@ export class View {
     const uv = new Float32Array(N * N * 12);
     for (let k = 0; k < N * N * 6; k++) { uv[k * 2] = pos[k * 3] * 0.32; uv[k * 2 + 1] = pos[k * 3 + 2] * 0.32; }
     g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    const m = this.terrain = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: groundTex() }));
+    const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: surfaceTexture('grass') });
+    // Blend albedo using the same neighbour smoothing as the tile colours.
+    // Paths continue to update as villagers walk and as paving is painted.
+    material.onBeforeCompile = sh => {
+      sh.uniforms.uEarth = { value: surfaceTexture('earth') };
+      sh.uniforms.uCobble = { value: surfaceTexture('cobble') };
+      sh.vertexShader = 'attribute vec2 surfaceMix; varying vec2 vSurfaceMix;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvSurfaceMix = surfaceMix;');
+      sh.fragmentShader = 'uniform sampler2D uEarth; uniform sampler2D uCobble; varying vec2 vSurfaceMix;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
+        vec4 meadow = texture2D(map, vMapUv);
+        vec4 earth = texture2D(uEarth, vMapUv);
+        vec4 cobble = texture2D(uCobble, vMapUv * 2.0);
+        diffuseColor *= mix(mix(meadow, earth, clamp(vSurfaceMix.x, 0.0, 1.0)), cobble, clamp(vSurfaceMix.y, 0.0, 1.0));
+      `);
+    };
+    material.customProgramCacheKey = () => 'villages-storybook-ground-v1';
+    const m = this.terrain = new THREE.Mesh(g, material);
     m.receiveShadow = true;
     this.scene.add(m);
   }
@@ -157,6 +175,16 @@ export class View {
       a[o + v * 3] = (k[0] * 0.8 + tc[own] * 0.2) * s;
       a[o + v * 3 + 1] = (k[1] * 0.8 + tc[own + 1] * 0.2) * s;
       a[o + v * 3 + 2] = (k[2] * 0.8 + tc[own + 2] * 0.2) * s;
+      const [cx, cz] = corners[v];
+      let earth = 0, cobble = 0, count = 0;
+      for (let dz = -1; dz <= 0; dz++) for (let dx = -1; dx <= 0; dx++) {
+        const nx = cx + dx, nz = cz + dz;
+        if (nx < 0 || nz < 0 || nx >= N || nz >= N) continue;
+        const j = nz * N + nx, W = this.world;
+        earth += W.type[j] === T_SAND || W.type[j] === T_WATER ? 1 : Math.max(W.occ[j] >= 0 ? 0.25 : 0, Math.min(1, Math.max(0, (W.wear[j] - 0.12) / 0.6)));
+        cobble += W.paved[j] ? 1 : 0; count++;
+      }
+      this.terrainSurface.setXY(i * 6 + v, earth / count, cobble / count);
     }
   }
   paintTile(i, flag = true) {
@@ -167,7 +195,7 @@ export class View {
       const nx = x + dx, nz = z + dz;
       if (nx >= 0 && nz >= 0 && nx < N && nz < N) this.writeTile(nz * N + nx);
     }
-    if (flag) this.terrainColor.needsUpdate = true;
+    if (flag) { this.terrainColor.needsUpdate = true; this.terrainSurface.needsUpdate = true; }
   }
 
   buildWater() {
@@ -278,8 +306,8 @@ export class View {
   }
 
   buildBridges() {
-    const wood = new THREE.MeshLambertMaterial({ color: 0xb98450, flatShading: true });
-    const dark = new THREE.MeshLambertMaterial({ color: 0x7a5232, flatShading: true });
+    const wood = new THREE.MeshLambertMaterial({ color: 0xb98450, flatShading: true, map: surfaceTexture('wood') });
+    const dark = new THREE.MeshLambertMaterial({ color: 0x7a5232, flatShading: true, map: surfaceTexture('wood') });
     for (const b of this.world.bridges) {
       const g = new THREE.Group();
       const x0 = b.x0 - HALF - 0.6, x1 = b.x1 - HALF + 1.6, len = x1 - x0, cz = b.z - HALF + 1;
@@ -297,6 +325,7 @@ export class View {
         const rail = new THREE.Mesh(new THREE.BoxGeometry(len - 0.3, 0.06, 0.07), wood);
         rail.position.set(x0 + len / 2, 0.58 + 0.15, cz + side); g.add(rail);
       }
+      g.traverse(m => { if (m.isMesh) mapBoxSurface(m.geometry, 'wood'); });
       this.scene.add(g);
     }
   }
@@ -511,31 +540,6 @@ export class View {
   }
 
   render() { this.renderer.render(this.scene, this.camera); }
-}
-
-// soft blotches and little grass strokes, near white so tile colours show through
-function groundTex() {
-  const S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S;
-  const g = cv.getContext('2d'), rng = mulberry32(77);
-  g.fillStyle = '#f2f2f2'; g.fillRect(0, 0, S, S);
-  const blob = (x, y, r, c) => {
-    for (const [dx, dy] of [[0, 0], [S, 0], [-S, 0], [0, S], [0, -S]]) {
-      const grd = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r);
-      grd.addColorStop(0, c); grd.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = grd; g.fillRect(x + dx - r, y + dy - r, r * 2, r * 2);
-    }
-  };
-  for (let i = 0; i < 26; i++) blob(rng() * S, rng() * S, 18 + rng() * 40, rng() < 0.5 ? 'rgba(190,200,185,0.45)' : 'rgba(255,255,255,0.7)');
-  g.lineCap = 'round';
-  for (let i = 0; i < 420; i++) {
-    const x = rng() * S, y = rng() * S, l = 3 + rng() * 5, a = -Math.PI / 2 + (rng() - 0.5) * 0.9;
-    g.strokeStyle = rng() < 0.6 ? 'rgba(170,185,160,0.55)' : 'rgba(255,255,255,0.8)';
-    g.lineWidth = 1 + rng();
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
-  }
-  const t = new THREE.CanvasTexture(cv);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-  return t;
 }
 
 function mergeSimple(list) {
