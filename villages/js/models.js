@@ -16,7 +16,7 @@ export function mat(color, opts = {}) {
       ? new THREE.MeshBasicMaterial({ color, transparent: !!opts.opacity, opacity: opts.opacity ?? 1 })
       : new THREE.MeshLambertMaterial({ color, flatShading: true, emissive: opts.emissive ?? 0x000000,
         transparent: !!opts.opacity, opacity: opts.opacity ?? 1, map: opts.map ?? null });
-    if (!opts.basic && !NOSNOW && !opts.opacity) snowify(m);
+    if (!opts.basic && !NOSNOW && !opts.opacity) snowify(m, false, 'built');
     matCache.set(key, m);
   }
   return matCache.get(key);
@@ -106,6 +106,13 @@ export function hipRoof(w, h, d, c, x = 0, y = 0, z = 0) {
   g.add(mesh(hipGeo(w, h, d), roofMat(c)));
   const dark = new THREE.Color(c).multiplyScalar(0.62).getHex();
   const ridge = mesh(new THREE.BoxGeometry(Math.max(0.1, w - d) + 0.1, 0.08, 0.12), dark); ridge.position.y = h - 0.02; g.add(ridge);
+  // a darker cap down each hip line, so the four slopes read as tiled planes meeting at a seam
+  const r = Math.max(0.01, (w - d) / 2);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const a = new THREE.Vector3(sx * w / 2, 0.02, sz * d / 2), b = new THREE.Vector3(sx * r, h - 0.02, 0), len = a.distanceTo(b);
+    const cap = mesh(new THREE.BoxGeometry(0.09, 0.06, len), dark);
+    cap.position.copy(a).add(b).multiplyScalar(0.5); cap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), b.clone().sub(a).normalize()); g.add(cap);
+  }
   return g;
 }
 
@@ -753,20 +760,23 @@ function swing(g, a) {
   const br = box(0.7, 0.07, 0.07, 0x7a4e2c, 0.05, 0.9, -0.25); g.add(br);
   for (const [x, y, z, r] of [[-0.35, 1.25, -0.3, 0.42], [-0.05, 1.15, -0.1, 0.3], [-0.5, 1.05, -0.05, 0.3], [0.2, 1.2, -0.35, 0.32]]) g.add(ball(r, [0x56a83c, 0x65b744, 0x4c9c36][(x * 10 & 3) % 3], x, y, z));
   const pivot = new THREE.Group(); pivot.position.set(0.18, 0.92, -0.25); g.add(pivot);
-  for (const x of [-0.1, 0.1]) pivot.add(box(0.012, 0.66, 0.012, 0xd9c49a, x, -0.66, 0));
-  pivot.add(box(0.28, 0.03, 0.12, C.plank, 0, -0.68, 0));
+  for (const x of [-0.12, 0.12]) pivot.add(box(0.028, 0.6, 0.028, 0x8a6a3e, x, -0.6, 0));
+  pivot.add(box(0.34, 0.045, 0.16, 0xc8955a, 0, -0.63, 0));
   a.swing = pivot;
 }
 
 // a wooden gift chest with gold bands; the lid hinges open
 export function chestModel() {
   const g = new THREE.Group();
-  g.add(box(0.5, 0.26, 0.34, 0x9a5f30, 0, 0, 0));
-  for (const x of [-0.17, 0.17]) g.add(box(0.05, 0.27, 0.35, 0xf0b429, x, 0, 0));
-  const lid = new THREE.Group(); lid.position.set(0, 0.26, -0.17); g.add(lid);
-  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.5, 10, 1, false, 0, Math.PI), mat(0xb06d38)); top.rotation.z = Math.PI / 2; top.position.set(0, 0, 0.17); top.castShadow = true; lid.add(top);
-  for (const x of [-0.17, 0.17]) { const band = new THREE.Mesh(new THREE.CylinderGeometry(0.175, 0.175, 0.05, 10, 1, false, 0, Math.PI), mat(0xf0b429)); band.rotation.z = Math.PI / 2; band.position.set(x, 0, 0.17); lid.add(band); }
-  lid.add(at(mesh(new THREE.BoxGeometry(0.08, 0.1, 0.04), 0xf6d55a), 0, -0.02, 0.36));
+  g.add(box(0.54, 0.05, 0.38, 0x5e3b22, 0, 0, 0));                       // dark plinth
+  g.add(box(0.5, 0.24, 0.34, 0x9a5f30, 0, 0.03, 0));
+  for (const x of [-0.25, 0.25]) for (const z of [-0.16, 0.16]) g.add(box(0.045, 0.27, 0.045, 0xf0b429, x, 0.02, z));   // brass corners
+  g.add(box(0.52, 0.03, 0.36, 0x3a2414, 0, 0.26, 0));                     // the seam under the lid
+  g.add(box(0.11, 0.12, 0.03, 0xf6d55a, 0, 0.13, 0.18));                  // lock plate
+  g.add(box(0.03, 0.05, 0.035, 0x3a2414, 0, 0.12, 0.19));                 // keyhole
+  const lid = new THREE.Group(); lid.position.set(0, 0.28, -0.17); g.add(lid);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.5, 12, 1, false, 0, Math.PI), mat(0xb06d38)); top.rotation.z = Math.PI / 2; top.scale.set(0.55, 1, 1); top.position.set(0, 0, 0.17); top.castShadow = true; lid.add(top);
+  for (const x of [-0.17, 0.17]) { const band = new THREE.Mesh(new THREE.CylinderGeometry(0.175, 0.175, 0.05, 12, 1, false, 0, Math.PI), mat(0xf0b429)); band.rotation.z = Math.PI / 2; band.scale.set(0.57, 1, 1); band.position.set(x, 0, 0.17); lid.add(band); }
   const inner = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.04, 0.27), mat(0xffe08a, { emissive: 0x7a5a00 })); inner.position.y = 0.25; g.add(inner);
   return { group: g, lid };
 }

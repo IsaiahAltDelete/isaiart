@@ -534,7 +534,7 @@ class Game {
     const [sx, sy] = this.screenOf(x, z);
     if (reward.kind === 'rare') {
       this.ui.toast(`A rare treasure: ${reward.name}! Find it in Decorate — place it for free.`, 'gift', true);
-      this.ui.float(sx, sy - 20, reward.name, 'gift');
+      this.ui.float(sx, sy - 20, reward.name, 'gift', 'tag');
     } else {
       this.ui.float(sx, sy - 20, `+${reward.n}`, GOODS[reward.res].icon);
       this.ui.toast(`The chest held ${reward.n} ${GOODS[reward.res].name.toLowerCase()}!`, GOODS[reward.res].icon);

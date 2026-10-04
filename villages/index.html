@@ -133,7 +133,7 @@
     #topright .round { width: 40px; height: 40px; }
 
     /* ── left column: quests + info ─────────────────── */
-    #left { position: fixed; left: 10px; top: calc(96px + var(--sat)); width: 232px; display: flex; flex-direction: column; gap: 10px; z-index: 4; max-height: calc(100% - 200px); }
+    #left { position: fixed; left: 10px; top: calc(96px + var(--sat)); width: 232px; transition: width .15s; display: flex; flex-direction: column; gap: 10px; z-index: 4; max-height: calc(100% - 200px); }
     #quests { padding: 8px 10px 10px; }
     #quests header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
     #quests header .chev { transition: transform .2s; font-size: 14px; }
@@ -153,8 +153,9 @@
     .tick { width: 20px; height: 20px; border-radius: 50%; background: var(--green); border: 2px solid var(--green-dk); display: grid; place-items: center; }
 
     #info { padding: 10px 12px 12px; font-size: 13px; position: relative; overflow-y: auto; }
-    #info .x { position: absolute; top: -10px; right: -10px; width: 28px; height: 28px; border-radius: 50%; background: var(--red); border: 2.5px solid var(--red-dk); display: grid; place-items: center; box-shadow: 0 2px 0 rgba(0,0,0,.2); }
-    #info h3 { font-size: 16px; }
+    body.info-open #left { width: 300px; }
+    #info .x { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: var(--red); border: 2.5px solid var(--red-dk); display: grid; place-items: center; box-shadow: 0 2px 0 rgba(0,0,0,.2); }
+    #info h3 { font-size: 16px; padding-right: 34px; }
     #info .sub { font-size: 11.5px; color: var(--ink2); margin-bottom: 6px; }
     .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; margin: 6px 0; }
     .kv { align-items: center; }
@@ -173,7 +174,7 @@
     select { font: inherit; font-size: 12.5px; color: var(--ink); background: #fff; border: 2px solid #e2c99c; border-radius: 8px; padding: 3px 6px; max-width: 100%; }
 
     /* ── right column ─────────────────────────────── */
-    #speed { position: fixed; right: 10px; top: calc(60px + var(--sat)); padding: 6px 8px; z-index: 4; min-width: 136px; }
+    #speed { position: fixed; right: 10px; top: calc(60px + var(--sat)); padding: 6px 8px; z-index: 4; width: 178px; }
     #speed .lbl { font-size: 11px; color: var(--ink2); display: flex; align-items: center; gap: 4px; }
     #clock { font-size: 13px; font-weight: 600; }
     #speeds { display: flex; gap: 3px; margin-top: 4px; }
@@ -287,6 +288,8 @@
     .toast.big { font-size: 18px; padding: 10px 18px 10px 12px; }
     #floats { position: fixed; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
     .float { position: absolute; display: flex; align-items: center; gap: 2px; font-weight: 700; font-size: 14px; color: #fff; text-shadow: 0 1px 0 #3b220e, 0 0 3px #3b220e, 0 0 1px #3b220e; animation: rise 1.6s ease-out forwards; transform: translate(-50%, -50%); white-space: nowrap; }
+    .float.tag { background: rgba(255,248,232,.96); color: var(--ink); text-shadow: none; border: 2px solid var(--edge); border-radius: 10px; padding: 2px 8px 2px 4px; font-size: 13px; }
+    .tile .btn { margin-top: auto; }
     @keyframes rise { to { margin-top: -46px; opacity: 0; } }
     #bars { position: fixed; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
     .cbar { position: absolute; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 3px; padding: 2px 5px 2px 2px; border-radius: 10px; background: rgba(255,248,232,.95); border: 2px solid var(--edge); box-shadow: 0 2px 0 rgba(90,55,20,.25); }
@@ -367,7 +370,9 @@
 
     #season { display: flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11.5px; font-weight: 600; color: var(--ink2); width: 100%; text-align: left; line-height: 1.1; }
     #season .ic { flex: none; }
-    #season .fest { display: block; color: #b5461d; font-size: 10.5px; }
+    #season .fest { display: inline-flex; align-items: center; gap: 3px; margin-top: 3px; color: #fff; background: linear-gradient(#f08a4a, #d9603a); border: 1.5px solid #a8452a; border-radius: 9px; padding: 0 6px 0 3px; font-size: 11px; white-space: nowrap; }
+    #season .fest .ic path, #season .fest .ic circle, #season .fest .ic ellipse { stroke: #7a2a10; }
+    #season > span { display: flex; flex-direction: column; align-items: flex-start; }
     #season.festday { color: var(--ink); }
     #follow { position: fixed; left: 50%; top: calc(56px + var(--sat)); transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 8px; border-radius: 14px; font-size: 13px; font-weight: 600; background: var(--cream); border: 2.5px solid var(--edge); box-shadow: var(--shadow); }
     #follow .stop { background: var(--red); border: 2px solid var(--red-dk); color: #fff; border-radius: 9px; padding: 1px 7px; font-size: 11.5px; }
@@ -379,8 +384,9 @@
     .rename { display: flex; gap: 6px; align-items: center; margin: 4px 0 6px; }
     .pen { width: 24px; height: 24px; border-radius: 8px; display: inline-grid; place-items: center; background: #fff; border: 2px solid #e2c99c; margin-left: 4px; vertical-align: middle; flex: none; }
     .chain { margin-top: 6px; padding: 6px 8px; border-radius: 10px; background: #f3f8ec; border: 2px solid #cfe3b8; font-size: 11.5px; }
-    .chain .flow { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
-    .chain .node { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 52px; padding: 3px 4px; border-radius: 9px; background: #fff; border: 1.5px solid #dcebc8; font-weight: 600; line-height: 1.05; text-align: center; }
+    .chain .flow { display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: nowrap; }
+    .chain .flow.many { flex-wrap: wrap; }
+    .chain .node { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 50px; flex: 0 1 auto; padding: 3px 4px; border-radius: 9px; background: #fff; border: 1.5px solid #dcebc8; font-weight: 600; line-height: 1.05; text-align: center; }
     .chain .node.me { background: #fff8e0; border-color: #f0d58a; }
     .chain .node img { width: 34px; height: 30px; object-fit: contain; }
     .chain .node i { font-style: normal; font-size: 10.5px; color: var(--ink2); font-weight: 600; } .chain .node i.up { color: #3f8a2a; } .chain .node i.down { color: #c0392b; }
@@ -420,8 +426,10 @@
       #speed { top: calc(108px + var(--sat)); min-width: 0; padding: 4px 6px; }
       #speed .lbl { display: none; }
       #clock { font-size: 11.5px; }
+      #speed { width: auto; }
       #season { font-size: 10.5px; max-width: 118px; }
-      #season .dl { display: none; }
+      #season .dl, #season .fn { display: none; }
+      #season .fest { font-size: 10px; }
       #follow { top: auto; bottom: calc(76px + var(--sab)); font-size: 12px; }
       body:has(#alert:not(.hidden)) #follow { top: auto; bottom: calc(110px + var(--sab)); }
       body.info-open #follow { display: none; }
@@ -436,7 +444,7 @@
       #info .kv { margin: 4px 0; }
       #info .upbox { margin-top: 6px; padding: 5px 8px; }
       #info { padding-bottom: 0; }
-      #info .actions { margin: 6px -12px 0; padding: 10px 12px 10px; position: sticky; bottom: -10px; background: linear-gradient(rgba(255,248,232,0), var(--cream) 30%); }
+      #info .actions { margin: 10px -12px 0; padding: 8px 12px 10px; position: sticky; bottom: -1px; background: var(--cream); border-top: 2px dashed #ead2a6; box-shadow: 0 -10px 10px -6px var(--cream); }
       #info .actions .btn { padding: 6px 10px; }
       body.placing #topright { display: none; }
       #toasts { top: calc(204px + var(--sat)) !important; }
@@ -487,6 +495,7 @@
 
   <div id="topright">
     <button class="round" id="btnHome" aria-label="Back to the village"></button>
+    <button class="round hidden" id="btnChest" aria-label="Find the gift chest"></button>
     <button class="round" id="btnLog" aria-label="Village news"></button>
     <button class="round" id="btnStats" aria-label="Village records"></button>
     <button class="round hidden" id="btnMagic" aria-label="Spell book"></button>

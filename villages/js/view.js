@@ -236,12 +236,14 @@ export class View {
     }
     const tGeo = mergeSimple(parts);
     const fGeo = mergeSimple([new THREE.CylinderGeometry(0.01, 0.01, 0.2, 3).translate(0, 0.1, 0), new THREE.IcosahedronGeometry(0.05, 0).translate(0, 0.22, 0)]);
-    const spots = [], flowers = [];
+    const spots = [], flowers = [], piles = [];
     for (let i = 0; i < N * N; i++) {
       if (W.type[i] !== 0 || W.road[i]) continue;
       const r = rng();
-      if (r < 0.32) spots.push(i); else if (r < 0.4) flowers.push(i);
+      if (r < 0.32) spots.push(i); else if (r < 0.4) flowers.push(i); else if (r < 0.47) piles.push(i);
     }
+    // little heaps of fallen leaves, only shown in autumn
+    const pGeo = mergeSimple([0, 1, 2, 3].map(k => new THREE.IcosahedronGeometry(0.13 - k * 0.015, 0).scale(1, 0.32, 1).translate(Math.cos(k * 2.2) * 0.12 * (k > 0), 0.03, Math.sin(k * 2.2) * 0.12 * (k > 0))));
     const mk = (geo, list, colorFn) => {
       const im = new THREE.InstancedMesh(geo, snowify(new THREE.MeshLambertMaterial({ flatShading: true })), list.length);
       im.userData.map = new Int32Array(N * N).fill(-1);
@@ -262,6 +264,9 @@ export class View {
     this.tuftTiles = spots;
     const pal = [0xf06292, 0xffd54f, 0xffffff, 0xba68c8, 0x64b5f6, 0xff8a65];
     this.flowers = mk(fGeo, flowers, () => tmpC.setHex(pal[(rng() * pal.length) | 0]));
+    const lpal = [0xe0702a, 0xd8a62c, 0xc4442e, 0xe8892e];
+    this.piles = mk(pGeo, piles, () => tmpC.setHex(lpal[(rng() * lpal.length) | 0]));
+    this.piles.visible = false;
     for (let i = 0; i < N * N; i++) { this.updateGrass(i); if (W.paved[i]) this.updatePave(i); }
   }
   // cobblestones on paved tiles
@@ -301,7 +306,8 @@ export class View {
   updateGrass(i) {
     const W = this.world;
     const hide = W.occ[i] >= 0 || W.paved[i] || W.wear[i] > 0.35 || W.tree[i] >= 0 || W.rock[i] >= 0 || W.bush[i] >= 0;
-    for (const im of [this.tufts, this.flowers]) {
+    for (const im of [this.tufts, this.flowers, this.piles]) {
+      if (!im) continue;
       const k = im.userData.map[i];
       if (k < 0) continue;
       im.setMatrixAt(k, hide ? tmpM.makeScale(0, 0, 0) : im.userData.mats[k]);
@@ -481,6 +487,7 @@ export class View {
     this.skirtMat.color.setHSL(SA[0] + (SB[0] - SA[0]) * k, SA[1] + (SB[1] - SA[1]) * k, SA[2] + (SB[2] - SA[2]) * k);
     // wildflowers: plenty in spring and summer, gone under the snow
     this.flowers.visible = b !== 3 || k < 0.5;
+    this.piles.visible = (b === 2 && k > 0.3) || (a === 2 && k < 0.5);
   }
   addStump(x, z) {
     const u = this.stumps.userData;

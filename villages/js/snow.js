@@ -24,7 +24,8 @@ const fragBody = (paths, lo, hi, max) => `#include <normal_fragment_maps>
     float n = snowNoise(vSnowW.xz * 1.7) * 0.65 + snowNoise(vSnowW.xz * 5.3) * 0.35;
     float cover = smoothstep(${lo.toFixed(2)}, ${hi.toFixed(2)}, up) * smoothstep(n * 0.8, n * 0.8 + 0.25, uSnow * 1.15) * ${max.toFixed(2)};
     ${paths ? '#ifdef USE_COLOR\n    cover *= mix(1.0, 0.38, step(vColor.g, vColor.r * 1.02));\n    #endif' : ''}
-    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.93, 0.95, 1.0), cover);
+    ${paths ? '#ifdef USE_COLOR\n    float lane = step(vColor.g, vColor.r * 1.02);\n    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.5, 0.47, 0.45), lane * uSnow * 0.55);\n    #endif' : ''}
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.9, 0.97), cover);
   }`;
 
 // patch a material in place; `paths` keeps worn dirt (reddish vertex colour) slushy.
@@ -36,7 +37,9 @@ export function snowPatch(sh, paths = false, lo = 0.28, hi = 0.62, max = 1) {
 }
 const plain = sh => snowPatch(sh, false);
 const pathy = sh => snowPatch(sh, true);
-export function snowify(m, paths = false) {
-  m.onBeforeCompile = paths ? pathy : plain;
+// buildings: snow only partway up a roof slope and never pure white, so each roof keeps its colour
+const built = sh => snowPatch(sh, false, 0.6, 0.98, 0.7);
+export function snowify(m, paths = false, kind = null) {
+  m.onBeforeCompile = kind === 'built' ? built : paths ? pathy : plain;
   return m;
 }

@@ -77,6 +77,7 @@ export class UI {
     $('#btnSettings').innerHTML = svg('gear', 22);
     $('#btnHome').innerHTML = svg('home', 24);
     $('#btnHome').onclick = () => g.goHome();
+    $('#btnChest').onclick = () => this.flyToChest();
     $('#follow').onclick = () => g.follow(null);
     $('#season').onclick = () => { const sea = this.sim.season(), f = this.sim.festivalToday(); this.toast(f ? `${f.name}: ${f.desc}` : `${sea.name}: ${sea.blurb}`, f ? f.icon : sea.icon); };
     $('#namecard').addEventListener('click', e => { if (e.target.closest('[data-act=babyok]')) this.nameBaby(); if (e.target.closest('[data-act=babyskip]')) this.nameBaby(true); });
@@ -172,6 +173,8 @@ export class UI {
       this.drawAlert();
       this.drawCoach();
       $('#btnMagic').classList.toggle('hidden', !this.sim.s.buildings.some(b => b.type === 'wizard' && b.built));
+      const nch = this.sim.s.chests?.length || 0, cb = $('#btnChest');
+      if (cb.dataset.n !== String(nch)) { cb.dataset.n = nch; cb.classList.toggle('hidden', !nch); cb.innerHTML = svg('gift', 24) + (nch > 1 ? `<span class="badge">${nch}</span>` : ''); }
       const ready = this.sim.achievements().filter(x => x.done && !x.claimed).length;
       const tb = $('#trophyBadge'); tb.classList.toggle('hidden', !ready); tb.textContent = ready;
       if (this.modal && ['villagers', 'inventory', 'stats', 'worldmap', 'merchant', 'magic'].includes(this.modal) && !$('#modal').contains(document.activeElement)) this.drawModal(true);
@@ -186,9 +189,18 @@ export class UI {
     document.querySelectorAll('#speeds button').forEach(b => b.classList.toggle('on', +b.dataset.s === s.speed));
   }
 
+  // the chest button: fly to the next unopened gift chest
+  flyToChest() {
+    const list = this.sim.s.chests; if (!list?.length) return;
+    this.chestI = ((this.chestI ?? -1) + 1) % list.length;
+    const ch = list[this.chestI], g = this.g, r = g.view.rig;
+    g.select(null); g.followV = null;
+    g.view.flyTo(ch.x + Math.sin(r.yaw) * 2, ch.z + Math.cos(r.yaw) * 2, Math.max(16, Math.min(r.dist, 22)), 0.9);
+    sfx.click();
+  }
   drawSeason() {
     const sim = this.sim, sea = sim.season(), d = sim.seasonDay() + 1, fest = sim.festivalToday(), on = sim.festivalActive();
-    const html = `${svg(sea.icon, 16)}<span>${sea.name} · <span class="dl">day </span>${d}/${SEASON_DAYS}${fest ? `<span class="fest">${on ? `${esc(fest.name)} now!` : `${esc(fest.name)} tonight`}</span>` : ''}</span>`;
+    const html = `${svg(sea.icon, 16)}<span><span>${sea.name} · <span class="dl">day </span>${d}/${SEASON_DAYS}</span>${fest ? `<span class="fest">${svg('party', 12)}<span class="fn">${esc(fest.name)} </span>${on ? 'now!' : 'tonight'}</span>` : ''}</span>`;
     if (html !== this.lastSeason) { this.lastSeason = html; $('#season').innerHTML = html; $('#season').classList.toggle('festday', !!fest); }
   }
 
@@ -318,7 +330,6 @@ export class UI {
       const cap = sim.cap(), full = ['wood', 'planks', 'stone', 'food', 'grain'].find(k => s.res[k] >= cap);
       if (full && s.level >= 3) a = { icon: 'bag', text: `${GOODS[full].name} storage is full`, go: 'storehouse' };
       else if (pop > sim.housing()) a = { icon: 'house', text: 'Not enough beds', go: 'cottage' };
-      else if (s.chests?.length) a = { icon: 'gift', text: `A gift chest is waiting in the woods`, go: 'chest', calm: true };
     }
     const el = $('#alert');
     const key = a ? a.text : '';
@@ -344,8 +355,8 @@ export class UI {
     const sim = this.sim, def = defOf(b.type), s = sim.s;
     const sname = sim.sname(b.sid);
     let h = `<button class="x" data-act="close" aria-label="Close">${svg('close', 14)}</button>
-      <h3>${esc(b.type === 'campfire' ? sname : def.name)}${!isDecor(b.type) ? ` <span class="lvchip">Lv ${lvlOf(b)}</span>` : ''}${b.type === 'campfire' ? `<button class="pen" data-act="rename" aria-label="Rename village">${svg('pencil', 14)}</button>` : ''}</h3>
-      ${this.renaming === 'b' + b.id ? `<div class="rename"><input id="renameIn" maxlength="22" value="${esc(sname)}" aria-label="Village name"><button class="btn sm" data-act="renameok">Save</button></div>` : ''}
+      ${this.renaming === 'b' + b.id ? `<div class="rename"><input id="renameIn" maxlength="22" value="${esc(sname)}" aria-label="Village name"><button class="btn sm" data-act="renameok">Save</button></div>`
+        : `<h3>${esc(b.type === 'campfire' ? sname : def.name)}${!isDecor(b.type) ? ` <span class="lvchip">Lv ${lvlOf(b)}</span>` : ''}${b.type === 'campfire' ? `<button class="pen" data-act="rename" aria-label="Rename village">${svg('pencil', 14)}</button>` : ''}</h3>`}
       <div class="sub">${b.type === 'campfire' ? 'Village campfire · the heart of the settlement' : `${esc(sname)} · ${b.built ? (b.up ? 'being upgraded' : isDecor(b.type) ? 'decoration' : 'building') : 'under construction'}`}</div>`;
     if (!b.built) {
       const builders = s.villagers.filter(v => v.task?.bid === b.id).length;
@@ -412,7 +423,7 @@ export class UI {
     const ins = ch.in || [], outs = ch.out || [];
     const rate = r => { const n = Math.round(sim.bRate(b, r)); return n ? `<i class="${n > 0 ? 'up' : 'down'}">${n > 0 ? '+' : ''}${n}/min</i>` : '<i>—</i>'; };
     const node = r => `<span class="node">${svg(GOODS[r].icon, 22)}${esc(GOODS[r].name)}${rate(r)}</span>`;
-    let h = `<div class="chain"><div class="cap">Production · last minute</div><div class="flow">`;
+    let h = `<div class="chain"><div class="cap">Production · last minute</div><div class="flow${ins.length > 1 ? ' many' : ''}">`;
     if (ins.length) h += ins.map(node).join('') + `<span class="arr">→</span>`;
     h += `<span class="node me"><img alt="" src="${this.g.thumbs[b.type] || ''}">${esc(defOf(b.type).name)}</span>`;
     if (outs.length) h += `<span class="arr">→</span>` + outs.map(node).join('');
@@ -431,8 +442,8 @@ export class UI {
     const sname = sim.sname(v.home);
     const doing = v.task?.label ?? (v.job === 'idle' ? 'Looking for something to do' : 'Thinking');
     return `<button class="x" data-act="close" aria-label="Close">${svg('close', 14)}</button>
-      <h3>${faceSvg(v, 26)}${esc(v.name)}<button class="pen" data-act="rename" aria-label="Rename">${svg('pencil', 14)}</button></h3>
-      ${this.renaming === 'v' + v.id ? `<div class="rename"><input id="renameIn" maxlength="22" value="${esc(v.name)}" aria-label="Name"><button class="btn sm" data-act="renameok">Save</button></div>` : ''}
+      ${this.renaming === 'v' + v.id ? `<div class="rename">${faceSvg(v, 26)}<input id="renameIn" maxlength="22" value="${esc(v.name)}" aria-label="Name"><button class="btn sm" data-act="renameok">Save</button></div>`
+        : `<h3>${faceSvg(v, 26)}${esc(v.name)}<button class="pen" data-act="rename" aria-label="Rename">${svg('pencil', 14)}</button></h3>`}
       <div class="sub">${esc(sname)} · ${JOBS[v.job].name}</div>
       <dl class="kv"><dt>Age</dt><dd>${Math.floor(v.age ?? 30)} · ${{ child: 'child', adult: 'adult', elder: 'elder' }[stageOf(v)]}${v.educated ? ' · schooled' : ''}</dd>
       ${this.family(v)}
@@ -532,7 +543,7 @@ export class UI {
       const d = defOf(t), have = s.tokens?.[t] || 0, locked = d.rare ? !have : d.lvl > s.level;
       c.classList.toggle('locked', locked);
       const cost = costHtml(d.cost, s.res);
-      const html = d.rare ? (have ? `<span>Free · ×${have}</span>` : `<span>${svg('gift', 12)}In chests</span>`) : locked ? `<span>Level ${d.lvl}</span>` : cost;
+      const html = d.rare ? (have ? `<span>Free · ×${have}</span>` : `<span>Chests only</span>`) : locked ? `<span>Level ${d.lvl}</span>` : cost;
       const ce = c.querySelector('.cost');
       if (ce.innerHTML !== html) ce.innerHTML = html;
       let lk = c.querySelector('.lock');
@@ -900,9 +911,9 @@ export class UI {
     while ($('#toasts').children.length > 2) $('#toasts').firstChild.remove();
     setTimeout(() => el.remove(), 2600);
   }
-  float(sx, sy, text, icon) {
+  float(sx, sy, text, icon, cls = '') {
     const el = document.createElement('div');
-    el.className = 'float';
+    el.className = 'float' + (cls ? ' ' + cls : '');
     el.style.left = sx + 'px'; el.style.top = sy + 'px';
     el.innerHTML = (icon ? svg(icon, 18) : '') + esc(text);
     $('#floats').appendChild(el);
