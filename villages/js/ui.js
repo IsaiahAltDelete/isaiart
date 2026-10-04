@@ -211,6 +211,8 @@ export class UI {
       { text: 'Idle villagers build it for you. Now add a <b>Forager Hut</b> so everyone has food.', target: this.tray === 'build' ? '#cards .card[data-type=forager]' : '#dockbar [data-tab=build]', done: () => has('forager') },
       { text: 'Tap any building to add workers, upgrade or move it. Claim quest rewards on the left. Have fun!', target: '#quests', done: () => (this.coachT = (this.coachT || 0) + 0.5) > 14 || g.selected },
     ];
+    // a village that already has its first huts doesn't need the basics
+    if (s.tutorial < 3 && has('lumber') && has('forager')) s.tutorial = 4;
     if (s.tutorial >= steps.length) { el.classList.add('hidden'); this.coachTarget(null); return; }
     const st = steps[s.tutorial];
     if (st.done()) { s.tutorial++; sfx.pop(); return this.drawCoach(); }
