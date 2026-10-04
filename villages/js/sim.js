@@ -1,0 +1,836 @@
+// Game rules and simulation: economy, villager brains, construction,
+// population, quests, levels, saving. No DOM or Three.js in here — the
+// view layer listens to events emitted from this class.
+import { World, N, idx, tileX, tileZ, toWorld, toTile, inMap, CENTERS, T_WATER } from './world.js';
+import { BUILDINGS, DECOR, GOODS, SELLABLE, QUESTS, SETTLEMENTS, xpForLevel,
+  FIRST_NAMES, LAST_NAMES, SHIRTS, SKINS, HAIRS, JOBS } from './data.js';
+import { mulberry32, pick } from './rng.js';
+
+export const defOf = type => BUILDINGS[type] || DECOR[type];
+export const isDecor = type => !!DECOR[type];
+export function footprint(type, rot) { const [w, d] = defOf(type).size; return rot % 2 ? [d, w] : [w, d]; }
+
+const DAY = 240;                     // sim seconds per in-game day
+const MEAL = 80;                     // seconds between meals per villager
+const CONVERT = {                    // staffed converters: inputs -> outputs, seconds
+  sawyer: { in: { wood: 2 }, out: { planks: 1 }, t: 5, anim: 'saw' },
+  miller: { in: { grain: 3 }, out: { flour: 2 }, t: 6, anim: 'work' },
+  baker:  { in: { flour: 2 }, out: { food: 8 }, t: 7, anim: 'work', stat: 'bread' },
+  mason:  { in: { stone: 3 }, out: { bricks: 1 }, t: 6, anim: 'hammer' },
+};
+const RANGE = { woodcutter: 14, forager: 15, miner: 18, forester: 7 };
+
+export class Sim {
+  constructor(save) {
+    this.handlers = {};
+    this.rng = mulberry32((Math.random() * 1e9) | 0);
+    const seed = save?.seed ?? ((Math.random() * 1e9) | 0);
+    this.world = new World(seed);
+    this.origTrees = this.world.trees.length;
+    this.bById = new Map(); this.vById = new Map();
+    this.stumps = [];
+    this.wearTimer = 0; this.secTimer = 0;
+    if (save) this.load(save); else this.newGame(seed);
+  }
+  on(name, fn) { this.handlers[name] = fn; }
+  emit(name, ...a) { this.handlers[name]?.(...a); }
+
+  // ── setup ──
+  newGame(seed) {
+    this.s = {
+      v: 1, seed, time: DAY * 0.3, speed: 1, nextId: 1,
+      res: { coins: 150, wood: 120, planks: 0, stone: 30, bricks: 0, grain: 0, flour: 0, food: 60, gems: 15 },
+      xp: 0, level: 1, happiness: 70,
+      buildings: [], villagers: [], unlocked: {},
+      quests: { claimed: [] }, stats: { built: {}, produced: {}, earned: 0, decor: 0 },
+      sell: Object.fromEntries(SELLABLE.map(k => [k, k !== 'food' && k !== 'grain'])),
+      log: [], popTimer: 0, tutorial: 0,
+    };
+    this.unlock('meadow', true);
+    const c = CENTERS.meadow;
+    this.addBuilding('cottage', c.x + 2, c.z - 4, 0, true);
+    for (let i = 0; i < 4; i++) this.spawnVillager('meadow', toWorld(c.x) + (i - 1.5) * 0.8, toWorld(c.z) + 2);
+    this.log('Welcome to Meadowbrook! Build a Lumber Hut to get started.');
+  }
+
+  unlock(sid, free = false) {
+    const def = SETTLEMENTS.find(s => s.id === sid);
+    if (!free) {
+      if (this.s.unlocked[sid]) return false;
+      if (this.s.level < def.unlock.lvl || !this.canAfford(def.unlock.cost)) return false;
+      this.pay(def.unlock.cost);
+    }
+    this.s.unlocked[sid] = true;
+    const c = CENTERS[sid];
+    this.addBuilding('campfire', c.x - 1, c.z - 1, 0, true);
+    if (!free) {
+      for (let i = 0; i < 2; i++) this.spawnVillager(sid, toWorld(c.x) + i, toWorld(c.z) + 2);
+      this.log(`${def.name} has been settled! Two settlers moved in.`);
+      this.emit('toast', `${def.name} settled!`, 'map');
+      this.addXp(60);
+    }
+    this.emit('settlements');
+    return true;
+  }
+
+  // ── resources ──
+  cap() {
+    let c = 0;
+    for (const b of this.s.buildings) if (b.built) c += defOf(b.type).storage || 0;
+    return c;
+  }
+  canAfford(cost) { return Object.entries(cost || {}).every(([k, v]) => (this.s.res[k] || 0) >= v); }
+  pay(cost) { for (const [k, v] of Object.entries(cost || {})) this.s.res[k] -= v; this.emit('res'); }
+  add(res, n, track = true) {
+    const r = this.s.res;
+    let added = n;
+    if (GOODS[res].capped) added = Math.max(0, Math.min(n, this.cap() - r[res]));
+    r[res] += added;
+    if (track && added > 0) this.s.stats.produced[res] = (this.s.stats.produced[res] || 0) + added;
+    this.emit('res');
+    return added;
+  }
+
+  addXp(n) {
+    const s = this.s;
+    s.xp += n;
+    while (s.xp >= xpForLevel(s.level)) {
+      s.xp -= xpForLevel(s.level); s.level++;
+      const gems = 5 + s.level * 2;
+      s.res.gems += gems;
+      const unlocked = [...Object.entries(BUILDINGS), ...Object.entries(DECOR)].filter(([, d]) => d.lvl === s.level).map(([, d]) => d.name);
+      this.emit('levelup', s.level, unlocked, gems);
+      this.log(`Reached level ${s.level}!${unlocked.length ? ' Unlocked: ' + unlocked.join(', ') + '.' : ''}`);
+    }
+    this.emit('xp');
+  }
+
+  log(msg) {
+    this.s.log.unshift({ t: this.s.time, msg });
+    if (this.s.log.length > 40) this.s.log.pop();
+    this.emit('log');
+  }
+
+  // ── settlements & territory ──
+  settlementRadius(sid) {
+    const c = CENTERS[sid];
+    const n = this.s.buildings.filter(b => b.sid === sid && b.built && !isDecor(b.type)).length;
+    return c.r + 4 + Math.min(8, Math.floor(n / 2));
+  }
+  settlementAt(tx, tz) {
+    let best = null, bd = 1e9;
+    for (const sid of Object.keys(this.s.unlocked)) {
+      const c = CENTERS[sid], d = Math.hypot(tx + 0.5 - c.x, tz + 0.5 - c.z);
+      if (d <= this.settlementRadius(sid) && d < bd) { bd = d; best = sid; }
+    }
+    return best;
+  }
+
+  // ── placement ──
+  checkPlace(type, tx, tz, rot) {
+    const W = this.world, def = defOf(type);
+    const [w, d] = footprint(type, rot);
+    let sid = null;
+    for (let z = tz; z < tz + d; z++) for (let x = tx; x < tx + w; x++) {
+      if (!inMap(x, z)) return { ok: false, why: 'Out of bounds' };
+      const i = idx(x, z);
+      if (W.type[i] === T_WATER) return { ok: false, why: 'Can\'t build on water' };
+      if (W.occ[i] >= 0) return { ok: false, why: 'Something is already here' };
+      if (isDecor(type) && W.rock[i] >= 0) return { ok: false, why: 'A boulder is in the way' };
+      const s = this.settlementAt(x, z);
+      if (!s) return { ok: false, why: 'Outside your settlements' };
+      sid = sid ?? s;
+    }
+    if (def.lvl && this.s.level < def.lvl) return { ok: false, why: `Needs level ${def.lvl}` };
+    if (!this.canAfford(def.cost)) return { ok: false, why: 'Not enough resources' };
+    if (def.needsWater) {
+      const f = this.facingTiles(tx, tz, rot, w, d);
+      const wet = f.filter(([x, z]) => inMap(x, z) && W.type[idx(x, z)] === T_WATER).length;
+      if (wet < 2) return { ok: false, why: 'Must face the water' };
+    }
+    return { ok: true, sid };
+  }
+  // tiles 1–2 steps in front of a footprint
+  facingTiles(tx, tz, rot, w, d) {
+    const out = [];
+    for (let k = 1; k <= 2; k++) {
+      if (rot === 0) for (let x = tx; x < tx + w; x++) out.push([x, tz + d - 1 + k]);
+      if (rot === 2) for (let x = tx; x < tx + w; x++) out.push([x, tz - k]);
+      if (rot === 1) for (let z = tz; z < tz + d; z++) out.push([tx + w - 1 + k, z]);
+      if (rot === 3) for (let z = tz; z < tz + d; z++) out.push([tx - k, z]);
+    }
+    return out;
+  }
+  bestDockRot(tx, tz) {
+    let best = 0, bw = -1;
+    for (let r = 0; r < 4; r++) {
+      const [w, d] = footprint('dock', r);
+      const wet = this.facingTiles(tx, tz, r, w, d).filter(([x, z]) => inMap(x, z) && this.world.type[idx(x, z)] === T_WATER).length;
+      if (wet > bw) { bw = wet; best = r; }
+    }
+    return best;
+  }
+
+  place(type, tx, tz, rot) {
+    const chk = this.checkPlace(type, tx, tz, rot);
+    if (!chk.ok) return chk;
+    const def = defOf(type);
+    this.pay(def.cost);
+    const decor = isDecor(type);
+    const b = this.addBuilding(type, tx, tz, rot, decor);
+    if (decor) { this.s.stats.decor++; this.addXp(5); }
+    this.emit('sfx', 'place');
+    return { ok: true, b };
+  }
+
+  addBuilding(type, tx, tz, rot, built) {
+    const W = this.world;
+    const [w, d] = footprint(type, rot);
+    const b = { id: this.s.nextId++, type, tx, tz, rot, built, progress: 0, workers: [], data: {}, clear: [] };
+    b.sid = this.settlementAt(tx, tz) || (type === 'campfire' ? this.closestCenter(tx, tz) : null);
+    for (let z = tz; z < tz + d; z++) for (let x = tx; x < tx + w; x++) {
+      const i = idx(x, z);
+      W.occ[i] = b.id; if (!W.road[i]) W.wear[i] = 0;
+      if (W.tree[i] >= 0) { if (built) this.fellTree(W.tree[i], false); else b.clear.push(['t', W.tree[i]]); }
+      if (W.rock[i] >= 0) { if (built) this.breakRock(W.rock[i]); else b.clear.push(['r', W.rock[i]]); }
+      if (W.bush[i] >= 0) { if (built) this.clearBush(W.bush[i]); else b.clear.push(['b', W.bush[i]]); }
+      this.emit('tile', i);
+    }
+    if (type === 'farm') b.data = { stage: 'empty', grow: 0, work: 0 };
+    this.s.buildings.push(b); this.bById.set(b.id, b);
+    this.emit('building', b);
+    return b;
+  }
+  closestCenter(tx, tz) {
+    let best = 'meadow', bd = 1e9;
+    for (const [sid, c] of Object.entries(CENTERS)) { const d = Math.hypot(tx - c.x, tz - c.z); if (d < bd) { bd = d; best = sid; } }
+    return best;
+  }
+
+  finishBuilding(b) {
+    b.built = true; b.progress = 1;
+    const def = defOf(b.type);
+    this.s.stats.built[b.type] = (this.s.stats.built[b.type] || 0) + 1;
+    this.addXp(15 + Math.round(Object.values(def.cost || {}).reduce((a, v) => a + v, 0) / 6));
+    this.emit('building', b);
+    this.emit('toast', `${def.name} complete!`, 'hammer');
+    this.emit('sfx', 'done');
+    this.log(`${def.name} finished in ${SETTLEMENTS.find(s => s.id === b.sid)?.name ?? 'the wilds'}.`);
+    // auto-staff one worker if anyone is free
+    if (def.workers) this.assign(b, null);
+  }
+
+  demolish(b) {
+    if (b.type === 'campfire') return;
+    const def = defOf(b.type), W = this.world;
+    for (const vid of [...b.workers]) this.unassign(this.vById.get(vid));
+    for (const [k, v] of Object.entries(def.cost || {})) this.s.res[k] += Math.floor(v * (b.built ? 0.5 : 1));
+    const [w, d] = footprint(b.type, b.rot);
+    for (let z = b.tz; z < b.tz + d; z++) for (let x = b.tx; x < b.tx + w; x++) { W.occ[idx(x, z)] = -1; this.emit('tile', idx(x, z)); }
+    this.s.buildings = this.s.buildings.filter(o => o !== b); this.bById.delete(b.id);
+    if (isDecor(b.type)) this.s.stats.decor = Math.max(0, this.s.stats.decor - 1);
+    for (const v of this.s.villagers) if (v.task?.bid === b.id) this.dropTask(v);
+    this.emit('removed', b); this.emit('res');
+  }
+
+  // geometry helpers
+  bCenter(b) { const [w, d] = footprint(b.type, b.rot); return { x: toWorld(b.tx) + (w - 1) / 2, z: toWorld(b.tz) + (d - 1) / 2, w, d }; }
+  local(b, lx, lz) {
+    const c = this.bCenter(b), th = b.rot * Math.PI / 2;
+    return { x: c.x + lx * Math.cos(th) + lz * Math.sin(th), z: c.z - lx * Math.sin(th) + lz * Math.cos(th) };
+  }
+  entryTile(b) {
+    const [w, d] = footprint(b.type, b.rot);
+    const r = b.type === 'dock' ? (b.rot + 2) % 4 : b.rot;
+    if (r === 0) return [b.tx + (w >> 1), b.tz + d];
+    if (r === 1) return [b.tx + w, b.tz + (d >> 1)];
+    if (r === 2) return [b.tx + (w >> 1), b.tz - 1];
+    return [b.tx - 1, b.tz + (d >> 1)];
+  }
+
+  // ── villagers ──
+  spawnVillager(sid, x, z) {
+    const r = this.rng;
+    const v = {
+      id: this.s.nextId++, name: `${pick(r, FIRST_NAMES)} ${pick(r, LAST_NAMES)}`,
+      shirt: pick(r, SHIRTS), skin: pick(r, SKINS), hair: pick(r, HAIRS), hat: r() < 0.35, hatColor: pick(r, [0xc9a050, 0x8a5a33, 0x3f7a39, 0xd9534f]),
+      x, z, home: sid, job: 'idle', work: null, carry: null, hunger: r() * MEAL * 0.6, hungry: false,
+      task: null, act: null, face: 0,
+    };
+    this.s.villagers.push(v); this.vById.set(v.id, v);
+    this.emit('villager', v);
+    return v;
+  }
+
+  assign(b, v) {
+    const def = defOf(b.type);
+    if (!def.workers || b.workers.length >= def.workers || !b.built) return false;
+    if (!v) {
+      const c = this.bCenter(b);
+      const idle = this.s.villagers.filter(o => o.job === 'idle');
+      if (!idle.length) return false;
+      idle.sort((a, o) => (a.home !== b.sid) - (o.home !== b.sid) || Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(o.x - c.x, o.z - c.z));
+      v = idle[0];
+    }
+    this.unassign(v);
+    v.job = def.job; v.work = b.id; b.workers.push(v.id);
+    this.dropTask(v);
+    this.emit('villagerJob', v); this.emit('building', b);
+    return true;
+  }
+  unassign(v) {
+    if (!v || !v.work) { if (v) v.job = 'idle'; return; }
+    const b = this.bById.get(v.work);
+    if (b) { b.workers = b.workers.filter(id => id !== v.id); this.emit('building', b); }
+    v.work = null; v.job = 'idle';
+    this.dropTask(v);
+    this.emit('villagerJob', v);
+  }
+
+  dropTask(v) {
+    const t = v.task;
+    if (t?.claim) { const [k, i] = t.claim; const o = k === 't' ? this.world.trees[i] : k === 'r' ? this.world.rocks[i] : this.world.bushes[i]; if (o && o.claimed === v.id) o.claimed = -1; }
+    v.task = null; v.act = null; v.path = null;
+  }
+
+  // Tasks are a list of steps run in order. Steps:
+  //   {walk: goal}  — A* to a goal {tx,tz, near:building|null, adj:bool}
+  //   {to: [x,z]}   — walk directly (short hops)
+  //   {act: secs, anim, done: fn}  — work in place, then call done
+  //   {fn}          — run immediately
+  setTask(v, label, steps, extra = {}) {
+    this.dropTask(v);
+    v.task = { label, steps, i: 0, ...extra };
+  }
+
+  think(v) {
+    const job = v.job;
+    if (v.carry) return this.taskDeliver(v);
+    const b = v.work ? this.bById.get(v.work) : null;
+    if (job === 'idle') return this.thinkIdle(v);
+    if (!b) { this.unassign(v); return; }
+    if (job === 'woodcutter') return this.taskGather(v, b, 't');
+    if (job === 'miner') return this.taskGather(v, b, 'r');
+    if (job === 'forager') return this.taskGather(v, b, 'b');
+    if (job === 'farmer') return this.taskFarm(v, b);
+    if (job === 'fisher') return this.taskFish(v, b);
+    if (job === 'merchant') return this.taskSell(v, b);
+    if (job === 'forester') return this.taskPlant(v, b);
+    if (CONVERT[job]) return this.taskConvert(v, b, CONVERT[job]);
+  }
+
+  goalBuilding(b) { const [ex, ez] = this.entryTile(b); return { tx: ex, tz: ez, near: b }; }
+  spot(b, k) {
+    const { d } = this.bCenter(b);
+    if (b.type === 'dock') return this.local(b, 0.45, 1.9 - k * 0.65);
+    if (b.type === 'farm') return this.local(b, -0.8 + k * 1.1, -0.25 + (k % 2) * 0.5);
+    const off = b.workers.length > 1 ? (k ? 0.35 : -0.35) : 0;
+    return this.local(b, off, d / 2 + 0.28);
+  }
+
+  thinkIdle(v) {
+    // 1) help build the nearest construction site
+    const sites = this.s.buildings.filter(b => !b.built);
+    if (sites.length) {
+      sites.sort((a, o) => this.distTo(v, a) - this.distTo(v, o) + ((a.sid !== v.home) - (o.sid !== v.home)) * 12);
+      return this.taskBuild(v, sites[0]);
+    }
+    // 2) chop trees the player marked for clearing
+    const ti = this.nearestTarget(v.x, v.z, 't', 60, true);
+    if (ti >= 0) return this.taskChopMarked(v, ti);
+    // 3) potter about near the campfire
+    const c = CENTERS[v.home] || CENTERS.meadow;
+    let tx = c.x, tz = c.z + 2;
+    for (let k = 0; k < 8; k++) {
+      const a = this.rng() * Math.PI * 2, r = 1.8 + this.rng() * 3.5;
+      tx = Math.round(c.x + Math.cos(a) * r); tz = Math.round(c.z + Math.sin(a) * r);
+      if (inMap(tx, tz) && this.world.passable(idx(tx, tz))) break;
+    }
+    this.setTask(v, 'Relaxing', [
+      { walk: { tx, tz } },
+      { act: 3 + this.rng() * 5, anim: 'rest' },
+    ]);
+  }
+  distTo(v, b) { const c = this.bCenter(b); return Math.hypot(v.x - c.x, v.z - c.z); }
+
+  taskBuild(v, b) {
+    const W = this.world;
+    // clear obstacles first
+    while (b.clear.length) {
+      const [k, i] = b.clear[0];
+      const o = k === 't' ? W.trees[i] : k === 'r' ? W.rocks[i] : W.bushes[i];
+      if (!o.alive) { b.clear.shift(); continue; }
+      if (o.claimed >= 0 && o.claimed !== v.id) break;
+      o.claimed = v.id;
+      const anim = k === 't' ? 'chop' : k === 'r' ? 'mine' : 'gather';
+      return this.setTask(v, 'Clearing site', [
+        { walk: { tx: o.tx, tz: o.tz, adj: true } },
+        { face: [o.x, o.z] },
+        { act: k === 'r' ? 4 : 2.5, anim, done: () => {
+          if (k === 't') { this.fellTree(i, true); this.floatGain(o.x, o.z, 'wood', this.add('wood', 3)); }
+          else if (k === 'r') { this.breakRock(i); this.floatGain(o.x, o.z, 'stone', this.add('stone', 8)); }
+          else { this.clearBush(i); this.floatGain(o.x, o.z, 'food', this.add('food', 2)); }
+          b.clear = b.clear.filter(([kk, ii]) => !(kk === k && ii === i));
+        } },
+      ], { claim: [k, i], bid: b.id });
+    }
+    const n = this.s.villagers.filter(o => o.task?.bid === b.id).length;
+    const p = this.local(b, ((n % 3) - 1) * 0.6, this.bCenter(b).d / 2 + 0.35);
+    this.setTask(v, 'Building', [
+      { walk: this.goalBuilding(b) },
+      { to: [p.x, p.z] },
+      { face: [this.bCenter(b).x, this.bCenter(b).z] },
+      { act: 2, anim: 'hammer', done: () => {
+        if (b.built || !this.bById.has(b.id) || b.clear.length) return;
+        const def = defOf(b.type);
+        b.progress = Math.min(1, b.progress + 2 * this.workRate(v) / def.time);
+        this.emit('progress', b);
+        if (b.progress >= 1) this.finishBuilding(b);
+        else this.repeat(v);
+      } },
+    ], { bid: b.id });
+  }
+  // let a villager keep working the same task without a fresh plan
+  repeat(v) { if (v.task) v.task.again = true; }
+
+  taskChopMarked(v, ti) {
+    const t = this.world.trees[ti];
+    t.claimed = v.id;
+    this.setTask(v, 'Clearing trees', [
+      { walk: { tx: t.tx, tz: t.tz, adj: true } },
+      { face: [t.x, t.z] },
+      { act: 4, anim: 'chop', done: () => { this.fellTree(ti, true); v.carry = { res: 'wood', n: 4 }; } },
+    ], { claim: ['t', ti] });
+  }
+
+  nearestTarget(x, z, kind, range, markedOnly = false) {
+    const W = this.world;
+    const list = kind === 't' ? W.trees : kind === 'r' ? W.rocks : W.bushes;
+    let best = -1, bd = range;
+    for (let i = 0; i < list.length; i++) {
+      const o = list[i];
+      if (!o.alive || o.claimed >= 0) continue;
+      if (kind === 't') {
+        if (o.growth < 1) continue;
+        if (markedOnly && !o.marked) continue;
+        if (W.occ[idx(o.tx, o.tz)] >= 0) continue;   // builders handle those
+      }
+      if (kind === 'b' && !o.ripe) continue;
+      let d = Math.hypot(o.x - x, o.z - z);
+      if (kind === 't' && o.marked) d -= 6;
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+
+  taskGather(v, b, kind) {
+    const c = this.bCenter(b);
+    const job = { t: 'woodcutter', r: 'miner', b: 'forager' }[kind];
+    let i = -1;
+    if (kind === 't') i = this.nearestTarget(c.x, c.z, 't', 50, true);   // marked trees anywhere nearby first
+    if (i < 0) i = this.nearestTarget(c.x, c.z, kind, RANGE[job]);
+    if (i < 0) {
+      b.status = kind === 't' ? 'No trees nearby' : kind === 'r' ? 'No boulders nearby' : 'Waiting for berries';
+      return this.setTask(v, 'Waiting', [{ walk: this.goalBuilding(b) }, { act: 5, anim: 'rest' }]);
+    }
+    b.status = null;
+    const W = this.world, o = (kind === 't' ? W.trees : kind === 'r' ? W.rocks : W.bushes)[i];
+    o.claimed = v.id;
+    const label = { t: 'Chopping wood', r: 'Mining stone', b: 'Picking berries' }[kind];
+    this.setTask(v, label, [
+      { walk: { tx: o.tx, tz: o.tz, adj: true } },
+      { face: [o.x, o.z] },
+      { act: kind === 'b' ? 3.5 : 5, anim: kind === 't' ? 'chop' : kind === 'r' ? 'mine' : 'gather', done: () => {
+        if (!o.alive) return;
+        if (kind === 't') { this.fellTree(i, true); v.carry = { res: 'wood', n: 6 }; }
+        else if (kind === 'r') {
+          o.hp -= 7; v.carry = { res: 'stone', n: 7 };
+          if (o.hp <= 0) this.breakRock(i); else this.emit('rock', i);
+          o.claimed = -1;
+        } else { o.ripe = false; o.regrow = 55 + this.rng() * 20; o.claimed = -1; this.emit('bush', i); v.carry = { res: 'food', n: 5 }; }
+      } },
+    ], { claim: [kind, i] });
+  }
+
+  taskDeliver(v) {
+    const b = v.work ? this.bById.get(v.work) : null;
+    const target = b || this.s.buildings.find(o => o.type === 'campfire' && o.sid === v.home) || this.s.buildings.find(o => o.type === 'campfire');
+    this.setTask(v, 'Carrying ' + GOODS[v.carry.res].name.toLowerCase(), [
+      { walk: this.goalBuilding(target) },
+      { fn: () => {
+        const { res, n } = v.carry; v.carry = null;
+        const got = this.add(res, Math.round(n * (this.s.happiness > 80 ? 1.2 : 1)));
+        this.floatGain(v.x, v.z, res, got);
+        if (got > 0) this.addXp(1);
+      } },
+    ]);
+  }
+
+  floatGain(x, z, res, n) { this.emit('float', x, z, n > 0 ? `+${n}` : 'Full!', GOODS[res].icon); }
+
+  taskFarm(v, b) {
+    const k = b.workers.indexOf(v.id), d = b.data, p = this.spot(b, k);
+    const go = [{ walk: this.goalBuilding(b) }, { to: [p.x, p.z] }];
+    if (d.stage === 'empty') {
+      return this.setTask(v, 'Sowing wheat', [...go, { act: 3, anim: 'hoe', done: () => {
+        d.work += 3 * this.workRate(v);
+        if (d.work >= 8) { d.stage = 'growing'; d.grow = 0; d.work = 0; this.emit('farm', b); }
+        else this.repeat(v);
+      } }]);
+    }
+    if (d.stage === 'growing') {
+      return this.setTask(v, 'Tending crops', [...go, { act: 4, anim: 'hoe', done: () => { d.grow = Math.min(1, d.grow + 0.03); this.emit('farm', b); } }]);
+    }
+    return this.setTask(v, 'Harvesting', [...go, { act: 3, anim: 'gather', done: () => {
+      if (d.stage !== 'ripe') return;
+      d.work += 3 * this.workRate(v);
+      if (d.work >= 6) { d.stage = 'empty'; d.work = 0; d.grow = 0; this.emit('farm', b); v.carry = { res: 'grain', n: 20 }; }
+      else this.repeat(v);
+    } }]);
+  }
+
+  taskFish(v, b) {
+    const k = b.workers.indexOf(v.id), p = this.spot(b, k), via = this.local(b, 0.75, -1.25);
+    const tip = this.local(b, 0.45, 4);
+    this.setTask(v, 'Fishing', [
+      { walk: this.goalBuilding(b) }, { to: [via.x, via.z] }, { to: [p.x, p.z], onDock: true }, { face: [tip.x, tip.z] },
+      { act: 9, anim: 'fish', done: () => {
+        const got = this.add('food', 4 + (this.rng() < 0.2 ? 3 : 0));
+        this.floatGain(v.x, v.z, 'food', got); if (got) this.addXp(1);
+        this.repeat(v);
+      } },
+    ]);
+  }
+
+  taskConvert(v, b, cv) {
+    const k = b.workers.indexOf(v.id), p = this.spot(b, k), c = this.bCenter(b);
+    const res = this.s.res;
+    this.setTask(v, 'Working', [
+      { walk: this.goalBuilding(b) }, { to: [p.x, p.z] }, { face: [c.x, c.z] },
+      { act: cv.t, anim: cv.anim, start: () => {
+        if (!this.canAfford(cv.in)) {
+          b.status = 'Needs ' + Object.keys(cv.in).map(r => GOODS[r].name.toLowerCase()).join(', ');
+          v.act.anim = 'rest'; v.act.idle = true; return;
+        }
+        const outRes = Object.keys(cv.out)[0];
+        if (res[outRes] >= this.cap() && GOODS[outRes].capped) { b.status = 'Storage full'; v.act.anim = 'rest'; v.act.idle = true; return; }
+        b.status = null; this.pay(cv.in);
+      }, done: act => {
+        if (!act.idle) {
+          for (const [r, n] of Object.entries(cv.out)) {
+            const got = this.add(r, n); this.floatGain(c.x, c.z, r, got);
+            if (cv.stat) this.s.stats.produced[cv.stat] = (this.s.stats.produced[cv.stat] || 0) + got;
+          }
+          this.addXp(1);
+        }
+        this.repeat(v);
+      } },
+    ]);
+  }
+
+  taskSell(v, b) {
+    const p = this.spot(b, 0), c = this.bCenter(b), r = this.s.res;
+    this.setTask(v, 'Trading', [
+      { walk: this.goalBuilding(b) }, { to: [p.x, p.z] }, { face: [c.x, c.z] },
+      { act: 5, anim: 'sell', done: () => {
+        let best = null, bestQ = 0;
+        for (const g of SELLABLE) {
+          if (!this.s.sell[g]) continue;
+          const spare = r[g] - GOODS[g].reserve;
+          if (spare > bestQ) { bestQ = spare; best = g; }
+        }
+        if (best) {
+          const n = Math.min(8, Math.floor(bestQ));
+          const coins = n * GOODS[best].price;
+          r[best] -= n; r.coins += coins; this.s.stats.earned += coins;
+          this.emit('float', c.x, c.z, `+${coins}`, 'coin'); this.emit('res'); this.emit('sfx', 'coin');
+          b.status = null;
+        } else b.status = 'Nothing to sell';
+        this.repeat(v);
+      } },
+    ]);
+  }
+
+  taskPlant(v, b) {
+    const W = this.world, c = this.bCenter(b);
+    for (let tries = 0; tries < 30; tries++) {
+      const a = this.rng() * Math.PI * 2, r = 2.5 + this.rng() * RANGE.forester;
+      const tx = toTile(c.x + Math.cos(a) * r), tz = toTile(c.z + Math.sin(a) * r);
+      if (!inMap(tx, tz)) continue;
+      const i = idx(tx, tz);
+      if (W.type[i] !== 0 || W.tree[i] >= 0 || W.rock[i] >= 0 || W.bush[i] >= 0 || W.occ[i] >= 0 || W.wear[i] > 0.15) continue;
+      // keep the village cores open
+      if (Object.keys(this.s.unlocked).some(sid => Math.hypot(tx - CENTERS[sid].x, tz - CENTERS[sid].z) < CENTERS[sid].r + 1.5)) continue;
+      if (this.s.buildings.some(o => { const oc = this.bCenter(o); return o !== b && Math.hypot(oc.x - toWorld(tx), oc.z - toWorld(tz)) < 2.2; })) continue;
+      return this.setTask(v, 'Planting saplings', [
+        { walk: { tx, tz, adj: true } }, { face: [toWorld(tx), toWorld(tz)] },
+        { act: 3, anim: 'plant', done: () => {
+          if (W.tree[i] >= 0 || W.occ[i] >= 0) return;
+          const t = W.addTree(tx, tz, this.rng, 0.12);
+          this.emit('treeNew', W.trees.length - 1);
+          this.s.stats.produced.sapling = (this.s.stats.produced.sapling || 0) + 1;
+        } },
+      ]);
+    }
+    this.setTask(v, 'Resting', [{ walk: this.goalBuilding(b) }, { act: 5, anim: 'rest' }]);
+  }
+
+  // ── world edits ──
+  fellTree(ti, stump) {
+    const t = this.world.trees[ti];
+    if (!t.alive) return;
+    this.world.removeTree(ti);
+    this.emit('tree', ti);
+    if (stump) this.emit('stump', t.x, t.z);
+    this.emit('tile', idx(t.tx, t.tz));
+  }
+  breakRock(ri) { this.world.removeRock(ri); this.emit('rock', ri); }
+  clearBush(bi) { this.world.removeBush(bi); this.emit('bush', bi); }
+  markTree(ti, on) { const t = this.world.trees[ti]; if (!t.alive) return; t.marked = on; this.emit('tree', ti); }
+
+  workRate(v) { return (0.7 + this.s.happiness / 100 * 0.6) * (v.hungry ? 0.6 : 1); }
+
+  // ── per-frame update ──
+  tick(dt) {
+    const s = this.s;
+    s.time += dt;
+    this.secTimer += dt;
+    if (this.secTimer >= 1) { this.secTimer -= 1; this.second(); }
+
+    for (const v of s.villagers) this.stepVillager(v, dt);
+
+    // farms grow on their own once sown
+    for (const b of s.buildings) {
+      if (b.type === 'farm' && b.built && b.data.stage === 'growing') {
+        const before = b.data.grow;
+        b.data.grow = Math.min(1, b.data.grow + dt / 50);
+        if (b.data.grow >= 1) { b.data.stage = 'ripe'; this.emit('farm', b); }
+        else if (((before * 20) | 0) !== ((b.data.grow * 20) | 0)) this.emit('farm', b);
+      }
+    }
+  }
+
+  second() {
+    const s = this.s, W = this.world;
+    // meals
+    let hungry = 0;
+    for (const v of s.villagers) {
+      v.hunger += 1;
+      if (v.hunger >= MEAL) {
+        if (s.res.food >= 1) { s.res.food -= 1; v.hunger = 0; v.hungry = false; }
+        else { v.hungry = true; v.hunger = MEAL; }
+      }
+      if (v.hungry) hungry++;
+    }
+    // happiness drifts toward a target
+    const pop = s.villagers.length, housing = this.housing();
+    let joy = 0;
+    for (const b of s.buildings) if (isDecor(b.type)) joy += DECOR[b.type].joy;
+    let target = 55 + Math.min(30, joy * 1.5) + (s.res.food > pop * 3 ? 10 : 0) - (hungry ? 15 + 30 * hungry / pop : 0) - (pop > housing ? 15 : 0);
+    target = Math.max(0, Math.min(100, target));
+    s.happiness += (target - s.happiness) * 0.05;
+    // newcomers
+    s.popTimer += 1;
+    if (pop < housing && s.res.food >= 5 && s.happiness >= 35 && s.popTimer >= 22) {
+      s.popTimer = 0;
+      const sid = this.homeWithRoom();
+      const e = W.entry;
+      const v = this.spawnVillager(sid, toWorld(e.x), toWorld(e.z));
+      this.log(`${v.name} moved to ${SETTLEMENTS.find(o => o.id === sid).name}.`);
+      this.emit('toast', `${v.name.split(' ')[0]} joined the village!`, 'person');
+    }
+    // berries regrow
+    for (let i = 0; i < W.bushes.length; i++) {
+      const b = W.bushes[i];
+      if (b.alive && !b.ripe && (b.regrow -= 1) <= 0) { b.ripe = true; this.emit('bush', i); }
+    }
+    // saplings grow
+    if ((s.time | 0) % 3 === 0) for (let i = this.origTrees; i < W.trees.length; i++) {
+      const t = W.trees[i];
+      if (t.alive && t.growth < 1) { t.growth = Math.min(1, t.growth + 3 / 140); this.emit('tree', i); }
+    }
+    // footpaths slowly fade back to grass
+    if ((s.time | 0) % 10 === 0) for (let i = 0; i < W.wear.length; i++) {
+      if (W.road[i] || W.wear[i] <= 0) continue;
+      const q = (W.wear[i] * 10) | 0;
+      W.wear[i] = Math.max(0, W.wear[i] - 0.012);
+      if (((W.wear[i] * 10) | 0) !== q) this.emit('tile', i);
+    }
+    this.emit('second');
+  }
+
+  housing() { let h = 0; for (const b of this.s.buildings) if (b.built) h += defOf(b.type).housing || 0; return h; }
+  housingIn(sid) { let h = 0; for (const b of this.s.buildings) if (b.built && b.sid === sid) h += defOf(b.type).housing || 0; return h; }
+  homeWithRoom() {
+    let best = 'meadow', room = -1e9;
+    for (const sid of Object.keys(this.s.unlocked)) {
+      const r = this.housingIn(sid) - this.s.villagers.filter(v => v.home === sid).length;
+      if (r > room) { room = r; best = sid; }
+    }
+    return best;
+  }
+
+  stepVillager(v, dt) {
+    if (!v.task) { v.thinkCd = (v.thinkCd || 0) - dt; if (v.thinkCd > 0) return; this.think(v); if (!v.task) { v.thinkCd = 1.5; return; } }
+    const t = v.task, st = t.steps[t.i];
+    if (!st) { v.task = null; return; }
+    const W = this.world;
+    if (st.walk) {
+      if (!v.path) {
+        // escape a blocked tile first (e.g. a building was placed on us)
+        let s = idx(toTile(v.x), toTile(v.z));
+        const g = st.walk;
+        const goal = g.near ? this.adjGoal(g.near) : g.adj ? (i => Math.max(Math.abs(tileX(i) - g.tx), Math.abs(tileZ(i) - g.tz)) <= 1 && W.passable(i)) : (i => tileX(i) === g.tx && tileZ(i) === g.tz);
+        let pre = null;
+        if (!W.passable(s) && !goal(s)) {
+          const e = this.nearestPassable(s);
+          if (e >= 0) { pre = s; s = e; }
+        }
+        const path = W.findPath(s, g.tx, g.tz, goal);
+        if (!path) { this.dropTask(v); v.thinkCd = 2; return; }
+        if (pre !== null) path.unshift(pre);
+        v.path = path; v.pathI = 1;
+      }
+      if (v.pathI >= v.path.length) { v.path = null; t.i++; return; }
+      const ti = v.path[v.pathI];
+      const arrived = this.moveToward(v, toWorld(tileX(ti)), toWorld(tileZ(ti)), dt, ti);
+      if (arrived) v.pathI++;
+      return;
+    }
+    if (st.to) { if (this.moveToward(v, st.to[0], st.to[1], dt, -1)) t.i++; return; }
+    if (st.face) { v.face = Math.atan2(st.face[0] - v.x, st.face[1] - v.z); t.i++; return; }
+    if (st.fn) { st.fn(); t.i++; if (t.i >= t.steps.length) v.task = null; return; }
+    if (st.act) {
+      if (!v.act) { v.act = { t: 0, dur: st.act, anim: st.anim }; st.start?.(); }
+      v.act.t += dt * (v.act.idle ? 1 : this.workRate(v));
+      if (v.act.t >= v.act.dur) {
+        const act = v.act;
+        v.act = null; t.again = false;
+        st.done?.(act);
+        if (v.task !== t || t.again) return;          // replaced, dropped or repeating
+        t.i++;
+        if (t.i >= t.steps.length) { v.task = null; if (t.claim) this.releaseClaim(v, t.claim); }
+      }
+    }
+  }
+  nearestPassable(s) {
+    const W = this.world, sx = tileX(s), sz = tileZ(s);
+    for (let r = 1; r <= 5; r++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dz)) !== r || !inMap(sx + dx, sz + dz)) continue;
+      const i = idx(sx + dx, sz + dz);
+      if (W.passable(i)) return i;
+    }
+    return -1;
+  }
+  releaseClaim(v, [k, i]) {
+    const o = k === 't' ? this.world.trees[i] : k === 'r' ? this.world.rocks[i] : this.world.bushes[i];
+    if (o && o.claimed === v.id) o.claimed = -1;
+  }
+  adjGoal(b) {
+    const [w, d] = footprint(b.type, b.rot), W = this.world;
+    return i => {
+      const x = tileX(i), z = tileZ(i);
+      return x >= b.tx - 1 && x <= b.tx + w && z >= b.tz - 1 && z <= b.tz + d && W.passable(i);
+    };
+  }
+
+  moveToward(v, x, z, dt, ti) {
+    const W = this.world;
+    const dx = x - v.x, dz = z - v.z, dist = Math.hypot(dx, dz);
+    const cur = idx(toTile(v.x), toTile(v.z));
+    const speed = 1.7 * (1 + Math.min(W.wear[cur] || 0, 1) * 0.35) * (v.hungry ? 0.7 : 1) * (0.85 + this.s.happiness / 100 * 0.3);
+    const step = speed * dt;
+    v.face = Math.atan2(dx, dz);
+    v.moving = true;
+    if (dist <= step) {
+      v.x = x; v.z = z;
+      if (ti >= 0) this.wearTile(ti);
+      return true;
+    }
+    v.x += dx / dist * step; v.z += dz / dist * step;
+    return false;
+  }
+  wearTile(i) {
+    const W = this.world;
+    if (W.road[i] || W.occ[i] >= 0 || W.type[i] === T_WATER) return;
+    const q = (W.wear[i] * 10) | 0;
+    W.wear[i] = Math.min(1.4, W.wear[i] + 0.035);
+    if (((W.wear[i] * 10) | 0) !== q) this.emit('tile', i);
+  }
+
+  // ── quests ──
+  questProgress(q) {
+    const st = this.s.stats;
+    switch (q.kind) {
+      case 'build': return st.built[q.key] || 0;
+      case 'job': return this.s.villagers.filter(v => v.job === q.key).length;
+      case 'produce': return st.produced[q.key] || 0;
+      case 'pop': return this.s.villagers.length;
+      case 'earn': return st.earned;
+      case 'decor': return st.decor;
+      case 'unlock': return this.s.unlocked[q.key] ? 1 : 0;
+    }
+    return 0;
+  }
+  activeQuests() {
+    return QUESTS.filter(q => !this.s.quests.claimed.includes(q.id)).slice(0, 3)
+      .map(q => ({ q, p: Math.min(q.n, this.questProgress(q)), done: this.questProgress(q) >= q.n }));
+  }
+  claim(qid) {
+    const q = QUESTS.find(o => o.id === qid);
+    if (!q || this.s.quests.claimed.includes(qid) || this.questProgress(q) < q.n) return false;
+    this.s.quests.claimed.push(qid);
+    const r = q.reward;
+    if (r.gems) this.s.res.gems += r.gems;
+    if (r.coins) this.s.res.coins += r.coins;
+    if (r.xp) this.addXp(r.xp);
+    this.emit('res'); this.emit('sfx', 'coin');
+    this.log(`Quest complete: ${q.title}.`);
+    return true;
+  }
+
+  // ── save / load ──
+  serialize() {
+    const W = this.world;
+    const alive = new Uint8Array(Math.ceil(this.origTrees / 8));
+    for (let i = 0; i < this.origTrees; i++) if (W.trees[i].alive) alive[i >> 3] |= 1 << (i & 7);
+    const planted = [];
+    for (let i = this.origTrees; i < W.trees.length; i++) { const t = W.trees[i]; if (t.alive) planted.push([t.tx, t.tz, +t.growth.toFixed(3)]); }
+    const wear = new Uint8Array(W.wear.length);
+    for (let i = 0; i < wear.length; i++) wear[i] = Math.min(255, Math.round(W.wear[i] * 180));
+    const marked = []; W.trees.forEach((t, i) => { if (t.alive && t.marked && i < this.origTrees) marked.push(i); });
+    const villagers = this.s.villagers.map(v => ({ ...v, task: null, act: null, path: null, moving: false }));
+    return {
+      ...this.s, villagers,
+      world: {
+        alive: b64(alive), planted, marked, wear: b64(wear),
+        rocks: W.rocks.map(r => r.alive ? r.hp : 0),
+        bushes: W.bushes.map(b => b.alive ? (b.ripe ? -1 : Math.round(b.regrow)) : -2),
+      },
+    };
+  }
+  load(save) {
+    const W = this.world;
+    const { world, ...s } = save;
+    this.s = s;
+    const alive = unb64(world.alive);
+    for (let i = 0; i < this.origTrees; i++) if (!(alive[i >> 3] & (1 << (i & 7)))) W.removeTree(i);
+    for (const i of world.marked || []) if (W.trees[i]) W.trees[i].marked = true;
+    for (const [tx, tz, g] of world.planted) W.addTree(tx, tz, this.rng, g);
+    const wear = unb64(world.wear);
+    for (let i = 0; i < wear.length; i++) W.wear[i] = W.road[i] ? 1 : wear[i] / 180;
+    world.rocks.forEach((hp, i) => { if (hp <= 0) W.removeRock(i); else W.rocks[i].hp = hp; });
+    world.bushes.forEach((v, i) => { const b = W.bushes[i]; if (v === -2) W.removeBush(i); else if (v >= 0) { b.ripe = false; b.regrow = v; } });
+    for (const b of s.buildings) {
+      this.bById.set(b.id, b);
+      const [w, d] = footprint(b.type, b.rot);
+      for (let z = b.tz; z < b.tz + d; z++) for (let x = b.tx; x < b.tx + w; x++) W.occ[idx(x, z)] = b.id;
+    }
+    for (const v of s.villagers) { this.vById.set(v.id, v); v.task = null; v.act = null; }
+  }
+}
+
+function b64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function unb64(str) { const s = atob(str), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+
+export { DAY };
