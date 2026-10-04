@@ -13,12 +13,12 @@ export function footprint(type, rot) { const [w, d] = defOf(type).size; return r
 const DAY = 240;                     // sim seconds per in-game day
 const MEAL = 80;                     // seconds between meals per villager
 const CONVERT = {                    // staffed converters: inputs -> outputs, seconds
-  sawyer: { in: { wood: 2 }, out: { planks: 1 }, t: 5, anim: 'saw' },
+  sawyer: { in: { wood: 2 }, out: { planks: 1 }, t: 5, anim: 'saw', keep: { wood: 40 } },
   miller: { in: { grain: 3 }, out: { flour: 2 }, t: 6, anim: 'work' },
   baker:  { in: { flour: 2 }, out: { food: 8 }, t: 7, anim: 'work', stat: 'bread' },
-  mason:  { in: { stone: 3 }, out: { bricks: 1 }, t: 6, anim: 'hammer' },
+  mason:  { in: { stone: 3 }, out: { bricks: 1 }, t: 6, anim: 'hammer', keep: { stone: 40 } },
 };
-const RANGE = { woodcutter: 14, forager: 15, miner: 18, forester: 7 };
+const RANGE = { woodcutter: 20, forager: 16, miner: 20, forester: 7 };
 
 export class Sim {
   constructor(save) {
@@ -43,7 +43,7 @@ export class Sim {
       xp: 0, level: 1, happiness: 70,
       buildings: [], villagers: [], unlocked: {},
       quests: { claimed: [] }, stats: { built: {}, produced: {}, earned: 0, decor: 0 },
-      sell: Object.fromEntries(SELLABLE.map(k => [k, k !== 'food' && k !== 'grain'])),
+      sell: Object.fromEntries(SELLABLE.map(k => [k, k === 'food' || k === 'grain'])),
       log: [], popTimer: 0, tutorial: 0,
     };
     this.unlock('meadow', true);
@@ -141,6 +141,18 @@ export class Sim {
       if (!s) return { ok: false, why: 'Outside your settlements' };
       sid = sid ?? s;
     }
+    if (!isDecor(type) || type === 'well' || type === 'statue') {
+      for (const o of this.s.buildings) {
+        if (isDecor(o.type)) continue;
+        const [ex, ez] = this.entryTile(o);
+        if (ex >= tx && ex < tx + w && ez >= tz && ez < tz + d) return { ok: false, why: `That would block the ${defOf(o.type).name}'s door` };
+      }
+    }
+    if (!isDecor(type)) {
+      const [ex, ez] = this.entryTile({ type, tx, tz, rot });
+      const ei = idx(ex, ez);
+      if (!inMap(ex, ez) || (W.type[ei] === T_WATER && !W.bridge[ei]) || W.block[ei] || W.rock[ei] >= 0) return { ok: false, why: 'The door needs open ground in front' };
+    }
     if (def.lvl && this.s.level < def.lvl) return { ok: false, why: `Needs level ${def.lvl}` };
     if (!this.canAfford(def.cost)) return { ok: false, why: 'Not enough resources' };
     if (def.needsWater) {
@@ -191,6 +203,7 @@ export class Sim {
     for (let z = tz; z < tz + d; z++) for (let x = tx; x < tx + w; x++) {
       const i = idx(x, z);
       W.occ[i] = b.id; if (!W.road[i]) W.wear[i] = 0;
+      if (!isDecor(type)) W.block[i] = 1;
       if (W.tree[i] >= 0) { if (built) this.fellTree(W.tree[i], false); else b.clear.push(['t', W.tree[i]]); }
       if (W.rock[i] >= 0) { if (built) this.breakRock(W.rock[i]); else b.clear.push(['r', W.rock[i]]); }
       if (W.bush[i] >= 0) { if (built) this.clearBush(W.bush[i]); else b.clear.push(['b', W.bush[i]]); }
@@ -226,7 +239,7 @@ export class Sim {
     for (const vid of [...b.workers]) this.unassign(this.vById.get(vid));
     for (const [k, v] of Object.entries(def.cost || {})) this.s.res[k] += Math.floor(v * (b.built ? 0.5 : 1));
     const [w, d] = footprint(b.type, b.rot);
-    for (let z = b.tz; z < b.tz + d; z++) for (let x = b.tx; x < b.tx + w; x++) { W.occ[idx(x, z)] = -1; this.emit('tile', idx(x, z)); }
+    for (let z = b.tz; z < b.tz + d; z++) for (let x = b.tx; x < b.tx + w; x++) { W.occ[idx(x, z)] = -1; W.block[idx(x, z)] = 0; this.emit('tile', idx(x, z)); }
     this.s.buildings = this.s.buildings.filter(o => o !== b); this.bById.delete(b.id);
     if (isDecor(b.type)) this.s.stats.decor = Math.max(0, this.s.stats.decor - 1);
     for (const v of this.s.villagers) if (v.task?.bid === b.id) this.dropTask(v);
@@ -309,6 +322,9 @@ export class Sim {
     const b = v.work ? this.bById.get(v.work) : null;
     if (job === 'idle') return this.thinkIdle(v);
     if (!b) { this.unassign(v); return; }
+    // nobody idle but a site is waiting? up to two workers pitch in for a bit
+    const site = this.siteNeedingHelp(v);
+    if (site) return this.taskBuild(v, site, true);
     if (job === 'woodcutter') return this.taskGather(v, b, 't');
     if (job === 'miner') return this.taskGather(v, b, 'r');
     if (job === 'forager') return this.taskGather(v, b, 'b');
@@ -326,6 +342,20 @@ export class Sim {
     if (b.type === 'farm') return this.local(b, -0.8 + k * 1.1, -0.25 + (k % 2) * 0.5);
     const off = b.workers.length > 1 ? (k ? 0.35 : -0.35) : 0;
     return this.local(b, off, d / 2 + 0.28);
+  }
+
+  siteNeedingHelp(v) {
+    const s = this.s;
+    if (!s.buildings.some(b => !b.built)) return null;
+    if (s.villagers.some(o => o.job === 'idle')) return null;
+    if (s.villagers.filter(o => o.task?.volunteer).length >= 2) return null;
+    let best = null, bd = 1e9;
+    for (const b of s.buildings) {
+      if (b.built) continue;
+      const d = this.distTo(v, b);
+      if (d < bd) { bd = d; best = b; }
+    }
+    return bd < 40 ? best : null;
   }
 
   thinkIdle(v) {
@@ -353,7 +383,7 @@ export class Sim {
   }
   distTo(v, b) { const c = this.bCenter(b); return Math.hypot(v.x - c.x, v.z - c.z); }
 
-  taskBuild(v, b) {
+  taskBuild(v, b, volunteer = false) {
     const W = this.world;
     // clear obstacles first
     while (b.clear.length) {
@@ -372,7 +402,7 @@ export class Sim {
           else { this.clearBush(i); this.floatGain(o.x, o.z, 'food', this.add('food', 2)); }
           b.clear = b.clear.filter(([kk, ii]) => !(kk === k && ii === i));
         } },
-      ], { claim: [k, i], bid: b.id });
+      ], { claim: [k, i], bid: b.id, volunteer });
     }
     const n = this.s.villagers.filter(o => o.task?.bid === b.id).length;
     const p = this.local(b, ((n % 3) - 1) * 0.6, this.bCenter(b).d / 2 + 0.35);
@@ -386,9 +416,9 @@ export class Sim {
         b.progress = Math.min(1, b.progress + 2 * this.workRate(v) / def.time);
         this.emit('progress', b);
         if (b.progress >= 1) this.finishBuilding(b);
-        else this.repeat(v);
+        else if (!volunteer || (v.task.reps = (v.task.reps || 0) + 1) < 6) this.repeat(v);
       } },
-    ], { bid: b.id });
+    ], { bid: b.id, volunteer });
   }
   // let a villager keep working the same task without a fresh plan
   repeat(v) { if (v.task) v.task.again = true; }
@@ -409,7 +439,7 @@ export class Sim {
     let best = -1, bd = range;
     for (let i = 0; i < list.length; i++) {
       const o = list[i];
-      if (!o.alive || o.claimed >= 0) continue;
+      if (!o.alive || o.claimed >= 0 || o.skipUntil > this.s.time) continue;
       if (kind === 't') {
         if (o.growth < 1) continue;
         if (markedOnly && !o.marked) continue;
@@ -423,14 +453,41 @@ export class Sim {
     return best;
   }
 
+  // walking-cost field around a workplace, cached for a little while
+  field(b, range) {
+    const f = b._field;
+    if (f && f.until > this.s.time && f.range === range) return f.dist;
+    const W = this.world, [w, d] = footprint(b.type, b.rot), starts = [];
+    for (let z = b.tz - 1; z <= b.tz + d; z++) for (let x = b.tx - 1; x <= b.tx + w; x++)
+      if (inMap(x, z) && W.passable(idx(x, z))) starts.push(idx(x, z));
+    const dist = W.walkField(starts, range * 1.5);
+    Object.defineProperty(b, '_field', { value: { dist, until: this.s.time + 25, range }, writable: true, configurable: true, enumerable: false });
+    return dist;
+  }
+  nearestByWalk(b, kind, range, markedOnly = false) {
+    const W = this.world, dist = this.field(b, range);
+    const list = kind === 't' ? W.trees : kind === 'r' ? W.rocks : W.bushes;
+    let best = -1, bd = Infinity;
+    for (let i = 0; i < list.length; i++) {
+      const o = list[i];
+      if (!o.alive || o.claimed >= 0 || o.skipUntil > this.s.time) continue;
+      if (kind === 't' && (o.growth < 1 || (markedOnly && !o.marked) || W.occ[idx(o.tx, o.tz)] >= 0)) continue;
+      if (kind === 'b' && !o.ripe) continue;
+      let d = dist[idx(o.tx, o.tz)];
+      if (d === Infinity) continue;
+      if (kind === 't' && o.marked) d -= 8;
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+
   taskGather(v, b, kind) {
-    const c = this.bCenter(b);
     const job = { t: 'woodcutter', r: 'miner', b: 'forager' }[kind];
     let i = -1;
-    if (kind === 't') i = this.nearestTarget(c.x, c.z, 't', 50, true);   // marked trees anywhere nearby first
-    if (i < 0) i = this.nearestTarget(c.x, c.z, kind, RANGE[job]);
+    if (kind === 't') i = this.nearestByWalk(b, 't', 40, true);   // marked trees first
+    if (i < 0) i = this.nearestByWalk(b, kind, RANGE[job]);
     if (i < 0) {
-      b.status = kind === 't' ? 'No trees nearby' : kind === 'r' ? 'No boulders nearby' : 'Waiting for berries';
+      b.status = kind === 't' ? 'No trees nearby — build a Forester' : kind === 'r' ? 'No boulders nearby' : 'Waiting for berries';
       return this.setTask(v, 'Waiting', [{ walk: this.goalBuilding(b) }, { act: 5, anim: 'rest' }]);
     }
     b.status = null;
@@ -512,6 +569,8 @@ export class Sim {
           b.status = 'Needs ' + Object.keys(cv.in).map(r => GOODS[r].name.toLowerCase()).join(', ');
           v.act.anim = 'rest'; v.act.idle = true; return;
         }
+        const short = Object.entries(cv.keep || {}).find(([r, n]) => res[r] - (cv.in[r] || 0) < n && this.s.buildings.some(o => !o.built));
+        if (short) { b.status = `Saving ${GOODS[short[0]].name.toLowerCase()} for builders`; v.act.anim = 'rest'; v.act.idle = true; return; }
         const outRes = Object.keys(cv.out)[0];
         if (res[outRes] >= this.cap() && GOODS[outRes].capped) { b.status = 'Storage full'; v.act.anim = 'rest'; v.act.idle = true; return; }
         b.status = null; this.pay(cv.in);
@@ -581,7 +640,7 @@ export class Sim {
     if (!t.alive) return;
     this.world.removeTree(ti);
     this.emit('tree', ti);
-    if (stump) this.emit('stump', t.x, t.z);
+    if (stump) { this.emit('felled', ti); this.emit('stump', t.x, t.z); }
     this.emit('tile', idx(t.tx, t.tz));
   }
   breakRock(ri) { this.world.removeRock(ri); this.emit('rock', ri); }
@@ -686,8 +745,12 @@ export class Sim {
           const e = this.nearestPassable(s);
           if (e >= 0) { pre = s; s = e; }
         }
-        const path = W.findPath(s, g.tx, g.tz, goal);
-        if (!path) { this.dropTask(v); v.thinkCd = 2; return; }
+        let path = W.findPath(s, g.tx, g.tz, goal);
+        if (!path && !t.claim) { W.relaxed = true; path = W.findPath(s, g.tx, g.tz, goal); W.relaxed = false; }
+        if (!path) {
+          if (t.claim) { const o = this.claimObj(t.claim); if (o) o.skipUntil = this.s.time + 240; }
+          this.dropTask(v); v.thinkCd = 2; return;
+        }
         if (pre !== null) path.unshift(pre);
         v.path = path; v.pathI = 1;
       }
@@ -722,6 +785,7 @@ export class Sim {
     }
     return -1;
   }
+  claimObj([k, i]) { return k === 't' ? this.world.trees[i] : k === 'r' ? this.world.rocks[i] : this.world.bushes[i]; }
   releaseClaim(v, [k, i]) {
     const o = k === 't' ? this.world.trees[i] : k === 'r' ? this.world.rocks[i] : this.world.bushes[i];
     if (o && o.claimed === v.id) o.claimed = -1;
@@ -824,7 +888,7 @@ export class Sim {
     for (const b of s.buildings) {
       this.bById.set(b.id, b);
       const [w, d] = footprint(b.type, b.rot);
-      for (let z = b.tz; z < b.tz + d; z++) for (let x = b.tx; x < b.tx + w; x++) W.occ[idx(x, z)] = b.id;
+      for (let z = b.tz; z < b.tz + d; z++) for (let x = b.tx; x < b.tx + w; x++) { W.occ[idx(x, z)] = b.id; if (!isDecor(b.type)) W.block[idx(x, z)] = 1; }
     }
     for (const v of s.villagers) { this.vById.set(v.id, v); v.task = null; v.act = null; }
   }

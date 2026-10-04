@@ -6,9 +6,9 @@ export const GOODS = {
   planks: { name: 'Planks', icon: 'plank', price: 3, reserve: 30, capped: true },
   stone:  { name: 'Stone',  icon: 'stone', price: 1, reserve: 60, capped: true },
   bricks: { name: 'Bricks', icon: 'brick', price: 5, reserve: 20, capped: true },
-  grain:  { name: 'Grain',  icon: 'wheat', price: 2, reserve: 30, capped: true },
+  grain:  { name: 'Grain',  icon: 'wheat', price: 2, reserve: 60, capped: true },
   flour:  { name: 'Flour',  icon: 'flour', price: 3, reserve: 20, capped: true },
-  food:   { name: 'Food',   icon: 'apple', price: 2, reserve: 60, capped: true },
+  food:   { name: 'Food',   icon: 'apple', price: 2, reserve: 150, capped: true },
   gems:   { name: 'Gems',   icon: 'gem' },
 };
 export const TOP_GOODS = ['coins', 'wood', 'planks', 'stone', 'food', 'gems'];

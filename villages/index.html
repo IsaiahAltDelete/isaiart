@@ -266,6 +266,16 @@
     #floats { position: fixed; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
     .float { position: absolute; display: flex; align-items: center; gap: 2px; font-weight: 700; font-size: 14px; color: #fff; text-shadow: 0 1px 0 #3b220e, 0 0 3px #3b220e, 0 0 1px #3b220e; animation: rise 1.6s ease-out forwards; transform: translate(-50%, -50%); white-space: nowrap; }
     @keyframes rise { to { margin-top: -46px; opacity: 0; } }
+    #bars { position: fixed; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+    .cbar { position: absolute; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 3px; padding: 2px 5px 2px 2px; border-radius: 10px; background: rgba(255,248,232,.95); border: 2px solid var(--edge); box-shadow: 0 2px 0 rgba(90,55,20,.25); }
+    .cbar .t { width: 46px; height: 8px; border-radius: 4px; background: #ead9b8; overflow: hidden; }
+    .cbar .t i { display: block; height: 100%; background: linear-gradient(90deg, #ffd866, #f0a826); transition: width .4s; }
+    .cbar small { font-size: 10px; font-weight: 700; min-width: 22px; }
+    #cardtip { position: fixed; z-index: 8; width: 230px; padding: 8px 10px; font-size: 12.5px; pointer-events: none; transform: translate(-50%, -100%); }
+    #cardtip b { font-size: 15px; display: block; }
+    #cardtip p { color: var(--ink2); margin: 2px 0 6px; line-height: 1.25; }
+    #cardtip .kv { margin: 0; }
+    #placebar .msg b { display: block; font-size: 14px; color: var(--ink); }
     #tag { position: fixed; z-index: 3; pointer-events: none; transform: translate(-50%, -100%); background: rgba(255,248,232,.95); border: 2px solid var(--edge); border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 
     #loading { position: fixed; inset: 0; z-index: 50; background: radial-gradient(circle at 50% 40%, #9fd873, #4f9a36); display: grid; place-items: center; color: #fff; transition: opacity .6s; }
@@ -312,6 +322,12 @@
       .worldwrap { grid-template-columns: 1fr; }
       #home { display: none; }
       #loading h1 { font-size: 40px; }
+      #side { display: none; }
+      #toasts { top: calc(118px + var(--sat)); width: 92vw; }
+      .toast { font-size: 12.5px; max-width: 92vw; }
+      .toast.big { font-size: 14px; padding: 8px 12px 8px 8px; }
+      .toast.big .ic { width: 24px; height: 24px; }
+      #placebar .msg { max-width: 150px; font-size: 12px; }
     }
     @media (max-width: 380px) {
       #dockbar > button { width: 52px; }
@@ -391,7 +407,9 @@
   </div>
 
   <div id="toasts"></div>
+  <div id="bars"></div>
   <div id="floats"></div>
+  <div id="cardtip" class="panel hidden"></div>
   <div id="tag" class="hidden"></div>
   <a id="home" href="/">← isaiart.com</a>
 

@@ -86,6 +86,12 @@ export class UI {
       g.startPlace(type);
       this.markCard(type);
     });
+    $('#cards').addEventListener('pointerover', e => {
+      const c = e.target.closest('.card');
+      if (c && e.pointerType === 'mouse') this.cardTip(c); else if (!c) $('#cardtip').classList.add('hidden');
+    });
+    $('#cards').addEventListener('pointerleave', () => $('#cardtip').classList.add('hidden'));
+    $('#cards').addEventListener('scroll', () => $('#cardtip').classList.add('hidden'));
     $('#cards').addEventListener('wheel', e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { $('#cards').scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
     $('#pCancel').innerHTML = svg('close', 22); $('#pRot').innerHTML = svg('rotate', 22); $('#pOk').innerHTML = svg('check', 22);
     $('#pCancel').onclick = () => g.cancelPlace();
@@ -99,6 +105,7 @@ export class UI {
     $('#info').addEventListener('click', e => this.infoClick(e));
     $('#info').addEventListener('change', e => this.modalChange(e));
     this.seenLog = 0;
+    this.hammer = svg('hammer', 16);
   }
 
   // ── per-frame ──
@@ -273,6 +280,27 @@ export class UI {
       if (!locked && lk) lk.remove();
     }
   }
+  cardTip(card) {
+    const type = card.dataset.type, tip = $('#cardtip');
+    if (type === 'clear') {
+      tip.innerHTML = `<b>Clear Trees</b><p>Mark trees to fell. Woodcutters go for marked trees first, and idle villagers help too. Click a marked tree again to unmark it.</p>`;
+    } else {
+      const d = defOf(type), s = this.sim.s;
+      let rows = '';
+      if (d.workers) rows += `<dt>Workers</dt><dd>${d.workers} ${JOBS[d.job].name.toLowerCase()}${d.workers > 1 ? 's' : ''}</dd>`;
+      if (d.housing) rows += `<dt>Homes</dt><dd>${d.housing} villagers</dd>`;
+      if (d.storage) rows += `<dt>Storage</dt><dd>+${d.storage} each</dd>`;
+      if (DECOR[type]) rows += `<dt>Happiness</dt><dd>+${d.joy}</dd>`;
+      if (d.time) rows += `<dt>Build work</dt><dd>${d.time}s</dd>`;
+      rows += `<dt>Cost</dt><dd>${Object.entries(d.cost || {}).map(([k, v]) => `<span style="display:inline-flex;align-items:center;gap:2px;margin-left:6px;${(s.res[k] || 0) < v ? 'color:#c0392b' : ''}">${svg(GOODS[k].icon, 14)}${v}</span>`).join('')}</dd>`;
+      if (d.lvl > s.level) rows += `<dt>Unlocks at</dt><dd>Level ${d.lvl}</dd>`;
+      tip.innerHTML = `<b>${esc(d.name)}</b><p>${esc(d.desc || (DECOR[type] ? 'A cozy touch that makes villagers happier.' : ''))}</p><dl class="kv">${rows}</dl>`;
+    }
+    const r = card.getBoundingClientRect();
+    tip.style.left = Math.max(125, Math.min(innerWidth - 125, r.left + r.width / 2)) + 'px';
+    tip.style.top = (r.top - 10) + 'px';
+    tip.classList.remove('hidden');
+  }
   markCard(type) { document.querySelectorAll('#cards .card').forEach(c => c.classList.toggle('sel', c.dataset.type === type)); }
   closeTray() {
     this.tray = null;
@@ -280,9 +308,10 @@ export class UI {
     $('#dockbar').classList.remove('hidden');
   }
 
-  placeBar(show, msg = '', bad = false, touch = false) {
+  placeBar(show, msg = '', bad = false, touch = false, title = '') {
     $('#placebar').classList.toggle('hidden', !show);
-    $('#pMsg').textContent = msg;
+    $('#cardtip').classList.add('hidden');
+    $('#pMsg').innerHTML = (title ? `<b>${esc(title)}</b>` : '') + esc(msg);
     $('#pMsg').classList.toggle('bad', bad);
     $('#pOk').classList.toggle('hidden', !touch);
   }

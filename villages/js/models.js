@@ -141,12 +141,15 @@ function lumber(g, a) {
 }
 
 function forager(g, a) {
-  g.add(cyl(0.7, 0.75, 0.6, 9, 0xe4d2ae, 0, 0, 0));
-  const r = cone(0.95, 0.75, 9, C.blue, 0, 0.6, 0); g.add(r);
-  g.add(cone(0.5, 0.42, 9, 0xd9e6f2, 0, 0.92, 0));
-  g.add(door(0, 0, 0.72));
-  for (const [x, z, c] of [[0.75, 0.55, C.berry], [-0.75, 0.6, 0x5a4ab0], [0.8, -0.4, C.berry]]) {
-    g.add(cyl(0.16, 0.12, 0.16, 8, C.plank, x, 0, z)); g.add(ball(0.12, c, x, 0.2, z));
+  // round yurt with a striped conical roof
+  g.add(cyl(0.55, 0.6, 0.62, 10, 0xe9d8b4, 0, 0, 0));
+  g.add(cyl(0.61, 0.61, 0.06, 10, C.timber, 0, 0.58, 0));
+  g.add(cone(0.74, 0.62, 10, C.blue, 0, 0.62, 0));
+  g.add(cone(0.42, 0.36, 10, 0xeaf1f8, 0, 0.9, 0));
+  g.add(cone(0.16, 0.16, 10, C.blue, 0, 1.18, 0));
+  g.add(door(0, 0, 0.58));
+  for (const [x, z, c] of [[0.7, 0.55, C.berry], [-0.7, 0.6, 0x5a4ab0], [0.78, -0.35, C.berry]]) {
+    g.add(cyl(0.15, 0.11, 0.16, 8, C.plank, x, 0, z)); g.add(ball(0.11, c, x, 0.2, z));
   }
 }
 
@@ -283,7 +286,10 @@ function campfire(g, a) {
   for (const [x, z, r] of [[0, 0.95, 0], [-0.95, 0, Math.PI / 2], [0.9, -0.35, Math.PI / 2.4]]) {
     const b = cyl(0.1, 0.1, 0.6, 7, C.log, x, 0.1, z); b.rotation.x = Math.PI / 2; b.rotation.z = r; b.position.y = 0.1; g.add(b);
   }
-  g.add(at(mesh(prismGeo(0.8, 0.55, 0.7), 0xe8dcc0), -0.6, 0, -0.75, 0.6));
+  // cooking tripod with a little pot
+  for (let i = 0; i < 3; i++) { const t = i / 3 * Math.PI * 2; const leg = box(0.03, 0.62, 0.03, C.darkwood, 0.62 + Math.cos(t) * 0.14, 0, -0.62 + Math.sin(t) * 0.14); leg.rotation.set(Math.sin(t) * 0.22, 0, -Math.cos(t) * 0.22); g.add(leg); }
+  g.add(ball(0.11, 0x3a3a3a, 0.62, 0.36, -0.62, 1));
+  g.add(box(0.36, 0.22, 0.26, C.plank, -0.7, 0, -0.55));
 }
 
 // ── decorations ──

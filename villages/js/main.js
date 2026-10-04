@@ -11,7 +11,7 @@ import { initAudio, sfx, setSound, ambient } from './audio.js';
 const SAVE_KEY = 'isaiart.villages.v1';
 const SET_KEY = 'isaiart.villages.settings';
 const NEED_ICON = { sawmill: 'wood', windmill: 'wheat', bakery: 'flour', mason: 'stone' };
-const STATUS_ICON = { 'Storage full': 'bag', 'No trees nearby': 'axe', 'No boulders nearby': 'pick', 'Nothing to sell': 'coin', 'Waiting for berries': 'basket' };
+const STATUS_ICON = { 'Saving wood for builders': 'hammer', 'Saving stone for builders': 'hammer', 'Storage full': 'bag', 'No trees nearby — build a Forester': 'axe', 'No boulders nearby': 'pick', 'Nothing to sell': 'coin', 'Waiting for berries': 'basket' };
 const SACK = { wood: 0x9a6a3e, stone: 0xa9adb0, food: 0xd8304a, grain: 0xe6c35c };
 const ANIM_TOOL = { chop: 'axe', mine: 'pick', hammer: 'hammer', saw: 'hammer', hoe: 'hoe', fish: 'rod', gather: 'basket', plant: 'sapling' };
 const JOB_TOOL = { woodcutter: 'axe', miner: 'pick', fisher: 'rod', forager: 'basket', farmer: 'hoe', forester: 'sapling', mason: 'hammer', sawyer: 'hammer' };
@@ -30,6 +30,8 @@ class Game {
     this.selected = null; this.followV = null;
     this.place = null;
     this.thumbs = {};
+    this.effects = [];
+    this.cbars = new Map();
   }
 
   async init() {
@@ -129,12 +131,18 @@ class Game {
   applyBuild(vis) {
     const b = vis.b;
     if (!b.built) {
-      if (!vis.scaffold) { vis.scaffold = scaffold(footprint(b.type, 0)); vis.group.add(vis.scaffold); }
-      vis.anim.inner.scale.y = 0.06 + 0.94 * b.progress;
+      if (!vis.scaffold) {
+        vis.scaffold = scaffold(footprint(b.type, 0));
+        const [w, d] = footprint(b.type, 0);
+        vis.scaffold.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.1, d * 0.9), mat(0xb08a5a)), { receiveShadow: true }));
+        vis.group.add(vis.scaffold);
+      }
+      vis.anim.inner.visible = b.progress > 0.03;
+      vis.anim.inner.scale.y = 0.1 + 0.9 * b.progress;
       if (vis.anim.smoke) vis.anim.smoke.on = false;
     } else {
       if (vis.scaffold) { vis.group.remove(vis.scaffold); vis.scaffold = null; vis.pop = 1; }
-      vis.anim.inner.scale.y = 1;
+      vis.anim.inner.visible = true; vis.anim.inner.scale.y = 1;
       if (vis.anim.smoke) vis.anim.smoke.on = true;
     }
   }
@@ -153,7 +161,7 @@ class Game {
     if (this.selected?.b === b) this.select(null);
   }
   bubbleFor(b) {
-    if (!b.built) return isDecor(b.type) ? null : 'hammer';
+    if (!b.built) return null;
     const def = defOf(b.type);
     if (b.type === 'farm' && b.data.stage === 'ripe') return 'wheat';
     if (def.workers && !b.workers.length) return 'person';
@@ -283,6 +291,7 @@ class Game {
       const slot = view.addStump(x, z);
       if (slot >= 0) this.stumpList.push({ slot, t: sim.s.time + 140 });
     });
+    sim.on('felled', ti => this.fellEffect(sim.world.trees[ti]));
     sim.on('rock', k => view.updateRock(k));
     sim.on('bush', k => view.updateBush(k));
     sim.on('tile', i => this.tilesDirty.add(i));
@@ -302,6 +311,68 @@ class Game {
     sim.on('log', () => ui.markLog());
     sim.on('sfx', name => sfx[name]?.());
     sim.on('settlements', () => { this.makeLockMarkers(); });
+  }
+
+  // ── little effects: falling trees and leaf puffs ──
+  fellEffect(t) {
+    const r = this.view.rig;
+    if (Math.hypot(t.x - r.tx, t.z - r.tz) > 30 + r.dist * 0.4) return;
+    const geo = t.kind ? this.view.roundG : this.view.pineG;
+    const m = new THREE.Mesh(geo, fallMat()); m.castShadow = true;
+    const s = t.s;
+    m.scale.set(s, s * (0.9 + t.tint * 0.3), s); m.rotation.y = t.rot;
+    const pivot = new THREE.Group(); pivot.add(m);
+    pivot.position.set(t.x, this.sim.world.heightAt(t.x, t.z), t.z);
+    pivot.rotation.y = Math.random() * Math.PI * 2;
+    this.view.fx.add(pivot);
+    let age = 0, landed = false;
+    this.effects.push(dt => {
+      age += dt;
+      const f = Math.min(1, age / 0.9);
+      pivot.rotation.x = Math.pow(f, 2.2) * Math.PI / 2 * 0.96;
+      if (f >= 1 && !landed) { landed = true; this.puff(pivot, s); }
+      if (age > 1.2) { const k = Math.max(0, 1 - (age - 1.2) / 0.5); m.scale.multiplyScalar(k > 0 ? 0.88 : 0); }
+      if (age > 1.7) { this.view.fx.remove(pivot); return false; }
+      return true;
+    });
+  }
+  puff(pivot, s) {
+    const tip = new THREE.Vector3(0, 1.0 * s, 0).applyMatrix4(pivot.matrixWorld);
+    const parts = [];
+    for (let i = 0; i < 7; i++) {
+      const p = new THREE.Mesh(leafGeo, mat(i % 2 ? 0x5fae3f : 0x8cc85a));
+      p.position.copy(tip); p.userData.v = new THREE.Vector3((Math.random() - 0.5) * 2.4, 1 + Math.random() * 1.5, (Math.random() - 0.5) * 2.4);
+      this.view.fx.add(p); parts.push(p);
+    }
+    let age = 0;
+    this.effects.push(dt => {
+      age += dt;
+      for (const p of parts) { p.userData.v.y -= dt * 5; p.position.addScaledVector(p.userData.v, dt); p.scale.setScalar(Math.max(0.01, 1 - age / 0.7)); p.rotation.x += dt * 6; }
+      if (age > 0.7) { for (const p of parts) this.view.fx.remove(p); return false; }
+      return true;
+    });
+  }
+
+  // progress bars floating over construction sites
+  drawBars() {
+    const view = this.view, seen = new Set();
+    for (const b of this.sim.s.buildings) {
+      if (b.built || isDecor(b.type)) continue;
+      const vis = this.bvis.get(b.id); if (!vis) continue;
+      seen.add(b.id);
+      let el = this.cbars.get(b.id);
+      if (!el) {
+        el = document.createElement('div'); el.className = 'cbar';
+        el.innerHTML = this.ui.hammer + '<div class="t"><i></i></div><small></small>';
+        document.getElementById('bars').appendChild(el); this.cbars.set(b.id, el);
+      }
+      const p = view.project(tmpV.set(vis.root.position.x, vis.root.position.y + 1.7, vis.root.position.z));
+      el.style.display = p.vis ? '' : 'none';
+      el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
+      const pct = Math.floor(b.progress * 100) + '%';
+      if (el.lastChild.textContent !== pct) { el.lastChild.textContent = pct; el.querySelector('i').style.width = pct; }
+    }
+    for (const [id, el] of this.cbars) if (!seen.has(id)) { el.remove(); this.cbars.delete(id); }
   }
 
   // ── placement ──
@@ -351,9 +422,10 @@ class Game {
   placeMsg() {
     const p = this.place; if (!p) return;
     const touch = this.lastPointer !== 'mouse';
-    if (p.type === 'clear') this.ui.placeBar(true, touch ? 'Tap or drag over trees to mark them' : 'Click or drag over trees · right-drag to pan', false, false);
-    else if (p.ok) this.ui.placeBar(true, touch ? 'Tap to move · ✓ to build' : 'Click to build · R rotates', false, touch);
-    else this.ui.placeBar(true, p.why, true, touch);
+    const title = p.type === 'clear' ? 'Clear Trees' : defOf(p.type).name;
+    if (p.type === 'clear') this.ui.placeBar(true, touch ? 'Tap or drag over trees to mark them' : 'Click or drag over trees · right-drag to pan', false, false, title);
+    else if (p.ok) this.ui.placeBar(true, touch ? 'Tap to move · ✓ to build' : 'Click to build · R rotates', false, touch, title);
+    else this.ui.placeBar(true, p.why, true, touch, title);
   }
   rotatePlace() {
     const p = this.place; if (!p || p.type === 'clear' || p.type === 'dock') return;
@@ -614,6 +686,8 @@ class Game {
     const t = now / 1000;
     for (const vis of this.bvis.values()) this.updateBVis(vis, dt, t);
     for (const v of sim.s.villagers) { const m = this.vvis.get(v.id); if (m) this.updateVVis(v, m, dt, t); }
+    this.effects = this.effects.filter(f => f(dt));
+    this.drawBars();
 
     // selection ring + name tag
     const tag = document.getElementById('tag');
@@ -650,6 +724,11 @@ class Game {
     mat(0xffe08a).emissive.setRGB(night * 0.9, night * 0.7, night * 0.25);
   }
 }
+
+const tmpV = new THREE.Vector3();
+const leafGeo = new THREE.IcosahedronGeometry(0.09, 0);
+let _fall = null;
+const fallMat = () => _fall || (_fall = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
 
 const ghostCache = new Map();
 function ghostMat(m) {

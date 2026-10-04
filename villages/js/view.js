@@ -56,6 +56,7 @@ export class View {
     this.buildWater();
     this.buildForest();
     this.buildSkirt();
+    this.buildBridges();
 
     this.objects = new THREE.Group(); scene.add(this.objects);
     this.fx = new THREE.Group(); scene.add(this.fx);
@@ -93,7 +94,10 @@ export class View {
     g.setAttribute('color', this.terrainColor);
     g.computeVertexNormals();
     this.terrainGeo = g;
-    for (let i = 0; i < N * N; i++) this.paintTile(i, false);
+    this.tc = new Float32Array(N * N * 3);
+    const c = new THREE.Color();
+    for (let i = 0; i < N * N; i++) { this.tileColor(i, c); this.tc.set([c.r, c.g, c.b], i * 3); }
+    for (let i = 0; i < N * N; i++) this.writeTile(i);
     const m = this.terrain = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
     m.receiveShadow = true;
     this.scene.add(m);
@@ -112,19 +116,45 @@ export class View {
     const wear = W.wear[i];
     if (wear > 0.12) {
       const k = Math.min(1, (wear - 0.12) / 0.6);
-      tmpC.setHex(W.road[i] ? 0xcf9f62 : 0xc8a06a);
+      tmpC.setHex(W.road[i] ? 0xd6b27a : 0xcbab7c);
       out.lerp(tmpC, k * (W.road[i] ? 1 : 0.85));
     }
     if (W.occ[i] >= 0 && !W.road[i]) out.lerp(tmpC.setHex(0xb59a6c), 0.25);
     return out;
   }
+  // Each vertex takes the average colour of the (up to 4) tiles sharing its
+  // corner, so roads and footpaths blend into soft, rounded shapes instead of
+  // hard squares. The second triangle is a touch darker for the faceted look.
+  cornerColor(cx, cz, out) {
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let dz = -1; dz <= 0; dz++) for (let dx = -1; dx <= 0; dx++) {
+      const x = cx + dx, z = cz + dz;
+      if (x < 0 || z < 0 || x >= N || z >= N) continue;
+      const o = (z * N + x) * 3;
+      r += this.tc[o]; g += this.tc[o + 1]; b += this.tc[o + 2]; n++;
+    }
+    out[0] = r / n; out[1] = g / n; out[2] = b / n;
+  }
+  writeTile(i) {
+    const x = tileX(i), z = tileZ(i), a = this.terrainColor.array, o = i * 18;
+    const own = i * 3, tc = this.tc, k = this._ck || (this._ck = [0, 0, 0]);
+    const corners = [[x, z], [x, z + 1], [x + 1, z], [x + 1, z + 1], [x + 1, z], [x, z + 1]];
+    for (let v = 0; v < 6; v++) {
+      this.cornerColor(corners[v][0], corners[v][1], k);
+      const s = v < 3 ? 1 : 0.95;
+      // keep a little of the tile's own colour so grass keeps its patchwork
+      a[o + v * 3] = (k[0] * 0.8 + tc[own] * 0.2) * s;
+      a[o + v * 3 + 1] = (k[1] * 0.8 + tc[own + 1] * 0.2) * s;
+      a[o + v * 3 + 2] = (k[2] * 0.8 + tc[own + 2] * 0.2) * s;
+    }
+  }
   paintTile(i, flag = true) {
     const c = this.tileColor(i, new THREE.Color());
-    const a = this.terrainColor.array, o = i * 18;
-    // second triangle slightly different for the faceted look
-    for (let k = 0; k < 6; k++) {
-      const s = k < 3 ? 1 : 0.94;
-      a[o + k * 3] = c.r * s; a[o + k * 3 + 1] = c.g * s; a[o + k * 3 + 2] = c.b * s;
+    this.tc.set([c.r, c.g, c.b], i * 3);
+    const x = tileX(i), z = tileZ(i);
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx, nz = z + dz;
+      if (nx >= 0 && nz >= 0 && nx < N && nz < N) this.writeTile(nz * N + nx);
     }
     if (flag) this.terrainColor.needsUpdate = true;
   }
@@ -152,6 +182,30 @@ export class View {
     const pm = new THREE.InstancedMesh(pg, new THREE.MeshLambertMaterial({ color: 0x5aa83c, flatShading: true }), pads.length);
     pads.forEach(([x, z, s, r], k) => { tmpQ.setFromAxisAngle(UP, r); pm.setMatrixAt(k, tmpM.compose(tmpV.set(x, -0.12, z), tmpQ, tmpS.set(s, 1, s))); });
     this.scene.add(pm);
+  }
+
+  buildBridges() {
+    const wood = new THREE.MeshLambertMaterial({ color: 0xb98450, flatShading: true });
+    const dark = new THREE.MeshLambertMaterial({ color: 0x7a5232, flatShading: true });
+    for (const b of this.world.bridges) {
+      const g = new THREE.Group();
+      const x0 = b.x0 - HALF - 0.6, x1 = b.x1 - HALF + 1.6, len = x1 - x0, cz = b.z - HALF + 1;
+      for (let k = 0; k < Math.ceil(len / 0.32); k++) {
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 1.9), k % 3 ? wood : dark);
+        const x = x0 + 0.16 + k * 0.32, arch = Math.sin((x - x0) / len * Math.PI) * 0.22;
+        p.position.set(x, 0.12 + arch, cz); p.castShadow = p.receiveShadow = true; g.add(p);
+      }
+      for (const side of [-0.95, 0.95]) {
+        for (let k = 0; k <= 4; k++) {
+          const x = x0 + 0.2 + k * (len - 0.4) / 4, arch = Math.sin((x - x0) / len * Math.PI) * 0.22;
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 0.08), dark);
+          post.position.set(x, 0.32 + arch, cz + side); post.castShadow = true; g.add(post);
+        }
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(len - 0.3, 0.06, 0.07), wood);
+        rail.position.set(x0 + len / 2, 0.58 + 0.15, cz + side); g.add(rail);
+      }
+      this.scene.add(g);
+    }
   }
 
   buildSkirt() {
@@ -276,7 +330,7 @@ export class View {
   }
   updateRock(k) {
     const r = this.world.rocks[k];
-    const s = r.alive ? r.s * (0.45 + 0.55 * r.hp / 60) : 0;
+    const s = r.alive ? r.s * (0.45 + 0.55 * r.hp / 100) : 0;
     tmpQ.setFromAxisAngle(UP, r.rot);
     this.rockMesh.setMatrixAt(k, tmpM.compose(tmpV.set(r.x, this.world.heightAt(r.x, r.z) - 0.05, r.z), tmpQ, tmpS.set(s * 1.6, s * 1.6, s * 1.6)));
     this.rockMesh.instanceMatrix.needsUpdate = true;
