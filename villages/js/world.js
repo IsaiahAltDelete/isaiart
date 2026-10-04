@@ -48,6 +48,7 @@ export class World {
     this.road = new Uint8Array(S);
     this.bridge = new Uint8Array(S);
     this.paved = new Uint8Array(S);
+    this.lane = new Uint8Array(S);      // worn lanes between doors and the campfire
     this.bridges = [];
     this.trees = []; this.rocks = []; this.bushes = [];
     this.entry = ENTRY;

@@ -54,7 +54,7 @@ export class Sim {
     };
     this.unlock('meadow', true);
     const c = CENTERS.meadow;
-    this.addBuilding('cottage', c.x + 2, c.z - 4, 0, true);
+    this.carveLane(this.addBuilding('cottage', c.x + 2, c.z - 4, 0, true));
     // a lived-in camp from the first frame
     for (const [t, x, z, r] of [['bench', -3, 1, 1], ['bench', 1, 2, 0], ['hay', -3, -2, 0], ['flowers', 4, -1, 0], ['fence', 4, -5, 0], ['fence', 5, -5, 0], ['sign', -2, 3, 0], ['lantern', 2, 0, 0]])
       if (this.checkPlace(t, c.x + x, c.z + z, r, -2).ok) this.addBuilding(t, c.x + x, c.z + z, r, true);
@@ -291,6 +291,24 @@ export class Sim {
     this.log(`${def.name} finished in ${SETTLEMENTS.find(s => s.id === b.sid)?.name ?? 'the wilds'}.`);
     // auto-staff one worker if anyone is free
     if (def.workers) this.assign(b, null);
+    this.carveLane(b);
+  }
+
+  // wear a dirt lane from a building's door to its settlement's campfire
+  carveLane(b) {
+    if (isDecor(b.type) || b.type === 'campfire') return;
+    const W = this.world, fire = this.s.buildings.find(o => o.type === 'campfire' && o.sid === b.sid);
+    if (!fire) return;
+    const [ex, ez] = this.entryTile(b);
+    if (!inMap(ex, ez)) return;
+    const goal = this.adjGoal(fire);
+    const path = W.findPath(idx(ex, ez), fire.tx, fire.tz, goal, 4000);
+    if (!path) return;
+    for (const i of path) {
+      if (W.occ[i] >= 0 || W.type[i] === T_WATER || W.road[i] || W.paved[i]) continue;
+      W.lane[i] = 1; W.wear[i] = Math.max(W.wear[i], 0.85);
+      this.emit('tile', i);
+    }
   }
 
   demolish(b) {
@@ -469,7 +487,7 @@ export class Sim {
     for (let k = 0; k < 8; k++) {
       const a = this.rng() * Math.PI * 2, r = 1.8 + this.rng() * 3.5;
       tx = Math.round(c.x + Math.cos(a) * r); tz = Math.round(c.z + Math.sin(a) * r);
-      if (inMap(tx, tz) && this.world.passable(idx(tx, tz))) break;
+      if (inMap(tx, tz) && this.world.passable(idx(tx, tz)) && this.world.occ[idx(tx, tz)] < 0) break;
     }
     this.setTask(v, 'Relaxing', [
       { walk: { tx, tz } },
@@ -843,7 +861,7 @@ export class Sim {
     if ((s.time | 0) % 10 === 0) for (let i = 0; i < W.wear.length; i++) {
       if (W.road[i] || W.wear[i] <= 0) continue;
       const q = (W.wear[i] * 10) | 0;
-      W.wear[i] = Math.max(0, W.wear[i] - 0.012);
+      W.wear[i] = Math.max(W.lane[i] ? 0.7 : 0, W.wear[i] - 0.012);
       if (((W.wear[i] * 10) | 0) !== q) this.emit('tile', i);
     }
     this.emit('second');
@@ -1065,6 +1083,7 @@ export class Sim {
       world: {
         alive: b64(alive), planted, marked, wear: b64(wear),
         paved: [...W.paved.keys()].filter(i => W.paved[i]),
+        lanes: [...W.lane.keys()].filter(i => W.lane[i]),
         rocks: W.rocks.map(r => r.alive ? r.hp : 0),
         bushes: W.bushes.map(b => b.alive ? (b.ripe ? -1 : Math.round(b.regrow)) : -2),
       },
@@ -1081,6 +1100,7 @@ export class Sim {
     const wear = unb64(world.wear);
     for (let i = 0; i < wear.length; i++) W.wear[i] = W.road[i] ? 1 : wear[i] / 180;
     for (const i of world.paved || []) W.paved[i] = 1;
+    for (const i of world.lanes || []) { W.lane[i] = 1; W.wear[i] = Math.max(W.wear[i], 0.7); }
     world.rocks.forEach((hp, i) => { if (hp <= 0) W.removeRock(i); else W.rocks[i].hp = hp; });
     world.bushes.forEach((v, i) => { const b = W.bushes[i]; if (v === -2) W.removeBush(i); else if (v >= 0) { b.ripe = false; b.regrow = v; } });
     for (const b of s.buildings) {
@@ -1089,6 +1109,7 @@ export class Sim {
       for (let z = b.tz; z < b.tz + d; z++) for (let x = b.tx; x < b.tx + w; x++) { W.occ[idx(x, z)] = b.id; if (!isDecor(b.type)) W.block[idx(x, z)] = 1; }
     }
     for (const v of s.villagers) { this.vById.set(v.id, v); v.task = null; v.act = null; }
+    if (!world.lanes) for (const b of s.buildings) if (b.built) this.carveLane(b);
     if (s.tutorial === undefined || s.buildings.length > 4) s.tutorial = 99;
   }
 }

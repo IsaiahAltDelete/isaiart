@@ -234,7 +234,8 @@ class Game {
     if (icon) {
       vis.sprite.position.y += Math.sin(time * 3 + vis.phase) * 0.003;
       const p = this.view.project(vis.sprite.getWorldPosition(tmpV));
-      vis.sprite.visible = !this.hudHit(p.x, p.y);
+      const rect = this.view.canvas.getBoundingClientRect();
+      vis.sprite.visible = !this.hudHit(p.x, p.y) && p.x > rect.left + 24 && p.x < rect.right - 24 && p.y > rect.top + 30;
     }
     if (vis.pop > 0) {
       vis.pop = Math.max(0, vis.pop - dt * 2.5);
@@ -264,11 +265,33 @@ class Game {
     this.view.objects.add(m.group);
     this.vvis.set(v.id, m);
   }
+  // villagers gently push apart so two never stand inside each other
+  separate(dt) {
+    const vs = this.sim.s.villagers, R = 0.42;
+    for (const v of vs) { const m = this.vvis.get(v.id); if (m) { m.px = m.px || 0; m.pz = m.pz || 0; m.fx = 0; m.fz = 0; } }
+    for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) {
+      const a = vs[i], b = vs[j], ma = this.vvis.get(a.id), mb = this.vvis.get(b.id);
+      if (!ma || !mb) continue;
+      let dx = (a.x + ma.px) - (b.x + mb.px), dz = (a.z + ma.pz) - (b.z + mb.pz);
+      const d = Math.hypot(dx, dz);
+      if (d >= R) continue;
+      if (d < 1e-4) { dx = Math.cos(a.id); dz = Math.sin(a.id); } else { dx /= d; dz /= d; }
+      const push = (R - d) * 0.5;
+      ma.fx += dx * push; ma.fz += dz * push; mb.fx -= dx * push; mb.fz -= dz * push;
+    }
+    const k = Math.min(1, dt * 6);
+    for (const v of vs) {
+      const m = this.vvis.get(v.id); if (!m) continue;
+      m.px += (m.fx * 1.6 - m.px * 0.25) * k; m.pz += (m.fz * 1.6 - m.pz * 0.25) * k;
+      const l = Math.hypot(m.px, m.pz); if (l > 0.45) { m.px *= 0.45 / l; m.pz *= 0.45 / l; }
+    }
+  }
   updateVVis(v, m, dt, time) {
     const W = this.sim.world;
-    let y = W.heightAt(v.x, v.z);
+    const vx = v.x + (m.px || 0), vz = v.z + (m.pz || 0);
+    let y = W.heightAt(vx, vz);
     if (W.type[idx(Math.max(0, Math.min(N - 1, Math.floor(v.x + HALF))), Math.max(0, Math.min(N - 1, Math.floor(v.z + HALF))))] === 1) y = Math.max(y, 0.12);
-    m.group.position.set(v.x, y, v.z);
+    m.group.position.set(vx, y, vz);
     let d = v.face - m.rot; d = Math.atan2(Math.sin(d), Math.cos(d));
     m.rot += d * Math.min(1, dt * 10);
     m.group.rotation.y = m.rot;
@@ -793,7 +816,7 @@ class Game {
     // ground depth is stretched by the camera's tilt (~1.25x at our pitch)
     const fitW = (w / 2 + 1.5) / (ht * useW), fitH = (h / 2 + 1.5) / (vt * 1.25 * useH);
     const dist = Math.max(phone ? 22 : 20, Math.min(phone ? 40 : 62, Math.max(fitW, fitH)));
-    const k = phone ? dist * 0.05 : 0, side = phone ? dist * 0.03 : 0;
+    const k = phone ? dist * 0.05 : 0, side = phone ? dist * 0.055 : 0;
     const tx = (x0 + x1) / 2 - Math.sin(rig.yaw) * k + Math.cos(rig.yaw) * side, tz = (z0 + z1) / 2 - Math.cos(rig.yaw) * k - Math.sin(rig.yaw) * side;
     if (instant) Object.assign(rig, { tx, tz, dist });
     else this.view.flyTo(tx, tz, dist, 1.4);
@@ -973,6 +996,7 @@ class Game {
 
     const t = now / 1000;
     for (const vis of this.bvis.values()) this.updateBVis(vis, dt, t);
+    this.separate(dt);
     for (const v of sim.s.villagers) { const m = this.vvis.get(v.id); if (m) this.updateVVis(v, m, dt, t); }
     this.effects = this.effects.filter(f => f(dt));
     // bubbles keep a constant on-screen size (px tall) however far you zoom

@@ -60,14 +60,14 @@ function shingles() {
   const g = cv.getContext('2d');
   g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 64);
   for (let row = 0; row < 2; row++) {
-    const y = row * 32, off = row ? 16 : 0;
-    // darker band at the lower lip of each row, like overlapping tiles
+    const y = row * 32, off = row ? 8 : 0;
+    // each row darkens toward its lower lip, then a scalloped shadow line marks the overlap
     const grd = g.createLinearGradient(0, y, 0, y + 32);
-    grd.addColorStop(0, 'rgba(0,0,0,0)'); grd.addColorStop(0.72, 'rgba(0,0,0,0.04)'); grd.addColorStop(0.9, 'rgba(0,0,0,0.16)'); grd.addColorStop(1, 'rgba(0,0,0,0.26)');
+    grd.addColorStop(0, 'rgba(255,255,255,0.10)'); grd.addColorStop(0.55, 'rgba(0,0,0,0.0)'); grd.addColorStop(0.85, 'rgba(0,0,0,0.12)'); grd.addColorStop(1, 'rgba(0,0,0,0.22)');
     g.fillStyle = grd; g.fillRect(0, y, 64, 32);
-    g.fillStyle = 'rgba(0,0,0,0.13)';
-    for (let x = off; x < 64 + 32; x += 32) g.fillRect((x % 64) - 1, y + 3, 2, 26);
-    g.fillStyle = 'rgba(255,255,255,0.10)'; g.fillRect(0, y, 64, 3);
+    g.fillStyle = 'rgba(0,0,0,0.30)';
+    for (let x = -16 + off; x < 64 + 16; x += 16) { g.beginPath(); g.ellipse(x + 8, y + 29, 8, 4.5, 0, 0, Math.PI); g.fill(); }
+    g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, y + 29, 64, 3);
   }
   shingleTex = new THREE.CanvasTexture(cv);
   shingleTex.wrapS = shingleTex.wrapT = THREE.RepeatWrapping;

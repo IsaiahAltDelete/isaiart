@@ -336,6 +336,12 @@ export class UI {
       <select data-act="job" data-id="${v.id}" style="width:100%">${opts}</select>
       <div class="actions"><button class="btn blue sm" data-act="follow">${svg('eye', 14)} ${this.g.followV === v ? 'Stop following' : 'Follow'}</button></div>`;
   }
+  waitWhy(v) {
+    const b = v.work ? this.sim.bById.get(v.work) : null;
+    if (!b?.status || !/Waiting|Resting|Working/.test(v.task?.label || '')) return '';
+    const short = { 'No trees within reach': 'no trees', 'No boulders nearby': 'no boulders', 'Storage full': 'storage full', 'Nothing to sell': 'nothing to sell', 'Waiting for berries': 'berries regrowing' }[b.status] || b.status.toLowerCase();
+    return ` · <span class="why">${esc(short)}</span>`;
+  }
   workplaceCaption(v) {
     const b = v.work ? this.sim.bById.get(v.work) : null;
     return b ? `${defOf(b.type).name} · ${b.workers.length}/${workersOf(b)}` : 'Builds & clears';
@@ -474,8 +480,8 @@ export class UI {
       h += `<div class="actions" style="margin:0 0 8px"><button class="btn sm" data-act="autoassign" ${idle ? '' : 'disabled'}>${svg('people', 16)} Give idle villagers jobs</button></div>`;
       h += `<div class="sub" style="font-size:12px;color:var(--ink2);margin-bottom:6px">Idle villagers build construction sites and clear marked trees. Pick a job to send someone to work.</div>`;
       h += s.villagers.filter(v => f === 'all' || v.job === f).map(v => `<div class="vrow">${faceSvg(v)}
-        <div><b>${esc(v.name)}</b> ${v.hungry ? '<span style="color:#c0392b;font-size:11px">hungry</span>' : ''}<div class="doing">${esc(v.task?.label ?? 'Idle')}${multi ? ' · ' + esc(SETTLEMENTS.find(o => o.id === v.home)?.name ?? '') : ''}</div></div>
-        <div class="jobcell"><select data-act="job" data-id="${v.id}">${this.workOptions(v, true)}</select><small>${esc(this.workplaceCaption(v))}</small></div></div>`).join('');
+        <div><b>${esc(v.name)}</b> ${v.hungry ? '<span style="color:#c0392b;font-size:11px">hungry</span>' : ''}<div class="doing">${esc(v.task?.label ?? 'Idle')}${this.waitWhy(v)}${multi ? ' · ' + esc(SETTLEMENTS.find(o => o.id === v.home)?.name ?? '') : ''}</div></div>
+        <div class="jobcell"><select data-act="job" data-id="${v.id}">${this.workOptions(v, true)}</select>${v.work ? `<button class="cap" data-act="openb" data-id="${v.work}">${esc(this.workplaceCaption(v))} ›</button>` : `<small>${esc(this.workplaceCaption(v))}</small>`}</div></div>`).join('');
     } else if (k === 'inventory') {
       const cap = sim.cap();
       h += `<div class="summary"><span class="chip">${svg('house', 18)}Storage ${cap} per good</span><span class="chip">${svg('coin', 18)}${fmt(s.res.coins)}</span><span class="chip">${svg('gem', 18)}${s.res.gems}</span></div><div class="grid">`;
@@ -582,6 +588,7 @@ export class UI {
     }
     if (act === 'ach') { if (sim.claimAch(a.dataset.id)) this.toast('Achievement reward claimed!', 'trophy'); }
     if (act === 'deal') { if (sim.merchantDeal(+a.dataset.i)) this.toast('Pleasure doing business!', 'shop'); }
+    if (act === 'openb') { const b = sim.bById.get(+a.dataset.id); if (b) { this.closeModal(); this.g.select({ kind: 'b', b }, true); } return; }
     if (act === 'vf') { this.vFilter = a.dataset.f; this.drawModal(true); return; }
     if (act === 'autoassign') { const n = sim.autoAssign(); this.toast(n ? `${n} villager${n > 1 ? 's' : ''} got a job` : 'No open jobs — build or upgrade workplaces', 'people'); sfx.pop(); }
     if (act === 'travel') { this.g.flyToSettlement(a.dataset.sid); this.closeModal(); return; }
@@ -693,6 +700,7 @@ export class UI {
     if (!this.toastBusy) this.nextToast();
   }
   nextToast() {
+    if (innerWidth < 760 && document.body.classList.contains('info-open') && this.tq.length) { setTimeout(() => this.nextToast(), 600); return; }
     const t = this.tq.shift();
     if (!t) { this.toastBusy = false; return; }
     this.toastBusy = true;
