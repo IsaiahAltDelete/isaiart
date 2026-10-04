@@ -1,0 +1,656 @@
+{
+ "date": "2026-10-04",
+ "updated": "2026-10-04T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Lions at Panthers, Sunday Night Football (8:20 PM ET, NBC/Peacock)",
+  "Braves at Dodgers, NLDS Game 2 (8:00 PM ET, FS1)",
+  "Aces at Valkyries, WNBA semifinal Game 1 (4:00 PM ET, NBC/Peacock)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 4",
+   "note": "London morning game • CBS and FOX regional windows • SNF"
+  },
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "Division Series",
+   "note": "NLDS Game 2s • ALDS resumes Monday"
+  },
+  {
+   "key": "WNBA",
+   "name": "WNBA",
+   "subtitle": "Semifinals",
+   "note": "Best-of-five series open",
+   "color": "#956f82"
+  },
+  {
+   "key": "NASCAR",
+   "name": "NASCAR",
+   "subtitle": "Cup Series",
+   "note": "The Chase • Las Vegas"
+  }
+ ],
+ "events": [
+  {
+   "id": "nfl-ind-wsh",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [
+    "International Series • London"
+   ],
+   "competitors": [
+    {
+     "name": "Indianapolis Colts",
+     "abbr": "IND",
+     "detail": "1–2",
+     "logo": "nfl/ind"
+    },
+    {
+     "name": "Washington Commanders",
+     "abbr": "WSH",
+     "detail": "1–2",
+     "logo": "nfl/wsh"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T09:30:00-04:00",
+   "watch": "NFL Network",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National NFL Network window; Washington is the designated home team.",
+   "venue": "Tottenham Hotspur Stadium, London",
+   "venue_tz": "British Summer Time",
+   "notes": "Morning London game between two 1–2 teams. Kickoff is 2:30 p.m. local.",
+   "blackout": "Local over-the-air simulcasts are expected in the Indianapolis and Washington markets. NFL+ restrictions may apply."
+  },
+  {
+   "id": "nfl-ten-bal",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tennessee Titans",
+     "abbr": "TEN",
+     "detail": "",
+     "logo": "nfl/ten"
+    },
+    {
+     "name": "Baltimore Ravens",
+     "abbr": "BAL",
+     "detail": "",
+     "logo": "nfl/bal"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T13:00:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "M&T Bank Stadium, Baltimore",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 4 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-ne-buf",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New England Patriots",
+     "abbr": "NE",
+     "detail": "",
+     "logo": "nfl/ne"
+    },
+    {
+     "name": "Buffalo Bills",
+     "abbr": "BUF",
+     "detail": "",
+     "logo": "nfl/buf"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T13:00:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Highmark Stadium, Orchard Park, N.Y.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 4 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-jax-cin",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Jacksonville Jaguars",
+     "abbr": "JAX",
+     "detail": "",
+     "logo": "nfl/jax"
+    },
+    {
+     "name": "Cincinnati Bengals",
+     "abbr": "CIN",
+     "detail": "",
+     "logo": "nfl/cin"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T13:00:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Paycor Stadium, Cincinnati",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 4 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-ari-nyg",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arizona Cardinals",
+     "abbr": "ARI",
+     "detail": "",
+     "logo": "nfl/ari"
+    },
+    {
+     "name": "New York Giants",
+     "abbr": "NYG",
+     "detail": "",
+     "logo": "nfl/nyg"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T13:00:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "MetLife Stadium, East Rutherford, N.J.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 4 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-nyj-chi",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New York Jets",
+     "abbr": "NYJ",
+     "detail": "",
+     "logo": "nfl/nyj"
+    },
+    {
+     "name": "Chicago Bears",
+     "abbr": "CHI",
+     "detail": "",
+     "logo": "nfl/chi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T13:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Soldier Field, Chicago",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Week 4 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-dal-hou",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Dallas Cowboys",
+     "abbr": "DAL",
+     "detail": "",
+     "logo": "nfl/dal"
+    },
+    {
+     "name": "Houston Texans",
+     "abbr": "HOU",
+     "detail": "",
+     "logo": "nfl/hou"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T13:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "NRG Stadium, Houston",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Week 4 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-lar-phi",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Los Angeles Rams",
+     "abbr": "LAR",
+     "detail": "",
+     "logo": "nfl/lar"
+    },
+    {
+     "name": "Philadelphia Eagles",
+     "abbr": "PHI",
+     "detail": "",
+     "logo": "nfl/phi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T13:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Lincoln Financial Field, Philadelphia",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 4 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-gb-tb",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Green Bay Packers",
+     "abbr": "GB",
+     "detail": "",
+     "logo": "nfl/gb"
+    },
+    {
+     "name": "Tampa Bay Buccaneers",
+     "abbr": "TB",
+     "detail": "",
+     "logo": "nfl/tb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T13:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Raymond James Stadium, Tampa",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 4 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-mia-min",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Miami Dolphins",
+     "abbr": "MIA",
+     "detail": "",
+     "logo": "nfl/mia"
+    },
+    {
+     "name": "Minnesota Vikings",
+     "abbr": "MIN",
+     "detail": "",
+     "logo": "nfl/min"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T16:05:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "U.S. Bank Stadium, Minneapolis",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Week 4 late window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-kc-lv",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Kansas City Chiefs",
+     "abbr": "KC",
+     "detail": "",
+     "logo": "nfl/kc"
+    },
+    {
+     "name": "Las Vegas Raiders",
+     "abbr": "LV",
+     "detail": "",
+     "logo": "nfl/lv"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T16:25:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Allegiant Stadium, Las Vegas",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Week 4 late window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-lac-sea",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Los Angeles Chargers",
+     "abbr": "LAC",
+     "detail": "",
+     "logo": "nfl/lac"
+    },
+    {
+     "name": "Seattle Seahawks",
+     "abbr": "SEA",
+     "detail": "",
+     "logo": "nfl/sea"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T16:25:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Lumen Field, Seattle",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Week 4 late window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-den-sf",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Denver Broncos",
+     "abbr": "DEN",
+     "detail": "",
+     "logo": "nfl/den"
+    },
+    {
+     "name": "San Francisco 49ers",
+     "abbr": "SF",
+     "detail": "",
+     "logo": "nfl/sf"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T16:25:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Levi's Stadium, Santa Clara, Calif.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Week 4 late window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-det-car",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [
+    "Sunday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Detroit Lions",
+     "abbr": "DET",
+     "detail": "",
+     "logo": "nfl/det"
+    },
+    {
+     "name": "Carolina Panthers",
+     "abbr": "CAR",
+     "detail": "",
+     "logo": "nfl/car"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T20:20:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National Sunday Night Football window.",
+   "venue": "Bank of America Stadium, Charlotte",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Detroit visits Charlotte in prime time.",
+   "blackout": "No territorial blackout. Local NBC carriage varies by affiliate and provider; NFL+ restrictions may apply."
+  },
+  {
+   "id": "mlb-sd-mil",
+   "league": "MLB",
+   "label": "MLB • NLDS",
+   "flags": [
+    "NLDS • Game 2"
+   ],
+   "competitors": [
+    {
+     "name": "San Diego Padres",
+     "abbr": "SD",
+     "detail": "NL No. 4 seed",
+     "logo": "mlb/sd"
+    },
+    {
+     "name": "Milwaukee Brewers",
+     "abbr": "MIL",
+     "detail": "NL No. 1 seed • leads 1–0",
+     "logo": "mlb/mil"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T16:00:00-04:00",
+   "watch": "FS1 • FOX Deportes",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "American Family Field, Milwaukee",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Milwaukee took Game 1 by a 3–2 score. Best-of-five series.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "mlb-atl-lad",
+   "league": "MLB",
+   "label": "MLB • NLDS",
+   "flags": [
+    "NLDS • Game 2"
+   ],
+   "competitors": [
+    {
+     "name": "Atlanta Braves",
+     "abbr": "ATL",
+     "detail": "NL No. 3 seed",
+     "logo": "mlb/atl"
+    },
+    {
+     "name": "Los Angeles Dodgers",
+     "abbr": "LAD",
+     "detail": "NL No. 2 seed • leads 1–0",
+     "logo": "mlb/lad"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T20:00:00-04:00",
+   "watch": "FS1 • FOX Deportes",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Dodger Stadium, Los Angeles",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Los Angeles won Game 1 5–3. Best-of-five series.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "wnba-nyl-atl",
+   "league": "WNBA",
+   "label": "WNBA • Semifinals",
+   "flags": [
+    "Semifinals • Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "New York Liberty",
+     "abbr": "NYL",
+     "detail": "No. 8 seed • 26–18",
+     "logo": "wnba/ny"
+    },
+    {
+     "name": "Atlanta Dream",
+     "abbr": "ATL",
+     "detail": "No. 4 seed • 30–14",
+     "logo": "wnba/atl"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T14:00:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "State Farm Arena, Atlanta",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Best-of-five semifinal opener. New York became the first No. 8 seed to beat a No. 1; Atlanta swept Washington.",
+   "blackout": "No territorial blackout is expected. WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "wnba-lva-gsv",
+   "league": "WNBA",
+   "label": "WNBA • Semifinals",
+   "flags": [
+    "Semifinals • Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "Las Vegas Aces",
+     "abbr": "LVA",
+     "detail": "No. 3 seed • 31–13",
+     "logo": "wnba/lv"
+    },
+    {
+     "name": "Golden State Valkyries",
+     "abbr": "GSV",
+     "detail": "No. 2 seed • 32–12",
+     "logo": "wnba/gs"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-04T16:00:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Chase Center, San Francisco",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Best-of-five semifinal opener. Las Vegas beat Indiana 94–83 in Game 3; Golden State outlasted Dallas in its Game 3.",
+   "blackout": "No territorial blackout is expected. WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "nascar-lv",
+   "league": "NASCAR",
+   "label": "NASCAR Cup • The Chase",
+   "flags": [
+    "Chase • Race 5 of 10"
+   ],
+   "competitors": [
+    {
+     "name": "South Point 400",
+     "abbr": "LVMS",
+     "detail": ""
+    }
+   ],
+   "separator": "",
+   "start": "2026-10-04T17:30:00-04:00",
+   "watch": "USA Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National USA Network window; prerace at 5:00 p.m. ET, green flag about 5:40 p.m. ET.",
+   "venue": "Las Vegas Motor Speedway",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Fifth race of NASCAR's 10-race Chase on the 1.5-mile oval.",
+   "blackout": "No territorial blackout is expected. TV-provider access is required."
+  }
+ ],
+ "footer_note": "Nineteen qualifying events fall inside Sunday's Eastern calendar day. Preseason and exhibition games, lower-interest non-national regular-season games, and non-major individual-sport events are excluded.",
+ "sources": [
+  {
+   "label": "NFL Week 4 schedule",
+   "url": "https://www.nfl.com/schedules/2026/by-week/week-4"
+  },
+  {
+   "label": "Colts London game",
+   "url": "https://www.colts.com/fans/international/london"
+  },
+  {
+   "label": "Division Series schedule",
+   "url": "https://sports.yahoo.com/articles/mlb-announces-alds-nlds-full-032639700.html"
+  },
+  {
+   "label": "CBS Sports MLB bracket",
+   "url": "https://www.cbssports.com/mlb/news/2026-mlb-playoff-bracket-schedule-scores-results-how-to-watch/"
+  },
+  {
+   "label": "WNBA semifinals schedule",
+   "url": "https://www.nbcsandiego.com/wnba/semifinals-bracket-schedule-teams-playoffs-2026/4080814/"
+  },
+  {
+   "label": "Jayski Las Vegas race page",
+   "url": "https://www.jayski.com/nascar-cup-series/2026-nascar-cup-series-fall-las-vegas-race-page/"
+  }
+ ]
+}
