@@ -254,7 +254,13 @@
     .jobcell small { font-size: 10.5px; color: var(--ink2); padding-left: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .summary.tight { gap: 6px; flex-wrap: nowrap; }
     .summary.tight .chip { padding: 3px 8px 3px 5px; font-size: 12.5px; gap: 3px; }
-    .vrow .face { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--edge); }
+    .vrow .face { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--edge); display: block; }
+    #info h3 .face { border-radius: 50%; border: 2px solid var(--edge); }
+    .upbox > .uprow { display: flex; flex-direction: row; align-items: center; gap: 8px; flex: none; color: var(--ink); }
+    .uprow b { font-size: 13px; }
+    .uprow .cost { flex: 1; margin: 0; }
+    .uprow .btn { flex: none; }
+    .upbox em { font-style: normal; color: #c0392b; }
     .vrow .doing { font-size: 11.5px; color: var(--ink2); }
     .summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
     .summary .chip { display: inline-flex; align-items: center; gap: 5px; background: var(--card); border: 2px solid #ead2a6; border-radius: 12px; padding: 4px 10px 4px 6px; font-weight: 600; font-size: 13px; }
@@ -372,7 +378,8 @@
       #info h3 { padding-right: 34px; }
       #info .kv { margin: 4px 0; }
       #info .upbox { margin-top: 6px; padding: 5px 8px; }
-      #info .actions { margin: 6px -12px -10px; padding: 8px 12px 10px; position: sticky; bottom: -10px; background: linear-gradient(rgba(255,248,232,0), var(--cream) 30%); }
+      #info { padding-bottom: 0; }
+      #info .actions { margin: 6px -12px 0; padding: 10px 12px 10px; position: sticky; bottom: -10px; background: linear-gradient(rgba(255,248,232,0), var(--cream) 30%); }
       #info .actions .btn { padding: 6px 10px; }
       body.placing #topright { display: none; }
       #toasts { top: calc(162px + var(--sat)) !important; }

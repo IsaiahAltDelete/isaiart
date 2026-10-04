@@ -450,7 +450,9 @@ export class View {
     }
     const lim = HALF - 8;
     r.tx = Math.max(-lim, Math.min(lim, r.tx)); r.tz = Math.max(-lim, Math.min(lim, r.tz));
-    r.dist = Math.max(9, Math.min(52, r.dist));
+    r.dist = Math.max(9, Math.min(64, r.dist));
+    // keep the haze behind the village however far out we zoom
+    this.scene.fog.near = r.dist + 22; this.scene.fog.far = r.dist + 95;
     r.pitch = Math.max(0.62, Math.min(1.32, r.pitch));
     const cp = Math.cos(r.pitch), sp = Math.sin(r.pitch);
     const ty = this.world.heightAt(r.tx, r.tz) * 0.5;

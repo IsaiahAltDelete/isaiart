@@ -13,6 +13,20 @@ const hex = c => '#' + c.toString(16).padStart(6, '0');
 const costHtml = (cost, res) => Object.entries(cost || {}).map(([k, v]) =>
   `<span class="${res && (res[k] || 0) < v ? 'no' : ''}">${svg(GOODS[k].icon, 12)}${v}</span>`).join('');
 
+// a little portrait: shirt, face, hair or hat, eyes, cheeks and a smile
+function faceSvg(v, size = 34) {
+  const hair = hex(v.hair), skin = hex(v.skin);
+  const top = v.hat
+    ? `<path d="M6 13h20v2H6z" fill="${hex(v.hatColor)}" stroke="#5b3a1e" stroke-width="1"/><path d="M10 13c0-5 12-5 12 0z" fill="${hex(v.hatColor)}" stroke="#5b3a1e" stroke-width="1"/>`
+    : `<path d="M9 15c0-7 14-7 14 0-3-2-11-2-14 0z" fill="${hair}" stroke="#5b3a1e" stroke-width="1"/>`;
+  return `<svg class="face" viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true"><circle cx="16" cy="16" r="15.5" fill="#cfe8f5"/>
+    <path d="M4 32c0-7 5-10 12-10s12 3 12 10z" fill="${hex(v.shirt)}" stroke="#5b3a1e" stroke-width="1"/>
+    <circle cx="16" cy="16" r="7" fill="${skin}" stroke="#5b3a1e" stroke-width="1"/>${top}
+    <circle cx="13.4" cy="16.5" r="1" fill="#2a1a10"/><circle cx="18.6" cy="16.5" r="1" fill="#2a1a10"/>
+    <circle cx="12" cy="18.6" r="1.1" fill="#f29a8a" opacity=".8"/><circle cx="20" cy="18.6" r="1.1" fill="#f29a8a" opacity=".8"/>
+    <path d="M14.2 19.2c1 .9 2.6 .9 3.6 0" stroke="#5b3a1e" stroke-width=".9" fill="none" stroke-linecap="round"/></svg>`;
+}
+
 const SHOP = [
   { give: { wood: 150 }, gems: 5 }, { give: { stone: 100 }, gems: 6 }, { give: { food: 120 }, gems: 5 },
   { give: { planks: 60 }, gems: 8 }, { give: { coins: 300 }, gems: 10 }, { give: { bricks: 25 }, gems: 12 },
@@ -301,8 +315,9 @@ export class UI {
       h += `<div class="sub" style="margin-top:6px">Upgrading to level ${lvlOf(b) + 1}…</div><div class="prog"><i style="width:${b.up.progress * 100}%"></i></div>`;
     } else if (!isDecor(b.type) && lvlOf(b) < MAX_LVL) {
       const can = sim.canUpgrade(b), cost = sim.upgradeCost(b);
-      h += `<div class="upbox"><div><b>Upgrade to Lv ${lvlOf(b) + 1}</b><span>${esc(sim.upgradeEffect(b))}</span><span class="cost">${costHtml(cost, s.res)}</span></div>
-        <button class="btn gold sm" data-act="upgrade" ${can.ok ? '' : 'disabled'} title="${esc(can.why || '')}">${svg('star', 14)} ${can.ok ? 'Upgrade' : esc(can.why)}</button></div>`;
+      h += `<div class="upbox"><div class="uprow"><b>Lv ${lvlOf(b) + 1}</b><span class="cost">${costHtml(cost, s.res)}</span>
+        <button class="btn gold sm" data-act="upgrade" ${can.ok ? '' : 'disabled'}>${svg('star', 14)} Upgrade</button></div>
+        <span>${esc(sim.upgradeEffect(b))}${can.ok ? '' : ` · <em>${esc(can.why)}</em>`}</span></div>`;
     }
     if (b.type !== 'campfire') h += `<div class="actions"><button class="btn blue sm" data-act="move">${svg('rotate', 14)} Move</button><button class="btn red sm" data-act="demolish">${svg('trash', 14)} Demolish</button></div>`;
     return h;
@@ -313,7 +328,7 @@ export class UI {
     const sname = SETTLEMENTS.find(o => o.id === v.home)?.name ?? '';
     const doing = v.task?.label ?? (v.job === 'idle' ? 'Looking for something to do' : 'Thinking');
     return `<button class="x" data-act="close" aria-label="Close">${svg('close', 14)}</button>
-      <h3><span class="face" style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${hex(v.shirt)};border:2px solid var(--edge)"></span>${esc(v.name)}</h3>
+      <h3>${faceSvg(v, 26)}${esc(v.name)}</h3>
       <div class="sub">${esc(sname)} · ${JOBS[v.job].name}</div>
       <dl class="kv"><dt>Doing</dt><dd>${esc(doing)}</dd><dt>Fed</dt><dd>${v.hungry ? '<span style="color:#c0392b">Hungry!</span>' : Math.round(100 - v.hunger / 80 * 100) + '%'}</dd>
       ${v.carry ? `<dt>Carrying</dt><dd>${v.carry.n} ${GOODS[v.carry.res].name.toLowerCase()}</dd>` : ''}</dl>
@@ -458,7 +473,7 @@ export class UI {
         `<button class="chipf ${f === j ? 'on' : ''}" data-act="vf" data-f="${j}">${JOBS[j].name} ${s.villagers.filter(v => v.job === j).length}</button>`).join('')}</div>`;
       h += `<div class="actions" style="margin:0 0 8px"><button class="btn sm" data-act="autoassign" ${idle ? '' : 'disabled'}>${svg('people', 16)} Give idle villagers jobs</button></div>`;
       h += `<div class="sub" style="font-size:12px;color:var(--ink2);margin-bottom:6px">Idle villagers build construction sites and clear marked trees. Pick a job to send someone to work.</div>`;
-      h += s.villagers.filter(v => f === 'all' || v.job === f).map(v => `<div class="vrow"><span class="face" style="background:radial-gradient(circle at 50% 40%, ${hex(v.skin)} 0 33%, transparent 34%), radial-gradient(circle at 50% 125%, ${hex(v.shirt)} 0 58%, ${hex(v.hair)} 59%)"></span>
+      h += s.villagers.filter(v => f === 'all' || v.job === f).map(v => `<div class="vrow">${faceSvg(v)}
         <div><b>${esc(v.name)}</b> ${v.hungry ? '<span style="color:#c0392b;font-size:11px">hungry</span>' : ''}<div class="doing">${esc(v.task?.label ?? 'Idle')}${multi ? ' · ' + esc(SETTLEMENTS.find(o => o.id === v.home)?.name ?? '') : ''}</div></div>
         <div class="jobcell"><select data-act="job" data-id="${v.id}">${this.workOptions(v, true)}</select><small>${esc(this.workplaceCaption(v))}</small></div></div>`).join('');
     } else if (k === 'inventory') {

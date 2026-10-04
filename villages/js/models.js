@@ -142,7 +142,8 @@ function lumber(g, a) {
     l.rotation.z = Math.PI / 2; l.position.y = 0.1 + i * 0.18; g.add(l);
   }
   g.add(roof(1.5, 0.55, 1.3, C.green, -0.15, 0.75, -0.2));
-  g.add(at(mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.56, 6), C.darkwood), -0.15, 1.31, -0.2).rotateZ(Math.PI / 2));
+  g.add(at(mesh(new THREE.BoxGeometry(1.6, 0.09, 0.16), C.plank), -0.15, 1.31, -0.2));
+  for (const x of [-0.85, 0.55]) g.add(at(mesh(new THREE.BoxGeometry(0.08, 0.12, 1.36), C.plank), x, 0.98, -0.2));
   for (const x of [-0.88, 0.58]) g.add(box(0.1, 0.62, 0.1, C.darkwood, x, 0.14, 0.32));
   g.add(door(-0.4, 0, 0.31));
   g.add(windowPane(0.2, 0.42, 0.32));

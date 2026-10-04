@@ -510,6 +510,10 @@ class Game {
       const ring = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xfff3d0, transparent: true, opacity: 0.95, depthTest: false, side: THREE.DoubleSide }));
       ring.renderOrder = 8;
       ring.userData = { r, x, z };
+      const rig = this.view.rig, lx = x - Math.sin(rig.yaw) * r, lz = z - Math.cos(rig.yaw) * r;
+      const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex('Work range'), transparent: true, depthTest: false }));
+      lab.scale.set(5.6, 1.4, 1); lab.position.set(lx, Math.max(W.heightAt(lx, lz), 0) + 1.0, lz); lab.renderOrder = 11;
+      ring.add(lab);
       this.rangeRing = ring; this.view.scene.add(ring);
     }
     this.rangeRing.visible = true;
@@ -567,11 +571,19 @@ class Game {
     p.plane.material.color.setHex(p.ok ? 0x7dff6a : 0xff5a4a);
     if (p.okShown !== p.ok) { p.okShown = p.ok; p.model.traverse(o => { if (o.isMesh && o.userData.base) o.material = ghostMat(o.userData.base, p.ok); }); }
     if (!p.edge) {
-      p.edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 0.02, 1)), new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true }));
-      p.edge.renderOrder = 10; this.view.scene.add(p.edge);
+      // a thick coloured rim just outside the footprint
+      p.edge = new THREE.Group();
+      const m = new THREE.MeshBasicMaterial({ color: 0x5fd94a, transparent: true, opacity: 0.95, depthTest: false });
+      for (let k = 0; k < 4; k++) { const bar = new THREE.Mesh(new THREE.BoxGeometry(1, 0.03, 1), m); bar.renderOrder = 10; p.edge.add(bar); }
+      p.edge.userData.m = m; this.view.scene.add(p.edge);
     }
-    p.edge.position.copy(p.plane.position); p.edge.scale.set(w, 1, d);
-    p.edge.material.color.setHex(p.ok ? 0xeaffd8 : 0xffd0c8);
+    const t = 0.13, [b0, b1, b2, b3] = p.edge.children;
+    b0.scale.set(w + t * 2, 1, t); b0.position.set(0, 0, -d / 2 - t / 2);
+    b1.scale.set(w + t * 2, 1, t); b1.position.set(0, 0, d / 2 + t / 2);
+    b2.scale.set(t, 1, d); b2.position.set(-w / 2 - t / 2, 0, 0);
+    b3.scale.set(t, 1, d); b3.position.set(w / 2 + t / 2, 0, 0);
+    p.edge.position.copy(p.plane.position);
+    p.edge.userData.m.color.setHex(p.ok ? 0x5fd94a : 0xf0564a);
     this.showRange(p.type, cx, cz);
     this.placeMsg();
   }
@@ -726,11 +738,24 @@ class Game {
       const p = this.sim.bCenter(b);
       x0 = Math.min(x0, p.x - 1); x1 = Math.max(x1, p.x + 1); z0 = Math.min(z0, p.z - 1); z1 = Math.max(z1, p.z + 1);
     }
-    const phone = innerWidth < 760, r = Math.max(x1 - x0, z1 - z0) / 2;
-    const dist = Math.max(phone ? 22 : 20, Math.min(46, r * (phone ? 3.0 : 2.3) + (phone ? 6 : 12)));
-    // the phone HUD is heavier at the top and has a button column on the right:
-    // aim a little past the middle and a little right so the village sits clear of both
-    const k = phone ? dist * 0.05 : 0, side = phone ? dist * 0.035 : 0;
+    const phone = innerWidth < 760, cam = this.view.camera;
+    // measure the actual buildings along the camera's right and forward axes
+    const rx = Math.cos(rig.yaw), rz = -Math.sin(rig.yaw), fx = -Math.sin(rig.yaw), fz = -Math.cos(rig.yaw);
+    let a0 = 1e9, a1 = -1e9, c0 = 1e9, c1 = -1e9;
+    const pts = [[toWorld(c.x), toWorld(c.z), 2]];
+    for (const b of this.sim.s.buildings) if (b.sid === sid) { const p = this.sim.bCenter(b); pts.push([p.x, p.z, Math.max(p.w, p.d) / 2]); }
+    for (const [x, z, e] of pts) {
+      const a = x * rx + z * rz, f = x * fx + z * fz;
+      a0 = Math.min(a0, a - e); a1 = Math.max(a1, a + e); c0 = Math.min(c0, f - e); c1 = Math.max(c1, f + e);
+    }
+    const w = a1 - a0, h = c1 - c0;
+    const vt = Math.tan(cam.fov * Math.PI / 360), ht = vt * (innerWidth / innerHeight);
+    // usable fraction of the screen once the HUD is taken out
+    const useW = phone ? 0.9 : 0.72, useH = phone ? 0.66 : 0.7;
+    // ground depth is stretched by the camera's tilt (~1.25x at our pitch)
+    const fitW = (w / 2 + 1.5) / (ht * useW), fitH = (h / 2 + 1.5) / (vt * 1.25 * useH);
+    const dist = Math.max(phone ? 22 : 20, Math.min(62, Math.max(fitW, fitH)));
+    const k = phone ? dist * 0.05 : 0, side = phone ? dist * 0.03 : 0;
     const tx = (x0 + x1) / 2 - Math.sin(rig.yaw) * k + Math.cos(rig.yaw) * side, tz = (z0 + z1) / 2 - Math.cos(rig.yaw) * k - Math.sin(rig.yaw) * side;
     if (instant) Object.assign(rig, { tx, tz, dist });
     else this.view.flyTo(tx, tz, dist, 1.4);
@@ -925,6 +950,8 @@ class Game {
       tag.classList.toggle('hidden', !p.vis); tag.textContent = v.name.split(' ')[0];
       tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px';
     } else tag.classList.add('hidden');
+    if (this.place?.model) this.place.model.position.y = 0.08 + Math.sin(t * 4) * 0.06;
+    if (this.rangeRing?.visible) this.rangeRing.material.opacity = 0.75 + Math.sin(t * 3) * 0.2;
     if (this.selRing.visible) this.selRing.material.opacity = 0.65 + Math.sin(t * 4) * 0.25;
 
     ambient(dt * (this.night > 0.5 ? 0.2 : 1));
@@ -992,6 +1019,18 @@ const leafGeo = new THREE.IcosahedronGeometry(0.09, 0);
 let _fall = null;
 const fallMat = () => _fall || (_fall = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
 
+const _labels = new Map();
+function labelTex(text) {
+  if (_labels.has(text)) return _labels.get(text);
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#fff8e8'; g.strokeStyle = '#8a5a2b'; g.lineWidth = 5;
+  g.beginPath(); g.roundRect(6, 6, 244, 52, 26); g.fill(); g.stroke();
+  g.fillStyle = '#5b3a1e'; g.font = '600 28px Fredoka, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, 128, 34);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+  _labels.set(text, t); return t;
+}
 let _glow = null;
 function glowTex() {
   if (_glow) return _glow;
