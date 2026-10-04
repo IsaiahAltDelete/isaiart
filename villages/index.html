@@ -293,6 +293,23 @@
     .cbar .t { width: 46px; height: 8px; border-radius: 4px; background: #ead9b8; overflow: hidden; }
     .cbar .t i { display: block; height: 100%; background: linear-gradient(90deg, #ffd866, #f0a826); transition: width .4s; }
     .cbar small { font-size: 10px; font-weight: 700; min-width: 22px; }
+    #restip { position: fixed; z-index: 12; width: 260px; padding: 10px 12px; font-size: 12.5px; }
+    #restip .gi-top { display: flex; gap: 8px; align-items: center; }
+    #restip .gi-top b { display: block; font-size: 16px; }
+    #restip .gi-top span { color: var(--ink2); font-size: 12px; }
+    #restip i { font-style: normal; font-weight: 600; } #restip i.up { color: #3f8a2a; } #restip i.down { color: #c0392b; }
+    #restip p { margin: 6px 0; line-height: 1.3; }
+    .gi-row { display: grid; grid-template-columns: 62px 1fr; gap: 6px; margin: 3px 0; line-height: 1.25; }
+    .gi-row em { font-style: normal; color: var(--ink2); font-weight: 600; }
+    #restip .btn { width: 100%; margin-top: 6px; }
+    .crops { display: flex; gap: 4px; margin-top: 6px; }
+    .crops .tog { flex: 1; flex-direction: column; align-items: center; padding: 4px 2px; border-radius: 10px; gap: 1px; }
+    .crops .tog small { font-size: 9.5px; color: var(--ink2); }
+    .synbox { margin-top: 6px; padding: 5px 8px; border-radius: 10px; background: #fff6d6; border: 2px solid #f0d58a; font-size: 11.5px; display: flex; flex-direction: column; gap: 2px; }
+    .synbox div { display: flex; align-items: center; gap: 4px; } .synbox .ic { display: inline-block; }
+    .synbox.dim { background: #f7f1e3; border-color: #e2d6bc; color: var(--ink2); }
+    .vrow .age { font-weight: 500; font-size: 11px; color: var(--ink2); margin-left: 3px; }
+    .tile.locked { opacity: .6; }
     #cardtip { position: fixed; z-index: 8; width: 230px; padding: 8px 10px; font-size: 12.5px; pointer-events: none; transform: translate(-50%, -100%); }
     #cardtip b { font-size: 15px; display: block; }
     #cardtip p { color: var(--ink2); margin: 2px 0 6px; line-height: 1.25; }
@@ -434,6 +451,7 @@
   <div id="topright">
     <button class="round" id="btnLog" aria-label="Village news"></button>
     <button class="round" id="btnStats" aria-label="Village records"></button>
+    <button class="round hidden" id="btnMagic" aria-label="Spell book"></button>
     <button class="round" id="btnSettings" aria-label="Settings"></button>
   </div>
 
@@ -496,6 +514,7 @@
   <div id="bars"></div>
   <div id="floats"></div>
   <div id="cardtip" class="panel hidden"></div>
+  <div id="restip" class="panel hidden"></div>
   <div id="tag" class="hidden"></div>
   <a id="home" href="/">← isaiart.com</a>
 

@@ -49,6 +49,17 @@ const P = {
   xp: `<path d="M16 3l3.8 8 8.7 1.1-6.4 6 1.7 8.6L16 22.4l-7.8 4.3 1.7-8.6-6.4-6 8.7-1.1z" fill="#7cd0ff" ${O}/>`,
   clear: `<path d="M9 28L22 9" stroke="#8a5428" stroke-width="3.4" stroke-linecap="round"/><path d="M18 5c4-2 9 0 10 4l-6 6c-2-1-5-4-4-10z" fill="#b5bcc3" ${O}/><circle cx="8" cy="9" r="5" fill="#e2413c" ${O}/>`,
   info: `<circle cx="16" cy="16" r="12" fill="#4f8fd9" ${O}/><circle cx="16" cy="10" r="2" fill="#fff"/><path d="M16 15v8" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/>`,
+  wool: `<path d="M8 22c-4 0-5-5-2-7-1-4 3-7 6-5 1-3 7-3 8 0 3-2 7 1 6 5 3 2 2 7-2 7z" fill="#f6f3ea" ${O}/><path d="M11 16c1 1 2 1 3 0M17 17c1 1 2 1 3 0" fill="none" stroke="#c9c3b4" stroke-width="1.3" stroke-linecap="round"/>`,
+  cloth: `<path d="M5 8h22v4H5z" fill="#4f8fd9" ${O}/><path d="M5 12h22v14H5z" fill="#6fa8e8" ${O}/><path d="M5 16h22M5 20h22M11 12v14M17 12v14M23 12v14" stroke="#3f6fa8" stroke-width="1"/>`,
+  milk: `<path d="M11 6h10v4l3 4v14H8V14l3-4z" fill="#f7f7f2" ${O}/><path d="M8 18h16v6H8z" fill="#7fb8e8"/><path d="M11 6h10" ${O}/>`,
+  cheese: `<path d="M4 20l14-11 10 6v8H4z" fill="#f6c53f" ${O}/><path d="M4 20h24" ${O}/><circle cx="11" cy="23" r="1.6" fill="#d9a520"/><circle cx="20" cy="17" r="1.8" fill="#d9a520"/><circle cx="23" cy="23" r="1.3" fill="#d9a520"/>`,
+  honey: `<path d="M9 11h14l1 15H8z" fill="#f0a826" ${O}/><path d="M8 11c0-3 16-3 16 0" fill="#fff3d6" ${O}/><path d="M11 16c3 2 7 2 10 0" stroke="#c48a1a" stroke-width="1.4" fill="none"/><path d="M14 6l2-3 2 3" fill="none" ${O}/>`,
+  ale: `<path d="M8 10h13v17H8z" fill="#e8a23c" ${O}/><path d="M21 13h3a2 2 0 012 2v5a2 2 0 01-2 2h-3" fill="none" ${O}/><path d="M7 10c0-4 4-5 6-3 2-2 6-2 8 1 1 1 0 3-1 3H8c-1 0-1-1-1-1z" fill="#fff8e8" ${O}/>`,
+  heart: `<path d="M16 27C8 21 4 17 4 12a6 6 0 0112-1 6 6 0 0112 1c0 5-4 9-12 15z" fill="#f06292" ${O}/><ellipse cx="10" cy="11" rx="2" ry="1.4" fill="#ffc1d6"/>`,
+  shield: `<path d="M16 3l11 4v8c0 7-5 11-11 14C10 26 5 22 5 15V7z" fill="#6fa8e8" ${O}/><path d="M16 7v18M9 13h14" stroke="#fff" stroke-width="2"/>`,
+  staff: `<path d="M10 29L20 11" stroke="#8a5428" stroke-width="3" stroke-linecap="round"/><circle cx="21.5" cy="8.5" r="5" fill="#b18cff" ${O}/><path d="M26 3l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="#ffd54f"/>`,
+  baby: `<circle cx="16" cy="13" r="8" fill="#f2c9a0" ${O}/><path d="M9 11c1-5 13-5 14 0-3-2-11-2-14 0z" fill="#f6c3d6" ${O}/><circle cx="13" cy="14" r="1" fill="#5b3a1e"/><circle cx="19" cy="14" r="1" fill="#5b3a1e"/><path d="M14 17c1 1 3 1 4 0" fill="none" ${O}/><path d="M8 29c0-5 4-7 8-7s8 2 8 7z" fill="#f6c3d6" ${O}/>`,
+  moon: `<path d="M21 4a12 12 0 100 24A10 10 0 0121 4z" fill="#ffe7a3" ${O}/>`,
   target: `<circle cx="16" cy="16" r="11" fill="#fbf3e4" ${O}/><circle cx="16" cy="16" r="6" fill="#e2413c" ${O}/><circle cx="16" cy="16" r="2" fill="#fff"/>`,
 };
 

@@ -1,6 +1,7 @@
 // Procedural low-poly models. Every building, tree and villager is built
 // from primitives here so the game ships without any model files.
 import * as THREE from '../vendor/three.module.min.js';
+import { mulberry32 } from './rng.js';
 
 const matCache = new Map();
 export function mat(color, opts = {}) {
@@ -76,6 +77,31 @@ function shingles() {
   return shingleTex;
 }
 export function roofMat(color) { return mat(color, { map: shingles() }); }
+
+// a hip roof: four slopes meeting at a short ridge
+export function hipGeo(w, h, d) {
+  const hw = w / 2, hd = d / 2, r = Math.max(0.01, (w - d) / 2);
+  const A = [-hw, 0, hd], B = [hw, 0, hd], Cc = [hw, 0, -hd], D = [-hw, 0, -hd], E = [-r, h, 0], F = [r, h, 0];
+  const tris = [[A, B, F], [A, F, E], [Cc, D, E], [Cc, E, F], [D, A, E], [B, Cc, F]];
+  const pos = [], uv = [], sl = Math.hypot(hd, h), U = 2.2, V = 3.2;
+  for (const t of tris) for (const p of t) {
+    pos.push(...p);
+    const slope = 1 - p[1] / h;
+    uv.push((p[0] + p[2]) * U * 0.7, slope * sl * V);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
+}
+export function hipRoof(w, h, d, c, x = 0, y = 0, z = 0) {
+  const g = new THREE.Group(); g.position.set(x, y, z);
+  g.add(mesh(hipGeo(w, h, d), roofMat(c)));
+  const dark = new THREE.Color(c).multiplyScalar(0.62).getHex();
+  const ridge = mesh(new THREE.BoxGeometry(Math.max(0.1, w - d) + 0.1, 0.08, 0.12), dark); ridge.position.y = h - 0.02; g.add(ridge);
+  return g;
+}
 
 // a gable roof with shingles, an eave lip and a darker ridge cap
 export function roof(w, h, d, c, x = 0, y = 0, z = 0, ry = 0) {
@@ -156,7 +182,55 @@ function pad(w, d, color = 0xb89466) {
   m.position.y = 0.0; m.castShadow = false; return m;
 }
 
+const WALLS = [C.wall, 0xf7f1e3, 0xdde8f0, 0xf2d8d4, 0xdfe8cf, 0xf6e6b4, 0xe9dccb];
+const ROOFS = [C.red, C.blue, 0x4f8a3a, 0x7a5236, 0x66788a, 0xc8643a, 0x8a4f8f];
+// Each cottage is seeded by its building id: wall and roof colours, roof
+// shape, porch, window boxes, dormer, chimney side, garden, and at level 3 an
+// upper storey.
+function cottageVariant(g, a, seed, lvl) {
+  const rng = mulberry32(seed * 7919 + 13), pick = arr => arr[(rng() * arr.length) | 0];
+  const wall = pick(WALLS), roofC = pick(ROOFS), hip = rng() < 0.35, timber = rng() < 0.55;
+  const two = lvl >= 3, H = 0.9, H2 = two ? 0.72 : 0, top = H + H2;
+  g.add(box(1.5, H, 1.3, wall, 0, 0, 0));
+  if (two) { g.add(box(1.56, 0.08, 1.36, C.timber, 0, H - 0.04, 0)); g.add(box(1.46, H2, 1.26, timber ? C.white : wall, 0, H, 0)); }
+  if (timber) {
+    for (const [x, z] of [[-0.74, -0.64], [0.74, -0.64], [-0.74, 0.64], [0.74, 0.64]]) g.add(box(0.08, top, 0.08, C.timber, x, 0, z));
+    g.add(box(1.52, 0.06, 0.04, C.timber, 0, 0.45, 0.66));
+    if (two) { g.add(box(0.05, H2, 0.04, C.timber, -0.25, H, 0.64)); g.add(box(0.05, H2, 0.04, C.timber, 0.25, H, 0.64)); }
+  }
+  g.add(box(1.52, 0.08, 1.32, C.timber, 0, top - 0.04, 0));
+  if (hip) g.add(hipRoof(1.85, 0.7, 1.65, roofC, 0, top, 0));
+  else g.add(roof(1.85, 0.75, 1.65, roofC, 0, top, 0));
+  // door, maybe under a porch
+  const dx = rng() < 0.5 ? 0 : (rng() < 0.5 ? -0.35 : 0.35);
+  g.add(door(dx, 0, 0.66));
+  if (rng() < 0.45) {
+    for (const px of [dx - 0.28, dx + 0.28]) g.add(box(0.05, 0.62, 0.05, C.timber, px, 0, 0.92));
+    g.add(roof(0.75, 0.22, 0.42, roofC, dx, 0.62, 0.86));
+  }
+  for (const wx of [-0.45, 0.45]) if (Math.abs(wx - dx) > 0.3) {
+    g.add(windowPane(wx, 0.5, 0.66));
+    if (rng() < 0.6) { g.add(box(0.3, 0.07, 0.1, C.timber, wx, 0.33, 0.72)); for (let k = 0; k < 3; k++) g.add(ball(0.045, pick([0xf06292, 0xffd54f, 0xba68c8, 0xff8a65, 0xffffff]), wx - 0.09 + k * 0.09, 0.42, 0.73)); }
+  }
+  g.add(windowPane(0.76, 0.5, 0, Math.PI / 2));
+  if (two) { g.add(windowPane(-0.35, H + 0.38, 0.64)); g.add(windowPane(0.35, H + 0.38, 0.64)); }
+  // dormer on gable roofs
+  if (!hip && rng() < 0.35) {
+    g.add(box(0.36, 0.3, 0.3, wall, 0.35, top + 0.12, 0.42));
+    g.add(roof(0.46, 0.2, 0.4, roofC, 0.35, top + 0.42, 0.42, Math.PI / 2));
+    g.add(windowPane(0.35, top + 0.28, 0.58));
+  }
+  const cs = rng() < 0.5 ? 1 : -1;
+  g.add(box(0.2, 0.55 + H2, 0.2, rng() < 0.5 ? C.stone2 : C.brick, 0.5 * cs, top + 0.25 - H2 * 0.4, -0.3));
+  a.smoke = new Smoke(g, 0.5 * cs, top + 0.85 + H2 * 0.6, -0.3);
+  // garden bits
+  if (rng() < 0.5) { g.add(ball(0.12, C.leaf, -0.75, 0.1, 0.85)); g.add(ball(0.06, C.berry, -0.7, 0.2, 0.9)); }
+  if (rng() < 0.4) g.add(cyl(0.1, 0.09, 0.2, 8, C.log, 0.8, 0, 0.75));
+  if (rng() < 0.3) for (let k = 0; k < 4; k++) g.add(box(0.04, 0.22, 0.04, C.white, -0.85 + k * 0.18, 0, 0.98));
+}
+
 function cottage(g, a, opts = {}) {
+  if (opts.seed) return cottageVariant(g, a, opts.seed, opts.lvl || 1);
   const wall = opts.wall ?? C.wall, roofC = opts.roof ?? C.red;
   g.add(box(1.5, 0.9, 1.3, wall, 0, 0, 0));
   // timber frame corners
@@ -173,7 +247,23 @@ function cottage(g, a, opts = {}) {
   g.add(ball(0.1, C.leaf, 0.75, 0.1, 0.85));
 }
 
-function tiled(g, a) {
+function tiled(g, a, opts = {}) {
+  if (opts.seed) {
+    const rng = mulberry32(opts.seed * 104729 + 7), pick = arr => arr[(rng() * arr.length) | 0];
+    const roofC = pick([C.blue, 0x66788a, 0x3f6f9a, 0x8a4f8f, 0x4f8a3a]), wall = pick([C.wall2, 0xe8e1d0, 0xd9c8b0, 0xefe3cf]);
+    const two = (opts.lvl || 1) >= 3, H2 = two ? 0.6 : 0;
+    g.add(box(1.6, 0.35, 1.4, rng() < 0.5 ? C.stone : 0xb3aa9a, 0, 0, 0));
+    g.add(box(1.5, 0.75 + H2, 1.3, wall, 0, 0.35, 0));
+    g.add(hipRoof(1.9, 0.8, 1.75, roofC, 0, 1.1 + H2, 0));
+    g.add(door(-0.3, 0.2, 0.66, 0, pick([0x4a6a8a, 0x8a4a3a, 0x3f6f4a])));
+    g.add(windowPane(0.35, 0.65, 0.66)); g.add(windowPane(-0.76, 0.65, 0, Math.PI / 2)); g.add(windowPane(0.76, 0.65, 0, Math.PI / 2));
+    if (two) { g.add(windowPane(-0.3, 1.25, 0.66)); g.add(windowPane(0.35, 1.25, 0.66)); }
+    g.add(box(0.22, 0.7 + H2, 0.22, C.brick, -0.5, 1.2, -0.35));
+    a.smoke = new Smoke(g, -0.5, 1.95 + H2, -0.35);
+    g.add(box(0.5, 0.06, 0.25, C.stone, -0.3, 0, 0.82));
+    if (rng() < 0.5) { for (let k = 0; k < 5; k++) g.add(box(0.05, 0.3, 0.05, C.timber, -0.8 + k * 0.4, 0, 0.98)); g.add(box(1.65, 0.04, 0.04, C.timber, 0, 0.24, 0.98)); }
+    return;
+  }
   g.add(box(1.6, 0.35, 1.4, C.stone, 0, 0, 0));
   g.add(box(1.5, 0.75, 1.3, C.wall2, 0, 0.35, 0));
   g.add(roof(1.9, 0.85, 1.75, C.blue, 0, 1.1, 0));
@@ -394,15 +484,231 @@ function statue(g) {
   g.add(ball(0.08, 0x9b6bd1, 0, 1.15, 0));
 }
 
+// ── farm animals (wander inside their pens; main.js moves them) ──
+export function chicken() {
+  const g = new THREE.Group(), white = rngPick([0xfaf6ee, 0xc98a4a, 0xf0e2c8]);
+  g.add(ball(0.09, white, 0, 0.1, 0, 1)); g.add(ball(0.055, white, 0, 0.19, 0.06, 1));
+  g.add(box(0.02, 0.04, 0.05, 0xd83a3a, 0, 0.23, 0.06)); g.add(cone(0.02, 0.05, 4, 0xf0a020, 0, 0.17, 0.12).rotateX(Math.PI / 2));
+  g.add(box(0.015, 0.05, 0.015, 0xf0a020, -0.03, 0, 0)); g.add(box(0.015, 0.05, 0.015, 0xf0a020, 0.03, 0, 0));
+  g.userData.head = g.children[1];
+  return g;
+}
+export function sheep() {
+  const g = new THREE.Group();
+  const wool = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 1), mat(0xf6f3ea)); wool.scale.set(1, 0.85, 1.25); wool.position.y = 0.28; wool.castShadow = true; g.add(wool);
+  const head = box(0.11, 0.12, 0.14, 0x2e2a28, 0, 0.26, 0.24); g.add(head); g.userData.head = head;
+  for (const [x, z] of [[-0.09, -0.12], [0.09, -0.12], [-0.09, 0.12], [0.09, 0.12]]) g.add(box(0.04, 0.16, 0.04, 0x2e2a28, x, 0, z));
+  return g;
+}
+export function cow() {
+  const g = new THREE.Group();
+  g.add(box(0.26, 0.24, 0.48, 0xf7f3ea, 0, 0.2, 0));
+  g.add(box(0.27, 0.14, 0.16, 0x2e2a28, 0.0, 0.3, -0.08)); g.add(box(0.2, 0.12, 0.12, 0x2e2a28, 0.04, 0.22, 0.14));
+  const head = new THREE.Group(); head.position.set(0, 0.36, 0.28); g.add(head);
+  head.add(box(0.16, 0.16, 0.16, 0xf7f3ea, 0, -0.08, 0)); head.add(box(0.14, 0.07, 0.06, 0xf2b8a8, 0, -0.1, 0.09));
+  head.add(cone(0.02, 0.07, 4, 0xe8dcc0, -0.07, 0.02, 0)); head.add(cone(0.02, 0.07, 4, 0xe8dcc0, 0.07, 0.02, 0));
+  g.userData.head = head;
+  for (const [x, z] of [[-0.09, -0.17], [0.09, -0.17], [-0.09, 0.17], [0.09, 0.17]]) g.add(box(0.06, 0.2, 0.06, 0xf7f3ea, x, 0, z));
+  return g;
+}
+let _pr = mulberry32(99);
+function rngPick(arr) { return arr[(_pr() * arr.length) | 0]; }
+function fenceRing(g, w, d, gap = true) {
+  const hw = w / 2 - 0.1, hd = d / 2 - 0.1;
+  for (const [x0, z0, x1, z1] of [[-hw, -hd, hw, -hd], [hw, -hd, hw, hd], [hw, hd, -hw, hd], [-hw, hd, -hw, -hd]]) {
+    const len = Math.hypot(x1 - x0, z1 - z0), n = Math.round(len / 0.5);
+    for (let k = 0; k <= n; k++) { const t = k / n; if (gap && z0 === hd && z1 === hd && Math.abs(x0 + (x1 - x0) * t) < 0.35) continue; g.add(box(0.06, 0.34, 0.06, C.timber, x0 + (x1 - x0) * t, 0, z0 + (z1 - z0) * t)); }
+    const rail = box(len, 0.04, 0.03, C.plank, (x0 + x1) / 2, 0.24, (z0 + z1) / 2); rail.rotation.y = Math.atan2(-(z1 - z0), x1 - x0); g.add(rail);
+  }
+}
+function pen(g, a, w, d, make, n, ground = 0x8cc463) {
+  g.add(box(w - 0.1, 0.04, d - 0.1, ground, 0, 0, 0));
+  fenceRing(g, w, d);
+  a.animals = [];
+  for (let i = 0; i < n; i++) {
+    const m = make(); const x = (Math.random() - 0.5) * (w - 1), z = (Math.random() - 0.5) * (d - 1);
+    m.position.set(x, 0.04, z); g.add(m);
+    a.animals.push({ m, tx: x, tz: z, t: Math.random() * 3, w: w - 0.9, d: d - 0.9 });
+  }
+}
+function coop(g, a) {
+  g.add(box(1.8, 0.04, 1.8, 0xc9b27a, 0, 0, 0));
+  fenceRing(g, 1.9, 1.9);
+  const house = new THREE.Group(); house.position.set(-0.35, 0, -0.35); g.add(house);
+  for (const [x, z] of [[-0.3, -0.25], [0.3, -0.25], [-0.3, 0.25], [0.3, 0.25]]) house.add(box(0.06, 0.3, 0.06, C.timber, x, 0, z));
+  house.add(box(0.75, 0.42, 0.6, 0xc9473d, 0, 0.3, 0)); house.add(roof(0.9, 0.32, 0.78, C.timber, 0, 0.72, 0));
+  house.add(box(0.16, 0.18, 0.04, 0x3a2a20, 0, 0.36, 0.31));
+  const ramp = box(0.14, 0.03, 0.5, C.plank, 0, 0.14, 0.5); ramp.rotation.x = 0.55; house.add(ramp);
+  g.add(cyl(0.12, 0.1, 0.12, 8, C.plank, 0.55, 0, 0.45)); g.add(cyl(0.1, 0.1, 0.03, 8, C.hay, 0.55, 0.12, 0.45));
+  a.animals = [];
+  for (let i = 0; i < 5; i++) { const m = chicken(); const x = 0.2 + Math.random() * 0.5, z = Math.random() * 0.6 - 0.1; m.position.set(x, 0.04, z); g.add(m); a.animals.push({ m, tx: x, tz: z, t: Math.random() * 2, w: 1.3, d: 1.3, fast: true }); }
+}
+function orchard(g, a) {
+  g.add(box(2.8, 0.04, 2.8, 0x7fbf55, 0, 0, 0));
+  for (const [x, z] of [[-0.85, -0.85], [0.85, -0.85], [0, 0], [-0.85, 0.85], [0.85, 0.85]]) {
+    g.add(cyl(0.06, 0.08, 0.5, 6, 0x7a4e2c, x, 0, z));
+    g.add(ball(0.42, 0x4f9a3a, x, 0.75, z)); g.add(ball(0.3, 0x5fae45, x + 0.12, 0.98, z + 0.06));
+    for (let k = 0; k < 5; k++) { const t = k * 1.3; g.add(ball(0.05, C.berry, x + Math.cos(t) * 0.36, 0.7 + (k % 2) * 0.18, z + Math.sin(t) * 0.36)); }
+  }
+  g.add(cyl(0.14, 0.11, 0.16, 8, C.plank, 0.4, 0, 1.15)); for (let k = 0; k < 3; k++) g.add(ball(0.05, C.berry, 0.36 + k * 0.05, 0.18, 1.15));
+  const ladder = new THREE.Group(); ladder.add(box(0.03, 0.8, 0.03, C.plank, -0.08, 0, 0)); ladder.add(box(0.03, 0.8, 0.03, C.plank, 0.08, 0, 0));
+  for (let k = 0; k < 4; k++) ladder.add(box(0.18, 0.025, 0.025, C.plank, 0, 0.15 + k * 0.18, 0));
+  ladder.position.set(-0.45, 0, 0.3); ladder.rotation.x = -0.3; g.add(ladder);
+}
+function beehive(g, a) {
+  g.add(box(1.8, 0.04, 1.8, 0x86c25a, 0, 0, 0));
+  const hives = [[-0.45, -0.3], [0.1, -0.45], [0.55, 0.05]];
+  for (const [x, z] of hives) {
+    g.add(box(0.36, 0.1, 0.36, C.timber, x, 0, z));
+    for (let k = 0; k < 3; k++) g.add(box(0.32, 0.14, 0.32, k % 2 ? 0xf3e0a0 : 0xf7f1e3, x, 0.1 + k * 0.14, z));
+    g.add(roof(0.42, 0.12, 0.42, 0xc98a3a, x, 0.52, z));
+  }
+  const cols = [0xf06292, 0xffd54f, 0xba68c8, 0xffffff];
+  for (let i = 0; i < 12; i++) { const x = -0.8 + Math.random() * 1.6, z = 0.35 + Math.random() * 0.45; g.add(box(0.02, 0.14, 0.02, C.leaf, x, 0, z)); g.add(ball(0.045, cols[i % 4], x, 0.17, z)); }
+  a.bees = [];
+  for (let i = 0; i < 9; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.022, 5, 4), mat(0xffc81e, { basic: true })); g.add(b); a.bees.push({ m: b, h: hives[i % 3], ph: Math.random() * 6, r: 0.25 + Math.random() * 0.35 }); }
+}
+function pasture(g, a) {
+  pen(g, a, 2.9, 2.9, sheep, 5);
+  g.add(box(0.7, 0.45, 0.45, C.log, -0.9, 0, -0.95)); g.add(roof(0.85, 0.25, 0.6, C.timber, -0.9, 0.45, -0.95));
+  g.add(box(0.6, 0.14, 0.2, C.darkwood, 0.8, 0, -1.05)); g.add(box(0.54, 0.02, 0.14, 0x5ab0e0, 0.8, 0.12, -1.05));
+}
+function dairy(g, a) {
+  pen(g, a, 2.9, 2.9, cow, 3);
+  g.add(box(0.9, 0.6, 0.6, C.red, -0.85, 0, -0.95)); g.add(roof(1.05, 0.35, 0.8, 0x7a2e2a, -0.85, 0.6, -0.95));
+  g.add(box(0.3, 0.4, 0.04, C.white, -0.85, 0, -0.64));
+  for (const x of [0.7, 0.92]) g.add(cyl(0.08, 0.09, 0.24, 8, 0xc9cdd1, x, 0, -1.05));
+  g.add(box(0.6, 0.12, 0.2, C.darkwood, 0.6, 0, 1.0));
+}
+function weaver(g, a) {
+  g.add(box(1.3, 0.8, 1.0, 0xe9d8c4, -0.15, 0, -0.25)); g.add(roof(1.6, 0.6, 1.3, 0x7a5aa8, -0.15, 0.8, -0.25));
+  g.add(door(-0.4, 0, 0.26)); g.add(windowPane(0.2, 0.45, 0.26));
+  // a loom with coloured threads
+  const lx = 0.55, lz = 0.6;
+  for (const x of [-0.2, 0.2]) g.add(box(0.05, 0.55, 0.05, C.timber, lx + x, 0, lz));
+  g.add(box(0.46, 0.05, 0.05, C.timber, lx, 0.53, lz)); g.add(box(0.46, 0.05, 0.05, C.timber, lx, 0.15, lz));
+  ['#d9534f', '#4f8fd9', '#f0c94a', '#5cb85c'].forEach((c, i) => g.add(box(0.07, 0.36, 0.01, new THREE.Color(c).getHex(), lx - 0.13 + i * 0.087, 0.17, lz)));
+  g.add(ball(0.13, 0xf6f3ea, -0.75, 0.13, 0.55)); g.add(ball(0.11, 0xf6f3ea, -0.55, 0.11, 0.7));
+}
+function creamery(g, a) {
+  g.add(box(1.3, 0.8, 1.0, C.white, -0.15, 0, -0.25)); g.add(roof(1.6, 0.6, 1.3, 0x4f8fd9, -0.15, 0.8, -0.25));
+  g.add(door(-0.15, 0, 0.26)); g.add(windowPane(0.35, 0.45, 0.26)); g.add(windowPane(-0.6, 0.45, 0.26));
+  for (let k = 0; k < 3; k++) g.add(cyl(0.13, 0.13, 0.08, 10, 0xf2c94a, 0.6, k * 0.08, 0.55));
+  for (const x of [-0.7, -0.5]) g.add(cyl(0.08, 0.09, 0.26, 8, 0xc9cdd1, x, 0, 0.6));
+}
+function brewery(g, a) {
+  g.add(box(1.4, 0.85, 1.05, C.brick, -0.1, 0, -0.25)); g.add(roof(1.7, 0.6, 1.35, 0x6b4a2a, -0.1, 0.85, -0.25));
+  g.add(door(-0.35, 0, 0.29)); g.add(windowPane(0.3, 0.5, 0.29));
+  g.add(cyl(0.28, 0.32, 0.5, 12, 0xc0703a, 0.65, 0, -0.55)); g.add(cone(0.2, 0.3, 12, 0xc0703a, 0.65, 0.5, -0.55));
+  a.smoke = new Smoke(g, 0.65, 1.05, -0.55, 0xf5efe6);
+  for (const [x, z] of [[0.55, 0.55], [0.85, 0.5], [0.7, 0.75]]) { const b = cyl(0.12, 0.12, 0.3, 10, 0x8a5a33, x, 0, z); g.add(b); }
+}
+function tavern(g, a) {
+  g.add(box(2.3, 0.9, 1.3, C.wall, 0, 0, -0.1));
+  g.add(box(2.36, 0.08, 1.36, C.timber, 0, 0.86, -0.1));
+  g.add(box(2.2, 0.7, 1.2, 0xf7f1e3, 0, 0.9, -0.1));
+  for (const x of [-1.12, -0.4, 0.4, 1.12]) g.add(box(0.07, 1.6, 0.07, C.timber, x, 0, 0.56));
+  g.add(roof(2.6, 0.75, 1.6, 0x8a3a2a, 0, 1.6, -0.1));
+  g.add(door(0, 0, 0.56)); for (const x of [-0.75, 0.75]) { g.add(windowPane(x, 0.5, 0.56)); g.add(windowPane(x, 1.25, 0.56)); }
+  g.add(windowPane(0, 1.25, 0.56));
+  g.add(box(0.04, 0.04, 0.4, C.darkwood, 1.0, 1.3, 0.75)); g.add(box(0.36, 0.26, 0.04, 0xf0c94a, 1.0, 1.06, 0.95));
+  g.add(box(0.2, 0.7, 0.2, C.stone2, -0.8, 1.6, -0.5)); a.smoke = new Smoke(g, -0.8, 2.4, -0.5);
+  for (const x of [-0.65, 0.65]) { g.add(cyl(0.2, 0.2, 0.04, 10, C.plank, x, 0.3, 0.95)); g.add(box(0.04, 0.3, 0.04, C.timber, x, 0, 0.95)); g.add(box(0.5, 0.05, 0.14, C.plank, x, 0.18, 1.2)); }
+  for (const [x, z] of [[1.05, 0.25], [1.05, 0.0]]) g.add(cyl(0.11, 0.11, 0.26, 10, 0x8a5a33, x, 0, z));
+}
+function school(g, a) {
+  g.add(box(1.5, 0.85, 1.2, 0xf6e6b4, 0, 0, -0.1)); g.add(roof(1.8, 0.65, 1.5, C.red, 0, 0.85, -0.1));
+  g.add(door(0, 0, 0.51)); g.add(windowPane(-0.45, 0.48, 0.51)); g.add(windowPane(0.45, 0.48, 0.51));
+  // belfry
+  for (const [x, z] of [[-0.12, -0.22], [0.12, -0.22], [-0.12, 0.02], [0.12, 0.02]]) g.add(box(0.04, 0.32, 0.04, C.white, x, 1.4, z - 0.1));
+  g.add(roof(0.4, 0.22, 0.4, C.red, 0, 1.72, -0.2)); g.add(ball(0.07, 0xd9a520, 0, 1.55, -0.2, 1));
+  g.add(box(0.5, 0.36, 0.04, 0x2f4a3a, 0.7, 0.2, 0.75)); g.add(box(0.04, 0.5, 0.04, C.timber, 0.5, 0, 0.75)); g.add(box(0.04, 0.5, 0.04, C.timber, 0.9, 0, 0.75));
+}
+function watchtower(g, a) {
+  for (const [x, z] of [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]]) { const p = box(0.1, 2.3, 0.1, C.log, x, 0, z); p.rotation.z = -x * 0.08; p.rotation.x = z * 0.08; g.add(p); }
+  g.add(box(1.15, 0.08, 1.15, C.plank, 0, 2.0, 0));
+  for (const [w, d, x, z] of [[1.15, 0.05, 0, 0.56], [1.15, 0.05, 0, -0.56], [0.05, 1.15, 0.56, 0], [0.05, 1.15, -0.56, 0]]) g.add(box(w, 0.32, d, C.timber, x, 2.05, z));
+  g.add(hipRoof(1.35, 0.5, 1.35, C.green, 0, 2.62, 0));
+  for (const [x, z] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) g.add(box(0.05, 0.6, 0.05, C.timber, x, 2.05, z));
+  const ladder = new THREE.Group(); ladder.add(box(0.03, 2.1, 0.03, C.plank, -0.1, 0, 0)); ladder.add(box(0.03, 2.1, 0.03, C.plank, 0.1, 0, 0));
+  for (let k = 0; k < 9; k++) ladder.add(box(0.22, 0.025, 0.025, C.plank, 0, 0.18 + k * 0.22, 0));
+  ladder.position.set(0, 0, 0.62); ladder.rotation.x = -0.12; g.add(ladder);
+  g.add(box(0.04, 0.8, 0.04, C.darkwood, 0.45, 2.6, 0.45)); g.add(box(0.36, 0.22, 0.02, 0xd9473d, 0.64, 3.25, 0.45));
+  a.flagMesh = g.children[g.children.length - 1];
+  g.add(box(0.12, 0.16, 0.12, 0xffe08a, -0.45, 2.38, 0.5));   // lamp (glows at night)
+}
+function wizard(g, a) {
+  g.add(cyl(0.62, 0.72, 0.4, 10, C.stone2, 0, 0, 0));
+  g.add(cyl(0.48, 0.56, 2.5, 10, 0xb9b3c4, 0, 0.4, 0));
+  for (let k = 0; k < 4; k++) g.add(cyl(0.5 + k * 0.005, 0.5, 0.05, 10, 0x8f86a3, 0, 0.9 + k * 0.55, 0));
+  g.add(cyl(0.6, 0.5, 0.12, 10, 0x8f86a3, 0, 2.85, 0));
+  g.add(cone(0.68, 1.3, 10, 0x5b3fa0, 0, 2.95, 0));
+  g.add(ball(0.12, 0xffd54f, 0, 4.35, 0, 0));
+  const glow = mat(0xc7a8ff, { emissive: 0x6a3fd0 });
+  for (const [y, r] of [[1.4, 0.0], [2.1, 1.6], [2.5, -1.4]]) { const w = new THREE.Mesh(new THREE.CircleGeometry(0.11, 10), glow); w.position.set(Math.sin(r) * 0.53, y, Math.cos(r) * 0.53); w.rotation.y = r; g.add(w); }
+  const d = door(0, 0.4, 0.5, 0, 0x4a2f6b); g.add(d);
+  a.orbs = [];
+  for (let i = 0; i < 3; i++) { const o = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({ color: [0xb18cff, 0x7fd8ff, 0xff9ed8][i] })); g.add(o); a.orbs.push(o); }
+  g.add(cyl(0.2, 0.24, 0.12, 10, C.stone, 0.75, 0, 0.55)); g.add(ball(0.09, 0x7fd8ff, 0.75, 0.2, 0.55));
+}
+function memorial(g, a) {
+  g.add(box(1.8, 0.04, 1.8, 0x7fbf55, 0, 0, 0));
+  for (let k = 0; k < 4; k++) g.add(box(0.3, 0.03, 0.3, 0xd8cdb4, 0, 0.03, 0.75 - k * 0.38));
+  g.add(cyl(0.08, 0.12, 0.6, 6, 0x7a4e2c, 0.55, 0, -0.55)); for (const [x, y] of [[0.45, 0.85], [0.65, 0.95], [0.55, 1.05]]) g.add(ball(0.24, 0x6aa84f, x, y, -0.55));
+  a.stones = [];
+  const spots = [[-0.6, -0.55], [-0.25, -0.6], [-0.6, -0.15], [-0.25, -0.2], [-0.6, 0.25], [-0.25, 0.25], [0.45, 0.2], [0.45, 0.55]];
+  for (const [x, z] of spots) { const st = new THREE.Group(); st.add(box(0.18, 0.24, 0.06, 0xb9b6ae, 0, 0, 0)); st.add(cyl(0.09, 0.09, 0.06, 10, 0xb9b6ae, 0, 0.21, 0).rotateX(Math.PI / 2)); st.add(ball(0.04, 0xf06292, 0.08, 0.04, 0.08)); st.position.set(x, 0.03, z); st.visible = false; g.add(st); a.stones.push(st); }
+  g.add(box(0.5, 0.05, 0.18, C.plank, 0.5, 0.22, 0.75)); for (const x of [0.3, 0.7]) g.add(box(0.04, 0.22, 0.14, C.timber, x, 0, 0.75));
+}
+function torch(g, a) {
+  g.add(box(0.07, 0.75, 0.07, C.darkwood, 0, 0, 0));
+  g.add(cyl(0.07, 0.05, 0.1, 6, 0x5a5a5a, 0, 0.75, 0));
+  g.add(box(0.09, 0.07, 0.09, 0xffe08a, 0, 0.84, 0));           // glow source
+  const f = new THREE.Group(); f.position.y = 0.86; g.add(f);
+  f.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 6), mat(0xff8a1e, { basic: true })), 0, 0.1, 0));
+  f.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.14, 6), mat(0xffd34a, { basic: true })), 0, 0.08, 0));
+  a.fire = f;
+}
+function palisade(g) {
+  for (const x of [-0.32, 0, 0.32]) { g.add(cyl(0.11, 0.12, 0.8, 7, C.log, x, 0, 0)); g.add(cone(0.11, 0.2, 7, 0xb98450, x, 0.8, 0)); }
+  g.add(box(0.95, 0.06, 0.06, C.darkwood, 0, 0.5, 0.1));
+}
+
+// ── night beasts ──
+export function beastModel(kind) {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const eye = mat(0xffe25a, { basic: true });
+  let legs = [];
+  if (kind === 'goblin') {
+    body.add(cyl(0.1, 0.13, 0.24, 8, 0x6b4a2a, 0, 0.14, 0)); body.add(ball(0.12, 0x6fae4a, 0, 0.46, 0, 1));
+    for (const s of [-1, 1]) { const ear = cone(0.04, 0.16, 4, 0x6fae4a, s * 0.13, 0.42, 0); ear.rotation.z = -s * 1.2; body.add(ear); }
+    for (const x of [-0.04, 0.04]) body.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.024, 6, 4), eye), x, 0.48, 0.1));
+    for (const x of [-0.05, 0.05]) { const l = box(0.06, 0.14, 0.06, 0x3a2a1a, x, 0, 0); body.add(l); legs.push(l); }
+    body.add(ball(0.08, 0x8a6a3a, 0, 0.32, -0.13));
+  } else {
+    const wolf = kind === 'wolf', c = wolf ? 0x8a8f99 : 0x5e4433, c2 = wolf ? 0x6b7079 : 0x4a3426;
+    body.add(box(wolf ? 0.2 : 0.28, wolf ? 0.2 : 0.26, wolf ? 0.48 : 0.46, c, 0, 0.18, 0));
+    const head = new THREE.Group(); head.position.set(0, wolf ? 0.34 : 0.28, wolf ? 0.28 : 0.27); body.add(head);
+    head.add(box(0.16, 0.15, 0.16, c, 0, 0, 0)); head.add(box(0.1, 0.08, 0.14, c2, 0, -0.03, 0.12));
+    if (wolf) { head.add(cone(0.035, 0.09, 4, c2, -0.05, 0.07, -0.02)); head.add(cone(0.035, 0.09, 4, c2, 0.05, 0.07, -0.02)); const tail = box(0.05, 0.05, 0.24, c2, 0, 0.26, -0.32); tail.rotation.x = 0.5; body.add(tail); }
+    else { head.add(cone(0.02, 0.08, 4, 0xf3ecd8, -0.05, -0.06, 0.18).rotateX(-0.6)); head.add(cone(0.02, 0.08, 4, 0xf3ecd8, 0.05, -0.06, 0.18).rotateX(-0.6)); }
+    for (const x of [-0.045, 0.045]) head.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 4), eye), x, 0.03, 0.08));
+    for (const [x, z] of [[-0.07, -0.15], [0.07, -0.15], [-0.07, 0.15], [0.07, 0.15]]) { const l = box(0.05, 0.14, 0.05, c2, x, 0, z); body.add(l); legs.push(l); }
+  }
+  g.scale.setScalar(1.25);
+  return { group: g, body, legs };
+}
+
 const BUILDERS = { cottage, tiled, lumber, forager, farm, sawmill, quarry, storehouse, dock, market, forester, windmill, bakery, mason, campfire,
-  flowers, bench, lantern, hay, pumpkins, fence, well, sign, statue };
+  flowers, bench, lantern, hay, pumpkins, fence, well, sign, statue,
+  coop, orchard, beehive, pasture, weaver, dairy, creamery, brewery, tavern, school, watchtower, wizard, memorial, torch, palisade };
 
 // Returns { group, anim } — anim holds handles to animated parts.
-export function buildModel(type, size = [2, 2]) {
+export function buildModel(type, size = [2, 2], seed = 0, lvl = 1) {
   const g = new THREE.Group(), a = {};
   const inner = new THREE.Group(); g.add(inner);
-  if (!['campfire', 'farm', 'dock', 'fence', 'flowers', 'sign', 'lantern', 'bench'].includes(type)) inner.add(pad(size[0] * 0.92, size[1] * 0.92));
-  BUILDERS[type](inner, a);
+  if (!['campfire', 'farm', 'dock', 'fence', 'flowers', 'sign', 'lantern', 'bench', 'torch', 'palisade', 'coop', 'orchard', 'beehive', 'pasture', 'dairy', 'memorial'].includes(type)) inner.add(pad(size[0] * 0.92, size[1] * 0.92));
+  BUILDERS[type](inner, a, seed ? { seed, lvl } : {});
   a.inner = inner;
   return { group: g, anim: a };
 }
@@ -490,7 +796,7 @@ export function villagerModel(v) {
   body.add(ball(0.11, v.skin, 0, 0.5, 0, 1));
   // hair or hat
   if (v.hat) { body.add(cyl(0.17, 0.17, 0.02, 10, v.hatColor, 0, 0.55, 0)); body.add(cyl(0.09, 0.1, 0.09, 10, v.hatColor, 0, 0.56, 0)); }
-  else { const hair = new THREE.Mesh(new THREE.SphereGeometry(0.118, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(v.hair)); hair.position.y = 0.51; hair.rotation.x = -0.25; body.add(hair); }
+  else { const hair = new THREE.Mesh(new THREE.SphereGeometry(0.118, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), mat((v.age ?? 30) >= 66 ? 0xdcdad4 : v.hair)); hair.position.y = 0.51; hair.rotation.x = -0.25; body.add(hair); }
   // eyes
   for (const x of [-0.042, 0.042]) {
     body.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.019, 6, 4), mat(0x2a1a10)), x, 0.515, 0.098));
@@ -505,8 +811,14 @@ export function villagerModel(v) {
   body.add(armL, armR);
   const tool = new THREE.Group(); tool.position.set(0, -0.2, 0.04); armR.add(tool);
   const sack = ball(0.11, 0xc9a46a, 0, 0.35, -0.15); sack.visible = false; body.add(sack);
-  g.scale.setScalar(1.3);
-  return { group: g, body, hipL, hipR, armL, armR, tool, sack, toolKind: null };
+  // a pointy wizard hat, shown while studying magic
+  const wiz = new THREE.Group(); wiz.add(cyl(0.16, 0.16, 0.02, 10, 0x4a2f8a, 0, 0.56, 0)); wiz.add(cone(0.1, 0.3, 10, 0x5b3fa0, 0, 0.57, 0)); wiz.add(ball(0.03, 0xffd54f, 0, 0.75, 0)); wiz.visible = false; body.add(wiz);
+  // a bedroll for sleeping by the fire
+  const bed = box(0.3, 0.06, 0.62, 0x9a6a8a, 0, 0, 0); bed.visible = false; g.add(bed);
+  const age = v.age ?? 30, child = age < 14, elder = age >= 66;
+  g.scale.setScalar(child ? 0.85 + age / 14 * 0.35 : 1.3);
+  if (child) body.children[2].scale.setScalar(1.18);
+  return { group: g, body, hipL, hipR, armL, armR, tool, sack, toolKind: null, wiz, bed, stage: child ? 'child' : elder ? 'elder' : 'adult' };
 }
 
 export function setTool(vm, kind) {
@@ -520,5 +832,7 @@ export function setTool(vm, kind) {
   else if (kind === 'hoe') { t.add(box(0.025, 0.38, 0.025, C.darkwood, 0, 0, 0.05)); t.add(box(0.08, 0.03, 0.06, 0x9aa0a6, 0, 0.18, 0.08)); }
   else if (kind === 'rod') { const r = box(0.015, 0.7, 0.015, C.darkwood, 0, 0, 0.05); r.rotation.x = 0.7; t.add(r); }
   else if (kind === 'basket') { t.add(cyl(0.08, 0.06, 0.08, 8, C.plank, 0, -0.06, 0.03)); }
+  else if (kind === 'spear') { t.add(box(0.02, 0.75, 0.02, C.darkwood, 0, 0.15, 0.05)); t.add(cone(0.035, 0.12, 4, 0xb8bcc0, 0, 0.55, 0.05)); }
+  else if (kind === 'staff') { t.add(box(0.025, 0.6, 0.025, 0x6b4428, 0, 0.1, 0.05)); t.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshBasicMaterial({ color: 0x9fd8ff })), 0, 0.42, 0.05)); }
   else if (kind === 'sapling') { t.add(cone(0.06, 0.16, 5, C.leaf, 0, -0.08, 0.05)); }
 }

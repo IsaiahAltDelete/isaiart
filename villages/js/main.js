@@ -1,12 +1,13 @@
 // Entry point: wires the simulation, the 3D view, the UI and input.
 import * as THREE from '../vendor/three.module.min.js';
 import { Sim, defOf, isDecor, footprint, DAY, lvlOf, RANGE } from './sim.js';
+import { BEASTS } from './data.js';
 import { View, bubbleTexture, timeUniform } from './view.js';
-import { buildModel, scaffold, villagerModel, setTool, mat, C, pineGeo, stumpGeo } from './models.js';
+import { buildModel, scaffold, villagerModel, setTool, mat, C, pineGeo, stumpGeo, beastModel } from './models.js';
 import { UI } from './ui.js';
 import { N, HALF, idx, toWorld, inMap, CENTERS, tileX, tileZ } from './world.js';
 import { SETTLEMENTS, BUILD_ORDER, DECOR_ORDER, GOODS } from './data.js';
-import { initAudio, sfx, setSound, ambient, rainSound, setMusic } from './audio.js';
+import { initAudio, sfx, setSound, ambient, rainSound, setMusic, setMood } from './audio.js';
 import { Life } from './life.js';
 
 const SAVE_KEY = 'isaiart.villages.v1';
@@ -14,8 +15,8 @@ const SET_KEY = 'isaiart.villages.settings';
 const NEED_ICON = { sawmill: 'wood', windmill: 'wheat', bakery: 'flour', mason: 'stone' };
 const STATUS_ICON = { 'Saving wood for builders': 'hammer', 'Saving stone for builders': 'hammer', 'Storage full': 'bag', 'No trees within reach': 'axe', 'No boulders nearby': 'pick', 'Nothing to sell': 'coin', 'Waiting for berries': 'basket' };
 const SACK = { wood: 0x9a6a3e, stone: 0xa9adb0, food: 0xd8304a, grain: 0xe6c35c };
-const ANIM_TOOL = { chop: 'axe', mine: 'pick', hammer: 'hammer', saw: 'hammer', hoe: 'hoe', fish: 'rod', gather: 'basket', plant: 'sapling' };
-const JOB_TOOL = { woodcutter: 'axe', miner: 'pick', fisher: 'rod', forager: 'basket', farmer: 'hoe', forester: 'sapling', mason: 'hammer', sawyer: 'hammer' };
+const ANIM_TOOL = { cast: 'staff', chop: 'axe', mine: 'pick', hammer: 'hammer', saw: 'hammer', hoe: 'hoe', fish: 'rod', gather: 'basket', plant: 'sapling' };
+const JOB_TOOL = { guard: 'spear', wizard: 'staff', shepherd: 'hoe', picker: 'basket', milker: 'basket', herder: 'basket', woodcutter: 'axe', miner: 'pick', fisher: 'rod', forager: 'basket', farmer: 'hoe', forester: 'sapling', mason: 'hammer', sawyer: 'hammer' };
 
 const tick = () => new Promise(r => requestAnimationFrame(() => r()));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -33,6 +34,7 @@ class Game {
     this.thumbs = {};
     this.effects = [];
     this.halos = [];
+    this.beasts = new Map();
     this.screenSprites = new Set();
     this.cbars = new Map();
   }
@@ -120,7 +122,8 @@ class Game {
   }
   addBVis(b) {
     const def = defOf(b.type);
-    const { group, anim } = buildModel(b.type, def.size);
+    const variant = b.type === 'cottage' || b.type === 'tiled';
+    const { group, anim } = buildModel(b.type, def.size, variant ? b.id : 0, lvlOf(b));
     const root = new THREE.Group(); root.add(group);
     const c = this.sim.bCenter(b);
     root.position.set(c.x, this.baseY(b), c.z);
@@ -203,9 +206,18 @@ class Game {
   applyFarm(vis) {
     const d = vis.b.data, crops = vis.anim.crops;
     if (!crops) return;
+    const crop = d.crop || 'wheat';
     const s = d.stage === 'empty' ? 0.001 : d.stage === 'ripe' ? 1 : 0.15 + d.grow * 0.75;
-    const m = mat(d.stage === 'ripe' ? 0xe8c14a : d.grow > 0.7 ? 0xb5c84a : C.leaf);
-    for (const c of crops.children) { c.scale.set(1, s, 1); c.position.y = 0.1 + 0.2 * s; c.material = m; }
+    const ripe = d.stage === 'ripe' || d.grow > 0.7;
+    const col = crop === 'wheat' ? (d.stage === 'ripe' ? 0xe8c14a : d.grow > 0.7 ? 0xb5c84a : C.leaf)
+      : crop === 'veg' ? (ripe ? 0x3f8f35 : 0x6fbf3f) : (ripe ? 0xe58a3a : 0x6fae45);
+    const m = mat(col);
+    for (const c of crops.children) {
+      c.material = m;
+      if (crop === 'pumpkins') { c.scale.set(ripe ? 2.4 : 1.4, s * 0.4, ripe ? 2.4 : 1.4); c.position.y = 0.1 + 0.05 * s; }
+      else if (crop === 'veg') { c.scale.set(1.8, s * 0.6, 1.8); c.position.y = 0.1 + 0.12 * s; }
+      else { c.scale.set(1, s, 1); c.position.y = 0.1 + 0.2 * s; }
+    }
   }
   removeBVis(b) {
     const vis = this.bvis.get(b.id);
@@ -251,13 +263,83 @@ class Game {
     if (a.fire) {
       const f = 0.9 + Math.sin(time * 13 + vis.phase) * 0.08 + Math.sin(time * 7.3) * 0.06;
       a.fire.scale.set(f, f * (1 + Math.sin(time * 9) * 0.1), f);
-      a.light.intensity = (1 + Math.sin(time * 11) * 0.18) * (0.25 + this.night * 5); a.light.distance = 5 + this.night * 5;
+      if (a.light) { a.light.intensity = (1 + Math.sin(time * 11) * 0.18) * (0.25 + this.night * 5); a.light.distance = 5 + this.night * 5; }
     }
+    if (a.animals) for (const an of a.animals) {
+      an.t -= dt;
+      const dx = an.tx - an.m.position.x, dz = an.tz - an.m.position.z, d = Math.hypot(dx, dz);
+      if (d > 0.05) {
+        const sp = dt * (an.fast ? 0.5 : 0.25);
+        an.m.position.x += dx / d * Math.min(sp, d); an.m.position.z += dz / d * Math.min(sp, d);
+        an.m.rotation.y = Math.atan2(dx, dz); an.m.position.y = 0.04 + Math.abs(Math.sin(time * (an.fast ? 16 : 8))) * 0.02;
+        if (an.m.userData.head) an.m.userData.head.rotation.x = 0;
+      } else {
+        if (an.m.userData.head) an.m.userData.head.rotation.x = 0.4 + Math.sin(time * (an.fast ? 9 : 2) + an.tx) * 0.3;   // grazing / pecking
+        if (an.t <= 0) { an.t = 2 + Math.random() * 5; an.tx = (Math.random() - 0.5) * an.w; an.tz = (Math.random() - 0.5) * an.d; }
+      }
+    }
+    if (a.bees) for (const bee of a.bees) { const t = time * 2.2 + bee.ph; bee.m.position.set(bee.h[0] + Math.cos(t) * bee.r, 0.55 + Math.sin(t * 2.3) * 0.15, bee.h[1] + Math.sin(t * 1.3) * bee.r); bee.m.visible = this.night < 0.6; }
+    if (a.orbs) a.orbs.forEach((o, i) => { const t = time * 0.9 + i * 2.09; o.position.set(Math.cos(t) * 0.95, 3.0 + Math.sin(time * 1.7 + i) * 0.25, Math.sin(t) * 0.95); });
+    if (a.flagMesh) a.flagMesh.rotation.y = Math.sin(time * 3 + vis.phase) * 0.35;
+    if (a.stones) { const n = Math.min(a.stones.length, this.sim.s.stats.deaths || 0); a.stones.forEach((st, i) => st.visible = i < n); }
     if (vis.flag) vis.flag.rotation.y = Math.sin(time * 3 + vis.phase) * 0.35;
     if (a.boat) a.boat.position.y = -0.15 + Math.sin(time * 1.6 + vis.phase) * 0.03;
   }
 
   // ── villager visuals ──
+  removeVVis(v) { const m = this.vvis.get(v.id); if (m) { this.view.objects.remove(m.group); this.screenSprites.delete(m.bubble); this.vvis.delete(v.id); } }
+  screenOf(x, z) { const p = this.view.project(new THREE.Vector3(x, this.sim.world.heightAt(x, z) + 1, z)); return [p.x, p.y]; }
+
+  // ── night beasts ──
+  addBeast(b) {
+    const m = beastModel(b.kind);
+    m.group.position.set(b.x, this.sim.world.heightAt(b.x, b.z), b.z);
+    this.view.objects.add(m.group); this.beasts.set(b.id, m);
+  }
+  updateBeasts(dt, time) {
+    for (const b of this.sim.s.beasts) {
+      const m = this.beasts.get(b.id); if (!m) { this.addBeast(b); continue; }
+      const prev = m.group.position.clone();
+      m.group.position.set(b.x, Math.max(this.sim.world.heightAt(b.x, b.z), 0.1), b.z);
+      let d = b.face - m.group.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); m.group.rotation.y += d * Math.min(1, dt * 8);
+      const moving = prev.distanceTo(m.group.position) > 0.001;
+      m.legs.forEach((l, i) => l.rotation.x = moving ? Math.sin(time * 14 + i * Math.PI) * 0.7 : 0);
+      m.body.position.y = moving ? Math.abs(Math.sin(time * 14)) * 0.03 : 0;
+    }
+  }
+  arrowEffect(x, z, b) {
+    const W = this.sim.world, from = new THREE.Vector3(x, W.heightAt(x, z) + 2.4, z);
+    const arrow = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 4).rotateX(Math.PI / 2), mat(0x5e3b22));
+    this.view.fx.add(arrow); let t = 0;
+    this.effects.push(dt => {
+      t += dt * 2.2;
+      const to = new THREE.Vector3(b.x, W.heightAt(b.x, b.z) + 0.3, b.z), p = from.clone().lerp(to, Math.min(1, t));
+      p.y += Math.sin(Math.min(1, t) * Math.PI) * 1.2;
+      arrow.lookAt(p); arrow.position.copy(p);
+      if (t >= 1) { this.view.fx.remove(arrow); return false; }
+      return true;
+    });
+  }
+  // a burst of sparkles over every settlement when a spell goes off
+  spellEffect(id) {
+    sfx.level();
+    const color = { harvest: 0xffd54f, rain: 0x7fd8ff, haste: 0x9fff8a, ward: 0xfff2b0, bloom: 0x8ee07a, transmute: 0xc79af2 }[id] || 0xffffff;
+    for (const sid of Object.keys(this.sim.s.unlocked)) {
+      const c = CENTERS[sid], x = toWorld(c.x), z = toWorld(c.z), y = this.sim.world.heightAt(x, z);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+      ring.position.set(x, y + 0.3, z); this.view.fx.add(ring);
+      const sparks = [];
+      for (let i = 0; i < 40; i++) { const sp = new THREE.Mesh(leafGeo, new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending })); const a = Math.random() * 6.28, r = Math.random() * 9; sp.position.set(x + Math.cos(a) * r, y + 0.2, z + Math.sin(a) * r); sp.userData.v = 1 + Math.random() * 2; this.view.fx.add(sp); sparks.push(sp); }
+      let t = 0;
+      this.effects.push(dt => {
+        t += dt; ring.scale.setScalar(1 + t * 10); ring.material.opacity = Math.max(0, 0.9 - t * 0.6);
+        for (const sp of sparks) { sp.position.y += sp.userData.v * dt; sp.material.opacity = Math.max(0, 1 - t / 1.6); sp.rotation.y += dt * 4; }
+        if (t > 1.6) { this.view.fx.remove(ring); for (const sp of sparks) this.view.fx.remove(sp); return false; }
+        return true;
+      });
+    }
+  }
+
   addVVis(v) {
     const m = villagerModel(v);
     m.group.userData.ent = { kind: 'v', v };
@@ -292,13 +374,18 @@ class Game {
     const vx = v.x + (m.px || 0), vz = v.z + (m.pz || 0);
     let y = W.heightAt(vx, vz);
     if (W.type[idx(Math.max(0, Math.min(N - 1, Math.floor(v.x + HALF))), Math.max(0, Math.min(N - 1, Math.floor(v.z + HALF))))] === 1) y = Math.max(y, 0.12);
+    if (v.onTower) y += 2.05;
     m.group.position.set(vx, y, vz);
+    m.group.visible = !v.indoors;
+    m.wiz.visible = v.job === 'wizard';
+    m.bed.visible = v.asleep === 'fire';
+    if (v.asleep === 'fire') { m.body.rotation.set(-Math.PI / 2, 0, 0); m.body.position.set(0, 0.1, -0.25); m.bed.position.set(0, 0.03, 0); }
     let d = v.face - m.rot; d = Math.atan2(Math.sin(d), Math.cos(d));
     m.rot += d * Math.min(1, dt * 10);
     m.group.rotation.y = m.rot;
     const anim = v.act?.anim;
     setTool(m, anim ? ANIM_TOOL[anim] ?? null : v.carry ? null : JOB_TOOL[v.job] ?? null);
-    const mood = v.hungry ? 'apple' : (this.night > 0.7 && anim === 'rest') ? 'zzz' : null;
+    const mood = v.hungry ? 'apple' : v.asleep === 'fire' && (v.id % 3 === 0) ? 'zzz' : null;
     if (mood !== m.mood) {
       m.mood = mood;
       if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false })); m.bubble.userData.px = 26; m.bubble.position.y = 1.0; m.group.add(m.bubble); this.screenSprites.add(m.bubble); }
@@ -308,7 +395,7 @@ class Game {
     if (m.bubble?.visible) m.bubble.position.y = 0.95 + Math.sin(time * 3 + m.phase) * 0.03;
     m.sack.visible = !!v.carry;
     if (v.carry) m.sack.material = mat(SACK[v.carry.res] ?? 0xc9a46a);
-    m.body.rotation.x = 0; m.body.position.y = 0;
+    if (v.asleep !== 'fire') { m.body.rotation.set(0, 0, 0); m.body.position.set(0, 0, 0); }
     m.armL.rotation.set(0, 0, 0); m.armR.rotation.set(0, 0, 0);
     m.hipL.rotation.x = 0; m.hipR.rotation.x = 0;
     const sp = this.sim.s.speed || 0;
@@ -334,6 +421,13 @@ class Game {
         m.armR.rotation.x = -1.1 + k * 0.35; m.armL.rotation.x = -1.1 - k * 0.35; m.body.rotation.x = 0.12;
       } else if (anim === 'sell') {
         m.armR.rotation.z = 2.4 + Math.sin(t * 6) * 0.35;
+      } else if (anim === 'play') {
+        m.body.position.y = Math.abs(Math.sin(t * 7)) * 0.1; m.armL.rotation.z = -1.2 - Math.sin(t * 7) * 0.4; m.armR.rotation.z = 1.2 + Math.sin(t * 7) * 0.4;
+      } else if (anim === 'cast') {
+        m.armL.rotation.x = -2.6 + Math.sin(t * 3) * 0.2; m.armR.rotation.x = -2.6 - Math.sin(t * 3) * 0.2; m.body.position.y = Math.sin(t * 2) * 0.03;
+      } else if (anim === 'sleep') {
+        // lying down (bedroll pose set above); breathe gently
+        if (v.asleep === 'fire') m.body.position.z = -0.25 + Math.sin(t * 1.2) * 0.005;
       } else {
         m.body.position.y = Math.sin(t * 2) * 0.006;
         m.armL.rotation.z = -0.08; m.armR.rotation.z = 0.08;
@@ -352,6 +446,20 @@ class Game {
   nearSound(v, name) {
     const r = this.view.rig;
     if (Math.hypot(v.x - r.tx, v.z - r.tz) < 10 && r.dist < 30 && Math.random() < 0.6) sfx[name]();
+  }
+
+  // a soft glowing dome over each settlement while the Ward of Light holds
+  updateWard() {
+    const on = (this.sim.s.wardUntil || 0) > this.sim.s.time;
+    if (on && !this.wardMeshes) {
+      this.wardMeshes = Object.keys(this.sim.s.unlocked).map(sid => {
+        const c = CENTERS[sid], r = this.sim.settlementRadius(sid);
+        const m = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+        m.position.set(toWorld(c.x), 0, toWorld(c.z)); m.scale.y = 0.45; this.view.fx.add(m); return m;
+      });
+    }
+    if (!on && this.wardMeshes) { for (const m of this.wardMeshes) this.view.fx.remove(m); this.wardMeshes = null; }
+    if (this.wardMeshes) for (const m of this.wardMeshes) m.material.opacity = 0.03 + this.night * 0.09;
   }
 
   // the travelling merchant's cart
@@ -422,7 +530,17 @@ class Game {
     });
     sim.on('removed', b => this.removeBVis(b));
     sim.on('moved', b => { this.removeBVis(b); this.addBVis(b); });
-    sim.on('upgraded', b => { const vis = this.bvis.get(b.id); if (vis) vis.pop = 1; });
+    sim.on('upgraded', b => {
+      if (b.type === 'cottage' || b.type === 'tiled') { const sel = this.selected?.b === b; this.removeBVis(b); this.addBVis(b); if (sel) this.select({ kind: 'b', b }); }
+      const vis = this.bvis.get(b.id); if (vis) vis.pop = 1;
+    });
+    sim.on('villagerStage', v => { this.removeVVis(v); this.addVVis(v); });
+    sim.on('villagerGone', v => { this.removeVVis(v); if (this.selected?.v === v) this.select(null); if (this.followV === v) this.followV = null; });
+    sim.on('beast', b => this.addBeast(b));
+    sim.on('beastGone', b => { const m = this.beasts.get(b.id); if (m) { this.view.objects.remove(m.group); this.beasts.delete(b.id); } });
+    sim.on('arrow', (x, z, b) => this.arrowEffect(x, z, b));
+    sim.on('beastFled', (b, why) => { this.ui.float(...this.screenOf(b.x, b.z), why === 'walls' ? 'Blocked!' : 'Driven off!', 'shield'); sfx.pop(); });
+    sim.on('spell', id => this.spellEffect(id));
     sim.on('progress', b => { const vis = this.bvis.get(b.id); if (vis) this.applyBuild(vis); });
     sim.on('farm', b => { const vis = this.bvis.get(b.id); if (vis) this.applyFarm(vis); });
     sim.on('villager', v => this.addVVis(v));
@@ -642,6 +760,7 @@ class Game {
     p.edge.position.copy(p.plane.position);
     p.edge.userData.m.color.setHex(p.ok ? 0x5fd94a : 0xf0564a);
     this.showRange(p.type, cx, cz);
+    this.drawSynergyLinks(p, cx, y, cz);
     this.placeMsg();
   }
   placeMsg() {
@@ -650,8 +769,27 @@ class Game {
     const title = PAINT[p.type] ? PAINT[p.type] : (p.moving ? 'Move ' : '') + defOf(p.type).name;
     if (p.type === 'clear') this.ui.placeBar(true, touch ? 'Tap or drag over trees to mark them' : 'Click or drag over trees · right-drag to pan', false, false, title);
     else if (p.type === 'pave') this.ui.placeBar(true, (touch ? 'Tap or drag to lay stones' : 'Click or drag to lay stones · right-drag to pan') + ' · 1 stone each, tap again to lift', false, false, title);
-    else if (p.ok) this.ui.placeBar(true, touch ? 'Tap a spot, then ✓' : 'Click to build · R rotates', false, touch, title);
+    else if (p.ok) {
+      const gets = (p.syn || []).filter(l => l.gets), gives = (p.syn || []).filter(l => !l.gets);
+      const syn = gets.length ? ` · +${Math.round(gets.reduce((a, l) => a + l.rule.bonus, 0) * 100)}% from neighbours` : gives.length ? ` · boosts ${gives.length} neighbour${gives.length > 1 ? 's' : ''}` : '';
+      this.ui.placeBar(true, (touch ? 'Tap a spot, then ✓' : 'Click to build · R rotates') + syn, false, touch, title);
+    }
     else this.ui.placeBar(true, p.why, true, touch, title);
+  }
+  // gold lines to the neighbours a building would help or be helped by
+  drawSynergyLinks(p, cx, cy, cz) {
+    if (p.links) this.view.scene.remove(p.links);
+    const list = PAINT[p.type] ? [] : this.sim.synergyPreview(p.type, cx, cz);
+    p.syn = list;
+    if (!list.length) { p.links = null; return; }
+    const g = p.links = new THREE.Group();
+    for (const l of list) {
+      const oc = this.sim.bCenter(l.other), oy = this.sim.world.heightAt(oc.x, oc.z);
+      const pts = []; for (let k = 0; k <= 20; k++) { const t = k / 20; pts.push(new THREE.Vector3(cx + (oc.x - cx) * t, Math.max(cy, oy) + 0.4 + Math.sin(t * Math.PI) * 1.2, cz + (oc.z - cz) * t)); }
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: l.gets ? 0xffd54f : 0x9fff8a, dashSize: 0.3, gapSize: 0.18, depthTest: false, transparent: true }));
+      line.computeLineDistances(); line.renderOrder = 12; g.add(line);
+    }
+    this.view.scene.add(g);
   }
   // spiral out from the ghost to the closest spot where it fits
   snapToFree() {
@@ -690,6 +828,7 @@ class Game {
     const p = this.place; if (!p) return;
     if (p.ghost) this.view.scene.remove(p.ghost, p.plane);
     if (p.edge) this.view.scene.remove(p.edge);
+    if (p.links) this.view.scene.remove(p.links);
     if (p.moving) { const vis = this.bvis.get(p.moving.id); if (vis) vis.root.visible = true; }
     this.place = null;
     if (this.terr) { this.view.scene.remove(this.terr); this.terr = null; }
@@ -1006,6 +1145,8 @@ class Game {
     for (const sp of this.screenSprites) { const h = sp.userData.px * pxK; sp.scale.set(h * 0.857, h, 1); }
     this.life.update(dt, t, this.night, this.rainK || 0);
     this.updateCart(dt, t);
+    this.updateBeasts(dt, t);
+    this.updateWard();
     this.drawBars();
 
     // selection ring + name tag
@@ -1062,6 +1203,7 @@ class Game {
     const light = f > 0.22 && f < 0.78 ? sunUp : 0;
     const night = this.night = 1 - Math.min(1, light * 2.2);
     document.body.classList.toggle('night', night > 0.6);
+    setMood(f < 0.21 || f > 0.86 ? 'night' : f < 0.34 ? 'morning' : f < 0.7 ? 'day' : 'evening');
     const v = this.view, rk = this.rainK || 0;
     // the sun by day, a cool moon by night
     v.sun.intensity = (0.35 + 2.2 * light) * (1 - rk * 0.55);
