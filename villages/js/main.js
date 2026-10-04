@@ -33,6 +33,7 @@ class Game {
     this.thumbs = {};
     this.effects = [];
     this.halos = [];
+    this.screenSprites = new Set();
     this.cbars = new Map();
   }
 
@@ -50,6 +51,7 @@ class Game {
     await step(80);
     for (const b of this.sim.s.buildings) this.addBVis(b);
     for (const v of this.sim.s.villagers) this.addVVis(v);
+    for (const ic of ['hammer', 'wheat', 'person', 'wood', 'flour', 'stone', 'bag', 'axe', 'pick', 'coin', 'basket', 'alert', 'apple', 'zzz', 'lock', 'shop']) bubbleTexture(ic);
     this.makeLockMarkers();
     this.life = new Life(this.view, this.sim);
     this.selRing = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.9, depthTest: false }));
@@ -125,8 +127,8 @@ class Game {
     group.rotation.y = b.rot * Math.PI / 2;
     root.userData.ent = { kind: 'b', b };
     const top = new THREE.Box3().setFromObject(group).max.y - root.position.y;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture('hammer'), transparent: true, depthWrite: false }));
-    sp.scale.set(0.75, 0.875, 1); sp.position.y = Math.max(1.4, top + 0.55); sp.visible = false; sp.renderOrder = 5;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture('hammer'), transparent: true, depthWrite: false, sizeAttenuation: false }));
+    sp.userData.px = 38; sp.position.y = Math.max(1.4, top + 0.55); sp.visible = false; sp.renderOrder = 5;
     root.add(sp);
     const vis = { b, root, group, anim, sprite: sp, icon: null, scaffold: null, phase: Math.random() * 6, pop: 0 };
     this.addHalos(group);
@@ -136,6 +138,7 @@ class Game {
     }
     this.view.objects.add(root);
     this.bvis.set(b.id, vis);
+    this.screenSprites.add(sp);
     this.applyBuild(vis);
     if (b.type === 'farm') this.applyFarm(vis);
   }
@@ -209,6 +212,7 @@ class Game {
     if (!vis) return;
     this.view.objects.remove(vis.root);
     this.bvis.delete(b.id);
+    this.screenSprites.delete(vis.sprite);
     const gone = new Set(); vis.root.traverse(o => gone.add(o)); this.halos = this.halos.filter(h => !gone.has(h.m));
     if (this.selected?.b === b) this.select(null);
   }
@@ -231,7 +235,8 @@ class Game {
     if (icon) {
       vis.sprite.position.y += Math.sin(time * 3 + vis.phase) * 0.003;
       const p = this.view.project(vis.sprite.getWorldPosition(tmpV));
-      vis.sprite.visible = !this.hudHit(p.x, p.y);
+      const rect = this.view.canvas.getBoundingClientRect();
+      vis.sprite.visible = !!vis.sprite.material.map?.userData.ready && !this.hudHit(p.x, p.y) && p.x > rect.left + 24 && p.x < rect.right - 24 && p.y > rect.top + 30;
     }
     if (vis.pop > 0) {
       vis.pop = Math.max(0, vis.pop - dt * 2.5);
@@ -261,11 +266,33 @@ class Game {
     this.view.objects.add(m.group);
     this.vvis.set(v.id, m);
   }
+  // villagers gently push apart so two never stand inside each other
+  separate(dt) {
+    const vs = this.sim.s.villagers, R = 0.42;
+    for (const v of vs) { const m = this.vvis.get(v.id); if (m) { m.px = m.px || 0; m.pz = m.pz || 0; m.fx = 0; m.fz = 0; } }
+    for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) {
+      const a = vs[i], b = vs[j], ma = this.vvis.get(a.id), mb = this.vvis.get(b.id);
+      if (!ma || !mb) continue;
+      let dx = (a.x + ma.px) - (b.x + mb.px), dz = (a.z + ma.pz) - (b.z + mb.pz);
+      const d = Math.hypot(dx, dz);
+      if (d >= R) continue;
+      if (d < 1e-4) { dx = Math.cos(a.id); dz = Math.sin(a.id); } else { dx /= d; dz /= d; }
+      const push = (R - d) * 0.5;
+      ma.fx += dx * push; ma.fz += dz * push; mb.fx -= dx * push; mb.fz -= dz * push;
+    }
+    const k = Math.min(1, dt * 6);
+    for (const v of vs) {
+      const m = this.vvis.get(v.id); if (!m) continue;
+      m.px += (m.fx * 1.6 - m.px * 0.25) * k; m.pz += (m.fz * 1.6 - m.pz * 0.25) * k;
+      const l = Math.hypot(m.px, m.pz); if (l > 0.45) { m.px *= 0.45 / l; m.pz *= 0.45 / l; }
+    }
+  }
   updateVVis(v, m, dt, time) {
     const W = this.sim.world;
-    let y = W.heightAt(v.x, v.z);
+    const vx = v.x + (m.px || 0), vz = v.z + (m.pz || 0);
+    let y = W.heightAt(vx, vz);
     if (W.type[idx(Math.max(0, Math.min(N - 1, Math.floor(v.x + HALF))), Math.max(0, Math.min(N - 1, Math.floor(v.z + HALF))))] === 1) y = Math.max(y, 0.12);
-    m.group.position.set(v.x, y, v.z);
+    m.group.position.set(vx, y, vz);
     let d = v.face - m.rot; d = Math.atan2(Math.sin(d), Math.cos(d));
     m.rot += d * Math.min(1, dt * 10);
     m.group.rotation.y = m.rot;
@@ -274,9 +301,10 @@ class Game {
     const mood = v.hungry ? 'apple' : (this.night > 0.7 && anim === 'rest') ? 'zzz' : null;
     if (mood !== m.mood) {
       m.mood = mood;
-      if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false })); m.bubble.scale.set(0.34, 0.4, 1); m.bubble.position.y = 1.0; m.group.add(m.bubble); }
+      if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false })); m.bubble.userData.px = 26; m.bubble.position.y = 1.0; m.group.add(m.bubble); this.screenSprites.add(m.bubble); }
       if (m.bubble) { m.bubble.visible = !!mood; if (mood) { m.bubble.material.map = bubbleTexture(mood); m.bubble.material.needsUpdate = true; } }
     }
+    if (m.bubble && mood) m.bubble.visible = !!m.bubble.material.map?.userData.ready;
     if (m.bubble?.visible) m.bubble.position.y = 0.95 + Math.sin(time * 3 + m.phase) * 0.03;
     m.sack.visible = !!v.carry;
     if (v.carry) m.sack.material = mat(SACK[v.carry.res] ?? 0xc9a46a);
@@ -500,7 +528,7 @@ class Game {
       const segs = Math.round(r * 2.4), pos = [], W = this.sim.world;
       for (let i = 0; i < segs; i++) {
         const a0 = i / segs * Math.PI * 2, a1 = (i + 0.55) / segs * Math.PI * 2;
-        for (const [a, w] of [[a0, -0.09], [a0, 0.09], [a1, -0.09], [a1, 0.09]]) {
+        for (const [a, w] of [[a0, -0.17], [a0, 0.17], [a1, -0.17], [a1, 0.17]]) {
           const px = x + Math.cos(a) * (r + w), pz = z + Math.sin(a) * (r + w);
           pos.push(px, Math.max(W.heightAt(px, pz), -0.1) + 0.18, pz);
         }
@@ -510,9 +538,42 @@ class Game {
       const ring = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xfff3d0, transparent: true, opacity: 0.95, depthTest: false, side: THREE.DoubleSide }));
       ring.renderOrder = 8;
       ring.userData = { r, x, z };
+      // a dark outline band underneath so the dashes read on grass and trees
+      const ob = [];
+      for (let i = 0; i <= 96; i++) for (const w of [-0.26, 0.26]) {
+        const a = i / 96 * Math.PI * 2, px = x + Math.cos(a) * (r + w), pz = z + Math.sin(a) * (r + w);
+        ob.push(px, Math.max(W.heightAt(px, pz), -0.1) + 0.16, pz);
+      }
+      const oi = []; for (let i = 0; i < 96; i++) { const o = i * 2; oi.push(o, o + 2, o + 1, o + 1, o + 2, o + 3); }
+      const og = new THREE.BufferGeometry(); og.setAttribute('position', new THREE.Float32BufferAttribute(ob, 3)); og.setIndex(oi);
+      const outline = new THREE.Mesh(og, new THREE.MeshBasicMaterial({ color: 0x3b2410, transparent: true, opacity: 0.45, depthTest: false, side: THREE.DoubleSide }));
+      outline.renderOrder = 7; ring.add(outline);
+      const rig = this.view.rig, lx = x - Math.sin(rig.yaw) * r, lz = z - Math.cos(rig.yaw) * r;
+      const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex('Work range'), transparent: true, depthTest: false }));
+      lab.scale.set(5.6, 1.4, 1); lab.position.set(lx, Math.max(W.heightAt(lx, lz), 0) + 0.9, lz); lab.renderOrder = 11;
+      ring.add(lab); ring.userData.label = lab;
       this.rangeRing = ring; this.view.scene.add(ring);
     }
     this.rangeRing.visible = true;
+  }
+
+  // keep the ring's label on a part of the ring that's actually on screen
+  placeRangeLabel() {
+    const ring = this.rangeRing, lab = ring.userData.label; if (!lab) return;
+    const { r, x, z } = ring.userData, W = this.sim.world, rect = this.view.canvas.getBoundingClientRect();
+    const sheet = document.querySelector('#info:not(.hidden)')?.getBoundingClientRect();
+    const top = rect.top + (innerWidth < 760 ? 330 * 0.5 + 20 : 80), bottom = (sheet && innerWidth < 760 ? sheet.top : rect.bottom - 110) - 30;
+    let best = null, bd = 1e9;
+    const cx = rect.left + rect.width / 2, cy = (top + bottom) / 2;
+    for (let i = 0; i < 64; i++) {
+      const a = i / 64 * Math.PI * 2, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+      const p = this.view.project(tmpV.set(px, Math.max(W.heightAt(px, pz), 0) + 0.9, pz));
+      if (!p.vis || p.x < rect.left + 60 || p.x > rect.right - 60 || p.y < top || p.y > bottom) continue;
+      const d = Math.hypot(p.x - cx, p.y - cy);
+      if (d < bd) { bd = d; best = [px, pz]; }
+    }
+    lab.visible = !!best;
+    if (best) lab.position.set(best[0], Math.max(W.heightAt(best[0], best[1]), 0) + 0.9, best[1]);
   }
 
   // ── placement ──
@@ -567,11 +628,19 @@ class Game {
     p.plane.material.color.setHex(p.ok ? 0x7dff6a : 0xff5a4a);
     if (p.okShown !== p.ok) { p.okShown = p.ok; p.model.traverse(o => { if (o.isMesh && o.userData.base) o.material = ghostMat(o.userData.base, p.ok); }); }
     if (!p.edge) {
-      p.edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 0.02, 1)), new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true }));
-      p.edge.renderOrder = 10; this.view.scene.add(p.edge);
+      // a thick coloured rim just outside the footprint
+      p.edge = new THREE.Group();
+      const m = new THREE.MeshBasicMaterial({ color: 0x5fd94a, transparent: true, opacity: 0.95, depthTest: false });
+      for (let k = 0; k < 4; k++) { const bar = new THREE.Mesh(new THREE.BoxGeometry(1, 0.03, 1), m); bar.renderOrder = 10; p.edge.add(bar); }
+      p.edge.userData.m = m; this.view.scene.add(p.edge);
     }
-    p.edge.position.copy(p.plane.position); p.edge.scale.set(w, 1, d);
-    p.edge.material.color.setHex(p.ok ? 0xeaffd8 : 0xffd0c8);
+    const t = 0.13, [b0, b1, b2, b3] = p.edge.children;
+    b0.scale.set(w + t * 2, 1, t); b0.position.set(0, 0, -d / 2 - t / 2);
+    b1.scale.set(w + t * 2, 1, t); b1.position.set(0, 0, d / 2 + t / 2);
+    b2.scale.set(t, 1, d); b2.position.set(-w / 2 - t / 2, 0, 0);
+    b3.scale.set(t, 1, d); b3.position.set(w / 2 + t / 2, 0, 0);
+    p.edge.position.copy(p.plane.position);
+    p.edge.userData.m.color.setHex(p.ok ? 0x5fd94a : 0xf0564a);
     this.showRange(p.type, cx, cz);
     this.placeMsg();
   }
@@ -726,11 +795,30 @@ class Game {
       const p = this.sim.bCenter(b);
       x0 = Math.min(x0, p.x - 1); x1 = Math.max(x1, p.x + 1); z0 = Math.min(z0, p.z - 1); z1 = Math.max(z1, p.z + 1);
     }
-    const phone = innerWidth < 760, r = Math.max(x1 - x0, z1 - z0) / 2;
-    const dist = Math.max(phone ? 22 : 20, Math.min(46, r * (phone ? 3.0 : 2.3) + (phone ? 6 : 12)));
-    // the phone HUD is heavier at the top and has a button column on the right:
-    // aim a little past the middle and a little right so the village sits clear of both
-    const k = phone ? dist * 0.05 : 0, side = phone ? dist * 0.035 : 0;
+    const phone = innerWidth < 760, cam = this.view.camera;
+    // measure the actual buildings along the camera's right and forward axes
+    const rx = Math.cos(rig.yaw), rz = -Math.sin(rig.yaw), fx = -Math.sin(rig.yaw), fz = -Math.cos(rig.yaw);
+    let a0 = 1e9, a1 = -1e9, c0 = 1e9, c1 = -1e9;
+    let pts = [[toWorld(c.x), toWorld(c.z), 2]];
+    for (const b of this.sim.s.buildings) if (b.sid === sid) { const p = this.sim.bCenter(b); pts.push([p.x, p.z, Math.max(p.w, p.d) / 2]); }
+    if (innerWidth < 760 && pts.length > 6) {
+      // phones frame the cosy core around the plaza; outlying fields can sit off-screen
+      const cx0 = toWorld(c.x), cz0 = toWorld(c.z);
+      pts.sort((p, q) => Math.hypot(p[0] - cx0, p[1] - cz0) - Math.hypot(q[0] - cx0, q[1] - cz0));
+      pts = pts.slice(0, Math.ceil(pts.length * 0.7));
+    }
+    for (const [x, z, e] of pts) {
+      const a = x * rx + z * rz, f = x * fx + z * fz;
+      a0 = Math.min(a0, a - e); a1 = Math.max(a1, a + e); c0 = Math.min(c0, f - e); c1 = Math.max(c1, f + e);
+    }
+    const w = a1 - a0, h = c1 - c0;
+    const vt = Math.tan(cam.fov * Math.PI / 360), ht = vt * (innerWidth / innerHeight);
+    // usable fraction of the screen once the HUD is taken out
+    const useW = phone ? 1.0 : 0.72, useH = phone ? 0.7 : 0.7;
+    // ground depth is stretched by the camera's tilt (~1.25x at our pitch)
+    const fitW = (w / 2 + 1.5) / (ht * useW), fitH = (h / 2 + 1.5) / (vt * 1.25 * useH);
+    const dist = Math.max(phone ? 22 : 20, Math.min(phone ? 40 : 62, Math.max(fitW, fitH)));
+    const k = phone ? dist * 0.05 : 0, side = phone ? dist * 0.055 : 0;
     const tx = (x0 + x1) / 2 - Math.sin(rig.yaw) * k + Math.cos(rig.yaw) * side, tz = (z0 + z1) / 2 - Math.cos(rig.yaw) * k - Math.sin(rig.yaw) * side;
     if (instant) Object.assign(rig, { tx, tz, dist });
     else this.view.flyTo(tx, tz, dist, 1.4);
@@ -910,8 +998,12 @@ class Game {
 
     const t = now / 1000;
     for (const vis of this.bvis.values()) this.updateBVis(vis, dt, t);
+    this.separate(dt);
     for (const v of sim.s.villagers) { const m = this.vvis.get(v.id); if (m) this.updateVVis(v, m, dt, t); }
     this.effects = this.effects.filter(f => f(dt));
+    // bubbles keep a constant on-screen size (px tall) however far you zoom
+    const cam = view.camera, pxK = Math.tan(cam.fov * Math.PI / 360) / (view.canvas.clientHeight / 2);
+    for (const sp of this.screenSprites) { const h = sp.userData.px * pxK; sp.scale.set(h * 0.857, h, 1); }
     this.life.update(dt, t, this.night, this.rainK || 0);
     this.updateCart(dt, t);
     this.drawBars();
@@ -925,6 +1017,8 @@ class Game {
       tag.classList.toggle('hidden', !p.vis); tag.textContent = v.name.split(' ')[0];
       tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px';
     } else tag.classList.add('hidden');
+    if (this.place?.model) this.place.model.position.y = 0.08 + Math.sin(t * 4) * 0.06;
+    if (this.rangeRing?.visible) { this.rangeRing.material.opacity = 0.75 + Math.sin(t * 3) * 0.2; this.placeRangeLabel(); }
     if (this.selRing.visible) this.selRing.material.opacity = 0.65 + Math.sin(t * 4) * 0.25;
 
     ambient(dt * (this.night > 0.5 ? 0.2 : 1));
@@ -967,6 +1061,7 @@ class Game {
     const sunUp = Math.max(0, Math.sin((f - 0.22) / 0.56 * Math.PI));
     const light = f > 0.22 && f < 0.78 ? sunUp : 0;
     const night = this.night = 1 - Math.min(1, light * 2.2);
+    document.body.classList.toggle('night', night > 0.6);
     const v = this.view, rk = this.rainK || 0;
     // the sun by day, a cool moon by night
     v.sun.intensity = (0.35 + 2.2 * light) * (1 - rk * 0.55);
@@ -992,6 +1087,18 @@ const leafGeo = new THREE.IcosahedronGeometry(0.09, 0);
 let _fall = null;
 const fallMat = () => _fall || (_fall = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
 
+const _labels = new Map();
+function labelTex(text) {
+  if (_labels.has(text)) return _labels.get(text);
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#fff8e8'; g.strokeStyle = '#8a5a2b'; g.lineWidth = 5;
+  g.beginPath(); g.roundRect(6, 6, 244, 52, 26); g.fill(); g.stroke();
+  g.fillStyle = '#5b3a1e'; g.font = '600 28px Fredoka, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, 128, 34);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+  _labels.set(text, t); return t;
+}
 let _glow = null;
 function glowTex() {
   if (_glow) return _glow;

@@ -101,7 +101,11 @@ export class View {
     const c = new THREE.Color();
     for (let i = 0; i < N * N; i++) { this.tileColor(i, c); this.tc.set([c.r, c.g, c.b], i * 3); }
     for (let i = 0; i < N * N; i++) this.writeTile(i);
-    const m = this.terrain = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+    // world-space UVs for a soft painted grass texture multiplied over the tile colours
+    const uv = new Float32Array(N * N * 12);
+    for (let k = 0; k < N * N * 6; k++) { uv[k * 2] = pos[k * 3] * 0.32; uv[k * 2 + 1] = pos[k * 3 + 2] * 0.32; }
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    const m = this.terrain = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: groundTex() }));
     m.receiveShadow = true;
     this.scene.add(m);
   }
@@ -450,7 +454,9 @@ export class View {
     }
     const lim = HALF - 8;
     r.tx = Math.max(-lim, Math.min(lim, r.tx)); r.tz = Math.max(-lim, Math.min(lim, r.tz));
-    r.dist = Math.max(9, Math.min(52, r.dist));
+    r.dist = Math.max(9, Math.min(64, r.dist));
+    // keep the haze behind the village however far out we zoom
+    this.scene.fog.near = r.dist + 22; this.scene.fog.far = r.dist + 95;
     r.pitch = Math.max(0.62, Math.min(1.32, r.pitch));
     const cp = Math.cos(r.pitch), sp = Math.sin(r.pitch);
     const ty = this.world.heightAt(r.tx, r.tz) * 0.5;
@@ -507,6 +513,31 @@ export class View {
   render() { this.renderer.render(this.scene, this.camera); }
 }
 
+// soft blotches and little grass strokes, near white so tile colours show through
+function groundTex() {
+  const S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const g = cv.getContext('2d'), rng = mulberry32(77);
+  g.fillStyle = '#f2f2f2'; g.fillRect(0, 0, S, S);
+  const blob = (x, y, r, c) => {
+    for (const [dx, dy] of [[0, 0], [S, 0], [-S, 0], [0, S], [0, -S]]) {
+      const grd = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r);
+      grd.addColorStop(0, c); grd.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = grd; g.fillRect(x + dx - r, y + dy - r, r * 2, r * 2);
+    }
+  };
+  for (let i = 0; i < 26; i++) blob(rng() * S, rng() * S, 18 + rng() * 40, rng() < 0.5 ? 'rgba(190,200,185,0.45)' : 'rgba(255,255,255,0.7)');
+  g.lineCap = 'round';
+  for (let i = 0; i < 420; i++) {
+    const x = rng() * S, y = rng() * S, l = 3 + rng() * 5, a = -Math.PI / 2 + (rng() - 0.5) * 0.9;
+    g.strokeStyle = rng() < 0.6 ? 'rgba(170,185,160,0.55)' : 'rgba(255,255,255,0.8)';
+    g.lineWidth = 1 + rng();
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+
 function mergeSimple(list) {
   const geos = list.map(g => g.index ? g.toNonIndexed() : g);
   let n = 0; for (const g of geos) n += g.attributes.position.count;
@@ -530,7 +561,7 @@ export function bubbleTexture(icon) {
     g.beginPath(); g.moveTo(36, 84); g.lineTo(48, 104); g.lineTo(60, 84); g.closePath(); g.fill(); g.stroke();
     g.fillRect(38, 78, 20, 8);
     const img = iconImage(icon);
-    if (img.complete && img.naturalWidth) { g.drawImage(img, 18, 16, 60, 60); tex.needsUpdate = true; }
+    if (img.complete && img.naturalWidth) { g.drawImage(img, 18, 16, 60, 60); tex.needsUpdate = true; tex.userData.ready = true; }
     else img.addEventListener('load', draw, { once: true });
   };
   draw();
