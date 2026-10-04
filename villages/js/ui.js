@@ -1,6 +1,6 @@
 // DOM interface: resource bar, quests, info panel, build tray, modals,
 // toasts and floating numbers.
-import { svg } from './icons.js';
+import { svg, iconImage } from './icons.js';
 import { GOODS, TOP_GOODS, BUILDINGS, DECOR, BUILD_ORDER, DECOR_ORDER, SETTLEMENTS, JOBS, SELLABLE, QUESTS, xpForLevel } from './data.js';
 import { defOf, isDecor, DAY, workersOf, lvlOf, MAX_LVL, housingOf, storageOf } from './sim.js';
 import { N, CENTERS, T_WATER, T_SAND } from './world.js';
@@ -283,6 +283,11 @@ export class UI {
       h += `<dt>Villagers</dt><dd>${pop}/${sim.housingIn(b.sid)}</dd><dt>Territory</dt><dd>${sim.settlementRadius(b.sid)} tiles</dd>`;
     }
     h += `</dl><div class="sub">${esc(def.desc || '')}</div>`;
+    const hint = { 'No trees within reach': 'Woodcutters only walk as far as the dashed ring. Build another Lumber Hut by the forest, or a Forester\'s Lodge to replant.',
+      'No boulders nearby': 'Miners have broken every boulder in range. Build a Quarry near rocks — Stonecrest is full of them.',
+      'Waiting for berries': 'Bushes regrow in about a minute. More bushes in the ring means more food.',
+      'Nothing to sell': 'Turn on more goods below, or wait until you have more than you keep in reserve.' }[b.status];
+    if (hint) h += `<div class="hintbox">${svg('info', 16)}<span>${esc(hint)}</span></div>`;
     if (b.type === 'market') {
       h += `<div class="sub" style="margin-top:6px">Sell when above reserve:</div><div class="sell-toggles">${SELLABLE.map(k =>
         `<button class="tog ${s.sell[k] ? 'on' : ''}" data-act="sell" data-k="${k}">${svg(GOODS[k].icon, 16)}${GOODS[k].name} · ${GOODS[k].price}</button>`).join('')}</div>`;
@@ -472,7 +477,7 @@ export class UI {
           right = `<button class="btn sm ${ok ? '' : 'ghost'}" data-act="settle" data-sid="${st.id}" ${ok ? '' : 'disabled'}>Settle</button>`;
         }
         h += `<div class="sett">${svg(un ? 'house' : 'lock', 28)}<div class="meta"><b>${st.name}</b>${un ? `${pop} villagers · ${st.blurb}` :
-          `Level ${st.unlock.lvl} · <span class="card" style="all:unset">${costHtml(st.unlock.cost, s.res).replace(/class="no"/g, 'style="color:#c0392b"')}</span><br>${st.blurb}`}</div>${right}</div>`;
+          `<span class="costline">Level ${st.unlock.lvl} · ${costHtml(st.unlock.cost, s.res)}</span>${st.blurb}`}</div>${right}</div>`;
       }
       h += `</div></div>`;
     } else if (k === 'shop') {
@@ -593,54 +598,90 @@ export class UI {
     this.drawInfo(true);
   }
 
+  // a soft, illustrated map: smooth land and water, blob forests, round village medallions
   drawMinimap() {
     const cv = $('#minimap'); if (!cv) return;
     const g = cv.getContext('2d'), W = this.sim.world, S = cv.width / N;
-    const img = g.createImageData(N, N);
+    const base = document.createElement('canvas'); base.width = N; base.height = N;
+    const img = base.getContext('2d').createImageData(N, N);
     for (let i = 0; i < N * N; i++) {
-      let c = [111, 176, 74];
-      if (W.type[i] === T_WATER) c = [85, 176, 228];
-      else if (W.type[i] === T_SAND) c = [226, 206, 146];
-      if (W.wear[i] > 0.3) c = [205, 165, 105];
-      if (W.tree[i] >= 0) c = [52, 120, 52];
-      if (W.rock[i] >= 0) c = [150, 150, 145];
-      if (W.occ[i] >= 0) c = [190, 80, 60];
+      let c = [140, 196, 98];
+      if (W.type[i] === T_WATER) c = [96, 184, 230];
+      else if (W.type[i] === T_SAND) c = [232, 214, 158];
+      if (W.wear[i] > 0.3 || W.paved[i]) c = [214, 178, 122];
       img.data.set([...c, 255], i * 4);
     }
-    const tmp = document.createElement('canvas'); tmp.width = N; tmp.height = N;
-    tmp.getContext('2d').putImageData(img, 0, 0);
-    g.imageSmoothingEnabled = false;
-    g.drawImage(tmp, 0, 0, cv.width, cv.height);
-    g.font = '600 15px Fredoka, sans-serif'; g.textAlign = 'center';
-    for (const st of SETTLEMENTS) {
-      const c = CENTERS[st.id], un = this.sim.s.unlocked[st.id];
-      g.strokeStyle = un ? '#fff' : 'rgba(255,255,255,.6)'; g.setLineDash(un ? [] : [5, 4]); g.lineWidth = 2.5;
-      g.beginPath(); g.arc((c.x + 0.5) * S, (c.z + 0.5) * S, (un ? this.sim.settlementRadius(st.id) : c.r + 4) * S, 0, Math.PI * 2); g.stroke();
-      g.setLineDash([]);
-      g.lineWidth = 4; g.strokeStyle = '#5b3a1e'; g.fillStyle = '#fff';
-      g.strokeText((un ? '' : '🔒 ') + st.name, (c.x + 0.5) * S, (c.z + 0.5) * S - 4);
-      g.fillText((un ? '' : '🔒 ') + st.name, (c.x + 0.5) * S, (c.z + 0.5) * S - 4);
+    base.getContext('2d').putImageData(img, 0, 0);
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.fillStyle = '#8cc462'; g.fillRect(0, 0, cv.width, cv.height);
+    g.filter = 'blur(1.5px)'; g.drawImage(base, 0, 0, cv.width, cv.height); g.filter = 'none';
+    // forests as overlapping soft blobs
+    for (const [col, r, step] of [['#4f9440', 0.95, 1], ['#62a84c', 0.6, 2]]) {
+      g.fillStyle = col;
+      for (let i = 0; i < W.trees.length; i += step) {
+        const t = W.trees[i]; if (!t.alive) continue;
+        g.beginPath(); g.arc((t.x + N / 2) * S, (t.z + N / 2) * S, S * r * t.s, 0, Math.PI * 2); g.fill();
+      }
     }
-    // camera marker
+    g.fillStyle = '#9a9d9f';
+    for (const r of W.rocks) if (r.alive) { g.beginPath(); g.arc((r.x + N / 2) * S, (r.z + N / 2) * S, S * 0.45, 0, Math.PI * 2); g.fill(); }
+    // buildings as little roofs
+    for (const b of this.sim.s.buildings) {
+      if (isDecor(b.type)) continue;
+      const c = this.sim.bCenter(b);
+      g.fillStyle = b.type === 'farm' ? '#c9a24a' : b.type === 'tiled' ? '#3f7fc4' : '#c9473d';
+      g.beginPath(); g.roundRect((c.x + N / 2 - c.w / 2) * S + 1, (c.z + N / 2 - c.d / 2) * S + 1, c.w * S - 2, c.d * S - 2, 3); g.fill();
+    }
+    // camera view
     const r = this.g.view.rig;
-    g.strokeStyle = '#ffd54f'; g.lineWidth = 3;
-    g.strokeRect((r.tx + N / 2) * S - 30, (r.tz + N / 2) * S - 22, 60, 44);
+    g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2.5; g.setLineDash([6, 4]);
+    g.beginPath(); g.roundRect((r.tx + N / 2) * S - 34, (r.tz + N / 2) * S - 24, 68, 48, 10); g.stroke(); g.setLineDash([]);
+    // settlement medallions + labels below
+    g.font = '600 14px Fredoka, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const st of SETTLEMENTS) {
+      const c = CENTERS[st.id], un = this.sim.s.unlocked[st.id], x = (c.x + 0.5) * S, y = (c.z + 0.5) * S;
+      if (un) { g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, this.sim.settlementRadius(st.id) * S, 0, Math.PI * 2); g.stroke(); }
+      g.fillStyle = un ? '#fff8e8' : '#f3e2bf'; g.strokeStyle = '#8a5a2b'; g.lineWidth = 3;
+      g.beginPath(); g.arc(x, y, 13, 0, Math.PI * 2); g.fill(); g.stroke();
+      const ic = iconImage(un ? 'house' : 'lock');
+      if (ic.complete) g.drawImage(ic, x - 9, y - 9, 18, 18); else ic.onload = () => this.drawMinimap();
+      const tw = g.measureText(st.name).width + 14, ly = y + 25;
+      g.fillStyle = 'rgba(255,248,232,.95)'; g.strokeStyle = '#c48a4a'; g.lineWidth = 2;
+      g.beginPath(); g.roundRect(x - tw / 2, ly - 10, tw, 20, 10); g.fill(); g.stroke();
+      g.fillStyle = '#5b3a1e'; g.fillText(st.name, x, ly + 1);
+    }
   }
 
   markLog() {
     const n = this.sim.s.log.length - (this.seenLog || 0);
     const b = $('#logBadge'); if (!b) return;
-    b.classList.toggle('hidden', n <= 0); b.textContent = n;
+    b.classList.toggle('hidden', n <= 0); b.textContent = n > 9 ? '9+' : n;
   }
 
   // ── toasts & floats ──
   toast(msg, icon = 'info', big = false) {
+    this.tq = this.tq || [];
+    if (this.tq.some(t => t.msg === msg)) return;
+    if (/^Level \d+!/.test(msg)) this.tq = this.tq.filter(t => !/^Level \d+!/.test(t.msg));
+    const done = / complete!$/.test(msg) && this.tq.find(t => t.done);
+    if (done) { done.n++; done.msg = `${done.n} buildings complete!`; return; }
+    this.tq.push({ msg, icon, big, done: / complete!$/.test(msg), n: 1 });
+    if (!this.toastBusy) this.nextToast();
+  }
+  nextToast() {
+    const t = this.tq.shift();
+    if (!t) { this.toastBusy = false; return; }
+    this.toastBusy = true;
+    this.showToast(t.msg, t.icon, t.big);
+    setTimeout(() => this.nextToast(), this.tq.length ? 1400 : 600);
+  }
+  showToast(msg, icon, big) {
     const el = document.createElement('div');
     el.className = 'toast panel' + (big ? ' big' : '');
     el.innerHTML = svg(icon, big ? 30 : 22) + `<span>${esc(msg)}</span>`;
     $('#toasts').appendChild(el);
-    while ($('#toasts').children.length > 3) $('#toasts').firstChild.remove();
-    setTimeout(() => el.remove(), 3100);
+    while ($('#toasts').children.length > 2) $('#toasts').firstChild.remove();
+    setTimeout(() => el.remove(), 2600);
   }
   float(sx, sy, text, icon) {
     const el = document.createElement('div');

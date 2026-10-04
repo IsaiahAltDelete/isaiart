@@ -553,7 +553,7 @@ export class Sim {
     const W = this.world, [w, d] = footprint(b.type, b.rot), starts = [];
     for (let z = b.tz - 1; z <= b.tz + d; z++) for (let x = b.tx - 1; x <= b.tx + w; x++)
       if (inMap(x, z) && W.passable(idx(x, z))) starts.push(idx(x, z));
-    const dist = W.walkField(starts, range * 1.5);
+    const dist = W.walkField(starts, range * 2.4);
     Object.defineProperty(b, '_field', { value: { dist, until: this.s.time + 25, range }, writable: true, configurable: true, enumerable: false });
     return dist;
   }
@@ -580,7 +580,7 @@ export class Sim {
     if (kind === 't') i = this.nearestByWalk(b, 't', 40, true);   // marked trees first
     if (i < 0) i = this.nearestByWalk(b, kind, RANGE[job]);
     if (i < 0) {
-      b.status = kind === 't' ? 'No trees nearby — build a Forester' : kind === 'r' ? 'No boulders nearby' : 'Waiting for berries';
+      b.status = kind === 't' ? 'No trees within reach' : kind === 'r' ? 'No boulders nearby' : 'Waiting for berries';
       return this.setTask(v, 'Waiting', [{ walk: this.goalBuilding(b) }, { act: 5, anim: 'rest' }]);
     }
     b.status = null;

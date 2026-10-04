@@ -12,7 +12,7 @@ import { Life } from './life.js';
 const SAVE_KEY = 'isaiart.villages.v1';
 const SET_KEY = 'isaiart.villages.settings';
 const NEED_ICON = { sawmill: 'wood', windmill: 'wheat', bakery: 'flour', mason: 'stone' };
-const STATUS_ICON = { 'Saving wood for builders': 'hammer', 'Saving stone for builders': 'hammer', 'Storage full': 'bag', 'No trees nearby — build a Forester': 'axe', 'No boulders nearby': 'pick', 'Nothing to sell': 'coin', 'Waiting for berries': 'basket' };
+const STATUS_ICON = { 'Saving wood for builders': 'hammer', 'Saving stone for builders': 'hammer', 'Storage full': 'bag', 'No trees within reach': 'axe', 'No boulders nearby': 'pick', 'Nothing to sell': 'coin', 'Waiting for berries': 'basket' };
 const SACK = { wood: 0x9a6a3e, stone: 0xa9adb0, food: 0xd8304a, grain: 0xe6c35c };
 const ANIM_TOOL = { chop: 'axe', mine: 'pick', hammer: 'hammer', saw: 'hammer', hoe: 'hoe', fish: 'rod', gather: 'basket', plant: 'sapling' };
 const JOB_TOOL = { woodcutter: 'axe', miner: 'pick', fisher: 'rod', forager: 'basket', farmer: 'hoe', forester: 'sapling', mason: 'hammer', sawyer: 'hammer' };
@@ -32,6 +32,7 @@ class Game {
     this.place = null;
     this.thumbs = {};
     this.effects = [];
+    this.halos = [];
     this.cbars = new Map();
   }
 
@@ -58,8 +59,7 @@ class Game {
     this.hookEvents();
     this.bindInput();
     setSound(this.settings.sound);
-    const c = CENTERS.meadow;
-    Object.assign(this.view.rig, { tx: toWorld(c.x), tz: toWorld(c.z) + 1, dist: innerWidth < 760 ? 34 : 27 });
+    this.frameSettlement('meadow', true);
     await step(100);
     document.getElementById('loading').classList.add('gone');
     setTimeout(() => document.getElementById('loading').remove(), 700);
@@ -129,10 +129,26 @@ class Game {
     sp.scale.set(0.75, 0.875, 1); sp.position.y = Math.max(1.4, top + 0.55); sp.visible = false; sp.renderOrder = 5;
     root.add(sp);
     const vis = { b, root, group, anim, sprite: sp, icon: null, scaffold: null, phase: Math.random() * 6, pop: 0 };
+    this.addHalos(group);
+    if (b.type === 'campfire') {
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(3.2, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: glowTex(), color: 0xff9a40, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+      pool.position.y = 0.08; pool.renderOrder = 2; root.add(pool); this.halos.push({ m: pool, k: 0.55 });
+    }
     this.view.objects.add(root);
     this.bvis.set(b.id, vis);
     this.applyBuild(vis);
     if (b.type === 'farm') this.applyFarm(vis);
+  }
+  // warm glow sprites on every window and lantern, faded in at night
+  addHalos(group) {
+    const win = mat(C.window, { emissive: 0x3a2a00 }), lamp = mat(0xffe08a);
+    group.traverse(o => {
+      if (!o.isMesh || (o.material !== win && o.material !== lamp)) return;
+      const big = o.material === lamp;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: big ? 0xffc46a : 0xffa848, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+      sp.scale.setScalar(big ? 1.6 : 0.9); sp.position.copy(o.position); sp.renderOrder = 3;
+      o.parent.add(sp); this.halos.push({ m: sp, k: big ? 0.9 : 0.7 });
+    });
   }
   applyBuild(vis) {
     const b = vis.b;
@@ -162,7 +178,7 @@ class Game {
     const L = lvlOf(vis.b);
     if (vis.lvl === L) return;
     vis.lvl = L;
-    if (vis.deco) vis.group.remove(vis.deco);
+    if (vis.deco) { vis.group.remove(vis.deco); const gone = new Set(); vis.deco.traverse(o => gone.add(o)); this.halos = this.halos.filter(h => !gone.has(h.m)); }
     vis.deco = null;
     if (L < 2 || isDecor(vis.b.type)) return;
     const [w, d] = footprint(vis.b.type, 0), g = new THREE.Group();
@@ -178,7 +194,7 @@ class Game {
       const lp = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.6, 0.04), mat(0x3c3c3c)); lp.position.set(sx * (w / 2 - 0.05), 0.3, d / 2 + 0.2); g.add(lp);
       const lg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.1), mat(0xffe08a)); lg.position.set(sx * (w / 2 - 0.05), 0.64, d / 2 + 0.2); g.add(lg);
     }
-    vis.group.add(g); vis.deco = g;
+    vis.group.add(g); vis.deco = g; this.addHalos(g);
     vis.group.scale.setScalar(1 + (L - 1) * 0.04);
   }
   applyFarm(vis) {
@@ -193,6 +209,7 @@ class Game {
     if (!vis) return;
     this.view.objects.remove(vis.root);
     this.bvis.delete(b.id);
+    const gone = new Set(); vis.root.traverse(o => gone.add(o)); this.halos = this.halos.filter(h => !gone.has(h.m));
     if (this.selected?.b === b) this.select(null);
   }
   bubbleFor(b) {
@@ -225,7 +242,7 @@ class Game {
     if (a.fire) {
       const f = 0.9 + Math.sin(time * 13 + vis.phase) * 0.08 + Math.sin(time * 7.3) * 0.06;
       a.fire.scale.set(f, f * (1 + Math.sin(time * 9) * 0.1), f);
-      a.light.intensity = (1 + Math.sin(time * 11) * 0.18) * (0.25 + this.night * 2.8);
+      a.light.intensity = (1 + Math.sin(time * 11) * 0.18) * (0.25 + this.night * 5); a.light.distance = 5 + this.night * 5;
     }
     if (vis.flag) vis.flag.rotation.y = Math.sin(time * 3 + vis.phase) * 0.35;
     if (a.boat) a.boat.position.y = -0.15 + Math.sin(time * 1.6 + vis.phase) * 0.03;
@@ -489,7 +506,7 @@ class Game {
     if (!PAINT[type]) {
       const { group, anim } = buildModel(type, defOf(type).size);
       anim.smoke?.update(0.3);
-      group.traverse(o => { if (o.isMesh) { o.material = ghostMat(o.material); o.castShadow = false; } });
+      group.traverse(o => { if (o.isMesh) { o.userData.base = o.material; o.material = ghostMat(o.material, true); o.castShadow = false; } });
       const root = new THREE.Group(); root.add(group);
       p.ghost = root; p.model = group;
       const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x7dff6a, transparent: true, opacity: 0.4, depthTest: false }));
@@ -503,6 +520,7 @@ class Game {
     } else {
       const r = this.view.canvas.getBoundingClientRect();
       this.ghostAt(r.left + r.width / 2, r.top + r.height * 0.45);
+      if (p.ghost && !p.ok) this.snapToFree();
     }
     sfx.click();
   }
@@ -528,6 +546,13 @@ class Game {
     p.model.rotation.y = p.rot * Math.PI / 2;
     p.plane.position.set(cx, y + 0.06, cz); p.plane.scale.set(w, 1, d);
     p.plane.material.color.setHex(p.ok ? 0x7dff6a : 0xff5a4a);
+    if (p.okShown !== p.ok) { p.okShown = p.ok; p.model.traverse(o => { if (o.isMesh && o.userData.base) o.material = ghostMat(o.userData.base, p.ok); }); }
+    if (!p.edge) {
+      p.edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 0.02, 1)), new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true }));
+      p.edge.renderOrder = 10; this.view.scene.add(p.edge);
+    }
+    p.edge.position.copy(p.plane.position); p.edge.scale.set(w, 1, d);
+    p.edge.material.color.setHex(p.ok ? 0xeaffd8 : 0xffd0c8);
     this.showRange(p.type, cx, cz);
     this.placeMsg();
   }
@@ -537,8 +562,19 @@ class Game {
     const title = PAINT[p.type] ? PAINT[p.type] : (p.moving ? 'Move ' : '') + defOf(p.type).name;
     if (p.type === 'clear') this.ui.placeBar(true, touch ? 'Tap or drag over trees to mark them' : 'Click or drag over trees · right-drag to pan', false, false, title);
     else if (p.type === 'pave') this.ui.placeBar(true, (touch ? 'Tap or drag to lay stones' : 'Click or drag to lay stones · right-drag to pan') + ' · 1 stone each, tap again to lift', false, false, title);
-    else if (p.ok) this.ui.placeBar(true, touch ? 'Tap to move · ✓ to build' : 'Click to build · R rotates', false, touch, title);
+    else if (p.ok) this.ui.placeBar(true, touch ? 'Tap a spot, then ✓' : 'Click to build · R rotates', false, touch, title);
     else this.ui.placeBar(true, p.why, true, touch, title);
+  }
+  // spiral out from the ghost to the closest spot where it fits
+  snapToFree() {
+    const p = this.place, x0 = p.tx, z0 = p.tz;
+    for (let r = 1; r < 14; r++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+      const tx = x0 + dx, tz = z0 + dz;
+      const rot = p.type === 'dock' ? this.sim.bestDockRot(tx, tz) : p.rot;
+      const c = this.sim.checkPlace(p.type, tx, tz, rot);
+      if (c.ok || c.why === 'Not enough resources' || c.why?.startsWith('Needs level')) { p.tx = tx; p.tz = tz; p.rot = rot; this.refreshGhost(); return; }
+    }
   }
   rotatePlace() {
     const p = this.place; if (!p || PAINT[p.type] || p.type === 'dock') return;
@@ -565,6 +601,7 @@ class Game {
   cancelPlace(silent) {
     const p = this.place; if (!p) return;
     if (p.ghost) this.view.scene.remove(p.ghost, p.plane);
+    if (p.edge) this.view.scene.remove(p.edge);
     if (p.moving) { const vis = this.bvis.get(p.moving.id); if (vis) vis.root.visible = true; }
     this.place = null;
     if (this.terr) { this.view.scene.remove(this.terr); this.terr = null; }
@@ -630,12 +667,18 @@ class Game {
       this.showRange(ent.b.type, c.x, c.z);
       this.selRing.scale.setScalar(Math.max(c.w, c.d) * 0.78);
       this.selRing.position.set(c.x, this.bvis.get(ent.b.id).root.position.y + 0.05, c.z);
-      if (fly) this.view.flyTo(c.x, c.z);
+      if (fly || innerWidth < 760) this.focus(c.x, c.z);
     } else if (ent?.kind === 'v') {
       this.selRing.scale.setScalar(0.35);
-      if (fly) this.view.flyTo(ent.v.x, ent.v.z);
+      if (fly || innerWidth < 760) this.focus(ent.v.x, ent.v.z);
     }
     this.selRing.visible = !!this.selected;
+  }
+  focus(x, z) {
+    const rig = this.view.rig, phone = innerWidth < 760;
+    // nudge toward the camera so the thing lands in the upper part of the screen
+    const k = phone ? rig.dist * 0.24 : 0;
+    this.view.flyTo(x + Math.sin(rig.yaw) * k, z + Math.cos(rig.yaw) * k, undefined, 0.6);
   }
   pick(cx, cy) {
     // villagers are tiny, so test them in screen space first
@@ -654,10 +697,24 @@ class Game {
     }
     return null;
   }
-  flyToSettlement(sid) {
-    const c = CENTERS[sid];
-    this.view.flyTo(toWorld(c.x), toWorld(c.z) + 1, 28, 1.4);
+  // centre the camera on a settlement's buildings, leaving room for the HUD
+  frameSettlement(sid, instant = false) {
+    const c = CENTERS[sid], rig = this.view.rig;
+    let x0 = toWorld(c.x) - 3, x1 = toWorld(c.x) + 3, z0 = toWorld(c.z) - 3, z1 = toWorld(c.z) + 3;
+    for (const b of this.sim.s.buildings) {
+      if (b.sid !== sid) continue;
+      const p = this.sim.bCenter(b);
+      x0 = Math.min(x0, p.x - 1); x1 = Math.max(x1, p.x + 1); z0 = Math.min(z0, p.z - 1); z1 = Math.max(z1, p.z + 1);
+    }
+    const phone = innerWidth < 760, r = Math.max(x1 - x0, z1 - z0) / 2;
+    const dist = Math.max(20, Math.min(46, r * (phone ? 2.9 : 2.3) + 12));
+    // the phone HUD is heavier at the top, so aim a little past the middle
+    const k = phone ? dist * 0.05 : 0;
+    const tx = (x0 + x1) / 2 - Math.sin(rig.yaw) * k, tz = (z0 + z1) / 2 - Math.cos(rig.yaw) * k;
+    if (instant) Object.assign(rig, { tx, tz, dist });
+    else this.view.flyTo(tx, tz, dist, 1.4);
   }
+  flyToSettlement(sid) { this.frameSettlement(sid); }
 
   // ── input ──
   bindInput() {
@@ -890,15 +947,20 @@ class Game {
     const light = f > 0.22 && f < 0.78 ? sunUp : 0;
     const night = this.night = 1 - Math.min(1, light * 2.2);
     const v = this.view, rk = this.rainK || 0;
-    v.sun.intensity = (0.55 + 2.0 * light) * (1 - rk * 0.55);
-    v.sun.color.setRGB(1, lerp(0.72, 0.95, Math.min(1, light * 1.6)), lerp(0.55, 0.85, Math.min(1, light * 1.6)));
-    v.hemi.intensity = 0.85 + 0.75 * light;
-    v.hemi.color.setRGB(lerp(0.62, 1, 1 - night), lerp(0.7, 0.97, 1 - night), lerp(1, 0.88, 1 - night));
-    const sky = new THREE.Color(0x9cd3c0).lerp(new THREE.Color(0x8396a3), rk * 0.7).lerp(new THREE.Color(0x3a4f78), night * 0.85);
+    // the sun by day, a cool moon by night
+    v.sun.intensity = (0.35 + 2.2 * light) * (1 - rk * 0.55);
+    v.sun.color.setRGB(lerp(0.62, 1, 1 - night), lerp(0.7, lerp(0.72, 0.95, Math.min(1, light * 1.6)), 1 - night), lerp(1, lerp(0.55, 0.85, Math.min(1, light * 1.6)), 1 - night));
+    v.hemi.intensity = lerp(0.55, 1.6, 1 - night);
+    v.hemi.color.setRGB(lerp(0.42, 1, 1 - night), lerp(0.5, 0.97, 1 - night), lerp(0.95, 0.88, 1 - night));
+    v.hemi.groundColor.setRGB(lerp(0.12, 0.36, 1 - night), lerp(0.14, 0.54, 1 - night), lerp(0.26, 0.23, 1 - night));
+    const sky = new THREE.Color(0x9cd3c0).lerp(new THREE.Color(0x8396a3), rk * 0.7).lerp(new THREE.Color(0x1b2847), night * 0.92);
     v.scene.background.copy(sky); v.scene.fog.color.copy(sky);
+    v.water.material.color.setRGB(lerp(0.33, 0.12, night), lerp(0.75, 0.27, night), lerp(0.91, 0.5, night));
     const glow = mat(C.window, { emissive: 0x3a2a00 });
-    glow.emissive.setRGB(0.23 + night * 0.75, 0.16 + night * 0.5, night * 0.12);
-    mat(0xffe08a).emissive.setRGB(night * 0.9, night * 0.7, night * 0.25);
+    glow.emissive.setRGB(0.23 + night * 0.85, 0.16 + night * 0.5, night * 0.1);
+    mat(0xffe08a).emissive.setRGB(night * 1, night * 0.78, night * 0.3);
+    const ho = night * night;
+    for (const h of this.halos) { h.m.material.opacity = ho * h.k; h.m.visible = ho > 0.02; }
   }
 }
 
@@ -909,13 +971,26 @@ const leafGeo = new THREE.IcosahedronGeometry(0.09, 0);
 let _fall = null;
 const fallMat = () => _fall || (_fall = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
 
+let _glow = null;
+function glowTex() {
+  if (_glow) return _glow;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+  const g = cv.getContext('2d'), grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.3, 'rgba(255,255,255,.45)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+  _glow = new THREE.CanvasTexture(cv);
+  return _glow;
+}
+
 const ghostCache = new Map();
-function ghostMat(m) {
-  if (!ghostCache.has(m)) {
-    const g = m.clone(); g.transparent = true; g.opacity = 0.72; g.depthWrite = true;
-    ghostCache.set(m, g);
+function ghostMat(m, ok) {
+  const key = m.uuid + ok;
+  if (!ghostCache.has(key)) {
+    const g = m.clone(); g.transparent = true; g.opacity = 0.88; g.depthWrite = true;
+    if (g.emissive) g.emissive.setHex(ok ? 0x1d4a12 : 0x6a1410);
+    ghostCache.set(key, g);
   }
-  return ghostCache.get(m);
+  return ghostCache.get(key);
 }
 
 const game = new Game();
