@@ -67,11 +67,45 @@ travelling merchant cart with deals, a procedural music box.
 
 ---
 
+## Critic loop (attempts 1–6)
+
+An art-director critic scored the build after each attempt: 6.7 → 8.0 → 8.5 → 8.6 → 8.9 → 9.0.
+Main fixes: night lighting, phone layout, camera framing, shingle roofs, soft smoke, grass and
+dirt lanes, fixed-size bubbles, villager spacing.
+
+## Round 5 — the big content update (client requests)
+
+- **Music:** a procedural score, not a music box. Piano, harp, flute, bass, bells, soft
+  percussion and reverb play four pieces (morning, day, evening waltz, night) that change with
+  the clock. Each 8-bar phrase is built A A' B A'' and repeats once so the tunes stick.
+- **House variety:** every cottage is seeded by its id. Wall and roof colours, gable or hip roof,
+  porch, window boxes, dormer, chimney side and garden all vary. At level 3 a house gets an upper
+  storey. Tiled cottages vary too.
+- **New buildings and synergy:** Chicken Coop, Orchard, Apiary, Sheep Pasture, Weaver, Cow
+  Pasture, Creamery, Brewery, Tavern and Schoolhouse; Watchtower and Wizard Tower; plus Torches,
+  Palisades and a Memorial Garden. Nearby buildings boost each other (bees → farms and orchards,
+  flowers → bees, lumber → sawmill, brewery → tavern, …). Placement draws gold lines to every
+  neighbour bonus.
+- **New goods:** wool, cloth, milk, cheese, honey and ale. Tap or hover any resource for what it
+  is, where it comes from, what uses it, and its rate.
+- **Farming:** choose wheat, vegetables or pumpkins per field. Chickens, sheep and cows wander
+  their pens and graze.
+- **Life cycle:** villagers age. They pair up, have babies who toddle and play (and go to school),
+  grow up into workers, retire as elders, and pass away peacefully. Family ties show in each
+  villager's panel.
+- **Night:** villagers sleep indoors, or on bedrolls around the campfire when beds run out.
+  Guards stay up on the watchtower.
+- **Beasts:** wolves, boars and goblins prowl in from the forest at night. Guards shoot them,
+  torches scare them and palisades block them. They steal food or coins, or trample fields, if
+  they get through.
+- **Magic:** wizard apprentices gather mana and learn six spells: Bountiful Harvest, Call the
+  Rain, Swift Feet, Ward of Light, Forest Bloom and Stone to Gems.
+
 ## Next round — pick 5–6
 
 Ordered easiest to hardest:
 
-1. Name your village and rename villagers
+1. Name your village and rename villagers (and name your babies)
 2. A "home" camera button and double-tap to follow a villager
 3. Seasonal palettes: autumn leaves and a snowy winter every few days
 4. Production-chain view in the building panel (inputs → outputs, live)

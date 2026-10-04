@@ -43,7 +43,9 @@ export class World {
     this.bush = new Int32Array(S).fill(-1);
     this.occ = new Int32Array(S).fill(-1);
     this.block = new Uint8Array(S);      // 1 = a building villagers can't walk through
-    this.relaxed = false;                // last-resort pathing squeezes past buildings
+    this.relaxed = false;
+    this.wall = new Uint8Array(S);       // palisades: beasts can't pass, villagers can
+    this.beastMode = false;                // last-resort pathing squeezes past buildings
     this.wear = new Float32Array(S);
     this.road = new Uint8Array(S);
     this.bridge = new Uint8Array(S);
@@ -246,7 +248,7 @@ export class World {
   }
 
   passable(i) {
-    return (this.type[i] !== T_WATER || this.bridge[i] === 1) && (this.relaxed || !this.block[i]) && this.rock[i] < 0;
+    return (this.type[i] !== T_WATER || this.bridge[i] === 1) && (this.relaxed || !this.block[i]) && this.rock[i] < 0 && !(this.beastMode && this.wall[i]);
   }
   stepCost(i) {
     let c = 1;
