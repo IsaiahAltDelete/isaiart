@@ -51,6 +51,7 @@ class Game {
     await step(80);
     for (const b of this.sim.s.buildings) this.addBVis(b);
     for (const v of this.sim.s.villagers) this.addVVis(v);
+    for (const ic of ['hammer', 'wheat', 'person', 'wood', 'flour', 'stone', 'bag', 'axe', 'pick', 'coin', 'basket', 'alert', 'apple', 'zzz', 'lock', 'shop']) bubbleTexture(ic);
     this.makeLockMarkers();
     this.life = new Life(this.view, this.sim);
     this.selRing = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.9, depthTest: false }));
@@ -235,7 +236,7 @@ class Game {
       vis.sprite.position.y += Math.sin(time * 3 + vis.phase) * 0.003;
       const p = this.view.project(vis.sprite.getWorldPosition(tmpV));
       const rect = this.view.canvas.getBoundingClientRect();
-      vis.sprite.visible = !this.hudHit(p.x, p.y) && p.x > rect.left + 24 && p.x < rect.right - 24 && p.y > rect.top + 30;
+      vis.sprite.visible = !!vis.sprite.material.map?.userData.ready && !this.hudHit(p.x, p.y) && p.x > rect.left + 24 && p.x < rect.right - 24 && p.y > rect.top + 30;
     }
     if (vis.pop > 0) {
       vis.pop = Math.max(0, vis.pop - dt * 2.5);
@@ -303,6 +304,7 @@ class Game {
       if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false })); m.bubble.userData.px = 26; m.bubble.position.y = 1.0; m.group.add(m.bubble); this.screenSprites.add(m.bubble); }
       if (m.bubble) { m.bubble.visible = !!mood; if (mood) { m.bubble.material.map = bubbleTexture(mood); m.bubble.material.needsUpdate = true; } }
     }
+    if (m.bubble && mood) m.bubble.visible = !!m.bubble.material.map?.userData.ready;
     if (m.bubble?.visible) m.bubble.position.y = 0.95 + Math.sin(time * 3 + m.phase) * 0.03;
     m.sack.visible = !!v.carry;
     if (v.carry) m.sack.material = mat(SACK[v.carry.res] ?? 0xc9a46a);

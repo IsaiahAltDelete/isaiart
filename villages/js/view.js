@@ -561,7 +561,7 @@ export function bubbleTexture(icon) {
     g.beginPath(); g.moveTo(36, 84); g.lineTo(48, 104); g.lineTo(60, 84); g.closePath(); g.fill(); g.stroke();
     g.fillRect(38, 78, 20, 8);
     const img = iconImage(icon);
-    if (img.complete && img.naturalWidth) { g.drawImage(img, 18, 16, 60, 60); tex.needsUpdate = true; }
+    if (img.complete && img.naturalWidth) { g.drawImage(img, 18, 16, 60, 60); tex.needsUpdate = true; tex.userData.ready = true; }
     else img.addEventListener('load', draw, { once: true });
   };
   draw();
