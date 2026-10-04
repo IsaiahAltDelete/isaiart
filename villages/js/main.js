@@ -63,7 +63,7 @@ class Game {
     await step(100);
     document.getElementById('loading').classList.add('gone');
     setTimeout(() => document.getElementById('loading').remove(), 700);
-    if (!save) setTimeout(() => this.ui.toast('Welcome to Meadowbrook! Open Build to begin.', 'house', true), 900);
+    if (!save && this.sim.s.tutorial >= 99) setTimeout(() => this.ui.toast('Welcome to Meadowbrook! Open Build to begin.', 'house', true), 900);
     this.last = performance.now();
     this.saveTimer = 0;
     this.loop();
@@ -228,7 +228,11 @@ class Game {
       vis.sprite.visible = !!icon;
       if (icon) vis.sprite.material.map = bubbleTexture(icon), vis.sprite.material.needsUpdate = true;
     }
-    if (icon) vis.sprite.position.y += Math.sin(time * 3 + vis.phase) * 0.003;
+    if (icon) {
+      vis.sprite.position.y += Math.sin(time * 3 + vis.phase) * 0.003;
+      const p = this.view.project(vis.sprite.getWorldPosition(tmpV));
+      vis.sprite.visible = !this.hudHit(p.x, p.y);
+    }
     if (vis.pop > 0) {
       vis.pop = Math.max(0, vis.pop - dt * 2.5);
       const base = 1 + (lvlOf(b) - 1) * 0.04, k = base * (1 + Math.sin(vis.pop * Math.PI) * 0.12);
@@ -307,6 +311,15 @@ class Game {
         m.armL.rotation.z = -0.08; m.armR.rotation.z = 0.08;
       }
     }
+  }
+  // is a screen point under a piece of the bottom HUD?
+  hudHit(x, y) {
+    if (!this.hudRects || performance.now() - this.hudT > 500) {
+      this.hudT = performance.now();
+      this.hudRects = ['#dockbar', '#tray', '#world', '#shop', '#placebar', '#topright', '#info'].map(q => document.querySelector(q))
+        .filter(el => el && el.offsetParent !== null && !el.classList.contains('hidden')).map(el => el.getBoundingClientRect());
+    }
+    return this.hudRects.some(r => x > r.left - 20 && x < r.right + 20 && y > r.top - 40 && y < r.bottom);
   }
   nearSound(v, name) {
     const r = this.view.rig;
@@ -484,13 +497,18 @@ class Game {
     if (!r) { if (this.rangeRing) this.rangeRing.visible = false; return; }
     if (!this.rangeRing || this.rangeRing.userData.r !== r || this.rangeRing.userData.x !== x || this.rangeRing.userData.z !== z) {
       if (this.rangeRing) this.view.scene.remove(this.rangeRing);
-      const pts = [];
-      for (let i = 0; i <= 96; i++) {
-        const a = i / 96 * Math.PI * 2, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
-        pts.push(new THREE.Vector3(px, Math.max(this.sim.world.heightAt(px, pz), -0.1) + 0.15, pz));
+      const segs = Math.round(r * 2.4), pos = [], W = this.sim.world;
+      for (let i = 0; i < segs; i++) {
+        const a0 = i / segs * Math.PI * 2, a1 = (i + 0.55) / segs * Math.PI * 2;
+        for (const [a, w] of [[a0, -0.09], [a0, 0.09], [a1, -0.09], [a1, 0.09]]) {
+          const px = x + Math.cos(a) * (r + w), pz = z + Math.sin(a) * (r + w);
+          pos.push(px, Math.max(W.heightAt(px, pz), -0.1) + 0.18, pz);
+        }
       }
-      const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: 0xffd54f, dashSize: 0.35, gapSize: 0.25, transparent: true, opacity: 0.95, depthTest: false }));
-      ring.computeLineDistances(); ring.renderOrder = 8;
+      const idxs = []; for (let i = 0; i < segs; i++) { const o = i * 4; idxs.push(o, o + 2, o + 1, o + 1, o + 2, o + 3); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idxs);
+      const ring = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xfff3d0, transparent: true, opacity: 0.95, depthTest: false, side: THREE.DoubleSide }));
+      ring.renderOrder = 8;
       ring.userData = { r, x, z };
       this.rangeRing = ring; this.view.scene.add(ring);
     }
@@ -509,11 +527,12 @@ class Game {
       group.traverse(o => { if (o.isMesh) { o.userData.base = o.material; o.material = ghostMat(o.material, true); o.castShadow = false; } });
       const root = new THREE.Group(); root.add(group);
       p.ghost = root; p.model = group;
-      const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x7dff6a, transparent: true, opacity: 0.4, depthTest: false }));
-      plane.renderOrder = 9; p.plane = plane;
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x7dff6a, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+      plane.renderOrder = 1; p.plane = plane;
       this.view.scene.add(root, plane);
     }
     this.drawTerritory();
+    document.body.classList.add('placing');
     if (moving) {
       const c = this.sim.bCenter(moving), sp = this.view.project(new THREE.Vector3(c.x, 0.2, c.z));
       this.ghostAt(sp.x, sp.y);
@@ -607,6 +626,7 @@ class Game {
     if (this.terr) { this.view.scene.remove(this.terr); this.terr = null; }
     if (this.rangeRing) this.rangeRing.visible = false;
     this.ui?.placeBar(false);
+    document.body.classList.remove('placing');
     if (!silent) this.ui?.markCard(null);
   }
   drawTerritory() {
@@ -667,18 +687,18 @@ class Game {
       this.showRange(ent.b.type, c.x, c.z);
       this.selRing.scale.setScalar(Math.max(c.w, c.d) * 0.78);
       this.selRing.position.set(c.x, this.bvis.get(ent.b.id).root.position.y + 0.05, c.z);
-      if (fly || innerWidth < 760) this.focus(c.x, c.z);
+      if (fly || innerWidth < 760) this.focus(c.x, c.z, this.rangeFor(ent.b.type) ? Math.max(this.view.rig.dist, this.rangeFor(ent.b.type) * 2.3) : undefined);
     } else if (ent?.kind === 'v') {
       this.selRing.scale.setScalar(0.35);
       if (fly || innerWidth < 760) this.focus(ent.v.x, ent.v.z);
     }
     this.selRing.visible = !!this.selected;
   }
-  focus(x, z) {
+  focus(x, z, dist) {
     const rig = this.view.rig, phone = innerWidth < 760;
     // nudge toward the camera so the thing lands in the upper part of the screen
-    const k = phone ? rig.dist * 0.24 : 0;
-    this.view.flyTo(x + Math.sin(rig.yaw) * k, z + Math.cos(rig.yaw) * k, undefined, 0.6);
+    const k = phone ? (dist || rig.dist) * 0.24 : 0;
+    this.view.flyTo(x + Math.sin(rig.yaw) * k, z + Math.cos(rig.yaw) * k, dist, 0.6);
   }
   pick(cx, cy) {
     // villagers are tiny, so test them in screen space first
@@ -707,10 +727,11 @@ class Game {
       x0 = Math.min(x0, p.x - 1); x1 = Math.max(x1, p.x + 1); z0 = Math.min(z0, p.z - 1); z1 = Math.max(z1, p.z + 1);
     }
     const phone = innerWidth < 760, r = Math.max(x1 - x0, z1 - z0) / 2;
-    const dist = Math.max(20, Math.min(46, r * (phone ? 2.9 : 2.3) + 12));
-    // the phone HUD is heavier at the top, so aim a little past the middle
-    const k = phone ? dist * 0.05 : 0;
-    const tx = (x0 + x1) / 2 - Math.sin(rig.yaw) * k, tz = (z0 + z1) / 2 - Math.cos(rig.yaw) * k;
+    const dist = Math.max(phone ? 22 : 20, Math.min(46, r * (phone ? 3.0 : 2.3) + (phone ? 6 : 12)));
+    // the phone HUD is heavier at the top and has a button column on the right:
+    // aim a little past the middle and a little right so the village sits clear of both
+    const k = phone ? dist * 0.05 : 0, side = phone ? dist * 0.035 : 0;
+    const tx = (x0 + x1) / 2 - Math.sin(rig.yaw) * k + Math.cos(rig.yaw) * side, tz = (z0 + z1) / 2 - Math.cos(rig.yaw) * k - Math.sin(rig.yaw) * side;
     if (instant) Object.assign(rig, { tx, tz, dist });
     else this.view.flyTo(tx, tz, dist, 1.4);
   }
@@ -986,8 +1007,8 @@ const ghostCache = new Map();
 function ghostMat(m, ok) {
   const key = m.uuid + ok;
   if (!ghostCache.has(key)) {
-    const g = m.clone(); g.transparent = true; g.opacity = 0.88; g.depthWrite = true;
-    if (g.emissive) g.emissive.setHex(ok ? 0x1d4a12 : 0x6a1410);
+    const g = m.clone(); g.transparent = true; g.opacity = ok ? 0.94 : 0.8; g.depthWrite = true;
+    if (!ok && g.emissive) g.emissive.setHex(0x5a0e0a);
     ghostCache.set(key, g);
   }
   return ghostCache.get(key);

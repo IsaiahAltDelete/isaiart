@@ -63,8 +63,22 @@ export const C = {
   hay: 0xe6c35c, white: 0xfbf6ea, leaf: 0x4f9a3a, berry: 0xd23a4a, orange: 0xe58a3a,
 };
 
-function windowPane(x, y, z, ry = 0) { return at(mesh(new THREE.BoxGeometry(0.22, 0.22, 0.04), C.window, { emissive: 0x3a2a00 }), x, y, z, ry); }
-function door(x, y, z, ry = 0, c = C.door) { return at(mesh(new THREE.BoxGeometry(0.26, 0.42, 0.05), c), x, y + 0.21, z, ry); }
+function windowPane(x, y, z, ry = 0) {
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry;
+  g.add(at(mesh(new THREE.BoxGeometry(0.29, 0.29, 0.03), C.timber), 0, 0, -0.005));
+  g.add(at(mesh(new THREE.BoxGeometry(0.22, 0.22, 0.04), C.window, { emissive: 0x3a2a00 }), 0, 0, 0.005));
+  g.add(at(mesh(new THREE.BoxGeometry(0.3, 0.04, 0.08), C.timber), 0, -0.16, 0.03));
+  return g;
+}
+// a door with a lighter frame and a little step
+function door(x, y, z, ry = 0, c = C.door) {
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry;
+  g.add(at(mesh(new THREE.BoxGeometry(0.34, 0.48, 0.04), C.plank), 0, 0.24, -0.005));
+  g.add(at(mesh(new THREE.BoxGeometry(0.26, 0.42, 0.06), c), 0, 0.21, 0.01));
+  g.add(at(mesh(new THREE.BoxGeometry(0.03, 0.03, 0.03), 0xe8c050), 0.08, 0.22, 0.05));
+  g.add(at(mesh(new THREE.BoxGeometry(0.4, 0.05, 0.14), C.stone), 0, 0.0, 0.07));
+  return g;
+}
 
 // Smoke puffs that drift up from a chimney.
 export class Smoke {
@@ -128,7 +142,11 @@ function lumber(g, a) {
     l.rotation.z = Math.PI / 2; l.position.y = 0.1 + i * 0.18; g.add(l);
   }
   g.add(roof(1.5, 0.55, 1.3, C.green, -0.15, 0.75, -0.2));
-  g.add(door(-0.15, 0, 0.31));
+  g.add(at(mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.56, 6), C.darkwood), -0.15, 1.31, -0.2).rotateZ(Math.PI / 2));
+  for (const x of [-0.88, 0.58]) g.add(box(0.1, 0.62, 0.1, C.darkwood, x, 0.14, 0.32));
+  g.add(door(-0.4, 0, 0.31));
+  g.add(windowPane(0.2, 0.42, 0.32));
+  g.add(box(0.5, 0.12, 0.08, C.plank, -0.15, 0.7, 0.35));
   // log pile
   for (let i = 0; i < 3; i++) for (let j = 0; j < 3 - i; j++) {
     const l = cyl(0.09, 0.09, 0.7, 7, C.log, 0.7, 0.09 + i * 0.16, -0.4 + j * 0.19 + i * 0.09);
@@ -423,10 +441,16 @@ export function villagerModel(v) {
   if (v.hat) { body.add(cyl(0.17, 0.17, 0.02, 10, v.hatColor, 0, 0.55, 0)); body.add(cyl(0.09, 0.1, 0.09, 10, v.hatColor, 0, 0.56, 0)); }
   else { const hair = new THREE.Mesh(new THREE.SphereGeometry(0.118, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(v.hair)); hair.position.y = 0.51; hair.rotation.x = -0.25; body.add(hair); }
   // eyes
-  for (const x of [-0.04, 0.04]) body.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.025, 0.01), mat(0x222222)), x, 0.52, 0.105));
+  for (const x of [-0.042, 0.042]) {
+    body.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.019, 6, 4), mat(0x2a1a10)), x, 0.515, 0.098));
+    body.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 4), mat(0xf29a8a)), x * 1.55, 0.475, 0.088));
+  }
   const armL = new THREE.Group(), armR = new THREE.Group();
   armL.position.set(-0.14, 0.36, 0); armR.position.set(0.14, 0.36, 0);
-  armL.add(box(0.06, 0.2, 0.06, v.shirt, 0, -0.2, 0)); armR.add(box(0.06, 0.2, 0.06, v.shirt, 0, -0.2, 0));
+  armL.add(box(0.07, 0.2, 0.07, v.shirt, 0, -0.2, 0)); armR.add(box(0.07, 0.2, 0.07, v.shirt, 0, -0.2, 0));
+  armL.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.042, 6, 4), mat(v.skin)), 0, -0.22, 0));
+  armR.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.042, 6, 4), mat(v.skin)), 0, -0.22, 0));
+  armL.position.x = -0.155; armR.position.x = 0.155;
   body.add(armL, armR);
   const tool = new THREE.Group(); tool.position.set(0, -0.2, 0.04); armR.add(tool);
   const sack = ball(0.11, 0xc9a46a, 0, 0.35, -0.15); sack.visible = false; body.add(sack);

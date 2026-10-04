@@ -319,16 +319,20 @@ export class UI {
       <select data-act="job" data-id="${v.id}" style="width:100%">${opts}</select>
       <div class="actions"><button class="btn blue sm" data-act="follow">${svg('eye', 14)} ${this.g.followV === v ? 'Stop following' : 'Follow'}</button></div>`;
   }
-  workOptions(v) {
+  workplaceCaption(v) {
+    const b = v.work ? this.sim.bById.get(v.work) : null;
+    return b ? `${defOf(b.type).name} · ${b.workers.length}/${workersOf(b)}` : 'Builds & clears';
+  }
+  workOptions(v, short = false) {
     const s = this.sim.s;
-    let o = `<option value="0" ${v.job === 'idle' ? 'selected' : ''}>Idle / builder</option>`;
+    let o = `<option value="0" ${v.job === 'idle' ? 'selected' : ''}>${short ? 'Idle' : 'Idle / builder'}</option>`;
     for (const b of s.buildings) {
       const def = defOf(b.type);
       if (!def.workers || !b.built) continue;
       const mine = v.work === b.id;
       if (!mine && b.workers.length >= workersOf(b)) continue;
       const sn = SETTLEMENTS.find(x => x.id === b.sid)?.name ?? '';
-      o += `<option value="${b.id}" ${mine ? 'selected' : ''}>${JOBS[def.job].name} — ${def.name} (${b.workers.length}/${workersOf(b)}) · ${sn}</option>`;
+      o += `<option value="${b.id}" ${mine ? 'selected' : ''}>${mine && short ? JOBS[def.job].name : `${JOBS[def.job].name} — ${def.name} (${b.workers.length}/${workersOf(b)})${Object.keys(s.unlocked).length > 1 ? ' · ' + sn : ''}`}</option>`;
     }
     return o;
   }
@@ -441,19 +445,20 @@ export class UI {
     let h = '';
     if (k === 'villagers') {
       const idle = s.villagers.filter(v => v.job === 'idle').length;
-      h += `<div class="summary"><span class="chip">${svg('people', 18)}${s.villagers.length} / ${sim.housing()} housed</span>
-        <span class="chip">${svg('smile', 18)}Happiness <span class="happy"><i style="width:${s.happiness}%"></i></span>${Math.round(s.happiness)}</span>
-        <span class="chip">${svg('person', 18)}${idle} idle</span>
-        <span class="chip">${svg('apple', 18)}${s.villagers.filter(v => v.hungry).length} hungry</span></div>`;
+      h += `<div class="summary tight"><span class="chip" title="Housed">${svg('house', 16)}${s.villagers.length}/${sim.housing()}</span>
+        <span class="chip" title="Happiness">${svg('smile', 16)}${Math.round(s.happiness)}</span>
+        <span class="chip" title="Idle">${svg('person', 16)}${idle} idle</span>
+        <span class="chip" title="Hungry">${svg('apple', 16)}${s.villagers.filter(v => v.hungry).length}</span></div>`;
       const jobs = [...new Set(s.villagers.map(v => v.job))];
+      const multi = Object.keys(s.unlocked).length > 1;
       const f = this.vFilter && jobs.includes(this.vFilter) ? this.vFilter : 'all';
       h += `<div class="chips"><button class="chipf ${f === 'all' ? 'on' : ''}" data-act="vf" data-f="all">All ${s.villagers.length}</button>${jobs.map(j =>
         `<button class="chipf ${f === j ? 'on' : ''}" data-act="vf" data-f="${j}">${JOBS[j].name} ${s.villagers.filter(v => v.job === j).length}</button>`).join('')}</div>`;
       h += `<div class="actions" style="margin:0 0 8px"><button class="btn sm" data-act="autoassign" ${idle ? '' : 'disabled'}>${svg('people', 16)} Give idle villagers jobs</button></div>`;
       h += `<div class="sub" style="font-size:12px;color:var(--ink2);margin-bottom:6px">Idle villagers build construction sites and clear marked trees. Pick a job to send someone to work.</div>`;
       h += s.villagers.filter(v => f === 'all' || v.job === f).map(v => `<div class="vrow"><span class="face" style="background:radial-gradient(circle at 50% 40%, ${hex(v.skin)} 0 33%, transparent 34%), radial-gradient(circle at 50% 125%, ${hex(v.shirt)} 0 58%, ${hex(v.hair)} 59%)"></span>
-        <div><b>${esc(v.name)}</b> ${v.hungry ? '<span style="color:#c0392b;font-size:11px">hungry</span>' : ''}<div class="doing">${esc(v.task?.label ?? 'Idle')} · ${esc(SETTLEMENTS.find(o => o.id === v.home)?.name ?? '')}</div></div>
-        <select data-act="job" data-id="${v.id}">${this.workOptions(v)}</select></div>`).join('');
+        <div><b>${esc(v.name)}</b> ${v.hungry ? '<span style="color:#c0392b;font-size:11px">hungry</span>' : ''}<div class="doing">${esc(v.task?.label ?? 'Idle')}${multi ? ' · ' + esc(SETTLEMENTS.find(o => o.id === v.home)?.name ?? '') : ''}</div></div>
+        <div class="jobcell"><select data-act="job" data-id="${v.id}">${this.workOptions(v, true)}</select><small>${esc(this.workplaceCaption(v))}</small></div></div>`).join('');
     } else if (k === 'inventory') {
       const cap = sim.cap();
       h += `<div class="summary"><span class="chip">${svg('house', 18)}Storage ${cap} per good</span><span class="chip">${svg('coin', 18)}${fmt(s.res.coins)}</span><span class="chip">${svg('gem', 18)}${s.res.gems}</span></div><div class="grid">`;

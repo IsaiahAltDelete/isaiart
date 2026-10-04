@@ -245,11 +245,15 @@
     .tile .top { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; }
     .tile .amt { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
     .tile .small { font-size: 11.5px; color: var(--ink2); }
-    .vrow { display: grid; grid-template-columns: 34px minmax(0, 1fr) minmax(0, 46%); gap: 4px 10px; align-items: center; padding: 7px 4px; border-bottom: 1px solid #f0e0c0; font-size: 13px; }
+    .vrow { display: grid; grid-template-columns: 34px minmax(0, 1fr) minmax(0, 42%); gap: 4px 10px; align-items: center; padding: 7px 4px; border-bottom: 1px solid #f0e0c0; font-size: 13px; }
     .vrow > div { min-width: 0; }
     .vrow b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .vrow .doing { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .vrow select { width: 100%; }
+    .vrow select { width: 100%; font-weight: 600; }
+    .jobcell { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .jobcell small { font-size: 10.5px; color: var(--ink2); padding-left: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .summary.tight { gap: 6px; flex-wrap: nowrap; }
+    .summary.tight .chip { padding: 3px 8px 3px 5px; font-size: 12.5px; gap: 3px; }
     .vrow .face { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--edge); }
     .vrow .doing { font-size: 11.5px; color: var(--ink2); }
     .summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
@@ -332,6 +336,13 @@
     #loading.gone { opacity: 0; pointer-events: none; }
     #home { position: fixed; left: 14px; bottom: calc(84px + var(--sab)); z-index: 4; font-size: 11px; font-weight: 600; color: #fff; text-decoration: none; text-shadow: 0 1px 2px rgba(0,0,0,.6); opacity: .85; }
 
+    /* ── big screens: scale the HUD up so it doesn't read as unscaled mobile UI ── */
+    @media (min-width: 1200px) and (min-height: 760px) {
+      #top, #topright, #speed, #left, #dockbar, #tray, #world, #shop, #placebar, #coach, #alert, #toasts, #home { zoom: 1.22; }
+      #xptext { font-size: 9.5px; }
+      #left { max-height: calc((100% - 200px) / 1.22); }
+    }
+
     /* ── phones ──────────────────────────────────── */
     @media (max-width: 760px) {
       #top { right: 10px; gap: 6px; }
@@ -360,7 +371,9 @@
       #info h3 { padding-right: 34px; }
       #info .kv { margin: 4px 0; }
       #info .upbox { margin-top: 6px; padding: 5px 8px; }
-      #info .actions { margin-top: 6px; }
+      #info .actions { margin: 6px -12px -10px; padding: 8px 12px 10px; position: sticky; bottom: -10px; background: linear-gradient(rgba(255,248,232,0), var(--cream) 30%); }
+      #info .actions .btn { padding: 6px 10px; }
+      body.placing #topright { display: none; }
       #toasts { top: calc(162px + var(--sat)) !important; }
       #placebar { left: 12px; right: 12px; transform: none; justify-content: space-between; }
       #placebar .msg { flex: 1; max-width: none !important; }
