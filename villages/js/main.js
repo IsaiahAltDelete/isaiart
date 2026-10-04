@@ -1,12 +1,13 @@
 // Entry point: wires the simulation, the 3D view, the UI and input.
 import * as THREE from '../vendor/three.module.min.js';
-import { Sim, defOf, isDecor, footprint, DAY } from './sim.js';
+import { Sim, defOf, isDecor, footprint, DAY, lvlOf, RANGE } from './sim.js';
 import { View, bubbleTexture, timeUniform } from './view.js';
 import { buildModel, scaffold, villagerModel, setTool, mat, C, pineGeo, stumpGeo } from './models.js';
 import { UI } from './ui.js';
 import { N, HALF, idx, toWorld, inMap, CENTERS, tileX, tileZ } from './world.js';
 import { SETTLEMENTS, BUILD_ORDER, DECOR_ORDER, GOODS } from './data.js';
 import { initAudio, sfx, setSound, ambient } from './audio.js';
+import { Life } from './life.js';
 
 const SAVE_KEY = 'isaiart.villages.v1';
 const SET_KEY = 'isaiart.villages.settings';
@@ -49,6 +50,7 @@ class Game {
     for (const b of this.sim.s.buildings) this.addBVis(b);
     for (const v of this.sim.s.villagers) this.addVVis(v);
     this.makeLockMarkers();
+    this.life = new Life(this.view, this.sim);
     this.selRing = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.9, depthTest: false }));
     this.selRing.renderOrder = 10; this.selRing.visible = false;
     this.view.scene.add(this.selRing);
@@ -130,6 +132,11 @@ class Game {
   }
   applyBuild(vis) {
     const b = vis.b;
+    this.applyLevel(vis);
+    if (b.built && b.up) {
+      if (!vis.scaffold) { vis.scaffold = scaffold(footprint(b.type, 0)); vis.scaffold.scale.set(1.12, 1.25, 1.12); vis.group.add(vis.scaffold); }
+      return;
+    }
     if (!b.built) {
       if (!vis.scaffold) {
         vis.scaffold = scaffold(footprint(b.type, 0));
@@ -145,6 +152,30 @@ class Game {
       vis.anim.inner.visible = true; vis.anim.inner.scale.y = 1;
       if (vis.anim.smoke) vis.anim.smoke.on = true;
     }
+  }
+  // upgraded buildings get a little flag, flower boxes and lanterns
+  applyLevel(vis) {
+    const L = lvlOf(vis.b);
+    if (vis.lvl === L) return;
+    vis.lvl = L;
+    if (vis.deco) vis.group.remove(vis.deco);
+    vis.deco = null;
+    if (L < 2 || isDecor(vis.b.type)) return;
+    const [w, d] = footprint(vis.b.type, 0), g = new THREE.Group();
+    const px = w / 2 - 0.15, pz = -d / 2 + 0.15;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 2.1, 6), mat(0x6b4428)); pole.position.set(px, 1.05, pz); pole.castShadow = true; g.add(pole);
+    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.26, 0.02), mat(L === 2 ? 0x4f8fd9 : 0xf0b429)); flag.position.set(px + 0.22, 1.9, pz); flag.castShadow = true; g.add(flag);
+    vis.flag = flag;
+    for (const sx of [-1, 1]) {
+      const box = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.1, 0.12), mat(0x8a5a33)); box.position.set(sx * 0.4, 0.08, d / 2 + 0.08); g.add(box);
+      for (let k = 0; k < 3; k++) { const f = new THREE.Mesh(leafGeo, mat([0xf06292, 0xffd54f, 0xba68c8][(k + (sx > 0 ? 1 : 0)) % 3])); f.position.set(sx * 0.4 - 0.11 + k * 0.11, 0.18, d / 2 + 0.08); g.add(f); }
+    }
+    if (L >= 3) for (const sx of [-1, 1]) {
+      const lp = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.6, 0.04), mat(0x3c3c3c)); lp.position.set(sx * (w / 2 - 0.05), 0.3, d / 2 + 0.2); g.add(lp);
+      const lg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.1), mat(0xffe08a)); lg.position.set(sx * (w / 2 - 0.05), 0.64, d / 2 + 0.2); g.add(lg);
+    }
+    vis.group.add(g); vis.deco = g;
+    vis.group.scale.setScalar(1 + (L - 1) * 0.04);
   }
   applyFarm(vis) {
     const d = vis.b.data, crops = vis.anim.crops;
@@ -179,8 +210,8 @@ class Game {
     if (icon) vis.sprite.position.y += Math.sin(time * 3 + vis.phase) * 0.003;
     if (vis.pop > 0) {
       vis.pop = Math.max(0, vis.pop - dt * 2.5);
-      const k = 1 + Math.sin(vis.pop * Math.PI) * 0.12;
-      vis.group.scale.set(k, 1 + Math.sin(vis.pop * Math.PI * 2) * 0.08, k);
+      const base = 1 + (lvlOf(b) - 1) * 0.04, k = base * (1 + Math.sin(vis.pop * Math.PI) * 0.12);
+      vis.group.scale.set(k, base * (1 + Math.sin(vis.pop * Math.PI * 2) * 0.08), k);
     }
     if (!b.built) return;
     const busy = b.workers.length > 0 && !b.status;
@@ -192,6 +223,7 @@ class Game {
       a.fire.scale.set(f, f * (1 + Math.sin(time * 9) * 0.1), f);
       a.light.intensity = (1.6 + Math.sin(time * 11) * 0.3) * (1 + this.night * 2.5);
     }
+    if (vis.flag) vis.flag.rotation.y = Math.sin(time * 3 + vis.phase) * 0.35;
     if (a.boat) a.boat.position.y = -0.15 + Math.sin(time * 1.6 + vis.phase) * 0.03;
   }
 
@@ -281,6 +313,7 @@ class Game {
       if (this.place) this.drawTerritory();
     });
     sim.on('removed', b => this.removeBVis(b));
+    sim.on('upgraded', b => { const vis = this.bvis.get(b.id); if (vis) vis.pop = 1; });
     sim.on('progress', b => { const vis = this.bvis.get(b.id); if (vis) this.applyBuild(vis); });
     sim.on('farm', b => { const vis = this.bvis.get(b.id); if (vis) this.applyFarm(vis); });
     sim.on('villager', v => this.addVVis(v));
@@ -310,7 +343,7 @@ class Game {
     });
     sim.on('log', () => ui.markLog());
     sim.on('sfx', name => sfx[name]?.());
-    sim.on('settlements', () => { this.makeLockMarkers(); });
+    sim.on('settlements', () => { this.makeLockMarkers(); this.life?.placeButterflies(); });
   }
 
   // ── little effects: falling trees and leaf puffs ──
@@ -357,7 +390,7 @@ class Game {
   drawBars() {
     const view = this.view, seen = new Set();
     for (const b of this.sim.s.buildings) {
-      if (b.built || isDecor(b.type)) continue;
+      if ((b.built && !b.up) || isDecor(b.type)) continue;
       const vis = this.bvis.get(b.id); if (!vis) continue;
       seen.add(b.id);
       let el = this.cbars.get(b.id);
@@ -369,10 +402,30 @@ class Game {
       const p = view.project(tmpV.set(vis.root.position.x, vis.root.position.y + 1.7, vis.root.position.z));
       el.style.display = p.vis ? '' : 'none';
       el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
-      const pct = Math.floor(b.progress * 100) + '%';
+      const pct = Math.floor((b.up ? b.up.progress : b.progress) * 100) + '%';
       if (el.lastChild.textContent !== pct) { el.lastChild.textContent = pct; el.querySelector('i').style.width = pct; }
     }
     for (const [id, el] of this.cbars) if (!seen.has(id)) { el.remove(); this.cbars.delete(id); }
+  }
+
+  // dashed ring showing how far a gatherer will walk for work
+  rangeFor(type) { return { lumber: RANGE.woodcutter, forager: RANGE.forager, quarry: RANGE.miner, forester: RANGE.forester }[type] || 0; }
+  showRange(type, x, z) {
+    const r = this.rangeFor(type);
+    if (!r) { if (this.rangeRing) this.rangeRing.visible = false; return; }
+    if (!this.rangeRing || this.rangeRing.userData.r !== r || this.rangeRing.userData.x !== x || this.rangeRing.userData.z !== z) {
+      if (this.rangeRing) this.view.scene.remove(this.rangeRing);
+      const pts = [];
+      for (let i = 0; i <= 96; i++) {
+        const a = i / 96 * Math.PI * 2, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+        pts.push(new THREE.Vector3(px, Math.max(this.sim.world.heightAt(px, pz), -0.1) + 0.15, pz));
+      }
+      const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: 0xffd54f, dashSize: 0.35, gapSize: 0.25, transparent: true, opacity: 0.95, depthTest: false }));
+      ring.computeLineDistances(); ring.renderOrder = 8;
+      ring.userData = { r, x, z };
+      this.rangeRing = ring; this.view.scene.add(ring);
+    }
+    this.rangeRing.visible = true;
   }
 
   // ── placement ──
@@ -417,6 +470,7 @@ class Game {
     p.model.rotation.y = p.rot * Math.PI / 2;
     p.plane.position.set(cx, y + 0.06, cz); p.plane.scale.set(w, 1, d);
     p.plane.material.color.setHex(p.ok ? 0x7dff6a : 0xff5a4a);
+    this.showRange(p.type, cx, cz);
     this.placeMsg();
   }
   placeMsg() {
@@ -445,6 +499,7 @@ class Game {
     if (p.ghost) this.view.scene.remove(p.ghost, p.plane);
     this.place = null;
     if (this.terr) { this.view.scene.remove(this.terr); this.terr = null; }
+    if (this.rangeRing) this.rangeRing.visible = false;
     this.ui?.placeBar(false);
     if (!silent) this.ui?.markCard(null);
   }
@@ -486,8 +541,10 @@ class Game {
     if (ent) sfx.click();
     this.ui.lastInfo = null;
     this.ui.drawInfo(true);
+    if (this.rangeRing) this.rangeRing.visible = false;
     if (ent?.kind === 'b') {
       const c = this.sim.bCenter(ent.b);
+      this.showRange(ent.b.type, c.x, c.z);
       this.selRing.scale.setScalar(Math.max(c.w, c.d) * 0.78);
       this.selRing.position.set(c.x, this.bvis.get(ent.b.id).root.position.y + 0.05, c.z);
       if (fly) this.view.flyTo(c.x, c.z);
@@ -687,6 +744,7 @@ class Game {
     for (const vis of this.bvis.values()) this.updateBVis(vis, dt, t);
     for (const v of sim.s.villagers) { const m = this.vvis.get(v.id); if (m) this.updateVVis(v, m, dt, t); }
     this.effects = this.effects.filter(f => f(dt));
+    this.life.update(dt, t, this.night);
     this.drawBars();
 
     // selection ring + name tag

@@ -1,8 +1,8 @@
 // DOM interface: resource bar, quests, info panel, build tray, modals,
 // toasts and floating numbers.
 import { svg } from './icons.js';
-import { GOODS, TOP_GOODS, BUILDINGS, DECOR, BUILD_ORDER, DECOR_ORDER, SETTLEMENTS, JOBS, SELLABLE, xpForLevel } from './data.js';
-import { defOf, isDecor, DAY } from './sim.js';
+import { GOODS, TOP_GOODS, BUILDINGS, DECOR, BUILD_ORDER, DECOR_ORDER, SETTLEMENTS, JOBS, SELLABLE, QUESTS, xpForLevel } from './data.js';
+import { defOf, isDecor, DAY, workersOf, lvlOf, MAX_LVL, housingOf, storageOf } from './sim.js';
 import { N, CENTERS, T_WATER, T_SAND } from './world.js';
 import { sfx } from './audio.js';
 
@@ -48,6 +48,8 @@ export class UI {
     $('#quests header').onclick = () => { $('#quests').classList.toggle('collapsed'); sfx.click(); };
     if (innerWidth < 760) $('#quests').classList.add('collapsed');
     $('#qlist').addEventListener('click', e => {
+      const go = e.target.closest('[data-go]');
+      if (go) { this.doGo(QUESTS.find(q => q.id === go.dataset.go)); return; }
       const b = e.target.closest('[data-claim]');
       if (b && this.sim.claim(b.dataset.claim)) { this.toast('Reward claimed!', 'gem'); this.dirty.quests = true; }
     });
@@ -106,6 +108,7 @@ export class UI {
     $('#info').addEventListener('change', e => this.modalChange(e));
     this.seenLog = 0;
     this.hammer = svg('hammer', 16);
+    $('#alert').onclick = () => { const t = $('#alert').dataset.go; this.doGo({ kind: 'build', key: t }); };
   }
 
   // ── per-frame ──
@@ -117,6 +120,7 @@ export class UI {
     if (this.timer > 0.5) {
       this.timer = 0;
       this.drawInfo();
+      this.drawAlert();
       if (this.modal && ['villagers', 'inventory', 'stats', 'worldmap'].includes(this.modal) && !$('#modal').contains(document.activeElement)) this.drawModal(true);
       this.drawQuests();
       if (this.tray) this.refreshCards();
@@ -148,7 +152,7 @@ export class UI {
     const list = this.sim.activeQuests();
     const html = list.map(({ q, p, done }) => `
       <div class="quest ${done ? 'done' : ''}">
-        <div class="row"><span class="t">${esc(q.title)}</span>${done ? `<button class="btn sm gold claim" data-claim="${q.id}">Claim</button>` : `<span style="font-size:11px;color:var(--ink2)">${fmt(p)}/${fmt(q.n)}</span>`}</div>
+        <div class="row"><span class="t">${esc(q.title)}</span>${done ? `<button class="btn sm gold claim" data-claim="${q.id}">Claim</button>` : `<span style="font-size:11px;color:var(--ink2)">${fmt(p)}/${fmt(q.n)}</span>${this.goFor(q) ? `<button class="go" data-go="${q.id}" aria-label="Show me">${svg('target', 16)}</button>` : ''}`}</div>
         <div class="bar"><i style="width:${p / q.n * 100}%"></i></div>
         <div class="rw">${q.reward.gems ? `<span>${svg('gem', 12)}${q.reward.gems}</span>` : ''}${q.reward.coins ? `<span>${svg('coin', 12)}${q.reward.coins}</span>` : ''}${q.reward.xp ? `<span>${svg('xp', 12)}${q.reward.xp} xp</span>` : ''}</div>
       </div>`).join('') || '<div class="quest">All quests complete — you\'re a master builder!</div>';
@@ -157,9 +161,65 @@ export class UI {
     $('#qhead').innerHTML = svg('star', 18) + 'Quests' + (ready ? ` <span class="badge" style="position:static">${ready}</span>` : '');
   }
 
+  // quest shortcut: where should the "show me" button take you?
+  goFor(q) {
+    const produceMap = { wood: 'lumber', grain: 'farm', planks: 'sawmill', bread: 'bakery', bricks: 'mason' };
+    if (q.kind === 'build') return { tray: DECOR[q.key] ? 'decor' : 'build', type: q.key };
+    if (q.kind === 'produce' && produceMap[q.key]) {
+      const t = produceMap[q.key];
+      const have = this.sim.s.buildings.find(b => b.type === t && b.built);
+      return have ? { select: have } : { tray: 'build', type: t };
+    }
+    if (q.kind === 'pop') return { tray: 'build', type: 'cottage' };
+    if (q.kind === 'decor') return { tray: 'decor' };
+    if (q.kind === 'unlock') return { modal: 'worldmap' };
+    if (q.kind === 'job' || q.kind === 'earn') {
+      const t = q.kind === 'job' ? 'lumber' : 'market';
+      const have = this.sim.s.buildings.find(b => b.type === t && b.built);
+      return have ? { select: have } : { tray: 'build', type: t };
+    }
+    return null;
+  }
+  doGo(q) {
+    const g = this.goFor(q); if (!g) return;
+    if (g.modal) return this.openModal(g.modal);
+    if (g.select) { this.g.select({ kind: 'b', b: g.select }, true); return; }
+    this.openTray(g.tray);
+    if (g.type) {
+      const card = document.querySelector(`#cards .card[data-type="${g.type}"]`);
+      if (card) {
+        card.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+        card.classList.add('hint'); setTimeout(() => card.classList.remove('hint'), 2400);
+        if (!card.classList.contains('locked')) { this.g.startPlace(g.type); this.markCard(g.type); }
+      }
+    }
+  }
+
+  // alert chip: the most urgent problem in the village
+  drawAlert() {
+    const sim = this.sim, s = sim.s, pop = s.villagers.length;
+    let a = null;
+    const hungry = s.villagers.filter(v => v.hungry).length;
+    const fr = sim.rate('food');
+    if (hungry) a = { icon: 'apple', text: `${hungry} villager${hungry > 1 ? 's are' : ' is'} hungry!`, go: 'forager' };
+    else if (s.res.food < pop * 2 && fr <= 5) a = { icon: 'apple', text: 'Food is running low', go: 'forager' };
+    else {
+      const cap = sim.cap(), full = ['wood', 'planks', 'stone', 'food', 'grain'].find(k => s.res[k] >= cap);
+      if (full && s.level >= 3) a = { icon: 'bag', text: `${GOODS[full].name} storage is full`, go: 'storehouse' };
+      else if (pop > sim.housing()) a = { icon: 'house', text: 'Not enough beds', go: 'cottage' };
+    }
+    const el = $('#alert');
+    const key = a ? a.text : '';
+    if (key === this.lastAlert) return;
+    this.lastAlert = key;
+    el.classList.toggle('hidden', !a);
+    if (a) { el.innerHTML = svg(a.icon, 18) + esc(a.text); el.dataset.go = a.go; }
+  }
+
   // ── info panel ──
   drawInfo(force) {
     const sel = this.g.selected, el = $('#info');
+    document.body.classList.toggle('info-open', !!sel);
     if (!sel) { el.classList.add('hidden'); return; }
     if (!force && el.contains(document.activeElement) && document.activeElement.tagName === 'SELECT') return;
     el.classList.remove('hidden');
@@ -170,7 +230,7 @@ export class UI {
     const sim = this.sim, def = defOf(b.type), s = sim.s;
     const sname = SETTLEMENTS.find(o => o.id === b.sid)?.name ?? '—';
     let h = `<button class="x" data-act="close" aria-label="Close">${svg('close', 14)}</button>
-      <h3>${esc(def.name)}</h3><div class="sub">${esc(sname)} · ${b.built ? (isDecor(b.type) ? 'decoration' : 'building') : 'under construction'}</div>`;
+      <h3>${esc(def.name)}${!isDecor(b.type) ? ` <span class="lvchip">Lv ${lvlOf(b)}</span>` : ''}</h3><div class="sub">${esc(sname)} · ${b.built ? (b.up ? 'being upgraded' : isDecor(b.type) ? 'decoration' : 'building') : 'under construction'}</div>`;
     if (!b.built) {
       const builders = s.villagers.filter(v => v.task?.bid === b.id).length;
       h += `<div class="prog"><i style="width:${b.progress * 100}%"></i></div>
@@ -181,10 +241,10 @@ export class UI {
       return h;
     }
     h += `<dl class="kv">`;
-    if (def.workers) h += `<dt>Workers</dt><dd><span class="stepper"><button class="minus" data-act="unstaff" aria-label="Remove worker">${svg('minus', 12)}</button>${b.workers.length}/${def.workers}<button data-act="staff" aria-label="Add worker">${svg('plus', 12)}</button></span></dd>`;
+    if (def.workers) h += `<dt>Workers</dt><dd><span class="stepper"><button class="minus" data-act="unstaff" aria-label="Remove worker">${svg('minus', 12)}</button>${b.workers.length}/${workersOf(b)}<button data-act="staff" aria-label="Add worker">${svg('plus', 12)}</button></span></dd>`;
     if (def.workers) h += `<dt>Status</dt><dd>${esc(b.status || (b.workers.length ? 'Working' : 'No workers'))}</dd>`;
-    if (def.housing) h += `<dt>Housing</dt><dd>${def.housing} beds</dd>`;
-    if (def.storage) h += `<dt>Storage</dt><dd>+${def.storage}</dd>`;
+    if (def.housing) h += `<dt>Housing</dt><dd>${housingOf(b)} beds</dd>`;
+    if (def.storage && b.type !== 'campfire') h += `<dt>Storage</dt><dd>+${storageOf(b)}</dd>`;
     if (DECOR[b.type]) h += `<dt>Happiness</dt><dd>+${DECOR[b.type].joy}</dd>`;
     if (b.type === 'farm') h += `<dt>Field</dt><dd>${{ empty: 'Needs sowing', growing: `Growing ${Math.floor(b.data.grow * 100)}%`, ripe: 'Ready to harvest!' }[b.data.stage]}</dd>`;
     if (b.type === 'campfire') {
@@ -198,6 +258,13 @@ export class UI {
     }
     if (b.workers.length) {
       h += `<div class="sub" style="margin-top:6px">${b.workers.map(id => { const v = s.villagers.find(o => o.id === id); return v ? `<a href="#" data-act="selv" data-id="${v.id}" style="color:inherit">${esc(v.name)}</a>` : ''; }).join(', ')}</div>`;
+    }
+    if (b.up) {
+      h += `<div class="sub" style="margin-top:6px">Upgrading to level ${lvlOf(b) + 1}…</div><div class="prog"><i style="width:${b.up.progress * 100}%"></i></div>`;
+    } else if (!isDecor(b.type) && lvlOf(b) < MAX_LVL) {
+      const can = sim.canUpgrade(b), cost = sim.upgradeCost(b);
+      h += `<div class="upbox"><div><b>Upgrade to Lv ${lvlOf(b) + 1}</b><span>${esc(sim.upgradeEffect(b))}</span><span class="cost">${costHtml(cost, s.res)}</span></div>
+        <button class="btn gold sm" data-act="upgrade" ${can.ok ? '' : 'disabled'} title="${esc(can.why || '')}">${svg('star', 14)} ${can.ok ? 'Upgrade' : esc(can.why)}</button></div>`;
     }
     if (b.type !== 'campfire') h += `<div class="actions"><button class="btn red sm" data-act="demolish">${svg('trash', 14)} Demolish</button></div>`;
     return h;
@@ -223,9 +290,9 @@ export class UI {
       const def = defOf(b.type);
       if (!def.workers || !b.built) continue;
       const mine = v.work === b.id;
-      if (!mine && b.workers.length >= def.workers) continue;
+      if (!mine && b.workers.length >= workersOf(b)) continue;
       const sn = SETTLEMENTS.find(x => x.id === b.sid)?.name ?? '';
-      o += `<option value="${b.id}" ${mine ? 'selected' : ''}>${JOBS[def.job].name} — ${def.name} (${b.workers.length}/${def.workers}) · ${sn}</option>`;
+      o += `<option value="${b.id}" ${mine ? 'selected' : ''}>${JOBS[def.job].name} — ${def.name} (${b.workers.length}/${workersOf(b)}) · ${sn}</option>`;
     }
     return o;
   }
@@ -240,7 +307,8 @@ export class UI {
     if (act === 'follow') { this.g.followV = this.g.followV === sel.v ? null : sel.v; this.drawInfo(true); return; }
     if (!sel || sel.kind !== 'b') return;
     const b = sel.b;
-    if (act === 'staff') { if (!sim.assign(b, null)) { this.toast(b.workers.length >= defOf(b.type).workers ? 'This building is fully staffed' : 'No idle villagers — build more cottages!', 'person'); sfx.error(); } else sfx.pop(); }
+    if (act === 'upgrade') { if (sim.upgrade(b)) this.toast('Builders are on their way!', 'hammer'); }
+    if (act === 'staff') { if (!sim.assign(b, null)) { this.toast(b.workers.length >= workersOf(b) ? 'This building is fully staffed' : 'No idle villagers — build more cottages!', 'person'); sfx.error(); } else sfx.pop(); }
     if (act === 'unstaff') { const id = b.workers[b.workers.length - 1]; if (id) { sim.unassign(sim.vById.get(id)); sfx.click(); } }
     if (act === 'sell') { sim.s.sell[a.dataset.k] = !sim.s.sell[a.dataset.k]; sfx.click(); }
     if (act === 'demolish') {
@@ -346,7 +414,8 @@ export class UI {
       h += `<div class="summary"><span class="chip">${svg('house', 18)}Storage ${cap} per good</span><span class="chip">${svg('coin', 18)}${fmt(s.res.coins)}</span><span class="chip">${svg('gem', 18)}${s.res.gems}</span></div><div class="grid">`;
       for (const key of SELLABLE) {
         const g = GOODS[key], n = s.res[key], half = Math.max(1, Math.floor(g.price / 2));
-        h += `<div class="tile"><div class="top">${svg(g.icon, 26)}${g.name}</div><div class="amt">${fmt(n)}<span class="small"> / ${cap}</span></div>
+        const rt = Math.round(sim.rate(key));
+        h += `<div class="tile"><div class="top">${svg(g.icon, 26)}${g.name}<span class="rate ${rt > 0 ? 'up' : rt < 0 ? 'down' : ''}">${rt > 0 ? '+' : ''}${rt}/min</span></div><div class="amt">${fmt(n)}<span class="small"> / ${cap}</span></div>
           <div class="prog" style="margin:0"><i style="width:${Math.min(100, n / cap * 100)}%;background:linear-gradient(90deg,#7dd35a,#4fae32)"></i></div>
           <button class="btn gold sm" data-act="sell10" data-k="${key}" ${n < 10 ? 'disabled' : ''}>Sell 10 · ${svg('coin', 12)}${half * 10}</button></div>`;
       }

@@ -8,6 +8,11 @@ import { mulberry32, pick } from './rng.js';
 
 export const defOf = type => BUILDINGS[type] || DECOR[type];
 export const isDecor = type => !!DECOR[type];
+export const lvlOf = b => b.lvl || 1;
+export const MAX_LVL = 3;
+export function workersOf(b) { const d = defOf(b.type); return d.workers ? d.workers + lvlOf(b) - 1 : 0; }
+export function housingOf(b) { const d = defOf(b.type); return d.housing ? d.housing + (lvlOf(b) - 1) * 2 : 0; }
+export function storageOf(b) { const d = defOf(b.type); return d.storage ? d.storage + (lvlOf(b) - 1) * 300 : 0; }
 export function footprint(type, rot) { const [w, d] = defOf(type).size; return rot % 2 ? [d, w] : [w, d]; }
 
 const DAY = 240;                     // sim seconds per in-game day
@@ -18,7 +23,7 @@ const CONVERT = {                    // staffed converters: inputs -> outputs, s
   baker:  { in: { flour: 2 }, out: { food: 8 }, t: 7, anim: 'work', stat: 'bread' },
   mason:  { in: { stone: 3 }, out: { bricks: 1 }, t: 6, anim: 'hammer', keep: { stone: 40 } },
 };
-const RANGE = { woodcutter: 20, forager: 16, miner: 20, forester: 7 };
+export const RANGE = { woodcutter: 20, forager: 16, miner: 20, forester: 9.5 };
 
 export class Sim {
   constructor(save) {
@@ -30,6 +35,7 @@ export class Sim {
     this.bById = new Map(); this.vById = new Map();
     this.stumps = [];
     this.wearTimer = 0; this.secTimer = 0;
+    this.flow = {}; this.flowHist = []; this.flowT = 0;
     if (save) this.load(save); else this.newGame(seed);
   }
   on(name, fn) { this.handlers[name] = fn; }
@@ -76,16 +82,24 @@ export class Sim {
   // ── resources ──
   cap() {
     let c = 0;
-    for (const b of this.s.buildings) if (b.built) c += defOf(b.type).storage || 0;
+    for (const b of this.s.buildings) if (b.built) c += storageOf(b);
     return c;
   }
   canAfford(cost) { return Object.entries(cost || {}).every(([k, v]) => (this.s.res[k] || 0) >= v); }
-  pay(cost) { for (const [k, v] of Object.entries(cost || {})) this.s.res[k] -= v; this.emit('res'); }
+  pay(cost) { for (const [k, v] of Object.entries(cost || {})) { this.s.res[k] -= v; this.track(k, -v); } this.emit('res'); }
+  track(res, n) { this.flow[res] = (this.flow[res] || 0) + n; }
+  // net change per minute over the last ~60 seconds
+  rate(res) {
+    if (!this.flowHist.length) return 0;
+    let sum = 0; for (const h of this.flowHist) sum += h[res] || 0;
+    return sum * 60 / (this.flowHist.length * 10);
+  }
   add(res, n, track = true) {
     const r = this.s.res;
     let added = n;
     if (GOODS[res].capped) added = Math.max(0, Math.min(n, this.cap() - r[res]));
     r[res] += added;
+    this.track(res, added);
     if (track && added > 0) this.s.stats.produced[res] = (this.s.stats.produced[res] || 0) + added;
     this.emit('res');
     return added;
@@ -220,6 +234,46 @@ export class Sim {
     return best;
   }
 
+  // ── upgrades ──
+  upgradeCost(b) {
+    const L = lvlOf(b), base = b.type === 'campfire' ? { coins: 150, wood: 80 } : defOf(b.type).cost || {};
+    const mult = L === 1 ? 1.5 : 3, out = {};
+    for (const [k, v] of Object.entries(base)) if (k !== 'gems') out[k] = Math.ceil(v * mult / 5) * 5;
+    if (L === 1) out.planks = (out.planks || 0) + 20; else out.bricks = (out.bricks || 0) + 20;
+    return out;
+  }
+  upgradeLevelReq(b) { return lvlOf(b) === 1 ? 3 : 6; }
+  canUpgrade(b) {
+    if (!b.built || b.up || isDecor(b.type) || lvlOf(b) >= MAX_LVL) return { ok: false, why: lvlOf(b) >= MAX_LVL ? 'Fully upgraded' : '' };
+    if (this.s.level < this.upgradeLevelReq(b)) return { ok: false, why: `Needs level ${this.upgradeLevelReq(b)}` };
+    if (!this.canAfford(this.upgradeCost(b))) return { ok: false, why: 'Not enough resources' };
+    return { ok: true };
+  }
+  upgrade(b) {
+    if (!this.canUpgrade(b).ok) return false;
+    this.pay(this.upgradeCost(b));
+    b.up = { progress: 0 };
+    this.emit('building', b); this.emit('sfx', 'place');
+    return true;
+  }
+  upgradeEffect(b) {
+    const d = defOf(b.type), out = [];
+    if (d.workers) out.push('+1 worker slot');
+    if (d.housing || b.type === 'campfire') out.push('+2 beds');
+    if (d.storage) out.push('+300 storage');
+    if (d.workers) out.push('+15% work speed');
+    return out.join(', ');
+  }
+  finishUpgrade(b) {
+    b.lvl = lvlOf(b) + 1; b.up = null;
+    this.addXp(25 * b.lvl);
+    this.emit('building', b); this.emit('upgraded', b);
+    this.emit('toast', `${defOf(b.type).name} upgraded to level ${b.lvl}!`, 'star');
+    this.emit('sfx', 'done');
+    if (defOf(b.type).workers) this.assign(b, null);
+  }
+  isSite(b) { return !b.built || !!b.up; }
+
   finishBuilding(b) {
     b.built = true; b.progress = 1;
     const def = defOf(b.type);
@@ -277,7 +331,7 @@ export class Sim {
 
   assign(b, v) {
     const def = defOf(b.type);
-    if (!def.workers || b.workers.length >= def.workers || !b.built) return false;
+    if (!def.workers || b.workers.length >= workersOf(b) || !b.built) return false;
     if (!v) {
       const c = this.bCenter(b);
       const idle = this.s.villagers.filter(o => o.job === 'idle');
@@ -346,12 +400,12 @@ export class Sim {
 
   siteNeedingHelp(v) {
     const s = this.s;
-    if (!s.buildings.some(b => !b.built)) return null;
+    if (!s.buildings.some(b => this.isSite(b))) return null;
     if (s.villagers.some(o => o.job === 'idle')) return null;
     if (s.villagers.filter(o => o.task?.volunteer).length >= 2) return null;
     let best = null, bd = 1e9;
     for (const b of s.buildings) {
-      if (b.built) continue;
+      if (!this.isSite(b)) continue;
       const d = this.distTo(v, b);
       if (d < bd) { bd = d; best = b; }
     }
@@ -360,7 +414,7 @@ export class Sim {
 
   thinkIdle(v) {
     // 1) help build the nearest construction site
-    const sites = this.s.buildings.filter(b => !b.built);
+    const sites = this.s.buildings.filter(b => this.isSite(b));
     if (sites.length) {
       sites.sort((a, o) => this.distTo(v, a) - this.distTo(v, o) + ((a.sid !== v.home) - (o.sid !== v.home)) * 12);
       return this.taskBuild(v, sites[0]);
@@ -411,11 +465,12 @@ export class Sim {
       { to: [p.x, p.z] },
       { face: [this.bCenter(b).x, this.bCenter(b).z] },
       { act: 2, anim: 'hammer', done: () => {
-        if (b.built || !this.bById.has(b.id) || b.clear.length) return;
-        const def = defOf(b.type);
-        b.progress = Math.min(1, b.progress + 2 * this.workRate(v) / def.time);
+        if (!this.isSite(b) || !this.bById.has(b.id) || b.clear.length) return;
+        const def = defOf(b.type), time = (def.time || 16) * (b.up ? 0.6 + lvlOf(b) * 0.5 : 1);
+        const prog = b.up || b;
+        prog.progress = Math.min(1, prog.progress + 2 * this.workRate(v) / time);
         this.emit('progress', b);
-        if (b.progress >= 1) this.finishBuilding(b);
+        if (prog.progress >= 1) { if (b.up) this.finishUpgrade(b); else this.finishBuilding(b); }
         else if (!volunteer || (v.task.reps = (v.task.reps || 0) + 1) < 6) this.repeat(v);
       } },
     ], { bid: b.id, volunteer });
@@ -569,7 +624,7 @@ export class Sim {
           b.status = 'Needs ' + Object.keys(cv.in).map(r => GOODS[r].name.toLowerCase()).join(', ');
           v.act.anim = 'rest'; v.act.idle = true; return;
         }
-        const short = Object.entries(cv.keep || {}).find(([r, n]) => res[r] - (cv.in[r] || 0) < n && this.s.buildings.some(o => !o.built));
+        const short = Object.entries(cv.keep || {}).find(([r, n]) => res[r] - (cv.in[r] || 0) < n && this.s.buildings.some(o => this.isSite(o)));
         if (short) { b.status = `Saving ${GOODS[short[0]].name.toLowerCase()} for builders`; v.act.anim = 'rest'; v.act.idle = true; return; }
         const outRes = Object.keys(cv.out)[0];
         if (res[outRes] >= this.cap() && GOODS[outRes].capped) { b.status = 'Storage full'; v.act.anim = 'rest'; v.act.idle = true; return; }
@@ -602,6 +657,7 @@ export class Sim {
           const n = Math.min(8, Math.floor(bestQ));
           const coins = n * GOODS[best].price;
           r[best] -= n; r.coins += coins; this.s.stats.earned += coins;
+          this.track(best, -n); this.track('coins', coins);
           this.emit('float', c.x, c.z, `+${coins}`, 'coin'); this.emit('res'); this.emit('sfx', 'coin');
           b.status = null;
         } else b.status = 'Nothing to sell';
@@ -647,7 +703,10 @@ export class Sim {
   clearBush(bi) { this.world.removeBush(bi); this.emit('bush', bi); }
   markTree(ti, on) { const t = this.world.trees[ti]; if (!t.alive) return; t.marked = on; this.emit('tree', ti); }
 
-  workRate(v) { return (0.7 + this.s.happiness / 100 * 0.6) * (v.hungry ? 0.6 : 1); }
+  workRate(v) {
+    const b = v.work ? this.bById.get(v.work) : null;
+    return (0.7 + this.s.happiness / 100 * 0.6) * (v.hungry ? 0.6 : 1) * (b ? 1 + (lvlOf(b) - 1) * 0.15 : 1);
+  }
 
   // ── per-frame update ──
   tick(dt) {
@@ -676,7 +735,7 @@ export class Sim {
     for (const v of s.villagers) {
       v.hunger += 1;
       if (v.hunger >= MEAL) {
-        if (s.res.food >= 1) { s.res.food -= 1; v.hunger = 0; v.hungry = false; }
+        if (s.res.food >= 1) { s.res.food -= 1; this.track('food', -1); v.hunger = 0; v.hungry = false; }
         else { v.hungry = true; v.hunger = MEAL; }
       }
       if (v.hungry) hungry++;
@@ -688,6 +747,8 @@ export class Sim {
     let target = 55 + Math.min(30, joy * 1.5) + (s.res.food > pop * 3 ? 10 : 0) - (hungry ? 15 + 30 * hungry / pop : 0) - (pop > housing ? 15 : 0);
     target = Math.max(0, Math.min(100, target));
     s.happiness += (target - s.happiness) * 0.05;
+    // production flow history (10-second buckets)
+    if (++this.flowT >= 10) { this.flowT = 0; this.flowHist.push(this.flow); this.flow = {}; if (this.flowHist.length > 6) this.flowHist.shift(); }
     // newcomers
     s.popTimer += 1;
     if (pop < housing && s.res.food >= 5 && s.happiness >= 35 && s.popTimer >= 22) {
@@ -718,8 +779,8 @@ export class Sim {
     this.emit('second');
   }
 
-  housing() { let h = 0; for (const b of this.s.buildings) if (b.built) h += defOf(b.type).housing || 0; return h; }
-  housingIn(sid) { let h = 0; for (const b of this.s.buildings) if (b.built && b.sid === sid) h += defOf(b.type).housing || 0; return h; }
+  housing() { let h = 0; for (const b of this.s.buildings) if (b.built) h += housingOf(b); return h; }
+  housingIn(sid) { let h = 0; for (const b of this.s.buildings) if (b.built && b.sid === sid) h += housingOf(b); return h; }
   homeWithRoom() {
     let best = 'meadow', room = -1e9;
     for (const sid of Object.keys(this.s.unlocked)) {

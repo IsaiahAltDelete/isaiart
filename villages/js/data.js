@@ -17,7 +17,7 @@ export const SELLABLE = ['wood', 'planks', 'stone', 'bricks', 'grain', 'flour', 
 // size = [w, d] in tiles. time = builder-seconds of work.
 // lvl = player level needed. workers/job = staffed production.
 export const BUILDINGS = {
-  campfire:   { name: 'Campfire', size: [2, 2], hidden: true, housing: 2, storage: 300,
+  campfire:   { name: 'Campfire', size: [2, 2], hidden: true, housing: 2, storage: 300, time: 20,
                 desc: 'Heart of the settlement.' },
   cottage:    { name: 'Cottage', size: [2, 2], cost: { wood: 40, coins: 20 }, time: 14, lvl: 1, housing: 3,
                 desc: 'A cozy home for 3 villagers.' },
