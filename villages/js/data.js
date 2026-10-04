@@ -116,6 +116,37 @@ export const QUESTS = [
   { id: 'q_pop50',   title: 'Reach 50 Villagers',   kind: 'pop', n: 50, reward: { gems: 50, coins: 800, xp: 400 } },
 ];
 
+export const ACHIEVEMENTS = [
+  { id: 'a_build',   name: 'Breaking Ground', desc: 'Finish 5 buildings',       stat: 'buildings', n: 5,    gems: 5,  icon: 'hammer' },
+  { id: 'a_build2',  name: 'Town Planner',    desc: 'Finish 25 buildings',      stat: 'buildings', n: 25,   gems: 15, icon: 'house' },
+  { id: 'a_trees',   name: 'Lumberjack',      desc: 'Fell 150 trees',           stat: 'felled',    n: 150,  gems: 10, icon: 'axe' },
+  { id: 'a_sap',     name: 'Green Thumb',     desc: 'Plant 40 saplings',        stat: 'saplings',  n: 40,   gems: 10, icon: 'sapling' },
+  { id: 'a_bread',   name: "Baker's Dozen",   desc: 'Bake 300 food',            stat: 'bread',     n: 300,  gems: 10, icon: 'flour' },
+  { id: 'a_coins',   name: 'Merchant Prince', desc: 'Earn 2,000 coins trading', stat: 'earned',    n: 2000, gems: 15, icon: 'coin' },
+  { id: 'a_pop',     name: 'Big Family',      desc: 'Reach 30 villagers',       stat: 'pop',       n: 30,   gems: 15, icon: 'people' },
+  { id: 'a_happy',   name: 'Happy Place',     desc: 'Reach 90 happiness',       stat: 'happy',     n: 90,   gems: 10, icon: 'smile' },
+  { id: 'a_settle',  name: 'Explorer',        desc: 'Settle 3 clearings',       stat: 'settled',   n: 3,    gems: 20, icon: 'map' },
+  { id: 'a_up',      name: 'Fixer-Upper',     desc: 'Finish 6 upgrades',        stat: 'upgrades',  n: 6,    gems: 10, icon: 'star' },
+  { id: 'a_days',    name: 'Old Timer',       desc: 'Reach day 15',             stat: 'day',       n: 15,   gems: 10, icon: 'clock' },
+  { id: 'a_rain',    name: 'Puddle Jumper',   desc: 'See 5 rain showers',       stat: 'rains',     n: 5,    gems: 5,  icon: 'sound' },
+  { id: 'a_pave',    name: 'Cobblestoner',    desc: 'Lay 60 stone path tiles',  stat: 'paved',     n: 60,   gems: 10, icon: 'stone' },
+  { id: 'a_merch',   name: 'Good Customer',   desc: 'Trade with the merchant 5 times', stat: 'deals', n: 5,  gems: 10, icon: 'shop' },
+];
+
+// the travelling merchant picks three of these each visit
+export const MERCHANT_OFFERS = [
+  { give: { coins: 90 },  get: { planks: 60 } },
+  { give: { coins: 150 }, get: { bricks: 35 } },
+  { give: { coins: 80 },  get: { stone: 120 } },
+  { give: { wood: 100 },  get: { coins: 160 } },
+  { give: { food: 100 },  get: { coins: 230 } },
+  { give: { grain: 80 },  get: { coins: 200 } },
+  { give: { coins: 260 }, get: { gems: 6 } },
+  { give: { planks: 40 }, get: { coins: 170 } },
+  { give: { coins: 60 },  get: { food: 150 } },
+  { give: { stone: 100 }, get: { coins: 140 } },
+];
+
 export const xpForLevel = lvl => Math.round(80 * Math.pow(lvl, 1.45));
 
 export const FIRST_NAMES = ['Ada', 'Bram', 'Cora', 'Dell', 'Effie', 'Finn', 'Gus', 'Hazel', 'Ivo', 'June', 'Kit', 'Lark',

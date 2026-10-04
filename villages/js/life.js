@@ -13,7 +13,7 @@ export class Life {
     this.group = new THREE.Group(); scene.add(this.group);
 
     // butterflies
-    const wing = new THREE.PlaneGeometry(0.2, 0.15); wing.translate(0.1, 0, 0); wing.rotateX(-Math.PI / 2);
+    const wing = new THREE.CircleGeometry(0.075, 6); wing.scale(1, 1.25, 1); wing.translate(0.065, 0.02, 0); wing.rotateX(-Math.PI / 2);
     this.bflies = [];
     for (let i = 0; i < 18; i++) {
       const m = new THREE.MeshLambertMaterial({ color: BFLY[i % BFLY.length], side: THREE.DoubleSide });

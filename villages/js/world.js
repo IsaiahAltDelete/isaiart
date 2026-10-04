@@ -47,6 +47,7 @@ export class World {
     this.wear = new Float32Array(S);
     this.road = new Uint8Array(S);
     this.bridge = new Uint8Array(S);
+    this.paved = new Uint8Array(S);
     this.bridges = [];
     this.trees = []; this.rocks = []; this.bushes = [];
     this.entry = ENTRY;
@@ -251,6 +252,7 @@ export class World {
     if (this.tree[i] >= 0) c += 1.6;
     if (this.bush[i] >= 0) c += 0.6;
     c -= Math.min(this.wear[i], 1) * 0.45;
+    if (this.paved[i]) c = 0.45;
     if (this.block[i]) c += 6;
     return c;
   }

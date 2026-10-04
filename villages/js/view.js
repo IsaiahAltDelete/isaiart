@@ -1,7 +1,7 @@
 // Rendering: terrain, water, instanced forest, camera rig and input.
 import * as THREE from '../vendor/three.module.min.js';
 import { N, HALF, idx, tileX, tileZ, T_WATER, T_SAND, toWorld } from './world.js';
-import { fbm, mulberry32 } from './rng.js';
+import { fbm, mulberry32, hash2 } from './rng.js';
 import { pineGeo, roundGeo, stumpGeo, rockGeo, bushGeo, berriesGeo } from './models.js';
 import { iconImage } from './icons.js';
 
@@ -59,6 +59,7 @@ export class View {
     this.buildForest();
     this.buildSkirt();
     this.buildBridges();
+    this.buildGrass();
 
     this.objects = new THREE.Group(); scene.add(this.objects);
     this.fx = new THREE.Group(); scene.add(this.fx);
@@ -114,6 +115,10 @@ export class View {
     else {
       out.setHSL(0.27 + n * 0.04, 0.55, 0.42 + n * 0.1);
       if (W.tree[i] >= 0) out.multiplyScalar(0.82);
+    }
+    if (W.paved[i]) {
+      const k = hash2(x, z, 7);
+      return out.setRGB(0.6 + k * 0.08, 0.57 + k * 0.07, 0.5 + k * 0.06);
     }
     const wear = W.wear[i];
     if (wear > 0.12) {
@@ -184,6 +189,88 @@ export class View {
     const pm = new THREE.InstancedMesh(pg, new THREE.MeshLambertMaterial({ color: 0x5aa83c, flatShading: true }), pads.length);
     pads.forEach(([x, z, s, r], k) => { tmpQ.setFromAxisAngle(UP, r); pm.setMatrixAt(k, tmpM.compose(tmpV.set(x, -0.12, z), tmpQ, tmpS.set(s, 1, s))); });
     this.scene.add(pm);
+  }
+
+  // little grass tufts and wildflowers scattered over open meadow
+  buildGrass() {
+    const W = this.world, rng = mulberry32(W.seed + 31);
+    const tuft = new THREE.ConeGeometry(0.045, 0.26, 3); tuft.translate(0, 0.13, 0);
+    const parts = [];
+    for (const [x, z, r] of [[0, 0, 0], [0.07, 0.03, 0.4], [-0.06, 0.04, -0.4], [0.02, -0.07, 0.2]]) {
+      const g = tuft.clone(); g.rotateZ(r * 0.6); g.rotateX(r * -0.4); g.translate(x, 0, z); parts.push(g);
+    }
+    const tGeo = mergeSimple(parts);
+    const fGeo = mergeSimple([new THREE.CylinderGeometry(0.01, 0.01, 0.2, 3).translate(0, 0.1, 0), new THREE.IcosahedronGeometry(0.05, 0).translate(0, 0.22, 0)]);
+    const spots = [], flowers = [];
+    for (let i = 0; i < N * N; i++) {
+      if (W.type[i] !== 0 || W.road[i]) continue;
+      const r = rng();
+      if (r < 0.32) spots.push(i); else if (r < 0.4) flowers.push(i);
+    }
+    const mk = (geo, list, colorFn) => {
+      const im = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ flatShading: true }), list.length);
+      im.userData.map = new Int32Array(N * N).fill(-1);
+      im.userData.mats = [];
+      list.forEach((i, k) => {
+        const x = toWorld(tileX(i)) + (rng() - 0.5) * 0.7, z = toWorld(tileZ(i)) + (rng() - 0.5) * 0.7, s = 0.7 + rng() * 0.7;
+        tmpQ.setFromAxisAngle(UP, rng() * 6.28);
+        const m = new THREE.Matrix4().compose(new THREE.Vector3(x, W.heightAt(x, z), z), tmpQ, new THREE.Vector3(s, s, s));
+        im.setMatrixAt(k, m); im.userData.mats.push(m);
+        im.setColorAt(k, colorFn(i));
+        im.userData.map[i] = k;
+      });
+      im.receiveShadow = true;
+      this.scene.add(im);
+      return im;
+    };
+    this.tufts = mk(tGeo, spots, i => tmpC.setHSL(0.26 + fbm(tileX(i) * 0.09, tileZ(i) * 0.09, W.seed + 77) * 0.05, 0.6, 0.38));
+    const pal = [0xf06292, 0xffd54f, 0xffffff, 0xba68c8, 0x64b5f6, 0xff8a65];
+    this.flowers = mk(fGeo, flowers, () => tmpC.setHex(pal[(rng() * pal.length) | 0]));
+    for (let i = 0; i < N * N; i++) { this.updateGrass(i); if (W.paved[i]) this.updatePave(i); }
+  }
+  // cobblestones on paved tiles
+  updatePave(i) {
+    const W = this.world;
+    if (!this.cobbles) {
+      const cap = 4500;
+      this.cobbles = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.18, 0.06, 6), new THREE.MeshLambertMaterial({ flatShading: true }), cap);
+      this.cobbles.receiveShadow = true; this.cobbles.frustumCulled = false;
+      for (let k = 0; k < cap; k++) { this.cobbles.setMatrixAt(k, tmpM.makeScale(0, 0, 0)); this.cobbles.setColorAt(k, tmpC.setHex(0xd6ccb6)); }
+      this.cobbles.userData = { free: [], used: 0, cap, slots: new Map() };
+      this.scene.add(this.cobbles);
+    }
+    const c = this.cobbles, u = c.userData, have = u.slots.get(i);
+    const want = W.paved[i] && W.occ[i] < 0;
+    if (want && !have) {
+      const slots = [];
+      const x0 = toWorld(tileX(i)), z0 = toWorld(tileZ(i));
+      for (let k = 0; k < 4; k++) {
+        const slot = u.free.length ? u.free.pop() : (u.used < u.cap ? u.used++ : -1);
+        if (slot < 0) break;
+        const x = x0 + (k % 2 - 0.5) * 0.48 + (hash2(i, k, 3) - 0.5) * 0.1, z = z0 + ((k >> 1) - 0.5) * 0.48 + (hash2(i, k, 4) - 0.5) * 0.1;
+        const sc = 0.85 + hash2(i, k, 5) * 0.35;
+        tmpQ.setFromAxisAngle(UP, hash2(i, k, 6) * 6);
+        c.setMatrixAt(slot, tmpM.compose(tmpV.set(x, W.heightAt(x, z) + 0.01, z), tmpQ, tmpS.set(sc, 1, sc)));
+        const t = hash2(i, k, 8);
+        c.setColorAt(slot, tmpC.setRGB(0.7 + t * 0.12, 0.66 + t * 0.1, 0.58 + t * 0.08));
+        slots.push(slot);
+      }
+      u.slots.set(i, slots);
+    } else if (!want && have) {
+      for (const slot of have) { c.setMatrixAt(slot, tmpM.makeScale(0, 0, 0)); u.free.push(slot); }
+      u.slots.delete(i);
+    } else return;
+    c.instanceMatrix.needsUpdate = true; if (c.instanceColor) c.instanceColor.needsUpdate = true;
+  }
+  updateGrass(i) {
+    const W = this.world;
+    const hide = W.occ[i] >= 0 || W.paved[i] || W.wear[i] > 0.35 || W.tree[i] >= 0 || W.rock[i] >= 0 || W.bush[i] >= 0;
+    for (const im of [this.tufts, this.flowers]) {
+      const k = im.userData.map[i];
+      if (k < 0) continue;
+      im.setMatrixAt(k, hide ? tmpM.makeScale(0, 0, 0) : im.userData.mats[k]);
+      im.instanceMatrix.needsUpdate = true;
+    }
   }
 
   buildBridges() {
@@ -418,6 +505,15 @@ export class View {
   }
 
   render() { this.renderer.render(this.scene, this.camera); }
+}
+
+function mergeSimple(list) {
+  const geos = list.map(g => g.index ? g.toNonIndexed() : g);
+  let n = 0; for (const g of geos) n += g.attributes.position.count;
+  const pos = new Float32Array(n * 3); let o = 0;
+  for (const g of geos) { pos.set(g.attributes.position.array, o * 3); o += g.attributes.position.count; }
+  const out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.BufferAttribute(pos, 3)); out.computeVertexNormals();
+  return out;
 }
 
 // ── status bubbles above buildings (sprites drawn from SVG icons) ──

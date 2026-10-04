@@ -301,6 +301,10 @@
     body:has(#placebar:not(.hidden)) #coach { bottom: calc(214px + var(--sab)); }
     .coach-target { position: relative; z-index: 10; animation: coach 1.1s infinite !important; }
     @keyframes coach { 0%, 100% { box-shadow: 0 0 0 3px #ffd54f, 0 0 14px 4px rgba(255, 213, 79, .8); } 50% { box-shadow: 0 0 0 6px #ffd54f, 0 0 26px 10px rgba(255, 213, 79, .55); } }
+    .small .ic, .sub .ic { display: inline-block; vertical-align: -2px; }
+    .ach .tile.ready { border-color: var(--gold-dk); background: #fff6d6; }
+    .ach .tile.got { background: #f3fde9; border-color: #9bd67a; }
+    .ach .tile:not(.got):not(.ready) .top .ic { filter: grayscale(.6); opacity: .7; }
     .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
     .chipf { padding: 3px 9px; border-radius: 10px; border: 2px solid #e2c99c; background: #fff; font-size: 12px; font-weight: 600; }
     .chipf.on { background: linear-gradient(#7dd35a, var(--green)); border-color: var(--green-dk); color: #fff; }

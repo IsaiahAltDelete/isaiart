@@ -38,7 +38,7 @@ export class UI {
       else if (e.target.closest('.pill')) this.openModal('inventory');
     });
     $('#btnLog').innerHTML = svg('mail', 22) + '<span class="badge hidden" id="logBadge">0</span>';
-    $('#btnStats').innerHTML = svg('trophy', 22);
+    $('#btnStats').innerHTML = svg('trophy', 22) + '<span class="badge hidden" id="trophyBadge">0</span>';
     $('#btnSettings').innerHTML = svg('gear', 22);
     $('#btnLog').onclick = () => this.openModal('log');
     $('#btnStats').onclick = () => this.openModal('stats');
@@ -123,7 +123,9 @@ export class UI {
       this.drawInfo();
       this.drawAlert();
       this.drawCoach();
-      if (this.modal && ['villagers', 'inventory', 'stats', 'worldmap'].includes(this.modal) && !$('#modal').contains(document.activeElement)) this.drawModal(true);
+      const ready = this.sim.achievements().filter(x => x.done && !x.claimed).length;
+      const tb = $('#trophyBadge'); tb.classList.toggle('hidden', !ready); tb.textContent = ready;
+      if (this.modal && ['villagers', 'inventory', 'stats', 'worldmap', 'merchant'].includes(this.modal) && !$('#modal').contains(document.activeElement)) this.drawModal(true);
       this.drawQuests();
       if (this.tray) this.refreshCards();
     }
@@ -353,9 +355,10 @@ export class UI {
     this.tray = kind;
     $('#tray').classList.remove('hidden');
     $('#dockbar').classList.add('hidden');
-    const order = kind === 'build' ? ['clear', ...BUILD_ORDER] : DECOR_ORDER;
+    const order = kind === 'build' ? ['clear', ...BUILD_ORDER] : ['pave', ...DECOR_ORDER];
     $('#cards').innerHTML = order.map(t => {
       if (t === 'clear') return `<button class="card" data-type="clear"><img alt="" src="${this.g.thumbs.clear}"><div class="nm">Clear Trees</div><div class="cost"><span>tap trees</span></div></button>`;
+      if (t === 'pave') return `<button class="card" data-type="pave"><img alt="" src="${this.g.thumbs.pave}"><div class="nm">Stone Path</div><div class="cost"><span>${svg('stone', 12)}1 / tile</span></div></button>`;
       const d = defOf(t);
       return `<button class="card" data-type="${t}"><img alt="" src="${this.g.thumbs[t] || ''}"><div class="nm">${esc(d.name)}</div><div class="cost"></div></button>`;
     }).join('');
@@ -366,7 +369,7 @@ export class UI {
     const s = this.sim.s;
     for (const c of document.querySelectorAll('#cards .card')) {
       const t = c.dataset.type;
-      if (t === 'clear') continue;
+      if (t === 'clear' || t === 'pave') continue;
       const d = defOf(t), locked = d.lvl > s.level;
       c.classList.toggle('locked', locked);
       const cost = costHtml(d.cost, s.res);
@@ -380,7 +383,9 @@ export class UI {
   }
   cardTip(card) {
     const type = card.dataset.type, tip = $('#cardtip');
-    if (type === 'clear') {
+    if (type === 'pave') {
+      tip.innerHTML = `<b>Stone Path</b><p>Paint cobbled paths inside your settlements. Villagers walk 50% faster on stone. Costs 1 stone per tile; tap a stone again to lift it and get the stone back.</p>`;
+    } else if (type === 'clear') {
       tip.innerHTML = `<b>Clear Trees</b><p>Mark trees to fell. Woodcutters go for marked trees first, and idle villagers help too. Click a marked tree again to unmark it.</p>`;
     } else {
       const d = defOf(type), s = this.sim.s;
@@ -425,7 +430,7 @@ export class UI {
   drawModal(refresh) {
     const k = this.modal, sim = this.sim, s = sim.s;
     const titles = { villagers: ['people', 'Villagers'], inventory: ['bag', 'Inventory'], worldmap: ['map', 'World'], shop: ['shop', 'Shop'],
-      settings: ['gear', 'Settings'], log: ['mail', 'Village News'], stats: ['trophy', 'Village Records'], profile: ['star', 'Your Progress'] };
+      settings: ['gear', 'Settings'], log: ['mail', 'Village News'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'] };
     $('#mIcon').innerHTML = svg(titles[k][0], 26);
     $('#mTitle').textContent = titles[k][1];
     let h = '';
@@ -481,6 +486,7 @@ export class UI {
     } else if (k === 'settings') {
       const st = this.g.settings;
       h += `<div class="summary"><button class="btn ${st.sound ? '' : 'ghost'}" data-act="sound">${svg(st.sound ? 'sound' : 'mute', 18)} Sound ${st.sound ? 'on' : 'off'}</button>
+        <button class="btn ${st.music ? '' : 'ghost'}" data-act="music">${svg('star', 18)} Music ${st.music ? 'on' : 'off'}</button>
         <button class="btn blue" data-act="quality">Graphics: ${{ high: 'High', medium: 'Medium', low: 'Low' }[st.quality] || 'High'}</button>
         <button class="btn gold" data-act="savenow">Save now</button></div>
         <div class="help"><p><b>How to play.</b> Build a Lumber Hut and a Forager Hut first so you have wood and food. Idle villagers automatically build construction sites. Tap a building to add or remove workers, or use the Villagers tab to give anyone a job.</p>
@@ -491,7 +497,25 @@ export class UI {
     } else if (k === 'log') {
       h += s.log.map(l => `<div class="logline"><small>Day ${Math.floor(l.t / DAY) + 1}</small>${esc(l.msg)}</div>`).join('') || '<p>No news yet.</p>';
       this.seenLog = s.log.length; this.markLog();
+    } else if (k === 'merchant') {
+      const m = s.merchant;
+      if (!m || m.state !== 'here') h += `<p class="sub" style="font-size:13.5px">${m && m.state === 'arriving' ? 'The merchant\'s cart is rolling up the road…' : 'The merchant is out on the road. Check back soon — they visit every few days.'}</p>`;
+      else {
+        h += `<div class="summary"><span class="chip">${svg('clock', 18)}Leaving in ${Math.ceil(m.t)}s</span></div><div class="grid">`;
+        m.offers.forEach((o, i) => {
+          const [gr, gn] = Object.entries(o.give)[0], [rr, rn] = Object.entries(o.get)[0];
+          h += `<div class="tile" style="align-items:center;text-align:center"><div class="top" style="justify-content:center">${svg(GOODS[gr].icon, 26)}${gn}<span style="margin:0 4px">→</span>${svg(GOODS[rr].icon, 26)}${rn}</div>
+            <div class="small">Trade ${gn} ${GOODS[gr].name.toLowerCase()} for ${rn} ${GOODS[rr].name.toLowerCase()}</div>
+            <button class="btn sm ${o.bought ? 'ghost' : ''}" data-act="deal" data-i="${i}" ${o.bought || !sim.canAfford(o.give) ? 'disabled' : ''}>${o.bought ? 'Sold!' : 'Trade'}</button></div>`;
+        });
+        h += `</div>`;
+      }
     } else if (k === 'stats') {
+      const ach = sim.achievements();
+      h += `<div class="grid ach">${ach.map(({ a, p, done, claimed }) => `<div class="tile ${claimed ? 'got' : done ? 'ready' : ''}"><div class="top">${svg(a.icon, 24)}${esc(a.name)}</div>
+        <div class="small">${esc(a.desc)}</div><div class="prog" style="margin:2px 0"><i style="width:${p / a.n * 100}%;background:linear-gradient(90deg,#9be86d,#4fae32)"></i></div>
+        ${claimed ? `<span class="small">${svg('star', 12)} Earned</span>` : done ? `<button class="btn gold sm" data-act="ach" data-id="${a.id}">Claim ${svg('gem', 12)}${a.gems}</button>` : `<span class="small">${fmt(p)}/${fmt(a.n)} · ${svg('gem', 12)}${a.gems}</span>`}</div>`).join('')}</div>
+        <h3 style="margin:14px 0 6px">Village records</h3>`;
       const st = s.stats;
       const built = Object.values(st.built).reduce((a, b) => a + b, 0);
       h += `<div class="grid">${[
@@ -529,6 +553,8 @@ export class UI {
       const k = a.dataset.k, half = Math.max(1, Math.floor(GOODS[k].price / 2));
       if (s.res[k] >= 10) { s.res[k] -= 10; s.res.coins += half * 10; s.stats.earned += half * 10; sfx.coin(); this.dirty.res = true; }
     }
+    if (act === 'ach') { if (sim.claimAch(a.dataset.id)) this.toast('Achievement reward claimed!', 'trophy'); }
+    if (act === 'deal') { if (sim.merchantDeal(+a.dataset.i)) this.toast('Pleasure doing business!', 'shop'); }
     if (act === 'vf') { this.vFilter = a.dataset.f; this.drawModal(true); return; }
     if (act === 'autoassign') { const n = sim.autoAssign(); this.toast(n ? `${n} villager${n > 1 ? 's' : ''} got a job` : 'No open jobs — build or upgrade workplaces', 'people'); sfx.pop(); }
     if (act === 'travel') { this.g.flyToSettlement(a.dataset.sid); this.closeModal(); return; }
@@ -544,6 +570,7 @@ export class UI {
       }
     }
     if (act === 'sound') { this.g.setSetting('sound', !this.g.settings.sound); }
+    if (act === 'music') { this.g.setSetting('music', !this.g.settings.music); }
     if (act === 'quality') { const q = this.g.settings.quality; this.g.setSetting('quality', q === 'high' ? 'medium' : q === 'medium' ? 'low' : 'high'); this.g.save(); location.reload(); return; }
     if (act === 'savenow') { this.g.save(); this.toast('Village saved', 'star'); }
     if (act === 'reset') {

@@ -2,7 +2,7 @@
 // population, quests, levels, saving. No DOM or Three.js in here — the
 // view layer listens to events emitted from this class.
 import { World, N, idx, tileX, tileZ, toWorld, toTile, inMap, CENTERS, T_WATER } from './world.js';
-import { BUILDINGS, DECOR, GOODS, SELLABLE, QUESTS, SETTLEMENTS, xpForLevel,
+import { BUILDINGS, DECOR, GOODS, SELLABLE, QUESTS, SETTLEMENTS, ACHIEVEMENTS, MERCHANT_OFFERS, xpForLevel,
   FIRST_NAMES, LAST_NAMES, SHIRTS, SKINS, HAIRS, JOBS } from './data.js';
 import { mulberry32, pick } from './rng.js';
 
@@ -268,6 +268,7 @@ export class Sim {
   }
   finishUpgrade(b) {
     b.lvl = lvlOf(b) + 1; b.up = null;
+    this.s.stats.upgrades = (this.s.stats.upgrades || 0) + 1;
     this.addXp(25 * b.lvl);
     this.emit('building', b); this.emit('upgraded', b);
     this.emit('toast', `${defOf(b.type).name} upgraded to level ${b.lvl}!`, 'star');
@@ -738,6 +739,24 @@ export class Sim {
   }
   breakRock(ri) { this.world.removeRock(ri); this.emit('rock', ri); }
   clearBush(bi) { this.world.removeBush(bi); this.emit('bush', bi); }
+  // stone paths: 1 stone a tile, refunded when lifted
+  pave(i, on) {
+    const W = this.world, s = this.s;
+    if (on) {
+      if (W.paved[i] || W.type[i] === T_WATER || W.block[i] || W.rock[i] >= 0) return false;
+      if (!this.settlementAt(tileX(i), tileZ(i))) return false;
+      if (s.res.stone < 1) return 'stone';
+      s.res.stone -= 1; this.track('stone', -1);
+      W.paved[i] = 1; s.stats.paved = (s.stats.paved || 0) + 1;
+      if (W.tree[i] >= 0) this.fellTree(W.tree[i], false);
+      if (W.bush[i] >= 0) this.clearBush(W.bush[i]);
+    } else {
+      if (!W.paved[i]) return false;
+      W.paved[i] = 0; s.res.stone += 1;
+    }
+    this.emit('tile', i); this.emit('res');
+    return true;
+  }
   markTree(ti, on) { const t = this.world.trees[ti]; if (!t.alive) return; t.marked = on; this.emit('tree', ti); }
 
   workRate(v) {
@@ -753,6 +772,7 @@ export class Sim {
     if (this.secTimer >= 1) { this.secTimer -= 1; this.second(); }
 
     for (const v of s.villagers) this.stepVillager(v, dt);
+    this.merchantMove(dt);
 
     // farms grow on their own once sown
     for (const b of s.buildings) {
@@ -784,11 +804,13 @@ export class Sim {
     let target = 55 + Math.min(30, joy * 1.5) + (s.res.food > pop * 3 ? 10 : 0) - (hungry ? 15 + 30 * hungry / pop : 0) - (pop > housing ? 15 : 0);
     target = Math.max(0, Math.min(100, target));
     s.happiness += (target - s.happiness) * 0.05;
+    this.merchantTick();
+    s.stats.bestHappy = Math.max(s.stats.bestHappy || 0, s.happiness);
     // weather: the occasional rain shower
     const wx = s.weather || (s.weather = { rain: false, t: 60 });
     if ((wx.t -= 1) <= 0) {
       if (wx.rain) { wx.rain = false; wx.t = 180 + this.rng() * 260; wx.rainbow = 30; this.emit('weather', false); }
-      else if (this.rng() < 0.5) { wx.rain = true; wx.t = 45 + this.rng() * 60; this.emit('weather', true); this.log('A gentle rain falls. Crops grow faster.'); }
+      else if (this.rng() < 0.5) { wx.rain = true; wx.t = 45 + this.rng() * 60; s.stats.rains = (s.stats.rains || 0) + 1; this.emit('weather', true); this.log('A gentle rain falls. Crops grow faster.'); }
       else wx.t = 90 + this.rng() * 120;
     }
     if (wx.rainbow > 0) wx.rainbow -= 1;
@@ -908,7 +930,7 @@ export class Sim {
     const W = this.world;
     const dx = x - v.x, dz = z - v.z, dist = Math.hypot(dx, dz);
     const cur = idx(toTile(v.x), toTile(v.z));
-    const speed = 1.7 * (1 + Math.min(W.wear[cur] || 0, 1) * 0.35) * (v.hungry ? 0.7 : 1) * (0.85 + this.s.happiness / 100 * 0.3);
+    const speed = 1.7 * (W.paved[cur] ? 1.5 : 1 + Math.min(W.wear[cur] || 0, 1) * 0.35) * (v.hungry ? 0.7 : 1) * (0.85 + this.s.happiness / 100 * 0.3);
     const step = speed * dt;
     v.face = Math.atan2(dx, dz);
     v.moving = true;
@@ -959,6 +981,71 @@ export class Sim {
     return true;
   }
 
+  // ── achievements ──
+  achStat(stat) {
+    const s = this.s, st = s.stats;
+    switch (stat) {
+      case 'buildings': return Object.values(st.built).reduce((a, b) => a + b, 0);
+      case 'saplings': return st.produced.sapling || 0;
+      case 'bread': return st.produced.bread || 0;
+      case 'pop': return s.villagers.length;
+      case 'happy': return Math.round(st.bestHappy || s.happiness);
+      case 'settled': return Object.keys(s.unlocked).length;
+      case 'day': return Math.floor(s.time / DAY) + 1;
+      default: return st[stat] || 0;
+    }
+  }
+  achievements() {
+    const got = this.s.achieved || (this.s.achieved = []);
+    return ACHIEVEMENTS.map(a => ({ a, p: Math.min(a.n, this.achStat(a.stat)), done: this.achStat(a.stat) >= a.n, claimed: got.includes(a.id) }));
+  }
+  claimAch(id) {
+    const a = ACHIEVEMENTS.find(o => o.id === id), got = this.s.achieved || (this.s.achieved = []);
+    if (!a || got.includes(id) || this.achStat(a.stat) < a.n) return false;
+    got.push(id); this.s.res.gems += a.gems;
+    this.log(`Achievement: ${a.name}!`); this.emit('res'); this.emit('sfx', 'level');
+    return true;
+  }
+
+  // ── travelling merchant ──
+  merchantTick() {
+    const s = this.s, m = s.merchant || (s.merchant = { state: 'away', t: 200 });
+    m.t -= 1;
+    if (m.state === 'away' && m.t <= 0 && s.level >= 2) {
+      const pool = [...MERCHANT_OFFERS], offers = [];
+      while (offers.length < 3) offers.push({ ...pool.splice(Math.floor(this.rng() * pool.length), 1)[0], bought: false });
+      const e = this.world.entry, c = CENTERS.meadow;
+      Object.assign(m, { state: 'arriving', t: 120, offers, x: toWorld(e.x), z: toWorld(e.z), path: null, i: 1 });
+      const goal = this.world.findPath(idx(e.x, e.z), c.x + 5, c.z + 3, i => Math.hypot(tileX(i) - (c.x + 5), tileZ(i) - (c.z + 3)) < 2.5 && this.world.passable(i));
+      m.path = goal || [idx(e.x, e.z)];
+      this.emit('merchant', 'arriving');
+    } else if (m.state === 'here' && m.t <= 0) {
+      m.state = 'leaving'; m.path.reverse(); m.i = 1; this.emit('merchant', 'leaving');
+    }
+  }
+  merchantMove(dt) {
+    const m = this.s.merchant;
+    if (!m || (m.state !== 'arriving' && m.state !== 'leaving')) return;
+    if (m.i >= m.path.length) {
+      if (m.state === 'arriving') { m.state = 'here'; m.t = 120; this.emit('merchant', 'here'); this.emit('toast', 'A travelling merchant has arrived!', 'shop'); this.log('A travelling merchant set up shop by the campfire.'); }
+      else { m.state = 'away'; m.t = 360 + this.rng() * 240; this.emit('merchant', 'away'); }
+      return;
+    }
+    const ti = m.path[m.i], tx = toWorld(tileX(ti)), tz = toWorld(tileZ(ti));
+    const dx = tx - m.x, dz = tz - m.z, d = Math.hypot(dx, dz), step = dt * 2.2;
+    m.face = Math.atan2(dx, dz);
+    if (d <= step) { m.x = tx; m.z = tz; m.i++; } else { m.x += dx / d * step; m.z += dz / d * step; }
+  }
+  merchantDeal(k) {
+    const m = this.s.merchant, o = m?.offers?.[k];
+    if (!o || o.bought || m.state !== 'here' || !this.canAfford(o.give)) return false;
+    this.pay(o.give);
+    for (const [r, n] of Object.entries(o.get)) { if (GOODS[r].capped) this.add(r, n, false); else this.s.res[r] += n; }
+    o.bought = true; this.s.stats.deals = (this.s.stats.deals || 0) + 1;
+    this.emit('res'); this.emit('sfx', 'coin');
+    return true;
+  }
+
   // ── save / load ──
   serialize() {
     const W = this.world;
@@ -974,6 +1061,7 @@ export class Sim {
       ...this.s, villagers,
       world: {
         alive: b64(alive), planted, marked, wear: b64(wear),
+        paved: [...W.paved.keys()].filter(i => W.paved[i]),
         rocks: W.rocks.map(r => r.alive ? r.hp : 0),
         bushes: W.bushes.map(b => b.alive ? (b.ripe ? -1 : Math.round(b.regrow)) : -2),
       },
@@ -989,6 +1077,7 @@ export class Sim {
     for (const [tx, tz, g] of world.planted) W.addTree(tx, tz, this.rng, g);
     const wear = unb64(world.wear);
     for (let i = 0; i < wear.length; i++) W.wear[i] = W.road[i] ? 1 : wear[i] / 180;
+    for (const i of world.paved || []) W.paved[i] = 1;
     world.rocks.forEach((hp, i) => { if (hp <= 0) W.removeRock(i); else W.rocks[i].hp = hp; });
     world.bushes.forEach((v, i) => { const b = W.bushes[i]; if (v === -2) W.removeBush(i); else if (v >= 0) { b.ripe = false; b.regrow = v; } });
     for (const b of s.buildings) {

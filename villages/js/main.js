@@ -6,7 +6,7 @@ import { buildModel, scaffold, villagerModel, setTool, mat, C, pineGeo, stumpGeo
 import { UI } from './ui.js';
 import { N, HALF, idx, toWorld, inMap, CENTERS, tileX, tileZ } from './world.js';
 import { SETTLEMENTS, BUILD_ORDER, DECOR_ORDER, GOODS } from './data.js';
-import { initAudio, sfx, setSound, ambient, rainSound } from './audio.js';
+import { initAudio, sfx, setSound, ambient, rainSound, setMusic } from './audio.js';
 import { Life } from './life.js';
 
 const SAVE_KEY = 'isaiart.villages.v1';
@@ -22,7 +22,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 
 class Game {
   constructor() {
-    this.settings = { sound: true, quality: matchMedia('(pointer: coarse)').matches ? 'medium' : 'high' };
+    this.settings = { sound: true, music: true, quality: matchMedia('(pointer: coarse)').matches ? 'medium' : 'high' };
     try { Object.assign(this.settings, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch { /* defaults */ }
     this.bvis = new Map(); this.vvis = new Map();
     this.tilesDirty = new Set();
@@ -102,6 +102,10 @@ class Game {
     const tree = new THREE.Mesh(pineGeo(), vm); tree.position.x = -0.25; clear.add(tree);
     const st = new THREE.Mesh(stumpGeo(), vm); st.position.set(0.45, 0, 0.3); st.scale.setScalar(1.6); clear.add(st);
     shoot(clear, 'clear');
+    const pave = new THREE.Group();
+    pave.add(at3(new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.06, 2.2), mat(0x7cbf4f)), 0, -0.03, 0));
+    for (let i = 0; i < 9; i++) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.28 + (i % 3) * 0.04, 0.3, 0.08, 7), mat([0xd8cdb4, 0xc9bda3, 0xe2d8c2][i % 3])); st.position.set(-0.7 + (i % 3) * 0.7, 0.03, -0.7 + ((i / 3) | 0) * 0.7); st.rotation.y = i; pave.add(st); }
+    shoot(pave, 'pave');
     r.dispose(); r.forceContextLoss?.();
   }
 
@@ -221,7 +225,7 @@ class Game {
     if (a.fire) {
       const f = 0.9 + Math.sin(time * 13 + vis.phase) * 0.08 + Math.sin(time * 7.3) * 0.06;
       a.fire.scale.set(f, f * (1 + Math.sin(time * 9) * 0.1), f);
-      a.light.intensity = (1.6 + Math.sin(time * 11) * 0.3) * (1 + this.night * 2.5);
+      a.light.intensity = (1 + Math.sin(time * 11) * 0.18) * (0.25 + this.night * 2.8);
     }
     if (vis.flag) vis.flag.rotation.y = Math.sin(time * 3 + vis.phase) * 0.35;
     if (a.boat) a.boat.position.y = -0.15 + Math.sin(time * 1.6 + vis.phase) * 0.03;
@@ -292,6 +296,45 @@ class Game {
     if (Math.hypot(v.x - r.tx, v.z - r.tz) < 10 && r.dist < 30 && Math.random() < 0.6) sfx[name]();
   }
 
+  // the travelling merchant's cart
+  makeCart() {
+    const g = new THREE.Group();
+    const body = new THREE.Group(); g.add(body);
+    body.add(at3(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.35, 1.3), mat(C.plank)), 0, 0.45, 0, true));
+    const canopy = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.3, 10, 1, true, -Math.PI / 2, Math.PI), mat(0x9b6bd1));
+    canopy.rotation.x = Math.PI / 2; canopy.rotation.z = Math.PI / 2; canopy.rotation.y = 0; canopy.position.set(0, 0.62, 0);
+    canopy.material.side = THREE.DoubleSide; canopy.castShadow = true; body.add(canopy);
+    this.cartWheels = [];
+    for (const [x, z] of [[-0.48, 0.35], [0.48, 0.35], [-0.48, -0.35], [0.48, -0.35]]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 10), mat(C.darkwood)); w.rotation.z = Math.PI / 2; w.position.set(x, 0.2, z); body.add(w); this.cartWheels.push(w);
+    }
+    for (const [x, c] of [[-0.2, C.berry], [0.1, C.yellow], [0.25, 0x5ab0e0]]) body.add(at3(new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), mat(c)), x, 0.72, -0.3));
+    for (const x of [-0.25, 0.25]) body.add(at3(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.8), mat(C.timber)), x, 0.4, 1.0));
+    const vm = villagerModel({ shirt: 0x7a4aa8, skin: 0xe8b590, hair: 0x6b4226, hat: true, hatColor: 0x4a2f6b });
+    vm.group.position.set(0, 0, 1.45); g.add(vm.group); this.cartMan = vm;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture('shop'), transparent: true, depthWrite: false }));
+    sp.scale.set(0.7, 0.82, 1); sp.position.y = 1.7; g.add(sp); this.cartBubble = sp;
+    g.userData.ent = { kind: 'merchant' };
+    g.visible = false;
+    this.view.objects.add(g);
+    this.cart = g;
+  }
+  updateCart(dt, time) {
+    const m = this.sim.s.merchant;
+    if (!this.cart) this.makeCart();
+    const on = m && m.state !== 'away';
+    this.cart.visible = !!on;
+    if (!on) return;
+    const y = this.sim.world.heightAt(m.x, m.z);
+    this.cart.position.set(m.x, Math.max(y, 0.12), m.z);
+    let d = (m.face ?? 0) - this.cart.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
+    this.cart.rotation.y += d * Math.min(1, dt * 5);
+    const moving = m.state !== 'here';
+    this.cartBubble.visible = !moving;
+    if (moving) { for (const w of this.cartWheels) w.rotation.x += dt * 6 * Math.max(1, this.sim.s.speed); const k = Math.sin(time * 10) * 0.6; this.cartMan.hipL.rotation.x = k; this.cartMan.hipR.rotation.x = -k; this.cartMan.armR.rotation.x = -0.9; this.cartMan.armL.rotation.x = -0.9; }
+    else { this.cartMan.hipL.rotation.x = this.cartMan.hipR.rotation.x = 0; this.cartMan.armR.rotation.z = 2.4 + Math.sin(time * 5) * 0.3; this.cartBubble.position.y = 1.7 + Math.sin(time * 3) * 0.04; }
+  }
+
   makeLockMarkers() {
     if (this.locks) for (const l of this.locks) this.view.objects.remove(l);
     this.locks = [];
@@ -351,6 +394,7 @@ class Game {
     });
     sim.on('log', () => ui.markLog());
     sim.on('sfx', name => sfx[name]?.());
+    sim.on('merchant', st => { if (st === 'here') sfx.coin(); });
     sim.on('settlements', () => { this.makeLockMarkers(); this.life?.placeButterflies(); });
   }
 
@@ -442,7 +486,7 @@ class Game {
     this.select(null);
     const p = this.place = { type, rot: moving ? moving.rot : 0, tx: 0, tz: 0, ok: false, why: '', moving };
     if (moving) { const vis = this.bvis.get(moving.id); if (vis) vis.root.visible = false; }
-    if (type !== 'clear') {
+    if (!PAINT[type]) {
       const { group, anim } = buildModel(type, defOf(type).size);
       anim.smoke?.update(0.3);
       group.traverse(o => { if (o.isMesh) { o.material = ghostMat(o.material); o.castShadow = false; } });
@@ -465,7 +509,7 @@ class Game {
   ghostAt(cx, cy) {
     const p = this.place; if (!p) return;
     const g = this.view.groundAt(cx, cy);
-    if (p.type === 'clear') { p.cursor = g; this.placeMsg(); return; }
+    if (PAINT[p.type]) { p.cursor = g; this.placeMsg(); return; }
     let [w, d] = footprint(p.type, p.rot);
     p.tx = Math.round(g.x + HALF - w / 2); p.tz = Math.round(g.z + HALF - d / 2);
     if (p.type === 'dock') { p.rot = this.sim.bestDockRot(p.tx, p.tz); [w, d] = footprint(p.type, p.rot); }
@@ -490,19 +534,20 @@ class Game {
   placeMsg() {
     const p = this.place; if (!p) return;
     const touch = this.lastPointer !== 'mouse';
-    const title = p.type === 'clear' ? 'Clear Trees' : (p.moving ? 'Move ' : '') + defOf(p.type).name;
+    const title = PAINT[p.type] ? PAINT[p.type] : (p.moving ? 'Move ' : '') + defOf(p.type).name;
     if (p.type === 'clear') this.ui.placeBar(true, touch ? 'Tap or drag over trees to mark them' : 'Click or drag over trees · right-drag to pan', false, false, title);
+    else if (p.type === 'pave') this.ui.placeBar(true, (touch ? 'Tap or drag to lay stones' : 'Click or drag to lay stones · right-drag to pan') + ' · 1 stone each, tap again to lift', false, false, title);
     else if (p.ok) this.ui.placeBar(true, touch ? 'Tap to move · ✓ to build' : 'Click to build · R rotates', false, touch, title);
     else this.ui.placeBar(true, p.why, true, touch, title);
   }
   rotatePlace() {
-    const p = this.place; if (!p || p.type === 'clear' || p.type === 'dock') return;
+    const p = this.place; if (!p || PAINT[p.type] || p.type === 'dock') return;
     p.rot = (p.rot + 1) % 4;
     // keep the footprint centred where it was when rotating a non-square building
     this.refreshGhost(); sfx.click();
   }
   confirmPlace() {
-    const p = this.place; if (!p || p.type === 'clear') return;
+    const p = this.place; if (!p || PAINT[p.type]) return;
     if (!p.ok) { sfx.error(); this.ui.toast(p.why, 'alert'); return; }
     if (p.moving) {
       const b = p.moving, r = this.sim.move(b, p.tx, p.tz, p.rot);
@@ -542,6 +587,19 @@ class Game {
     }
     this.view.scene.add(g);
   }
+  paint(cx, cy, first) {
+    if (this.place?.type === 'pave') return this.paintPave(cx, cy, first);
+    return this.paintClear(cx, cy, first);
+  }
+  paintPave(cx, cy, first) {
+    const p = this.view.groundAt(cx, cy), tx = Math.floor(p.x + HALF), tz = Math.floor(p.z + HALF);
+    if (!inMap(tx, tz)) return;
+    const i = idx(tx, tz), W = this.sim.world;
+    if (first) this.paintMode = !W.paved[i];
+    const r = this.sim.pave(i, this.paintMode);
+    if (r === 'stone' && !this.noStoneWarned) { this.noStoneWarned = true; this.ui.toast('You need stone to lay paths', 'stone'); sfx.error(); setTimeout(() => this.noStoneWarned = false, 3000); }
+    else if (r === true) sfx.chop();
+  }
   paintClear(cx, cy, first) {
     const W = this.sim.world, p = this.view.groundAt(cx, cy);
     const tx = Math.floor(p.x + HALF), tz = Math.floor(p.z + HALF);
@@ -559,8 +617,9 @@ class Game {
 
   // ── selection ──
   select(ent, fly) {
-    this.selected = ent && ent.kind !== 'lock' ? ent : null;
+    this.selected = ent && ent.kind !== 'lock' && ent.kind !== 'merchant' ? ent : null;
     if (ent?.kind === 'lock') { this.ui.openModal('worldmap'); return; }
+    if (ent?.kind === 'merchant') { this.ui.openModal('merchant'); return; }
     if (!ent || ent.kind !== 'v') this.followV = null;
     if (ent) sfx.click();
     this.ui.lastInfo = null;
@@ -607,6 +666,9 @@ class Game {
     let drag = null, pinch = null;
     const anchor = new THREE.Vector3(), tmp = new THREE.Vector3();
     cv.addEventListener('contextmenu', e => e.preventDefault());
+    const wake = () => { initAudio(); setMusic(this.settings.music); };
+    addEventListener('pointerdown', wake, { once: true });
+    addEventListener('keydown', wake, { once: true });
     cv.addEventListener('pointerdown', e => {
       initAudio();
       cv.setPointerCapture(e.pointerId);
@@ -620,8 +682,8 @@ class Game {
         drag = null;
         return;
       }
-      const clearing = this.place?.type === 'clear' && e.button === 0;
-      if (clearing) { this.paintMode = undefined; this.paintClear(e.clientX, e.clientY, true); drag = { mode: 'paint' }; return; }
+      const clearing = PAINT[this.place?.type] && e.button === 0;
+      if (clearing) { this.paintMode = undefined; this.paint(e.clientX, e.clientY, true); drag = { mode: 'paint' }; return; }
       if (e.button === 2 || e.button === 1) drag = { mode: 'rot', x: e.clientX, y: e.clientY };
       else { drag = { mode: 'pan', last: performance.now() }; view.groundAt(e.clientX, e.clientY, anchor); }
       rig.vx = rig.vz = 0;
@@ -645,7 +707,7 @@ class Game {
         return;
       }
       if (!drag) return;
-      if (drag.mode === 'paint') { this.paintClear(e.clientX, e.clientY, false); return; }
+      if (drag.mode === 'paint') { this.paint(e.clientX, e.clientY, false); return; }
       if (drag.mode === 'rot') {
         rig.yaw -= (e.clientX - drag.x) * 0.006; rig.pitch += (e.clientY - drag.y) * 0.004;
         drag.x = e.clientX; drag.y = e.clientY; return;
@@ -708,7 +770,7 @@ class Game {
   tap(cx, cy, type) {
     initAudio();
     const p = this.place;
-    if (p && p.type !== 'clear') {
+    if (p && !PAINT[p.type]) {
       this.ghostAt(cx, cy);
       if (type === 'mouse') this.confirmPlace();
       return;
@@ -721,9 +783,11 @@ class Game {
     this.settings[k] = v;
     localStorage.setItem(SET_KEY, JSON.stringify(this.settings));
     if (k === 'sound') setSound(v);
+    if (k === 'music') setMusic(v);
   }
 
   save() {
+    if (this.resetting) return;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.sim.serialize())); } catch (err) { console.warn('save failed', err); }
   }
   reset() {
@@ -763,7 +827,7 @@ class Game {
     view.updateCamera(dt);
     view.adapt(dt);
 
-    if (this.tilesDirty.size) { for (const i of this.tilesDirty) view.paintTile(i, false); view.terrainColor.needsUpdate = true; this.tilesDirty.clear(); }
+    if (this.tilesDirty.size) { for (const i of this.tilesDirty) { view.paintTile(i, false); view.updateGrass(i); view.updatePave(i); } view.terrainColor.needsUpdate = true; this.tilesDirty.clear(); }
     while (this.stumpList.length && this.stumpList[0].t < sim.s.time) view.removeStump(this.stumpList.shift().slot);
 
     const t = now / 1000;
@@ -771,6 +835,7 @@ class Game {
     for (const v of sim.s.villagers) { const m = this.vvis.get(v.id); if (m) this.updateVVis(v, m, dt, t); }
     this.effects = this.effects.filter(f => f(dt));
     this.life.update(dt, t, this.night, this.rainK || 0);
+    this.updateCart(dt, t);
     this.drawBars();
 
     // selection ring + name tag
@@ -838,6 +903,8 @@ class Game {
 }
 
 const tmpV = new THREE.Vector3();
+const at3 = (m, x, y, z, shadow = false) => { m.position.set(x, y, z); m.castShadow = shadow; return m; };
+const PAINT = { clear: 'Clear Trees', pave: 'Stone Path' };
 const leafGeo = new THREE.IcosahedronGeometry(0.09, 0);
 let _fall = null;
 const fallMat = () => _fall || (_fall = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
