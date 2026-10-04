@@ -2,15 +2,21 @@
 // from primitives here so the game ships without any model files.
 import * as THREE from '../vendor/three.module.min.js';
 import { mulberry32 } from './rng.js';
+import { snowify } from './snow.js';
 
+// Materials are cached by colour + options. Everything gets a dusting of snow
+// in winter except people and animals (built inside withoutSnow).
 const matCache = new Map();
+let NOSNOW = false;
+export function withoutSnow(fn) { const prev = NOSNOW; NOSNOW = true; try { return fn(); } finally { NOSNOW = prev; } }
 export function mat(color, opts = {}) {
-  const key = color + (opts.map ? opts.map.uuid : '') + JSON.stringify({ ...opts, map: undefined });
+  const key = color + (opts.map ? opts.map.uuid : '') + JSON.stringify({ ...opts, map: undefined }) + (NOSNOW ? '~' : '');
   if (!matCache.has(key)) {
     const m = opts.basic
       ? new THREE.MeshBasicMaterial({ color, transparent: !!opts.opacity, opacity: opts.opacity ?? 1 })
       : new THREE.MeshLambertMaterial({ color, flatShading: true, emissive: opts.emissive ?? 0x000000,
         transparent: !!opts.opacity, opacity: opts.opacity ?? 1, map: opts.map ?? null });
+    if (!opts.basic && !NOSNOW && !opts.opacity) snowify(m);
     matCache.set(key, m);
   }
   return matCache.get(key);
@@ -485,7 +491,8 @@ function statue(g) {
 }
 
 // ── farm animals (wander inside their pens; main.js moves them) ──
-export function chicken() {
+export function chicken() { return withoutSnow(chicken_); }
+function chicken_() {
   const g = new THREE.Group(), white = rngPick([0xfaf6ee, 0xc98a4a, 0xf0e2c8]);
   g.add(ball(0.09, white, 0, 0.1, 0, 1)); g.add(ball(0.055, white, 0, 0.19, 0.06, 1));
   g.add(box(0.02, 0.04, 0.05, 0xd83a3a, 0, 0.23, 0.06)); g.add(cone(0.02, 0.05, 4, 0xf0a020, 0, 0.17, 0.12).rotateX(Math.PI / 2));
@@ -493,14 +500,16 @@ export function chicken() {
   g.userData.head = g.children[1];
   return g;
 }
-export function sheep() {
+export function sheep() { return withoutSnow(sheep_); }
+function sheep_() {
   const g = new THREE.Group();
   const wool = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 1), mat(0xf6f3ea)); wool.scale.set(1, 0.85, 1.25); wool.position.y = 0.28; wool.castShadow = true; g.add(wool);
   const head = box(0.11, 0.12, 0.14, 0x2e2a28, 0, 0.26, 0.24); g.add(head); g.userData.head = head;
   for (const [x, z] of [[-0.09, -0.12], [0.09, -0.12], [-0.09, 0.12], [0.09, 0.12]]) g.add(box(0.04, 0.16, 0.04, 0x2e2a28, x, 0, z));
   return g;
 }
-export function cow() {
+export function cow() { return withoutSnow(cow_); }
+function cow_() {
   const g = new THREE.Group();
   g.add(box(0.26, 0.24, 0.48, 0xf7f3ea, 0, 0.2, 0));
   g.add(box(0.27, 0.14, 0.16, 0x2e2a28, 0.0, 0.3, -0.08)); g.add(box(0.2, 0.12, 0.12, 0x2e2a28, 0.04, 0.22, 0.14));
@@ -675,7 +684,8 @@ function palisade(g) {
 }
 
 // ── night beasts ──
-export function beastModel(kind) {
+export function beastModel(kind) { return withoutSnow(() => beast_(kind)); }
+function beast_(kind) {
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   const eye = mat(0xffe25a, { basic: true });
   let legs = [];
@@ -699,15 +709,122 @@ export function beastModel(kind) {
   return { group: g, body, legs };
 }
 
+// ── rare treasures from gift chests ──
+function fountain(g, a) {
+  g.add(cyl(0.86, 0.92, 0.3, 14, C.stone, 0, 0, 0));
+  g.add(cyl(0.74, 0.74, 0.04, 14, 0xd8d4c8, 0, 0.3, 0));
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.03, 14), mat(0x6cc4ee, { emissive: 0x0a3550 })); water.position.y = 0.28; g.add(water);
+  g.add(cyl(0.12, 0.16, 0.7, 8, 0xd8d4c8, 0, 0.3, 0));
+  g.add(cyl(0.34, 0.2, 0.12, 10, C.stone, 0, 0.95, 0));
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 10), mat(0x6cc4ee, { emissive: 0x0a3550 })); top.position.y = 1.06; g.add(top);
+  g.add(ball(0.08, 0xd8d4c8, 0, 1.12, 0, 1));
+  for (let k = 0; k < 5; k++) { const t = k * 1.26; g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.01, 8), mat(0xf6c53f)), Math.cos(t) * 0.42, 0.3, Math.sin(t) * 0.42)); }
+  const jets = new THREE.Group(); g.add(jets); a.jets = [];
+  const jm = new THREE.MeshBasicMaterial({ color: 0xcfefff, transparent: true, opacity: 0.85 });
+  for (let k = 0; k < 14; k++) { const d = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), jm); jets.add(d); a.jets.push({ m: d, t: k / 14, ang: k * 2.4 }); }
+  for (const [x, z] of [[-0.95, 0.75], [0.95, -0.75]]) { g.add(box(0.3, 0.12, 0.3, C.soil, x, 0, z)); for (let k = 0; k < 4; k++) g.add(ball(0.06, [0xf06292, 0xffd54f, 0xffffff, 0xba68c8][k], x - 0.08 + (k % 2) * 0.16, 0.17, z - 0.08 + (k >> 1) * 0.16)); }
+}
+function fairyring(g, a) {
+  a.fairy = [];
+  const glow = new THREE.MeshLambertMaterial({ color: 0xc8f4ff, emissive: 0x2a6a88, flatShading: true });
+  for (let k = 0; k < 8; k++) {
+    const t = k / 8 * Math.PI * 2, x = Math.cos(t) * 0.36, z = Math.sin(t) * 0.36, s = 0.75 + (k % 3) * 0.2;
+    g.add(cyl(0.025 * s, 0.03 * s, 0.1 * s, 6, 0xf6efe2, x, 0, z));
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.07 * s, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), k % 2 ? mat(0xd8343c) : glow);
+    cap.position.set(x, 0.09 * s, z); cap.castShadow = true; g.add(cap);
+    if (k % 2) for (let d = 0; d < 3; d++) g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.012, 4, 3), mat(0xffffff)), x + Math.cos(d * 2.1) * 0.035 * s, 0.13 * s, z + Math.sin(d * 2.1) * 0.035 * s));
+  }
+  a.fairy.push(glow);
+  a.motes = [];
+  const mm = new THREE.MeshBasicMaterial({ color: 0xe8fbff, transparent: true, opacity: 0.9 });
+  for (let k = 0; k < 5; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.018, 5, 4), mm); g.add(m); a.motes.push({ m, ph: k * 1.3 }); }
+}
+function gnome(g) {
+  g.add(cyl(0.11, 0.13, 0.04, 8, C.stone, 0, 0, 0));
+  g.add(cone(0.11, 0.26, 8, 0x3f7fc4, 0, 0.04, 0));
+  g.add(ball(0.065, 0xf2c9a0, 0, 0.33, 0.01, 1));
+  const beard = cone(0.06, 0.13, 6, 0xf6f3ea, 0, 0.2, 0.05); beard.rotation.x = Math.PI; beard.position.y = 0.33; g.add(beard);
+  g.add(ball(0.02, 0xf29a8a, 0, 0.33, 0.07));
+  g.add(cone(0.075, 0.24, 8, 0xd9433b, 0, 0.36, 0));
+  g.add(box(0.03, 0.12, 0.03, C.darkwood, 0.09, 0.08, 0.04));
+}
+function swing(g, a) {
+  g.add(cyl(0.08, 0.12, 0.95, 6, 0x7a4e2c, -0.3, 0, -0.25));
+  const br = box(0.7, 0.07, 0.07, 0x7a4e2c, 0.05, 0.9, -0.25); g.add(br);
+  for (const [x, y, z, r] of [[-0.35, 1.25, -0.3, 0.42], [-0.05, 1.15, -0.1, 0.3], [-0.5, 1.05, -0.05, 0.3], [0.2, 1.2, -0.35, 0.32]]) g.add(ball(r, [0x56a83c, 0x65b744, 0x4c9c36][(x * 10 & 3) % 3], x, y, z));
+  const pivot = new THREE.Group(); pivot.position.set(0.18, 0.92, -0.25); g.add(pivot);
+  for (const x of [-0.1, 0.1]) pivot.add(box(0.012, 0.66, 0.012, 0xd9c49a, x, -0.66, 0));
+  pivot.add(box(0.28, 0.03, 0.12, C.plank, 0, -0.68, 0));
+  a.swing = pivot;
+}
+
+// a wooden gift chest with gold bands; the lid hinges open
+export function chestModel() {
+  const g = new THREE.Group();
+  g.add(box(0.5, 0.26, 0.34, 0x9a5f30, 0, 0, 0));
+  for (const x of [-0.17, 0.17]) g.add(box(0.05, 0.27, 0.35, 0xf0b429, x, 0, 0));
+  const lid = new THREE.Group(); lid.position.set(0, 0.26, -0.17); g.add(lid);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.5, 10, 1, false, 0, Math.PI), mat(0xb06d38)); top.rotation.z = Math.PI / 2; top.position.set(0, 0, 0.17); top.castShadow = true; lid.add(top);
+  for (const x of [-0.17, 0.17]) { const band = new THREE.Mesh(new THREE.CylinderGeometry(0.175, 0.175, 0.05, 10, 1, false, 0, Math.PI), mat(0xf0b429)); band.rotation.z = Math.PI / 2; band.position.set(x, 0, 0.17); lid.add(band); }
+  lid.add(at(mesh(new THREE.BoxGeometry(0.08, 0.1, 0.04), 0xf6d55a), 0, -0.02, 0.36));
+  const inner = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.04, 0.27), mat(0xffe08a, { emissive: 0x7a5a00 })); inner.position.y = 0.25; g.add(inner);
+  return { group: g, lid };
+}
+
+// festival garlands: poles in a ring round the fire, strung with flags,
+// flower garlands or paper lanterns depending on the festival
+export function bunting(kind, r = 3.3, n = 7, free = () => true) {
+  const g = new THREE.Group(), a = { lanterns: [] };
+  const pal = { fair: [0xf9b8cf, 0xffffff, 0xffd54f, 0xba68c8], bonfire: [0xffd54f, 0xe8892e, 0xd9433b, 0x4f8fd9], harvest: [0xe8892e, 0xd8a62c, 0xc4442e, 0x6c8a3a], lantern: [0xf0743a, 0xf6c53f] }[kind] || [0xd9433b, 0xffd54f, 0x4f8fd9];
+  const pts = [];
+  for (let k = 0; k < n; k++) {
+    const t = k / n * Math.PI * 2 + 0.2;
+    // try the ring radius, then a little closer in or further out
+    const rr = [r, r - 0.6, r + 0.6, r - 1.1].find(q => free(Math.cos(t) * q, Math.sin(t) * q));
+    if (rr === undefined) continue;
+    const x = Math.cos(t) * rr, z = Math.sin(t) * rr;
+    g.add(cyl(0.04, 0.05, 1.7, 6, C.timber, x, 0, z)); g.add(ball(0.06, pal[0], x, 1.72, z));
+    pts.push([x, z]);
+  }
+  for (let k = 0; k < pts.length; k++) {
+    const [x0, z0] = pts[k], [x1, z1] = pts[(k + 1) % pts.length], seg = 9, line = [];
+    // only string garlands between neighbouring poles, never across a gap
+    if (pts.length < 3 || Math.hypot(x1 - x0, z1 - z0) > r * 1.3) continue;
+    for (let j = 0; j <= seg; j++) { const t = j / seg; line.push(new THREE.Vector3(x0 + (x1 - x0) * t, 1.62 - Math.sin(t * Math.PI) * 0.35, z0 + (z1 - z0) * t)); }
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(line), new THREE.LineBasicMaterial({ color: 0x6b4428 })));
+    for (let j = 1; j < seg; j++) {
+      const p = line[j], col = pal[(j + k) % pal.length];
+      if (kind === 'lantern') {
+        if (j % 2) continue;
+        const l = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), mat(col, { emissive: 0x7a3000 })); l.scale.y = 1.25; l.position.set(p.x, p.y - 0.14, p.z); g.add(l); a.lanterns.push(l);
+      } else if (kind === 'fair') {
+        g.add(at(new THREE.Mesh(new THREE.IcosahedronGeometry(0.06, 0), mat(col)), p.x, p.y - 0.03, p.z));
+      } else {
+        const f = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.08, 0, 0), new THREE.Vector3(0.08, 0, 0), new THREE.Vector3(0, -0.2, 0)]), new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide }));
+        f.position.copy(p); f.lookAt(0, p.y, 0); g.add(f);
+      }
+    }
+  }
+  if (kind === 'harvest') {
+    // a feast table heaped with the harvest
+    const tb = new THREE.Group(); tb.position.set(r * 0.62, 0, -r * 0.62); tb.rotation.y = Math.PI / 4; g.add(tb);
+    tb.add(box(1.3, 0.05, 0.45, C.plank, 0, 0.36, 0)); for (const [x, z] of [[-0.55, -0.16], [0.55, -0.16], [-0.55, 0.16], [0.55, 0.16]]) tb.add(box(0.05, 0.36, 0.05, C.timber, x, 0, z));
+    for (let k = 0; k < 5; k++) tb.add(ball(0.07 + (k % 2) * 0.03, [C.orange, 0xd8a62c, C.berry, 0xe8c14a, C.orange][k], -0.48 + k * 0.24, 0.47, (k % 2 - 0.5) * 0.12, 1));
+    tb.add(box(0.26, 0.12, 0.2, 0xc9955a, 0.2, 0.41, 0.04));
+  }
+  return { group: g, anim: a };
+}
+
 const BUILDERS = { cottage, tiled, lumber, forager, farm, sawmill, quarry, storehouse, dock, market, forester, windmill, bakery, mason, campfire,
   flowers, bench, lantern, hay, pumpkins, fence, well, sign, statue,
-  coop, orchard, beehive, pasture, weaver, dairy, creamery, brewery, tavern, school, watchtower, wizard, memorial, torch, palisade };
+  coop, orchard, beehive, pasture, weaver, dairy, creamery, brewery, tavern, school, watchtower, wizard, memorial, torch, palisade,
+  fountain, fairyring, gnome, swing };
 
 // Returns { group, anim } — anim holds handles to animated parts.
 export function buildModel(type, size = [2, 2], seed = 0, lvl = 1) {
   const g = new THREE.Group(), a = {};
   const inner = new THREE.Group(); g.add(inner);
-  if (!['campfire', 'farm', 'dock', 'fence', 'flowers', 'sign', 'lantern', 'bench', 'torch', 'palisade', 'coop', 'orchard', 'beehive', 'pasture', 'dairy', 'memorial'].includes(type)) inner.add(pad(size[0] * 0.92, size[1] * 0.92));
+  if (!['campfire', 'farm', 'dock', 'fence', 'flowers', 'sign', 'lantern', 'bench', 'torch', 'palisade', 'coop', 'orchard', 'beehive', 'pasture', 'dairy', 'memorial', 'fountain', 'fairyring', 'gnome', 'swing'].includes(type)) inner.add(pad(size[0] * 0.92, size[1] * 0.92));
   BUILDERS[type](inner, a, seed ? { seed, lvl } : {});
   a.inner = inner;
   return { group: g, anim: a };
@@ -784,7 +901,8 @@ export function berriesGeo() {
 }
 
 // ── villagers ──
-export function villagerModel(v) {
+export function villagerModel(v) { return withoutSnow(() => villager_(v)); }
+function villager_(v) {
   const g = new THREE.Group();
   const body = new THREE.Group(); g.add(body);
   const pants = 0x4a4038;

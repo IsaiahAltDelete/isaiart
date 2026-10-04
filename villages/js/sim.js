@@ -3,6 +3,7 @@
 // view layer listens to events emitted from this class.
 import { World, N, idx, tileX, tileZ, toWorld, toTile, inMap, CENTERS, T_WATER } from './world.js';
 import { BUILDINGS, DECOR, GOODS, SELLABLE, QUESTS, SETTLEMENTS, ACHIEVEMENTS, MERCHANT_OFFERS, SYNERGY, CROPS, SPELLS, BEASTS, xpForLevel,
+  SEASONS, SEASON_DAYS, FESTIVALS, RARE,
   FIRST_NAMES, LAST_NAMES, SHIRTS, SKINS, HAIRS, JOBS } from './data.js';
 import { mulberry32, pick } from './rng.js';
 
@@ -50,6 +51,7 @@ export class Sim {
     this.stumps = [];
     this.wearTimer = 0; this.secTimer = 0;
     this.flow = {}; this.flowHist = []; this.flowT = 0;
+    this.bflow = new Map(); this.bflowHist = [];
     if (save) this.load(save); else this.newGame(seed);
   }
   on(name, fn) { this.handlers[name] = fn; }
@@ -66,6 +68,7 @@ export class Sim {
       quests: { claimed: [] }, stats: { built: {}, produced: {}, earned: 0, decor: 0 },
       sell: Object.fromEntries(SELLABLE.map(k => [k, k === 'food' || k === 'grain'])),
       log: [], popTimer: 0, tutorial: 0, weather: { rain: false, t: 150 },
+      chests: [], chestTimer: 150, tokens: {}, names: {},
     };
     this.unlock('meadow', true);
     const c = CENTERS.meadow;
@@ -89,8 +92,8 @@ export class Sim {
     this.addBuilding('campfire', c.x - 1, c.z - 1, 0, true);
     if (!free) {
       for (let i = 0; i < 2; i++) this.spawnVillager(sid, toWorld(c.x) + i, toWorld(c.z) + 2);
-      this.log(`${def.name} has been settled! Two settlers moved in.`);
-      this.emit('toast', `${def.name} settled!`, 'map');
+      this.log(`${this.sname(sid)} has been settled! Two settlers moved in.`);
+      this.emit('toast', `${this.sname(sid)} settled!`, 'map');
       this.addXp(60);
     }
     this.emit('settlements');
@@ -106,6 +109,45 @@ export class Sim {
   canAfford(cost) { return Object.entries(cost || {}).every(([k, v]) => (this.s.res[k] || 0) >= v); }
   pay(cost) { for (const [k, v] of Object.entries(cost || {})) { this.s.res[k] -= v; this.track(k, -v); } this.emit('res'); }
   track(res, n) { this.flow[res] = (this.flow[res] || 0) + n; }
+  // per-building flow, so a building's panel can show what it really makes and uses
+  credit(b, res, n) {
+    if (!b || !n) return;
+    let f = this.bflow.get(b.id); if (!f) this.bflow.set(b.id, f = {});
+    f[res] = (f[res] || 0) + n;
+  }
+  bRate(b, res) {
+    if (!this.bflowHist.length) return 0;
+    let sum = 0; for (const h of this.bflowHist) sum += h.get(b.id)?.[res] || 0;
+    return sum * 60 / (this.bflowHist.length * 10);
+  }
+  // ── names ──
+  sname(sid) { return this.s.names?.[sid] || SETTLEMENTS.find(o => o.id === sid)?.name || 'the wilds'; }
+  cleanName(n) { return String(n || '').replace(/[<>&"]/g, '').replace(/\s+/g, ' ').trim().slice(0, 22); }
+  renameSettlement(sid, name) {
+    const n = this.cleanName(name); if (!n) return false;
+    (this.s.names || (this.s.names = {}))[sid] = n;
+    this.emit('settlements'); return true;
+  }
+  renameVillager(v, name) {
+    const n = this.cleanName(name); if (!n || !v) return false;
+    v.name = n.includes(' ') ? n : `${n} ${v.name.split(' ').slice(1).join(' ')}`.trim();
+    return true;
+  }
+
+  // ── the calendar: seasons and festivals ──
+  dayNum() { return Math.floor(this.s.time / DAY); }                 // 0-based
+  seasonIdx(t = this.s.time) { return Math.floor(Math.floor(t / DAY) / SEASON_DAYS) % 4; }
+  season() { return SEASONS[this.seasonIdx()]; }
+  seasonDay() { return this.dayNum() % SEASON_DAYS; }                   // 0..2
+  // how much snow lies on the ground: settles over the first half-day of winter, melts in early spring
+  snowLevel(t = this.s.time) {
+    const len = DAY * SEASON_DAYS, into = t % len, si = this.seasonIdx(t);
+    if (si === 3) return Math.min(1, into / (DAY * 0.45));
+    if (si === 0 && t >= len * 4) return Math.max(0, 1 - into / (DAY * 0.55));   // no melt before the first winter
+    return 0;
+  }
+  festivalToday() { return this.seasonDay() === 1 ? FESTIVALS[this.season().id] : null; }
+  festivalActive() { const f = this.dayFrac(); return f >= 0.72 && f < 0.925 && this.festivalToday(); }
   // net change per minute over the last ~60 seconds
   rate(res) {
     if (!this.flowHist.length) return 0;
@@ -186,6 +228,7 @@ export class Sim {
       if (!inMap(ex, ez) || (W.type[ei] === T_WATER && !W.bridge[ei]) || (W.block[ei] && W.occ[ei] !== ignoreId) || W.rock[ei] >= 0) return { ok: false, why: 'The door needs open ground in front' };
     }
     if (ignoreId === -1) {   // -2 = free starter props: no cost or level check
+      if (def.rare && !(this.s.tokens?.[type] > 0)) return { ok: false, why: 'Found only in gift chests' };
       if (def.lvl && this.s.level < def.lvl) return { ok: false, why: `Needs level ${def.lvl}` };
       if (!this.canAfford(def.cost)) return { ok: false, why: 'Not enough resources' };
     }
@@ -222,6 +265,7 @@ export class Sim {
     if (!chk.ok) return chk;
     const def = defOf(type);
     this.pay(def.cost);
+    if (def.rare) this.s.tokens[type]--;
     const decor = isDecor(type);
     const b = this.addBuilding(type, tx, tz, rot, decor);
     if (decor) { this.s.stats.decor++; this.addXp(5); }
@@ -304,7 +348,7 @@ export class Sim {
     this.emit('building', b);
     this.emit('toast', `${def.name} complete!`, 'hammer');
     this.emit('sfx', 'done');
-    this.log(`${def.name} finished in ${SETTLEMENTS.find(s => s.id === b.sid)?.name ?? 'the wilds'}.`);
+    this.log(`${def.name} finished in ${this.sname(b.sid)}.`);
     // auto-staff one worker if anyone is free
     if (def.workers) this.assign(b, null);
     this.carveLane(b);
@@ -332,6 +376,7 @@ export class Sim {
     const def = defOf(b.type), W = this.world;
     for (const vid of [...b.workers]) this.unassign(this.vById.get(vid));
     for (const [k, v] of Object.entries(def.cost || {})) this.s.res[k] += Math.floor(v * (b.built ? 0.5 : 1));
+    if (def.rare) this.s.tokens[b.type] = (this.s.tokens[b.type] || 0) + 1;   // treasures go back in your pocket
     const [w, d] = footprint(b.type, b.rot);
     for (let z = b.tz; z < b.tz + d; z++) for (let x = b.tx; x < b.tx + w; x++) { W.occ[idx(x, z)] = -1; W.block[idx(x, z)] = 0; W.wall[idx(x, z)] = 0; this.emit('tile', idx(x, z)); }
     this.s.buildings = this.s.buildings.filter(o => o !== b); this.bById.delete(b.id);
@@ -438,6 +483,7 @@ export class Sim {
     const t = v.task;
     if (t?.claim) { const [k, i] = t.claim; const o = k === 't' ? this.world.trees[i] : k === 'r' ? this.world.rocks[i] : this.world.bushes[i]; if (o && o.claimed === v.id) o.claimed = -1; }
     v.task = null; v.act = null; v.path = null;
+    v.asleep = null; v.indoors = false; v.dancing = false; v.onTower = false;
   }
 
   // Tasks are a list of steps run in order. Steps:
@@ -455,6 +501,7 @@ export class Sim {
     if (v.carry) return this.taskDeliver(v);
     const b = v.work ? this.bById.get(v.work) : null;
     if (this.sleepy(v) && job !== 'guard') return this.taskSleep(v);
+    if (this.festivalActive() && this.s.buildings.some(o => o.type === 'campfire' && o.sid === v.home)) return this.taskFestival(v);
     if (job === 'child') return this.thinkChild(v);
     if (job === 'retired') return this.thinkRetired(v);
     if (job === 'idle') return this.thinkIdle(v);
@@ -509,6 +556,42 @@ export class Sim {
     const [ex, ez] = this.entryTile(b), door = this.local(b, 0, this.bCenter(b).d / 2 - 0.2);
     this.setTask(v, 'Asleep at home', [{ walk: { tx: ex, tz: ez } }, { to: [door.x, door.z] },
       { act: 9999, anim: 'sleep', until: wake, start: () => { v.asleep = 'home'; v.indoors = true; }, done: () => { v.asleep = null; v.indoors = false; } }]);
+  }
+
+  // festival evening: everyone gathers in rings round their campfire and dances
+  taskFestival(v) {
+    const s = this.s, fire = s.buildings.find(o => o.type === 'campfire' && o.sid === v.home);
+    const folk = s.villagers.filter(o => o.home === v.home).sort((a, b) => a.id - b.id), k = Math.max(0, folk.indexOf(v));
+    const inner = Math.min(10, Math.ceil(folk.length / 2)), ring = k < inner ? 0 : 1, n = ring ? folk.length - inner : inner, j = ring ? k - inner : k;
+    const c = this.bCenter(fire), W = this.world;
+    let px = c.x, pz = c.z + 2;
+    // a spot on the ring that isn't inside a building (nudge round, then in or out)
+    search: for (const dr of [0, -0.5, 0.6, 1.2]) for (const da of [0, 0.25, -0.25, 0.5, -0.5]) {
+      const a = (j + da) / Math.max(1, n) * Math.PI * 2 + ring * 0.3, r = 2.0 + ring * 0.9 + dr;
+      const x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r, i = idx(toTile(x), toTile(z));
+      if (inMap(toTile(x), toTile(z)) && W.passable(i) && !W.block[i]) { px = x; pz = z; break search; }
+    }
+    const fest = this.festivalToday();
+    this.setTask(v, `Celebrating the ${fest?.name ?? 'festival'}`, [{ walk: this.goalBuilding(fire) }, { to: [px, pz] }, { face: [c.x, c.z] },
+      { act: 9999, anim: 'dance', until: () => !this.festivalActive() || this.sleepy(v), start: () => { v.dancing = true; }, done: () => { v.dancing = false; } }]);
+  }
+  // the festival's evening has ended: feast, rewards, a lasting glow
+  endFestival(fest) {
+    const s = this.s, pop = s.villagers.length;
+    const feast = Math.min(s.res.food, pop * 2);
+    s.res.food -= feast; this.track('food', -feast);
+    const treats = [];
+    for (const k of ['ale', 'cheese', 'honey']) { const n = Math.min(s.res[k], Math.ceil(pop / 3)); if (n > 0) { s.res[k] -= n; this.track(k, -n); treats.push(GOODS[k].name.toLowerCase()); } }
+    const extra = treats.length;
+    s.festJoy = DAY * (1 + extra * 0.25);
+    const coins = 20 + pop * 6, gems = 5;
+    s.res.coins += coins; s.res.gems += gems;
+    s.stats.festivals = (s.stats.festivals || 0) + 1;
+    this.addXp(40 + pop * 2);
+    this.log(`The ${fest.name} was a joy! Everyone feasted${extra ? ' on ' + treats.join(' and ') : ''}. +${coins} coins, +${gems} gems.`);
+    this.emit('toast', `What a ${fest.name}! +${coins} coins · +${gems} gems · everyone is happier`, fest.icon);
+    this.emit('festivalEnd', fest, { coins, gems });
+    this.emit('res');
   }
 
   // ── guards and wizards ──
@@ -581,7 +664,7 @@ export class Sim {
     const s = this.s, day = Math.floor(s.time / DAY) + 1;
     if (day < 3 || (s.wardUntil || 0) > s.time) return;
     for (const sid of Object.keys(s.unlocked)) {
-      if (this.rng() > Math.min(0.75, 0.2 + day * 0.04)) continue;
+      if (this.rng() > Math.min(0.8, 0.2 + day * 0.04 + (this.seasonIdx() === 3 ? 0.1 : 0))) continue;
       const kinds = Object.entries(BEASTS).filter(([, b]) => b.lvl <= s.level).map(([k]) => k);
       const kind = kinds[(this.rng() * kinds.length) | 0], n = 1 + ((this.rng() * Math.min(3, 1 + day / 6)) | 0);
       const c = CENTERS[sid];
@@ -590,8 +673,8 @@ export class Sim {
         const tx = Math.round(c.x + Math.cos(a) * r), tz = Math.round(c.z + Math.sin(a) * r);
         if (!inMap(tx, tz) || !this.world.passable(idx(tx, tz))) continue;
         for (let k = 0; k < n; k++) this.spawnBeast(kind, sid, toWorld(tx) + (k - n / 2) * 0.6, toWorld(tz) + k * 0.4);
-        this.log(`${n > 1 ? `${n} ${BEASTS[kind].name.toLowerCase()}s are` : `A ${BEASTS[kind].name.toLowerCase()} is`} prowling toward ${SETTLEMENTS.find(o => o.id === sid).name}!`);
-        this.emit('toast', `${BEASTS[kind].name}${n > 1 ? 's' : ''} spotted near ${SETTLEMENTS.find(o => o.id === sid).name}!`, 'alert');
+        this.log(`${n > 1 ? `${n} ${BEASTS[kind].name.toLowerCase()}s are` : `A ${BEASTS[kind].name.toLowerCase()} is`} prowling toward ${this.sname(sid)}!`);
+        this.emit('toast', `${BEASTS[kind].name}${n > 1 ? 's' : ''} spotted near ${this.sname(sid)}!`, 'alert');
         this.emit('sfx', 'howl');
         break;
       }
@@ -653,7 +736,7 @@ export class Sim {
     s.beasts = s.beasts.filter(b => { if (b.gone) this.emit('beastGone', b); return !b.gone; });
   }
   beastArrives(bst) {
-    const s = this.s, def = BEASTS[bst.kind], tb = this.bById.get(bst.target), sname = SETTLEMENTS.find(o => o.id === bst.sid).name;
+    const s = this.s, def = BEASTS[bst.kind], tb = this.bById.get(bst.target), sname = this.sname(bst.sid);
     if (def.farm && tb?.data) { tb.data.grow = 0; tb.data.stage = 'empty'; this.emit('farm', tb); this.log(`A boar trampled a field in ${sname}.`); this.emit('toast', 'A boar trampled a field!', 'alert'); }
     if (def.steals) {
       const [res, n] = Object.entries(def.steals)[0], took = Math.min(s.res[res], n);
@@ -686,6 +769,60 @@ export class Sim {
     }
   }
 
+
+  // ── gift chests tucked in the woods ──
+  spawnChest() {
+    const s = this.s, W = this.world, sids = Object.keys(s.unlocked);
+    const sid = sids[(this.rng() * sids.length) | 0], c = CENTERS[sid];
+    for (let tries = 0; tries < 80; tries++) {
+      const a = this.rng() * Math.PI * 2, r = this.settlementRadius(sid) + 1.5 + this.rng() * 6;
+      const tx = Math.round(c.x + Math.cos(a) * r), tz = Math.round(c.z + Math.sin(a) * r);
+      if (!inMap(tx, tz)) continue;
+      const i = idx(tx, tz);
+      if (W.type[i] !== 0 || W.tree[i] >= 0 || W.rock[i] >= 0 || W.bush[i] >= 0 || W.occ[i] >= 0 || W.road[i] || W.paved[i]) continue;
+      if (s.chests.some(o => Math.hypot(o.tx - tx, o.tz - tz) < 6)) continue;
+      let trees = 0;
+      for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) if (inMap(tx + dx, tz + dz) && W.tree[idx(tx + dx, tz + dz)] >= 0) trees++;
+      if (trees < 3) continue;
+      const ch = { id: s.nextId++, tx, tz, x: toWorld(tx), z: toWorld(tz), sid, rot: this.rng() * 6.28 };
+      s.chests.push(ch);
+      this.log(`Someone spotted a gift chest in the woods near ${this.sname(sid)}.`);
+      this.emit('toast', `A gift chest appeared near ${this.sname(sid)}! Tap it to open.`, 'gift');
+      this.emit('chest', ch);
+      return ch;
+    }
+    return null;
+  }
+  openChest(id) {
+    const s = this.s, k = s.chests.findIndex(o => o.id === id);
+    if (k < 0) return null;
+    const ch = s.chests[k]; s.chests.splice(k, 1);
+    const tokens = s.tokens || (s.tokens = {});
+    const opened = (s.stats.chests || 0);
+    let reward;
+    // the first chest always holds a treasure; after that about a third do
+    if (opened === 0 || this.rng() < 0.33) {
+      const owned = t => (tokens[t] || 0) + s.buildings.filter(b => b.type === t).length;
+      const pool = [...RARE].sort((a, b) => owned(a) - owned(b) || this.rng() - 0.5);
+      const t = pool[0];
+      tokens[t] = (tokens[t] || 0) + 1;
+      reward = { kind: 'rare', type: t, name: DECOR[t].name };
+    } else {
+      const L = 1 + s.level * 0.12, opts = [
+        { res: 'coins', n: Math.round((80 + this.rng() * 100) * L) }, { res: 'gems', n: 4 + ((this.rng() * 5) | 0) },
+        { res: 'planks', n: Math.round((40 + this.rng() * 30) * L) }, { res: 'food', n: Math.round((80 + this.rng() * 40) * L) },
+        { res: 'stone', n: Math.round((60 + this.rng() * 40) * L) }, { res: 'wood', n: Math.round((90 + this.rng() * 60) * L) },
+      ];
+      const o = opts[(this.rng() * opts.length) | 0];
+      if (GOODS[o.res].capped) o.n = this.add(o.res, o.n, false); else { s.res[o.res] += o.n; this.track(o.res, o.n); }
+      reward = { kind: 'res', ...o };
+    }
+    s.stats.chests = opened + 1;
+    this.addXp(15);
+    this.log(reward.kind === 'rare' ? `A gift chest held a rare treasure: a ${reward.name}!` : `A gift chest held ${reward.n} ${GOODS[reward.res].name.toLowerCase()}.`);
+    this.emit('chestOpened', ch, reward); this.emit('res'); this.emit('sfx', 'level');
+    return reward;
+  }
 
   // children play near the campfire, or go to school in the daytime
   thinkChild(v) {
@@ -725,8 +862,9 @@ export class Sim {
         const outRes = Object.keys(pr.out)[0];
         if (GOODS[outRes].capped && this.s.res[outRes] >= this.cap()) { b.status = 'Storage full'; v.act.anim = 'rest'; v.act.idle = true; } else b.status = null;
       }, done: act => {
-        if (!act.idle) for (const [r, n] of Object.entries(pr.out)) {
-          const got = this.add(r, n); this.floatGain(v.x, v.z, r, got);
+        if (!act.idle) for (const [r, n0] of Object.entries(pr.out)) {
+          const n = v.job === 'picker' ? Math.max(1, Math.round(n0 * this.season().orchard)) : n0;
+          const got = this.add(r, n); this.floatGain(v.x, v.z, r, got); this.credit(b, r, got);
           if (pr.stat) this.s.stats.produced[pr.stat] = (this.s.stats.produced[pr.stat] || 0) + got;
           if (got) this.addXp(1);
         }
@@ -742,7 +880,7 @@ export class Sim {
       { act: 14, anim: 'sell', start: () => {
         const side = res.cheese >= 1 ? 'cheese' : res.honey >= 1 ? 'honey' : null;
         if (res.ale < 1 || !side) { b.status = res.ale < 1 ? 'Needs ale' : 'Needs cheese or honey'; v.act.idle = true; v.act.anim = 'rest'; return; }
-        b.status = null; this.pay({ ale: 1, [side]: 1 });
+        b.status = null; this.pay({ ale: 1, [side]: 1 }); this.credit(b, 'ale', -1); this.credit(b, side, -1);
         this.s.tavernJoy = Math.min(120, (this.s.tavernJoy || 0) + 30 * this.synergy(b).mult);
       }, done: () => this.repeat(v) },
     ]);
@@ -875,7 +1013,9 @@ export class Sim {
     ], { bid: b.id, volunteer });
   }
   // let a villager keep working the same task without a fresh plan
-  repeat(v) { if (v.task) v.task.again = true; }
+  repeat(v) { if (v.task && !this.mustBreak(v)) v.task.again = true; }
+  // bedtime and festivals pull workers out of their work loops
+  mustBreak(v) { return (this.sleepy(v) && v.job !== 'guard') || (this.festivalActive() && v.job !== 'guard'); }
 
   taskChopMarked(v, ti) {
     const t = this.world.trees[ti];
@@ -971,7 +1111,7 @@ export class Sim {
       { fn: () => {
         const { res, n } = v.carry; v.carry = null;
         const got = this.add(res, Math.round(n * (this.s.happiness > 80 ? 1.2 : 1)));
-        this.floatGain(v.x, v.z, res, got);
+        this.floatGain(v.x, v.z, res, got); if (b) this.credit(b, res, got);
         if (got > 0) this.addXp(1);
       } },
     ]);
@@ -1011,7 +1151,7 @@ export class Sim {
       { walk: this.goalBuilding(b) }, { to: [via.x, via.z] }, { to: [p.x, p.z], onDock: true }, { face: [tip.x, tip.z] },
       { act: 9, anim: 'fish', done: () => {
         const got = this.add('food', 4 + (this.rng() < 0.2 ? 3 : 0));
-        this.floatGain(v.x, v.z, 'food', got); if (got) this.addXp(1);
+        this.floatGain(v.x, v.z, 'food', got); this.credit(b, 'food', got); if (got) this.addXp(1);
         this.repeat(v);
       } },
     ]);
@@ -1032,10 +1172,11 @@ export class Sim {
         const outRes = Object.keys(cv.out)[0];
         if (res[outRes] >= this.cap() && GOODS[outRes].capped) { b.status = 'Storage full'; v.act.anim = 'rest'; v.act.idle = true; return; }
         b.status = null; this.pay(cv.in);
+        for (const [r, n] of Object.entries(cv.in)) this.credit(b, r, -n);
       }, done: act => {
         if (!act.idle) {
           for (const [r, n] of Object.entries(cv.out)) {
-            const got = this.add(r, n); this.floatGain(c.x, c.z, r, got);
+            const got = this.add(r, n); this.floatGain(c.x, c.z, r, got); this.credit(b, r, got);
             if (cv.stat) this.s.stats.produced[cv.stat] = (this.s.stats.produced[cv.stat] || 0) + got;
           }
           this.addXp(1);
@@ -1060,7 +1201,7 @@ export class Sim {
           const n = Math.min(8, Math.floor(bestQ));
           const coins = Math.round(n * GOODS[best].price * this.synergy(b).mult);
           r[best] -= n; r.coins += coins; this.s.stats.earned += coins;
-          this.track(best, -n); this.track('coins', coins);
+          this.track(best, -n); this.track('coins', coins); this.credit(b, best, -n); this.credit(b, 'coins', coins);
           this.emit('float', c.x, c.z, `+${coins}`, 'coin'); this.emit('res'); this.emit('sfx', 'coin');
           b.status = null;
         } else b.status = 'Nothing to sell';
@@ -1144,7 +1285,8 @@ export class Sim {
     for (const b of s.buildings) {
       if (b.type === 'farm' && b.built && b.data.stage === 'growing') {
         const before = b.data.grow;
-        b.data.grow = Math.min(1, b.data.grow + dt / CROPS[b.data.crop || 'wheat'].grow * (s.weather?.rain ? 1.6 : 1) * this.synergy(b).mult);
+        const sea = this.season();
+        b.data.grow = Math.min(1, b.data.grow + dt / CROPS[b.data.crop || 'wheat'].grow * (s.weather?.rain && sea.id !== 'winter' ? 1.6 : 1) * sea.crops * this.synergy(b).mult);
         if (b.data.grow >= 1) { b.data.stage = 'ripe'; this.emit('farm', b); }
         else if (((before * 20) | 0) !== ((b.data.grow * 20) | 0)) this.emit('farm', b);
       }
@@ -1169,8 +1311,9 @@ export class Sim {
     for (const b of s.buildings) if (isDecor(b.type)) joy += DECOR[b.type].joy;
     if (s.tavernJoy > 0) s.tavernJoy -= 1;
     if (s.mourn > 0) s.mourn -= 1;
+    if (s.festJoy > 0) s.festJoy -= 1;
     let target = 55 + Math.min(30, joy * 1.5) + (s.res.food > pop * 3 ? 10 : 0) - (hungry ? 15 + 30 * hungry / pop : 0) - (pop > housing ? 15 : 0)
-      + (s.tavernJoy > 0 ? 12 : 0) - (s.mourn > 0 ? (s.buildings.some(b => b.type === 'memorial') ? 3 : 8) : 0);
+      + (s.tavernJoy > 0 ? 12 : 0) + (s.festJoy > 0 ? 15 : 0) - (s.mourn > 0 ? (s.buildings.some(b => b.type === 'memorial') ? 3 : 8) : 0);
     target = Math.max(0, Math.min(100, target));
     s.happiness += (target - s.happiness) * 0.05;
     this.merchantTick();
@@ -1178,13 +1321,21 @@ export class Sim {
     // weather: the occasional rain shower
     const wx = s.weather || (s.weather = { rain: false, t: 60 });
     if ((wx.t -= 1) <= 0) {
-      if (wx.rain) { wx.rain = false; wx.t = 180 + this.rng() * 260; wx.rainbow = 30; this.emit('weather', false); }
-      else if (this.rng() < 0.5) { wx.rain = true; wx.t = 45 + this.rng() * 60; s.stats.rains = (s.stats.rains || 0) + 1; this.emit('weather', true); this.log('A gentle rain falls. Crops grow faster.'); }
+      if (wx.rain) { wx.rain = false; wx.t = 180 + this.rng() * 260; wx.rainbow = this.seasonIdx() === 3 ? 0 : 30; this.emit('weather', false); }
+      else if (this.rng() < 0.5) {
+        wx.rain = true; wx.t = 45 + this.rng() * 60; this.emit('weather', true);
+        if (this.seasonIdx() === 3) this.log('Snow is falling softly.');
+        else { s.stats.rains = (s.stats.rains || 0) + 1; this.log('A gentle rain falls. Crops grow faster.'); }
+      }
       else wx.t = 90 + this.rng() * 120;
     }
     if (wx.rainbow > 0) wx.rainbow -= 1;
     // production flow history (10-second buckets)
-    if (++this.flowT >= 10) { this.flowT = 0; this.flowHist.push(this.flow); this.flow = {}; if (this.flowHist.length > 6) this.flowHist.shift(); }
+    if (++this.flowT >= 10) {
+      this.flowT = 0; this.flowHist.push(this.flow); this.flow = {}; if (this.flowHist.length > 6) this.flowHist.shift();
+      this.bflowHist.push(this.bflow); this.bflow = new Map(); if (this.bflowHist.length > 6) this.bflowHist.shift();
+    }
+    this.calendar();
     this.lifeCycle();
     // night falls: beasts may stir
     const f = this.dayFrac();
@@ -1198,13 +1349,14 @@ export class Sim {
       const sid = this.homeWithRoom();
       const e = W.entry;
       const v = this.spawnVillager(sid, toWorld(e.x), toWorld(e.z), { age: 18 + this.rng() * 26 });
-      this.log(`${v.name} moved to ${SETTLEMENTS.find(o => o.id === sid).name}.`);
+      this.log(`${v.name} moved to ${this.sname(sid)}.`);
       this.emit('toast', `${v.name.split(' ')[0]} joined the village!`, 'person');
     }
-    // berries regrow
+    // berries regrow (slowly under the snow)
+    const berryK = this.season().berries;
     for (let i = 0; i < W.bushes.length; i++) {
       const b = W.bushes[i];
-      if (b.alive && !b.ripe && (b.regrow -= 1) <= 0) { b.ripe = true; this.emit('bush', i); }
+      if (b.alive && !b.ripe && (b.regrow -= berryK) <= 0) { b.ripe = true; this.emit('bush', i); }
     }
     // saplings grow
     if ((s.time | 0) % 3 === 0) for (let i = this.origTrees; i < W.trees.length; i++) {
@@ -1219,6 +1371,38 @@ export class Sim {
       if (((W.wear[i] * 10) | 0) !== q) this.emit('tile', i);
     }
     this.emit('second');
+  }
+
+  // seasons turning, festival announcements and the festival itself, gift chests
+  calendar() {
+    const s = this.s, si = this.seasonIdx(), f = this.dayFrac();
+    if (s.seasonSeen === undefined) s.seasonSeen = si;
+    const seen = s.stats.seenSeasons || (s.stats.seenSeasons = []);
+    if (!seen.includes(si)) seen.push(si);
+    s.stats.seasons = seen.length;
+    if (si !== s.seasonSeen) {
+      s.seasonSeen = si;
+      const sea = SEASONS[si];
+      this.log(`${sea.name} has arrived. ${sea.blurb}`);
+      this.emit('toast', `${sea.name} has arrived! ${sea.blurb}`, sea.icon);
+      if (si === 3) { s.weather = { rain: true, t: 80 }; this.emit('weather', true); }    // the first snowfall
+      this.emit('season', sea);
+    }
+    const fest = this.festivalToday(), key = this.dayNum();
+    if (fest && f >= 0.24 && s.festAnnounced !== key) {
+      s.festAnnounced = key;
+      this.log(`${fest.name} tonight! ${fest.desc}`);
+      this.emit('toast', `${fest.name} tonight! Everyone gathers at the campfire at dusk.`, fest.icon);
+    }
+    const on = !!this.festivalActive();
+    if (on && !s.fest) { s.fest = { id: fest.id, day: key }; this.emit('festival', fest); this.emit('sfx', 'level'); }
+    if (!on && s.fest) { const done = Object.values(FESTIVALS).find(o => o.id === s.fest.id); s.fest = null; if (done) this.endFestival(done); }
+    // a gift chest every day or two, never more than two waiting
+    const ch = s.chests || (s.chests = []);
+    if ((s.chestTimer = (s.chestTimer ?? 150) - 1) <= 0) {
+      s.chestTimer = 220 + this.rng() * 240;
+      if (ch.length < 2 && this.dayNum() >= 1) this.spawnChest();
+    }
   }
 
   // ── life: ageing, partners, babies, growing up, retiring, passing away ──
@@ -1271,6 +1455,7 @@ export class Sim {
       st.births = (st.births || 0) + 1;
       this.log(`${a.name.split(' ')[0]} and ${b.name.split(' ')[0]} welcomed baby ${kid.name}!`);
       this.emit('toast', `A baby was born — welcome, ${kid.name.split(' ')[0]}!`, 'heart');
+      this.emit('birth', kid, a, b);
       this.emit('sfx', 'done');
     }
   }
@@ -1411,6 +1596,8 @@ export class Sim {
       case 'unlock': return this.s.unlocked[q.key] ? 1 : 0;
       case 'births': return st.births || 0;
       case 'spells': return st.spells || 0;
+      case 'chests': return st.chests || 0;
+      case 'festivals': return st.festivals || 0;
       case 'synergy': return this.s.buildings.some(b => b.built && this.synergy(b).list.some(r => r.from === q.key)) ? 1 : 0;
     }
     return 0;
@@ -1545,6 +1732,9 @@ export class Sim {
     }
     for (const k of Object.keys(GOODS)) if (s.res[k] === undefined) s.res[k] = 0;
     s.magic = s.magic || { mana: 0, known: [], study: 0, cds: {} };
+    s.chests = s.chests || []; s.tokens = s.tokens || {}; s.names = s.names || {};
+    s.fest = null;
+    for (const v of s.villagers) v.dancing = false;
     s.beasts = [];
     for (const v of s.villagers) { v.asleep = null; v.indoors = false; v.onTower = false; }
     for (const k of SELLABLE) if (s.sell[k] === undefined) s.sell[k] = false;

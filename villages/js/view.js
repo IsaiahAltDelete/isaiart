@@ -4,13 +4,18 @@ import { N, HALF, idx, tileX, tileZ, T_WATER, T_SAND, toWorld } from './world.js
 import { fbm, mulberry32, hash2 } from './rng.js';
 import { pineGeo, roundGeo, stumpGeo, rockGeo, bushGeo, berriesGeo } from './models.js';
 import { iconImage } from './icons.js';
+import { snowPatch, snowify } from './snow.js';
 
 const CH = 16;               // chunk size for instanced forest culling
 const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpV = new THREE.Vector3(), tmpS = new THREE.Vector3(), tmpC = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0);
 
 export const timeUniform = { value: 0 };
-function swayMaterial(base) {
+export const iceUniform = { value: 0 };
+// Trees sway in the breeze. The instance colour is the tree's leaf colour for
+// the season (green, blossom, autumn gold, bare winter twigs); trunks keep
+// their own brown. Leaves are told apart from bark by their greener vertex colour.
+function swayMaterial() {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
   m.onBeforeCompile = sh => {
     sh.uniforms.uTime = timeUniform;
@@ -20,15 +25,38 @@ function swayMaterial(base) {
         float sw = max(position.y - 0.35, 0.0);
         transformed.x += sin(uTime * 1.4 + ph) * 0.035 * sw;
         transformed.z += cos(uTime * 1.1 + ph) * 0.025 * sw;
+      #endif`).replace('#include <color_vertex>', `vColor = color;
+      #ifdef USE_INSTANCING_COLOR
+        float leaf = step(color.r * 1.15, color.g);
+        float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
+        vColor = mix(color * mix(vec3(1.0), instanceColor, 0.12), instanceColor * (0.62 + lum * 1.35), leaf);
       #endif`);
+    snowPatch(sh, false, 0.5, 0.86, 0.82);   // snow only on the flatter tops, so trees keep their shape
   };
   return m;
 }
+
+// seasonal leaf colours: pines stay evergreen, round trees blossom, turn and go bare
+const LEAF = {
+  pine: [0x4aa44c, 0x3a8c42, 0x34813f, 0x2e6d3e],
+  round: [[0xf4b3c9, 0xf7eef2, 0x84c855, 0x7cc24e], [0x5aab3e], [0xe0702a, 0xd8a62c, 0xc4442e, 0x9aa83a], [0x8d7c69, 0x7f705f]],
+};
+const _la = new THREE.Color(), _lb = new THREE.Color();
+export function leafColor(kind, tint, si, out) {
+  if (kind === 0) return out.setHex(LEAF.pine[si]);
+  const list = LEAF.round[si];
+  if (si === 0) return out.setHex(tint < 0.22 ? list[0] : tint < 0.34 ? list[1] : tint < 0.7 ? list[2] : list[3]);
+  if (si === 2) return out.setHex(list[Math.min(3, (tint * 4.4) | 0)]);
+  return out.setHex(list[(tint * list.length) | 0] ?? list[0]);
+}
+// grass hue / saturation / lightness per season
+const GRASS = [[0.275, 0.6, 0.44], [0.262, 0.55, 0.42], [0.19, 0.5, 0.42], [0.22, 0.28, 0.45]];
 
 export class View {
   constructor(canvas, world, quality = 'high') {
     this.world = world;
     this.canvas = canvas;
+    this.season = { a: 0, b: 0, k: 1 };    // blend from season a to season b
     this.quality = quality;
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.maxRatio = Math.min(devicePixelRatio, quality === 'high' ? 2 : quality === 'medium' ? 1.5 : 1);
@@ -105,7 +133,7 @@ export class View {
     const uv = new Float32Array(N * N * 12);
     for (let k = 0; k < N * N * 6; k++) { uv[k * 2] = pos[k * 3] * 0.32; uv[k * 2 + 1] = pos[k * 3 + 2] * 0.32; }
     g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    const m = this.terrain = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: groundTex() }));
+    const m = this.terrain = new THREE.Mesh(g, snowify(new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: groundTex() }), true));
     m.receiveShadow = true;
     this.scene.add(m);
   }
@@ -117,7 +145,8 @@ export class View {
     const n = fbm(x * 0.09, z * 0.09, W.seed + 77);
     if (t === T_SAND) out.setHex(0xe3cf92);
     else {
-      out.setHSL(0.27 + n * 0.04, 0.55, 0.42 + n * 0.1);
+      const { a, b, k } = this.season, A = GRASS[a], B = GRASS[b];
+      out.setHSL(A[0] + (B[0] - A[0]) * k + n * 0.04, A[1] + (B[1] - A[1]) * k, A[2] + (B[2] - A[2]) * k + n * 0.1);
       if (W.tree[i] >= 0) out.multiplyScalar(0.82);
     }
     if (W.paved[i]) {
@@ -177,7 +206,9 @@ export class View {
     m.onBeforeCompile = sh => {
       sh.uniforms.uTime = timeUniform;
       sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
-        transformed.y += sin(position.x * 0.9 + uTime * 1.3) * 0.04 + cos(position.z * 1.1 + uTime * 1.1) * 0.04;`);
+        transformed.y += (sin(position.x * 0.9 + uTime * 1.3) * 0.04 + cos(position.z * 1.1 + uTime * 1.1) * 0.04) * (1.0 - uIce);`);
+      sh.uniforms.uIce = iceUniform;
+      sh.vertexShader = 'uniform float uIce;\n' + sh.vertexShader;
     };
     const water = this.water = new THREE.Mesh(geo, m);
     water.position.y = -0.18; water.receiveShadow = true;
@@ -192,7 +223,7 @@ export class View {
     const pg = new THREE.CylinderGeometry(1, 1, 0.02, 9, 1, false, 0.4, Math.PI * 2 - 0.8);
     const pm = new THREE.InstancedMesh(pg, new THREE.MeshLambertMaterial({ color: 0x5aa83c, flatShading: true }), pads.length);
     pads.forEach(([x, z, s, r], k) => { tmpQ.setFromAxisAngle(UP, r); pm.setMatrixAt(k, tmpM.compose(tmpV.set(x, -0.12, z), tmpQ, tmpS.set(s, 1, s))); });
-    this.scene.add(pm);
+    this.scene.add(pm); this.pads = pm;
   }
 
   // little grass tufts and wildflowers scattered over open meadow
@@ -212,7 +243,7 @@ export class View {
       if (r < 0.32) spots.push(i); else if (r < 0.4) flowers.push(i);
     }
     const mk = (geo, list, colorFn) => {
-      const im = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ flatShading: true }), list.length);
+      const im = new THREE.InstancedMesh(geo, snowify(new THREE.MeshLambertMaterial({ flatShading: true })), list.length);
       im.userData.map = new Int32Array(N * N).fill(-1);
       im.userData.mats = [];
       list.forEach((i, k) => {
@@ -228,6 +259,7 @@ export class View {
       return im;
     };
     this.tufts = mk(tGeo, spots, i => tmpC.setHSL(0.26 + fbm(tileX(i) * 0.09, tileZ(i) * 0.09, W.seed + 77) * 0.05, 0.6, 0.38));
+    this.tuftTiles = spots;
     const pal = [0xf06292, 0xffd54f, 0xffffff, 0xba68c8, 0x64b5f6, 0xff8a65];
     this.flowers = mk(fGeo, flowers, () => tmpC.setHex(pal[(rng() * pal.length) | 0]));
     for (let i = 0; i < N * N; i++) { this.updateGrass(i); if (W.paved[i]) this.updatePave(i); }
@@ -304,7 +336,7 @@ export class View {
   buildSkirt() {
     // forest floor beyond the map edge (four strips framing the square map)
     // plus a ring of decorative trees so the world never ends in a cliff
-    const m = new THREE.MeshLambertMaterial({ color: 0x4d8a38 });
+    const m = this.skirtMat = snowify(new THREE.MeshLambertMaterial({ color: 0x4d8a38 }));
     const F = 260;
     for (const [w, d, x, z] of [[2 * F, F, 0, -HALF - F / 2], [2 * F, F, 0, HALF + F / 2], [F, N, -HALF - F / 2, 0], [F, N, HALF + F / 2, 0]]) {
       const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2), m);
@@ -318,16 +350,18 @@ export class View {
       if (rng() > 0.8) continue;
       spots[rng() < 0.55 ? 0 : 1].push([x - HALF + 0.5 + (rng() - 0.5) * 0.6, z - HALF + 0.5 + (rng() - 0.5) * 0.6, 0.85 + rng() * 0.6, rng() * 6, rng()]);
     }
+    this.skirtTrees = [];
     spots.forEach((list, kind) => {
       const im = new THREE.InstancedMesh(kind ? this.roundG : this.pineG, this.treeMat, list.length);
       list.forEach(([x, z, s, r, t], k) => {
         tmpQ.setFromAxisAngle(UP, r);
         im.setMatrixAt(k, tmpM.compose(tmpV.set(x, 0.88, z), tmpQ, tmpS.set(s, s * (0.9 + t * 0.3), s)));
-        im.setColorAt(k, tmpC.setRGB(0.78 + t * 0.25, 0.84 + t * 0.2, 0.8 + t * 0.15));
       });
+      im.userData = { kind, tints: list.map(p => p[4]) };
       im.receiveShadow = true;
-      this.scene.add(im);
+      this.scene.add(im); this.skirtTrees.push(im);
     });
+    this.colorSkirt();
   }
 
   // ── forest (instanced, chunked so off-screen chunks are culled) ──
@@ -335,7 +369,7 @@ export class View {
     const W = this.world;
     this.pineG = pineGeo(); this.roundG = roundGeo();
     this.treeMat = swayMaterial();
-    const plain = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    const plain = snowify(new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
     const CN = N / CH;
     this.chunks = [];
     const counts = new Array(CN * CN * 2).fill(0);
@@ -399,12 +433,54 @@ export class View {
       const s = t.s * Math.max(0.05, t.growth);
       tmpQ.setFromAxisAngle(UP, t.rot);
       im.setMatrixAt(t.slot, tmpM.compose(tmpV.set(t.x, this.world.heightAt(t.x, t.z) - 0.02, t.z), tmpQ, tmpS.set(s, s * (0.9 + t.tint * 0.3), s)));
-      if (t.marked) tmpC.setRGB(1.5, 0.75, 0.55);
-      else tmpC.setRGB(0.82 + t.tint * 0.28, 0.88 + t.tint * 0.2, 0.82 + t.tint * 0.12);
+      this.treeColor(t, tmpC);
       im.setColorAt(t.slot, tmpC);
       im.instanceColor.needsUpdate = true;
     }
     im.instanceMatrix.needsUpdate = true;
+  }
+  // the season's leaf colour for a tree, blended while one season turns into the next
+  treeColor(t, out) {
+    if (t.marked) return out.setHex(0xe4794e);
+    const { a, b, k } = this.season;
+    leafColor(t.kind, t.tint, b, out);
+    if (k < 1) { leafColor(t.kind, t.tint, a, _la); out.lerp(_la, 1 - k); }
+    return out.multiplyScalar(0.86 + t.tint * 0.26);
+  }
+  colorSkirt() {
+    const { a, b, k } = this.season;
+    for (const im of this.skirtTrees) {
+      im.userData.tints.forEach((t, j) => {
+        leafColor(im.userData.kind, t, b, tmpC);
+        if (k < 1) { leafColor(im.userData.kind, t, a, _lb); tmpC.lerp(_lb, 1 - k); }
+        im.setColorAt(j, tmpC.multiplyScalar(0.8 + t * 0.25));
+      });
+      im.instanceColor.needsUpdate = true;
+    }
+  }
+  // repaint everything that changes colour with the seasons
+  setSeason(a, b, k) {
+    const S = this.season;
+    if (S.a === a && S.b === b && Math.abs(S.k - k) < 1e-3) return;
+    Object.assign(S, { a, b, k });
+    const W = this.world;
+    for (let ti = 0; ti < W.trees.length; ti++) { const t = W.trees[ti]; if (t.alive && t.slot !== undefined) { this.treeColor(t, tmpC); this.chunkFor(t).setColorAt(t.slot, tmpC); } }
+    for (const im of this.chunks) if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    this.colorSkirt();
+    const c = new THREE.Color();
+    for (let i = 0; i < N * N; i++) { this.tileColor(i, c); this.tc.set([c.r, c.g, c.b], i * 3); }
+    for (let i = 0; i < N * N; i++) this.writeTile(i);
+    this.terrainColor.needsUpdate = true;
+    // tufts: fresh green → golden → straw
+    const tuftHSL = [[0.27, 0.62, 0.4], [0.26, 0.6, 0.38], [0.15, 0.55, 0.42], [0.13, 0.25, 0.5]];
+    const A = tuftHSL[a], B = tuftHSL[b];
+    this.tuftTiles.forEach((i, j) => this.tufts.setColorAt(j, c.setHSL(A[0] + (B[0] - A[0]) * k + fbm(tileX(i) * 0.09, tileZ(i) * 0.09, W.seed + 77) * 0.05, A[1] + (B[1] - A[1]) * k, A[2] + (B[2] - A[2]) * k)));
+    this.tufts.instanceColor.needsUpdate = true;
+    const sk = [[0.28, 0.45, 0.36], [0.27, 0.42, 0.35], [0.2, 0.42, 0.34], [0.22, 0.2, 0.4]];
+    const SA = sk[a], SB = sk[b];
+    this.skirtMat.color.setHSL(SA[0] + (SB[0] - SA[0]) * k, SA[1] + (SB[1] - SA[1]) * k, SA[2] + (SB[2] - SA[2]) * k);
+    // wildflowers: plenty in spring and summer, gone under the snow
+    this.flowers.visible = b !== 3 || k < 0.5;
   }
   addStump(x, z) {
     const u = this.stumps.userData;
