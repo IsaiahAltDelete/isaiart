@@ -4,7 +4,7 @@ import * as THREE from '../vendor/three.module.min.js';
 
 const matCache = new Map();
 export function mat(color, opts = {}) {
-  const key = color + JSON.stringify(opts);
+  const key = color + (opts.map ? opts.map.uuid : '') + JSON.stringify({ ...opts, map: undefined });
   if (!matCache.has(key)) {
     const m = opts.basic
       ? new THREE.MeshBasicMaterial({ color, transparent: !!opts.opacity, opacity: opts.opacity ?? 1 })
@@ -36,12 +36,60 @@ export function prismGeo(w, h, d) {
     hw, 0, -hd, -hw, 0, -hd, -hw, h, 0, hw, 0, -hd, -hw, h, 0, hw, h, 0,
     -hw, 0, -hd, hw, 0, -hd, hw, 0, hd, -hw, 0, -hd, hw, 0, hd, -hw, 0, hd,
   ];
+  // UVs in world units (u along the ridge, v down the slope) so the shingle
+  // texture keeps the same scale on every roof size
+  const sl = Math.hypot(hd, h), U = 2.2, V = 3.2;
+  const uv = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    -hw * U, 0, hw * U, 0, hw * U, sl * V, -hw * U, 0, hw * U, sl * V, -hw * U, sl * V,
+    hw * U, 0, -hw * U, 0, -hw * U, sl * V, hw * U, 0, -hw * U, sl * V, hw * U, sl * V,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  ];
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.computeVertexNormals();
   return g;
 }
-export const roof = (w, h, d, c, x = 0, y = 0, z = 0, ry = 0) => at(mesh(prismGeo(w, h, d), c), x, y, z, ry);
+
+// soft shingle rows: a white tile drawn on canvas, tinted by each roof colour
+let shingleTex = null;
+function shingles() {
+  if (shingleTex) return shingleTex;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 64);
+  for (let row = 0; row < 2; row++) {
+    const y = row * 32, off = row ? 16 : 0;
+    // darker band at the lower lip of each row, like overlapping tiles
+    const grd = g.createLinearGradient(0, y, 0, y + 32);
+    grd.addColorStop(0, 'rgba(0,0,0,0)'); grd.addColorStop(0.72, 'rgba(0,0,0,0.04)'); grd.addColorStop(0.9, 'rgba(0,0,0,0.16)'); grd.addColorStop(1, 'rgba(0,0,0,0.26)');
+    g.fillStyle = grd; g.fillRect(0, y, 64, 32);
+    g.fillStyle = 'rgba(0,0,0,0.13)';
+    for (let x = off; x < 64 + 32; x += 32) g.fillRect((x % 64) - 1, y + 3, 2, 26);
+    g.fillStyle = 'rgba(255,255,255,0.10)'; g.fillRect(0, y, 64, 3);
+  }
+  shingleTex = new THREE.CanvasTexture(cv);
+  shingleTex.wrapS = shingleTex.wrapT = THREE.RepeatWrapping;
+  shingleTex.colorSpace = THREE.SRGBColorSpace;
+  shingleTex.anisotropy = 4;
+  return shingleTex;
+}
+export function roofMat(color) { return mat(color, { map: shingles() }); }
+
+// a gable roof with shingles, an eave lip and a darker ridge cap
+export function roof(w, h, d, c, x = 0, y = 0, z = 0, ry = 0) {
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry;
+  const m = mesh(prismGeo(w, h, d), roofMat(c)); g.add(m);
+  const dark = new THREE.Color(c).multiplyScalar(0.62).getHex();
+  const ridge = mesh(new THREE.BoxGeometry(w + 0.06, 0.08, 0.14), dark); ridge.position.y = h - 0.01; g.add(ridge);
+  const sl = Math.atan2(h, d / 2);
+  for (const s of [-1, 1]) {
+    const lip = mesh(new THREE.BoxGeometry(w + 0.02, 0.05, 0.1), dark);
+    lip.position.set(0, 0.02, s * (d / 2 - 0.03)); lip.rotation.x = s * sl; g.add(lip);
+  }
+  return g;
+}
 
 let stripeTex = null;
 function stripes(a = '#d9433b', b = '#fbf3e4') {
@@ -52,6 +100,8 @@ function stripes(a = '#d9433b', b = '#fbf3e4') {
   stripeTex = new THREE.CanvasTexture(cv);
   stripeTex.colorSpace = THREE.SRGBColorSpace;
   stripeTex.magFilter = THREE.NearestFilter;
+  stripeTex.wrapS = stripeTex.wrapT = THREE.RepeatWrapping;
+  stripeTex.repeat.set(0.35, 1);
   return stripeTex;
 }
 
@@ -85,7 +135,7 @@ export class Smoke {
   constructor(parent, x, y, z, color = 0xeeeeee) {
     this.puffs = [];
     for (let i = 0; i < 5; i++) {
-      const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), new THREE.MeshLambertMaterial({ color, transparent: true, opacity: 0.7, flatShading: true }));
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x606060, transparent: true, opacity: 0.5, depthWrite: false }));
       m.userData.t = i / 5; parent.add(m); this.puffs.push(m);
     }
     this.o = new THREE.Vector3(x, y, z); this.on = true;
@@ -96,7 +146,7 @@ export class Smoke {
       const t = p.userData.t;
       p.position.set(this.o.x + Math.sin(t * 6 + p.id) * 0.08 + t * 0.25, this.o.y + t * 1.3, this.o.z);
       p.scale.setScalar(0.5 + t * 1.6);
-      p.material.opacity = this.on ? 0.65 * (1 - t) : 0;
+      p.material.opacity = this.on ? 0.5 * Math.sin(Math.min(1, t * 4) * Math.PI / 2) * (1 - t) : 0;
     }
   }
 }

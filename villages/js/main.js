@@ -33,6 +33,7 @@ class Game {
     this.thumbs = {};
     this.effects = [];
     this.halos = [];
+    this.screenSprites = new Set();
     this.cbars = new Map();
   }
 
@@ -125,8 +126,8 @@ class Game {
     group.rotation.y = b.rot * Math.PI / 2;
     root.userData.ent = { kind: 'b', b };
     const top = new THREE.Box3().setFromObject(group).max.y - root.position.y;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture('hammer'), transparent: true, depthWrite: false }));
-    sp.scale.set(0.75, 0.875, 1); sp.position.y = Math.max(1.4, top + 0.55); sp.visible = false; sp.renderOrder = 5;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture('hammer'), transparent: true, depthWrite: false, sizeAttenuation: false }));
+    sp.userData.px = 38; sp.position.y = Math.max(1.4, top + 0.55); sp.visible = false; sp.renderOrder = 5;
     root.add(sp);
     const vis = { b, root, group, anim, sprite: sp, icon: null, scaffold: null, phase: Math.random() * 6, pop: 0 };
     this.addHalos(group);
@@ -136,6 +137,7 @@ class Game {
     }
     this.view.objects.add(root);
     this.bvis.set(b.id, vis);
+    this.screenSprites.add(sp);
     this.applyBuild(vis);
     if (b.type === 'farm') this.applyFarm(vis);
   }
@@ -209,6 +211,7 @@ class Game {
     if (!vis) return;
     this.view.objects.remove(vis.root);
     this.bvis.delete(b.id);
+    this.screenSprites.delete(vis.sprite);
     const gone = new Set(); vis.root.traverse(o => gone.add(o)); this.halos = this.halos.filter(h => !gone.has(h.m));
     if (this.selected?.b === b) this.select(null);
   }
@@ -274,7 +277,7 @@ class Game {
     const mood = v.hungry ? 'apple' : (this.night > 0.7 && anim === 'rest') ? 'zzz' : null;
     if (mood !== m.mood) {
       m.mood = mood;
-      if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false })); m.bubble.scale.set(0.34, 0.4, 1); m.bubble.position.y = 1.0; m.group.add(m.bubble); }
+      if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false })); m.bubble.userData.px = 26; m.bubble.position.y = 1.0; m.group.add(m.bubble); this.screenSprites.add(m.bubble); }
       if (m.bubble) { m.bubble.visible = !!mood; if (mood) { m.bubble.material.map = bubbleTexture(mood); m.bubble.material.needsUpdate = true; } }
     }
     if (m.bubble?.visible) m.bubble.position.y = 0.95 + Math.sin(time * 3 + m.phase) * 0.03;
@@ -500,7 +503,7 @@ class Game {
       const segs = Math.round(r * 2.4), pos = [], W = this.sim.world;
       for (let i = 0; i < segs; i++) {
         const a0 = i / segs * Math.PI * 2, a1 = (i + 0.55) / segs * Math.PI * 2;
-        for (const [a, w] of [[a0, -0.09], [a0, 0.09], [a1, -0.09], [a1, 0.09]]) {
+        for (const [a, w] of [[a0, -0.17], [a0, 0.17], [a1, -0.17], [a1, 0.17]]) {
           const px = x + Math.cos(a) * (r + w), pz = z + Math.sin(a) * (r + w);
           pos.push(px, Math.max(W.heightAt(px, pz), -0.1) + 0.18, pz);
         }
@@ -510,13 +513,42 @@ class Game {
       const ring = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xfff3d0, transparent: true, opacity: 0.95, depthTest: false, side: THREE.DoubleSide }));
       ring.renderOrder = 8;
       ring.userData = { r, x, z };
+      // a dark outline band underneath so the dashes read on grass and trees
+      const ob = [];
+      for (let i = 0; i <= 96; i++) for (const w of [-0.26, 0.26]) {
+        const a = i / 96 * Math.PI * 2, px = x + Math.cos(a) * (r + w), pz = z + Math.sin(a) * (r + w);
+        ob.push(px, Math.max(W.heightAt(px, pz), -0.1) + 0.16, pz);
+      }
+      const oi = []; for (let i = 0; i < 96; i++) { const o = i * 2; oi.push(o, o + 2, o + 1, o + 1, o + 2, o + 3); }
+      const og = new THREE.BufferGeometry(); og.setAttribute('position', new THREE.Float32BufferAttribute(ob, 3)); og.setIndex(oi);
+      const outline = new THREE.Mesh(og, new THREE.MeshBasicMaterial({ color: 0x3b2410, transparent: true, opacity: 0.45, depthTest: false, side: THREE.DoubleSide }));
+      outline.renderOrder = 7; ring.add(outline);
       const rig = this.view.rig, lx = x - Math.sin(rig.yaw) * r, lz = z - Math.cos(rig.yaw) * r;
       const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex('Work range'), transparent: true, depthTest: false }));
-      lab.scale.set(5.6, 1.4, 1); lab.position.set(lx, Math.max(W.heightAt(lx, lz), 0) + 1.0, lz); lab.renderOrder = 11;
-      ring.add(lab);
+      lab.scale.set(5.6, 1.4, 1); lab.position.set(lx, Math.max(W.heightAt(lx, lz), 0) + 0.9, lz); lab.renderOrder = 11;
+      ring.add(lab); ring.userData.label = lab;
       this.rangeRing = ring; this.view.scene.add(ring);
     }
     this.rangeRing.visible = true;
+  }
+
+  // keep the ring's label on a part of the ring that's actually on screen
+  placeRangeLabel() {
+    const ring = this.rangeRing, lab = ring.userData.label; if (!lab) return;
+    const { r, x, z } = ring.userData, W = this.sim.world, rect = this.view.canvas.getBoundingClientRect();
+    const sheet = document.querySelector('#info:not(.hidden)')?.getBoundingClientRect();
+    const top = rect.top + (innerWidth < 760 ? 330 * 0.5 + 20 : 80), bottom = (sheet && innerWidth < 760 ? sheet.top : rect.bottom - 110) - 30;
+    let best = null, bd = 1e9;
+    const cx = rect.left + rect.width / 2, cy = (top + bottom) / 2;
+    for (let i = 0; i < 64; i++) {
+      const a = i / 64 * Math.PI * 2, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+      const p = this.view.project(tmpV.set(px, Math.max(W.heightAt(px, pz), 0) + 0.9, pz));
+      if (!p.vis || p.x < rect.left + 60 || p.x > rect.right - 60 || p.y < top || p.y > bottom) continue;
+      const d = Math.hypot(p.x - cx, p.y - cy);
+      if (d < bd) { bd = d; best = [px, pz]; }
+    }
+    lab.visible = !!best;
+    if (best) lab.position.set(best[0], Math.max(W.heightAt(best[0], best[1]), 0) + 0.9, best[1]);
   }
 
   // ── placement ──
@@ -742,8 +774,14 @@ class Game {
     // measure the actual buildings along the camera's right and forward axes
     const rx = Math.cos(rig.yaw), rz = -Math.sin(rig.yaw), fx = -Math.sin(rig.yaw), fz = -Math.cos(rig.yaw);
     let a0 = 1e9, a1 = -1e9, c0 = 1e9, c1 = -1e9;
-    const pts = [[toWorld(c.x), toWorld(c.z), 2]];
+    let pts = [[toWorld(c.x), toWorld(c.z), 2]];
     for (const b of this.sim.s.buildings) if (b.sid === sid) { const p = this.sim.bCenter(b); pts.push([p.x, p.z, Math.max(p.w, p.d) / 2]); }
+    if (innerWidth < 760 && pts.length > 6) {
+      // phones frame the cosy core around the plaza; outlying fields can sit off-screen
+      const cx0 = toWorld(c.x), cz0 = toWorld(c.z);
+      pts.sort((p, q) => Math.hypot(p[0] - cx0, p[1] - cz0) - Math.hypot(q[0] - cx0, q[1] - cz0));
+      pts = pts.slice(0, Math.ceil(pts.length * 0.7));
+    }
     for (const [x, z, e] of pts) {
       const a = x * rx + z * rz, f = x * fx + z * fz;
       a0 = Math.min(a0, a - e); a1 = Math.max(a1, a + e); c0 = Math.min(c0, f - e); c1 = Math.max(c1, f + e);
@@ -751,10 +789,10 @@ class Game {
     const w = a1 - a0, h = c1 - c0;
     const vt = Math.tan(cam.fov * Math.PI / 360), ht = vt * (innerWidth / innerHeight);
     // usable fraction of the screen once the HUD is taken out
-    const useW = phone ? 0.9 : 0.72, useH = phone ? 0.66 : 0.7;
+    const useW = phone ? 1.0 : 0.72, useH = phone ? 0.7 : 0.7;
     // ground depth is stretched by the camera's tilt (~1.25x at our pitch)
     const fitW = (w / 2 + 1.5) / (ht * useW), fitH = (h / 2 + 1.5) / (vt * 1.25 * useH);
-    const dist = Math.max(phone ? 22 : 20, Math.min(62, Math.max(fitW, fitH)));
+    const dist = Math.max(phone ? 22 : 20, Math.min(phone ? 40 : 62, Math.max(fitW, fitH)));
     const k = phone ? dist * 0.05 : 0, side = phone ? dist * 0.03 : 0;
     const tx = (x0 + x1) / 2 - Math.sin(rig.yaw) * k + Math.cos(rig.yaw) * side, tz = (z0 + z1) / 2 - Math.cos(rig.yaw) * k - Math.sin(rig.yaw) * side;
     if (instant) Object.assign(rig, { tx, tz, dist });
@@ -937,6 +975,9 @@ class Game {
     for (const vis of this.bvis.values()) this.updateBVis(vis, dt, t);
     for (const v of sim.s.villagers) { const m = this.vvis.get(v.id); if (m) this.updateVVis(v, m, dt, t); }
     this.effects = this.effects.filter(f => f(dt));
+    // bubbles keep a constant on-screen size (px tall) however far you zoom
+    const cam = view.camera, pxK = Math.tan(cam.fov * Math.PI / 360) / (view.canvas.clientHeight / 2);
+    for (const sp of this.screenSprites) { const h = sp.userData.px * pxK; sp.scale.set(h * 0.857, h, 1); }
     this.life.update(dt, t, this.night, this.rainK || 0);
     this.updateCart(dt, t);
     this.drawBars();
@@ -951,7 +992,7 @@ class Game {
       tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px';
     } else tag.classList.add('hidden');
     if (this.place?.model) this.place.model.position.y = 0.08 + Math.sin(t * 4) * 0.06;
-    if (this.rangeRing?.visible) this.rangeRing.material.opacity = 0.75 + Math.sin(t * 3) * 0.2;
+    if (this.rangeRing?.visible) { this.rangeRing.material.opacity = 0.75 + Math.sin(t * 3) * 0.2; this.placeRangeLabel(); }
     if (this.selRing.visible) this.selRing.material.opacity = 0.65 + Math.sin(t * 4) * 0.25;
 
     ambient(dt * (this.night > 0.5 ? 0.2 : 1));
@@ -994,6 +1035,7 @@ class Game {
     const sunUp = Math.max(0, Math.sin((f - 0.22) / 0.56 * Math.PI));
     const light = f > 0.22 && f < 0.78 ? sunUp : 0;
     const night = this.night = 1 - Math.min(1, light * 2.2);
+    document.body.classList.toggle('night', night > 0.6);
     const v = this.view, rk = this.rainK || 0;
     // the sun by day, a cool moon by night
     v.sun.intensity = (0.35 + 2.2 * light) * (1 - rk * 0.55);

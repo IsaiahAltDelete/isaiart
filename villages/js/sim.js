@@ -55,6 +55,9 @@ export class Sim {
     this.unlock('meadow', true);
     const c = CENTERS.meadow;
     this.addBuilding('cottage', c.x + 2, c.z - 4, 0, true);
+    // a lived-in camp from the first frame
+    for (const [t, x, z, r] of [['bench', -3, 1, 1], ['bench', 1, 2, 0], ['hay', -3, -2, 0], ['flowers', 4, -1, 0], ['fence', 4, -5, 0], ['fence', 5, -5, 0], ['sign', -2, 3, 0], ['lantern', 2, 0, 0]])
+      if (this.checkPlace(t, c.x + x, c.z + z, r, -2).ok) this.addBuilding(t, c.x + x, c.z + z, r, true);
     for (let i = 0; i < 4; i++) this.spawnVillager('meadow', toWorld(c.x) + (i - 1.5) * 0.8, toWorld(c.z) + 2);
     this.log('Welcome to Meadowbrook! Build a Lumber Hut to get started.');
   }
@@ -167,7 +170,7 @@ export class Sim {
       const ei = idx(ex, ez);
       if (!inMap(ex, ez) || (W.type[ei] === T_WATER && !W.bridge[ei]) || (W.block[ei] && W.occ[ei] !== ignoreId) || W.rock[ei] >= 0) return { ok: false, why: 'The door needs open ground in front' };
     }
-    if (ignoreId < 0) {
+    if (ignoreId === -1) {   // -2 = free starter props: no cost or level check
       if (def.lvl && this.s.level < def.lvl) return { ok: false, why: `Needs level ${def.lvl}` };
       if (!this.canAfford(def.cost)) return { ok: false, why: 'Not enough resources' };
     }

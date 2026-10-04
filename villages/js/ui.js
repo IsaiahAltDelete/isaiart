@@ -299,7 +299,7 @@ export class UI {
       h += `<dt>Villagers</dt><dd>${pop}/${sim.housingIn(b.sid)}</dd><dt>Territory</dt><dd>${sim.settlementRadius(b.sid)} tiles</dd>`;
     }
     h += `</dl><div class="sub">${esc(def.desc || '')}</div>`;
-    const hint = { 'No trees within reach': 'Woodcutters only walk as far as the dashed ring. Build another Lumber Hut by the forest, or a Forester\'s Lodge to replant.',
+    const hint = { 'No trees within reach': 'Woodcutters only walk about 20 tiles from the hut (zoom out to see the dashed ring). Build another Lumber Hut by the forest, or a Forester\'s Lodge to replant.',
       'No boulders nearby': 'Miners have broken every boulder in range. Build a Quarry near rocks — Stonecrest is full of them.',
       'Waiting for berries': 'Bushes regrow in about a minute. More bushes in the ring means more food.',
       'Nothing to sell': 'Turn on more goods below, or wait until you have more than you keep in reserve.' }[b.status];
@@ -687,7 +687,9 @@ export class UI {
     if (/^Level \d+!/.test(msg)) this.tq = this.tq.filter(t => !/^Level \d+!/.test(t.msg));
     const done = / complete!$/.test(msg) && this.tq.find(t => t.done);
     if (done) { done.n++; done.msg = `${done.n} buildings complete!`; return; }
-    this.tq.push({ msg, icon, big, done: / complete!$/.test(msg), n: 1 });
+    const joined = / joined the village!$/.test(msg) && this.tq.find(t => t.joined);
+    if (joined) { joined.n++; joined.msg = `${joined.n} villagers joined!`; return; }
+    this.tq.push({ msg, icon, big, done: / complete!$/.test(msg), joined: / joined the village!$/.test(msg), n: 1 });
     if (!this.toastBusy) this.nextToast();
   }
   nextToast() {
