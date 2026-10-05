@@ -43,6 +43,9 @@ export const sfx = {
   level: () => [392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.3, { type: 'triangle', vol: 0.2, delay: i * 0.09 })),
   error: () => tone(200, 0.15, { type: 'sawtooth', vol: 0.08, slide: -60 }),
   pop: () => tone(420, 0.09, { type: 'sine', vol: 0.25, slide: 380 }),
+  chest: () => { noise(0.18, 0.18, 900); [784, 988, 1175, 1568, 1976].forEach((f, i) => tone(f, 0.35, { type: 'sine', vol: 0.13, delay: 0.12 + i * 0.07 })); },
+  firework: () => { tone(500, 0.6, { type: 'sine', vol: 0.03, slide: 900, attack: 0.05 }); noise(0.5, 0.22, 700, 0.62); noise(0.9, 0.08, 4000, 0.66); },
+  snow: () => [1319, 1568, 1976].forEach((f, i) => tone(f, 0.5, { type: 'sine', vol: 0.05, delay: i * 0.12 })),
   howl: () => { tone(380, 0.5, { type: 'sine', vol: 0.06, slide: 260, attack: 0.15 }); tone(640, 1.1, { type: 'sine', vol: 0.05, slide: -180, delay: 0.45, attack: 0.1 }); },
 };
 
@@ -83,6 +86,8 @@ const PIECES = {
   morning: { root: 60, scale: MAJOR, bpm: 84, meter: 4, prog: [0, 4, 5, 3, 0, 3, 4, 0], lead: 'piano', comp: 'harp', perc: 'shaker', bell: 0.25 },
   day:     { root: 65, scale: MAJOR, bpm: 100, meter: 4, prog: [0, 5, 3, 4, 0, 2, 3, 4], lead: 'harp', comp: 'piano', perc: 'full', bell: 0.15 },
   evening: { root: 67, scale: MAJOR, bpm: 78, meter: 3, prog: [0, 3, 1, 4, 0, 5, 3, 4], lead: 'flute', comp: 'waltz', perc: null, bell: 0.1 },
+  // a lively jig for festival evenings
+  festival: { root: 62, scale: [0, 2, 4, 5, 7, 9, 10], bpm: 150, meter: 3, prog: [0, 6, 0, 4, 0, 6, 3, 4], lead: 'flute', comp: 'waltz', perc: 'full', bell: 0.35 },
   night:   { root: 57, scale: MINOR, bpm: 60, meter: 4, prog: [0, 5, 2, 6, 0, 3, 5, 4], lead: 'piano', comp: 'pad', perc: null, bell: 0.3, sparse: true },
 };
 export function setMusic(on) { musicOn = on; if (on) startMusic(); else stopMusic(); }

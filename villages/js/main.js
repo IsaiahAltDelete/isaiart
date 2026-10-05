@@ -2,11 +2,12 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { Sim, defOf, isDecor, footprint, DAY, lvlOf, RANGE } from './sim.js';
 import { BEASTS } from './data.js';
-import { View, bubbleTexture, timeUniform } from './view.js';
-import { buildModel, scaffold, villagerModel, setTool, mat, C, pineGeo, stumpGeo, beastModel } from './models.js';
+import { View, bubbleTexture, timeUniform, iceUniform } from './view.js';
+import { buildModel, scaffold, villagerModel, setTool, mat, C, pineGeo, stumpGeo, beastModel, chestModel, bunting } from './models.js';
+import { snowUniform } from './snow.js';
 import { UI } from './ui.js';
 import { N, HALF, idx, toWorld, inMap, CENTERS, tileX, tileZ } from './world.js';
-import { SETTLEMENTS, BUILD_ORDER, DECOR_ORDER, GOODS } from './data.js';
+import { SETTLEMENTS, BUILD_ORDER, DECOR_ORDER, GOODS, SEASON_DAYS, DECOR } from './data.js';
 import { initAudio, sfx, setSound, ambient, rainSound, setMusic, setMood } from './audio.js';
 import { Life } from './life.js';
 
@@ -37,6 +38,8 @@ class Game {
     this.beasts = new Map();
     this.screenSprites = new Set();
     this.cbars = new Map();
+    this.chests = new Map();
+    this.fest = null; this.si = 0;
   }
 
   async init() {
@@ -53,7 +56,9 @@ class Game {
     await step(80);
     for (const b of this.sim.s.buildings) this.addBVis(b);
     for (const v of this.sim.s.villagers) this.addVVis(v);
-    for (const ic of ['hammer', 'wheat', 'person', 'wood', 'flour', 'stone', 'bag', 'axe', 'pick', 'coin', 'basket', 'alert', 'apple', 'zzz', 'lock', 'shop']) bubbleTexture(ic);
+    for (const ch of this.sim.s.chests) this.addChest(ch);
+    for (const ic of ['hammer', 'wheat', 'person', 'wood', 'flour', 'stone', 'bag', 'axe', 'pick', 'coin', 'basket', 'alert', 'apple', 'zzz', 'lock', 'shop', 'gift']) bubbleTexture(ic);
+    this.updateSeason();
     this.makeLockMarkers();
     this.life = new Life(this.view, this.sim);
     this.selRing = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.9, depthTest: false }));
@@ -261,10 +266,19 @@ class Game {
     if (a.blade && busy) a.blade.rotation.y += dt * 12;
     if (a.smoke) a.smoke.update(dt);
     if (a.fire) {
-      const f = 0.9 + Math.sin(time * 13 + vis.phase) * 0.08 + Math.sin(time * 7.3) * 0.06;
+      const big = a.light && this.fest ? 1.9 : 1;    // a roaring festival bonfire
+      const f = (0.9 + Math.sin(time * 13 + vis.phase) * 0.08 + Math.sin(time * 7.3) * 0.06) * big;
       a.fire.scale.set(f, f * (1 + Math.sin(time * 9) * 0.1), f);
-      if (a.light) { a.light.intensity = (1 + Math.sin(time * 11) * 0.18) * (0.25 + this.night * 5); a.light.distance = 5 + this.night * 5; }
+      if (a.light) { a.light.intensity = (1 + Math.sin(time * 11) * 0.18) * (0.25 + this.night * 5) * (big > 1 ? 1.6 : 1); a.light.distance = (5 + this.night * 5) * (big > 1 ? 1.5 : 1); }
     }
+    if (a.jets) for (const j of a.jets) {
+      j.t = (j.t + dt * 0.7) % 1;
+      const r = 0.06 + j.t * 0.42, y = 1.12 + Math.sin(j.t * Math.PI) * 0.32 - j.t * 0.82;
+      j.m.position.set(Math.cos(j.ang) * r, y, Math.sin(j.ang) * r); j.m.visible = this.sim.snowLevel() < 0.6;
+    }
+    if (a.fairy) for (const m of a.fairy) m.emissive.setRGB(0.1 + this.night * 0.5 + Math.sin(time * 2) * 0.05, 0.3 + this.night * 0.6, 0.4 + this.night * 0.6);
+    if (a.motes) for (const mo of a.motes) { const t = time * 0.7 + mo.ph; mo.m.position.set(Math.cos(t) * 0.3, 0.2 + Math.sin(t * 1.9) * 0.1 + 0.1, Math.sin(t) * 0.3); mo.m.visible = this.night > 0.3; }
+    if (a.swing) a.swing.rotation.x = Math.sin(time * 1.7 + vis.phase) * 0.45;
     if (a.animals) for (const an of a.animals) {
       an.t -= dt;
       const dx = an.tx - an.m.position.x, dz = an.tz - an.m.position.z, d = Math.hypot(dx, dz);
@@ -425,6 +439,12 @@ class Game {
         m.body.position.y = Math.abs(Math.sin(t * 7)) * 0.1; m.armL.rotation.z = -1.2 - Math.sin(t * 7) * 0.4; m.armR.rotation.z = 1.2 + Math.sin(t * 7) * 0.4;
       } else if (anim === 'cast') {
         m.armL.rotation.x = -2.6 + Math.sin(t * 3) * 0.2; m.armR.rotation.x = -2.6 - Math.sin(t * 3) * 0.2; m.body.position.y = Math.sin(t * 2) * 0.03;
+      } else if (anim === 'dance') {
+        const k = Math.sin(t * 7.5);
+        m.body.position.y = Math.abs(k) * 0.07;
+        m.body.rotation.y = Math.sin(t * 1.9) * 0.55;
+        m.armL.rotation.z = -2.5 - k * 0.35; m.armR.rotation.z = 2.5 - k * 0.35;
+        m.hipL.rotation.x = Math.max(0, k) * 0.7; m.hipR.rotation.x = Math.max(0, -k) * 0.7;
       } else if (anim === 'sleep') {
         // lying down (bedroll pose set above); breathe gently
         if (v.asleep === 'fire') m.body.position.z = -0.25 + Math.sin(t * 1.2) * 0.005;
@@ -460,6 +480,175 @@ class Game {
     }
     if (!on && this.wardMeshes) { for (const m of this.wardMeshes) this.view.fx.remove(m); this.wardMeshes = null; }
     if (this.wardMeshes) for (const m of this.wardMeshes) m.material.opacity = 0.03 + this.night * 0.09;
+  }
+
+  // ── gift chests ──
+  addChest(ch) {
+    const m = chestModel(), root = new THREE.Group(); root.add(m.group);
+    root.position.set(ch.x, this.sim.world.heightAt(ch.x, ch.z), ch.z);
+    m.group.rotation.y = ch.rot; root.scale.setScalar(1.3);
+    root.userData.ent = { kind: 'chest', ch };
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture('gift'), transparent: true, depthWrite: false, sizeAttenuation: false }));
+    sp.userData.px = 40; sp.position.y = 0.95; sp.renderOrder = 5; root.add(sp); this.screenSprites.add(sp);
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(1.0, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: glowTex(), color: 0xffd76a, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+    glow.position.y = 0.06; glow.renderOrder = 2; root.add(glow);
+    this.view.objects.add(root);
+    this.chests.set(ch.id, { root, lid: m.lid, sp, glow, ch, phase: Math.random() * 6, t: -1 });
+  }
+  updateChests(dt, time) {
+    for (const [id, c] of this.chests) {
+      if (c.t < 0) {
+        c.sp.position.y = 0.95 + Math.sin(time * 3 + c.phase) * 0.05;
+        c.glow.material.opacity = 0.45 + Math.sin(time * 2.4 + c.phase) * 0.2 + this.night * 0.25;
+        const p = this.view.project(c.sp.getWorldPosition(tmpV));
+        c.sp.visible = !!c.sp.material.map?.userData.ready && !this.hudHit(p.x, p.y);
+        continue;
+      }
+      c.t += dt;
+      c.lid.rotation.x = -Math.min(1, c.t / 0.45) * 1.9;
+      c.glow.material.opacity = Math.max(0, 0.9 - c.t * 0.35);
+      if (c.t > 2.4) { const k = Math.max(0, 1 - (c.t - 2.4) / 0.5); c.root.scale.setScalar(1.3 * k); }
+      if (c.t > 2.9) { this.view.objects.remove(c.root); this.chests.delete(id); }
+    }
+  }
+  openChest(ch) {
+    const c = this.chests.get(ch.id); if (!c || c.t >= 0) return;
+    const reward = this.sim.openChest(ch.id);
+    if (!reward) return;
+    c.t = 0; c.root.userData.ent = null; c.sp.visible = false; this.screenSprites.delete(c.sp);
+    sfx.chest();
+    // a fountain of golden sparkles
+    const x = ch.x, z = ch.z, y = this.sim.world.heightAt(x, z) + 0.4, n = 48;
+    const pos = new Float32Array(n * 3), cols = new Float32Array(n * 3), vel = [], tint = new THREE.Color();
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.28, sv = 0.6 + Math.random() * 1.4;
+      vel.push(new THREE.Vector3(Math.cos(a) * sv, 2.6 + Math.random() * 2.4, Math.sin(a) * sv));
+      pos.set([x, y, z], i * 3); tint.setHex([0xffd54f, 0xfff2b0, 0xffffff, 0xf9b8cf][i % 4]); cols.set([tint.r, tint.g, tint.b], i * 3);
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.32, map: glowTex(), vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    pts.frustumCulled = false; this.view.fx.add(pts);
+    let t = 0;
+    this.effects.push(dt => {
+      t += dt;
+      for (let i = 0; i < n; i++) { const v = vel[i]; v.y -= dt * 5; pos[i * 3] += v.x * dt; pos[i * 3 + 1] = Math.max(y - 0.3, pos[i * 3 + 1] + v.y * dt); pos[i * 3 + 2] += v.z * dt; }
+      geo.attributes.position.needsUpdate = true; pts.material.opacity = Math.max(0, 1 - t / 1.5);
+      if (t > 1.5) { this.view.fx.remove(pts); geo.dispose(); return false; }
+      return true;
+    });
+    const [sx, sy] = this.screenOf(x, z);
+    if (reward.kind === 'rare') {
+      this.ui.toast(`A rare treasure: ${reward.name}! Find it in Decorate — place it for free.`, 'gift', true);
+      this.ui.float(sx, sy - 20, reward.name, 'gift', 'tag');
+    } else {
+      this.ui.float(sx, sy - 20, `+${reward.n}`, GOODS[reward.res].icon);
+      this.ui.toast(`The chest held ${reward.n} ${GOODS[reward.res].name.toLowerCase()}!`, GOODS[reward.res].icon);
+    }
+  }
+
+  // ── festivals: garlands round every campfire, fireworks, sky lanterns ──
+  updateFestival(dt, time) {
+    const sim = this.sim, fest = sim.festivalActive();
+    if (this.fest && (!fest || this.fest.fest.id !== fest.id)) {
+      for (const g of this.fest.groups) this.view.objects.remove(g.group);
+      for (const f of this.fest.floaters) this.view.fx.remove(f.m);
+      this.fest = null;
+    }
+    if (fest && !this.fest) {
+      this.fest = { fest, groups: [], t: 0, next: 1.5, floaters: [] };
+      for (const b of sim.s.buildings) {
+        if (b.type !== 'campfire') continue;
+        const W = sim.world, c = sim.bCenter(b);
+        // poles only where they won't stand inside a building
+        const free = (x, z) => { const tx = Math.floor(c.x + x + HALF), tz = Math.floor(c.z + z + HALF); return inMap(tx, tz) && W.occ[idx(tx, tz)] < 0 && W.type[idx(tx, tz)] !== 1; };
+        const { group, anim } = bunting(fest.id, 3.3, 9, free);
+        group.position.set(c.x, this.bvis.get(b.id)?.root.position.y ?? 0, c.z);
+        this.view.objects.add(group); this.fest.groups.push({ group, anim, x: c.x, z: c.z });
+      }
+    }
+    const F = this.fest; if (!F) return;
+    F.t += dt;
+    for (const g of F.groups) for (const l of g.anim.lanterns) l.material.emissive.setRGB(0.5 + this.night * 0.6, 0.2 + this.night * 0.3, 0.02);
+    const id = F.fest.id, r = this.view.rig;
+    if ((F.next -= dt) <= 0 && F.groups.length) {
+      const g = F.groups[(Math.random() * F.groups.length) | 0];
+      const near = Math.hypot(g.x - r.tx, g.z - r.tz) < 30;
+      if (id === 'lantern') { F.next = 0.5 + Math.random() * 0.6; this.skyLantern(g.x, g.z); }
+      else if (id === 'harvest' || id === 'bonfire') { F.next = (this.night > 0.3 ? 1.1 : 3) + Math.random() * 1.4; this.firework(g.x, g.z, near); }
+      else { F.next = 0.35; }
+    }
+    F.floaters = F.floaters.filter(f => {
+      f.t += dt; f.m.position.y += dt * f.v; f.m.position.x += Math.sin(time * 0.6 + f.ph) * dt * 0.25; f.m.position.z += dt * 0.12;
+      const o = f.t < 1 ? f.t : f.t > 14 ? Math.max(0, 1 - (f.t - 14) / 3) : 1;
+      f.m.children[0].material.opacity = o; f.m.children[1].material.opacity = o * (0.55 + this.night * 0.45);
+      if (f.t > 17) { this.view.fx.remove(f.m); return false; }
+      return true;
+    });
+  }
+  skyLantern(x, z) {
+    const F = this.fest; if (F.floaters.length > 40) return;
+    const g = new THREE.Group(), a = Math.random() * 6.28, rr = 1.5 + Math.random() * 2;
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 0.16), new THREE.MeshBasicMaterial({ color: 0xffb35a, transparent: true })));
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xffa040, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    halo.scale.setScalar(1.1); g.add(halo);
+    g.position.set(x + Math.cos(a) * rr, this.sim.world.heightAt(x, z) + 1, z + Math.sin(a) * rr);
+    this.view.fx.add(g); F.floaters.push({ m: g, t: 0, v: 0.55 + Math.random() * 0.3, ph: Math.random() * 6 });
+  }
+  firework(x, z, near) {
+    // the camera looks steeply down, so bursts over the camera side of the plaza land mid-screen
+    const W = this.sim.world, yaw = this.view.rig.yaw, toCam = Math.random() * 3, side = (Math.random() - 0.5) * 8;
+    const ox = x + Math.sin(yaw) * toCam + Math.cos(yaw) * side, oz = z + Math.cos(yaw) * toCam - Math.sin(yaw) * side;
+    const y0 = W.heightAt(ox, oz) + 0.6, top = y0 + 3.2 + Math.random() * 1.6;
+    const col = new THREE.Color([0xff6b6b, 0xffd54f, 0x7fd8ff, 0xb18cff, 0x9fff8a, 0xffb0e0][(Math.random() * 6) | 0]);
+    const rocket = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xfff2b0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    rocket.scale.setScalar(0.45); rocket.position.set(ox, y0, oz); this.view.fx.add(rocket);
+    if (near) sfx.firework();
+    // sparks are glowing points that burst outwards, slow down, droop and fade
+    const n = 90, pos = new Float32Array(n * 3), vel = [], cols = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const u = Math.random() * 2 - 1, th = Math.random() * 6.28, rr = Math.sqrt(1 - u * u), sv = 2.6 + Math.random() * 0.6;
+      vel.push(new THREE.Vector3(rr * Math.cos(th) * sv, u * sv, rr * Math.sin(th) * sv));
+      const c = i % 6 ? col : new THREE.Color(0xffffff); cols.set([c.r, c.g, c.b], i * 3);
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.42, map: glowTex(), vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    pts.frustumCulled = false;
+    // short streaks behind each spark so a burst reads as a radial shape
+    const tpos = new Float32Array(n * 6), tgeo = new THREE.BufferGeometry(); tgeo.setAttribute('position', new THREE.BufferAttribute(tpos, 3));
+    const tcol = new Float32Array(n * 6); for (let i = 0; i < n; i++) { tcol.set(cols.subarray(i * 3, i * 3 + 3), i * 6); tcol.set(cols.subarray(i * 3, i * 3 + 3), i * 6 + 3); }
+    tgeo.setAttribute('color', new THREE.BufferAttribute(tcol, 3));
+    const trails = new THREE.LineSegments(tgeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    trails.frustumCulled = false;
+    let t = 0, burst = false;
+    this.effects.push(dt => {
+      t += dt;
+      if (!burst) {
+        rocket.position.y = y0 + (top - y0) * Math.min(1, t / 0.6);
+        if (t < 0.6) return true;
+        burst = true; this.view.fx.remove(rocket); this.view.fx.add(pts, trails);
+        for (let i = 0; i < n; i++) pos.set([ox, top, oz], i * 3);
+      }
+      const k = t - 0.6, drag = Math.pow(0.22, dt);
+      for (let i = 0; i < n; i++) { const v = vel[i]; v.multiplyScalar(drag); v.y -= dt * 1.6; pos[i * 3] += v.x * dt; pos[i * 3 + 1] += v.y * dt; pos[i * 3 + 2] += v.z * dt; }
+      for (let i = 0; i < n; i++) { const v = vel[i]; tpos.set([pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2], pos[i * 3] - v.x * 0.16, pos[i * 3 + 1] - v.y * 0.16, pos[i * 3 + 2] - v.z * 0.16], i * 6); }
+      geo.attributes.position.needsUpdate = true; tgeo.attributes.position.needsUpdate = true;
+      pts.material.opacity = Math.max(0, 1 - k / 1.7); pts.material.size = 0.42 + k * 0.08; trails.material.opacity = Math.max(0, 0.9 - k / 1.1);
+      if (k > 1.7) { this.view.fx.remove(pts, trails); geo.dispose(); tgeo.dispose(); return false; }
+      return true;
+    });
+  }
+
+  // ── seasons: palettes blend over the first part of each season; snow settles and melts ──
+  updateSeason() {
+    const sim = this.sim, t = sim.s.time, len = DAY * SEASON_DAYS;
+    const si = sim.seasonIdx(), into = (t % len) / DAY;
+    let k = t < len ? 1 : Math.min(1, into / 0.35); k = k * k * (3 - 2 * k);
+    this.view.setSeason((si + 3) % 4, si, Math.round(k * 16) / 16);
+    const snow = sim.snowLevel();
+    snowUniform.value = snow;
+    iceUniform.value = Math.max(0, Math.min(1, (snow - 0.25) / 0.6));
+    this.view.pads.visible = iceUniform.value < 0.5;
+    this.si = si;
   }
 
   // the travelling merchant's cart
@@ -572,12 +761,16 @@ class Game {
     sim.on('sfx', name => sfx[name]?.());
     sim.on('merchant', st => { if (st === 'here') sfx.coin(); });
     sim.on('settlements', () => { this.makeLockMarkers(); this.life?.placeButterflies(); });
+    sim.on('chest', ch => this.addChest(ch));
+    sim.on('season', sea => { this.updateSeason(); if (sea.id === 'winter') sfx.snow(); });
+    sim.on('birth', kid => this.ui.askBabyName(kid));
   }
 
   // ── little effects: falling trees and leaf puffs ──
   fellEffect(t) {
     const r = this.view.rig;
-    if (Math.hypot(t.x - r.tx, t.z - r.tz) > 30 + r.dist * 0.4) return;
+    if (Math.hypot(t.x - r.tx, t.z - r.tz) > 30 + r.dist * 0.4 || (this.falling || 0) > 10) return;
+    this.falling = (this.falling || 0) + 1;
     const geo = t.kind ? this.view.roundG : this.view.pineG;
     const m = new THREE.Mesh(geo, fallMat()); m.castShadow = true;
     const s = t.s;
@@ -593,7 +786,7 @@ class Game {
       pivot.rotation.x = Math.pow(f, 2.2) * Math.PI / 2 * 0.96;
       if (f >= 1 && !landed) { landed = true; this.puff(pivot, s); }
       if (age > 1.2) { const k = Math.max(0, 1 - (age - 1.2) / 0.5); m.scale.multiplyScalar(k > 0 ? 0.88 : 0); }
-      if (age > 1.7) { this.view.fx.remove(pivot); return false; }
+      if (age > 1.7) { this.view.fx.remove(pivot); this.falling--; return false; }
       return true;
     });
   }
@@ -820,7 +1013,7 @@ class Game {
     }
     const res = this.sim.place(p.type, p.tx, p.tz, p.rot);
     if (!res.ok) { sfx.error(); return; }
-    if (isDecor(p.type) && this.sim.canAfford(defOf(p.type).cost)) { this.refreshGhost(); return; }
+    if (isDecor(p.type) && (defOf(p.type).rare ? this.sim.s.tokens[p.type] > 0 : this.sim.canAfford(defOf(p.type).cost))) { this.refreshGhost(); return; }
     this.cancelPlace();
     this.ui.markCard(null);
   }
@@ -882,9 +1075,10 @@ class Game {
 
   // ── selection ──
   select(ent, fly) {
-    this.selected = ent && ent.kind !== 'lock' && ent.kind !== 'merchant' ? ent : null;
+    this.selected = ent && ent.kind !== 'lock' && ent.kind !== 'merchant' && ent.kind !== 'chest' ? ent : null;
     if (ent?.kind === 'lock') { this.ui.openModal('worldmap'); return; }
     if (ent?.kind === 'merchant') { this.ui.openModal('merchant'); return; }
+    if (ent?.kind === 'chest') { this.selected = null; this.openChest(ent.ch); return; }
     if (!ent || ent.kind !== 'v') this.followV = null;
     if (ent) sfx.click();
     this.ui.lastInfo = null;
@@ -905,7 +1099,8 @@ class Game {
   focus(x, z, dist) {
     const rig = this.view.rig, phone = innerWidth < 760;
     // nudge toward the camera so the thing lands in the upper part of the screen
-    const k = phone ? (dist || rig.dist) * 0.24 : 0;
+    dist = Math.max(phone ? 17 : 15, dist || rig.dist);   // close enough to see it, never so close it fills the screen
+    const k = phone ? dist * 0.24 : 0;
     this.view.flyTo(x + Math.sin(rig.yaw) * k, z + Math.cos(rig.yaw) * k, dist, 0.6);
   }
   pick(cx, cy) {
@@ -917,6 +1112,11 @@ class Game {
       if (p.vis && d < bd) { bd = d; best = { kind: 'v', v }; }
     }
     if (best) return best;
+    for (const c of this.chests.values()) {
+      if (c.t >= 0) continue;
+      const p = this.view.project(tmpV.set(c.ch.x, c.root.position.y + 0.3, c.ch.z));
+      if (p.vis && Math.hypot(p.x - cx, p.y - cy) < 38) return { kind: 'chest', ch: c.ch };
+    }
     const hits = this.view.raycast(cx, cy, this.view.objects.children);
     for (const h of hits) {
       let o = h.object;
@@ -1081,7 +1281,31 @@ class Game {
       return;
     }
     if (p) return;
-    this.select(this.pick(cx, cy));
+    const now = performance.now(), last = this.lastTap;
+    const dbl = last && now - last.t < 340 && Math.hypot(cx - last.x, cy - last.y) < 30;
+    this.lastTap = dbl ? null : { t: now, x: cx, y: cy };
+    const ent = this.pick(cx, cy);
+    if (dbl && ent?.kind === 'v') { this.follow(ent.v); return; }
+    if (dbl && !ent) { const g = this.view.groundAt(cx, cy); this.view.flyTo(g.x, g.z, Math.max(11, this.view.rig.dist * 0.6), 0.45); return; }
+    this.select(ent);
+  }
+  // keep the camera on one villager until you drag the view
+  follow(v) {
+    if (!v) { this.followV = null; this.ui.drawInfo(true); return; }
+    if (this.selected?.v !== v) this.select({ kind: 'v', v });
+    this.followV = v;
+    this.view.flyTo(v.x, v.z, Math.min(this.view.rig.dist, 18), 0.5);
+    this.ui.drawInfo(true);
+    sfx.pop();
+  }
+  // home button: frame the settlement nearest the camera
+  goHome() {
+    const r = this.view.rig;
+    let best = 'meadow', bd = 1e9;
+    for (const sid of Object.keys(this.sim.s.unlocked)) { const c = CENTERS[sid], d = Math.hypot(toWorld(c.x) - r.tx, toWorld(c.z) - r.tz); if (d < bd) { bd = d; best = sid; } }
+    this.followV = null;
+    this.frameSettlement(best);
+    sfx.click();
   }
   setSpeed(n) { if (this.sim.s.speed) this.prevSpeed = this.sim.s.speed; this.sim.s.speed = n; }
   setSetting(k, v) {
@@ -1125,8 +1349,9 @@ class Game {
     if (k.has('e')) rig.yaw += dt * 1.4;
     if (k.has('=') || k.has('+')) rig.dist *= 1 - dt;
     if (k.has('-')) rig.dist *= 1 + dt;
-    if (this.followV) { rig.tx = lerp(rig.tx, this.followV.x, Math.min(1, dt * 4)); rig.tz = lerp(rig.tz, this.followV.z, Math.min(1, dt * 4)); }
+    if (this.followV && !view.fly) { rig.tx = lerp(rig.tx, this.followV.x, Math.min(1, dt * 4)); rig.tz = lerp(rig.tz, this.followV.z, Math.min(1, dt * 4)); }
 
+    if ((this.seasonT = (this.seasonT || 0) + dt) > 0.5) { this.seasonT = 0; this.updateSeason(); }
     this.dayLight(sim.s.time);
     this.weather(dt);
     view.updateCamera(dt);
@@ -1147,8 +1372,10 @@ class Game {
     // bubbles keep a constant on-screen size (px tall) however far you zoom
     const cam = view.camera, pxK = Math.tan(cam.fov * Math.PI / 360) / (view.canvas.clientHeight / 2);
     for (const sp of this.screenSprites) { const h = sp.userData.px * pxK; sp.scale.set(h * 0.857, h, 1); }
-    this.life.update(dt, t, this.night, this.rainK || 0);
+    this.life.update(dt, t, this.night, this.rainK || 0, this.si, iceUniform.value);
     this.updateCart(dt, t);
+    this.updateChests(dt, t);
+    this.updateFestival(dt, t);
     this.updateBeasts(dt, t);
     this.updateWard();
     this.drawBars();
@@ -1177,7 +1404,9 @@ class Game {
   weather(dt) {
     const wx = this.sim.s.weather || {}, view = this.view, rig = view.rig;
     this.rainK = lerp(this.rainK || 0, wx.rain ? 1 : 0, Math.min(1, dt * 0.6));
-    if (this.rainK > 0.01) {
+    const winter = this.si === 3;
+    this.seasonFall(dt);
+    if (this.rainK > 0.01 && !winter) {
       if (!this.rain) {
         const n = 1400, pos = new Float32Array(n * 6);
         const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -1186,19 +1415,65 @@ class Game {
         view.scene.add(this.rain);
       }
       const pos = this.rain.geometry.attributes.position.array, fall = dt * 14;
+      // the rain volume scales with zoom so close-ups aren't a wall of streaks
+      const zk = Math.max(0.45, Math.min(1.5, rig.dist / 30)), cnt = Math.round(this.rainDrops.length * Math.min(1, zk));
+      this.rain.geometry.setDrawRange(0, cnt * 2);
       this.rainDrops.forEach((d, i) => {
+        if (i >= cnt) return;
         d[1] -= fall; if (d[1] < 0) { d[1] += 16; d[0] = Math.random() * 44 - 22; d[2] = Math.random() * 36 - 18; }
-        const x = rig.tx + d[0], z = rig.tz + d[2], y = d[1];
+        const x = rig.tx + d[0] * zk, z = rig.tz + d[2] * zk, y = d[1];
         pos.set([x, y, z, x - 0.05, y + 0.45, z - 0.03], i * 6);
       });
       this.rain.geometry.attributes.position.needsUpdate = true;
       this.rain.material.opacity = 0.45 * this.rainK;
       this.rain.visible = true;
     } else if (this.rain) this.rain.visible = false;
-    rainSound(this.rainK);
+    rainSound(winter ? 0 : this.rainK);
     // rainbow (a soft screen-space arc; the camera looks too steeply down for a 3D one)
     const show = (wx.rainbow || 0) > 0 && this.night < 0.4;
     if (show !== this.rainbowOn) { this.rainbowOn = show; document.getElementById('rainbow').classList.toggle('on', show); }
+  }
+
+  // falling things that follow the camera: snowflakes in winter, leaves in
+  // autumn, blossom petals in spring (a flurry of them at the Flower Fair)
+  seasonFall(dt) {
+    const rig = this.view.rig, si = this.si, fair = this.fest?.fest.id === 'fair';
+    const kind = si === 3 ? 'snow' : si === 2 ? 'leaf' : si === 0 || fair ? 'petal' : null;
+    const want = kind === 'snow' ? 0.22 + (this.rainK || 0) * 0.78 : kind === 'leaf' ? 0.32 : kind === 'petal' ? (fair ? 0.6 : 0.16) : 0;
+    this.fallK = lerp(this.fallK || 0, want, Math.min(1, dt * 0.5));
+    const n = 900;
+    if (!this.fall) {
+      const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      this.fall = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.2, map: flakeTex(), vertexColors: true, transparent: true, depthWrite: false, alphaTest: 0.05 }));
+      this.fall.frustumCulled = false;
+      this.fallP = Array.from({ length: n }, () => [Math.random() * 44 - 22, Math.random() * 14, Math.random() * 36 - 18, Math.random() * 6.28, 0.7 + Math.random() * 0.6]);
+      this.view.scene.add(this.fall);
+    }
+    const cnt = Math.round(n * Math.min(1, this.fallK));
+    this.fall.visible = cnt > 4;
+    if (!this.fall.visible) return;
+    if (this.fallKind !== kind && kind) {
+      this.fallKind = kind;
+      const col = this.fall.geometry.attributes.color.array, c = new THREE.Color();
+      const pal = kind === 'snow' ? [0xffffff, 0xf2f7ff] : kind === 'leaf' ? [0xe0702a, 0xd8a62c, 0xc4442e, 0xe8892e] : [0xf9b8cf, 0xffffff, 0xf4a3bf];
+      for (let i = 0; i < n; i++) { c.setHex(pal[i % pal.length]); col.set([c.r, c.g, c.b], i * 3); }
+      this.fall.geometry.attributes.color.needsUpdate = true;
+      this.fall.material.size = kind === 'snow' ? 0.17 : kind === 'leaf' ? 0.26 : 0.16;
+    }
+    const pos = this.fall.geometry.attributes.position.array, t = performance.now() / 1000;
+    const fallV = this.fallKind === 'snow' ? 1.3 : 0.9, sway = this.fallKind === 'snow' ? 0.35 : 0.9;
+    for (let i = 0; i < cnt; i++) {
+      const p = this.fallP[i];
+      p[1] -= dt * fallV * p[4];
+      if (p[1] < 0) { p[1] += 14; p[0] = Math.random() * 44 - 22; p[2] = Math.random() * 36 - 18; }
+      pos[i * 3] = rig.tx + p[0] + Math.sin(t * 0.9 * p[4] + p[3]) * sway;
+      pos[i * 3 + 1] = p[1];
+      pos[i * 3 + 2] = rig.tz + p[2] + Math.cos(t * 0.7 * p[4] + p[3]) * sway * 0.6;
+    }
+    this.fall.geometry.setDrawRange(0, cnt);
+    this.fall.geometry.attributes.position.needsUpdate = true;
+    this.fall.material.opacity = Math.min(1, 0.4 + this.fallK) * (1 - this.night * 0.35);
   }
 
   dayLight(time) {
@@ -1207,7 +1482,7 @@ class Game {
     const light = f > 0.22 && f < 0.78 ? sunUp : 0;
     const night = this.night = 1 - Math.min(1, light * 2.2);
     document.body.classList.toggle('night', night > 0.6);
-    setMood(f < 0.21 || f > 0.86 ? 'night' : f < 0.34 ? 'morning' : f < 0.7 ? 'day' : 'evening');
+    setMood(this.sim.festivalActive() ? 'festival' : f < 0.21 || f > 0.86 ? 'night' : f < 0.34 ? 'morning' : f < 0.7 ? 'day' : 'evening');
     const v = this.view, rk = this.rainK || 0;
     // the sun by day, a cool moon by night
     v.sun.intensity = (0.35 + 2.2 * light) * (1 - rk * 0.55);
@@ -1215,9 +1490,12 @@ class Game {
     v.hemi.intensity = lerp(0.55, 1.6, 1 - night);
     v.hemi.color.setRGB(lerp(0.42, 1, 1 - night), lerp(0.5, 0.97, 1 - night), lerp(0.95, 0.88, 1 - night));
     v.hemi.groundColor.setRGB(lerp(0.12, 0.36, 1 - night), lerp(0.14, 0.54, 1 - night), lerp(0.26, 0.23, 1 - night));
-    const sky = new THREE.Color(0x9cd3c0).lerp(new THREE.Color(0x8396a3), rk * 0.7).lerp(new THREE.Color(0x1b2847), night * 0.92);
+    const S = v.season, SKY = [0x9cd3c0, 0xa2d7c2, 0xcbd3ad, 0xc4d5e0];
+    const sky = new THREE.Color(SKY[S.a]).lerp(new THREE.Color(SKY[S.b]), S.k).lerp(new THREE.Color(0x8396a3), rk * 0.7).lerp(new THREE.Color(0x1b2847), night * 0.92);
     v.scene.background.copy(sky); v.scene.fog.color.copy(sky);
-    v.water.material.color.setRGB(lerp(0.33, 0.12, night), lerp(0.75, 0.27, night), lerp(0.91, 0.5, night));
+    const ice = iceUniform.value;
+    v.water.material.color.setRGB(lerp(lerp(0.33, 0.12, night), lerp(0.8, 0.3, night), ice), lerp(lerp(0.75, 0.27, night), lerp(0.9, 0.36, night), ice), lerp(lerp(0.91, 0.5, night), lerp(0.97, 0.55, night), ice));
+    v.water.material.opacity = 0.86 + ice * 0.11; v.water.material.shininess = 90 - ice * 50;
     const glow = mat(C.window, { emissive: 0x3a2a00 });
     glow.emissive.setRGB(0.23 + night * 0.85, 0.16 + night * 0.5, night * 0.1);
     mat(0xffe08a).emissive.setRGB(night * 1, night * 0.78, night * 0.3);
@@ -1244,6 +1522,16 @@ function labelTex(text) {
   g.fillText(text, 128, 34);
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   _labels.set(text, t); return t;
+}
+let _flake = null;
+function flakeTex() {
+  if (_flake) return _flake;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 32;
+  const g = cv.getContext('2d'), grd = g.createRadialGradient(16, 16, 0, 16, 16, 15);
+  grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.55, 'rgba(255,255,255,.9)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.beginPath(); g.ellipse(16, 16, 15, 11, 0.6, 0, Math.PI * 2); g.fill();
+  _flake = new THREE.CanvasTexture(cv); _flake.colorSpace = THREE.SRGBColorSpace;
+  return _flake;
 }
 let _glow = null;
 function glowTex() {

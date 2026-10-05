@@ -153,8 +153,30 @@ export const DECOR = {
   palisade: { name: 'Palisade',   size: [1, 1], cost: { wood: 6 }, lvl: 2, joy: 0, desc: 'A sharpened log wall. Villagers slip through; beasts can\'t.' },
   memorial: { name: 'Memorial Garden', size: [2, 2], cost: { stone: 40, coins: 60 }, lvl: 3, joy: 3, desc: 'A quiet garden where the village remembers those who have passed. Softens mourning.' },
   statue:   { name: 'Statue',     size: [1, 1], cost: { gems: 25 }, lvl: 4, joy: 10 },
+  // rare treasures: only found in gift chests, placed for free
+  fountain:  { name: 'Wishing Fountain', size: [2, 2], cost: {}, lvl: 1, joy: 9, rare: true, desc: 'A burbling stone fountain. Toss a coin, make a wish.' },
+  fairyring: { name: 'Fairy Ring',  size: [1, 1], cost: {}, lvl: 1, joy: 6, rare: true, desc: 'A ring of spotted toadstools that glows softly after dark.' },
+  gnome:     { name: 'Garden Gnome', size: [1, 1], cost: {}, lvl: 1, joy: 4, rare: true, desc: 'He has seen things. He will not say what.' },
+  swing:     { name: 'Tree Swing',  size: [1, 1], cost: {}, lvl: 1, joy: 5, rare: true, desc: 'A rope swing for the children (and the grown-ups, secretly).' },
 };
-export const DECOR_ORDER = ['flowers', 'bench', 'fence', 'lantern', 'torch', 'palisade', 'hay', 'pumpkins', 'sign', 'well', 'memorial', 'statue'];
+export const DECOR_ORDER = ['flowers', 'bench', 'fence', 'lantern', 'torch', 'palisade', 'hay', 'pumpkins', 'sign', 'well', 'memorial', 'statue', 'fountain', 'fairyring', 'gnome', 'swing'];
+export const RARE = ['fountain', 'fairyring', 'gnome', 'swing'];
+
+// The calendar: each season lasts three in-game days.
+export const SEASON_DAYS = 3;
+export const SEASONS = [
+  { id: 'spring', name: 'Spring', icon: 'blossom', crops: 1.2, berries: 1, orchard: 1, blurb: 'Blossom on the trees. Crops grow 20% faster.' },
+  { id: 'summer', name: 'Summer', icon: 'sun',     crops: 1.1, berries: 1.3, orchard: 1, blurb: 'Long sunny days. Berries regrow 30% faster.' },
+  { id: 'autumn', name: 'Autumn', icon: 'leaf',    crops: 1,   berries: 1, orchard: 1.4, blurb: 'Orchards are heavy with apples (+40%).' },
+  { id: 'winter', name: 'Winter', icon: 'snow',    crops: 0.4, berries: 0.35, orchard: 0.5, blurb: 'Snow! Fields and bushes grow slowly — stock up on food.' },
+];
+// one festival a season (on its second day), held at dusk around each campfire
+export const FESTIVALS = {
+  spring: { id: 'fair',    name: 'Flower Fair',      icon: 'blossom', desc: 'Garlands, petals and dancing round the fire.' },
+  summer: { id: 'bonfire', name: 'Midsummer Bonfire', icon: 'sun',     desc: 'The shortest night: a big bonfire, music and sparklers.' },
+  autumn: { id: 'harvest', name: 'Harvest Festival', icon: 'wheat',   desc: 'A feast of the year\'s harvest, then fireworks.' },
+  winter: { id: 'lantern', name: 'Lantern Night',    icon: 'lantern', desc: 'Everyone lets a paper lantern float up into the winter sky.' },
+};
 
 export const JOBS = {
   idle:       { name: 'Idle',       tool: null },
@@ -205,8 +227,10 @@ export const QUESTS = [
   { id: 'q_saw',     title: 'Build a Sawmill',      kind: 'build', key: 'sawmill', n: 1, reward: { coins: 100, xp: 50 } },
   { id: 'q_planks',  title: 'Saw 60 Planks',        kind: 'produce', key: 'planks', n: 60, reward: { gems: 10, xp: 60 } },
   { id: 'q_pop10',   title: 'Reach 10 Villagers',   kind: 'pop', n: 10, reward: { gems: 10, coins: 120, xp: 80 } },
+  { id: 'q_chest',   title: 'Open a Gift Chest',     kind: 'chests', n: 1,               reward: { gems: 5, coins: 60, xp: 40 } },
   { id: 'q_coop',    title: 'Build a Chicken Coop',  kind: 'build', key: 'coop', n: 1,  reward: { coins: 80, xp: 40 } },
   { id: 'q_baby',    title: 'Welcome a Baby',       kind: 'births', n: 1,               reward: { gems: 10, coins: 100, xp: 60 } },
+  { id: 'q_fest',    title: 'Celebrate a Festival',  kind: 'festivals', n: 1,            reward: { gems: 10, coins: 120, xp: 80 } },
   { id: 'q_quarry',  title: 'Build a Quarry',       kind: 'build', key: 'quarry', n: 1, reward: { coins: 100, xp: 50 } },
   { id: 'q_dock',    title: 'Build a Fishing Dock', kind: 'build', key: 'dock', n: 1,    reward: { gems: 10, xp: 60 } },
   { id: 'q_market',  title: 'Build a Market Stall', kind: 'build', key: 'market', n: 1,  reward: { coins: 150, xp: 60 } },
@@ -249,6 +273,9 @@ export const ACHIEVEMENTS = [
   { id: 'a_synergy', name: 'Good Neighbours', desc: 'Have 8 building bonuses active', stat: 'synergies', n: 8, gems: 15, icon: 'star' },
   { id: 'a_guard',   name: 'Night Watch',     desc: 'Drive off 15 prowling beasts', stat: 'fended', n: 15, gems: 15, icon: 'shield' },
   { id: 'a_spells',  name: 'Archmage',        desc: 'Cast 12 spells',           stat: 'spells',    n: 12,   gems: 20, icon: 'staff' },
+  { id: 'a_chest',   name: 'Treasure Hunter', desc: 'Open 8 gift chests',       stat: 'chests',    n: 8,    gems: 15, icon: 'gift' },
+  { id: 'a_fest',    name: 'Party Village',   desc: 'Celebrate 4 festivals',    stat: 'festivals', n: 4,    gems: 15, icon: 'party' },
+  { id: 'a_year',    name: 'Full Circle',     desc: 'See all four seasons',     stat: 'seasons',   n: 4,    gems: 10, icon: 'leaf' },
   { id: 'a_merch',   name: 'Good Customer',   desc: 'Trade with the merchant 5 times', stat: 'deals', n: 5,  gems: 10, icon: 'shop' },
 ];
 

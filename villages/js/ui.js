@@ -1,7 +1,8 @@
 // DOM interface: resource bar, quests, info panel, build tray, modals,
 // toasts and floating numbers.
 import { svg, iconImage } from './icons.js';
-import { GOODS, TOP_GOODS, BUILDINGS, DECOR, BUILD_ORDER, DECOR_ORDER, SETTLEMENTS, JOBS, SELLABLE, QUESTS, SYNERGY, CROPS, SPELLS, BEASTS, xpForLevel } from './data.js';
+import { GOODS, TOP_GOODS, BUILDINGS, DECOR, BUILD_ORDER, DECOR_ORDER, SETTLEMENTS, JOBS, SELLABLE, QUESTS, SYNERGY, CROPS, SPELLS, BEASTS, xpForLevel,
+  SEASONS, SEASON_DAYS, FESTIVALS, RARE, FIRST_NAMES } from './data.js';
 import { defOf, isDecor, DAY, workersOf, lvlOf, MAX_LVL, housingOf, storageOf, stageOf } from './sim.js';
 import { N, CENTERS, T_WATER, T_SAND } from './world.js';
 import { sfx } from './audio.js';
@@ -32,6 +33,20 @@ const SHOP = [
   { give: { planks: 60 }, gems: 8 }, { give: { coins: 300 }, gems: 10 }, { give: { bricks: 25 }, gems: 12 },
 ];
 
+// what each workplace turns into what (for the production-chain view)
+const CHAIN = {
+  lumber: { out: ['wood'] }, forager: { out: ['food'] }, quarry: { out: ['stone'] }, dock: { out: ['food'] },
+  sawmill: { in: ['wood'], out: ['planks'] }, windmill: { in: ['grain'], out: ['flour'] }, bakery: { in: ['flour'], out: ['food'] },
+  mason: { in: ['stone'], out: ['bricks'] }, coop: { in: ['grain'], out: ['food'] }, orchard: { out: ['food'] }, beehive: { out: ['honey'] },
+  pasture: { out: ['wool'] }, weaver: { in: ['wool'], out: ['cloth'] }, dairy: { out: ['milk'] }, creamery: { in: ['milk'], out: ['cheese'] },
+  brewery: { in: ['grain'], out: ['ale'] }, tavern: { in: ['ale', 'cheese', 'honey'], out: [] }, market: { in: [], out: ['coins'] },
+};
+const farmOut = b => [CROPS[b.data?.crop || 'wheat'].out];
+const outsOf = b => b.type === 'farm' ? farmOut(b) : CHAIN[b.type]?.out || [];
+// building types that make / use a good
+const makersOf = g => [...Object.keys(CHAIN).filter(t => CHAIN[t].out.includes(g)), ...(g === 'grain' || g === 'food' ? ['farm'] : [])];
+const usersOf = g => Object.keys(CHAIN).filter(t => (CHAIN[t].in || []).includes(g));
+
 export class UI {
   constructor(game) {
     this.g = game;
@@ -60,6 +75,14 @@ export class UI {
     $('#btnLog').innerHTML = svg('mail', 22) + '<span class="badge hidden" id="logBadge">0</span>';
     $('#btnStats').innerHTML = svg('trophy', 22) + '<span class="badge hidden" id="trophyBadge">0</span>';
     $('#btnSettings').innerHTML = svg('gear', 22);
+    $('#btnHome').innerHTML = svg('home', 24);
+    $('#btnHome').onclick = () => g.goHome();
+    $('#btnChest').onclick = () => this.flyToChest();
+    $('#follow').onclick = () => g.follow(null);
+    $('#season').onclick = () => { const sea = this.sim.season(), f = this.sim.festivalToday(); this.toast(f ? `${f.name}: ${f.desc}` : `${sea.name}: ${sea.blurb}`, f ? f.icon : sea.icon); };
+    $('#namecard').addEventListener('click', e => { if (e.target.closest('[data-act=babyok]')) this.nameBaby(); if (e.target.closest('[data-act=babyskip]')) this.nameBaby(true); });
+    $('#namecard').addEventListener('keydown', e => { if (e.key === 'Enter') this.nameBaby(); e.stopPropagation(); });
+    $('#info').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { const b = $('#info [data-act=renameok]'); if (b) b.click(); } });
     $('#btnMagic').innerHTML = svg('staff', 22);
     $('#btnMagic').onclick = () => this.openModal('magic');
     $('#btnLog').onclick = () => this.openModal('log');
@@ -106,7 +129,7 @@ export class UI {
       const c = e.target.closest('.card');
       if (!c) return;
       const type = c.dataset.type;
-      if (c.classList.contains('locked')) { this.toast(`Reach level ${defOf(type).lvl} to unlock`, 'lock'); sfx.error(); return; }
+      if (c.classList.contains('locked')) { this.toast(defOf(type).rare ? `The ${defOf(type).name} can only be found in gift chests in the woods` : `Reach level ${defOf(type).lvl} to unlock`, defOf(type).rare ? 'gift' : 'lock'); sfx.error(); return; }
       g.startPlace(type);
       this.markCard(type);
     });
@@ -131,7 +154,11 @@ export class UI {
     this.seenLog = 0;
     this.hammer = svg('hammer', 16);
     $('#coach').addEventListener('click', e => { if (e.target.closest('[data-skip]')) { this.sim.s.tutorial = 99; this.drawCoach(); } });
-    $('#alert').onclick = () => { const t = $('#alert').dataset.go; this.doGo({ kind: 'build', key: t }); };
+    $('#alert').onclick = () => {
+      const t = $('#alert').dataset.go;
+      if (t === 'chest') { const ch = this.sim.s.chests[0]; if (ch) { const r = this.g.view.rig; this.g.view.flyTo(ch.x + Math.sin(r.yaw) * 3, ch.z + Math.cos(r.yaw) * 3, Math.min(r.dist, 22), 0.9); } return; }
+      this.doGo({ kind: 'build', key: t });
+    };
   }
 
   // ── per-frame ──
@@ -146,6 +173,8 @@ export class UI {
       this.drawAlert();
       this.drawCoach();
       $('#btnMagic').classList.toggle('hidden', !this.sim.s.buildings.some(b => b.type === 'wizard' && b.built));
+      const nch = this.sim.s.chests?.length || 0, cb = $('#btnChest');
+      if (cb.dataset.n !== String(nch)) { cb.dataset.n = nch; cb.classList.toggle('hidden', !nch); cb.innerHTML = svg('gift', 24) + (nch > 1 ? `<span class="badge">${nch}</span>` : ''); }
       const ready = this.sim.achievements().filter(x => x.done && !x.claimed).length;
       const tb = $('#trophyBadge'); tb.classList.toggle('hidden', !ready); tb.textContent = ready;
       if (this.modal && ['villagers', 'inventory', 'stats', 'worldmap', 'merchant', 'magic'].includes(this.modal) && !$('#modal').contains(document.activeElement)) this.drawModal(true);
@@ -154,8 +183,25 @@ export class UI {
     }
     const t = s.time / DAY, day = Math.floor(t) + 1, hm = (t % 1) * 24;
     const clock = `Day ${day} · ${String(Math.floor(hm)).padStart(2, '0')}:${String(Math.floor((hm % 1) * 60 / 10) * 10).padStart(2, '0')}`;
-    if (this.lastClock !== clock) { this.lastClock = clock; $('#clock').textContent = clock; }
+    if (this.lastClock !== clock) { this.lastClock = clock; $('#clock').textContent = clock; this.drawSeason(); }
+    const fv = this.g.followV, fk = fv ? fv.id + fv.name : '';
+    if (fk !== this.lastFollow) { this.lastFollow = fk; $('#follow').classList.toggle('hidden', !fv); if (fv) $('#follow').innerHTML = `${svg('eye', 16)}Following ${esc(fv.name.split(' ')[0])}<span class="stop">Stop</span>`; }
     document.querySelectorAll('#speeds button').forEach(b => b.classList.toggle('on', +b.dataset.s === s.speed));
+  }
+
+  // the chest button: fly to the next unopened gift chest
+  flyToChest() {
+    const list = this.sim.s.chests; if (!list?.length) return;
+    this.chestI = ((this.chestI ?? -1) + 1) % list.length;
+    const ch = list[this.chestI], g = this.g, r = g.view.rig;
+    g.select(null); g.followV = null;
+    g.view.flyTo(ch.x + Math.sin(r.yaw) * 2, ch.z + Math.cos(r.yaw) * 2, Math.max(16, Math.min(r.dist, 22)), 0.9);
+    sfx.click();
+  }
+  drawSeason() {
+    const sim = this.sim, sea = sim.season(), d = sim.seasonDay() + 1, fest = sim.festivalToday(), on = sim.festivalActive();
+    const html = `${svg(sea.icon, 16)}<span><span>${sea.name} · <span class="dl">day </span>${d}/${SEASON_DAYS}</span>${fest ? `<span class="fest">${svg('party', 12)}<span class="fn">${esc(fest.name)} </span>${on ? 'now!' : 'tonight'}</span>` : ''}</span>`;
+    if (html !== this.lastSeason) { this.lastSeason = html; $('#season').innerHTML = html; $('#season').classList.toggle('festday', !!fest); }
   }
 
   drawRes() {
@@ -290,6 +336,7 @@ export class UI {
     if (key === this.lastAlert) return;
     this.lastAlert = key;
     el.classList.toggle('hidden', !a);
+    el.classList.toggle('calm', !!a?.calm);
     if (a) { el.innerHTML = svg(a.icon, 18) + esc(a.text); el.dataset.go = a.go; }
   }
 
@@ -298,16 +345,19 @@ export class UI {
     const sel = this.g.selected, el = $('#info');
     document.body.classList.toggle('info-open', !!sel);
     if (!sel) { el.classList.add('hidden'); return; }
-    if (!force && el.contains(document.activeElement) && document.activeElement.tagName === 'SELECT') return;
+    if (!force && el.contains(document.activeElement) && ['SELECT', 'INPUT'].includes(document.activeElement.tagName)) return;
+    if (this.renaming && !(sel.kind === 'b' ? 'b' + sel.b?.id : 'v' + sel.v?.id) === this.renaming) this.renaming = null;
     el.classList.remove('hidden');
     const html = sel.kind === 'b' ? this.buildingInfo(sel.b) : this.villagerInfo(sel.v);
     if (html !== this.lastInfo) { this.lastInfo = html; el.innerHTML = html; }
   }
   buildingInfo(b) {
     const sim = this.sim, def = defOf(b.type), s = sim.s;
-    const sname = SETTLEMENTS.find(o => o.id === b.sid)?.name ?? '—';
+    const sname = sim.sname(b.sid);
     let h = `<button class="x" data-act="close" aria-label="Close">${svg('close', 14)}</button>
-      <h3>${esc(def.name)}${!isDecor(b.type) ? ` <span class="lvchip">Lv ${lvlOf(b)}</span>` : ''}</h3><div class="sub">${esc(sname)} · ${b.built ? (b.up ? 'being upgraded' : isDecor(b.type) ? 'decoration' : 'building') : 'under construction'}</div>`;
+      ${this.renaming === 'b' + b.id ? `<div class="rename"><input id="renameIn" maxlength="22" value="${esc(sname)}" aria-label="Village name"><button class="btn sm" data-act="renameok">Save</button></div>`
+        : `<h3>${esc(b.type === 'campfire' ? sname : def.name)}${!isDecor(b.type) ? ` <span class="lvchip">Lv ${lvlOf(b)}</span>` : ''}${b.type === 'campfire' ? `<button class="pen" data-act="rename" aria-label="Rename village">${svg('pencil', 14)}</button>` : ''}</h3>`}
+      <div class="sub">${b.type === 'campfire' ? 'Village campfire · the heart of the settlement' : `${esc(sname)} · ${b.built ? (b.up ? 'being upgraded' : isDecor(b.type) ? 'decoration' : 'building') : 'under construction'}`}</div>`;
     if (!b.built) {
       const builders = s.villagers.filter(v => v.task?.bid === b.id).length;
       h += `<div class="prog"><i style="width:${b.progress * 100}%"></i></div>
@@ -333,6 +383,7 @@ export class UI {
       h += `<dt>Villagers</dt><dd>${pop}/${sim.housingIn(b.sid)}</dd><dt>Territory</dt><dd>${sim.settlementRadius(b.sid)} tiles</dd>`;
     }
     h += `</dl><div class="sub">${esc(def.desc || '')}</div>`;
+    h += this.chainHtml(b);
     if (b.type === 'farm') h += `<div class="crops">${Object.entries(CROPS).map(([k, c]) => `<button class="tog ${(b.data.crop || 'wheat') === k ? 'on' : ''}" data-act="crop" data-k="${k}">${svg(c.out === 'grain' ? 'wheat' : 'apple', 16)}${c.name}<small>${c.desc}</small></button>`).join('')}</div>`;
     if (b.type === 'wizard') h += `<button class="btn sm" style="background:linear-gradient(#b18cff,#7a5ad8);border-color:#4a2f8a;margin-top:6px;width:100%" data-act="spellbook">${svg('staff', 16)} Open the spell book</button>`;
     if (b.type === 'memorial' && s.departed?.length) h += `<div class="sub" style="margin-top:6px">In loving memory: ${s.departed.slice(-6).reverse().map(d => `${esc(d.name)} (${d.age})`).join(', ')}</div>`;
@@ -364,13 +415,35 @@ export class UI {
     if (b.type !== 'campfire') h += `<div class="actions"><button class="btn blue sm" data-act="move">${svg('rotate', 14)} Move</button><button class="btn red sm" data-act="demolish">${svg('trash', 14)} Demolish</button></div>`;
     return h;
   }
+  // inputs → this building → outputs, with what it really made and used in the last minute,
+  // plus links to the buildings that supply it and the ones that use what it makes
+  chainHtml(b) {
+    const sim = this.sim, ch = b.type === 'farm' ? { in: [], out: farmOut(b) } : CHAIN[b.type];
+    if (!ch || !b.built) return '';
+    const ins = ch.in || [], outs = ch.out || [];
+    const rate = r => { const n = Math.round(sim.bRate(b, r)); return n ? `<i class="${n > 0 ? 'up' : 'down'}">${n > 0 ? '+' : ''}${n}/min</i>` : '<i>—</i>'; };
+    const node = r => `<span class="node">${svg(GOODS[r].icon, 22)}${esc(GOODS[r].name)}${rate(r)}</span>`;
+    let h = `<div class="chain"><div class="cap">Production · last minute</div><div class="flow${ins.length > 1 ? ' many' : ''}">`;
+    if (ins.length) h += ins.map(node).join('') + `<span class="arr">→</span>`;
+    h += `<span class="node me"><img alt="" src="${this.g.thumbs[b.type] || ''}">${esc(defOf(b.type).name)}</span>`;
+    if (outs.length) h += `<span class="arr">→</span>` + outs.map(node).join('');
+    h += `</div>`;
+    // who supplies the inputs, who uses the outputs
+    const near = t => { const c = sim.bCenter(b); let best = null, bd = 1e9; for (const o of sim.s.buildings) { if (o.type !== t || !o.built || o === b) continue; const oc = sim.bCenter(o), d = Math.hypot(oc.x - c.x, oc.z - c.z); if (d < bd) { bd = d; best = o; } } return best; };
+    const link = (t, verb) => { const o = near(t), d = defOf(t); return o ? `<button data-act="chainb" data-id="${o.id}">${svg(verb, 13)}${esc(d.name)}</button>` : `<button class="missing" data-act="chainbuild" data-type="${t}">${svg('plus', 13).replace('#fff', '#8a5a2b')}${esc(d.name)}</button>`; };
+    const sup = [...new Set(ins.flatMap(makersOf))].filter(t => t !== b.type && BUILDINGS[t]).slice(0, 3);
+    const use = [...new Set(outs.flatMap(usersOf))].filter(t => t !== b.type && BUILDINGS[t]).slice(0, 3);
+    if (sup.length || use.length) h += `<div class="links">${sup.map(t => link(t, 'back')).join('')}${use.map(t => link(t, 'fast')).join('')}</div>`;
+    return h + `</div>`;
+  }
   villagerInfo(v) {
     const sim = this.sim, s = sim.s;
     const opts = this.workOptions(v);
-    const sname = SETTLEMENTS.find(o => o.id === v.home)?.name ?? '';
+    const sname = sim.sname(v.home);
     const doing = v.task?.label ?? (v.job === 'idle' ? 'Looking for something to do' : 'Thinking');
     return `<button class="x" data-act="close" aria-label="Close">${svg('close', 14)}</button>
-      <h3>${faceSvg(v, 26)}${esc(v.name)}</h3>
+      ${this.renaming === 'v' + v.id ? `<div class="rename">${faceSvg(v, 26)}<input id="renameIn" maxlength="22" value="${esc(v.name)}" aria-label="Name"><button class="btn sm" data-act="renameok">Save</button></div>`
+        : `<h3>${faceSvg(v, 26)}${esc(v.name)}<button class="pen" data-act="rename" aria-label="Rename">${svg('pencil', 14)}</button></h3>`}
       <div class="sub">${esc(sname)} · ${JOBS[v.job].name}</div>
       <dl class="kv"><dt>Age</dt><dd>${Math.floor(v.age ?? 30)} · ${{ child: 'child', adult: 'adult', elder: 'elder' }[stageOf(v)]}${v.educated ? ' · schooled' : ''}</dd>
       ${this.family(v)}
@@ -405,7 +478,7 @@ export class UI {
       if (!def.workers || !b.built) continue;
       const mine = v.work === b.id;
       if (!mine && b.workers.length >= workersOf(b)) continue;
-      const sn = SETTLEMENTS.find(x => x.id === b.sid)?.name ?? '';
+      const sn = this.sim.sname(b.sid);
       o += `<option value="${b.id}" ${mine ? 'selected' : ''}>${mine && short ? JOBS[def.job].name : `${JOBS[def.job].name} — ${def.name} (${b.workers.length}/${workersOf(b)})${Object.keys(s.unlocked).length > 1 ? ' · ' + sn : ''}`}</option>`;
     }
     return o;
@@ -418,7 +491,19 @@ export class UI {
     const act = a.dataset.act;
     if (act === 'close') { this.g.select(null); return; }
     if (act === 'selv') { const v = sim.vById.get(+a.dataset.id); if (v) this.g.select({ kind: 'v', v }, true); return; }
-    if (act === 'follow') { this.g.followV = this.g.followV === sel.v ? null : sel.v; this.drawInfo(true); return; }
+    if (act === 'follow') { this.g.follow(this.g.followV === sel.v ? null : sel.v); return; }
+    if (act === 'rename') {
+      this.renaming = sel.kind === 'b' ? 'b' + sel.b.id : 'v' + sel.v.id; this.drawInfo(true);
+      const inp = $('#renameIn'); if (inp) { inp.focus(); inp.select(); } return;
+    }
+    if (act === 'renameok') {
+      const val = $('#renameIn')?.value || '';
+      const ok = sel.kind === 'b' ? sim.renameSettlement(sel.b.sid, val) : sim.renameVillager(sel.v, val);
+      this.renaming = null; if (ok) { sfx.pop(); this.toast(sel.kind === 'b' ? `Welcome to ${sim.sname(sel.b.sid)}!` : `Now known as ${sel.v.name}`, sel.kind === 'b' ? 'house' : 'person'); }
+      this.drawInfo(true); return;
+    }
+    if (act === 'chainb') { const b = sim.bById.get(+a.dataset.id); if (b) this.g.select({ kind: 'b', b }, true); return; }
+    if (act === 'chainbuild') { this.g.select(null); this.doGo({ kind: 'build', key: a.dataset.type }); return; }
     if (!sel || sel.kind !== 'b') return;
     const b = sel.b;
     if (act === 'move') { this.g.startPlace(b.type, b); return; }
@@ -445,7 +530,7 @@ export class UI {
       if (t === 'clear') return `<button class="card" data-type="clear"><img alt="" src="${this.g.thumbs.clear}"><div class="nm">Clear Trees</div><div class="cost"><span>tap trees</span></div></button>`;
       if (t === 'pave') return `<button class="card" data-type="pave"><img alt="" src="${this.g.thumbs.pave}"><div class="nm">Stone Path</div><div class="cost"><span>${svg('stone', 12)}1 / tile</span></div></button>`;
       const d = defOf(t);
-      return `<button class="card" data-type="${t}"><img alt="" src="${this.g.thumbs[t] || ''}"><div class="nm">${esc(d.name)}</div><div class="cost"></div></button>`;
+      return `<button class="card${d.rare ? ' rare' : ''}" data-type="${t}"><img alt="" src="${this.g.thumbs[t] || ''}"><div class="nm">${esc(d.name)}</div><div class="cost"></div></button>`;
     }).join('');
     this.refreshCards();
     sfx.open();
@@ -455,14 +540,14 @@ export class UI {
     for (const c of document.querySelectorAll('#cards .card')) {
       const t = c.dataset.type;
       if (t === 'clear' || t === 'pave') continue;
-      const d = defOf(t), locked = d.lvl > s.level;
+      const d = defOf(t), have = s.tokens?.[t] || 0, locked = d.rare ? !have : d.lvl > s.level;
       c.classList.toggle('locked', locked);
       const cost = costHtml(d.cost, s.res);
-      const html = locked ? `<span>Level ${d.lvl}</span>` : cost;
+      const html = d.rare ? (have ? `<span>Free · ×${have}</span>` : `<span>Chests only</span>`) : locked ? `<span>Level ${d.lvl}</span>` : cost;
       const ce = c.querySelector('.cost');
       if (ce.innerHTML !== html) ce.innerHTML = html;
       let lk = c.querySelector('.lock');
-      if (locked && !lk) c.insertAdjacentHTML('beforeend', `<span class="lock">${svg('lock', 12)}${d.lvl}</span>`);
+      if (locked && !lk && !d.rare) c.insertAdjacentHTML('beforeend', `<span class="lock">${svg('lock', 12)}${d.lvl}</span>`);
       if (!locked && lk) lk.remove();
     }
   }
@@ -483,8 +568,9 @@ export class UI {
       const near = SYNERGY.filter(r => r.to === type), helps = SYNERGY.filter(r => r.from === type);
       if (near.length) rows += `<dt>Likes being near</dt><dd>${near.map(r => `${defOf(r.from).name} +${Math.round(r.bonus * 100)}%`).join(', ')}</dd>`;
       if (helps.length) rows += `<dt>Boosts</dt><dd>${helps.map(r => defOf(r.to).name).join(', ')}</dd>`;
-      rows += `<dt>Cost</dt><dd>${Object.entries(d.cost || {}).map(([k, v]) => `<span style="display:inline-flex;align-items:center;gap:2px;margin-left:6px;${(s.res[k] || 0) < v ? 'color:#c0392b' : ''}">${svg(GOODS[k].icon, 14)}${v}</span>`).join('')}</dd>`;
-      if (d.lvl > s.level) rows += `<dt>Unlocks at</dt><dd>Level ${d.lvl}</dd>`;
+      if (!d.rare) rows += `<dt>Cost</dt><dd>${Object.entries(d.cost || {}).map(([k, v]) => `<span style="display:inline-flex;align-items:center;gap:2px;margin-left:6px;${(s.res[k] || 0) < v ? 'color:#c0392b' : ''}">${svg(GOODS[k].icon, 14)}${v}</span>`).join('')}</dd>`;
+      if (d.lvl > s.level && !d.rare) rows += `<dt>Unlocks at</dt><dd>Level ${d.lvl}</dd>`;
+      if (d.rare) rows += `<dt>Owned</dt><dd>${s.tokens?.[type] || 0} · from gift chests</dd>`;
       tip.innerHTML = `<b>${esc(d.name)}</b><p>${esc(d.desc || (DECOR[type] ? 'A cozy touch that makes villagers happier.' : ''))}</p><dl class="kv">${rows}</dl>`;
     }
     const r = card.getBoundingClientRect();
@@ -536,7 +622,7 @@ export class UI {
       h += `<div class="actions" style="margin:0 0 8px"><button class="btn sm" data-act="autoassign" ${idle ? '' : 'disabled'}>${svg('people', 16)} Give idle villagers jobs</button></div>`;
       h += `<div class="sub" style="font-size:12px;color:var(--ink2);margin-bottom:6px">Idle villagers build construction sites and clear marked trees. Pick a job to send someone to work.</div>`;
       h += s.villagers.filter(v => f === 'all' || v.job === f).map(v => `<div class="vrow">${faceSvg(v)}
-        <div><b>${esc(v.name)} <span class="age">${Math.floor(v.age ?? 30)}</span></b> ${v.hungry ? '<span style="color:#c0392b;font-size:11px">hungry</span>' : ''}<div class="doing">${esc(v.task?.label ?? 'Idle')}${this.waitWhy(v)}${multi ? ' · ' + esc(SETTLEMENTS.find(o => o.id === v.home)?.name ?? '') : ''}</div></div>
+        <div><b>${esc(v.name)} <span class="age">${Math.floor(v.age ?? 30)}</span></b> ${v.hungry ? '<span style="color:#c0392b;font-size:11px">hungry</span>' : ''}<div class="doing">${esc(v.task?.label ?? 'Idle')}${this.waitWhy(v)}${multi ? ' · ' + esc(sim.sname(v.home)) : ''}</div></div>
         <div class="jobcell"><select data-act="job" data-id="${v.id}">${this.workOptions(v, true)}</select>${v.work ? `<button class="cap" data-act="openb" data-id="${v.work}">${esc(this.workplaceCaption(v))} ›</button>` : `<small>${esc(this.workplaceCaption(v))}</small>`}</div></div>`).join('');
     } else if (k === 'inventory') {
       const cap = sim.cap();
@@ -549,7 +635,11 @@ export class UI {
           <div class="small">${esc(g.desc)}</div><div class="small"><b>From:</b> ${esc(g.from)}</div><div class="small"><b>Uses:</b> ${esc(g.uses)}</div>
           <button class="btn gold sm" data-act="sell10" data-k="${key}" ${n < 10 ? 'disabled' : ''}>Sell 10 · ${svg('coin', 12)}${half * 10}</button></div>`;
       }
-      h += `</div><p class="sub" style="font-size:12px;color:var(--ink2);margin-top:8px">Quick sales pay half price. A staffed Market Stall sells your surplus at full price.</p>`;
+      const tok = RARE.filter(t => s.tokens?.[t] > 0);
+      h += `</div><h3 style="margin:12px 0 6px">${svg('gift', 20)} Treasures</h3>` + (tok.length
+        ? `<div class="grid">${tok.map(t => `<div class="tile" style="align-items:center;text-align:center"><img src="${this.g.thumbs[t]}" width="64" height="56" alt=""><b style="font-size:13px">${esc(DECOR[t].name)} ×${s.tokens[t]}</b><span class="small">${esc(DECOR[t].desc)}</span><button class="btn sm" data-act="placetok" data-t="${t}">Place it</button></div>`).join('')}</div>`
+        : `<p class="sub" style="font-size:12px;color:var(--ink2)">Gift chests turn up in the woods every day or so. Some hold rare decorations you can't build.</p>`);
+      h += `<p class="sub" style="font-size:12px;color:var(--ink2);margin-top:8px">Quick sales pay half price. A staffed Market Stall sells your surplus at full price.</p>`;
     } else if (k === 'worldmap') {
       h += `<div class="worldwrap"><canvas id="minimap" width="384" height="384"></canvas><div>`;
       for (const st of SETTLEMENTS) {
@@ -561,7 +651,7 @@ export class UI {
           const ok = s.level >= st.unlock.lvl && sim.canAfford(st.unlock.cost);
           right = `<button class="btn sm ${ok ? '' : 'ghost'}" data-act="settle" data-sid="${st.id}" ${ok ? '' : 'disabled'}>Settle</button>`;
         }
-        h += `<div class="sett">${svg(un ? 'house' : 'lock', 28)}<div class="meta"><b>${st.name}</b>${un ? `${pop} villagers · ${st.blurb}` :
+        h += `<div class="sett">${svg(un ? 'house' : 'lock', 28)}<div class="meta"><b>${esc(sim.sname(st.id))}</b>${un ? `${pop} villagers · ${st.blurb}` :
           `<span class="costline">Level ${st.unlock.lvl} · ${costHtml(st.unlock.cost, s.res)}</span>${st.blurb}`}</div>${right}</div>`;
       }
       h += `</div></div>`;
@@ -580,6 +670,8 @@ export class UI {
         <button class="btn blue" data-act="quality">Graphics: ${{ high: 'High', medium: 'Medium', low: 'Low' }[st.quality] || 'High'}</button>
         <button class="btn gold" data-act="savenow">Save now</button></div>
         <div class="help"><p><b>How to play.</b> Build a Lumber Hut and a Forager Hut first so you have wood and food. Idle villagers automatically build construction sites. Tap a building to add or remove workers, or use the Villagers tab to give anyone a job.</p>
+        <p><b>Seasons.</b> Each season lasts three days. Spring blossom, summer sun, autumn apples, then snow — fields and berry bushes grow slowly in winter, so stock up. On the second day of every season the village holds a festival at dusk: everyone dances round the campfire, and it lifts their spirits for a whole day.</p>
+        <p><b>Gift chests</b> appear in the woods now and then — tap one to open it. Tap the campfire to rename your village, and the pencil next to anyone's name to rename them. Double-tap a villager to follow them around; the house button brings you home.</p>
         <p>Cottages bring new villagers, as long as there is food and folks are happy. Decorations raise happiness, which makes everyone work faster. Level up to unlock new buildings, then settle more clearings from the World map.</p>
         <p><b>Controls.</b> Drag to move · scroll or pinch to zoom · right-drag, two-finger twist or <kbd>Q</kbd>/<kbd>E</kbd> to rotate · <kbd>WASD</kbd> to pan · <kbd>R</kbd> rotates while placing · <kbd>Space</kbd> pauses · <kbd>Esc</kbd> cancels.</p>
         <p>Your village saves automatically in this browser.</p></div>
@@ -659,6 +751,7 @@ export class UI {
     if (act === 'cast') { if (sim.cast(a.dataset.id)) { this.toast(`${SPELLS.find(o => o.id === a.dataset.id).name}!`, 'staff'); this.closeModal(); return; } }
     if (act === 'ach') { if (sim.claimAch(a.dataset.id)) this.toast('Achievement reward claimed!', 'trophy'); }
     if (act === 'deal') { if (sim.merchantDeal(+a.dataset.i)) this.toast('Pleasure doing business!', 'shop'); }
+    if (act === 'placetok') { this.closeModal(); this.openTray('decor'); this.g.startPlace(a.dataset.t); this.markCard(a.dataset.t); return; }
     if (act === 'openb') { const b = sim.bById.get(+a.dataset.id); if (b) { this.closeModal(); this.g.select({ kind: 'b', b }, true); } return; }
     if (act === 'vf') { this.vFilter = a.dataset.f; this.drawModal(true); return; }
     if (act === 'autoassign') { const n = sim.autoAssign(); this.toast(n ? `${n} villager${n > 1 ? 's' : ''} got a job` : 'No open jobs — build or upgrade workplaces', 'people'); sfx.pop(); }
@@ -732,6 +825,11 @@ export class UI {
       g.fillStyle = b.type === 'farm' ? '#c9a24a' : b.type === 'tiled' ? '#3f7fc4' : '#c9473d';
       g.beginPath(); g.roundRect((c.x + N / 2 - c.w / 2) * S + 1, (c.z + N / 2 - c.d / 2) * S + 1, c.w * S - 2, c.d * S - 2, 3); g.fill();
     }
+    // gift chests
+    for (const ch of this.sim.s.chests || []) {
+      const ic = iconImage('gift'), x = (ch.x + N / 2) * S, y = (ch.z + N / 2) * S;
+      if (ic.complete) g.drawImage(ic, x - 10, y - 10, 20, 20);
+    }
     // camera view
     const r = this.g.view.rig;
     g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2.5; g.setLineDash([6, 4]);
@@ -745,10 +843,10 @@ export class UI {
       g.beginPath(); g.arc(x, y, 13, 0, Math.PI * 2); g.fill(); g.stroke();
       const ic = iconImage(un ? 'house' : 'lock');
       if (ic.complete) g.drawImage(ic, x - 9, y - 9, 18, 18); else ic.onload = () => this.drawMinimap();
-      const tw = g.measureText(st.name).width + 14, ly = y + 25;
+      const nm = this.sim.sname(st.id), tw = g.measureText(nm).width + 14, ly = y + 25;
       g.fillStyle = 'rgba(255,248,232,.95)'; g.strokeStyle = '#c48a4a'; g.lineWidth = 2;
       g.beginPath(); g.roundRect(x - tw / 2, ly - 10, tw, 20, 10); g.fill(); g.stroke();
-      g.fillStyle = '#5b3a1e'; g.fillText(st.name, x, ly + 1);
+      g.fillStyle = '#5b3a1e'; g.fillText(nm, x, ly + 1);
     }
   }
 
@@ -756,6 +854,33 @@ export class UI {
     const n = this.sim.s.log.length - (this.seenLog || 0);
     const b = $('#logBadge'); if (!b) return;
     b.classList.toggle('hidden', n <= 0); b.textContent = n > 9 ? '9+' : n;
+  }
+
+  // ── naming a newborn: a little card that doesn't stop the game ──
+  askBabyName(kid) {
+    (this.babies || (this.babies = [])).push(kid.id);
+    if (this.babies.length === 1) this.drawNameCard();
+  }
+  drawNameCard() {
+    const el = $('#namecard'), id = this.babies?.[0], kid = id && this.sim.vById.get(id);
+    if (!kid) { this.babies?.shift(); if (this.babies?.length) return this.drawNameCard(); el.classList.add('hidden'); return; }
+    const [first, ...rest] = kid.name.split(' '), par = (kid.parents || []).map(p => this.sim.vById.get(p)?.name.split(' ')[0]).filter(Boolean);
+    el.innerHTML = `<div class="row">${svg('baby', 30)}<div><b>A baby for ${esc(par.join(' & ') || 'the village')}!</b><br><small>Pick a name, or keep the one the parents chose.</small></div></div>
+      <div class="row"><input id="babyName" maxlength="14" value="${esc(first)}" aria-label="Baby's first name"><span style="font-weight:600">${esc(rest.join(' '))}</span></div>
+      <div class="row"><button class="btn sm ghost" data-act="babyskip">Keep ${esc(first)}</button><button class="btn sm" data-act="babyok" style="flex:1">${svg('heart', 14)} Name the baby</button></div>`;
+    el.classList.remove('hidden');
+    clearTimeout(this.babyTimer); this.babyTimer = setTimeout(() => this.nameBaby(true), 40000);
+  }
+  nameBaby(keep) {
+    const id = this.babies?.shift(), kid = id && this.sim.vById.get(id), inp = $('#babyName');
+    if (kid && !keep && inp?.value.trim()) {
+      const old = kid.name.split(' ')[0];
+      this.sim.renameVillager(kid, inp.value.trim().split(' ')[0]);
+      if (kid.name.split(' ')[0] !== old) this.toast(`Welcome to the world, ${kid.name.split(' ')[0]}!`, 'baby');
+    }
+    sfx.pop();
+    $('#namecard').classList.add('hidden');
+    if (this.babies?.length) setTimeout(() => this.drawNameCard(), 400);
   }
 
   // ── toasts & floats ──
@@ -786,9 +911,9 @@ export class UI {
     while ($('#toasts').children.length > 2) $('#toasts').firstChild.remove();
     setTimeout(() => el.remove(), 2600);
   }
-  float(sx, sy, text, icon) {
+  float(sx, sy, text, icon, cls = '') {
     const el = document.createElement('div');
-    el.className = 'float';
+    el.className = 'float' + (cls ? ' ' + cls : '');
     el.style.left = sx + 'px'; el.style.top = sy + 'px';
     el.innerHTML = (icon ? svg(icon, 18) : '') + esc(text);
     $('#floats').appendChild(el);

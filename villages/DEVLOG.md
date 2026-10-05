@@ -101,20 +101,45 @@ dirt lanes, fixed-size bubbles, villager spacing.
 - **Magic:** wizard apprentices gather mana and learn six spells: Bountiful Harvest, Call the
   Rain, Swift Feet, Ward of Light, Forest Bloom and Stone to Gems.
 
+## Round 6 — seasons, festivals and treasures
+
+Picked from the list below: seasons, festivals, gift chests, naming, the camera tools and the
+production-chain view.
+
+- **Seasons** (three days each): spring blossom, summer, autumn colours and leaf piles, then a
+  winter where snow settles on the ground, treetops and roofs (roofs keep their colour), paths turn
+  to slush and the water ices over. Snow, leaves and petals fall. Winter slows crops and berries;
+  autumn boosts orchards.
+- **Festivals** at dusk on the second day of each season: Flower Fair, Midsummer Bonfire, Harvest
+  Festival and Lantern Night. Everyone dances round a roaring bonfire under bunting, with fireworks
+  or sky lanterns and a festival jig, then a feast and a day of good cheer.
+- **Gift chests** turn up in the woods (a chest button flies you there). Some hold rare treasures
+  that can't be built: a Wishing Fountain, Fairy Ring, Garden Gnome and Tree Swing.
+- **Names**: rename your village and anyone in it, and name each newborn.
+- **Camera**: Home button, double-tap a villager to follow, double-tap the ground to zoom.
+- **Production chain** in every workplace panel: inputs → building → outputs with real per-minute
+  rates and links to suppliers and customers.
+- **Textures** (Isaiah): shared canvas-drawn plaster, wood, stone, brick, shingle, slate, straw and
+  cloth surfaces on every building, and a ground shader that blends grass, earth and cobbles.
+- Fix: workers in looping jobs never went to bed; bedtime and festivals now break the loop.
+
+A critic pass on the first draft scored 8.6; its notes (winter whiteout, a sticky chest banner,
+over-zoomed close-ups, a cramped desktop panel, glittery fireworks) were fixed afterwards.
+
 ## Next round — pick 5–6
 
 Ordered easiest to hardest:
 
-1. Name your village and rename villagers (and name your babies)
-2. A "home" camera button and double-tap to follow a villager
-3. Seasonal palettes: autumn leaves and a snowy winter every few days
-4. Production-chain view in the building panel (inputs → outputs, live)
-5. Gift chests hidden in the forest to find and open
-6. Settlement specialties (Pinehollow timber bonus, Shallows fishing, Stonecrest stone)
-7. Evening campfire gatherings and villagers sleeping at night
-8. Festivals: a harvest fair with a happiness boost and special quests
-9. Export / import a village as a share code
-10. Per-settlement stockpiles with trade carts hauling goods between villages
+1. An arrow at the screen edge pointing to off-screen gift chests
+2. Seasonal clothes: scarves and woolly hats in winter
+3. Settlement specialties (Pinehollow timber bonus, Shallows fishing, Stonecrest stone)
+4. Snowmen and sledging children in winter
+5. Festival quests and a festival shop with seasonal decorations
+6. Weather forecasts and storms that need shelter
+7. Villager friendships and visits between homes
+8. Export / import a village as a share code
+9. Per-settlement stockpiles with trade carts hauling goods between villages
+10. A boat and island to settle across the lake
 
 ---
 
@@ -130,7 +155,9 @@ Ordered easiest to hardest:
 | `js/life.js` | Butterflies, fireflies, birds and fish |
 | `js/ui.js` | Every panel, modal, toast and tooltip |
 | `js/main.js` | Wires it together: input, placement, effects, day/night, weather |
-| `js/audio.js` | WebAudio sound effects, rain and the music box |
+| `js/audio.js` | WebAudio sound effects, rain and the procedural score |
+| `js/snow.js` | Shared shader patch: snow on upward faces, slush on paths |
+| `js/textures.js` | Canvas-drawn surface textures for buildings and ground |
 | `vendor/three.module.min.js` | Three.js r170 (MIT) |
 
 Saves live in `localStorage` under `isaiart.villages.v1`.

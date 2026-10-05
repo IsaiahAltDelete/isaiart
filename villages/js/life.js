@@ -58,10 +58,10 @@ export class Life {
     u.ty = 0.5 + Math.random() * 0.9;
   }
 
-  update(dt, time, night, rain = 0) {
+  update(dt, time, night, rain = 0, season = 1, ice = 0) {
     const W = this.sim.world, rig = this.view.rig;
-    // butterflies (day only)
-    const day = night < 0.6 && rain < 0.4;
+    // butterflies (day only, none in winter)
+    const day = night < 0.6 && rain < 0.4 && season !== 3;
     for (const b of this.bflies) {
       b.visible = day;
       if (!day) continue;
@@ -79,7 +79,7 @@ export class Life {
     }
 
     // fireflies around the camera target at night
-    this.ffMat.opacity = Math.max(0, (night - 0.35) * 1.6);
+    this.ffMat.opacity = season === 3 ? 0 : Math.max(0, (night - 0.35) * 1.6);
     this.ff.visible = this.ffMat.opacity > 0.01;
     if (this.ff.visible) {
       const pos = this.ff.geometry.attributes.position, base = this.ffBase;
@@ -111,7 +111,7 @@ export class Life {
 
     // fish jumping
     this.fishTimer -= dt;
-    if (this.fishTimer <= 0) { this.fishTimer = 2.5 + Math.random() * 5; this.jumpFish(); }
+    if (this.fishTimer <= 0) { this.fishTimer = 2.5 + Math.random() * 5; if (ice < 0.4) this.jumpFish(); }
     this.jumps = this.jumps.filter(j => {
       j.t += dt;
       const k = j.t / 0.8;
