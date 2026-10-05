@@ -190,6 +190,28 @@ export class Sim {
     if (this.s.log.length > 40) this.s.log.pop();
     this.emit('log');
   }
+  // Life in the village (love, friendships, babies, growing up, farewells…) goes to the
+  // Journal's Story page instead of a popup. Each entry keeps a snapshot of the faces
+  // involved, so it still reads well after someone has moved on.
+  story(kind, text, people = [], icon = 'heart') {
+    const s = this.s, list = s.story || (s.story = []);
+    const faces = people.filter(Boolean).map(v => ({ id: v.id, name: v.name, skin: v.skin, hair: v.hair, shirt: v.shirt, hat: v.hat, hatColor: v.hatColor, race: v.race, horn: v.horn, age: v.age }));
+    // a burst of new friendships (a festival, say) becomes one entry, not a wall of them
+    const top = list[0];
+    if (kind === 'friends' && top?.kind === 'friends' && s.time - top.t < 90) {
+      top.pairs = top.pairs || [top.text.replace(/ are best friends now\.$/, '')];
+      top.pairs.push(text.replace(/ are best friends now\.$/, ''));
+      top.text = `New best friends: ${top.pairs.slice(0, 4).join('; ')}${top.pairs.length > 4 ? ` and ${top.pairs.length - 4} more` : ''}.`;
+      for (const f of faces) if (top.faces.length < 6 && !top.faces.some(o => o.id === f.id)) top.faces.push(f);
+      top.n = s.storyN = (s.storyN || 0) + 1; top.t = s.time;
+      this.emit('story', top, people);
+      return top;
+    }
+    const e = { n: (s.storyN = (s.storyN || 0) + 1), kind, text, icon, faces, t: s.time };
+    list.unshift(e); if (list.length > 150) list.pop();
+    this.emit('story', e, people);
+    return e;
+  }
 
   // ── settlements & territory ──
   settlementRadius(sid) {
@@ -1295,7 +1317,7 @@ export class Sim {
       const e = W.entry;
       const v = this.spawnVillager(sid, toWorld(e.x), toWorld(e.z), { age: 18 + this.rng() * 26 });
       this.log(`${v.name} moved to ${this.sname(sid)}.`);
-      this.emit('toast', `${v.name.split(' ')[0]} joined the village!`, 'person');
+      this.story('arrive', `${v.name} moved to ${this.sname(sid)}.`, [v], 'person');
     }
     // berries regrow (slowly under the snow)
     const berryK = this.season().berries;
@@ -1452,7 +1474,7 @@ export class Sim {
         if (now === 'adult') {
           v.job = 'idle'; this.graduate(v); this.dropTask(v);   // grade + education tier (education.js)
           this.log(`${v.name} is all grown up${v.educated ? ' — and top of the class' : ''}!`);
-          this.emit('toast', `${v.name.split(' ')[0]} grew up!`, 'star');
+          this.story('grow', `${v.name} is all grown up${v.grade ? ` — graduated with ${v.grade === 'A' ? 'an' : 'a'} ${v.grade}` : ''}.`, [v], 'star');
           this.rpgStage(v, 'adult');
         } else if (now === 'elder') {
           this.unassign(v); v.job = 'retired'; this.rpgStage(v, 'elder');
@@ -1468,11 +1490,13 @@ export class Sim {
       const singles = s.villagers.filter(v => !v.partner && v.age >= 18 && v.age < 56);
       for (const a of singles) {
         if (a.partner) continue;
-        const b = singles.find(o => o !== a && !o.partner && o.home === a.home && !this.related(a, o) && Math.abs(o.age - a.age) < 14);
+        // love grows out of friendship: the closest unattached friend, not just anyone
+        const b = singles.filter(o => o !== a && !o.partner && o.home === a.home && !this.related(a, o) && Math.abs(o.age - a.age) < 14 && (this.affinity?.(a, o) ?? 30) >= 15)
+          .sort((x, y) => (this.affinity?.(a, y) || 0) - (this.affinity?.(a, x) || 0))[0];
         if (b && this.rng() < 0.25) {
           a.partner = b.id; b.partner = a.id;
           this.log(`${a.name} and ${b.name} became partners.`);
-          this.emit('toast', `${a.name.split(' ')[0]} & ${b.name.split(' ')[0]} fell in love!`, 'heart');
+          this.story('love', `${a.name} and ${b.name} fell in love.`, [a, b], 'heart');
         }
       }
     }
@@ -1490,7 +1514,7 @@ export class Sim {
       (a.kids || (a.kids = [])).push(kid.id); (b.kids || (b.kids = [])).push(kid.id);
       st.births = (st.births || 0) + 1;
       this.log(`${a.name.split(' ')[0]} and ${b.name.split(' ')[0]} welcomed baby ${kid.name}!`);
-      this.emit('toast', `A baby was born — welcome, ${kid.name.split(' ')[0]}!`, 'heart');
+      this.story('baby', `${a.name.split(' ')[0]} and ${b.name.split(' ')[0]} welcomed baby ${kid.name}.`, [kid, a, b], 'baby');
       this.emit('birth', kid, a, b);
       this.emit('sfx', 'done');
     }
@@ -1510,7 +1534,7 @@ export class Sim {
     s.mourn = 45;
     const mem = s.buildings.some(b => b.type === 'memorial');
     this.log(`${v.name} passed away peacefully at ${Math.floor(v.age)}${mem ? ' and is remembered in the Memorial Garden' : ''}.`);
-    this.emit('toast', `${v.name.split(' ')[0]} passed away peacefully at ${Math.floor(v.age)}`, 'flower');
+    this.story('farewell', `${v.name} passed away peacefully at ${Math.floor(v.age)}${mem ? ', and is remembered in the Memorial Garden' : ''}.`, [v], 'flower');
     this.emit('villagerGone', v);
   }
 

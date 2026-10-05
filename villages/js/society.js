@@ -234,7 +234,7 @@ const SOC = {
   // the watch, a wizard tower and the university turn a commoner into something more
   trainFor(v, job) {
     if (!v || classOf(v) !== 'commoner') return;
-    const to = job === 'guard' ? aptitudeOf(v, ['fighter', 'ranger']) : job === 'constable' ? aptitudeOf(v, ['fighter', 'rogue']) : job === 'wizard' || job === 'student' ? 'wizard' : job === 'bard' ? 'bard' : job === 'acolyte' ? 'cleric' : job === 'trainer' ? aptitudeOf(v, ['fighter', 'ranger', 'rogue']) : job === 'scout' ? 'ranger' : job === 'locksmith' ? 'rogue' : null;
+    const to = job === 'guard' ? aptitudeOf(v, ['fighter', 'ranger']) : job === 'constable' ? aptitudeOf(v, ['fighter', 'rogue']) : job === 'wizard' || job === 'student' ? 'wizard' : job === 'bard' ? 'bard' : job === 'acolyte' ? aptitudeOf(v, ['cleric', 'paladin']) : job === 'trainer' ? aptitudeOf(v, ['fighter', 'ranger', 'rogue']) : job === 'scout' ? 'ranger' : job === 'locksmith' ? 'rogue' : null;
     if (!to) return;
     v.cls = to; v.hp = Math.min(v.hp ?? maxHp(v), maxHp(v));
     this.log(`${v.name} began training as a ${CLASSES[to].name}.`);
@@ -340,7 +340,7 @@ const SOC = {
     if (!this.canArchmage(v) || v.work !== b.id) return false;
     (b.data || (b.data = {})).archmage = v.id; b.data.amPicked = true;
     this.log(`${v.name} was named Archmage of the tower.`);
-    this.emit('toast', `${first(v)} is the tower's Archmage!`, 'staff');
+    this.story('archmage', `${v.name} was named Archmage of the tower.`, [v], 'staff');
     return true;
   },
   // the archmage of the most accomplished tower: the one who leads a magocracy
@@ -368,7 +368,7 @@ const SOC = {
       if (best) {
         d.archmage = best.id;
         this.log(`${best.name} became Archmage of the Wizard Tower.`);
-        this.emit('toast', `${first(best)} is now the tower's Archmage!`, 'staff');
+        this.story('archmage', `${best.name} became Archmage of the Wizard Tower.`, [best], 'staff');
       }
     }
     // titles drive what people wear (crown, chain of office, the archmage's hat)

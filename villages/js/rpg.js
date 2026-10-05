@@ -78,6 +78,8 @@ export const CLASSES = {
              desc: 'Hurls Fire Bolt (d10) from the back row. Fragile (d6 hit die) and can\'t wear armour, but a staff sharpens the magic.' },
   cleric:  { name: 'Cleric',  icon: 'heart',  hd: 8,  w: { wis: 2, con: 0.5, str: 0.5 }, saves: ['wis', 'cha'], gear: { w: ['staff', 'sword'], a: 1, s: 1 },
              desc: 'Calls down Sacred Flame and patches friends up with Cure Wounds when they get hurt.' },
+  paladin: { name: 'Paladin', icon: 'shield', hd: 10, w: { str: 1.4, cha: 1.4, con: 0.4 }, saves: ['wis', 'cha'], gear: { w: ['sword'], a: 1, s: 1 },
+             desc: 'A holy warrior with a d10 hit die, armour and shield. Divine Smite adds 2d8 radiant damage to a hit once a fight, and Lay on Hands heals a friend.' },
   commoner: { name: 'Commoner', icon: 'person', hd: 8, w: {}, saves: [], gear: { w: ['sword'] },
              desc: 'An ordinary villager with no adventuring training: a d8 hit die and a club. Joining a guild party, the watch or a wizard tower trains them into a class.' },
   bard:    { name: 'Bard',    icon: 'party',  hd: 8,  w: { cha: 2, dex: 1 }, saves: ['dex', 'cha'], gear: { w: ['sword'], a: 1 },
@@ -134,6 +136,7 @@ export function classAttack(v, cls = classOf(v)) {
     case 'rogue': return g.w === 'bow' ? melee('longbow', 'dex', 8, true) : g.w === 'sword' ? melee('rapier', 'dex', 8, true) : melee('dagger', 'dex', 4);
     case 'bard': return g.w === 'sword' ? melee('rapier', 'dex', 8, true) : { name: 'Vicious Mockery', save: 'wis', dc: 8 + P + am('cha'), dmg: { n: tier, s: 4, b: 0 } };
     case 'wizard': return { name: 'Fire Bolt', bonus: P + am('int') + (g.w === 'staff' ? 1 : 0), dmg: { n: tier, s: 10, b: g.w === 'staff' ? 1 : 0 } };
+    case 'paladin': return melee('longsword', 'str', 8, true);
     case 'cleric': return { name: 'Sacred Flame', save: 'dex', dc: 8 + P + am('wis') + (g.w === 'staff' ? 1 : 0), dmg: { n: tier, s: 8, b: g.w === 'staff' ? 1 : 0 } };
   }
   return melee('club', 'str', 4);
@@ -240,6 +243,7 @@ export function runExpedition(q, vs, r, opt = {}) {
     if (cls === 'cleric') { p.heal = { name: 'Cure Wounds', s: 8, b: mod(v.abil?.wis) }; p.heals = 1 + (L >> 1); }
     if (cls === 'bard') { p.heal = { name: 'Healing Word', s: 4, b: mod(v.abil?.cha) }; p.heals = 1 + (L >> 1); }
     if (cls === 'rogue') p.sneak = Math.ceil(L / 2);
+    if (cls === 'paladin') { p.smite = true; p.heal = { name: 'Lay on Hands', s: 4, b: 2 + L * 2 }; p.heals = 1; }
     // racial traits (society.js): Lucky, Relentless Endurance, Breath Weapon
     p.lucky = v.race === 'halfling'; p.relentless = v.race === 'halforc'; p.breath = v.race === 'dragonborn';
     return p;
@@ -292,6 +296,7 @@ export function runExpedition(q, vs, r, opt = {}) {
         if (!hit) continue;
         let n = Math.max(1, rollD(r, p.atk.dmg, crit));
         if (p.sneak && up().length > 1) n += roll(r, p.sneak * (crit ? 2 : 1), 6);
+        if (p.smite) { const sm = roll(r, crit ? 4 : 2, 8); n += sm; p.smite = false; breaths.push(`${p.first} called down a Divine Smite (+${sm} radiant)`); }
         f.hp -= n; dealt.set(p, (dealt.get(p) || 0) + n);
         if (crit) { crits++; critBy = critBy || p; }
       }
@@ -349,7 +354,7 @@ export function runExpedition(q, vs, r, opt = {}) {
   return { lines, hp: Object.fromEntries(party.map(p => [p.id, Math.max(1, p.hp)])), loot, xp, ok: !retreat, crits };
 }
 // classes that are trained in an ability check (they add proficiency)
-const CLASS_SKILL = { fighter: ['str'], ranger: ['wis', 'dex'], rogue: ['dex', 'int'], wizard: ['int'], cleric: ['wis'], bard: ['cha', 'dex'] };
+const CLASS_SKILL = { paladin: ['str', 'cha'], fighter: ['str'], ranger: ['wis', 'dex'], rogue: ['dex', 'int'], wizard: ['int'], cleric: ['wis'], bard: ['cha', 'dex'] };
 
 // ── the forge ──
 export const RECIPES = [
