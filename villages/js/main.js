@@ -657,7 +657,8 @@ class Game {
     const g = new THREE.Group(), a = Math.random() * 6.28, rr = 1.5 + Math.random() * 2;
     // a paper lantern (wider at the top) with a warm halo that only shows after dusk
     g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 0.24, 8), new THREE.MeshBasicMaterial({ color: 0xffb35a, transparent: true })));
-    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 8), new THREE.MeshBasicMaterial({ color: 0x8a4a1a })), { position: new THREE.Vector3(0, -0.13, 0) }));
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 8), new THREE.MeshBasicMaterial({ color: 0x8a4a1a }));
+    base.position.y = -0.13; g.add(base);
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xffa040, transparent: true, opacity: Math.min(1, this.night * 1.4), blending: THREE.AdditiveBlending, depthWrite: false }));
     halo.scale.setScalar(0.9); g.add(halo);
     g.position.set(x + Math.cos(a) * rr, this.sim.world.heightAt(x, z) + 1.7, z + Math.sin(a) * rr);   // released above head height

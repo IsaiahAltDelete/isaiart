@@ -164,6 +164,32 @@ the resource bar instead of stacked toasts, water kept off road banks, and a cle
 critic's last notes: straw brims still hide faces from the default pitch, and the slab roofs, flat ground
 and small villagers sit a notch below the Tiny Glade / Townscaper bar.
 
+## Round 7b — education and homes that grow by themselves (client request)
+
+`js/education.js`, installed from `addons.js` like the other systems.
+
+- **Grades.** Children earn lesson points at school. Points scale with the teacher's INT, CHA and tier,
+  the school's level, and the child's own INT and WIS, and they drop when the child is hungry.
+  Attendance is tracked per school day. At 14 the score (points weighted by attendance) gives a grade:
+  A ≥ 170, B ≥ 110, C ≥ 50, otherwise none.
+- **Education tiers.** The tiers are Unschooled, Schooled (grade C), Honours (A or B) and Scholar. They
+  multiply work speed by 1.0, 1.06, 1.12 and 1.2, replacing the old flat +15% for `educated`. Teachers,
+  wizards and smiths now need at least Schooled. The job picker greys those jobs out, and auto-assign
+  only picks qualified villagers. Old saves migrate `educated` to Schooled.
+- **Library** (new Services building, level 6, Blender model). Grown-ups take the Scholar job and study
+  up a tier at 60, 140 and 240 points. Studying also feeds the village's knowledge pool.
+- **Homes grow by themselves.** Each cottage panel shows a "Growing to level N" checklist:
+  - Level 2: everyone fed, a well within 9 tiles, a decoration within 4, a schooled grown-up, and the
+    village at least 55% happy.
+  - Level 3: everything above, plus a market or tavern within 12, a mostly-schooled household with one
+    honours grown-up, a road at the door, and the village at least 70% happy.
+  When every item is ticked and the village can afford it, the home starts its upgrade, with a toast and
+  a log entry. You can turn this off per home ("Grow by itself") or for every home at once ("All homes").
+- **Panels.** Children get a report card showing their projected grade, points, attendance and the next
+  grade's threshold. The school panel lists every pupil's projected grade and the teaching quality.
+- Also fixed: festival sky lanterns threw an error every frame (`Object.assign` onto a mesh's read-only
+  `position`).
+
 ## Next round — pick 5–6
 
 Ordered easiest to hardest:
@@ -200,6 +226,7 @@ Ordered easiest to hardest:
 | `js/select.js` | Hover and selection outlines, placement footprint cells |
 | `js/rpg.js`, `rpgui.js`, `rpgview.js` | Ability scores, combat, Guild Hall, Forge, spellbook |
 | `js/roads.js`, `trade.js`, `social.js`, `festival.js`, `share.js`, `island.js` | Roads, stockpiles and carts, friendships, festivals, share codes, Pearl Isle |
+| `js/education.js` | Grades, education tiers, the Library, and homes that upgrade themselves |
 | `blender/*.py` | Model scripts; `cli.py` builds, previews and exports them |
 | `vendor/three.module.min.js` | Three.js r170 (MIT) |
 
