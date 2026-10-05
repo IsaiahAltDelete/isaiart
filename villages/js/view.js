@@ -633,16 +633,23 @@ export class View {
       if (rng() > 0.8) continue;
       spots[rng() < 0.55 ? 0 : 1].push([x - HALF + 0.5 + (rng() - 0.5) * 0.6, z - HALF + 0.5 + (rng() - 0.5) * 0.6, 0.85 + rng() * 0.6, rng() * 6, rng()]);
     }
+    // chunked like the forest, so only the stretch of the ring that's on screen is drawn
+    // (one mesh for the whole ring meant ~1.4M triangles every frame, nearly all off screen)
     this.skirtTrees = [];
     spots.forEach((list, kind) => {
-      const im = new THREE.InstancedMesh(kind ? this.roundG : this.pineG, this.treeMat, list.length);
-      list.forEach(([x, z, s, r, t], k) => {
-        tmpQ.setFromAxisAngle(UP, r);
-        im.setMatrixAt(k, tmpM.compose(tmpV.set(x, 0.88, z), tmpQ, tmpS.set(s, s * (0.9 + t * 0.3), s)));
-      });
-      im.userData = { kind, tints: list.map(p => p[4]) };
-      im.receiveShadow = true;
-      this.scene.add(im); this.skirtTrees.push(im);
+      const cells = new Map();
+      for (const p of list) { const key = Math.floor((p[0] + HALF + B) / CH) + ',' + Math.floor((p[1] + HALF + B) / CH); (cells.get(key) || cells.set(key, []).get(key)).push(p); }
+      for (const part of cells.values()) {
+        const im = new THREE.InstancedMesh(kind ? this.roundG : this.pineG, this.treeMat, part.length);
+        part.forEach(([x, z, s, r, t], k) => {
+          tmpQ.setFromAxisAngle(UP, r);
+          im.setMatrixAt(k, tmpM.compose(tmpV.set(x, 0.88, z), tmpQ, tmpS.set(s, s * (0.9 + t * 0.3), s)));
+        });
+        im.computeBoundingSphere(); im.frustumCulled = true;
+        im.userData = { kind, tints: part.map(p => p[4]) };
+        im.receiveShadow = true;
+        this.scene.add(im); this.skirtTrees.push(im);
+      }
     });
     this.colorSkirt();
   }
