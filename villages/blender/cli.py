@@ -35,8 +35,20 @@ if cmd == "preview":
     for o in col.objects:
         n = o.name.split(".")[0]
         grp = n.split("_")[0]
-        if show is not None and grp in ("hair", "hat") and n not in show: o.hide_render = True
+        # SHOW lists the villager's optional parts to keep (hair, hats, race parts, outfits)
+        optional = grp in ("hair", "hat", "race") or n in ("apron", "pack", "scarf", "chain", "robe")
+        if show is not None and optional and n not in show: o.hide_render = True
         if n in hide: o.hide_render = True
+    # the winter snow pillows are hidden in the game except in deep snow; drop them
+    # from previews too (SNOW=1 keeps them)
+    if os.environ.get("SNOW") != "1":
+        for o in col.objects:
+            if o.type != "MESH": continue
+            idx = [i for i, m in enumerate(o.data.materials) if m and m.name.startswith("snowcap")]
+            if not idx: continue
+            bm = bmesh.new(); bm.from_mesh(o.data)
+            bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.material_index in idx], context="FACES")
+            bm.to_mesh(o.data); bm.free()
     # frame the model
     import mathutils
     bpy.context.view_layer.update()

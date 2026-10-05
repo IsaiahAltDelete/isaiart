@@ -198,4 +198,61 @@ def build_villager():
              box("sc_back2", (0.04, 0.02, 0.13), (0.03, 0.1, NECK_Z - 0.14), WN, bev=0.008, rot=(-0.25, 0, 0.15))]
     for k in range(2): scarf.append(box(f"sc_fringe{k}", (0.047, 0.022, 0.018), (-0.025 + k * 0.055, 0.115, NECK_Z - 0.26 + k * 0.04), WC))
     o = join(scarf, "scarf"); parent(o, body)
+
+    # Optional peoples and ceremonial clothes. The game selects these by node name.
+    HO = material("horn", 0x463530, True)
+    TO = material("tooth", 0xfff4da, True)
+    RO = material("robe", 0x6043a5, True)
+    ST = material("star", 0xe9bd48, True)
+    GE = material("gem", 0x7ed9df, True)
+    def head_part(name, parts):
+        obj = join(parts, name)
+        rotate_about(obj, NECK, TILT); parent(obj, head)
+        return obj
+    for name, length in (("race_elf", 0.078), ("race_gnome", 0.047)):
+        ears = []
+        for side in (-1, 1):
+            ears.append(uvsphere(f"{name}{side}", 0.026, (side * (0.09 + length * 0.3), 0.007, hz + 0.014), SK,
+                                 seg=9, rings=6, scale=(length / 0.022, 0.45, 0.75), rot=(0, side * -0.35, 0)))
+        head_part(name, ears)
+    beard = [uvsphere("beardchin", 0.052, (0, -0.087, hz - 0.065), HA, seg=12, rings=8, scale=(1.05, 0.48, 1.25))]
+    for side in (-1, 1):
+        beard.append(uvsphere(f"beardlock{side}", 0.025, (side * 0.035, -0.093, hz - 0.07), HA, seg=9, rings=6, scale=(0.75, 0.6, 1.65)))
+    head_part("race_beard", beard)
+    head_part("race_tusks", [cyl(f"tusk{side}", 0.001, 0.01, 0.035, (side * 0.032, -0.096, hz - 0.046), TO,
+                                  seg=7, rot=(-0.3, side * 0.18, 0)) for side in (-1, 1)])
+    horns = []
+    for side in (-1, 1):
+        horns.append(cyl(f"hornbase{side}", 0.014, 0.022, 0.062, (side * 0.068, 0.003, hz + 0.065), HO, seg=9, rot=(0.3, side * -0.25, 0)))
+        horns.append(cyl(f"horntip{side}", 0.001, 0.015, 0.052, (side * 0.052, 0.021, hz + 0.12), HO, seg=8, rot=(0.4, side * -0.3, 0)))
+    head_part("race_horns", horns)
+    snout = [uvsphere("dragonmuzzle", 0.047, (0, -0.096, hz - 0.025), SK, seg=12, rings=7, scale=(1.18, 1.0, 0.66))]
+    for side in (-1, 1):
+        snout.append(uvsphere(f"nostril{side}", 0.005, (side * 0.023, -0.133, hz - 0.018), EY, seg=7, rings=4))
+        snout.append(cyl(f"dragoncrest{side}", 0.001, 0.015, 0.062, (side * 0.065, 0.03, hz + 0.065), HO, seg=8, rot=(0.2, side * 0.35, 0)))
+    head_part("race_snout", snout)
+    points = [(0, 0.095, 0.29), (0.02, 0.19, 0.22), (0.055, 0.28, 0.12), (0.13, 0.31, 0.095), (0.17, 0.26, 0.12)]
+    tail = [beam(f"tail{k}", points[k], points[k + 1], 0.024 - k * 0.004, 0.024 - k * 0.004, SK) for k in range(4)]
+    obj = join(tail, "race_tail"); parent(obj, body)
+    hat = [cyl("archbrim", 0.125, 0.125, 0.014, (0, 0.018, hz + 0.09), RO, seg=18, smooth=True),
+           cyl("archcone", 0.007, 0.075, 0.22, (0, 0.019, hz + 0.098), RO, seg=14, smooth=True),
+           cyl("archband", 0.071, 0.074, 0.025, (0, 0.019, hz + 0.115), ST, seg=14)]
+    for k in range(3):
+        hat.append(sphere(f"archstar{k}", 0.008, (-0.03 + k * 0.025, -0.029, hz + 0.17 + k * 0.032), ST, sub=1))
+    head_part("hat_archmage", hat)
+    crown = [cyl("crownring", 0.098, 0.098, 0.023, (0, 0, hz + 0.075), ST, seg=16)]
+    for k in range(7):
+        a = k / 7 * math.pi * 2
+        crown.append(cyl(f"crownpoint{k}", 0.001, 0.017, 0.054, (math.cos(a) * 0.088, math.sin(a) * 0.088, hz + 0.09), ST, seg=6))
+    crown.append(sphere("crowngem", 0.013, (0, -0.102, hz + 0.093), GE, sub=1))
+    head_part("hat_crown", crown)
+    chain = []
+    for k in range(11):
+        a = -math.pi / 2 + (k - 5) * 0.15
+        chain.append(sphere(f"chainlink{k}", 0.01, (math.cos(a) * 0.092, math.sin(a) * 0.092, 0.42 + abs(k - 5) * 0.009), ST, sub=1))
+    chain.append(sphere("chainmedal", 0.025, (0, -0.098, 0.397), ST, sub=1, scale=(1, 0.3, 1)))
+    obj = join(chain, "chain"); parent(obj, body)
+    robe = [cyl("robecloth", 0.085, 0.14, 0.37, (0, 0, 0.1), RO, seg=16, smooth=True),
+            arc_panel("robestole", 0.094, 0.145, 0.095, 0.47, 0.19, ST, t=0.004)]
+    obj = join(robe, "robe"); parent(obj, body)
     return root

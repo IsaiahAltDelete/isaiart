@@ -4,6 +4,8 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { defOf, footprint, lvlOf, workersOf, housingOf, isDecor } from './sim.js';
 import { idx, inMap, toWorld } from './world.js';
+import {HOME_TYPES,LODGING_TYPES} from './data.js';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 function rrShape(W, D, R) {
   const s = new THREE.Shape(), x = -W / 2, y = -D / 2;
@@ -98,14 +100,15 @@ export class Highlight {
     if (ent?.kind === 'b') this.selTag.innerHTML = this.label(ent, true);
   }
   label(ent, sel = false) {
-    if (ent.kind === 'v') return `<b>${ent.v.name.split(' ')[0]}</b>`;
+    if (ent.kind === 'v') return `<b>${esc(ent.v.name.split(' ')[0])}</b>`;
     const b = ent.b, def = defOf(b.type);
     const bits = [];
     if (!isDecor(b.type)) bits.push(`Lv ${lvlOf(b)}`);
     if (!b.built) bits.push(`${Math.round((b.progress || 0) * 100)}% built`);
     else if (workersOf(b)) bits.push(`${b.workers.length}/${workersOf(b)} workers`);
     else if (housingOf(b)) bits.push(`${housingOf(b)} beds`);
-    return `<b>${def.name}</b>${bits.length ? `<small>${bits.join(' · ')}</small>` : ''}${sel ? '' : '<i>Click to open</i>'}`;
+    const name = [...HOME_TYPES,...LODGING_TYPES,'wizard'].includes(b.type) ? this.g.sim.homeName(b) : def.name;
+    return `<b>${esc(name)}</b>${bits.length ? `<small>${bits.join(' · ')}</small>` : ''}${sel ? '' : '<i>Click to open</i>'}`;
   }
 
   // ── placement: one coloured cell per footprint tile ──
@@ -140,6 +143,8 @@ export class Highlight {
   update(dt) {
     this.t += dt;
     const g = this.g, view = g.view;
+    if (this.hover.ent) { const h = this.label(this.hover.ent); if (this.hoverTag.innerHTML !== h) this.hoverTag.innerHTML = h; }
+    if (this.sel.ent?.kind === 'b') { const h = this.label(this.sel.ent, true); if (this.selTag.innerHTML !== h) this.selTag.innerHTML = h; }
     for (const h of [this.hover, this.sel]) {
       const ent = h.ent;
       if (!ent || !h.group.visible) continue;

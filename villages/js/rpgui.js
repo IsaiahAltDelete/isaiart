@@ -5,7 +5,7 @@ import { svg, addIcons } from './icons.js';
 import { GOODS, JOBS, SPELLS, BUILDINGS } from './data.js';
 import { stageOf, DAY, defOf } from './sim.js';
 import { faceSvg } from './ui.js';
-import { ABIL, ABIL_INFO, mod, fmtMod, CLASSES, classOf, maxHp, armorClass, guardAttack, classAttack, JOB_ABIL, jobFit, fitLabel, stars,
+import { ABIL, ABIL_INFO, mod, fmtMod, CLASSES, classOf, aptitudeOf, maxHp, armorClass, guardAttack, classAttack, JOB_ABIL, jobFit, fitLabel, stars,
   xpToNext, RECIPES, EXPEDITIONS, difficulty, SUPPLIES, slotsFor, casterNeeds, studyCost, diceStr, MONSTERS } from './rpg.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -113,8 +113,12 @@ function gearTags(v) {
   return out.join('');
 }
 function classTag(v) {
-  const c = CLASSES[classOf(v)], L = v.lvl || 1;
-  return `<span class="rtag gold" ${tip(`${c.name} · level ${L}`, `${c.desc} A villager's class comes from their best abilities. They earn xp by guarding, studying magic, smithing and adventuring.`)}>${svg(c.icon, 14)}${c.name} ${L}</span>`;
+  const k = classOf(v), c = CLASSES[k], L = v.lvl || 1;
+  if (k === 'commoner') {
+    const a = CLASSES[aptitudeOf(v)];
+    return `<span class="rtag" ${tip(`Commoner · level ${L}`, `${c.desc} From their best abilities they would make a fine ${a.name}.`)}>${svg('person', 14)}Commoner ${L}</span><span class="rtag" ${tip(`Aptitude: ${a.name}`, a.desc)}>${svg(a.icon, 14)}→ ${a.name}</span>`;
+  }
+  return `<span class="rtag gold" ${tip(`${c.name} · level ${L}`, `${c.desc} They trained into this class. They earn xp by guarding, studying magic, smithing and adventuring.`)}>${svg(c.icon, 14)}${c.name} ${L}</span>`;
 }
 function jobFitText(v, job) {
   const f = fitLabel(jobFit(v, job)), ja = JOB_ABIL[job];
@@ -239,7 +243,7 @@ export function rpgGuildHtml(ui) {
     const missing = !e && sim.canEquip(v, 'party');
     h += `<div class="pcard"><div class="hd">${faceSvg(v, 34)}<div style="min-width:0"><b>${esc(v.name)}</b>${classTag(v)}</div></div>
       <div class="hpline" ${tip(`${hp}/${mx} HP`, HEAL_TIP)}>${hpBar(v)}<span>${hp}/${mx}</span></div>
-      <div class="row"><span class="rtag" ${tip(`Armour class ${ac}`, 'Monsters must roll this or higher on d20 + their bonus to hit.')}>${svg('shield', 13)}AC ${ac}</span><span class="rtag" ${tip(a.name, atkText(a))}>${svg(c.icon, 13)}${esc(a.name)}</span>${gearTags(v)}</div>
+      <div class="row"><span class="rtag" ${tip(`Armour class ${ac}`, 'Monsters must roll this or higher on d20 + their bonus to hit.')}>${svg('shield', 13)}AC ${ac}</span><span class="rtag" ${tip(a.name, atkText(a))}>${svg(c.icon, 13)}${esc(a.name)}</span>${gearTags(v)}${v.jail > s.time ? '<span class="rtag">In custody</span>' : ''}</div>
       ${e ? '' : `<div class="btns">${missing ? `<button class="btn sm" data-act="rpg-pequip" data-id="${v.id}" ${tip('Equip', 'Take the best gear for their class from the armory.')}>${svg('sword', 13)}Gear</button>` : ''}${Object.keys(v.gear || {}).length ? `<button class="btn sm ghost" data-act="rpg-punequip" data-id="${v.id}" ${tip('Return gear', 'Put their gear back in the armory.')}>${svg('back', 12)}</button>` : ''}<button class="btn sm red" data-act="rpg-pkick" data-id="${v.id}">${svg('minus', 12)}Leave</button></div>`}</div>`;
   }
   for (let i = vs.length; i < (e ? 0 : 2); i++) h += `<div class="pcard empty">${svg('plus', 18)}<span>Add an adventurer below</span></div>`;
@@ -260,12 +264,13 @@ export function rpgGuildHtml(ui) {
     h += `</div>`;
     // recruits
     const taken = new Set(s.buildings.filter(o => o.type === 'guild').flatMap(o => o.data?.party || []));
-    const cands = s.villagers.filter(v => stageOf(v) === 'adult' && !taken.has(v.id) && !v.quest)
+    const cands = s.villagers.filter(v => stageOf(v) === 'adult' && !taken.has(v.id) && !v.quest && !(v.jail > s.time))
       .sort((a, c) => (c.lvl || 1) - (a.lvl || 1) || Math.max(...Object.values(c.abil)) - Math.max(...Object.values(a.abil)));
     h += `<h3 style="margin:4px 0 6px;font-size:14px">${svg('people', 18)} Recruits</h3><div class="cands">`;
     for (const v of cands.slice(0, 30)) {
       const c = CLASSES[classOf(v)], top = [...ABIL].sort((x, y) => v.abil[y] - v.abil[x]).slice(0, 2);
-      h += `<div class="cand" data-key="c${v.id}">${faceSvg(v, 30)}<div class="cm"><b>${esc(v.name)}</b><small>${esc(c.name)} ${v.lvl || 1} · ${top.map(k => `${ABIL_INFO[k].short} ${v.abil[k]}`).join(', ')} · ${Math.ceil(v.hp)}/${maxHp(v)} HP · ${esc(JOBS[v.job]?.name || '')}</small></div>
+      const cn = classOf(v) === 'commoner' ? `Commoner → ${CLASSES[aptitudeOf(v)].name}` : `${c.name} ${v.lvl || 1}`;
+      h += `<div class="cand" data-key="c${v.id}">${faceSvg(v, 30)}<div class="cm"><b>${esc(v.name)}</b><small>${esc(cn)} · ${top.map(k => `${ABIL_INFO[k].short} ${v.abil[k]}`).join(', ')} · ${Math.ceil(v.hp)}/${maxHp(v)} HP · ${esc(JOBS[v.job]?.name || '')}</small></div>
         <button class="btn sm" data-act="rpg-padd" data-id="${v.id}" ${vs.length >= 4 ? 'disabled' : ''}>${svg('plus', 12)}Join</button></div>`;
     }
     if (!cands.length) h += `<p class="sub" style="font-size:12px;color:var(--ink2)">No grown-ups are free to join.</p>`;

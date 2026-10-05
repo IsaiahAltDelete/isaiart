@@ -12,26 +12,29 @@
 // Sim-side logic is installed onto the Sim instance (installEducation); the
 // panel sections at the bottom are called from ui.js.
 import { defOf, lvlOf, stageOf, housingOf, isDecor, MAX_LVL, DAY } from './sim.js';
-import { JOBS } from './data.js';
+import { JOBS, HOME_TYPES } from './data.js';
 import { idx, inMap } from './world.js';
 import { svg, addIcons } from './icons.js';
+import { maxHp } from './rpg.js';
 
 const mod = sc => Math.floor(((sc ?? 10) - 10) / 2);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const tip = (t, d) => `data-tip="${esc(t)}|${esc(d)}"`;
 
+export const UNIVERSITY_POINTS = 180;
 export const TIERS = [
   { name: 'Unschooled', work: 1.0, desc: 'Never had lessons. Fine for any common job.' },
   { name: 'Schooled', work: 1.06, desc: 'Can read, write and reckon: +6% work speed, and skilled jobs (teacher, wizard, smith) are open.' },
   { name: 'Honours', work: 1.12, desc: 'Top of the class: +12% work speed.' },
   { name: 'Scholar', work: 1.2, desc: 'Studied long at the Library: +20% work speed, and adds to the village\'s knowledge.' },
+  { name: 'Magister', work: 1.25, desc: 'Graduated from the Arcane University: +25% work speed and trained as a level 2 wizard.' },
 ];
 // lesson points (weighted by attendance) needed for each grade
 export const GRADES = [{ g: 'A', min: 170, tier: 2 }, { g: 'B', min: 110, tier: 2 }, { g: 'C', min: 50, tier: 1 }];
 // study points at the Library for each tier an adult can reach
 const STUDY = [0, 60, 140, 240];
 // the least schooling a job needs
-export const JOB_EDU = { teacher: 1, wizard: 1, smith: 1 };
+export const JOB_EDU = { acolyte: 1, teacher: 1, wizard: 1, smith: 1, professor: 2, student: 2 };
 
 addIcons({
   cap: '<path d="M2 12l14-6 14 6-14 6z" fill="#4a4a6a" stroke="#5b3a1e" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 15v6c3 3 13 3 16 0v-6" fill="#5b5b7e" stroke="#5b3a1e" stroke-width="1.6" stroke-linejoin="round"/><path d="M27 13v8" stroke="#f0b429" stroke-width="2" stroke-linecap="round"/><circle cx="27" cy="22" r="2" fill="#f0b429"/>',
@@ -40,7 +43,7 @@ addIcons({
   cross: '<circle cx="16" cy="16" r="12" fill="#fbefd2" stroke="#c48a4a" stroke-width="1.6"/><path d="M11 11l10 10M21 11L11 21" stroke="#c0392b" stroke-width="2.6" stroke-linecap="round"/>',
 });
 
-const HOME_TYPES = ['cottage', 'tiled'];
+
 
 export function installEducation(sim) {
   Object.assign(sim, EDU);
@@ -61,6 +64,14 @@ export function installEducation(sim) {
     }
     return assign(b, v);
   };
+  const unassign = sim.unassign.bind(sim);
+  sim.unassign = v => {
+    if (v?.job === 'student' && v.work) {
+      const b = sim.bById.get(v.work);
+      if (b?.data?.students) b.data.students = b.data.students.filter(id => id !== v.id);
+    }
+    return unassign(v);
+  };
   const second = sim.second.bind(sim);
   sim.second = () => { second(); sim.eduSecond(); };
   // old saves: grown-ups who were "educated" count as schooled
@@ -75,10 +86,10 @@ const EDU = {
 
   // how well a school teaches: its teachers' INT and CHA, their own schooling, the school's level
   teachQuality(school) {
-    const ts = school.workers.map(id => this.vById.get(id)).filter(Boolean);
+    const ts = school.workers.map(id => this.vById.get(id)).filter(v => v && !v.quest && !(v.ko > 0) && !(v.jail > this.s.time) && !v.asleep);
     if (!ts.length) return 0;
     const q = ts.reduce((a, t) => a + 1 + 0.12 * mod(t.abil?.int) + 0.06 * mod(t.abil?.cha) + 0.1 * this.eduTier(t), 0) / ts.length;
-    return Math.max(0.6, Math.min(2, q * (1 + (lvlOf(school) - 1) * 0.2)));
+    return Math.max(0.6, Math.min(2, q * (1 + (lvlOf(school) - 1) * 0.2) * (this.policyOn?.('freeSchool') ? 1.15 : 1)));
   },
   sch(v) { return v.sch || (v.sch = { pts: v.edu || 0, days: 0, att: 0, lastDay: -1 }); },
   // one lesson at school
@@ -116,6 +127,50 @@ const EDU = {
     } }]);
   },
   studyNext(v) { const t = this.eduTier(v); return t >= 3 ? null : { tier: t + 1, need: STUDY[t + 1], have: v.study || 0 }; },
+
+  // Honours young adults enrol separately from the university's staff slots.
+  universityEligible(v) {
+    return v && stageOf(v) === 'adult' && v.age <= 35 && this.eduTier(v) >= 2 && this.eduTier(v) < 4
+      && !v.quest && !(v.ko > 0) && !(v.jail > this.s.time);
+  },
+  universityStudents(b) {
+    return (b.data?.students || []).map(id => this.vById.get(id)).filter(v => v && v.job === 'student' && v.work === b.id);
+  },
+  enrol(v, b) {
+    if (b?.type !== 'university' || !b.built || !this.universityEligible(v) || v.job === 'student'
+      || v.job === 'professor' && v.work === b.id
+      || this.universityStudents(b).length >= 4 + (lvlOf(b) - 1) * 2) return false;
+    this.unassign(v); v.job = 'student'; v.work = b.id;
+    (b.data ||= {}).students ||= []; b.data.students.push(v.id);
+    v.university = v.university || 0; this.trainFor(v, 'student'); this.dropTask(v);
+    this.emit('villagerJob', v); this.log(`${v.name} enrolled at the Arcane University.`); return true;
+  },
+  taskUniversity(v, b) {
+    const p = this.spot(b, v.id % 4), c = this.bCenter(b);
+    this.setTask(v, v.job === 'professor' ? 'Teaching arcane studies' : 'Studying arcane arts', [
+      { walk: this.goalBuilding(b) }, { to: [p.x, p.z] }, { face: [c.x, c.z] },
+      { act: 12, anim: 'work', done: () => {
+        if (!this.bById.has(b.id) || v.work !== b.id) return;
+        const teachers = b.workers.map(id => this.vById.get(id)).filter(t => t && t.job === 'professor' && !t.quest && !(t.ko > 0) && !(t.jail > this.s.time) && !t.asleep);
+        if (v.job === 'student') {
+          if (!teachers.length) b.status = 'Needs a professor';
+          else if (!this.policyOn('freeSchool') && (v.purse || 0) < 0.5) b.status = 'Student needs tuition';
+          else {
+            if (!this.policyOn('freeSchool')) { v.purse -= 0.5; this.s.res.coins += 0.5; this.track('coins', 0.5); }
+            const quality = this.teachQuality(b);
+            v.university = (v.university || 0) + 6 * quality * (1 + 0.06 * mod(v.abil?.int)) * (v.hungry ? 0.6 : 1);
+            this.rpg().know += 0.5; b.status = null;
+            if (v.university >= UNIVERSITY_POINTS) {
+              this.unassign(v); v.tier = 4; v.educated = true; v.cls = 'wizard'; v.lvl = Math.max(2, v.lvl || 1); v.hp = maxHp(v);
+              this.emit('toast', `${v.name.split(' ')[0]} graduated as a Magister!`, 'cap');
+              this.log(`${v.name} became a Magister and a level 2 wizard.`); this.socSecond(); return;
+            }
+          }
+        } else { this.rpg().know += 0.3; b.status = teachers.length ? null : 'Needs a professor'; }
+        this.repeat(v);
+      } },
+    ]);
+  },
 
   // ── homes ──
   homeResidents(b) { return this.s.villagers.filter(v => this.bedFor(v).b === b); },
@@ -159,6 +214,8 @@ const EDU = {
   },
   eduSecond() {
     const s = this.s, day = Math.floor(s.time / DAY);
+    for (const b of s.buildings) if (b.type === 'university' && b.data?.students) b.data.students = this.universityStudents(b).map(v => v.id);
+    for (const v of s.villagers) if (v.job === 'student' && (!this.bById.has(v.work) || stageOf(v) !== 'adult')) this.unassign(v);
     // count school days for every school-age child who has a staffed school at home
     if (s.eduDay !== day) {
       s.eduDay = day;
@@ -193,6 +250,7 @@ export function eduVillagerHtml(ui, v) {
   const t = sim.eduTier(v), nx = st === 'adult' ? sim.studyNext(v) : null;
   return `<div class="ip-sec"><div class="cap">${svg('cap', 14)} Education<span class="r" ${tip(TIERS[t].name, TIERS[t].desc)}>${v.grade ? gradeChip(v.grade) + ' ' : ''}${TIERS[t].name}</span></div>
     <div class="desc">${esc(TIERS[t].desc)}${t === 0 && st === 'adult' ? ' Send them to the Library (Scholar job) to catch up.' : ''}</div>
+    ${v.job === 'student' ? `<div class="pbar"><i style="width:${Math.min(100, (v.university || 0) / UNIVERSITY_POINTS * 100)}%"></i></div><div class="sub">Arcane studies: ${Math.floor(v.university || 0)}/${UNIVERSITY_POINTS} toward Magister</div>` : ''}
     ${v.job === 'scholar' && nx ? `<div class="pbar" style="margin-top:6px"><i style="width:${Math.round(Math.min(1, nx.have / nx.need) * 100)}%"></i></div><div class="sub">Studying toward ${TIERS[nx.tier].name}: ${Math.floor(nx.have)}/${nx.need}</div>` : ''}</div>`;
 }
 

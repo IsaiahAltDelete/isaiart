@@ -47,6 +47,9 @@ export function inheritScores(a, b, r) {
 
 // which abilities each job leans on: [primary, secondary]
 export const JOB_ABIL = {
+  acolyte:['wis','cha'], trainer:['str','con'], scout:['dex','wis'], locksmith:['dex','int'],
+  barkeep: ['cha', 'wis'], attendant: ['con', 'wis'], bard: ['cha', 'dex'], constable: ['wis', 'str'],
+  professor: ['int', 'cha'], student: ['int', 'wis'], scholar: ['int', 'wis'],
   builder: ['str', 'con'], woodcutter: ['str', 'con'], forager: ['wis', 'dex'], farmer: ['con', 'wis'], sawyer: ['str', 'dex'],
   miner: ['str', 'con'], fisher: ['wis', 'dex'], merchant: ['cha', 'int'], forester: ['wis', 'con'], miller: ['con', 'str'],
   baker: ['dex', 'wis'], mason: ['str', 'int'], herder: ['wis', 'cha'], picker: ['dex', 'con'], beekeeper: ['wis', 'dex'],
@@ -75,12 +78,19 @@ export const CLASSES = {
              desc: 'Hurls Fire Bolt (d10) from the back row. Fragile (d6 hit die) and can\'t wear armour, but a staff sharpens the magic.' },
   cleric:  { name: 'Cleric',  icon: 'heart',  hd: 8,  w: { wis: 2, con: 0.5, str: 0.5 }, saves: ['wis', 'cha'], gear: { w: ['staff', 'sword'], a: 1, s: 1 },
              desc: 'Calls down Sacred Flame and patches friends up with Cure Wounds when they get hurt.' },
+  commoner: { name: 'Commoner', icon: 'person', hd: 8, w: {}, saves: [], gear: { w: ['sword'] },
+             desc: 'An ordinary villager with no adventuring training: a d8 hit die and a club. Joining a guild party, the watch or a wizard tower trains them into a class.' },
   bard:    { name: 'Bard',    icon: 'party',  hd: 8,  w: { cha: 2, dex: 1 }, saves: ['dex', 'cha'], gear: { w: ['sword'], a: 1 },
              desc: 'Stings foes with Vicious Mockery, heals with Healing Word, and is the one who does the talking.' },
 };
-export function classOf(v) {
+// Everyone starts as a Commoner. A villager earns a real class by training for it:
+// joining a guild party (their best-fit class), the watch (fighter or ranger), or a
+// wizard tower or the Arcane University (wizard). aptitudeOf() is that best fit.
+export function classOf(v) { return v.cls && CLASSES[v.cls] ? v.cls : 'commoner'; }
+export function aptitudeOf(v, among = null) {
   let best = 'fighter', bs = -1e9;
   for (const [k, c] of Object.entries(CLASSES)) {
+    if (k === 'commoner' || (among && !among.includes(k))) continue;
     let sc = 0, wt = 0;
     for (const [a, w] of Object.entries(c.w)) { sc += (v.abil?.[a] ?? 10) * w; wt += w; }
     sc /= wt;
@@ -230,6 +240,8 @@ export function runExpedition(q, vs, r, opt = {}) {
     if (cls === 'cleric') { p.heal = { name: 'Cure Wounds', s: 8, b: mod(v.abil?.wis) }; p.heals = 1 + (L >> 1); }
     if (cls === 'bard') { p.heal = { name: 'Healing Word', s: 4, b: mod(v.abil?.cha) }; p.heals = 1 + (L >> 1); }
     if (cls === 'rogue') p.sneak = Math.ceil(L / 2);
+    // racial traits (society.js): Lucky, Relentless Endurance, Breath Weapon
+    p.lucky = v.race === 'halfling'; p.relentless = v.race === 'halforc'; p.breath = v.race === 'dragonborn';
     return p;
   });
   const bless = () => opt.bless ? roll(r, 1, 4) : 0;
@@ -256,7 +268,7 @@ export function runExpedition(q, vs, r, opt = {}) {
     const M = MONSTERS[st.foe], md = dice(M.dmg);
     const foes = Array.from({ length: st.n }, () => ({ hp: M.hp }));
     const alive = () => foes.filter(f => f.hp > 0);
-    const dealt = new Map(), healed = [];
+    const dealt = new Map(), healed = [], breaths = [], lucky = [];
     let taken = 0, critBy = null, falls = [];
     lines.push(st.text);
     for (let round = 0; round < 14 && up().length && alive().length; round++) {
@@ -269,9 +281,14 @@ export function runExpedition(q, vs, r, opt = {}) {
         }
         if (p.wind && p.hp < p.max / 2) { p.hp = Math.min(p.max, p.hp + roll(r, 1, 10) + p.L); p.wind = false; }
         const f = alive()[0];
+        if (p.breath && round === 0) {
+          const n = roll(r, 2 + (p.L >= 6 ? 1 : 0), 6), hitF = alive().slice(0, 2);
+          for (const o of hitF) o.hp -= n;
+          p.breath = false; breaths.push(`${p.first} breathed a gout of dragon fire (${n} damage${hitF.length > 1 ? ' each' : ''})`); continue;
+        }
         let hit = false, crit = false;
         if (p.atk.save) hit = d20(r) + M.sv < p.atk.dc;
-        else { const d = d20(r); crit = d === 20; hit = crit || (d !== 1 && d + p.atk.bonus + bless() >= M.ac); }
+        else { let d = d20(r); if (d === 1 && p.lucky) { d = d20(r); lucky.push(p.first); } crit = d === 20; hit = crit || (d !== 1 && d + p.atk.bonus + bless() >= M.ac); }
         if (!hit) continue;
         let n = Math.max(1, rollD(r, p.atk.dmg, crit));
         if (p.sneak && up().length > 1) n += roll(r, p.sneak * (crit ? 2 : 1), 6);
@@ -284,12 +301,15 @@ export function runExpedition(q, vs, r, opt = {}) {
         if (!(crit || (d !== 1 && d + M.atk >= t.ac))) continue;
         const n = Math.max(1, rollD(r, md, crit));
         t.hp = Math.max(0, t.hp - n); taken += n;
+        if (t.hp === 0 && t.relentless) { t.hp = 1; t.relentless = false; breaths.push(`${t.first} refused to fall (Relentless Endurance)`); }
         if (t.hp === 0) falls.push(t.first);
       }
     }
     const won = !alive().length;
     const top = [...dealt.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([p]) => `${p.first}'s ${p.atk.name}`);
     if (critBy) lines.push(`${critBy.first} rolled a natural 20!`);
+    if (breaths.length) lines.push(breaths.join('; ') + '.');
+    if (lucky.length) lines.push(`Halfling luck: ${names([...new Set(lucky)])} turned a fumble around.`);
     if (healed.length) lines.push(healed.slice(0, 2).join('; ') + '.');
     if (won) lines.push(`${top.length ? names(top) : 'Teamwork'} ${M.beaten}${taken ? ` (the party took ${taken} damage${falls.length ? `; ${names([...new Set(falls)])} got knocked down` : ''})` : ', without a scratch'}.`);
     else lines.push(`The ${st.n > 1 ? M.plural : M.name} ${st.n > 1 ? 'were' : 'was'} too much. The party fell back, carrying each other home.`);
@@ -821,10 +841,12 @@ const RPG = {
     if (d.exp) return { ok: false, why: 'The party is away on an expedition' };
     d.party = d.party.filter(id => this.vById.has(id));
     if (d.party.includes(v.id)) { d.party = d.party.filter(id => id !== v.id); return { ok: true, joined: false }; }
+    if (v.jail > this.s.time) return { ok: false, why: `${first(v)} is in custody at the Watch House` };
     if (d.party.length >= 4) return { ok: false, why: 'A party has at most 4 adventurers' };
     if (stageOf(v) !== 'adult') return { ok: false, why: 'Only grown-ups go adventuring' };
     if (this.s.buildings.some(o => o !== b && o.type === 'guild' && o.data?.party?.includes(v.id))) return { ok: false, why: 'Already in another party' };
     d.party.push(v.id);
+    if (classOf(v) === 'commoner') { v.cls = aptitudeOf(v); v.hp = Math.min(v.hp ?? maxHp(v), maxHp(v)); this.log(`${v.name} began training as a ${CLASSES[v.cls].name}.`); }
     return { ok: true, joined: true };
   },
   canDepart(b, q) {
@@ -832,6 +854,8 @@ const RPG = {
     if (!b.built) return { ok: false, why: 'Still being built' };
     if (d.exp) return { ok: false, why: 'Already on an expedition' };
     if (vs.length < 2) return { ok: false, why: 'Needs at least 2 adventurers' };
+    const jailed = vs.find(v => v.jail > this.s.time);
+    if (jailed) return { ok: false, why: `${first(jailed)} is in custody at the Watch House` };
     const tired = vs.find(v => v.ko > 0 || v.downed || v.quest || v.hp < maxHp(v) * 0.5);
     if (tired) return { ok: false, why: `${first(tired)} needs to rest first` };
     if (vs.some(v => stageOf(v) !== 'adult')) return { ok: false, why: 'Everyone must be a grown-up' };

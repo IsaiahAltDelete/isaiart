@@ -2,7 +2,7 @@
 // modals, tooltips, toasts and floating numbers.
 import { svg, iconImage } from './icons.js';
 import { GOODS, TOP_GOODS, BUILDINGS, DECOR, BUILD_ORDER, DECOR_ORDER, SETTLEMENTS, JOBS, SELLABLE, QUESTS, SYNERGY, CROPS, SPELLS, BEASTS, xpForLevel,
-  SEASONS, SEASON_DAYS, FESTIVALS, RARE, FIRST_NAMES } from './data.js';
+  SEASONS, SEASON_DAYS, FESTIVALS, RARE, FIRST_NAMES, HOME_TYPES, LODGING_TYPES } from './data.js';
 import { defOf, isDecor, DAY, workersOf, lvlOf, MAX_LVL, housingOf, storageOf, stageOf } from './sim.js';
 import { N, CENTERS, T_WATER, T_SAND } from './world.js';
 import { sfx } from './audio.js';
@@ -11,6 +11,9 @@ import { r7Init, r7Frame, r7QuestsHtml, r7GoodHtml, r7WorldRow, r7SiteHtml, r7Bu
   r7CardTip, r7CardHtml, r7SpecNote, R7_MODALS, R7_LIVE } from './panels.js';   // roads, trade, festivals, friends, share codes
 import { rpgVillagerHtml, rpgBuildingHtml, rpgGuildHtml, rpgSpellbookHtml, rpgInfoClick, rpgModalClick, fitStars } from './rpgui.js';
 import { eduVillagerHtml, eduBuildingHtml, eduClick, JOB_EDU, TIERS } from './education.js';
+import { boardsInit, boardsFrame, boardClick, boardChange, peopleBoardHtml, jobsBoardHtml, buildingsBoardHtml, worldRegionsHtml } from './boards.js';
+import {progressBuildingHtml,progressVillagerHtml,progressClick} from './progressui.js';
+import { townInit, townHtml, townClick, townChange, townBuildingHtml, townVillagerHtml, seedHtml, seedClick } from './townui.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -57,15 +60,20 @@ function patchKids(a, b) {
 // a little portrait: shirt, face, hair or hat, eyes, cheeks and a smile
 export function faceSvg(v, size = 34) {
   const hair = hex(v.hair), skin = hex(v.skin);
-  const top = v.hat
+  const top = v.race === 'dragonborn' ? '' : v.hat
     ? `<path d="M6 13h20v2H6z" fill="${hex(v.hatColor)}" stroke="#5b3a1e" stroke-width="1"/><path d="M10 13c0-5 12-5 12 0z" fill="${hex(v.hatColor)}" stroke="#5b3a1e" stroke-width="1"/>`
     : `<path d="M9 15c0-7 14-7 14 0-3-2-11-2-14 0z" fill="${hair}" stroke="#5b3a1e" stroke-width="1"/>`;
+  const pointed = ['elf', 'halfelf', 'gnome'].includes(v.race) ? `<path d="M10 15L4 11l3 8 4 1M22 15l6-4-3 8-4 1" fill="${skin}" stroke="#5b3a1e"/>` : '';
+  const horns = v.race === 'tiefling' ? `<path d="M10 12Q5 5 9 3l3 8M22 12q5-7 1-9l-3 8" fill="${hex(v.horn ?? 0x4a3030)}" stroke="#5b3a1e"/>` : '';
+  const features = v.race === 'dwarf' ? `<path d="M10 19q6 3 12 0l-2 7h-8z" fill="${hair}" stroke="#5b3a1e"/>`
+    : v.race === 'halforc' ? '<path d="M12 21l1-4 2 4M17 21l2-4 1 4" fill="#fff6db" stroke="#5b3a1e" stroke-width=".5"/>'
+    : v.race === 'dragonborn' ? `<path d="M11 18q5-3 10 0l-1 4h-8z" fill="${skin}" stroke="#5b3a1e"/><circle cx="13.5" cy="19" r=".6"/><circle cx="18.5" cy="19" r=".6"/>` : '';
   return `<svg class="face" viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true"><circle cx="16" cy="16" r="15.5" fill="#cfe8f5"/>
     <path d="M4 32c0-7 5-10 12-10s12 3 12 10z" fill="${hex(v.shirt)}" stroke="#5b3a1e" stroke-width="1"/>
-    <circle cx="16" cy="16" r="7" fill="${skin}" stroke="#5b3a1e" stroke-width="1"/>${top}
+    ${pointed}<circle cx="16" cy="16" r="7" fill="${skin}" stroke="#5b3a1e" stroke-width="1"/>${top}${horns}
     <circle cx="13.4" cy="16.5" r="1" fill="#2a1a10"/><circle cx="18.6" cy="16.5" r="1" fill="#2a1a10"/>
     <circle cx="12" cy="18.6" r="1.1" fill="#f29a8a" opacity=".8"/><circle cx="20" cy="18.6" r="1.1" fill="#f29a8a" opacity=".8"/>
-    <path d="M14.2 19.2c1 .9 2.6 .9 3.6 0" stroke="#5b3a1e" stroke-width=".9" fill="none" stroke-linecap="round"/></svg>`;
+    <path d="M14.2 19.2c1 .9 2.6 .9 3.6 0" stroke="#5b3a1e" stroke-width=".9" fill="none" stroke-linecap="round"/>${features}</svg>`;
 }
 
 const SHOP = [
@@ -90,11 +98,15 @@ const usersOf = g => Object.keys(CHAIN).filter(t => (CHAIN[t].in || []).includes
 const CATS = {
   build: [
     { id: 'all', name: 'All', icon: 'hammer' },
-    { id: 'homes', name: 'Homes', icon: 'house', types: ['cottage', 'tiled', 'storehouse'] },
+    { id: 'homes', name: 'Homes', icon: 'house', types: ['cottage', 'tiled', 'rowhouse', 'hostel', 'manor', 'storehouse'] },
     { id: 'res', name: 'Resources', icon: 'axe', types: ['clear', 'lumber', 'forester', 'quarry', 'sawmill', 'mason'] },
     { id: 'food', name: 'Food', icon: 'apple', types: ['forager', 'farm', 'dock', 'coop', 'orchard', 'windmill', 'bakery'] },
     { id: 'craft', name: 'Crafts', icon: 'wool', types: ['beehive', 'pasture', 'weaver', 'dairy', 'creamery', 'brewery'] },
-    { id: 'serv', name: 'Services', icon: 'staff', types: ['market', 'tavern', 'school', 'library', 'wizard'], rest: true },
+    { id: 'serv', name: 'Services', icon: 'staff', types: ['market', 'school', 'library', 'wizard', 'university'], rest: true },
+    { id: 'leisure', name: 'Leisure', icon: 'smile', types: ['park', 'pub', 'tavern', 'bathhouse', 'theatre'] },
+    { id: 'faith', name: 'Faith', icon: 'heart', types: ['chapel','temple'] },
+    { id: 'classes', name: 'Class Halls', icon: 'sword', types: ['trainingyard','rangerlodge','rogueguild','guild','wizard','university','theatre'] },
+    { id: 'civic', name: 'Civic', icon: 'house', types: ['townhall', 'watchhouse'] },
     { id: 'roads', name: 'Roads & Trade', icon: 'stone', types: ['road', 'pave', 'tradepost'] },
     { id: 'def', name: 'Defense', icon: 'shield', types: ['watchtower', 'torch', 'palisade'] },
   ],
@@ -162,6 +174,8 @@ export class UI {
     this.initTips();
     this.initKeys();
     r7Init(this);
+    townInit(this);
+    boardsInit(this);
   }
   get sim() { return this.g.sim; }
 
@@ -421,9 +435,10 @@ export class UI {
       const ready = this.sim.achievements().filter(x => x.done && !x.claimed).length;
       const tb = $('#trophyBadge'); tb.classList.toggle('hidden', !ready); tb.textContent = ready;
       const ae = document.activeElement;
-      if (this.modal && ['villagers', 'buildings', 'inventory', 'stats', 'worldmap', 'merchant', 'magic', 'guild', ...R7_LIVE].includes(this.modal) && !($('#modal').contains(ae) && /SELECT|INPUT/.test(ae.tagName))) this.drawModal(true);
+      if (this.modal && ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'worldmap', 'merchant', 'magic', 'guild', 'town', ...R7_LIVE].includes(this.modal) && !($('#modal').contains(ae) && /SELECT|INPUT/.test(ae.tagName))) this.drawModal(true);
       this.drawQuests();
       r7Frame(this);
+      boardsFrame(this);
       if (this.tray) this.refreshCards();
       if (this.tipEl && (!this.tipEl.isConnected || !this.tipEl.offsetParent)) this.hideTip();
     }
@@ -743,12 +758,13 @@ export class UI {
   buildingInfo(b) {
     const sim = this.sim, def = defOf(b.type), s = sim.s;
     const sname = sim.sname(b.sid), lvl = lvlOf(b);
-    const title = b.type === 'campfire' ? sname : def.name;
+    const home = [...HOME_TYPES,...LODGING_TYPES].includes(b.type);
+    const title = b.type === 'campfire' ? sname : home || b.type === 'wizard' ? sim.homeName(b) : def.name;
     let h = `<button class="x" data-act="close" aria-label="Close" data-tip="Close|Esc">${svg('close', 14)}</button><div class="ipwrap">`;
     // header: picture, name, level, where
     h += `<div class="ip-hd"><img class="thumb" alt="" src="${this.g.thumbs[b.type] || ''}"><div style="min-width:0;flex:1">${this.renaming === 'b' + b.id
-      ? `<div class="rename"><input id="renameIn" maxlength="22" value="${esc(sname)}" aria-label="Village name"><button class="btn sm" data-act="renameok">Save</button></div>`
-      : `<h3>${esc(title)}${!isDecor(b.type) ? ` <span class="lvchip">Lv ${lvl}</span>` : ''}${b.type === 'campfire' ? `<button class="pen" data-act="rename" aria-label="Rename village" data-tip="Rename your village">${svg('pencil', 14)}</button>` : ''}</h3>`}
+      ? `<div class="rename"><input id="renameIn" maxlength="22" value="${esc(home ? b.hname || title : sname)}" aria-label="${home ? 'Home name' : 'Village name'}"><button class="btn sm" data-act="renameok">Save</button></div>`
+      : `<h3>${esc(title)}${!isDecor(b.type) ? ` <span class="lvchip">Lv ${lvl}</span>` : ''}${b.type === 'campfire' || home ? `<button class="pen" data-act="rename" aria-label="${home ? 'Rename home' : 'Rename village'}" data-tip="${home ? 'Rename this home|Clear the name to use its owner’s surname again.' : 'Rename your village'}">${svg('pencil', 14)}</button>` : ''}</h3>`}
       <div class="sub">${b.type === 'campfire' ? 'Village campfire · the heart of the settlement' : `${esc(sname)} · ${isDecor(b.type) ? 'decoration' : esc(CAT_OF[b.type] || 'building')}`}</div></div></div>`;
     // browse buildings of this type, or all of them
     if (!isDecor(b.type)) {
@@ -803,8 +819,10 @@ export class UI {
     if (b.type === 'farm') h += `<div class="crops">${Object.entries(CROPS).map(([k, c]) => `<button class="tog ${(b.data.crop || 'wheat') === k ? 'on' : ''}" data-act="crop" data-k="${k}">${svg(c.out === 'grain' ? 'wheat' : 'apple', 16)}${c.name}<small>${c.desc}</small></button>`).join('')}</div>`;
     if (b.type === 'wizard') h += `<button class="btn sm" style="background:linear-gradient(#b18cff,#7a5ad8);border-color:#4a2f8a;margin-top:6px;width:100%" data-act="spellbook">${svg('staff', 16)} Open the spell book</button>`;
     if (b.type === 'memorial' && s.departed?.length) h += `<div class="sub" style="margin-top:6px">In loving memory: ${s.departed.slice(-6).reverse().map(d => `${esc(d.name)} (${d.age})`).join(', ')}</div>`;
-    if (b.type === 'market') h += `<div class="sub" style="margin-top:6px">Sell when above reserve:</div><div class="sell-toggles">${SELLABLE.map(k => `<button class="tog ${s.sell[k] ? 'on' : ''}" data-act="sell" data-k="${k}">${svg(GOODS[k].icon, 16)}${GOODS[k].name} · ${GOODS[k].price}</button>`).join('')}</div>`;
+    if (b.type === 'market') h += `<div class="sub" style="margin-top:6px">Sell when above reserve · current local prices:</div><div class="sell-toggles">${SELLABLE.map(k => `<button class="tog ${s.sell[k] ? 'on' : ''}" data-act="sell" data-k="${k}">${svg(GOODS[k].icon, 16)}${GOODS[k].name} · ${sim.priceOf(k, b.sid).toFixed(1)}</button>`).join('')}</div>`;
     h += `</div>`;
+    h += progressBuildingHtml(this, b);
+    h += townBuildingHtml(this, b);
     h += eduBuildingHtml(this, b);   // home needs + auto-growing, classroom, reading room (education.js)
     h += rpgBuildingHtml(this, b);   // forge, guild hall, watch, knowledge, spell slots (rpgui.js)
     h += r7BuildingHtml(this, b) + r7SiteHtml(this, b);   // stores, specialty, carts, deliveries (panels.js)
@@ -872,6 +890,8 @@ export class UI {
       <dt>Fed</dt><dd>${v.hungry ? '<span style="color:#c0392b">Hungry!</span>' : Math.round(100 - v.hunger / 80 * 100) + '%'}</dd>
       ${v.carry ? `<dt>Carrying</dt><dd>${v.carry.n} ${GOODS[v.carry.res].name.toLowerCase()}</dd>` : ''}
       ${work ? `<dt>Works at</dt><dd><a href="#" data-act="chainb" data-id="${work.id}" style="color:inherit">${esc(defOf(work.type).name)} ›</a></dd>` : ''}</dl></div>
+      ${progressVillagerHtml(this, v)}
+      ${townVillagerHtml(this, v)}
       ${eduVillagerHtml(this, v)}
       ${rpgVillagerHtml(this, v)}
       ${r7VillagerHtml(this, v)}
@@ -905,16 +925,17 @@ export class UI {
     // short labels so the closed dropdown never truncates: the current job reads "Woodcutter ★★★",
     // the open list "Woodcutter ★★☆ · Lumber Hut 1/2" (plus #2 / the village when there are several)
     let o = `<option value="0" ${v.job === 'idle' ? 'selected' : ''}>${compact ? 'Idle' : 'Idle / builder'}</option>`;
+    if (v.job === 'student') o += `<option value="student" selected disabled>Student · Arcane University</option>`;
     const multi = Object.keys(s.unlocked).length > 1, seen = {};
     for (const b of s.buildings) {
       const def = defOf(b.type);
       if (!def.workers || !b.built) continue;
       const key = b.type + b.sid, k = seen[key] = (seen[key] || 0) + 1;
-      const mine = v.work === b.id;
+      const mine = v.work === b.id && v.job !== 'student';
       if (!mine && b.workers.length >= workersOf(b)) continue;
       const need = JOB_EDU[def.job] || 0, barred = !mine && need && this.sim.eduTier(v) < need;
       const job = JOBS[def.job].name + (barred ? ` · needs ${TIERS[need].name.toLowerCase()}` : fitStars(v, def.job));
-      const where = `${def.name}${k > 1 ? ` #${k}` : ''} ${b.workers.length}/${workersOf(b)}${multi ? ' · ' + this.sim.sname(b.sid) : ''}`;
+      const where = `${b.type==='wizard'?this.sim.homeName(b):def.name}${k > 1 ? ` #${k}` : ''} ${b.workers.length}/${workersOf(b)}${multi ? ' · ' + this.sim.sname(b.sid) : ''}`;
       o += `<option value="${b.id}" ${mine ? 'selected' : ''}${barred ? ' disabled' : ''}>${mine ? job : `${job} · ${where}`}</option>`;
     }
     return o;
@@ -925,6 +946,8 @@ export class UI {
     e.preventDefault();
     const sim = this.sim, sel = this.g.selected;
     const act = a.dataset.act;
+    if (progressClick(this,act,a,sel)) { this.drawInfo(true); return; }
+    if (act.startsWith('town-')) { townClick(this, act, a); this.drawInfo(true); return; }
     if (act.startsWith('r7-')) { if (r7Click(this, act, a)) this.drawInfo(true); return; }
     if (act === 'close') { this.g.select(null); return; }
     if (act === 'selv') { const v = sim.vById.get(+a.dataset.id); if (v) this.g.select({ kind: 'v', v }, true); return; }
@@ -937,8 +960,9 @@ export class UI {
     }
     if (act === 'renameok') {
       const val = $('#renameIn')?.value || '';
-      const ok = sel.kind === 'b' ? sim.renameSettlement(sel.b.sid, val) : sim.renameVillager(sel.v, val);
-      this.renaming = null; if (ok) { sfx.pop(); this.toast(sel.kind === 'b' ? `Welcome to ${sim.sname(sel.b.sid)}!` : `Now known as ${sel.v.name}`, sel.kind === 'b' ? 'house' : 'person'); }
+      const home = sel.kind === 'b' && [...HOME_TYPES,...LODGING_TYPES].includes(sel.b.type);
+      const ok = sel.kind === 'b' ? home ? sim.renameHome(sel.b, val) : sim.renameSettlement(sel.b.sid, val) : sim.renameVillager(sel.v, val);
+      this.renaming = null; if (ok) { sfx.pop(); this.toast(sel.kind === 'b' ? home ? `Home named ${sim.homeName(sel.b)}` : `Welcome to ${sim.sname(sel.b.sid)}!` : `Now known as ${sel.v.name}`, sel.kind === 'b' ? 'house' : 'person'); }
       this.drawInfo(true); return;
     }
     if (act === 'chainb') { const b = sim.bById.get(+a.dataset.id); if (b) this.g.select({ kind: 'b', b }, true); return; }
@@ -1082,6 +1106,8 @@ export class UI {
     $('#pMsg').innerHTML = (title ? `<b>${esc(title)}</b>` : '') + esc(msg);
     $('#pMsg').classList.toggle('bad', bad);
     $('#pOk').classList.toggle('hidden', !touch);
+    $('#pFace').classList.toggle('hidden', !this.g.place?.ghost || this.g.place?.type==='dock');
+    $('#pFace').setAttribute('aria-pressed', !!this.g.place?.autoFace);
   }
 
   // ── modals ──
@@ -1092,7 +1118,7 @@ export class UI {
     this.modal = kind;
     m.classList.remove('hidden', 'closing');
     if (!was) restart(m, 'opening');
-    m.querySelector('.box').classList.toggle('tall', ['villagers', 'buildings', 'inventory', 'stats', 'log', 'settings', 'guild'].includes(kind));
+    m.querySelector('.box').classList.toggle('tall', ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'log', 'settings', 'guild', 'town'].includes(kind));
     this.drawModal(false, was);
     this.drawDock();
     this.hideTip(); this.hideResTip();
@@ -1108,21 +1134,23 @@ export class UI {
     this.drawDock(); this.hideTip();
   }
   drawDock() {
-    const on = { villagers: 'villagers', buildings: 'villagers', inventory: 'inventory' }[this.modal];
+    const on = { villagers: 'villagers', jobs: 'villagers', buildings: 'villagers', inventory: 'inventory' }[this.modal];
     document.querySelectorAll('#dockbar [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === on));
   }
   drawModal(refresh, swap) {
     const k = this.modal, sim = this.sim, s = sim.s;
     if (!k) return;
-    const titles = { villagers: ['people', 'Villagers'], buildings: ['list', 'Buildings'], inventory: ['bag', 'Inventory'], worldmap: ['map', 'World'], shop: ['shop', 'Shop'],
-      settings: ['gear', 'Settings'], log: ['mail', 'Village News'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
-    const head = k === 'villagers' || k === 'buildings'
-      ? `<span class="seg" role="tablist"><button data-act="mtab" data-m="villagers" class="${k === 'villagers' ? 'on' : ''}" role="tab">${svg('people', 18)}Villagers <small>${s.villagers.length}</small></button><button data-act="mtab" data-m="buildings" class="${k === 'buildings' ? 'on' : ''}" role="tab">${svg('house', 18)}Buildings <small>${s.buildings.filter(b => !isDecor(b.type)).length}</small></button></span>`
+    const titles = { villagers: ['people', 'Villagers'], jobs: ['hammer','Jobs'], buildings: ['list', 'Buildings'], inventory: ['bag', 'Inventory'], worldmap: ['map', 'World'], shop: ['shop', 'Shop'],
+      settings: ['gear', 'Settings'], town: ['house', 'Town'], log: ['mail', 'Village News'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
+    const head = ['villagers','jobs','buildings'].includes(k)
+      ? '<span class="seg" role="tablist" aria-label="Village boards">'+[['villagers','Villagers'],['jobs','Jobs'],['buildings','Buildings']].map(([id,name])=>`<button data-act="mtab" data-m="${id}" class="${k===id?'on':''}" role="tab" aria-selected="${k===id}">${name}</button>`).join('')+'</span>'
       : esc(titles[k][1]);
     if (head !== this.lastHead) { this.lastHead = head; $('#mTitle').innerHTML = head; }
-    $('#mIcon').innerHTML = k === 'villagers' || k === 'buildings' ? '' : svg(titles[k][0], 26);
+    $('#mIcon').innerHTML = ['villagers','jobs','buildings'].includes(k) ? '' : svg(titles[k][0], 26);
     let h = '';
     if (k === 'villagers') h = this.villagersHtml();
+    else if(k === 'jobs') h = jobsBoardHtml(this);
+    else if (k === 'town') h = townHtml(this);
     else if (k === 'buildings') h = this.buildingsHtml();
     else if (k === 'inventory') {
       const cap = sim.cap();
@@ -1142,18 +1170,7 @@ export class UI {
       h += `<p class="sub" style="font-size:12px;color:var(--ink2);margin-top:8px">Quick sales pay half price. A staffed Market Stall sells your surplus at full price.</p>`;
     } else if (k === 'worldmap') {
       h += `<div class="worldwrap"><canvas id="minimap" width="384" height="384"></canvas><div>`;
-      for (const st of SETTLEMENTS) {
-        const un = s.unlocked[st.id];
-        const pop = s.villagers.filter(v => v.home === st.id).length;
-        let right = '';
-        if (un) right = `<button class="btn blue sm" data-act="travel" data-sid="${st.id}">Visit</button>`;
-        else {
-          const ok = s.level >= st.unlock.lvl && sim.canAfford(st.unlock.cost);
-          right = `<button class="btn sm ${ok ? '' : 'ghost'}" data-act="settle" data-sid="${st.id}" ${ok ? '' : 'disabled'}>Settle</button>`;
-        }
-        h += `<div class="sett">${svg(un ? 'house' : 'lock', 28)}<div class="meta"><b>${esc(sim.sname(st.id))}</b>${un ? `${pop} villagers · ${st.blurb}` :
-          `<span class="costline">Level ${st.unlock.lvl} · ${costHtml(st.unlock.cost, s.res)}</span>${st.blurb}`}${r7WorldRow(this, st.id)}</div>${right}</div>`;
-      }
+      h += worldRegionsHtml(this, r7WorldRow);
       if (Object.keys(s.unlocked).length > 1) h += `<button class="btn sm" style="margin-top:8px;width:100%" data-act="r7-trade">${svg('wood', 16)} Stores &amp; trade routes</button>`;
       h += `</div></div>`;
     } else if (k === 'shop') {
@@ -1179,7 +1196,7 @@ export class UI {
         <p><b>Controls.</b> Drag to move · scroll or pinch to zoom · right-drag, two-finger twist or <kbd>Q</kbd>/<kbd>E</kbd> to rotate · <kbd>WASD</kbd> to pan · <kbd>R</kbd> rotates while placing · <kbd>Space</kbd> pauses · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> set the speed · <kbd>Esc</kbd> closes or cancels.</p>
         <p><b>Shortcuts.</b> <kbd>B</kbd> build · <kbd>G</kbd> decorate · <kbd>V</kbd> villagers · <kbd>L</kbd> buildings · <kbd>I</kbd> inventory · <kbd>M</kbd> world map · <kbd>N</kbd> news · <kbd>H</kbd> home · <kbd>[</kbd> <kbd>]</kbd> switch build tabs · <kbd>?</kbd> this page. Hover (or long-press) almost anything for an explanation.</p>
         <p>Your village saves automatically in this browser.</p></div>
-        <div class="actions"><button class="btn red" data-act="reset">${svg('trash', 16)} Start a new village</button></div>`;
+        ${seedHtml(this)}<div class="actions"><button class="btn red" data-act="reset">${svg('trash', 16)} Start a new village with this seed</button></div>`;
     } else if (k === 'log') {
       h += s.log.map(l => `<div class="logline"><small>Day ${Math.floor(l.t / DAY) + 1}</small>${esc(l.msg)}</div>`).join('') || '<p>No news yet.</p>';
       this.seenLog = s.log.length; this.markLog();
@@ -1235,80 +1252,8 @@ export class UI {
   }
 
   // ── villagers: who does what, with filters, grouping and one-tap jobs ──
-  villagersHtml() {
-    const sim = this.sim, s = sim.s, V = s.villagers, multi = Object.keys(s.unlocked).length > 1;
-    const adult = v => stageOf(v) === 'adult', isIdle = v => v.job === 'idle' && adult(v);
-    const idle = V.filter(isIdle).length, hungry = V.filter(v => v.hungry).length;
-    const kids = V.filter(v => stageOf(v) === 'child').length, elders = V.filter(v => stageOf(v) === 'elder').length;
-    const open = s.buildings.filter(b => b.built && defOf(b.type).workers).reduce((n, b) => n + Math.max(0, workersOf(b) - b.workers.length), 0);
-    let h = `<div class="summary tight">
-      <span class="chip" data-tip="@stat" data-t="Beds" data-b="Villagers / beds. Newcomers move in while there are free beds, food and good cheer.">${svg('house', 16)}${V.length}/${sim.housing()} beds</span>
-      <span class="chip" data-tip="@stat" data-t="Happiness" data-b="Happy villagers work faster. Decorations, food, festivals and the tavern all help.">${svg('smile', 16)}${Math.round(s.happiness)}% happy</span>
-      <span class="chip" data-tip="@stat" data-t="Open jobs" data-b="Empty worker slots in your workplaces. Upgrading a building adds a slot.">${svg('hammer', 16)}${open} open job${open === 1 ? '' : 's'}</span></div>`;
-    // filters
-    const jobs = {};
-    for (const v of V) if (adult(v) && v.job !== 'idle') jobs[v.job] = (jobs[v.job] || 0) + 1;
-    const keys = ['all', 'idle', 'hungry', ...Object.keys(jobs).sort((a, b) => jobs[b] - jobs[a] || JOBS[a].name.localeCompare(JOBS[b].name)), 'kids', 'elders'];
-    const count = { all: V.length, idle, hungry, kids, elders, ...jobs };
-    const label = { all: 'All', idle: 'Idle', hungry: 'Hungry', kids: 'Children', elders: 'Elders' };
-    let f = this.vFilter;
-    if (f !== 'all' && !count[f]) f = this.vFilter = 'all';
-    h += `<div class="chips scroll">${keys.filter(x => x === 'all' || count[x]).map(x => `<button class="chipf${(x === 'idle' || x === 'hungry') ? ' warn' : ''}${f === x ? ' on' : ''}" data-act="vf" data-f="${x}">${esc(label[x] || JOBS[x].name)} <i>${count[x]}</i></button>`).join('')}</div>`;
-    if (idle) h += `<div class="callout">${svg('person', 22)}<span><b>${idle} idle villager${idle > 1 ? 's' : ''}.</b> ${open ? `There ${open === 1 ? 'is' : 'are'} ${open} open job${open > 1 ? 's' : ''}.` : 'Every job is taken — idle folk build and clear trees. Build or upgrade workplaces for more jobs.'}</span>${open ? `<button class="btn sm" data-act="autoassign">${svg('people', 16)} Fill jobs</button>` : ''}</div>`;
-    else h += `<div class="callout calm">${svg('smile', 20)}<span>Everyone has something to do.${open ? ` ${open} job${open > 1 ? 's are' : ' is'} still open — new villagers will need them.` : ''}</span></div>`;
-    // rows, grouped when showing everyone
-    const pick = { all: () => true, idle: isIdle, hungry: v => v.hungry, kids: v => stageOf(v) === 'child', elders: v => stageOf(v) === 'elder' }[f] || (v => v.job === f && adult(v));
-    const order = v => isIdle(v) ? 0 : adult(v) ? 1 : stageOf(v) === 'child' ? 2 : 3;
-    const list = V.filter(pick).sort((a, b) => order(a) - order(b) || (order(a) === 1 ? JOBS[a.job].name.localeCompare(JOBS[b.job].name) : 0) || a.name.localeCompare(b.name));
-    const groupName = ['Idle — ready for a job', 'Working', 'Children', 'Elders'];
-    let last = -1;
-    for (const v of list) {
-      const o = order(v);
-      if (f === 'all' && o !== last) { last = o; h += `<div class="vgroup">${groupName[o]}</div>`; }
-      const tags = (v.hungry ? `<span class="vtag hungry">${svg('apple', 11)}hungry</span>` : '') + (v.asleep ? `<span class="vtag sleep">${svg('moon', 11)}asleep</span>` : '') + (v.indoors && !v.asleep && s.weather?.storm ? `<span class="vtag shelter">${svg('house', 11)}inside</span>` : '');
-      const st = stageOf(v);
-      const job = st === 'adult'
-        ? `<select data-act="job" data-id="${v.id}" aria-label="Job for ${esc(v.name)}">${this.workOptions(v, true)}</select>${v.work ? `<button class="cap" data-act="openb" data-id="${v.work}">${esc(this.workplaceCaption(v))} ›</button>` : `<small>${esc(this.workplaceCaption(v))}</small>`}`
-        : `<span class="fixed">${st === 'child' ? (v.age < 5 ? 'Toddler' : 'Too young to work') : 'Retired'}</span>`;
-      h += `<div class="vrow${isIdle(v) ? ' idle' : ''}" data-key="v${v.id}" data-act="vsel" data-id="${v.id}" aria-label="Show ${esc(v.name)} in the village">${faceSvg(v)}
-        <div><b>${esc(v.name)} <span class="age">${Math.floor(v.age ?? 30)}</span>${tags}</b><div class="doing">${esc(this.doingOf(v))}${this.waitWhy(v)}${multi ? ' · ' + esc(sim.sname(v.home)) : ''}</div></div>
-        <div class="jobcell">${job}</div></div>`;
-    }
-    return h;
-  }
-
-  // ── buildings: every building, filterable, with problems flagged ──
-  buildingsHtml() {
-    const sim = this.sim, s = sim.s, multi = Object.keys(s.unlocked).length > 1, F = this.bFilter;
-    const all = s.buildings.filter(b => !isDecor(b.type));
-    const catOf = b => b.type === 'campfire' ? 'Homes' : CAT_OF[b.type] || 'Services';
-    const attn = b => { const st = this.bStatus(b); return st && (st.cls === 'bad' || st.cls === 'warn') && !/Sheltering/.test(st.text); };
-    const nAttn = all.filter(attn).length, idle = s.villagers.filter(v => v.job === 'idle' && stageOf(v) === 'adult').length;
-    if (F.sid !== 'all' && !s.unlocked[F.sid]) F.sid = 'all';
-    let h = '';
-    if (nAttn) h += `<div class="callout">${svg('warn', 22)}<span><b>${nAttn} building${nAttn > 1 ? 's need' : ' needs'} attention.</b> ${idle ? `${idle} villager${idle > 1 ? 's are' : ' is'} idle.` : 'Tap one to see why.'}</span>${idle ? `<button class="btn sm" data-act="autoassign">${svg('people', 16)} Fill jobs</button>` : `<button class="btn sm ghost" data-act="bf" data-k="cat" data-v="attn">Show them</button>`}</div>`;
-    else h += `<div class="callout calm">${svg('smile', 20)}<span>Every building is ticking along nicely.</span></div>`;
-    if (multi) h += `<div class="chips scroll"><span class="chiplbl">Village</span>${['all', ...Object.keys(s.unlocked)].map(id => `<button class="chipf${F.sid === id ? ' on' : ''}" data-act="bf" data-k="sid" data-v="${id}">${id === 'all' ? 'All' : esc(sim.sname(id))}</button>`).join('')}</div>`;
-    const inSid = all.filter(b => F.sid === 'all' || b.sid === F.sid);
-    const cats = ['Homes', 'Resources', 'Food', 'Crafts', 'Services', 'Defense'].filter(c => inSid.some(b => catOf(b) === c));
-    if (F.cat !== 'all' && F.cat !== 'attn' && !cats.includes(F.cat)) F.cat = 'all';
-    h += `<div class="chips scroll"><button class="chipf${F.cat === 'all' ? ' on' : ''}" data-act="bf" data-k="cat" data-v="all">All <i>${inSid.length}</i></button>${nAttn ? `<button class="chipf warn${F.cat === 'attn' ? ' on' : ''}" data-act="bf" data-k="cat" data-v="attn">Needs attention <i>${inSid.filter(attn).length}</i></button>` : ''}${cats.map(c => `<button class="chipf${F.cat === c ? ' on' : ''}" data-act="bf" data-k="cat" data-v="${c}">${c} <i>${inSid.filter(b => catOf(b) === c).length}</i></button>`).join('')}</div>`;
-    const catIx = c => ['Homes', 'Resources', 'Food', 'Crafts', 'Services', 'Defense'].indexOf(c);
-    const list = inSid.filter(b => F.cat === 'all' || (F.cat === 'attn' ? attn(b) : catOf(b) === F.cat))
-      .sort((a, b) => catIx(catOf(a)) - catIx(catOf(b)) || BUILD_ORDER.indexOf(a.type) - BUILD_ORDER.indexOf(b.type) || a.id - b.id);
-    let last = '';
-    for (const b of list) {
-      const c = catOf(b);
-      if (F.cat === 'all' && c !== last) { last = c; h += `<div class="vgroup">${c}</div>`; }
-      const def = defOf(b.type), st = this.bStatus(b);
-      const slots = def.workers && b.built ? `<span class="slots" aria-label="${b.workers.length} of ${workersOf(b)} workers">${Array.from({ length: workersOf(b) }, (_, i) => `<i class="${i < b.workers.length ? '' : 'empty'}"></i>`).join('')}</span>` : '';
-      h += `<div class="brow" data-key="b${b.id}" data-act="bsel" data-id="${b.id}"><img alt="" src="${this.g.thumbs[b.type] || ''}">
-        <div style="min-width:0"><b>${esc(b.type === 'campfire' ? sim.sname(b.sid) + ' campfire' : def.name)} <span class="lvchip">Lv ${lvlOf(b)}</span></b><div class="meta">${multi ? esc(sim.sname(b.sid)) + ' · ' : ''}${st ? `<span class="stat ${st.cls}">${esc(st.text)}</span>` : esc(def.desc || '')}</div></div>
-        ${slots || '<span></span>'}<span class="chev">${svg('next', 12)}</span></div>`;
-    }
-    if (!list.length) h += `<p class="sub" style="font-size:12.5px;color:var(--ink2);padding:8px 4px">Nothing here yet.</p>`;
-    return h;
-  }
+  villagersHtml() { return peopleBoardHtml(this, faceSvg); }
+  buildingsHtml() { return buildingsBoardHtml(this); }
 
   modalClick(e) {
     const a = e.target.closest('[data-act]');
@@ -1321,6 +1266,10 @@ export class UI {
       return;
     }
     const sim = this.sim, s = sim.s, act = a.dataset.act;
+    if (boardClick(this,act,a)) return;
+    if (act === 'seed-input') return;
+    if (seedClick(this, act)) { this.drawModal(true); return; }
+    if (act.startsWith('town-')) { townClick(this, act, a); if (this.modal) this.drawModal(true); return; }
     if (act === 'job') return;                       // the dropdown itself; handled on change
     if (act.startsWith('rpg-')) { rpgModalClick(this, act, a); this.dirty.res = true; this.drawModal(true); return; }
     if (act.startsWith('r7-')) { r7Click(this, act, a); this.dirty.res = true; if (this.modal) this.drawModal(true); return; }
@@ -1356,13 +1305,16 @@ export class UI {
     if (act === 'quality') { const q = this.g.settings.quality; this.g.setSetting('quality', q === 'high' ? 'medium' : q === 'medium' ? 'low' : 'high'); this.g.save(); location.reload(); return; }
     if (act === 'savenow') { this.g.save(); this.toast('Village saved', 'star'); }
     if (act === 'reset') {
-      if (a.dataset.sure) { this.g.reset(); return; }
+      if (a.dataset.sure) { this.g.reset($('#worldSeed')?.value ?? this.newSeed); return; }
       a.dataset.sure = 1; a.innerHTML = 'Tap again — this erases your village'; return;
     }
     this.dirty.res = true;
     this.drawModal(true);
   }
   modalChange(e) {
+    if (boardChange(this,e)) return;
+    if (townChange(this, e)) return;
+    if (e.target.dataset.act === 'seed-input') { this.newSeed = e.target.value; this.seedTraits = null; return; }
     if (r7Change(this, e)) return;
     const t = e.target;
     if (t.dataset.act !== 'job') return;
