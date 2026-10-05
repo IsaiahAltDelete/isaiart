@@ -36,7 +36,7 @@ if cmd == "preview":
         n = o.name.split(".")[0]
         grp = n.split("_")[0]
         # SHOW lists the villager's optional parts to keep (hair, hats, race parts, outfits)
-        optional = grp in ("hair", "hat", "race") or n in ("apron", "pack", "scarf", "chain", "robe")
+        optional = grp in ("hair", "hat", "race") or n in ("apron", "pack", "scarf", "chain", "robe", "mask")
         if show is not None and optional and n not in show: o.hide_render = True
         if n in hide: o.hide_render = True
     # the winter snow pillows are hidden in the game except in deep snow; drop them

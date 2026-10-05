@@ -1,11 +1,12 @@
-// Evening outings and staffed venues. Payments and fuel use the local store.
+// Evening outings and staffed venues. Outings are free; the pub pours local ale
+// and the bathhouse burns local wood.
 import { stageOf, lvlOf } from './sim.js';
 
 export const VENUES = {
-  park: { fee: 0, joy: 4, label: 'Strolling in the park', allAges: true },
-  pub: { fee: 1.5, joy: 7, label: 'Enjoying a pint', job: 'barkeep' },
-  bathhouse: { fee: 2, joy: 8, label: 'Taking a warm bath', job: 'attendant', allAges: true },
-  theatre: { fee: 2.5, joy: 9, label: 'Watching a play', job: 'bard', allAges: true },
+  park: { joy: 4, label: 'Strolling in the park', allAges: true },
+  pub: { joy: 7, label: 'Enjoying a pint', job: 'barkeep' },
+  bathhouse: { joy: 8, label: 'Taking a warm bath', job: 'attendant', allAges: true },
+  theatre: { joy: 9, label: 'Watching a play', job: 'bard', allAges: true },
 };
 const SERVICE_JOBS = ['barkeep', 'attendant', 'bard'];
 const NO_OUTING_JOBS = ['guard', 'constable', 'student', ...SERVICE_JOBS];
@@ -19,8 +20,7 @@ export function installLeisure(sim) {
     if (f >= 0.72 && f < 0.88 && !v.carry && !v.quest && !v.downed && !(v.ko > 0) && !(v.jail > s.time)
       && !NO_OUTING_JOBS.includes(v.job) && !sim.sleepy(v) && !sim.stormy() && !sim.festivalActive()
       && v.lastOuting !== sim.dayNum() && sim.rng() < 0.25) {
-      const venues = s.buildings.filter(b => sim.venueOpen(b) && b.sid === v.home && (VENUES[b.type].allAges || stageOf(v) !== 'child')
-        && (v.purse || 0) >= sim.venueFee(b, v));
+      const venues = s.buildings.filter(b => sim.venueOpen(b) && b.sid === v.home && (VENUES[b.type].allAges || stageOf(v) !== 'child'));
       if (venues.length) {
         const b = venues[Math.floor(sim.rng() * venues.length)];
         v.lastOuting = sim.dayNum(); sim.taskOuting(v, b); return;
@@ -41,10 +41,6 @@ export function installLeisure(sim) {
 }
 
 const LEISURE = {
-  venueFee(b, visitor) {
-    const info = VENUES[b.type];
-    return visitor && stageOf(visitor) === 'child' && info?.allAges ? 0 : info?.fee || 0;
-  },
   venueOpen(b) {
     if (!b.built || !VENUES[b.type]) return false;
     if (b.type === 'park') return true;
@@ -77,13 +73,11 @@ const LEISURE = {
       { walk: this.goalBuilding(b) }, { to: [p.x, p.z] }, { face: [c.x, c.z] },
       { act: 9, anim: 'rest', start: () => {
         v.act.idle = true;
-        const fee = this.venueFee(b, v);
-        if (!this.bById.has(b.id) || !this.venueOpen(b) || (!info.allAges && stageOf(v) === 'child') || (v.purse || 0) < fee) return;
+        if (!this.bById.has(b.id) || !this.venueOpen(b) || (!info.allAges && stageOf(v) === 'child')) return;
         if (b.type === 'pub' && !this.trade.consume(b.sid, 'ale', 1)) return;
-        v.purse = Math.max(0, (v.purse || 0) - fee); this.s.res.coins += fee; this.track('coins', fee);
         if (b.type === 'pub') this.credit(b, 'ale', -1);
-        this.credit(b, 'coins', fee); (b.data ||= {}).visits = (b.data.visits || 0) + 1;
-        admitted = true; this.emit('res');
+        (b.data ||= {}).visits = (b.data.visits || 0) + 1;
+        admitted = true;
       }, done: () => {
         if (!admitted || !this.bById.has(b.id)) return;
         v.outingUntil = this.s.time + info.joy * 12 * (1 + (lvlOf(b) - 1) * 0.1);

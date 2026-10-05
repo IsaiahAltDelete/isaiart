@@ -36,16 +36,54 @@ def build_chapel():
         P+=flower_bed('flowers',M,side*0.79,0.22,0.10,0.28,n=5,rnd=random.Random(94+side))
     return finish(root,P,E)
 
+def cp_dome(P,E,M,x,y,z0,R=0.7,DH=0.42):
+    """A smooth verdigris dome on a pale drum with small arched windows, gold ribs
+    and bands, a little lantern and a gold sun finial. z0 is the drum's base."""
+    WS=material('white',0xf7f3ea,True);VS=material('verdigris',0x5fae9a,True);GS=material('gold',0xf0b429,True)
+    P.append(cyl('drumbase',R+0.06,R+0.06,0.07,(x,y,z0),M['cut'],seg=32,bev=0.02))
+    P.append(cyl('drum',R,R,DH,(x,y,z0+0.06),WS,seg=40,smooth=True))
+    for k in range(8):
+        a=(k+0.5)*math.pi/4;cx,cy=x+math.sin(a)*R,y-math.cos(a)*R
+        w=poly_extrude('drumwin',arch_pts(0.13,0.25,6),0.05,(0,0,0),M['win'])
+        fr=poly_extrude('drumwinfr',arch_pts(0.185,0.29,6),0.04,(0,0.012,-0.02),M['cut'])
+        for o in (w,fr):o.rotation_euler=(0,0,a);o.location=(cx-math.sin(a)*0.01+o.location.x,cy+math.cos(a)*0.01+o.location.y,z0+0.13+o.location.z)
+        P+= [w,fr]
+        b=k*math.pi/4;P.append(box('pilaster',(0.07,0.06,DH-0.02),(x+math.sin(b)*(R+0.01),y-math.cos(b)*(R+0.01),z0+0.07),WS,rot=(0,0,b)))
+    for a in (math.pi/8,-math.pi/8,math.pi*7/8):E.append(empty('pt_glow_win',(x+math.sin(a)*R,y-math.cos(a)*R,z0+0.25)))
+    zt=z0+0.06+DH
+    P.append(cyl('drumcap',R+0.05,R+0.05,0.06,(x,y,zt-0.02),M['cut'],seg=32,bev=0.015))
+    P.append(cyl('domeband',R+0.01,R+0.01,0.05,(x,y,zt+0.035),GS,seg=40,smooth=True))
+    zd=zt+0.04;H=R*1.06
+    P.append(uvsphere('dome',R,(x,y,zd),VS,seg=40,rings=24,scale=(1,1,H/R),cut=0.0))
+    # eight gold ribs running up the dome to the lantern
+    for k in range(8):
+        a=k*math.pi/4;pts=[]
+        for j in range(7):
+            t=j/6*math.radians(76);r=R*math.cos(t)+0.012;pts.append((x+math.sin(a)*r,y-math.cos(a)*r,zd+H*math.sin(t)+0.004))
+        P.append(tube('rib',pts,lambda u:(0.022*(1-0.35*u),)*2,GS,seg=8,steps=2))
+    zl=zd+H*0.97
+    P.append(cyl('lanternbase',0.17,0.17,0.04,(x,y,zl-0.02),GS,seg=20,smooth=True))
+    P.append(cyl('lantern',0.12,0.12,0.15,(x,y,zl+0.02),WS,seg=20,smooth=True))
+    for k in range(6):
+        a=k*math.pi/3;P.append(box('lanternwin',(0.05,0.03,0.09),(x+math.sin(a)*0.115,y-math.cos(a)*0.115,zl+0.05),M['win'],rot=(0,0,a)))
+    P.append(uvsphere('lanterncap',0.14,(x,y,zl+0.17),GS,seg=20,rings=10,scale=(1,1,0.7),cut=0.0))
+    # the finial: a short spire carrying a gold sun with straight and wavy rays
+    zs=zl+0.46
+    P.append(cyl('spire',0.035,0.02,0.24,(x,y,zl+0.25),GS,seg=10,smooth=True))
+    P.append(uvsphere('sunorb',0.05,(x,y,zl+0.25),GS,seg=12,rings=8))
+    P.append(cyl('sundisc',0.125,0.125,0.035,(x,y+0.018,zs),GS,seg=24,rot=(math.pi/2,0,0),smooth=True))
+    P.append(uvsphere('sunboss',0.06,(x,y-0.012,zs),GS,seg=14,rings=8,scale=(1,0.5,1)))
+    for k in range(12):
+        a=k*math.pi/6;L=0.13 if k%2==0 else 0.085
+        P.append(tube('sunray',[(x+math.sin(a)*0.115,y,zs+math.cos(a)*0.115),(x+math.sin(a)*(0.115+L),y,zs+math.cos(a)*(0.115+L))],
+                      lambda u,L=L:(0.026*(1-0.9*u),0.013),GS,seg=6,steps=1,up=(0,1,0)))
+
 def build_temple():
     M=xslots();root=empty('temple',(0,0,0));P=[pad('pad',M,2.85,2.85)];E=[]
     P.append(box('platform',(2.15,2.1,0.16),(0,0.15,0),M['cut'],bev=0.04))
     P.append(walls('sanctuary',M,1.8,1.55,1.0,loc=(0,0.32,0.16),mat=M['white']))
     P.append(box('cornice',(1.94,1.69,0.11),(0,0.32,1.14),M['cut'],bev=0.03))
-    P.append(cyl('drum',0.76,0.76,0.34,(0,0.32,1.22),M['stone'],seg=16,bev=0.025))
-    for k in range(6):
-        lo=math.cos(k*math.pi/12)*0.88;hi=math.cos((k+1)*math.pi/12)*0.88
-        P.append(cyl('dome',lo,hi,0.115,(0,0.32,1.56+k*0.115),M['verd'],seg=16))
-    P.append(cyl('spire',0.04,0.018,0.22,(0,0.32,2.26),M['gold'],seg=8));P.append(sphere('orb',0.09,(0,0.32,2.49),M['gold'],sub=1))
+    cp_dome(P,E,M,0,0.32,1.25)
     cp_door(P,M,0,-0.50,0.16,w=0.52,h=0.82)
     for x in (-0.78,-0.38,0.38,0.78):
         P.append(box('colbase',(0.18,0.18,0.08),(x,-0.74,0.16),M['cut'],bev=0.02))

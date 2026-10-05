@@ -7,7 +7,7 @@ import { World, WORLD_GEN, seedFromText, idx, CENTERS, T_WATER } from '../js/wor
 import { classOf, maxHp, EXPEDITIONS } from '../js/rpg.js';
 import { townBuildingHtml } from '../js/townui.js';
 import { RACE_ORDER, RACES } from '../js/society.js';
-import { mortgageCost } from '../js/economy.js';
+import { PROSPERITY } from '../js/economy.js';
 import { UNIVERSITY_POINTS } from '../js/education.js';
 import { GOODS } from '../js/data.js';
 import { encodeSave, decodeSave } from '../js/share.js';
@@ -15,7 +15,7 @@ import { encodeSave, decodeSave } from '../js/share.js';
 const hash = a => createHash('sha256').update(Buffer.from(a.buffer, a.byteOffset, a.byteLength)).digest('hex');
 const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-7, `${a} != ${b}`);
 const fresh = () => new Sim(null, { seed: 'round-eight-tests' });
-const cash = sim => sim.s.res.coins + sim.s.villagers.reduce((n, v) => n + (v.purse || 0), 0);
+const cash = sim => sim.s.res.coins;
 function build(sim, type, sid = 'meadow') {
   const c = CENTERS[sid];
   for (let r = 2; r < 15; r++) for (let z = c.z - r; z <= c.z + r; z++) for (let x = c.x - r; x <= c.x + r; x++) {
@@ -75,7 +75,7 @@ test('classic save loads without changing terrain or tree indices', () => {
   assert.equal(new Sim(sim.serialize()).world.gen, 1);
 });
 
-test('saving preserves seeds, local stock, purses, names and one-time racial bonuses', () => {
+test('saving preserves seeds, local stock, names and one-time racial bonuses', () => {
   const sim = fresh(), home = sim.s.buildings.find(b => b.type === 'cottage');
   sim.renameHome(home, 'Honey Hearth'); const before = cash(sim), abilities = sim.s.villagers.map(v => ({ ...v.abil }));
   const loaded = new Sim(sim.serialize()), again = new Sim(loaded.serialize());
@@ -101,12 +101,12 @@ test('children inherit parent peoples and family identity', () => {
   assert.equal(child.race, 'halfelf'); assert.equal(stageOf(child), 'child'); assert.equal(child.name.split(' ').at(-1), 'Family');
 });
 
-test('households inherit occupied homes and savings; bed cache responds immediately', () => {
+test('households inherit occupied homes; bed cache responds immediately', () => {
   const sim = fresh(), home = sim.s.buildings.find(b => b.type === 'cottage'), owner = sim.homeOwner(home);
   const heir = sim.spawnVillager('meadow', 8, 4, { age: 18, parents: [owner.id], last: 'Family' });
-  owner.kids.push(heir.id); home.fam.push(heir.id); home.paid = 13; sim.bedFor(owner);
-  const name = sim.homeName(home), total = cash(sim); sim.passAway(owner); sim.settleHomes();
-  assert.equal(home.owner, heir.id); assert.equal(home.paid, 13); close(cash(sim), total);
+  owner.kids.push(heir.id); home.fam.push(heir.id); sim.bedFor(owner);
+  const name = sim.homeName(home); sim.passAway(owner); sim.settleHomes();
+  assert.equal(home.owner, heir.id);
   assert.ok(![...sim._beds?.map?.keys() || []].includes(owner.id));
   assert.ok(sim.s.log.some(e => e.msg === `${heir.name} inherited ${name}.`));
 });
@@ -120,7 +120,7 @@ test('home names are cleaned, customisable and resettable', () => {
 
 test('government changes need a Town Hall; seasonal leader persists on load', () => {
   const sim = fresh(); assert.equal(sim.setGovernment('mayor'), false); assert.equal(sim.setTax(0.2), false);
-  build(sim, 'townhall'); assert.equal(sim.setGovernment('mayor'), true); sim.setTax(0.99); assert.equal(sim.s.gov.tax, 0.4);
+  build(sim, 'townhall'); assert.equal(sim.setGovernment('mayor'), true); sim.setTax(0.99); assert.equal(sim.s.gov.tax, 0.3);
   const leader = sim.govLeader(); sim.s.gov.season = Math.floor(sim.s.time / (DAY * 3));
   const other = sim.s.villagers.find(v => v !== leader); other.abil.cha = 20; other.abil.wis = 20;
   const loaded = new Sim(sim.serialize()); assert.equal(loaded.s.gov.leader, leader.id);
@@ -128,53 +128,59 @@ test('government changes need a Town Hall; seasonal leader persists on load', ()
   assert.equal(sim.setGovernment('magocracy'), false);
 });
 
-test('wages, taxes, relief, shopping and mortgage payments conserve coins', () => {
-  const sim = fresh(); build(sim, 'townhall'); const b = build(sim, 'lumber'), v = sim.s.villagers[0]; sim.assign(b, v);
-  sim.setPolicy('poorRelief', true); sim.s.res.coins = 60;
-  const before = cash(sim); sim.econSecond(); close(cash(sim), before);
-  assert.ok(v.wage > 0); close(sim.s.economy.taxes, sim.s.economy.wages * sim.s.gov.tax);
-  assert.ok(sim.s.villagers.every(v => v.purse >= 0));
-  build(sim, 'market'); sim.s.villagers.forEach(v => v.purse = 100); const total = cash(sim);
+test('every government lists exactly three perks and shifts its effects', () => {
+  const sim = fresh(); build(sim, 'townhall');
+  for (const k of ['elders', 'mayor', 'monarchy', 'republic']) { sim.setGovernment(k); assert.equal(sim.govInfo().perks.length, 3); }
+  sim.setGovernment('monarchy'); assert.ok(sim.govEffects().tax > 1); assert.ok(sim.govEffects().safety > 0);
+  sim.setGovernment('republic'); assert.ok(sim.priceOf('cloth') > GOODS.cloth.price);
+});
+
+test('old purse saves return savings to the treasury once', () => {
+  const sim = fresh(), save = sim.serialize();
+  save.villagers.forEach(v => { v.purse = 7.5; v.wage = 1; }); save.economy = { prices: {}, demand: {} };
+  const coins = save.res.coins, loaded = new Sim(save);
+  assert.ok(loaded.s.villagers.every(v => v.purse === undefined && v.wage === undefined));
+  assert.equal(loaded.s.res.coins, coins + Math.floor(7.5 * save.villagers.length));
+  const again = new Sim(loaded.serialize()); assert.equal(again.s.res.coins, loaded.s.res.coins);
+});
+
+test('households buy local luxuries, grow comfortable, and pay tax only with a Town Hall', () => {
+  const sim = fresh(), home = sim.s.buildings.find(b => b.type === 'cottage');
+  sim.s.villagers.forEach(v => { v.hungry = false; });
+  sim.econSecond(); assert.equal(home.pros, 1);   // fed, but no shop to buy from
+  build(sim, 'market'); build(sim, 'park');
   for (const k of ['cloth', 'cheese', 'honey', 'ale']) stock(sim, 'meadow', k, 20);
-  for (let i = 0; i < 5; i++) sim.econSecond();
-  close(cash(sim), total); ledgerOK(sim); assert.ok(sim.s.economy.spending > 0);
-  assert.ok(sim.s.buildings.find(b => b.type === 'cottage').paid > 0);
+  const before = cash(sim);
+  for (let i = 0; i < 4; i++) { sim.s.time += 20; sim.econSecond(); }
+  assert.equal(home.pros, 3); assert.equal(PROSPERITY[home.pros].name, 'Prosperous');
+  assert.ok(sim.trade.get('meadow', 'cloth') < 20); close(cash(sim), before); ledgerOK(sim);
+  build(sim, 'townhall'); sim.econSecond(); assert.ok(cash(sim) > before); assert.ok(sim.s.economy.income > 0);
+  sim.s.villagers[0].hungry = true; sim._beds = null; sim.econSecond(); assert.equal(home.pros, 0);
 });
 
-test('wages never overdraw an empty treasury or mint coins', () => {
-  const sim = fresh(), b = build(sim, 'lumber'); sim.assign(b, sim.s.villagers[0]);
-  sim.s.res.coins = 0; const total = cash(sim); sim.econSecond(); close(cash(sim), total);
-  assert.ok(sim.s.res.coins >= 0); assert.ok(sim.s.economy.shortfall > 0); assert.equal(sim.s.economy.wages, 0);
-});
-
-test('local supply and household demand change prices', () => {
-  const sim = fresh(); stock(sim, 'meadow', 'cloth', 0); const scarce = sim.priceOf('cloth');
-  stock(sim, 'meadow', 'cloth', 200); assert.ok(sim.priceOf('cloth') < scarce);
-  stock(sim, 'meadow', 'cloth', 0); sim.s.economy.demand['meadow:cloth'] = 20; assert.ok(sim.priceOf('cloth') > scarce);
-});
-
-test('funded policies stop when resources or the Town Hall are unavailable', () => {
+test('policies cost coins each period and stop without funds or a Town Hall', () => {
   const sim = fresh(), hall = build(sim, 'townhall'); sim.setPolicy('freeSchool', true); sim.fundPolicies(); assert.equal(sim.policyOn('freeSchool'), true);
+  const coins = sim.s.res.coins; sim.fundPolicies(); assert.equal(sim.s.res.coins, coins - sim.policyCost());
   sim.s.res.coins = 0; sim.fundPolicies(); assert.equal(sim.policyOn('freeSchool'), false);
-  sim.setPolicy('curfew', true); sim.s.time = DAY * 0.86; assert.equal(sim.sleepy(sim.s.villagers[0]), true);
-  sim.demolish(hall); assert.equal(sim.policyOn('curfew'), false);
+  sim.s.res.coins = 500; sim.fundPolicies(); sim.demolish(hall); assert.equal(sim.policyOn('freeSchool'), false);
+  assert.equal(sim.setPolicy('curfew', true), false);
 });
 
 test('professors need Honours, students use separate capacity and graduate as Magisters', () => {
   const sim = fresh(), b = build(sim, 'university'), professor = sim.s.villagers[0], student = sim.s.villagers[1];
   professor.tier = 1; assert.equal(sim.assign(b, professor), false); professor.tier = 2; assert.equal(sim.assign(b, professor), true);
   student.age = 20; student.tier = 1; assert.equal(sim.enrol(student, b), false);
-  student.tier = 2; student.purse = 10; assert.equal(sim.enrol(student, b), true); assert.ok(!b.workers.includes(student.id));
+  student.tier = 2; assert.equal(sim.enrol(student, b), true); assert.ok(!b.workers.includes(student.id));
   student.university = UNIVERSITY_POINTS - 1; sim.taskUniversity(student, b); finishAct(sim, student);
   assert.equal(student.tier, 4); assert.equal(classOf(student), 'wizard'); assert.equal(student.lvl, 2); assert.equal(student.hp, maxHp(student));
   assert.equal(student.job, 'idle'); assert.equal(sim.universityStudents(b).length, 0); assert.equal(sim.eduMult(student), 1.25);
 });
 
-test('no professor or tuition means no university progress; demolition releases students', () => {
+test('no professor means no university progress; demolition releases students', () => {
   const sim = fresh(), b = build(sim, 'university'), v = sim.s.villagers[0]; v.age = 20; v.tier = 2; sim.enrol(v, b);
   sim.taskUniversity(v, b); finishAct(sim, v); assert.equal(v.university, 0);
-  const teacher = sim.s.villagers[1]; teacher.tier = 2; sim.assign(b, teacher); v.purse = 0;
-  sim.taskUniversity(v, b); finishAct(sim, v); assert.equal(v.university, 0);
+  const teacher = sim.s.villagers[1]; teacher.tier = 2; sim.assign(b, teacher);
+  sim.taskUniversity(v, b); finishAct(sim, v); assert.ok(v.university > 0);
   sim.demolish(b); sim.eduSecond(); assert.equal(v.job, 'idle'); assert.equal(v.work, null);
 });
 
@@ -185,35 +191,51 @@ test('Magisters can lead wizard towers and a Magocracy', () => {
   assert.ok(sim.govEffects().study >= 1.05);
 });
 
-test('pub entry consumes local ale and transfers the admission fee exactly once', () => {
+test('pub outings pour one local ale and are free', () => {
   const sim = fresh(), pub = build(sim, 'pub'), barkeep = sim.s.villagers[0], visitor = sim.s.villagers[1]; sim.assign(pub, barkeep);
-  stock(sim, 'meadow', 'ale', 5); visitor.purse = 10; const total = cash(sim), purse = visitor.purse;
+  stock(sim, 'meadow', 'ale', 5); const total = cash(sim);
   sim.taskOuting(visitor, pub); finishAct(sim, visitor, true);
-  close(cash(sim), total); close(visitor.purse, purse - 1.5); close(sim.trade.get('meadow', 'ale'), 4);
+  close(cash(sim), total); close(sim.trade.get('meadow', 'ale'), 4);
   assert.ok(visitor.outingUntil > sim.s.time); assert.equal(pub.data.visits, 1); ledgerOK(sim);
 });
 
-test('baths require fuel; poor villagers can still visit a free park', () => {
+test('baths require fuel; anyone can visit a park', () => {
   const sim = fresh(), baths = build(sim, 'bathhouse'), park = build(sim, 'park'), v = sim.s.villagers[0]; sim.assign(baths, v);
   assert.equal(sim.venueOpen(baths), false); sim.taskVenue(v, baths); finishAct(sim, v); assert.equal(sim.venueOpen(baths), true); ledgerOK(sim);
-  const visitor = sim.s.villagers[1]; visitor.purse = 0; sim.taskOuting(visitor, park); finishAct(sim, visitor, true); assert.ok(visitor.outingUntil > sim.s.time);
+  const visitor = sim.s.villagers[1]; sim.taskOuting(visitor, park); finishAct(sim, visitor, true); assert.ok(visitor.outingUntil > sim.s.time);
 });
 
-test('crime pressure responds to patrols and arrests restore coins and release custody', () => {
-  const sim = fresh(); sim.s.villagers.forEach(v => v.purse = 0); const baseline = sim.crimePressure('meadow');
-  const house = build(sim, 'watchhouse'), officer = sim.s.villagers[0], culprit = sim.s.villagers[1], victim = sim.s.villagers[2]; sim.assign(house, officer);
-  assert.ok(sim.crimePressure('meadow') < baseline); victim.purse = 5; victim.purse -= 3; culprit.purse += 3;
-  const event = sim.recordCrime('meadow', 'Pickpocketing', culprit, { victim: victim.id, coins: 3 }); const total = cash(sim);
-  assert.equal(sim.catchCulprit(event, officer, house), true); close(cash(sim), total); close(victim.purse, 5);
-  assert.equal(sim.assign(build(sim, 'lumber'), culprit), false); sim.think(culprit); assert.match(culprit.task.label, /custody/);
-  sim.s.time = culprit.jail + 1; sim.second(); assert.equal(culprit.jail, 0); assert.equal(culprit.indoors, false);
+test('a sneaking thief takes coins from the store; a guard who spots them gets the coins back', () => {
+  const sim = fresh(); sim.s.time = DAY * 0.97; sim.stormy = () => false;
+  const thief = sim.startCrime('meadow'); assert.ok(thief?.sneak);
+  sim.think(thief); assert.equal(thief.task.label, 'Sneaking about');
+  const before = cash(sim); finishAct(sim, thief); assert.ok(thief.sneak.loot > 0); assert.equal(cash(sim), before - thief.sneak.loot);
+  const guard = sim.s.villagers.find(v => v !== thief); guard.job = 'guard'; guard.x = thief.x; guard.z = thief.z; guard.asleep = false;
+  sim.rng = () => 0; sim.watchFor(thief);
+  assert.equal(thief.sneak, null); assert.equal(cash(sim), before); assert.equal(sim.s.crime.caught, 1);
+  assert.equal(thief.jail || 0, 0);   // no Watch House: no stocks
 });
 
-test('custody survives saving and strict justice raises fear', () => {
-  const sim = fresh(), house = build(sim, 'watchhouse'), officer = sim.s.villagers[0], culprit = sim.s.villagers[1]; sim.assign(house, officer);
-  sim.s.gov.justice = 'strict'; const event = sim.recordCrime('meadow', 'Pub brawl', culprit);
-  sim.catchCulprit(event, officer, house); assert.equal(culprit.jail - sim.s.time, 90); assert.ok(sim.s.crime.fear >= 4);
-  const loaded = new Sim(sim.serialize()), v = loaded.vById.get(culprit.id); loaded.think(v); assert.match(v.task.label, /custody/);
+test('with a Watch House a caught thief spends the morning in the stocks, through a save', () => {
+  const sim = fresh(), house = build(sim, 'watchhouse'); sim.s.time = DAY * 0.97; sim.stormy = () => false;
+  const thief = sim.startCrime('meadow'); thief.sneak.loot = 5; thief.sneak.home = true;
+  sim.caught(thief, sim.s.villagers.find(v => v !== thief));
+  assert.ok(thief.jail > sim.s.time); assert.equal(thief.jailHouse, house.id);
+  sim.think(thief); assert.equal(thief.task.label, 'In the stocks');
+  assert.equal(sim.assign(build(sim, 'lumber'), thief), false);
+  const loaded = new Sim(sim.serialize()), v = loaded.vById.get(thief.id); loaded.think(v); assert.equal(v.task.label, 'In the stocks');
+  loaded.s.time = v.jail + 1; loaded.second(); assert.equal(v.jail, 0);
+});
+
+test('an escaped thief keeps the coins; happy, guarded villages are peaceful', () => {
+  const sim = fresh(); sim.s.time = DAY * 0.97; sim.stormy = () => false;
+  const thief = sim.startCrime('meadow'); sim.think(thief); finishAct(sim, thief);
+  const loot = thief.sneak.loot, after = cash(sim); sim.escaped(thief);
+  assert.equal(cash(sim), after); assert.equal(thief.sneak, null); assert.equal(sim.s.crime.thefts, 1);
+  assert.ok(sim.s.crime.log[0].msg.includes(`${loot} coins`));
+  sim.s.happiness = 95; sim.lodgings().forEach(b => { b.pros = 2; b.prosEmpty = false; });
+  const calm = sim.crimeChance('meadow'); sim.s.happiness = 20; sim.lodgings().forEach(b => { b.pros = 0; });
+  assert.ok(sim.crimeChance('meadow') > calm); assert.equal(sim.safetyOf('meadow'), 'Troubled');
 });
 
 test('round 8 saves survive share-code compression and decoding', async () => {
@@ -222,31 +244,23 @@ test('round 8 saves survive share-code compression and decoding', async () => {
   assert.deepEqual(loaded.s.gov, sim.s.gov);
 });
 
-test('night theft and purchases stay within the affected settlement', () => {
+test('purchases stay within the settlement that has the goods', () => {
   const sim = fresh(); sim.unlock('pine', true);
-  sim.s.villagers.forEach(v => v.purse = 0); sim.s.time = DAY * 0.97;
-  stock(sim, 'meadow', 'food', 20); stock(sim, 'pine', 'food', 30);
-  const event = sim.rollCrime('meadow');
-  assert.equal(event.kind, 'Night theft'); close(sim.trade.get('meadow', 'food'), 18); close(sim.trade.get('pine', 'food'), 30);
   stock(sim, 'meadow', 'ale', 0); stock(sim, 'pine', 'ale', 20);
   assert.equal(sim.trade.consume('meadow', 'ale', 1), false); close(sim.trade.get('pine', 'ale'), 20); ledgerOK(sim);
 });
 
-test('automatic staff assignment skips prisoners and picks qualified professors', () => {
+test('automatic staff assignment skips villagers in the stocks and picks qualified professors', () => {
   const sim = fresh(), university = build(sim, 'university'), [prisoner, unqualified, professor] = sim.s.villagers;
   prisoner.tier = 3; prisoner.jail = sim.s.time + 90; unqualified.tier = 0; professor.tier = 2;
   assert.equal(sim.assign(university), true); assert.deepEqual(university.workers, [professor.id]);
 });
 
-test('a monarch passes the title to a grown child; funded schooling waives tuition', () => {
+test('a monarch passes the title to a grown child', () => {
   const sim = fresh(), hall = build(sim, 'townhall'), parent = sim.s.villagers[0];
   const heir = sim.spawnVillager('meadow', 8, 4, {age:20, parents:[parent.id], last:'Crown'}); parent.kids.push(heir.id);
   sim.setGovernment('monarchy', parent.id); sim.passAway(parent); sim.govT = 19; sim.second();
   assert.equal(sim.govLeader().id, heir.id);
-  const university = build(sim, 'university'), professor = sim.s.villagers.find(v=>v!==heir);
-  professor.tier=2; sim.assign(university, professor); heir.tier=2; heir.purse=0; sim.enrol(heir, university);
-  sim.setPolicy('freeSchool', true); sim.fundPolicies(); const before=cash(sim);
-  sim.taskUniversity(heir, university); finishAct(sim, heir); assert.ok(heir.university>0); close(cash(sim),before); assert.equal(heir.purse,0);
 });
 
 test('constables patrol public places in their own settlement', () => {
@@ -257,29 +271,31 @@ test('constables patrol public places in their own settlement', () => {
   assert.ok(visited.has(park.id)); assert.ok(visited.size>1);
 });
 
-test('a working patrol can investigate and arrest through ordinary simulation ticks', () => {
-  const sim=fresh(), house=build(sim,'watchhouse'), hall=build(sim,'townhall');
-  const [officer,culprit]=sim.s.villagers; officer.abil.wis=20; sim.assign(house,officer);
-  sim.setPolicy('nightWatch',true); sim.fundPolicies(); sim.s.time=DAY*0.8;
-  const event=sim.recordCrime('meadow','Pub brawl',culprit); sim.rng=()=>0.5;
-  for(let i=0;i<900 && !event.solved;i++) sim.tick(0.1);
-  assert.equal(event.solved,true); assert.ok(culprit.jail>sim.s.time); ledgerOK(sim);
-});
-
-test('custody blocks new guild recruits and existing-party departures until release', () => {
-  const sim = fresh(), guild = build(sim, 'guild'), house = build(sim, 'watchhouse');
-  const [a, b, officer, recruit] = sim.s.villagers;
+test('the stocks block new guild recruits and party departures until release', () => {
+  const sim = fresh(), guild = build(sim, 'guild');
+  const [a, b, , recruit] = sim.s.villagers;
   a.age = b.age = recruit.age = 20; a.hp = maxHp(a); b.hp = maxHp(b);
-  sim.partyToggle(guild, a); sim.partyToggle(guild, b); sim.assign(house, officer);
-  const event = sim.recordCrime('meadow', 'Pub brawl', a); sim.catchCulprit(event, officer, house);
-  recruit.jail = sim.s.time + 40;
+  sim.partyToggle(guild, a); sim.partyToggle(guild, b);
+  a.jail = sim.s.time + 40; recruit.jail = sim.s.time + 40;
   assert.equal(sim.partyToggle(guild, recruit).ok, false);
-  assert.match(sim.canDepart(guild, EXPEDITIONS[0]).why, /custody/);
+  assert.match(sim.canDepart(guild, EXPEDITIONS[0]).why, /stocks/);
   const before = sim.s.res.food;
   assert.equal(sim.startExpedition(guild, EXPEDITIONS[0].id), false);
   close(sim.s.res.food, before); assert.equal(guild.data.exp, undefined); assert.equal(a.quest, undefined);
   sim.s.time = a.jail + 1; sim.second(); a.hp = maxHp(a); b.hp = maxHp(b);
   assert.equal(sim.canDepart(guild, EXPEDITIONS[0]).ok, true);
+});
+
+test('children can visit baths and the theatre; the pub is for grown-ups', () => {
+  const sim = fresh(), child = sim.spawnVillager('meadow', 8, 4, { age: 8 });
+  for (const [i, type] of ['bathhouse', 'theatre'].entries()) {
+    const venue = build(sim, type); sim.assign(venue, sim.s.villagers[i]);
+    if (type === 'bathhouse') { sim.taskVenue(sim.s.villagers[i], venue); finishAct(sim, sim.s.villagers[i]); }
+    sim.taskOuting(child, venue); finishAct(sim, child, true); assert.ok(child.outingUntil > sim.s.time); child.outingUntil = 0;
+  }
+  const pub = build(sim, 'pub'); sim.assign(pub, sim.s.villagers[2]); stock(sim, 'meadow', 'ale', 5);
+  sim.taskOuting(child, pub); finishAct(sim, child, true);
+  assert.equal(pub.data?.visits || 0, 0); close(sim.trade.get('meadow', 'ale'), 5); ledgerOK(sim);
 });
 
 test('venue staff serve throughout outings while other residents can take a break', () => {
@@ -297,24 +313,6 @@ test('venue staff serve throughout outings while other residents can take a brea
   }
   const visitor = sim.s.villagers[3]; visitor.age = 20; sim.unassign(visitor); sim.think(visitor);
   assert.equal(visitor.lastOuting, sim.dayNum());
-});
-
-test('children can enter baths and theatre free while adult fees and pub restriction remain', () => {
-  const sim = fresh(), child = sim.spawnVillager('meadow', 8, 4, { age: 8 });
-  const adult = sim.s.villagers[3]; adult.age = 20; adult.purse = 20;
-  for (const [i, type] of ['bathhouse', 'theatre'].entries()) {
-    const venue = build(sim, type); sim.assign(venue, sim.s.villagers[i]);
-    if (type === 'bathhouse') { sim.taskVenue(sim.s.villagers[i], venue); finishAct(sim, sim.s.villagers[i]); }
-    const total = cash(sim), treasury = sim.s.res.coins;
-    sim.taskOuting(child, venue); finishAct(sim, child, true);
-    close(child.purse, 0); close(sim.s.res.coins, treasury); close(cash(sim), total); assert.ok(child.outingUntil > sim.s.time);
-    const purse = adult.purse; sim.taskOuting(adult, venue); finishAct(sim, adult, true);
-    close(adult.purse, purse - sim.venueFee(venue)); close(cash(sim), total);
-    assert.match(townBuildingHtml({ sim }, venue), /Children enter free/);
-  }
-  const pub = build(sim, 'pub'); sim.assign(pub, sim.s.villagers[2]); stock(sim, 'meadow', 'ale', 5);
-  child.purse = 10; sim.taskOuting(child, pub); finishAct(sim, child, true);
-  assert.equal(pub.data?.visits || 0, 0); close(child.purse, 10); close(sim.trade.get('meadow', 'ale'), 5); ledgerOK(sim);
 });
 
 test('university lists every applicant with full identity and protects its faculty', () => {

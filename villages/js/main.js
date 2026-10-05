@@ -9,7 +9,7 @@ import { buildModel, scaffold, villagerModel, dressVillager, propModel, slotMate
 import { snowUniform } from './snow.js';
 import { UI } from './ui.js';
 import { N, HALF, idx, toWorld, inMap, CENTERS, tileX, tileZ } from './world.js';
-import { SETTLEMENTS, BUILD_ORDER, DECOR_ORDER, GOODS, SEASON_DAYS, DECOR } from './data.js';
+import { SETTLEMENTS, BUILD_ORDER, DECOR_ORDER, GOODS, SEASON_DAYS, DECOR, HOME_TYPES, LODGING_TYPES } from './data.js';
 import { initAudio, sfx, setSound, ambient, rainSound, setMusic, setMood } from './audio.js';
 import { Life } from './life.js';
 import { hookRpg, rpgFrame } from './rpgview.js';
@@ -165,7 +165,37 @@ class Game {
     this.bvis.set(b.id, vis);
     this.screenSprites.add(sp);
     this.applyBuild(vis);
+    if (HOME_TYPES.includes(b.type) || LODGING_TYPES.includes(b.type)) this.applyProsperity(vis);
     if (b.type === 'farm') this.applyFarm(vis);
+  }
+  // prosperous homes show it: flower boxes out front, and a lantern at the top step
+  applyProsperity(vis) {
+    const b = vis.b, lvl = b.prosEmpty || !b.built ? 0 : b.pros || 0;
+    if (vis.prosLvl === lvl) return;
+    vis.prosLvl = lvl;
+    if (vis.prosG) { vis.group.remove(vis.prosG); this.halos = this.halos.filter(h => h.m.parent !== vis.prosG); }
+    vis.prosG = null;
+    if (lvl < 2) return;
+    const [w, d] = defOf(b.type).size, g = new THREE.Group(), z = d / 2 - 0.12;
+    const COLS = [0xe85d75, 0xffd24a, 0xf5f0ff, 0xb07ae8, 0xff8a3d];
+    for (const sx of [-1, 1]) {
+      const box = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.11, 0.13), mat(0x8a5a33));
+      box.position.set(sx * (w / 2 - 0.3), 0.06, z); g.add(box);
+      for (let k = 0; k < 5; k++) {
+        const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.035, 0), mat(COLS[(k + (sx > 0 ? 2 : 0) + b.id) % COLS.length]));
+        f.position.set(sx * (w / 2 - 0.3) - 0.13 + k * 0.065, 0.14 + (k % 2) * 0.02, z + ((k % 2) ? 0.02 : -0.02)); g.add(f);
+      }
+      const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.04, 0.1), mat(0x4f9a3a)); leaf.position.set(sx * (w / 2 - 0.3), 0.12, z); g.add(leaf);
+    }
+    if (lvl >= 3) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.62, 6), mat(0x3a3a44));
+      post.position.set(w / 2 - 0.08, 0.31, z + 0.04); g.add(post);
+      const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.1), mat(0xffe08a, { basic: true }));
+      lamp.position.set(w / 2 - 0.08, 0.66, z + 0.04); g.add(lamp);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xffc46a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+      sp.scale.setScalar(1.1); sp.position.copy(lamp.position); sp.renderOrder = 3; g.add(sp); this.halos.push({ m: sp, k: 0.9 });
+    }
+    vis.group.add(g); vis.prosG = g;
   }
   // warm glow sprites on every window and lantern, faded in at night
   addHalos(group) {
@@ -466,8 +496,9 @@ class Game {
     }
     if (m.bubble && mood) m.bubble.visible = !!m.bubble.material.map?.userData.ready;
     if (m.bubble?.visible) m.bubble.position.y = 0.95 + Math.sin(time * 3 + m.phase) * 0.03;
-    m.sack.visible = !!v.carry;
+    m.sack.visible = !!v.carry || !!v.sneak?.loot;
     if (v.carry) m.sack.material = mat(SACK[v.carry.res] ?? 0xc9a46a);
+    else if (v.sneak?.loot) m.sack.material = mat(0x6b5a3a);
     if (v.asleep !== 'fire') { m.body.rotation.set(0, 0, 0); m.body.position.set(0, 0, 0); }
     m.armL.rotation.set(0, 0, 0); m.armR.rotation.set(0, 0, 0);
     m.hipL.rotation.x = 0; m.hipR.rotation.x = 0;
@@ -857,6 +888,7 @@ class Game {
     sim.on('progress', b => { const vis = this.bvis.get(b.id); if (vis) this.applyBuild(vis); });
     sim.on('farm', b => { const vis = this.bvis.get(b.id); if (vis) this.applyFarm(vis); });
     sim.on('villager', v => this.addVVis(v));
+    sim.on('prosperity', b => { const vis = this.bvis.get(b.id); if (vis) this.applyProsperity(vis); });
     sim.on('tree', ti => view.updateTree(ti));
     sim.on('treeNew', ti => view.placeTree(ti));
     sim.on('stump', (x, z) => {

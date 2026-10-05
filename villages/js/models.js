@@ -1182,7 +1182,7 @@ export function propModel(name) {
 const WOOLS = [0xb8463e, 0x3f6f9a, 0x2f7f78, 0xc0843a, 0x6f5a8f, 0x4f7f3a, 0xb05878, 0x2f5a8a, 0x8a3a5a, 0x3a7a5a, 0x9a5a2a, 0x5a6a9a];   // mid-value knits
 export function dressVillager(m, v, winter = false) {
   if (!m.blend) return;
-  const key = `${v.job}|${v.hat}|${winter}|${v.title}|${v.race}`;
+  const key = `${v.job}|${v.hat}|${winter}|${v.title}|${v.race}|${!!v.sneak}`;
   if (m.dressed === key) return;
   m.dressed = key;
   const N = m.nodes;
@@ -1194,6 +1194,7 @@ export function dressVillager(m, v, winter = false) {
   if (['Archmage', 'High Archmage'].includes(v.title)) hat = 'hat_archmage';
   if (v.title === 'Monarch') hat = 'hat_crown';
   if (N.chain) N.chain.visible = ['Mayor', 'Elder', 'Consul'].includes(v.title);
+  if (N.mask) N.mask.visible = !!v.sneak;   // up to no good (crime.js)
   if (N.robe) N.robe.visible = ['Archmage', 'High Archmage'].includes(v.title) || ['student', 'professor'].includes(v.job);
   if (N.scarf) N.scarf.visible = winter;
   const wool = WOOLS[(v.id * 5 + 2) % WOOLS.length];

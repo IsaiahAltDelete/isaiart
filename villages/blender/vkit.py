@@ -180,6 +180,46 @@ def rotate_about(o, pivot, euler):
     o.data.transform(M)
     return o
 
+def leaf(u, tipw=0.0, root=0.55):
+    """A width profile along a part (u 0..1): rounded near the root, tapering to a point."""
+    rise = root + (1 - root) * min(1.0, u / 0.3) ** 0.5
+    fall = 1.0 if u < 0.3 else ((1 - u) / 0.7) ** 0.85
+    return max(0.04, rise * (tipw + (1 - tipw) * fall))
+
+def tube(name, pts, prof, mat, seg=8, steps=4, up=(0, 0, 1), smooth=True):
+    """A smooth tube through pts (Catmull-Rom). prof(u) -> (a, b): the half-sizes of
+    the elliptical cross-section, a across the bend (toward `up`), b sideways.
+    The far end closes on a point."""
+    P = [Vector(p) for p in pts]; n = len(P); S = []
+    for i in range(n - 1):
+        p0 = P[i - 1] if i > 0 else P[0] * 2 - P[1]
+        p3 = P[i + 2] if i + 2 < n else P[-1] * 2 - P[-2]
+        p1, p2 = P[i], P[i + 1]
+        for k in range(steps):
+            t = k / steps; t2 = t * t; t3 = t2 * t
+            S.append(0.5 * ((2 * p1) + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - p0 - 3 * p2 + p3) * t3))
+    S.append(P[-1].copy())
+    m = len(S); acc = [0.0]
+    for i in range(1, m): acc.append(acc[-1] + (S[i] - S[i - 1]).length)
+    U = Vector(up); bm = bmesh.new(); rings = []
+    for i, p in enumerate(S):
+        T = (S[min(i + 1, m - 1)] - S[max(i - 1, 0)]).normalized()
+        B = T.cross(U)
+        if B.length < 1e-4: B = T.cross(Vector((1, 0, 0)))
+        B.normalize(); N = B.cross(T).normalized()
+        a, b = prof(acc[i] / acc[-1])
+        rings.append([bm.verts.new(p + N * a * math.cos(2 * math.pi * j / seg) + B * b * math.sin(2 * math.pi * j / seg)) for j in range(seg)])
+    for i in range(m - 1):
+        for j in range(seg):
+            k = (j + 1) % seg
+            bm.faces.new((rings[i][j], rings[i][k], rings[i + 1][k], rings[i + 1][j]))
+    bm.faces.new(rings[0][::-1])
+    T = (S[-1] - S[-2]).normalized(); a, b = prof(1.0)
+    tip = bm.verts.new(S[-1] + T * min(a, b) * 0.8)
+    for j in range(seg): bm.faces.new((rings[-1][j], rings[-1][(j + 1) % seg], tip))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return _obj(name, bm, mat, smooth=smooth)
+
 def empty(name, loc):
     o = bpy.data.objects.new(name, None)
     o.location = loc; o.empty_display_size = 0.1

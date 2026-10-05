@@ -16,7 +16,7 @@ export function installCareers(sim){
     const options=sim.careerOptions(v),faculty=options.find(o=>o.needed&&['teacher','professor'].includes(defOf(o.b.type).job)&&o.fit>=0);
     if(faculty&&sim.assign(faculty.b,v)){v.careerNote='Teaching the next generation';sim.log(`${v.name} took a teaching post after study.`);return true;}
     const uni=sim.s.buildings.find(b=>b.type==='university'&&b.sid===v.home&&b.built&&!b.up&&teaches(sim,b)&&sim.universityStudents(b).length<4+((b.lvl||1)-1)*2);
-    if(uni&&!(v.universityAfter>sim.s.time)&&sim.universityEligible(v)&&(sim.policyOn('freeSchool')||(v.purse||0)>=4)&&sim.enrol(v,uni)){v.careerNote='Continuing to Magister studies';return true;}
+    if(uni&&!(v.universityAfter>sim.s.time)&&sim.universityEligible(v)&&sim.enrol(v,uni)){v.careerNote='Continuing to Magister studies';return true;}
     const good=options.find(o=>o.fit>=0);
     if(good&&sim.assign(good.b,v)){v.careerNote='Placed in suitable local work';sim.log(`${v.name} moved into work at ${sim.homeName(good.b)}.`);return true;}
     if(graduated&&sim.eduTier(v)>=3&&v.job==='scholar'){sim.unassign(v);v.studyAfter=sim.s.time+DAY;v.careerNote='Graduated; waiting for suitable work';return true;}
@@ -32,9 +32,9 @@ export function installCareers(sim){
     const folk=sim.s.villagers.filter(v=>careerReady(sim,v)&&v.autoCareer!==false).sort((a,b)=>(a.lastStudy||0)-(b.lastStudy||0)||a.id-b.id);
     for(const v of folk){
       if(v.job==='student'){
-        const b=sim.bById.get(v.work),ready=b?.built&&!b.up&&teaches(sim,b)&&(sim.policyOn('freeSchool')||(v.purse||0)>=.5);
+        const b=sim.bById.get(v.work),ready=b?.built&&!b.up&&teaches(sim,b);
         if(ready)v.careerBlockedAt=null;
-        else{v.careerBlockedAt??=sim.s.time;if(sim.s.time-v.careerBlockedAt>=60){sim.unassign(v);v.universityAfter=sim.s.time+DAY;v.careerBlockedAt=null;v.careerNote='Study paused; saving for tuition or waiting for faculty';sim.advanceCareer(v);}}
+        else{v.careerBlockedAt??=sim.s.time;if(sim.s.time-v.careerBlockedAt>=60){sim.unassign(v);v.universityAfter=sim.s.time+DAY;v.careerBlockedAt=null;v.careerNote='Study paused; waiting for a professor';sim.advanceCareer(v);}}
       }
       else if(v.job==='scholar'&&sim.eduTier(v)>=3)sim.advanceCareer(v,true);
       else if(v.job==='idle'){

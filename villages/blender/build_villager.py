@@ -7,9 +7,14 @@
 #       head          skin, eyes, brows, nose, ears  (pivot at the neck)
 #         hair_short, hair_bob, hair_bun, hair_tails, hair_tuft, hair_long, hair_elder
 #         hat_straw, hat_cap, hat_toque, hat_helmet, hat_bucket, hat_hood, hat_band, hat_beanie
+#         race_elf, race_gnome (ears + button nose), race_beard, race_tusks, race_horns,
+#         race_snout (muzzle, crest, cheek frills)   (shown per race by the game)
+#         mask          bandit eye-mask (slot "mask"), shown on villagers sneaking about at night
+#         hat_archmage, hat_crown
 #       hipL / hipR   (pivots)  leg + boot
 #       armL / armR   (pivots)  sleeve + hand;  pt_hand on the right arm
 #       apron, pack, scarf      (toggled by the game)
+#       race_tail, chain, robe  (toggled by the game)
 import math
 from mathutils import Vector, Matrix
 
@@ -42,6 +47,73 @@ def fit_to_head(o):
     k = HEAD_R / REF_R * 1.02
     M = Matrix.Translation(Vector(HEAD_C)) @ Matrix.Scale(k, 4) @ Matrix.Translation(-REF_C)
     o.data.transform(M)
+    return o
+
+def web(name, base, tips, mat, t=0.004):
+    """A thin webbed membrane fanning from base out between spine tips (scalloped edge)."""
+    bm = bmesh.new(); b = bm.verts.new(base); ring = []
+    for k, tp in enumerate(tips):
+        ring.append(bm.verts.new(base.lerp(tp, 0.86)))
+        if k < len(tips) - 1: ring.append(bm.verts.new(base.lerp((tp + tips[k + 1]) / 2, 0.62)))
+    for k in range(len(ring) - 1): bm.faces.new((b, ring[k], ring[k + 1]))
+    o = _obj(name, bm, mat, smooth=True)
+    sm = o.modifiers.new("solid", "SOLIDIFY"); sm.thickness = t; sm.offset = 0
+    return o
+
+def mask_band(name, hz, mat, seg=72, rows=14):
+    """The bandit mask's cloth band (head space, before the tilt). A domino shape:
+    deep over the eyes, pinched over the nose bridge, narrowing to a strap that
+    runs over the hair at the sides and back. Two round holes keep the dot eyes
+    showing."""
+    eyes = [(s * math.atan2(0.033, 0.084), 0.008) for s in (-1, 1)]
+    hw, hh = 0.165, 0.019                    # eye-hole half-size (radians, height)
+    def sstep(a, b, x):
+        k = min(1.0, max(0.0, (x - a) / (b - a))); return k * k * (3 - 2 * k)
+    def span(th):
+        a = abs(th); bridge = 1 - sstep(0.0, 0.2, a); strap = sstep(0.62, 1.0, a)
+        return -0.026 + 0.012 * bridge + 0.018 * strap, 0.044 - 0.009 * bridge - 0.014 * strap
+    def radius(th, z):
+        face = 0.0931 * math.sqrt(max(0.0, 1 - (z / 0.1039) ** 2)) + 0.005
+        # over the hair: the short-hair dome (centre y +0.009, z +0.0065); fuller
+        # styles cover the strap, but the knot still pokes out behind
+        f = math.sqrt(max(0.0, 1 - ((z - 0.0065) / 0.1017) ** 2))
+        ax, ay = 0.1113 * f, 0.1092 * f
+        c, sn = -math.cos(th), math.sin(th)
+        hair = 1 / math.sqrt((sn / ax) ** 2 + (c / ay) ** 2) + 0.009 * max(0.0, c) + 0.004
+        return face + (max(face, hair) - face) * sstep(0.5, 1.15, abs(th))
+    def pos(th, z):
+        r = radius(th, z)
+        return (math.sin(th) * r, -math.cos(th) * r, hz + z)
+    bm = bmesh.new(); par = {}; grid = []
+    for i in range(seg):
+        th = -math.pi + 2 * math.pi * i / seg; lo, hi = span(th); col = []
+        for j in range(rows + 1):
+            z = lo + (hi - lo) * j / rows
+            v = bm.verts.new(pos(th, z)); par[v] = (th, z, j); col.append(v)
+        grid.append(col)
+    for i in range(seg):
+        i2 = (i + 1) % seg
+        for j in range(rows):
+            bm.faces.new((grid[i][j], grid[i2][j], grid[i2][j + 1], grid[i][j + 1]))
+    def in_hole(th, z):
+        return any(((th - te) / hw) ** 2 + ((z - ze) / hh) ** 2 < 1 for te, ze in eyes)
+    gone = []
+    for f in bm.faces:
+        th = sum(par[v][0] for v in f.verts) / 4; z = sum(par[v][1] for v in f.verts) / 4
+        if abs(th) < 1.2 and in_hole(th, z): gone.append(f)
+    bmesh.ops.delete(bm, geom=gone, context="FACES_ONLY")
+    # round the stair-stepped hole edges onto the ellipses
+    for v in bm.verts:
+        th, z, j = par[v]
+        if len(v.link_faces) >= 4 or j in (0, rows) or abs(th) > 1.2: continue
+        te, ze = min(eyes, key=lambda e: abs(e[0] - th))
+        u, w = (th - te) / hw, (z - ze) / hh; d = math.hypot(u, w)
+        if 0 < d < 1.6:
+            v.co = pos(te + u / d * hw, ze + w / d * hh)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = _obj(name, bm, mat, smooth=True)
+    sm = o.modifiers.new("solid", "SOLIDIFY"); sm.thickness = 0.006; sm.offset = 0
     return o
 
 def build_villager():
@@ -209,31 +281,91 @@ def build_villager():
         obj = join(parts, name)
         rotate_about(obj, NECK, TILT); parent(obj, head)
         return obj
-    for name, length in (("race_elf", 0.078), ("race_gnome", 0.047)):
+    # Race parts are chunky on purpose: at the game camera a villager is ~40 px
+    # tall, so ears, beards and horns must change the silhouette. Each part is
+    # sized around its own attachment point (grow) and kept clear of the dot
+    # eyes as seen from the high camera.
+    for name, L, H, T, up, back, tipw in (("race_elf", 0.165, 0.036, 0.014, 0.62, 0.36, 0.0),
+                                          ("race_gnome", 0.105, 0.046, 0.017, 0.3, 0.3, 0.28)):
         ears = []
         for side in (-1, 1):
-            ears.append(uvsphere(f"{name}{side}", 0.026, (side * (0.09 + length * 0.3), 0.007, hz + 0.014), SK,
-                                 seg=9, rings=6, scale=(length / 0.022, 0.45, 0.75), rot=(0, side * -0.35, 0)))
+            r0 = Vector((side * 0.08, 0.012, hz + 0.004))
+            d = Vector((side * math.cos(up) * math.cos(back), math.cos(up) * math.sin(back), math.sin(up)))
+            mid = r0 + d * (L * 0.45) - Vector((0, 0, L * 0.06))         # the ear sweeps up toward its tip
+            prof = (lambda u, H=H, T=T, tipw=tipw: (H * leaf(u, tipw), T * (0.6 + 0.4 * leaf(u, 0.5))))
+            ears.append(tube(f"{name}{side}", [r0, mid, r0 + d * L], prof, SK, seg=10, steps=5))
+        if name == "race_gnome":
+            # gnomes also get a big round button nose, sitting low so it never hides the eyes
+            ears.append(uvsphere("gnomenose", 0.029, (0, -0.108, hz - 0.034), SK, seg=12, rings=8, scale=(1.05, 0.95, 0.92)))
         head_part(name, ears)
-    beard = [uvsphere("beardchin", 0.052, (0, -0.087, hz - 0.065), HA, seg=12, rings=8, scale=(1.05, 0.48, 1.25))]
+    # dwarf beard: a full chin mass running down onto the chest, cheek puffs up to
+    # the sideburns and a drooping moustache, all kept below the eyes
+    beard = [uvsphere("beardchin", 0.06, (0, -0.066, hz - 0.112), HA, seg=14, rings=10, scale=(1.32, 0.86, 1.4)),
+             uvsphere("beardpoint", 0.042, (0, -0.074, hz - 0.19), HA, seg=12, rings=8, scale=(1.1, 0.8, 1.25))]
     for side in (-1, 1):
-        beard.append(uvsphere(f"beardlock{side}", 0.025, (side * 0.035, -0.093, hz - 0.07), HA, seg=9, rings=6, scale=(0.75, 0.6, 1.65)))
+        beard.append(uvsphere(f"beardcheek{side}", 0.04, (side * 0.068, -0.05, hz - 0.068), HA, seg=10, rings=8, scale=(0.85, 0.95, 1.3)))
+        beard.append(uvsphere(f"beardburn{side}", 0.026, (side * 0.087, -0.008, hz - 0.03), HA, seg=10, rings=7, scale=(0.75, 1.3, 1.7)))
+        beard.append(tube(f"moustache{side}", [(side * 0.004, -0.112, hz - 0.042), (side * 0.03, -0.11, hz - 0.048), (side * 0.055, -0.098, hz - 0.068)],
+                          lambda u: (0.011 * (1 - 0.6 * u), 0.012 * (1 - 0.5 * u)), HA, seg=8, steps=4))
     head_part("race_beard", beard)
-    head_part("race_tusks", [cyl(f"tusk{side}", 0.001, 0.01, 0.035, (side * 0.032, -0.096, hz - 0.046), TO,
-                                  seg=7, rot=(-0.3, side * 0.18, 0)) for side in (-1, 1)])
+    # orc tusks jut up from the lower jaw and out past the eyes
+    tusks = []
+    for side in (-1, 1):
+        b0 = Vector((side * 0.031, -0.09, hz - 0.064))
+        tusks.append(tube(f"tusk{side}", [b0, b0 + Vector((side * 0.013, -0.012, 0.024)), b0 + Vector((side * 0.034, -0.016, 0.05))],
+                          lambda u: (0.017 * (1 - 0.86 * u),) * 2, TO, seg=8, steps=4))
+    head_part("race_tusks", tusks)
+    # tiefling horns: thick at the root, curling up, back and down like a ram's
     horns = []
     for side in (-1, 1):
-        horns.append(cyl(f"hornbase{side}", 0.014, 0.022, 0.062, (side * 0.068, 0.003, hz + 0.065), HO, seg=9, rot=(0.3, side * -0.25, 0)))
-        horns.append(cyl(f"horntip{side}", 0.001, 0.015, 0.052, (side * 0.052, 0.021, hz + 0.12), HO, seg=8, rot=(0.4, side * -0.3, 0)))
+        pts = [(0.04, -0.012, 0.07), (0.068, -0.005, 0.118), (0.1, 0.028, 0.152), (0.132, 0.072, 0.15), (0.146, 0.106, 0.118), (0.132, 0.112, 0.082)]
+        horns.append(tube(f"horn{side}", [(side * x, y, hz + z) for x, y, z in pts], lambda u: (0.025 * (1 - 0.85 * u),) * 2, HO, seg=10, steps=5))
     head_part("race_horns", horns)
-    snout = [uvsphere("dragonmuzzle", 0.047, (0, -0.096, hz - 0.025), SK, seg=12, rings=7, scale=(1.18, 1.0, 0.66))]
+    # dragonborn: a long muzzle that dips forward (below the eye line from above),
+    # swept-back horns, a ridge of crest spikes and webbed cheek frills
+    # the muzzle: a broad, flat-topped jaw that stays below the eye line from the
+    # high camera, with a narrow ridge running up between the eyes to the brow
+    snout = [uvsphere("dragonjaw", 0.05, (0, -0.045, hz - 0.056), SK, seg=14, rings=9, scale=(1.5, 1.1, 0.75)),
+             uvsphere("dragonmuzzle", 0.03, (0, -0.106, hz - 0.074), SK, seg=14, rings=9, scale=(1.55, 1.65, 0.78)),
+             tube("dragonridge", [(0, -0.084, hz + 0.004), (0, -0.11, hz - 0.03), (0, -0.13, hz - 0.058)],
+                  lambda u: (0.015 + 0.006 * u, 0.014 + 0.016 * u), SK, seg=10, steps=4)]
     for side in (-1, 1):
-        snout.append(uvsphere(f"nostril{side}", 0.005, (side * 0.023, -0.133, hz - 0.018), EY, seg=7, rings=4))
-        snout.append(cyl(f"dragoncrest{side}", 0.001, 0.015, 0.062, (side * 0.065, 0.03, hz + 0.065), HO, seg=8, rot=(0.2, side * 0.35, 0)))
+        snout.append(uvsphere(f"nostril{side}", 0.0065, (side * 0.014, -0.149, hz - 0.06), EY, seg=7, rings=4))
+        snout.append(tube(f"dragoncrest{side}", [(side * 0.052, 0.0, hz + 0.075), (side * 0.07, 0.05, hz + 0.108), (side * 0.082, 0.118, hz + 0.122)],
+                          lambda u: (0.022 * (1 - 0.88 * u),) * 2, HO, seg=8, steps=4))
+        # a cheek frill: a scalloped fan of three spines sweeping back from the jaw
+        out = []
+        for k, (ang, L) in enumerate(((0.95, 0.082), (0.32, 0.092), (-0.32, 0.078))):
+            out.append((math.cos(ang) * L, math.sin(ang) * L))
+            if k < 2:
+                a2 = ang - 0.32; out.append((math.cos(a2) * 0.05, math.sin(a2) * 0.05))
+        outline = [(0.0, -0.024)] + out[::-1] + [(0.0, 0.028)]
+        fr = poly_extrude(f"frill{side}", [(side * x, z) for x, z in outline][::side], 0.009, (0, 0, 0), HO)
+        fr.rotation_euler = (0, 0, side * 0.62); fr.location = (side * 0.075, 0.018, hz - 0.03)
+        snout.append(fr)
+    # a ridge of crest spikes down the middle of the (hairless) head
+    for k, (y, z, h, t) in enumerate(((-0.035, 0.1, 0.064, 0.35), (0.025, 0.104, 0.06, 0.6), (0.075, 0.082, 0.05, 0.9), (0.105, 0.04, 0.04, 1.2))):
+        sp = cyl(f"dragonspike{k}", 0.021, 0.0, h, (0, y, hz + z), HO, seg=8, rot=(t, 0, 0)); sp.scale = (0.6, 1.0, 1.0)
+        snout.append(sp)
     head_part("race_snout", snout)
-    points = [(0, 0.095, 0.29), (0.02, 0.19, 0.22), (0.055, 0.28, 0.12), (0.13, 0.31, 0.095), (0.17, 0.26, 0.12)]
-    tail = [beam(f"tail{k}", points[k], points[k + 1], 0.024 - k * 0.004, 0.024 - k * 0.004, SK) for k in range(4)]
+    # a thick tail curling up at the end, with a spade tip
+    tp = [(0, 0.07, 0.28), (0.012, 0.165, 0.205), (0.05, 0.245, 0.135), (0.1, 0.29, 0.14), (0.135, 0.3, 0.21), (0.142, 0.27, 0.285)]
+    tail = [tube("tailrope", tp, lambda u: (0.027 * (1 - 0.5 * u),) * 2, SK, seg=10, steps=4)]
+    end = Vector(tp[-1]); dv = (end - Vector(tp[-2])).normalized()
+    tail.append(tube("tailspade", [end - dv * 0.01, end + dv * 0.03, end + dv * 0.062], lambda u: (0.036 * leaf(u, 0.0, 0.15), 0.008), SK, seg=8, steps=4,
+                     up=(1, 0, 0)))
     obj = join(tail, "race_tail"); parent(obj, body)
+    # ── bandit mask: a dark cloth band over the eyes with two eye holes, knotted at
+    # the back with two loose tails. Sits over the face, then flares over the hair
+    # at the sides; tilted with the head like the hats. The game shows it at night.
+    MK = material("mask", 0x2a2a36, True)
+    band = mask_band("mask_band", hz, MK); mask = [band]
+    knot = (0, 0.126, hz + 0.01)
+    mask.append(uvsphere("mask_knot", 0.019, knot, MK, seg=10, rings=7, scale=(1.2, 0.8, 1.0)))
+    for side in (-1, 1):
+        mask.append(tube(f"mask_tail{side}", [knot, (side * 0.02, knot[1] + 0.018, hz - 0.03), (side * 0.042, knot[1] + 0.026, hz - 0.08)],
+                         lambda u: (0.004, 0.012 * (1 + 0.3 * u)), MK, seg=8, steps=4, up=(0, 1, 0)))
+    head_part("mask", mask)
     hat = [cyl("archbrim", 0.125, 0.125, 0.014, (0, 0.018, hz + 0.09), RO, seg=18, smooth=True),
            cyl("archcone", 0.007, 0.075, 0.22, (0, 0.019, hz + 0.098), RO, seg=14, smooth=True),
            cyl("archband", 0.071, 0.074, 0.025, (0, 0.019, hz + 0.115), ST, seg=14)]

@@ -3,6 +3,7 @@
 # Footprints as in build_works.py: 2x2 -> +-0.95, 3x2 -> x +-1.45, y +-0.95,
 # 3x3 -> +-1.45. Fronts (doors, stages) face -Y like every other building.
 import math, random
+from mathutils import Vector, Matrix, Euler
 
 def xslots():
     M = wslots()
@@ -249,7 +250,33 @@ def build_pub():
     P.append(box("dado", (W + 0.03, D + 0.03, 0.22), (0, cy, 0), M["stone"], bev=0.02))
     P.append(timber_frame("frame", M, W, D, H, 0.0, braces=True)); P[-1].location = (0, cy, 0)
     g = gable_fill("gable", M, W, D, 0.5, 0); g.location = (0, cy, H); P.append(g)
-    P.append(gable_roof("roof", W, D, 0.5, M, over=0.14, thick=0.11, rows=3, sag=0.06, loc=(0, cy, H), mat=M["thatch"], puffy=True, rnd=rnd))
+    # a saggy shingled roof on the same textured "roof" slot as the cottages, a dark
+    # timber ridge, a gabled dormer peeping out of the front slope
+    RH, OV = 0.56, 0.14
+    M["roof"] = material("roof", 0x9b5038)
+    P.append(gable_roof("roof", W, D, RH, M, over=OV, thick=0.1, sag=0.07, loc=(0, cy, H), rnd=rnd))
+    P.append(barge_boards("barge", W, D, RH, M, over=OV)); P[-1].location = (0, cy, H)
+    # the ridge: a dark timber roll that follows the roof's sag, knobs at both ends
+    ww = W + 2 * OV + 0.1; rz = H + RH + 0.17
+    ridge = [((k / 8 - 0.5) * ww, cy, rz - 0.07 * (1 - ((k / 8 - 0.5) * ww / ((W + 2 * OV) / 2)) ** 2) * 1.15) for k in range(9)]
+    P.append(tube("ridge", ridge, lambda u: (0.062, 0.062), M["dark"], seg=10, steps=2))
+    for x, y, z in (ridge[0], ridge[-1]): P.append(sphere(f"ridgeknob{x}", 0.075, (x, y, z), M["dark"], sub=1))
+    # moss on the old shingles
+    MO = material("moss", 0x6f8f3e, True); sl = math.atan2(RH, D / 2 + OV)
+    for k, (x, t, n) in enumerate(((0.36, 0.6, 3), (-0.56, 0.8, 2), (0.66, 0.88, 2))):
+        for j in range(n):
+            tt = t + (j % 2) * 0.07; xx = x + j * 0.09 - 0.05
+            yy = cy - tt * (D / 2 + OV); zz = H + RH * (1 - tt) + 0.075
+            P.append(uvsphere(f"moss{k}{j}", 0.065 - j * 0.012, (xx, yy, zz), MO, seg=10, rings=6, scale=(1.3, 1.0, 0.32), rot=(sl, 0, 0)))
+    dx, dw, dd = -0.24, 0.42, 0.44
+    half = D / 2 + OV; dy0 = 0.33                     # the dormer face sits in front of the ridge
+    zr = H + RH * (1 - dy0 / half) + 0.03             # roof surface there
+    P.append(box("dormer", (dw, dd, 0.32), (dx, cy - dy0 + dd / 2, zr - 0.12), M["wall"], bev=0.015))
+    g2 = gable_fill("dgable", M, dd, dw, 0.17, 0); g2.location = (dx, cy - dy0 + dd / 2, zr + 0.2); g2.rotation_euler = (0, 0, math.pi / 2); P.append(g2)
+    P.append(gable_roof("droof", dd + 0.04, dw, 0.19, M, over=0.05, thick=0.05, sag=0, loc=(dx, cy - dy0 + dd / 2 - 0.02, zr + 0.2), rot_z=math.pi / 2, snow=False))
+    E += window("wd", M, (dx, cy - dy0 - 0.005, zr + 0.06), w=0.18, h=0.17, shutters=False)
+    P.append(box("dsill", (0.3, 0.07, 0.06), (dx, cy - dy0 - 0.05, zr - 0.07), M["wood"], bev=0.01))
+    for k in range(4): P.append(sphere(f"dflower{k}", 0.035, (dx - 0.1 + k * 0.067, cy - dy0 - 0.06, zr - 0.0), [M["fl1"], M["fl2"], M["fl3"], M["fl1"]][k], sub=1))
     # a teal door under a little hood, glowing bay windows either side
     P.append(door("door", M, (-0.22, fy - 0.01, 0.0), w=0.3, h=0.52))
     P.append(box("hood", (0.48, 0.22, 0.04), (-0.22, fy - 0.1, 0.64), M["dark"], rot=(0.3, 0, 0)))
@@ -263,7 +290,18 @@ def build_pub():
         E.append(empty("pt_glow_win", (x, fy - 0.18, 0.36)))
     E += window("wl", M, (-0.6, fy - 0.01, 0.46), w=0.18, h=0.22, shutters=False)
     E += window("ws", M, (W / 2 + 0.01, cy, 0.42), w=0.24, h=0.24, face="+X", shutters=False)
-    E += chimney("chim", M, (0.5, cy + 0.18, H + 0.2), h=0.6, lean=0.05, rnd=rnd)
+    # a fat stone chimney on the back slope topped with a crooked old pot
+    chx, chy = 0.46, cy + 0.2
+    ch = [box(f"chs{k}", (0.26 - k * 0.01, 0.26 - k * 0.01, 0.2), (rnd.uniform(-0.01, 0.01), 0, k * 0.2), M["chim"] if k % 2 == 0 else M["stone2"], bev=0.025) for k in range(4)]
+    ch.append(box("chcap", (0.34, 0.34, 0.06), (0, 0, 0.8), M["stone2"], bev=0.02))
+    ch.append(cyl("chpot", 0.07, 0.055, 0.17, (0, 0, 0), M["brick"], seg=10, bev=0.01))
+    ch.append(cyl("chpotrim", 0.075, 0.075, 0.035, (0, 0, 0), M["brick"], seg=10, bev=0.008))
+    rotate_about(ch[-2], (0, 0, 0), (0.3, -0.18, 0)); rotate_about(ch[-1], (0, 0, 0), (0.3, -0.18, 0))
+    ch[-2].location = (0.03, 0.0, 0.85); ch[-1].location = (0.03, 0.0, 0.85)
+    ch[-1].data.transform(Matrix.Translation(Euler((0.3, -0.18, 0)).to_matrix() @ Vector((0, 0, 0.16))))
+    cho = join(ch, "chimney"); cho.location = (chx, chy, H + 0.12); cho.rotation_euler = (0.04, -0.03, 0); P.append(cho)
+    bpy.context.view_layer.update()
+    E.append(empty("pt_smoke", tuple(cho.matrix_world @ (Euler((0.3, -0.18, 0)).to_matrix() @ Vector((0, 0, 0.22)) + Vector((0.03, 0, 0.85))))))
     # hero: a painted signboard on an iron bracket, a giant foaming tankard on it
     sx, sy = -0.8, fy - 0.38
     P.append(box("spost", (0.07, 0.07, 1.2), (sx, sy, 0), M["dark"], bev=0.012))
