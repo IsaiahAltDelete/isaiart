@@ -17,6 +17,7 @@ import { RACES, GENDERS } from './society.js';
 import { CLASS_DUTY } from './classduties.js';
 import { eventsInit, eventsFrame, eventsBuildingHtml, eventsSettingsHtml, eventsClick } from './events.js';
 import { CLASSES, classOf, maxHp } from './rpg.js';
+import { censusHtml, CENSUS_CSS } from './census.js';
 import { lifeInit, wishVillagerHtml, petChip, petRowHtml, wishListHtml, rankQuestRow, chronicleHtml, lifeClick } from './lifeui.js';
 import { townInit, townHtml, townClick, townChange, townBuildingHtml, seedHtml, seedClick } from './townui.js';
 
@@ -149,7 +150,7 @@ function skyAt(f) {
 const arcAt = t => { const u = 1 - t; return [u * u * 6 + 2 * u * t * 50 + t * t * 94, (u * u * 44 + 2 * u * t * -18 + t * t * 44) * 2]; };
 
 // which main-bar button each page belongs to
-const DOCK_OF = { villagers: 'people', jobs: 'people', buildings: 'people', town: 'town', inventory: 'town', story: 'journal', chronicle: 'journal', log: 'journal', stats: 'journal', festival: 'journal', worldmap: 'world', trade: 'world', guild: 'world' };
+const DOCK_OF = { villagers: 'people', jobs: 'people', buildings: 'people', population: 'people', town: 'town', inventory: 'town', story: 'journal', chronicle: 'journal', log: 'journal', stats: 'journal', festival: 'journal', worldmap: 'world', trade: 'world', guild: 'world' };
 // static tooltips for the HUD: "Title|Body|Key"
 const HUD_TIPS = {
   '#btnHome': 'Home|Fly back to your village.|H', '#btnShop': 'Shop|Trade gems for supplies.', '#btnSettings': 'Settings & help|Sound, music, graphics and how to play.|?',
@@ -177,6 +178,7 @@ export class UI {
     this.initKeys();
     r7Init(this);
     this.face = faceSvg; townInit(this); eventsInit(this); lifeInit(this, sfx);
+    { const st = document.createElement('style'); st.textContent = CENSUS_CSS; document.head.appendChild(st); }
     boardsInit(this);
   }
   get sim() { return this.g.sim; }
@@ -436,7 +438,7 @@ export class UI {
       this.drawNow();
       this.markLog();
       const ae = document.activeElement;
-      if (this.modal && ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'worldmap', 'merchant', 'magic', 'guild', 'town', 'story', ...R7_LIVE].includes(this.modal) && !($('#modal').contains(ae) && /SELECT|INPUT/.test(ae.tagName))) this.drawModal(true);
+      if (this.modal && ['villagers', 'jobs', 'buildings', 'population', 'inventory', 'stats', 'worldmap', 'merchant', 'magic', 'guild', 'town', 'story', ...R7_LIVE].includes(this.modal) && !($('#modal').contains(ae) && /SELECT|INPUT/.test(ae.tagName))) this.drawModal(true);
       this.drawQuests();
       r7Frame(this);
       eventsFrame(this);
@@ -1167,7 +1169,7 @@ export class UI {
     this.modal = kind;
     m.classList.remove('hidden', 'closing');
     if (!was) restart(m, 'opening');
-    m.querySelector('.box').classList.toggle('tall', ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'log', 'story', 'chronicle', 'festival', 'settings', 'guild', 'town'].includes(kind));
+    m.querySelector('.box').classList.toggle('tall', ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'log', 'story', 'chronicle', 'festival', 'settings', 'guild', 'town', 'population'].includes(kind));
     this.drawModal(false, was);
     this.drawDock();
     this.hideTip(); this.hideResTip();
@@ -1229,11 +1231,11 @@ export class UI {
     const k = this.modal, sim = this.sim, s = sim.s;
     if (!k) return;
     const titles = { villagers: ['people', 'Villagers'], jobs: ['hammer','Jobs'], buildings: ['list', 'Buildings'], inventory: ['bag', 'Inventory'], worldmap: ['map', 'World'], shop: ['shop', 'Shop'],
-      settings: ['gear', 'Settings'], town: ['house', 'Town'], log: ['mail', 'Village News'], story: ['heart', 'Story'], chronicle: ['scroll', 'Chronicle'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
+      settings: ['gear', 'Settings'], town: ['house', 'Town'], log: ['mail', 'Village News'], story: ['heart', 'Story'], population: ['people', 'Population'], chronicle: ['scroll', 'Chronicle'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
     const seg = (label, tabs) => `<span class="seg" role="tablist" aria-label="${label}">` + tabs.map(([id, name]) => `<button data-act="mtab" data-m="${id}" class="${k === id ? 'on' : ''}" role="tab" aria-selected="${k === id}">${name}</button>`).join('') + '</span>';
-    const journal = ['story', 'chronicle', 'log', 'stats', 'festival'].includes(k), boards = ['villagers', 'jobs', 'buildings'].includes(k);
+    const journal = ['story', 'chronicle', 'log', 'stats', 'festival'].includes(k), boards = ['villagers', 'jobs', 'buildings', 'population'].includes(k);
     const townG = ['town', 'inventory'].includes(k), worldG = ['worldmap', 'trade'].includes(k);
-    const head = boards ? seg('People', [['villagers', 'Villagers'], ['jobs', 'Jobs'], ['buildings', 'Buildings']])
+    const head = boards ? seg('People', [['villagers', 'Villagers'], ['jobs', 'Jobs'], ['buildings', 'Buildings'], ['population', 'Population']])
       : townG ? seg('Town', [['town', 'Town'], ['inventory', 'Stores']])
       : worldG && (Object.keys(s.unlocked).length > 1 || k === 'trade') ? seg('World', [['worldmap', 'Map'], ['trade', 'Trade']])
       : journal ? (() => {
@@ -1248,6 +1250,7 @@ export class UI {
     if (k === 'villagers') h = this.villagersHtml();
     else if(k === 'jobs') h = jobsBoardHtml(this);
     else if (k === 'town') h = townHtml(this);
+    else if (k === 'population') h = censusHtml(this);
     else if (k === 'buildings') h = this.buildingsHtml();
     else if (k === 'inventory') {
       const cap = sim.cap();
@@ -1380,6 +1383,7 @@ export class UI {
       const k = a.dataset.k, half = Math.max(1, Math.floor(GOODS[k].price / 2));
       if (s.res[k] >= 10) { s.res[k] -= 10; s.res.coins += half * 10; s.stats.earned += half * 10; sfx.coin(); this.dirty.res = true; }
     }
+    if (act === 'pop-sid') { this.popSid = a.dataset.k; sfx.click(); this.drawModal(true); return; }
     if (act === 'storyf') { this.storyFilter = a.dataset.k; sfx.click(); this.drawModal(true); return; }
     if (act === 'mtab') { if (a.dataset.m !== this.modal) { this.modal = a.dataset.m; this.drawModal(false, true); this.drawDock(); sfx.click(); } return; }
     if (act === 'vsel') { const v = sim.vById.get(+a.dataset.id); if (v) { this.closeModal(); this.g.select({ kind: 'v', v }, true); } return; }

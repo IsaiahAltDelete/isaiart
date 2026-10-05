@@ -194,3 +194,15 @@ test('a long run: wishes, weddings, visitors and a chronicle happen on their own
   assert.ok(sim.s.chronicles.length >= 1, 'a chronicle was written');
   assert.ok(new Sim(sim.serialize()).s.chronicles.length >= 1);
 });
+
+test('the census keeps a daily population history, through saves', async () => {
+  const { censusHtml } = await import('../js/census.js');
+  const sim = fresh();
+  for (let i = 0; i < DAY * 3 * 4; i++) sim.tick(0.25);
+  const H = sim.s.census.hist;
+  assert.ok(H.length >= 3); assert.equal(H[H.length - 1].n, sim.s.villagers.length);
+  assert.ok(H.every((h, i) => i === 0 || h.d > H[i - 1].d), 'one sample a day');
+  const loaded = new Sim(sim.serialize()); assert.equal(loaded.s.census.hist.length, H.length);
+  const html = censusHtml({ sim, popSid: 'all' });
+  assert.match(html, /villagers/); assert.match(html, /<svg class="pchart"/); assert.match(html, /Peoples/);
+});
