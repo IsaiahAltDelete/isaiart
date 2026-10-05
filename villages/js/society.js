@@ -234,7 +234,7 @@ const SOC = {
   // the watch, a wizard tower and the university turn a commoner into something more
   trainFor(v, job) {
     if (!v || classOf(v) !== 'commoner') return;
-    const to = job === 'guard' ? aptitudeOf(v, ['fighter', 'ranger']) : job === 'constable' ? aptitudeOf(v, ['fighter', 'rogue']) : job === 'wizard' || job === 'student' ? 'wizard' : job === 'bard' ? 'bard' : job === 'acolyte' ? 'cleric' : job === 'trainer' ? 'fighter' : job === 'scout' ? 'ranger' : job === 'locksmith' ? 'rogue' : null;
+    const to = job === 'guard' ? aptitudeOf(v, ['fighter', 'ranger']) : job === 'constable' ? aptitudeOf(v, ['fighter', 'rogue']) : job === 'wizard' || job === 'student' ? 'wizard' : job === 'bard' ? 'bard' : job === 'acolyte' ? 'cleric' : job === 'trainer' ? aptitudeOf(v, ['fighter', 'ranger', 'rogue']) : job === 'scout' ? 'ranger' : job === 'locksmith' ? 'rogue' : null;
     if (!to) return;
     v.cls = to; v.hp = Math.min(v.hp ?? maxHp(v), maxHp(v));
     this.log(`${v.name} began training as a ${CLASSES[to].name}.`);

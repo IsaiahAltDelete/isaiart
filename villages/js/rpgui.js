@@ -243,7 +243,7 @@ export function rpgGuildHtml(ui) {
     const missing = !e && sim.canEquip(v, 'party');
     h += `<div class="pcard"><div class="hd">${faceSvg(v, 34)}<div style="min-width:0"><b>${esc(v.name)}</b>${classTag(v)}</div></div>
       <div class="hpline" ${tip(`${hp}/${mx} HP`, HEAL_TIP)}>${hpBar(v)}<span>${hp}/${mx}</span></div>
-      <div class="row"><span class="rtag" ${tip(`Armour class ${ac}`, 'Monsters must roll this or higher on d20 + their bonus to hit.')}>${svg('shield', 13)}AC ${ac}</span><span class="rtag" ${tip(a.name, atkText(a))}>${svg(c.icon, 13)}${esc(a.name)}</span>${gearTags(v)}${v.jail > s.time ? '<span class="rtag">In custody</span>' : ''}</div>
+      <div class="row"><span class="rtag" ${tip(`Armour class ${ac}`, 'Monsters must roll this or higher on d20 + their bonus to hit.')}>${svg('shield', 13)}AC ${ac}</span><span class="rtag" ${tip(a.name, atkText(a))}>${svg(c.icon, 13)}${esc(a.name)}</span>${gearTags(v)}${v.jail > s.time ? '<span class="rtag">In the stocks</span>' : ''}</div>
       ${e ? '' : `<div class="btns">${missing ? `<button class="btn sm" data-act="rpg-pequip" data-id="${v.id}" ${tip('Equip', 'Take the best gear for their class from the armory.')}>${svg('sword', 13)}Gear</button>` : ''}${Object.keys(v.gear || {}).length ? `<button class="btn sm ghost" data-act="rpg-punequip" data-id="${v.id}" ${tip('Return gear', 'Put their gear back in the armory.')}>${svg('back', 12)}</button>` : ''}<button class="btn sm red" data-act="rpg-pkick" data-id="${v.id}">${svg('minus', 12)}Leave</button></div>`}</div>`;
   }
   for (let i = vs.length; i < (e ? 0 : 2); i++) h += `<div class="pcard empty">${svg('plus', 18)}<span>Add an adventurer below</span></div>`;

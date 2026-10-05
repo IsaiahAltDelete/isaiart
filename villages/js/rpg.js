@@ -841,7 +841,7 @@ const RPG = {
     if (d.exp) return { ok: false, why: 'The party is away on an expedition' };
     d.party = d.party.filter(id => this.vById.has(id));
     if (d.party.includes(v.id)) { d.party = d.party.filter(id => id !== v.id); return { ok: true, joined: false }; }
-    if (v.jail > this.s.time) return { ok: false, why: `${first(v)} is in custody at the Watch House` };
+    if (v.jail > this.s.time) return { ok: false, why: `${first(v)} is in the stocks until morning` };
     if (d.party.length >= 4) return { ok: false, why: 'A party has at most 4 adventurers' };
     if (stageOf(v) !== 'adult') return { ok: false, why: 'Only grown-ups go adventuring' };
     if (this.s.buildings.some(o => o !== b && o.type === 'guild' && o.data?.party?.includes(v.id))) return { ok: false, why: 'Already in another party' };
@@ -855,7 +855,7 @@ const RPG = {
     if (d.exp) return { ok: false, why: 'Already on an expedition' };
     if (vs.length < 2) return { ok: false, why: 'Needs at least 2 adventurers' };
     const jailed = vs.find(v => v.jail > this.s.time);
-    if (jailed) return { ok: false, why: `${first(jailed)} is in custody at the Watch House` };
+    if (jailed) return { ok: false, why: `${first(jailed)} is in the stocks until morning` };
     const tired = vs.find(v => v.ko > 0 || v.downed || v.quest || v.hp < maxHp(v) * 0.5);
     if (tired) return { ok: false, why: `${first(tired)} needs to rest first` };
     if (vs.some(v => stageOf(v) !== 'adult')) return { ok: false, why: 'Everyone must be a grown-up' };

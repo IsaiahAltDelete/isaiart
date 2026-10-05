@@ -163,8 +163,11 @@ def window(name, M, loc, w=0.3, h=0.32, face="-Y", shutters=True, box_flowers=Fa
     rnd = rnd or random.Random(3)
     parts = []
     # frame and glass in local space facing -Y, then rotated
-    parts.append(box(f"{name}_frame", (w + 0.08, 0.05, h + 0.08), (0, -0.01, -(h + 0.08) / 2), M["trim"], bev=0.015))
-    parts.append(box(f"{name}_glass", (w, 0.04, h), (0, 0.005, -h / 2), M["win"]))
+    # a hollow frame (four bars) so the recessed glass shows through
+    for k, (sx, sz, x, z) in enumerate(((w + 0.08, 0.04, 0, h / 2 + 0.02), (w + 0.08, 0.04, 0, -h / 2 - 0.02),
+                                        (0.04, h, -w / 2 - 0.02, 0), (0.04, h, w / 2 + 0.02, 0))):
+        parts.append(box(f"{name}_frame{k}", (sx, 0.05, sz), (x, -0.01, z - sz / 2), M["trim"], bev=0.012))
+    parts.append(box(f"{name}_glass", (w + 0.01, 0.04, h + 0.01), (0, 0.0, -h / 2 - 0.005), M["win"]))
     parts.append(box(f"{name}_mv", (0.025, 0.06, h), (0, -0.012, -h / 2), M["trim"]))  # mullions stay sharp
     parts.append(box(f"{name}_mh", (w, 0.06, 0.025), (0, -0.012, -0.0125), M["trim"]))
     parts.append(box(f"{name}_sill", (w + 0.14, 0.1, 0.035), (0, -0.04, -h / 2 - 0.06), M["trim"], bev=0.012))

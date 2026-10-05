@@ -459,6 +459,78 @@ Tower disciplines share the base tower silhouette with coloured beacons; additio
 architecture and housing upgrade variants can be a later art pass. The earlier independent
 critic score applies to Round 8 only, not these changes.
 
+## Round 11 — the simplify pass (2026-10-05)
+
+The client felt the game was getting too complicated after rounds 8–10. This round's rule: a
+system stays only if you can **see it in the village** and it gives you **one clear decision**.
+Old saves migrate automatically.
+
+**Economy → prosperity** (`economy.js`)
+- Removed personal purses, wages, mortgages, the price table and wealth labels. On first load,
+  everyone's savings go back into the treasury once.
+- Each home has one of four steps:
+  - **Struggling:** someone in it is hungry.
+  - **Getting by:** everyone is fed.
+  - **Comfortable:** a luxury lately, plus a park, pub, bath or theatre nearby.
+  - **Prosperous:** three or more luxuries, plus somewhere to unwind.
+- Every 20 s each household uses one luxury (cloth, cheese, honey or ale) from its own
+  settlement's store, if a Market Stall, Pub or Tavern sells it.
+- Prosperous homes show it in the world: flower boxes, then a lantern by the door.
+- With a Town Hall, homes pay tax that rises with their prosperity. Market prices are fixed again,
+  apart from a government bonus.
+
+**Government** (`government.js`)
+- Five governments, each with three perks shown on its card.
+- Three policies (Night watch, Public feasts, Free school meals). Each costs 1 coin per 20 s for
+  every 4 villagers, a real share of tax income. The Town panel shows taxes against policy costs
+  per minute.
+- Removed: curfew, poor relief, justice modes. Tax is now 0–30%; above 10% happiness drops a little.
+- Before a Town Hall, the panel shows the governments as a preview and asks for a Town Hall.
+
+**Crime** (`crime.js`)
+- Rolled once a night per settlement, and never in a storm. The chance rises with struggling homes
+  and a glum village, and falls with guards, constables, lanterns, the government and Night watch.
+  A happy, prosperous village is peaceful.
+- The culprit puts on a mask (`mask` node), sneaks to the store, takes a sack of coins and heads
+  home. A guard or constable who spots them gets the coins back.
+- With a Watch House, a caught thief spends the next morning in the stocks out front (`v.jail` is
+  reused, so every existing "unavailable" check still works). A thief who isn't caught keeps the
+  coins.
+- Removed: crime pressure numbers, investigations, custody timers, fear, pickpocketing and brawls.
+
+**Classes and magic**
+- The Training Yard trains Fighters, Rangers or Rogues (whichever suits the villager).
+- The Ranger Lodge and Rogues' Guild are off the build menu; existing ones keep working.
+- Wizard towers have two modes, Research and Nature. Warding, Artifice and the focused rituals
+  are gone.
+
+**Leisure and the University**
+- Outings are free. The pub still uses ale and the bathhouse still burns wood.
+- University tuition is gone.
+
+**UI**
+- **Villager panel:** a header with chips (title, race · pronouns, class, schooling, home), then a
+  status line, family, workplace and job picker. Skills & health, Education (with the career
+  toggle) and Friends are fold-out sections.
+- **Boards:** one row per villager, workplace or building, and a single filter bar (region, show,
+  search). The Buildings board went from about 11,600 px tall to 2,100 px. Upgrade costs show as
+  icons with missing materials in red. Jobs: pick a candidate and Hire, inline.
+- **Build menu:** 11 tabs down to 6 (Homes, Food, Industry, Services, Leisure & Faith, Defense).
+  A "New" badge marks buildings you haven't seen yet.
+- **Top-right buttons:** one Journal button (News, Achievements and Festival tabs, one badge). It
+  opens whichever page has something waiting.
+- **Clock:** below 1200×760 it folds to a slim strip; tap the sky for the forecast.
+- **Coins:** whole numbers everywhere.
+
+**Art** (background agent, `blender/`): grander Garden Manor, a smooth temple dome with a drum and
+gold finial, a characterful pub roof, race features about 1.5× larger so they read at game zoom,
+and the bandit `mask` node.
+
+**Tests:** rewritten where the rules changed. Round 8 30/30, round 9 12/12, round 10 17/17.
+Run them per file: `node --test tests/round8.test.mjs` (`node --test tests/` fails on Windows).
+Check syntax as ES modules (copy to `.mjs` first); plain `node --check` missed an unescaped quote
+this round.
+
 ## Next round — pick 5–6
 
 Ordered easiest to hardest:

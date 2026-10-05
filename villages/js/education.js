@@ -154,9 +154,7 @@ const EDU = {
         const teachers = b.workers.map(id => this.vById.get(id)).filter(t => t && t.job === 'professor' && !t.quest && !(t.ko > 0) && !(t.jail > this.s.time) && !t.asleep);
         if (v.job === 'student') {
           if (!teachers.length) b.status = 'Needs a professor';
-          else if (!this.policyOn('freeSchool') && (v.purse || 0) < 0.5) b.status = 'Student needs tuition';
           else {
-            if (!this.policyOn('freeSchool')) { v.purse -= 0.5; this.s.res.coins += 0.5; this.track('coins', 0.5); }
             const quality = this.teachQuality(b);
             v.university = (v.university || 0) + 6 * quality * (1 + 0.06 * mod(v.abil?.int)) * (v.hungry ? 0.6 : 1);
             this.rpg().know += 0.5; b.status = null;

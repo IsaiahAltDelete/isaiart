@@ -5,9 +5,10 @@ import { classOf, maxHp } from './rpg.js';
 export const CLASS_PLACES = {
   chapel: { cls: 'cleric', label: 'Tending the chapel', benefit: 'Clerics restore health to a nearby injured resident and lift public spirits.' },
   temple: { cls: 'cleric', label: 'Offering temple care', benefit: 'A larger sanctuary: Clerics heal nearby residents and lift public spirits.' },
-  trainingyard: { cls: 'fighter', label: 'Practising sword drills', benefit: 'Fighters train themselves and up to two nearby Fighters, Rangers or Rogues.' },
+  trainingyard: { cls: 'fighter', label: 'Drilling with sword and bow', benefit: 'Trainers become Fighters, Rangers or Rogues (whatever suits them best) and coach up to two nearby adventurers.' },
+  // retired from the build menu (the Training Yard covers them); old villages keep theirs
   rangerlodge: { cls: 'ranger', label: 'Studying woodland trails', benefit: 'Rangers practise fieldcraft and train up to two nearby adventurers.' },
-  rogueguild: { cls: 'rogue', label: 'Practising locks and traps', benefit: 'Rogues train dexterity and help detect trouble: recent practice lowers local crime pressure.' },
+  rogueguild: { cls: 'rogue', label: 'Practising locks and traps', benefit: 'Rogues train dexterity and coach up to two nearby adventurers.' },
 };
 export function installClassPlaces(sim) {
   const second = sim.second.bind(sim);
@@ -16,8 +17,6 @@ export function installClassPlaces(sim) {
     const sanctuaries = sim.s.buildings.filter(b => ['chapel', 'temple'].includes(b.type) && b.built && b.data?.careUntil > sim.s.time).length;
     sim.s.happiness = Math.min(100, sim.s.happiness + Math.min(3, sanctuaries) * 0.025);
   };
-  const pressure = sim.crimePressure.bind(sim);
-  sim.crimePressure = sid => Math.max(0, pressure(sid) - Math.min(8, sim.s.buildings.filter(b => b.type === 'rogueguild' && b.sid === sid && b.built && b.data?.careUntil > sim.s.time).length * 4));
   sim.taskClassPlace = (v, b) => {
     const info = CLASS_PLACES[b.type], c = sim.bCenter(b), p = sim.spot(b, v.id % 3);
     sim.setTask(v, info.label, [{ walk: sim.goalBuilding(b) }, { to: [p.x, p.z] }, { face: [c.x, c.z] }, { act: 12, anim: 'work', done: () => {

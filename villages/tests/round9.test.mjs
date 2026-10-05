@@ -33,9 +33,10 @@ test('faith jobs require schooling and train commoners without changing experien
   sim.unassign(v);v.cls='wizard';assert.equal(sim.assign(b,v),true);assert.equal(classOf(v),'wizard');
 });
 test('class workplaces train the matching careers and save their staff',()=>{
-  for(const [type,cls] of [['trainingyard','fighter'],['rangerlodge','ranger'],['rogueguild','rogue'],['temple','cleric']]){
-    const sim=fresh(),b=build(sim,type),v=adult(sim);assert.equal(sim.assign(b,v),true);assert.equal(classOf(v),cls);
-    const loaded=new Sim(sim.serialize());assert.equal(loaded.vById.get(v.id).work,b.id);assert.equal(classOf(loaded.vById.get(v.id)),cls);
+  // the Training Yard trains whichever martial class suits them; the retired lodges still work in old villages
+  for(const [type,cls] of [['trainingyard',['fighter','ranger','rogue']],['rangerlodge',['ranger']],['rogueguild',['rogue']],['temple',['cleric']]]){
+    const sim=fresh(),b=build(sim,type),v=adult(sim);assert.equal(sim.assign(b,v),true);assert.ok(cls.includes(classOf(v)),type+' '+classOf(v));
+    const loaded=new Sim(sim.serialize());assert.equal(loaded.vById.get(v.id).work,b.id);assert.equal(classOf(loaded.vById.get(v.id)),classOf(v));
   }
 });
 test('sanctuary care heals a local patient, clamps health and records persistent sessions',()=>{
@@ -44,7 +45,7 @@ test('sanctuary care heals a local patient, clamps health and records persistent
   p.hp=maxHp(p)-1;away.hp=1;away.quest={};lesson(sim,v,b);
   assert.equal(p.hp,maxHp(p));assert.equal(away.hp,1);assert.equal(b.data.sessions,1);assert.equal(b.data.careUntil,sim.s.time+30);
   const loaded=new Sim(sim.serialize());assert.equal(loaded.bById.get(b.id).data.sessions,1);
-  assert.match(townBuildingHtml({sim:loaded},loaded.bById.get(b.id)),/Completed sessions/);
+  assert.match(townBuildingHtml({sim:loaded},loaded.bById.get(b.id)),/Care/);
 });
 test('training helps nearby adult adventurers and excludes children and unavailable pupils',()=>{
   const sim=fresh(),b=build(sim,'trainingyard'),v=adult(sim);sim.assign(b,v);const c=sim.bCenter(b);
@@ -59,12 +60,6 @@ test('removed workplaces and unavailable staff cannot complete lessons',()=>{
     if(flag==='removed')sim.bById.delete(b.id);else v[flag]=flag==='jail'?sim.s.time+60:flag==='quest'?{}:10;
     done();assert.equal(v.xp,0);assert.equal(b.data.sessions||0,0);
   }
-});
-test('recent rogue practice reduces only local crime pressure and expires',()=>{
-  const sim=fresh(),b=build(sim,'rogueguild'),v=adult(sim);sim.assign(b,v);
-  const before=sim.crimePressure('meadow');lesson(sim,v,b);
-  assert.equal(sim.crimePressure('meadow'),Math.max(0,before-4));assert.equal(sim.crimePressure('pine'),0);
-  sim.s.time=b.data.careUntil;assert.equal(sim.crimePressure('meadow'),before);
 });
 test('class buildings use the existing neighbour synergy and work speed rules',()=>{
   for(const[type,neighbour,bonus]of [['chapel','park',.10],['trainingyard','guild',.15],['rangerlodge','forester',.15],['rogueguild','watchhouse',.10]]){
@@ -96,11 +91,11 @@ test('region scope follows the camera and explicit all-region or settlement sele
 });
 test('boards expose upgrade costs, blockers, construction and regional vacancies',()=>{
   const sim=fresh(),b=build(sim,'chapel'),ui=uiFor(sim);stock(sim);
-  let html=buildingsBoardHtml(ui);assert.match(html,/Upgrade to level 2/);assert.match(html,/Planks 20/);assert.match(html,/\+1 worker slot/);
+  let html=buildingsBoardHtml(ui);assert.match(html,/Upgrade to level 2/);assert.match(html,/data-act="board-upgrade"/);assert.match(html,/\+1 worker slot/);
   const before=regionSummary(sim,'meadow').upgrades;boardClick(ui,'board-upgrade',{dataset:{bid:String(b.id)}});
-  assert.ok(b.up);assert.equal(regionSummary(sim,'meadow').upgrades,before-1);assert.match(buildingsBoardHtml(ui),/0% complete/);
+  assert.ok(b.up);assert.equal(regionSummary(sim,'meadow').upgrades,before-1);assert.match(buildingsBoardHtml(ui),/class="bprog"/);
   sim.s.res.coins=0;html=buildingsBoardHtml(ui);assert.match(html,/Not enough resources/);assert.match(html,/class="missing"/);
-  assert.match(jobsBoardHtml(ui),/Requires Schooled education/);
+  assert.match(jobsBoardHtml(ui),/needs schooled/);
   assert.match(worldRegionsHtml(ui,()=>''),/board-open-region/);
   assert.match(sim.upgradeEffect({type:'tradepost'}),/\+1 cart/);
   assert.match(sim.upgradeEffect({type:'university'}),/\+2 student places/);
