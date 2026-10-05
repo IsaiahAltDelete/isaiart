@@ -1,7 +1,7 @@
 // Game rules and simulation: economy, villager brains, construction,
 // population, quests, levels, saving. No DOM or Three.js in here — the
 // view layer listens to events emitted from this class.
-import { World, N, idx, tileX, tileZ, toWorld, toTile, inMap, CENTERS, T_WATER } from './world.js';
+import { World, N, idx, tileX, tileZ, toWorld, toTile, inMap, CENTERS, T_WATER, WORLD_GEN, seedFromText, randomSeedText } from './world.js';
 import { BUILDINGS, DECOR, GOODS, SELLABLE, QUESTS, SETTLEMENTS, ACHIEVEMENTS, MERCHANT_OFFERS, SYNERGY, CROPS, SPELLS, BEASTS, xpForLevel,
   SEASONS, SEASON_DAYS, FESTIVALS, RARE,
   FIRST_NAMES, LAST_NAMES, SHIRTS, SKINS, HAIRS, JOBS } from './data.js';
@@ -44,11 +44,12 @@ export const stageOf = v => v.age < ADULT ? 'child' : v.age >= RETIRE ? 'elder' 
 export const RANGE = { woodcutter: 20, forager: 16, miner: 20, forester: 9.5 };
 
 export class Sim {
-  constructor(save) {
+  constructor(save, opts = {}) {
     this.handlers = {};
-    this.rng = mulberry32((Math.random() * 1e9) | 0);
-    const seed = save?.seed ?? ((Math.random() * 1e9) | 0);
-    this.world = new World(seed);
+    const label = save ? String(save.seedLabel ?? save.seed) : String(opts.seed ?? randomSeedText());
+    const seed = save?.seed ?? seedFromText(label);
+    this.rng = mulberry32((seed ^ 0xA17C9E23) >>> 0);
+    this.world = new World(seed, { gen: save ? save.wgen || 1 : WORLD_GEN, label });
     applyIsland(this.world);                 // Pearl Isle, if the lake has room (island.js)
     this.origTrees = this.world.trees.length;
     this.bById = new Map(); this.vById = new Map();
@@ -65,7 +66,7 @@ export class Sim {
   // ── setup ──
   newGame(seed) {
     this.s = {
-      v: 1, seed, time: DAY * 0.3, speed: 1, nextId: 1,
+      v: 1, seed, seedLabel: this.world.seedLabel, wgen: this.world.gen, time: DAY * 0.3, speed: 1, nextId: 1,
       res: { ...Object.fromEntries(Object.keys(GOODS).map(k => [k, 0])), coins: 150, wood: 120, stone: 30, food: 60, gems: 15 },
       magic: { mana: 0, known: [], study: 0, cds: {} }, beasts: [],
       xp: 0, level: 1, happiness: 70,
@@ -332,7 +333,13 @@ export class Sim {
     if (d.housing || b.type === 'campfire') out.push('+2 beds');
     if (d.storage) out.push('+300 storage');
     if (d.workers) out.push('+15% work speed');
-    return out.join(', ');
+    if (['chapel', 'temple'].includes(b.type)) out.push('+1 health per care session');
+    if (['park', 'pub', 'bathhouse', 'theatre'].includes(b.type)) out.push('Longer evening cheer');
+    if (b.type === 'watchtower') out.push('+2 guard range');
+    if (b.type === 'university') out.push('+2 student places');
+    if (b.type === 'school') out.push('Better teaching and knowledge gain');
+    if (b.type === 'library') out.push('More study progress per lesson');
+    return out.join(', ') || 'Level increase only; no additional gameplay bonus';
   }
   finishUpgrade(b) {
     b.lvl = lvlOf(b) + 1; b.up = null;
@@ -529,9 +536,13 @@ export class Sim {
     if (job === 'innkeeper') return this.taskTavern(v, b);
     if (job === 'teacher') return this.taskTeach(v, b);
     if (job === 'scholar') return this.taskLibrary(v, b);
+    if (job === 'student' || job === 'professor') return this.taskUniversity(v, b);
+    if (['barkeep', 'attendant', 'bard'].includes(job)) return this.taskVenue(v, b);
+    if (job === 'constable') return this.taskConstable(v, b);
     if (job === 'guard') return this.taskGuard(v, b);
     if (job === 'wizard') return this.taskStudy(v, b);
     if (job === 'smith') return this.taskForge(v, b);
+    if (['acolyte','trainer','scout','locksmith'].includes(job)) return this.taskClassPlace(v,b);
   }
 
   // ── night: everyone but the guards turns in ──
@@ -544,7 +555,7 @@ export class Sim {
     if (this._beds?.key !== key) {
       const map = new Map();
       for (const sid of Object.keys(s.unlocked)) {
-        const houses = s.buildings.filter(b => b.built && b.sid === sid && (b.type === 'cottage' || b.type === 'tiled')).sort((a, b) => a.id - b.id);
+        const houses = s.buildings.filter(b => b.built && b.sid === sid && housingOf(b) > 0 && b.type !== 'campfire').sort((a, b) => a.id - b.id);
         const slots = []; for (const h of houses) for (let k = 0; k < housingOf(h); k++) slots.push(h);
         const fire = s.buildings.find(b => b.type === 'campfire' && b.sid === sid);
         s.villagers.filter(o => o.home === sid).sort((a, b) => a.id - b.id).forEach((o, i) => map.set(o.id, { b: slots[i] || fire, n: slots[i] ? 0 : i - slots.length }));
@@ -1140,7 +1151,7 @@ export class Sim {
         }
         if (best) {
           const n = Math.min(8, Math.floor(bestQ));
-          const coins = Math.round(n * GOODS[best].price * this.synergy(b).mult);
+          const coins = Math.round(n * (this.priceOf ? this.priceOf(best, b.sid) : GOODS[best].price) * this.synergy(b).mult);
           r[best] -= n; r.coins += coins; this.s.stats.earned += coins;
           this.track(best, -n); this.track('coins', coins); this.credit(b, best, -n); this.credit(b, 'coins', coins);
           this.emit('float', c.x, c.z, `+${coins}`, 'coin'); this.emit('res'); this.emit('sfx', 'coin');
@@ -1335,7 +1346,7 @@ export class Sim {
   forecast(n = 3) { const d = this.dayNum(); return Array.from({ length: n }, (_, k) => this.dayWeather(d + k)); }
   stormy() { return !!this.s.weather?.storm; }
   // jobs done under a roof keep going through a storm
-  indoorJob(v) { return !!v.work && (!!CONVERT[v.job] && v.job !== 'herder' || ['innkeeper', 'teacher', 'wizard', 'smith'].includes(v.job)); }
+  indoorJob(v) { return !!v.work && (!!CONVERT[v.job] && v.job !== 'herder' || ['innkeeper', 'teacher', 'wizard', 'smith', 'scholar', 'student', 'professor', 'barkeep', 'attendant', 'bard', 'constable', 'acolyte', 'locksmith'].includes(v.job)); }
   stepWeather() {
     const s = this.s, wx = s.weather || (s.weather = { rain: false, t: 0 });
     const d = this.dayNum(), f = this.dayFrac(), si = this.seasonIdx();

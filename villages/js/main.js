@@ -15,6 +15,8 @@ import { Life } from './life.js';
 import { hookRpg, rpgFrame } from './rpgview.js';
 import './props.js';                                   // trade post, cart, ferry and festive decor models
 import { Extras } from './extras.js';
+import {TOWER_MODES,towerMode} from './arcane.js';
+import { facingViewer } from './placement.js';
 import { paintRoad, paintCobble } from './roads.js';
 
 const SAVE_KEY = 'isaiart.villages.v1';
@@ -55,7 +57,7 @@ class Game {
     await step(15);
     let save = null;
     try { save = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch { save = null; }
-    try { this.sim = new Sim(save); } catch (err) { console.warn('Save failed to load, starting fresh', err); this.sim = new Sim(null); }
+    try { this.sim = new Sim(save, { seed: new URLSearchParams(location.search).get('seed') ?? undefined }); } catch (err) { console.warn('Save failed to load, starting fresh', err); this.sim = new Sim(null); }
     await step(40);
     await loadModels();             // the forest and buildings are built from these
     await step(55);
@@ -150,6 +152,10 @@ class Game {
     sp.userData.px = 38; sp.position.y = Math.max(1.4, top + 0.55); sp.visible = false; sp.renderOrder = 5;
     root.add(sp);
     const vis = { b, root, group, anim, sprite: sp, icon: null, scaffold: null, phase: Math.random() * 6, pop: 0 };
+    if (b.type === 'wizard') {
+      const marker = new THREE.Mesh(new THREE.IcosahedronGeometry(0.18,1),new THREE.MeshBasicMaterial({color:TOWER_MODES[towerMode(b)].color}));
+      marker.position.set(0,Math.max(2.4,top+0.2),0);root.add(marker);vis.arcaneMarker=marker;
+    }
     this.addHalos(group);
     if (b.type === 'campfire') {
       const pool = new THREE.Mesh(new THREE.CircleGeometry(3.2, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: glowTex(), color: 0xff9a40, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -182,6 +188,7 @@ class Game {
   }
   applyBuild(vis) {
     const b = vis.b;
+    if(vis.arcaneMarker){vis.arcaneMarker.visible=b.built;vis.arcaneMarker.material.color.setHex(TOWER_MODES[towerMode(b)].color);}
     this.applyLevel(vis);
     if (b.built && b.up) {
       if (!vis.scaffold) { vis.scaffold = scaffold(footprint(b.type, 0)); vis.scaffold.scale.set(1.12, 1.25, 1.12); vis.group.add(vis.scaffold); }
@@ -263,6 +270,7 @@ class Game {
     const vis = this.bvis.get(b.id);
     if (!vis) return;
     this.view.objects.remove(vis.root);
+    if(vis.arcaneMarker){vis.arcaneMarker.geometry.dispose();vis.arcaneMarker.material.dispose();}
     this.bvis.delete(b.id);
     this.screenSprites.delete(vis.sprite);
     const gone = new Set(); vis.root.traverse(o => gone.add(o)); this.halos = this.halos.filter(h => !gone.has(h.m));
@@ -441,7 +449,7 @@ class Game {
     if (v.onTower) y += 2.05;
     m.group.position.set(vx, y, vz);
     m.group.visible = !v.indoors;
-    m.wiz.visible = v.job === 'wizard';
+    m.wiz.visible = v.job === 'wizard' && v.title !== 'Archmage' && v.title !== 'High Archmage';
     dressVillager(m, v, this.si === 3 && this.sim.snowLevel() > 0.2);
     m.bed.visible = v.asleep === 'fire';
     if (v.asleep === 'fire') { m.body.rotation.set(-Math.PI / 2, 0, 0); m.body.position.set(0, 0.1, -0.25); m.bed.position.set(0, 0.03, 0); }
@@ -522,7 +530,7 @@ class Game {
   hudHit(x, y) {
     if (!this.hudRects || performance.now() - this.hudT > 500) {
       this.hudT = performance.now();
-      this.hudRects = ['#dockbar', '#tray', '#world', '#shop', '#placebar', '#topright', '#info'].map(q => document.querySelector(q))
+      this.hudRects = ['#dockbar', '#tray', '#world', '#shop', '#placebar', '#topright', '#info', '#regionQuick'].map(q => document.querySelector(q))
         // (fixed panels have no offsetParent, so test their size instead)
         .filter(el => el && !el.classList.contains('hidden')).map(el => el.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);
     }
@@ -1007,7 +1015,7 @@ class Game {
   startPlace(type, moving = null) {
     this.cancelPlace(true);
     this.select(null);
-    const p = this.place = { type, rot: moving ? moving.rot : 0, tx: 0, tz: 0, ok: false, why: '', moving };
+    const p = this.place = { type, rot: moving ? moving.rot : facingViewer(this.view.rig.yaw), autoFace: !moving && !PAINT[type] && type !== 'dock', tx: 0, tz: 0, ok: false, why: '', moving };
     if (moving) { const vis = this.bvis.get(moving.id); if (vis) vis.root.visible = false; }
     if (!PAINT[type]) {
       const { group, anim } = buildModel(type, defOf(type).size);
@@ -1037,6 +1045,7 @@ class Game {
     if (PAINT[p.type]) { p.cursor = g; this.placeMsg(); return; }
     let [w, d] = footprint(p.type, p.rot);
     p.tx = Math.round(g.x + HALF - w / 2); p.tz = Math.round(g.z + HALF - d / 2);
+    p.rotationCenter = null;
     if (p.type === 'dock') { p.rot = this.sim.bestDockRot(p.tx, p.tz); [w, d] = footprint(p.type, p.rot); }
     this.refreshGhost();
   }
@@ -1113,12 +1122,19 @@ class Game {
       const tx = x0 + dx, tz = z0 + dz;
       const rot = p.type === 'dock' ? this.sim.bestDockRot(tx, tz) : p.rot;
       const c = this.sim.checkPlace(p.type, tx, tz, rot);
-      if (c.ok || c.why === 'Not enough resources' || c.why?.startsWith('Needs level')) { p.tx = tx; p.tz = tz; p.rot = rot; this.refreshGhost(); return; }
+      if (c.ok || c.why === 'Not enough resources' || c.why?.startsWith('Needs level')) { p.tx = tx; p.tz = tz; p.rot = rot; p.rotationCenter = null; this.refreshGhost(); return; }
     }
   }
+  setPlaceRotation(rot) {
+    const p=this.place; if(!p || p.rot===rot) return;
+    const [w,d]=footprint(p.type,p.rot), [nw,nd]=footprint(p.type,rot);
+    p.rotationCenter ||= {x:p.tx+(w-1)/2,z:p.tz+(d-1)/2};
+    p.tx=Math.round(p.rotationCenter.x-(nw-1)/2); p.tz=Math.round(p.rotationCenter.z-(nd-1)/2); p.rot=rot;
+  }
+  facePlaceToViewer() { const p=this.place; if(!p || PAINT[p.type] || p.type==='dock') return; p.autoFace=true; this.setPlaceRotation(facingViewer(this.view.rig.yaw)); this.refreshGhost(); }
   rotatePlace() {
     const p = this.place; if (!p || PAINT[p.type] || p.type === 'dock') return;
-    p.rot = (p.rot + 1) % 4;
+    p.autoFace = false; this.setPlaceRotation((p.rot + 1) % 4);
     // keep the footprint centred where it was when rotating a non-square building
     this.refreshGhost(); sfx.click();
   }
@@ -1465,10 +1481,12 @@ class Game {
     if (this.resetting) return;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.sim.serialize())); } catch (err) { console.warn('save failed', err); }
   }
-  reset() {
+  reset(seed) {
     this.resetting = true;
-    localStorage.removeItem(SAVE_KEY);
-    location.reload();
+    // Store the chosen map before reloading, so a seed of 0 and text seeds survive.
+    if (seed !== undefined) localStorage.setItem(SAVE_KEY, JSON.stringify(new Sim(null, { seed }).serialize()));
+    else localStorage.removeItem(SAVE_KEY);
+    const url = new URL(location.href); url.searchParams.delete('seed'); location.replace(url.href);
   }
 
   // ── main loop ──
@@ -1538,6 +1556,7 @@ class Game {
       tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px';
     } else tag.classList.add('hidden');
     if (this.place?.model) this.place.model.position.y = 0.08 + Math.sin(t * 4) * 0.06;
+    if (this.place?.autoFace && this.place.rot !== facingViewer(this.view.rig.yaw)) { this.setPlaceRotation(facingViewer(this.view.rig.yaw)); this.refreshGhost(); }
     if (this.place?.ghost && this.place.target) this.place.ghost.position.lerp(this.place.target, 1 - Math.exp(-dt * 22));
     this.hl.update(dt);
     if (this.rangeRing?.visible) { this.rangeRing.material.opacity = 0.75 + Math.sin(t * 3) * 0.2; this.placeRangeLabel(); }

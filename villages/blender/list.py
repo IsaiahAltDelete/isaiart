@@ -1,7 +1,8 @@
 # Every model the game loads, in export order. "name:a,b" calls build_name(a, b)
 # and exports as name_a_b.
 MODEL_LIST = (["villager"] + [f"cottage:{a},{t}" for a in range(4) for t in range(2)] +
-    ["lumber", "sawmill", "bakery", "windmill", "market", "storehouse", "quarry", "mason",
+    ["rowhouse", "hostel", "manor", "chapel", "temple", "trainingyard", "rangerlodge", "rogueguild", "townhall", "park", "pub", "bathhouse", "theatre", "university", "watchhouse",
+     "lumber", "sawmill", "bakery", "windmill", "market", "storehouse", "quarry", "mason",
      "forager", "forester", "dock", "weaver", "creamery", "brewery", "tavern", "school", "watchtower", "wizard",
      "tiled:0", "tiled:1", "beehive", "lantern", "torch", "statue", "well",
      "sheep", "cow", "chicken", "crop_wheat", "crop_veg", "crop_pumpkin", "snowman", "sled",

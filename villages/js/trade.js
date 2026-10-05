@@ -384,6 +384,20 @@ export function installTrade(sim) {
   // ── what the UI needs ──
   sim.trade = {
     PHYS, get, cap, room, sidAt, nearestSid, transit, specOf,
+    // Purchases, fuel and crime consume only the named settlement's stock.
+    consume(sid, k, n) {
+      settle(cur());
+      if (!(n > 0) || !PHYS.includes(k) || get(sid, k) < n) return false;
+      st(sid)[k] -= n; s.res[k] -= n; L.tot[k] = s.res[k];
+      sim.track(k, -n); sim.emit('res'); return true;
+    },
+    deposit(sid, k, n) {
+      settle(cur());
+      if (!(n > 0) || !PHYS.includes(k) || !s.unlocked[sid]) return 0;
+      const got = Math.min(n, Math.max(0, Math.floor(room(sid, k))));
+      st(sid)[k] += got; s.res[k] += got; L.tot[k] = s.res[k];
+      sim.track(k, got); sim.emit('res'); return got;
+    },
     stockOf: sid => ({ ...(s.stock[sid] || {}) }),
     carts: () => T.carts, rules: () => T.rules,
     addRule(from, to, res, keep = 100) {

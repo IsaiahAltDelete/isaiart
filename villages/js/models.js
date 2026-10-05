@@ -4,7 +4,9 @@ import * as THREE from '../vendor/three.module.min.js';
 import { mulberry32 } from './rng.js';
 import { snowify } from './snow.js';
 import { surfaceTexture, mapBoxSurface, stripedCloth } from './textures.js';
+import { roofMaps } from './roof-textures.js';
 import { hasModel, instanceModel, bakedGeometry, SLOT_SURFACE } from './blender.js';
+import { RACES } from './society.js';
 
 // Materials are cached by colour + options. Everything gets a dusting of snow
 // in winter except people and animals (built inside withoutSnow).
@@ -12,12 +14,13 @@ const matCache = new Map();
 let NOSNOW = false;
 export function withoutSnow(fn) { const prev = NOSNOW; NOSNOW = true; try { return fn(); } finally { NOSNOW = prev; } }
 export function mat(color, opts = {}) {
-  const key = color + (opts.map ? opts.map.uuid : '') + JSON.stringify({ ...opts, map: undefined }) + (NOSNOW ? '~' : '');
+  const key = color + (opts.map ? opts.map.uuid : '') + (opts.bumpMap ? opts.bumpMap.uuid : '') + JSON.stringify({ ...opts, map: undefined, bumpMap: undefined }) + (NOSNOW ? '~' : '');
   if (!matCache.has(key)) {
     const m = opts.basic
       ? new THREE.MeshBasicMaterial({ color, transparent: !!opts.opacity, opacity: opts.opacity ?? 1 })
       : new THREE.MeshLambertMaterial({ color, flatShading: !opts.smooth, emissive: opts.emissive ?? 0x000000,
-        transparent: !!opts.opacity, opacity: opts.opacity ?? 1, map: opts.map ?? null });
+        transparent: !!opts.opacity, opacity: opts.opacity ?? 1, map: opts.map ?? null,
+        bumpMap: opts.bumpMap ?? null, bumpScale: opts.bumpScale ?? 1 });
     if (!opts.basic && !NOSNOW && !opts.opacity) snowify(m, false, opts.snow === 'ground' ? null : 'built');   // ground-like parts take full snow
     matCache.set(key, m);
   }
@@ -64,7 +67,7 @@ export function prismGeo(w, h, d) {
 // Cool roofs use cut slate; warm roofs use rounded terracotta shingles.
 export function roofMat(color, surface = null) {
   const c = new THREE.Color(color);
-  return mat(color, { map: surfaceTexture(surface || (c.b > c.r * 0.85 || c.g > c.r * 1.05 ? 'slate' : 'shingle')) });
+  return mat(color, roofMaps(surface || (c.b > c.r * 0.85 || c.g > c.r * 1.05 ? 'slate' : 'shingle')));
 }
 
 // a hip roof: four slopes meeting at a short ridge
@@ -220,6 +223,7 @@ export function slotMaterial(slot, color, smooth = false) {
   const surf = SLOT_SURFACE[slot];
   if (smooth || !surf) return mat(color, smooth ? { smooth: true } : {});
   if (surf === 'roof') return roofMat(color);
+  if (['shingle', 'slate', 'straw'].includes(surf)) return mat(color, roofMaps(surf));
   return mat(color, { map: surfaceTexture(surf) });
 }
 // Instance a Blender model into g; colours maps slot -> hex. Wires up the
@@ -1118,7 +1122,8 @@ export const VILLAGER_MATS = {
 function villagerBlend(v) {
   const age = v.age ?? 30, child = age < 14, elder = age >= 66;
   const hair = elder ? 0xdcdad4 : v.hair;
-  const colors = { shirt: lively(v.shirt), skin: v.skin, hair, hat: v.hatColor ?? 0xc9a050 };
+  const race = RACES[v.race] || RACES.human;
+  const colors = { shirt: lively(v.shirt), skin: v.skin, hair, hat: v.hatColor ?? 0xc9a050, horn: v.horn ?? 0x463530 };
   const inst = instanceModel('villager', (slot, c) => {
     if (slot === 'eye' || slot === 'white' || slot === 'cheek') return mat(c, { smooth: true, basic: slot === 'eye' || slot === 'white' });
     const m = mat(colors[slot] ?? c, { smooth: true }); VILLAGER_MATS.add(m); return m;
@@ -1134,12 +1139,19 @@ function villagerBlend(v) {
   const bed = box(0.34, 0.06, 0.72, 0x9a6a8a, 0, 0, 0); bed.visible = false; g.add(bed);
   // a soft contact shadow so small figures sit on the ground and read from the overview
   const blob = new THREE.Mesh(SHADOW_GEO, SHADOW_MAT); blob.position.y = 0.012; blob.renderOrder = 1; g.add(blob);
-  const style = elder && (v.id % 3) ? 'hair_elder' : HAIR_STYLES[(v.id * 7 + 3) % HAIR_STYLES.length];
+  const styles = v.gender === 'f' ? ['hair_bob', 'hair_bun', 'hair_tails', 'hair_long', 'hair_short', 'hair_bun']
+    : v.gender === 'm' ? ['hair_short', 'hair_tuft', 'hair_short', 'hair_long', 'hair_bob', 'hair_tuft'] : HAIR_STYLES;
+  const style = elder && (v.id % 3) ? 'hair_elder' : styles[(v.id * 7 + 3) % styles.length];
   if (N.scarf) N.scarf.visible = false;
-  for (const k of [...HAIR_STYLES, 'hair_elder']) if (N[k]) N[k].visible = k === style;
+  for (const k of [...HAIR_STYLES, 'hair_elder']) if (N[k]) N[k].visible = !race.noHair && k === style;
+  for (const k of Object.keys(N)) if (k.startsWith('race_')) {
+    N[k].visible = race.parts.includes(k) && (k !== 'race_beard' || !child && (v.gender !== 'f' || v.id % 3 === 0));
+    if (k === 'race_elf' && race.ears) N[k].scale.x = race.ears;
+  }
   // storybook proportions: adults stand about 1.2x door height; children are smaller
   // with relatively bigger heads
   g.scale.setScalar(child ? 0.42 + age / 14 * 0.46 : 0.9);
+  g.scale.x *= race.girth; g.scale.z *= race.girth; g.scale.y *= race.height;
   if (child) N.head.scale.setScalar(1.3 - age / 14 * 0.25);
   // four body types, seeded per villager: stout, lanky, short and broad-shouldered
   if (!child) {
@@ -1170,7 +1182,7 @@ export function propModel(name) {
 const WOOLS = [0xb8463e, 0x3f6f9a, 0x2f7f78, 0xc0843a, 0x6f5a8f, 0x4f7f3a, 0xb05878, 0x2f5a8a, 0x8a3a5a, 0x3a7a5a, 0x9a5a2a, 0x5a6a9a];   // mid-value knits
 export function dressVillager(m, v, winter = false) {
   if (!m.blend) return;
-  const key = `${v.job}|${v.hat}|${winter}`;
+  const key = `${v.job}|${v.hat}|${winter}|${v.title}|${v.race}`;
   if (m.dressed === key) return;
   m.dressed = key;
   const N = m.nodes;
@@ -1179,6 +1191,10 @@ export function dressVillager(m, v, winter = false) {
   else if (!hat && v.hat && m.stage !== 'child') hat = ['hat_straw', 'hat_bucket', 'hat_cap'][v.id % 3];
   // in winter everyone wraps up: a scarf, and a woolly hat unless the job has a helmet or toque
   if (winter && v.job !== 'wizard' && !['hat_helmet', 'hat_toque', 'hat_hood'].includes(hat)) hat = 'hat_beanie';
+  if (['Archmage', 'High Archmage'].includes(v.title)) hat = 'hat_archmage';
+  if (v.title === 'Monarch') hat = 'hat_crown';
+  if (N.chain) N.chain.visible = ['Mayor', 'Elder', 'Consul'].includes(v.title);
+  if (N.robe) N.robe.visible = ['Archmage', 'High Archmage'].includes(v.title) || ['student', 'professor'].includes(v.job);
   if (N.scarf) N.scarf.visible = winter;
   const wool = WOOLS[(v.id * 5 + 2) % WOOLS.length];
   if (winter) {
@@ -1194,7 +1210,7 @@ export function dressVillager(m, v, winter = false) {
   }
   // short hair tucks under a hat; long styles and buns stay visible below the brim
   const under = hat && ['hat_helmet', 'hat_hood', 'hat_cap', 'hat_toque', 'hat_beanie'].includes(hat);
-  if (N[m.style]) N[m.style].visible = !under || m.style === 'hair_long' || m.style === 'hair_tails';
+  if (N[m.style]) N[m.style].visible = !RACES[v.race]?.noHair && (!under || m.style === 'hair_long' || m.style === 'hair_tails');
   const gear = JOB_GEAR[v.job];
   if (N.apron) N.apron.visible = gear === 'apron';
   if (N.pack) N.pack.visible = gear === 'pack';

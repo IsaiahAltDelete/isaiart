@@ -11,10 +11,12 @@ import { mulberry32, fbm } from './rng.js';
 
 const LAKE = { x: 24, z: 70 };
 const SHALLOWS = { x: 34, z: 80 };
+const ISLE_DEF = SETTLEMENTS.find(s => s.id === 'isle');
 export const FERRY_DOCK = 5, FERRY_SPEED = 1.6;     // seconds moored at each side, tiles a second under sail
 
 // Add the island to a freshly generated World (before trees are counted).
 export function applyIsland(W) {
+  const lake = W.lake || LAKE;
   const fits = (cx, cz, R) => {
     const M = R + 3.6;
     for (let z = Math.floor(cz - M - 1); z <= cz + M + 1; z++) for (let x = Math.floor(cx - M - 1); x <= cx + M + 1; x++) {
@@ -25,7 +27,7 @@ export function applyIsland(W) {
   };
   let spot = null;
   search: for (const R of [3.3, 2.9, 2.5]) for (let r = 0; r <= 3; r++) for (let k = 0; k < Math.max(1, r * 8); k++) {
-    const a = k / Math.max(1, r * 8) * Math.PI * 2, cx = LAKE.x + 0.5 + Math.cos(a) * r, cz = LAKE.z + 0.5 + Math.sin(a) * r;
+    const a = k / Math.max(1, r * 8) * Math.PI * 2, cx = lake.x + 0.5 + Math.cos(a) * r, cz = lake.z + 0.5 + Math.sin(a) * r;
     if (fits(cx, cz, R)) { spot = { cx, cz, R }; break search; }
   }
   if (!spot) {
@@ -34,6 +36,7 @@ export function applyIsland(W) {
     return null;
   }
   const { cx, cz, R } = spot, seed = W.seed, rng = mulberry32(seed + 4040);
+  if (ISLE_DEF && !SETTLEMENTS.some(s => s.id === 'isle')) SETTLEMENTS.push(ISLE_DEF);
   W.baseTrees = W.trees.length;
   const land = [];
   for (let z = Math.floor(cz - R - 2); z <= cz + R + 2; z++) for (let x = Math.floor(cx - R - 2); x <= cx + R + 2; x++) {

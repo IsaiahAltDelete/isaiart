@@ -2,6 +2,7 @@
 // building colours tint each surface; lighting still comes from the scene.
 import * as THREE from '../vendor/three.module.min.js';
 import { mulberry32 } from './rng.js';
+import { roofMaps } from './roof-textures.js';
 
 const SIZE = 256, cache = new Map();
 const SEEDS = { plaster: 12, wood: 31, stone: 47, brick: 53, shingle: 67,
@@ -54,35 +55,14 @@ function masonry(g, rng, brick = false, cobble = false) {
   }
   wash(g, rng, 35, 0.1);
 }
-function roofing(g, rng, slate) {
-  g.fillStyle = '#b7b7b7'; g.fillRect(0, 0, SIZE, SIZE);
-  const w = 64, h = 64;
-  for (let row = -1; row < 4; row++) for (let col = 0; col < 4; col++) {
-    const x = col * w + (row % 2) * w / 2, y = row * h;
-    const value = 213 + Math.floor(rng() * 30);
-    wrapped(g, () => {
-      const grad = g.createLinearGradient(0, y, 0, y + h + 8);
-      grad.addColorStop(0, '#f8f8f8'); grad.addColorStop(0.8, `rgb(${value},${value},${value})`); grad.addColorStop(1, '#bababa');
-      g.fillStyle = grad; g.strokeStyle = 'rgba(85,75,65,.28)'; g.lineWidth = 2;
-      g.beginPath(); g.moveTo(x + 1, y); g.lineTo(x + w - 1, y);
-      g.lineTo(x + w - 1, y + h - 10);
-      if (slate) { g.lineTo(x + w - 7, y + h - 2); g.lineTo(x + 6, y + h); }
-      else g.quadraticCurveTo(x + w / 2, y + h + 12, x + 1, y + h - 10);
-      g.closePath(); g.fill(); g.stroke();
-      stroke(g, [[x + 7, y + 14], [x + 9, y + h - 18]], 'rgba(255,255,255,.3)', 2);
-    });
-  }
-  wash(g, rng, 22, 0.06);
-}
-
 export function surfaceTexture(kind) {
+  if (['shingle', 'slate', 'straw'].includes(kind)) return roofMaps(kind).map;
   if (cache.has(kind)) return cache.get(kind);
   if (!(kind in SEEDS)) throw new Error(`Unknown village surface: ${kind}`);
   const cv = document.createElement('canvas'); cv.width = cv.height = SIZE;
   const g = cv.getContext('2d'), rng = mulberry32(SEEDS[kind]);
   g.fillStyle = '#f2f2f2'; g.fillRect(0, 0, SIZE, SIZE); g.lineCap = 'round';
   if (kind === 'stone' || kind === 'brick' || kind === 'cobble') masonry(g, rng, kind === 'brick', kind === 'cobble');
-  else if (kind === 'shingle' || kind === 'slate') roofing(g, rng, kind === 'slate');
   else if (kind === 'wood') {
     wash(g, rng, 25, 0.09);
     for (let i = 0; i < 65; i++) {
@@ -103,12 +83,6 @@ export function surfaceTexture(kind) {
       stroke(g, [[0, i], [SIZE, i]], 'rgba(100,90,75,.07)');
     }
     wash(g, rng, 12, 0.05);
-  } else if (kind === 'straw') {
-    wash(g, rng, 22, 0.08);
-    for (let i = 0; i < 350; i++) {
-      const x = rng() * SIZE, y = rng() * SIZE, len = 16 + rng() * 42, width = 1 + rng();
-      wrapped(g, () => stroke(g, [[x, y], [x + 2, y + len]], i % 3 ? 'rgba(100,80,50,.13)' : 'rgba(255,255,255,.65)', width));
-    }
   } else {
     wash(g, rng, kind === 'plaster' ? 90 : 40, kind === 'plaster' ? 0.08 : 0.13);
     const grass = kind === 'grass';

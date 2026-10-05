@@ -53,7 +53,31 @@ export const SELLABLE = ['wood', 'planks', 'stone', 'bricks', 'grain', 'flour', 
 
 // size = [w, d] in tiles. time = builder-seconds of work.
 // lvl = player level needed. workers/job = staffed production.
+export const HOME_TYPES = ['cottage','tiled','rowhouse','manor'];
+export const LODGING_TYPES = ['hostel'];
 export const BUILDINGS = {
+  rowhouse: {name:'Row House',size:[3,2],cost:{wood:65,planks:35,coins:90},time:22,lvl:4,housing:8,desc:'A family home with a pair of joined town houses and spare rooms for lodgers. Inherits and repays its mortgage like a cottage.'},
+  hostel: {name:'Village Hostel',size:[3,2],cost:{wood:85,planks:25,coins:100},time:22,lvl:3,housing:10,desc:'Shared beds for settlers and residents without a private home. No household owner or mortgage; families can move to a private home later.'},
+  manor: {name:'Garden Manor',size:[3,3],cost:{planks:110,bricks:75,coins:280},time:34,lvl:8,housing:12,desc:'A spacious family estate with garden and guest rooms. Twelve beds, household ownership and inheritance.'},
+  chapel: { name: 'Wayside Chapel', size: [2,2], cost: {wood:40,stone:45,coins:70}, time:18,lvl:3,workers:1,job:'acolyte',desc:'A candlelit sanctuary. Schooled acolytes train as Clerics, heal nearby residents and lift public spirits.' },
+  temple: { name: 'Temple of the Dawn',size:[3,3],cost:{planks:70,bricks:40,coins:180},time:28,lvl:6,workers:2,job:'acolyte',desc:'A domed temple for prayer and care. Clerics heal local residents and bring calm to the town.' },
+  trainingyard:{ name:'Training Yard',size:[3,3],cost:{wood:65,stone:25,coins:90},time:18,lvl:4,workers:2,job:'trainer',desc:'Practice dummies and sword drills. Trains Fighters and nearby martial adventurers.' },
+  rangerlodge:{ name:'Ranger Lodge',size:[2,2],cost:{wood:60,planks:20,coins:80},time:18,lvl:4,workers:1,job:'scout',desc:'A woodland lodge for fieldcraft. Scouts train as Rangers and help nearby martial adventurers practise.' },
+  rogueguild:{name:'Rogues’ Guild',size:[2,2],cost:{planks:60,stone:25,coins:120},time:22,lvl:5,workers:2,job:'locksmith',desc:'Locks, traps and nimble hands. Trains Rogues; regular practice reduces local crime pressure by 4.' },
+  townhall:   { name: 'Town Hall', size: [3, 2], cost: { planks: 70, stone: 60, coins: 140 }, time: 26, lvl: 4,
+                desc: 'Choose a government, elect a leader, set taxes and fund village policies.' },
+  park:       { name: 'Park', size: [3, 3], cost: { wood: 30, stone: 20, coins: 50 }, time: 14, lvl: 2,
+                desc: 'A free evening stroll for all ages. Adds happiness without a worker or fee.' },
+  pub:        { name: 'Pub', size: [2, 2], cost: { planks: 50, stone: 30, coins: 90 }, time: 18, lvl: 4, workers: 1, job: 'barkeep',
+                desc: 'A neighbourhood pub. Grown-ups pay for an evening pint; needs ale and a barkeep.' },
+  bathhouse:  { name: 'Bathhouse', size: [3, 2], cost: { planks: 70, bricks: 20, coins: 130 }, time: 24, lvl: 6, workers: 1, job: 'attendant',
+                desc: 'Hot baths lift everyone’s spirits. Attendants burn wood to heat the water; visitors pay a small fee.' },
+  theatre:    { name: 'Theatre', size: [3, 2], cost: { planks: 90, cloth: 10, coins: 160 }, time: 26, lvl: 7, workers: 2, job: 'bard',
+                desc: 'Bards put on evening plays. Tickets support the treasury and performances bring lasting cheer.' },
+  university: { name: 'Arcane University', size: [3, 3], cost: { planks: 100, bricks: 50, coins: 240, gems: 15 }, time: 32, lvl: 8, workers: 2, job: 'professor',
+                desc: 'Honours professors teach young adults with Honours. Students graduate as Magisters and level 2 wizards.' },
+  watchhouse: { name: 'Watch House', size: [2, 2], cost: { planks: 40, stone: 60, coins: 90 }, time: 20, lvl: 4, workers: 2, job: 'constable',
+                desc: 'Constables patrol, investigate petty crime and hold culprits until their sentence is served.' },
   campfire:   { name: 'Campfire', size: [2, 2], hidden: true, housing: 2, storage: 300, time: 20,
                 desc: 'Heart of the settlement.' },
   cottage:    { name: 'Cottage', size: [2, 2], cost: { wood: 40, coins: 20 }, time: 14, lvl: 1, housing: 3,
@@ -107,7 +131,7 @@ export const BUILDINGS = {
   watchtower: { name: 'Watchtower', size: [2, 2], cost: { wood: 60, stone: 30 }, time: 16, lvl: 3, workers: 2, job: 'guard',
                 desc: 'Guards stay up all night and drive off wolves, boars and goblins.' },
   wizard:     { name: 'Wizard Tower', size: [2, 2], cost: { stone: 80, planks: 40, gems: 10 }, time: 30, lvl: 4, workers: 2, job: 'wizard',
-                desc: 'Apprentices study the arcane: they gather mana and learn new spells.' },
+                desc: 'Choose Research, Warding, Nature or Artifice. Wizards study spells, maintain local wards, tend fields or transmute materials.' },
   tiled:      { name: 'Tiled Cottage', size: [2, 2], cost: { planks: 60, bricks: 30 }, time: 22, lvl: 6, housing: 6,
                 desc: 'A sturdy home for 6 villagers.' },
   forge:      { name: 'Forge', size: [2, 2], cost: { planks: 40, stone: 70, coins: 80 }, time: 20, lvl: 6, workers: 1, job: 'smith',
@@ -119,7 +143,7 @@ export const BUILDINGS = {
 };
 export const BUILD_ORDER = ['cottage', 'lumber', 'forager', 'farm', 'coop', 'sawmill', 'quarry', 'storehouse', 'dock',
   'market', 'forester', 'orchard', 'beehive', 'windmill', 'pasture', 'weaver', 'bakery', 'mason', 'dairy', 'creamery',
-  'school', 'library', 'brewery', 'tavern', 'watchtower', 'wizard', 'forge', 'guild', 'tiled', 'tradepost'];
+  'school', 'library', 'brewery', 'tavern', 'watchtower', 'wizard', 'forge', 'guild', 'tiled', 'tradepost', 'townhall', 'park', 'pub', 'bathhouse', 'theatre', 'university', 'watchhouse', 'chapel', 'temple', 'trainingyard', 'rangerlodge', 'rogueguild', 'rowhouse', 'hostel', 'manor'];
 
 // Buildings near each other help out: "to" works faster when a "from"
 // building is within range tiles of it.
@@ -137,6 +161,11 @@ export const SYNERGY = [
   { to: 'tavern',   from: 'brewery',  bonus: 0.20, range: 8, why: 'Ale on tap from next door' },
   { to: 'market',   from: 'tavern',   bonus: 0.15, range: 8, why: 'Tavern crowds buy more' },
   { to: 'lumber',   from: 'forester', bonus: 0.15, range: 9, why: 'The forester keeps the woods stocked' },
+  { to: 'chapel', from: 'park', bonus: 0.10, range: 8, why: 'Quiet gardens help sanctuary care' },
+  { to: 'temple', from: 'park', bonus: 0.10, range: 8, why: 'Quiet gardens help sanctuary care' },
+  { to: 'trainingyard', from: 'guild', bonus: 0.15, range: 8, why: 'Guild veterans help with combat drills' },
+  { to: 'rangerlodge', from: 'forester', bonus: 0.15, range: 9, why: 'Foresters share local trail knowledge' },
+  { to: 'rogueguild', from: 'watchhouse', bonus: 0.10, range: 8, why: 'Constables share clues and train detection' },
 ];
 
 // The Wizard Tower's spell book: real spells from the D&D 5e System Reference Document
@@ -230,6 +259,13 @@ export const FESTIVALS = {
 };
 
 export const JOBS = {
+  acolyte: {name:'Acolyte',tool:'staff'}, trainer:{name:'Combat Trainer',tool:'spear'}, scout:{name:'Scout',tool:'bow'}, locksmith:{name:'Locksmith',tool:null},
+  barkeep:    { name: 'Barkeep', tool: null },
+  attendant:  { name: 'Bath Attendant', tool: null },
+  bard:       { name: 'Bard', tool: null },
+  constable:  { name: 'Constable', tool: 'spear' },
+  professor:  { name: 'Professor', tool: 'staff' },
+  student:    { name: 'Student', tool: 'staff' },
   idle:       { name: 'Idle',       tool: null },
   builder:    { name: 'Builder',    tool: 'hammer' },
   woodcutter: { name: 'Woodcutter', tool: 'axe' },

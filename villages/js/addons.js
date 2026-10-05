@@ -16,6 +16,14 @@ import { installTrade } from './trade.js';
 import { installSocial } from './social.js';
 import { installFestival } from './festival.js';
 import { installEducation } from './education.js';
+import { installSociety } from './society.js';
+import { installGovernment } from './government.js';
+import { installEconomy } from './economy.js';
+import { installLeisure } from './leisure.js';
+import { installCrime } from './crime.js';
+import { installClassPlaces } from './classplaces.js';
+import { installCareers } from './careers.js';
+import { installArcane } from './arcane.js';
 
 export function installAddons(sim, save) {
   installRoads(sim, save);
@@ -24,4 +32,12 @@ export function installAddons(sim, save) {
   installSocial(sim);
   installFestival(sim);
   installEducation(sim);
+  installSociety(sim, !save);
+  installGovernment(sim);
+  installEconomy(sim);
+  installLeisure(sim);
+  installCrime(sim);
+  installClassPlaces(sim);
+  installCareers(sim);
+  installArcane(sim);
 }
