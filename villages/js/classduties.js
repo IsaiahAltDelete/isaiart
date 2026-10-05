@@ -74,5 +74,5 @@ export function installClassDuties(sim) {
     return n;
   };
   // bards calm tempers nearby
-  sim.calmNear = v => s.villagers.some(o => o.cls === 'bard' && o !== v && !o.asleep && near(o, v.x, v.z, 8));
+  sim.calmNear = v => v.calmUntil > s.time || s.villagers.some(o => o.cls === 'bard' && o !== v && !o.asleep && near(o, v.x, v.z, 8));
 }

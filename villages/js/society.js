@@ -120,9 +120,9 @@ function childRace(a, b, r) {
   return r() < 0.5 ? a : b;
 }
 export const firstNameFor = (race, gender, r) => pick(r, FIRST[race]?.[gender] || FIRST.common[gender] || FIRST.common.x);
-const lastNameFor = (race, r) => pick(r, LAST[race] || LAST_NAMES);
+export const lastNameFor = (race, r) => pick(r, LAST[race] || LAST_NAMES);
 // a look that fits the people: skin, hair, horn colour
-function lookFor(race, r) {
+export function lookFor(race, r) {
   const R = RACES[race] || RACES.human, o = { skin: pick(r, R.skins || SKINS), hair: pick(r, R.hairs || HAIRS) };
   if (R.horns) o.horn = pick(r, R.horns);
   return o;

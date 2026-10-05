@@ -26,6 +26,9 @@ import { installCareers } from './careers.js';
 import { installArcane } from './arcane.js';
 import { installEvents } from './events.js';
 import { installClassDuties } from './classduties.js';
+import { installWishes } from './wishes.js';
+import { installCelebrations } from './celebrations.js';
+import { installVisitors } from './visitors.js';
 
 export function installAddons(sim, save) {
   installRoads(sim, save);
@@ -44,4 +47,7 @@ export function installAddons(sim, save) {
   installArcane(sim);
   installEvents(sim);       // droughts, fevers, fires, raiders, spirits, the fair folk, dragons
   installClassDuties(sim);  // paladins answer the alarm, rangers shoot, rogues spot thieves, bards calm tempers
+  installWishes(sim);       // thought-bubble wishes and pets
+  installCelebrations(sim, !save);  // weddings, the town's rank, the yearly chronicle
+  installVisitors(sim);     // a family, a bard, a scholar or a stranger at the gate
 }

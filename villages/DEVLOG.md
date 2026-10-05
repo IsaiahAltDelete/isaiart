@@ -683,6 +683,88 @@ The last three critic notes are the starting point for a future art pass. Applie
 passing verdict without re-scoring: the repair button shows only "Need …" (cost in the tooltip),
 the dragon row lost its redundant label, and at most two angry bubbles show at once.
 
+## Round 13 — wishes, pets, weddings, town rank, the chronicle and visitors (2026-10-05)
+
+Six systems that make the villagers feel like people, each built around a single decision.
+
+- **Wishes** (`wishes.js`):
+  - Now and then a villager wishes for something small: a bench or flowers by the door,
+    somewhere to unwind, to study, a job they'd be good at, a treat, a pet, to make up with a
+    rival, or a swing.
+  - A star thought bubble shows over their head, and an entry goes on the Story page.
+  - The Story page lists open wishes at the top, each with a one-tap button. The villager's panel
+    has a wish card with the button and a hint.
+  - Some come true when the village changes (place the bench). Others need the one-tap answer
+    (give the honey, adopt the pet).
+  - A granted wish makes the villager beam and lifts the village. Unanswered wishes fade after
+    two days, no harm done.
+  - Wishes wait until the first-time tips are over, and only ask for things you can build at
+    your level. At most 1 + pop/12 wishes are open at a time, with a 2-day rest per villager.
+- **Pets** (`wishes.js`, models `cat` and `dog`):
+  - A cat or dog costs 15 coins: from a pet wish, or "Adopt" under Friends.
+  - Pets trot after their owner and sit by the door while the owner is indoors. Dogs wag;
+    cats swish.
+  - Each pet cheers the village a little. Pet wishes are rarer, and there is about one pet per
+    five villagers.
+  - If the owner leaves, someone else takes the pet in.
+- **Weddings** (`celebrations.js`):
+  - A new couple marries the next evening at their campfire, one wedding per campfire per night.
+  - Family first, then friends (never rivals), gather in a ring and dance; the couple stand in
+    the middle with hearts. Petals fall.
+  - The banner shows a "Watch" button. There are no toasts, because relationship news belongs on
+    the Story page.
+  - Guests grow closer, and the village is happier for half a day.
+  - Couples from old saves count as already married.
+- **Town rank** (`celebrations.js`): Hamlet → Village → Town → City.
+  - Each rank has 5–6 goals with progress bars and tips, shown in the Town panel. A "Become a …"
+    row joins the quest panel when the quests run low.
+  - Promotion brings fireworks over the square, gems (10/25/50), a day of good cheer, and the
+    `crestbanner` model by the campfire, recoloured and enlarged per rank.
+  - `stats.dragonsRepelled` and `stats.raidsRepelled` were added for the City goal.
+- **The chronicle** (`celebrations.js`):
+  - Every 12 days (a year), the year is bound into a parchment page: villagers then and now,
+    births, weddings, wishes, buildings, festivals and hard times, and up to five dated
+    headlines with faces. The year gets a name ("the Year of the Dragon", "the Year of Weddings"…).
+  - Headlines are kept in a per-year buffer, because the Story keeps only 150 entries.
+  - The Journal has a Chronicle tab, with "this year so far". It badges when a new chronicle is
+    written.
+- **Visitors at the gate** (`visitors.js`):
+  - At most once a day from day 3, someone walks up the road to the campfire with a bubble over
+    their head:
+    - a family fleeing a disaster (they move in as a household);
+    - a bard (20 coins: an evening of song, joy and calmer tempers);
+    - a scholar (40 coins: +30 knowledge and a head start for the studious);
+    - a hooded stranger. Half a day later the stranger is revealed: a hero (a level-3 fighter or
+      ranger) or a pickpocket trying to go straight.
+  - Each visitor is one Welcome / Turn away choice in the banner. "No" is always harmless.
+- **Shared plumbing:**
+  - `lifeui.js` holds the panels and the banner rows. `events.js` hands it `lv-` clicks, and its
+    banner takes rows from `ui.lifeRows()`.
+  - `lifeview.js` draws the pets, visitors, petals, music notes, crest banner and fireworks.
+  - On phones the banner hides while a panel is open.
+- **Art** (Blender agent, `build_pets.py` and `build_banner.py`):
+  - `cat` and `dog`: nodes body, head, tail and leg0–3; slots fur, fur2, nose and eye, plus
+    collar and gold on the dog. Fur is recoloured per pet. The sit pose is set in code.
+  - `crestbanner`: a stone plinth with a garland, the pole, and a swallowtail banner with a tree
+    emblem. It waves from `anim_flagMesh`.
+- **Tests:** `tests/round13.test.mjs` has 14 tests, covering the wish lifecycle, treats, pets and
+  re-homing, the wedding flow and no-toasts rule, old-save couples, rank promotion, the
+  chronicle, all four visitors, and a 13-day run. All 95 tests pass.
+
+**Fresh-village playtest** (port 8780, its own save):
+- The first wish came on day 2 and was granted by building a Park.
+- The village rank came on day 5.
+- The first visitor came on day 3. Five came in 11 days.
+- Fixed from the playtest:
+  - Wishes for buildings not yet unlocked.
+  - Wishes during the tips.
+  - Pet wishes crowding out the rest (12 pets by day 6).
+  - Two weddings on one night.
+  - Treat wishes for goods not in store.
+  - Long, repetitive banner text.
+  - Oversized music notes.
+  - The phone banner covering the villager panel.
+
 ## Next round — pick 5–6
 
 Ordered easiest to hardest:
@@ -728,6 +810,9 @@ Ordered easiest to hardest:
 | `js/classplaces.js` | Sanctuary care, martial training and local detection activity |
 | `js/careers.js`, `arcane.js`, `progressui.js` | Rotating education/careers, tower disciplines/rituals and their controls |
 | `js/placement.js` | Camera yaw to tile-facing orientation |
+| `js/events.js`, `eventsview.js`, `classduties.js` | Hard times (fires, fever, raiders, spirits, dragons), their visuals, class duties |
+| `js/wishes.js`, `celebrations.js`, `visitors.js` | Wishes and pets; weddings, town rank, the chronicle; visitors at the gate |
+| `js/lifeui.js`, `lifeview.js` | Their panels and banner rows; pets, visitors, petals, crest banner, fireworks |
 | `tests/round8.test.mjs`, `tests/round9.test.mjs`, `tests/round10.test.mjs` | Save compatibility and gameplay/board integration checks |
 | `blender/*.py` | Model scripts; `cli.py` builds, previews and exports them |
 | `vendor/three.module.min.js` | Three.js r170 (MIT) |

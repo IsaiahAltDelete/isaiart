@@ -100,7 +100,8 @@ const CRIME = {
     const ok = v => v.home === sid && stageOf(v) === 'adult' && !['guard', 'constable'].includes(v.job) && s.gov?.leader !== v.id
       && !v.quest && !(v.ko > 0) && !v.downed && !(v.jail > s.time);
     const pool = s.villagers.filter(ok), poor = pool.filter(v => (this.homeOf(v)?.pros ?? 0) === 0 || v.job === 'idle');
-    const list = poor.length ? poor : pool;
+    const shady = pool.filter(v => v.shady && this.rng() < 0.5);   // a pickpocket trying to go straight (visitors.js)
+    const list = shady.length ? shady : poor.length ? poor : pool;
     if (!list.length) return null;
     const v = list[Math.floor(this.rng() * list.length)];
     this.dropTask(v); v.asleep = false; v.indoors = false;
