@@ -1,0 +1,138 @@
+{
+ "date": "2026-10-05",
+ "updated": "2026-10-05T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "Light Monday: two ALDS Game 2s and Monday Night Football. The NLDS and WNBA semifinals are off today.",
+ "headlines": [
+  "Yankees at Rays, ALDS Game 2 (8:00 PM ET, TBS)",
+  "Falcons at Saints, Monday Night Football (8:15 PM ET, ESPN)",
+  "White Sox at Guardians, ALDS Game 2 (5:00 PM ET, TBS)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "Division Series",
+   "note": "ALDS Game 2s • NLDS resumes Tuesday"
+  },
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 4",
+   "note": "Monday Night Football"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-cws-cle",
+   "league": "MLB",
+   "label": "MLB • ALDS",
+   "flags": [
+    "ALDS • Game 2"
+   ],
+   "competitors": [
+    {
+     "name": "Chicago White Sox",
+     "abbr": "CWS",
+     "detail": "AL No. 6 seed • leads 1–0",
+     "logo": "mlb/chw"
+    },
+    {
+     "name": "Cleveland Guardians",
+     "abbr": "CLE",
+     "detail": "AL No. 2 seed • 85–77",
+     "logo": "mlb/cle"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-05T17:00:00-04:00",
+   "watch": "TBS",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Progressive Field, Cleveland",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Chicago blanked Cleveland 3–0 in Game 1 and can take a 2–0 lead home. Best-of-five series.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "mlb-nyy-tb",
+   "league": "MLB",
+   "label": "MLB • ALDS",
+   "flags": [
+    "ALDS • Game 2"
+   ],
+   "competitors": [
+    {
+     "name": "New York Yankees",
+     "abbr": "NYY",
+     "detail": "AL No. 4 seed • 93–68",
+     "logo": "mlb/nyy"
+    },
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL No. 1 seed • leads 1–0",
+     "logo": "mlb/tb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-05T20:00:00-04:00",
+   "watch": "TBS",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Tropicana Field, St. Petersburg",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Tampa Bay won Game 1 1–0. New York needs a split before the series moves to the Bronx. Best-of-five series.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "nfl-atl-no",
+   "league": "NFL",
+   "label": "NFL • Week 4",
+   "flags": [
+    "Monday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Atlanta Falcons",
+     "abbr": "ATL",
+     "detail": "",
+     "logo": "nfl/atl"
+    },
+    {
+     "name": "New Orleans Saints",
+     "abbr": "NO",
+     "detail": "",
+     "logo": "nfl/no"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-05T20:15:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National Monday Night Football window on ESPN only (no ABC simulcast).",
+   "venue": "Caesars Superdome, New Orleans",
+   "venue_tz": "Central Daylight Time",
+   "notes": "NFC South rivalry on the 20th anniversary of the Saints' post-Katrina return to the Superdome.",
+   "blackout": "Local over-the-air simulcasts are expected in the Atlanta and New Orleans markets. NFL+ restrictions may apply."
+  }
+ ],
+ "footer_note": "Three qualifying events fall inside Monday's Eastern calendar day. Regional NHL games, preseason and exhibition games, and non-major individual-sport events are excluded.",
+ "sources": [
+  {
+   "label": "CBS Sports MLB bracket",
+   "url": "https://www.cbssports.com/mlb/news/2026-mlb-playoff-bracket-schedule-scores-results-how-to-watch/"
+  },
+  {
+   "label": "Yahoo Division Series schedule",
+   "url": "https://sports.yahoo.com/mlb/article/mlb-playoffs-2026-alds-nlds-matchups-schedule-and-start-times-030600744.html"
+  },
+  {
+   "label": "NFL Week 4 schedule",
+   "url": "https://www.nfl.com/schedules/2026/by-week/week-4"
+  }
+ ]
+}
