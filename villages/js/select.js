@@ -104,6 +104,8 @@ export class Highlight {
     const b = ent.b, def = defOf(b.type);
     const bits = [];
     if (!isDecor(b.type)) bits.push(`Lv ${lvlOf(b)}`);
+    if (b.fire) bits.push('<em class="bad">On fire!</em>');
+    else if (b.damaged) bits.push('<em class="bad">Damaged</em>');
     if (!b.built) bits.push(`${Math.round((b.progress || 0) * 100)}% built`);
     else if (workersOf(b)) bits.push(`${b.workers.length}/${workersOf(b)} workers`);
     else if (housingOf(b)) bits.push(`${housingOf(b)} beds`);

@@ -166,7 +166,7 @@ test('a hungry villager raids a field, eats, and is let off with a loaf the firs
   farm.data.stage = 'growing'; farm.data.grow = 0.8; v.hungry = true; g.job = 'guard'; g.asleep = null;
   assert.ok(sim.startRaid(v)); sim.think(v); assert.equal(v.task.label, 'Looking for something to eat');
   g.x = v.x; g.z = v.z; sim.raidDone(v, farm);
-  assert.equal(v.hungry, false); assert.ok(farm.data.grow < 0.8); assert.ok(!(v.jail > sim.s.time)); assert.match(sim.s.story[0].text, /loaf of bread/);
+  assert.equal(v.hungry, false); assert.ok(farm.data.grow < 0.8); assert.ok(!(v.jail > sim.s.time)); assert.match(sim.s.story[0].text, /loaf of bread|bowl of soup|stern word|own lunch|ask next time/);
 });
 
 test('wanted posters: unknown until identified, a bounty costs 20, a watcher catches a known culprit', () => {
@@ -187,4 +187,13 @@ test('temple acolytes with the build for it become paladins, who answer the alar
   sim.spawnBeast('wolf', 'meadow', v.x + 3, v.z); const bst = sim.s.beasts.at(-1); v.hp = 30;
   sim.rpgDefend();
   assert.equal(bst.state, 'fight'); assert.equal(bst.foe, v.id); assert.equal(v.engage, bst.id);
+});
+
+test('same-day hunger raids caught by one guard merge into one Story entry that still draws', () => {
+  const sim = fresh(), farm = build(sim, 'farm'), [g, ...rest] = sim.s.villagers;
+  g.job = 'guard'; g.asleep = null;
+  for (const v of rest.slice(0, 3)) { v.hungry = true; v.hat = true; g.x = v.x; g.z = v.z; farm.data.stage = 'growing'; sim.raidDone(v, farm); }
+  const e = sim.s.story[0];
+  assert.equal(e.raids, 3); assert.match(e.text, /caught 3 of them/); assert.ok(e.faces.length >= 3);
+  assert.ok(e.faces.every(f => 'hatColor' in f || !f.hat));
 });

@@ -35,7 +35,7 @@ export function townInit(ui) {
 .poster::before{content:'';position:absolute;top:4px;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:#b8432f;box-shadow:0 1px 0 #6a1f14}
 .ptitle{font-size:19px;font-weight:900;letter-spacing:.12em;color:#7a2416;margin-top:4px}.pface{width:60px;height:60px;display:grid;place-items:center;border:2px solid #7a5a2e;background:#fff5dc;filter:sepia(.35)}.psil{font-size:34px;font-weight:900;color:#8a6a3a}
 .pname{font-size:14px;font-weight:700;text-align:center}.pcrimes{font-size:11px;text-align:center;color:#6a4a24;line-height:1.3}.pbounty{font-size:11px;font-weight:700;color:#7a2416}
-.pbtn{font:inherit;font-family:Georgia,serif;font-size:11.5px;font-weight:700;color:#4a2f14;background:#fff5dc;border:1.5px solid #7a5a2e;border-radius:4px;padding:3px 9px;cursor:pointer;margin-top:2px}.pbtn:hover{background:#fff}
+.wcount{font-size:12px;font-weight:600;color:#a8322a;margin-left:4px}.pbtn{font:inherit;font-family:Georgia,serif;font-size:11.5px;font-weight:700;color:#4a2f14;background:#fff5dc;border:1.5px solid #7a5a2e;border-radius:4px;padding:3px 9px;cursor:pointer;margin-top:2px}.pbtn:hover{background:#fff}
 .plink{border:0;background:none;font:inherit;font-size:11px;color:#6a4a24;text-decoration:underline;cursor:pointer}
 .poster.caught .pface,.poster.caught .pname{opacity:.6}.pstamp{position:absolute;top:44%;left:50%;transform:translate(-50%,-50%) rotate(-14deg);font-size:22px;font-weight:900;letter-spacing:.1em;color:#2f7a3a;border:3px solid #2f7a3a;border-radius:6px;padding:0 8px;background:#f6e6c0cc}
 .crimelog{font-size:12px;line-height:1.5;color:var(--ink2);margin:4px 0 0;padding-left:16px}
@@ -45,6 +45,7 @@ export function townInit(ui) {
 
 // ── the Town panel: one page ──
 export function townHtml(ui) {
+  if (ui.sim.s.crime) ui.sim.s.crime.seenPid = ui.sim.s.crime.pid;
   const sim = ui.sim, s = sim.s, g = s.gov, hall = sim.townHall(), info = sim.govInfo(), leader = sim.govLeader();
   let h = '';
   // government
@@ -69,25 +70,25 @@ export function townHtml(ui) {
     const on = !!g.policies[k], waiting = on && !sim.policyOn(k);
     return `<div class="pol">${svg(p.icon, 20)}<div><b>${esc(p.name)}</b><small>${esc(p.desc)}${waiting ? ' <b style="color:#a83b29">Not enough coins.</b>' : ''}</small></div><button class="tog ${on ? 'on' : ''}" data-act="town-policy" data-k="${k}" aria-pressed="${on}">${on ? 'On' : 'Off'}</button></div>`;
   }).join('')}</div></section>`;
-  // how households are doing
-  const sids = Object.keys(s.unlocked), counts = sim.prosperityCounts(), total = counts.reduce((a, b) => a + b, 0);
-  h += `<section class="town-section"><h3>${svg('smile', 18)} Households</h3>${total ? `<div class="prosbar">${counts.map((n, i) => n ? `<i style="width:${n / total * 100}%;background:${PROS_COL[i]}" title="${PROSPERITY[i].name}: ${n}"></i>` : '').join('')}</div>
-    <div class="ledger">${counts.map((n, i) => n ? `<span>${prosChip(i)} ${n} home${n === 1 ? '' : 's'}</span>` : '').join('')}</div>` : '<p>No families have homes yet.</p>'}
-    <p>Fed families get by. A luxury now and then (cloth, cheese, honey, ale from a Market Stall, Pub or Tavern) and a park, pub, bath or theatre nearby make them comfortable; plenty of luxuries makes them prosperous. Prosperous homes pay more tax, cheer everyone up, and show it with flower boxes and lanterns.</p></section>`;
   // safety
-  const log = s.crime?.log || [];
+  const log = s.crime?.log || [], sids = Object.keys(s.unlocked);
   h += `<section class="town-section"><h3>${svg('shield', 18)} Safety</h3><div class="ledger">${sids.map(sid => `<span>${esc(sim.sname(sid))}: <b>${esc(sim.safetyOf(sid))}</b></span>`).join('')}</div>
-    <p>Struggling homes and a glum village tempt someone to sneak off with a sack of coins at night. Guards, constables (Watch House), lanterns and the Night watch catch them; with a Watch House they spend the morning in the stocks.</p>
+    <p>Hunger and gloom breed thieves; guards, constables and lanterns catch them.</p>
     ${log.length ? `<ul class="crimelog">${log.slice(0, 4).map(l => `<li>${esc(l.msg)}</li>`).join('')}</ul>` : ''}</section>`;
   // the notice board: wanted posters
   const W = s.crime?.wanted || [];
-  h += `<section class="town-section"><h3>${svg('alert', 18)} Wanted</h3>${W.length ? `<div class="posters">${W.map(p => {
+  h += `<section class="town-section"><h3>${svg('alert', 18)} Wanted${W.filter(p => !p.caught).length ? ` <small class="wcount">${W.filter(p => !p.caught).length} at large</small>` : ''}</h3>${W.length ? `<div class="posters">${W.map(p => {
     const v = sim.vById.get(p.vid);
     return `<div class="poster${p.caught ? ' caught' : ''}"><div class="ptitle">WANTED</div><div class="pface">${p.known && ui.face ? ui.face(p.face, 56) : '<span class="psil">?</span>'}</div>
-      <div class="pname">${p.known ? esc(p.name) : 'Unknown'}</div><div class="pcrimes">${p.crimes.slice(-3).map(c => esc(c)).join(' · ')}</div>
-      ${p.caught ? '<div class="pstamp">CAUGHT</div>' : p.bounty ? '<div class="pbounty">Bounty posted · 20 coins</div>' : `<button class="pbtn" data-act="town-bounty" data-id="${p.id}" data-tip="Post a bounty|20 coins: the watch looks twice as hard, and works out unknown culprits faster.">Post bounty · 20</button>`}
+      <div class="pname">${p.known ? esc(p.name) : 'Unknown'}</div><div class="pcrimes">${Object.entries(p.crimes.reduce((m, c) => (m[c] = (m[c] || 0) + 1, m), {})).slice(-3).map(([c, n]) => esc(c) + (n > 1 ? ` ×${n}` : '')).join(' · ')}</div>
+      ${p.caught ? '<div class="pstamp">CAUGHT</div>' : p.bounty ? `<div class="pbounty">Bounty posted · ${p.bounty} coins</div>` : `<button class="pbtn" data-act="town-bounty" data-id="${p.id}" data-tip="Post a bounty|The watch looks twice as hard, and works out unknown culprits faster. Half what was stolen, at least 20 coins.">Post bounty · ${sim.bountyCost(p)}</button>`}
       ${p.known && v && !p.caught ? `<button class="plink" data-act="town-person" data-id="${v.id}">Last seen in ${esc(sim.sname(v.home))}</button>` : !p.known ? '<div class="pcrimes">Constables and rogues are on the trail.</div>' : ''}</div>`;
   }).join('')}</div>` : '<p>No one is wanted. The notice board is all lost cats and pie recipes.</p>'}</section>`;
+  // how households are doing
+  const counts = sim.prosperityCounts(), total = counts.reduce((a, b) => a + b, 0);
+  h += `<section class="town-section"><h3>${svg('smile', 18)} Households</h3>${total ? `<div class="prosbar">${counts.map((n, i) => n ? `<i style="width:${n / total * 100}%;background:${PROS_COL[i]}" title="${PROSPERITY[i].name}: ${n}"></i>` : '').join('')}</div>
+    <div class="ledger">${counts.map((n, i) => n ? `<span>${prosChip(i)} ${n} home${n === 1 ? '' : 's'}</span>` : '').join('')}</div>` : '<p>No families have homes yet.</p>'}
+    <p>Fed, a luxury from the market or pub, and a park or pub nearby: comfortable. Plenty of luxuries: prosperous.</p></section>`;
   return h;
 }
 

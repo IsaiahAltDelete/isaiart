@@ -15,6 +15,19 @@ function glowTex() {
   g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
   return (glow = new THREE.CanvasTexture(cv));
 }
+// a teardrop flame: hot white-yellow core, orange body, soft edges
+let flame = null;
+function flameTex() {
+  if (flame) return flame;
+  const cv = document.createElement('canvas'); cv.width = 64; cv.height = 96;
+  const g = cv.getContext('2d');
+  g.beginPath(); g.moveTo(32, 4); g.bezierCurveTo(46, 30, 60, 52, 56, 70); g.bezierCurveTo(52, 90, 12, 90, 8, 70); g.bezierCurveTo(4, 52, 18, 30, 32, 4); g.closePath();
+  const grd = g.createRadialGradient(32, 68, 2, 32, 60, 40);
+  grd.addColorStop(0, 'rgba(255,255,230,1)'); grd.addColorStop(0.35, 'rgba(255,220,90,1)'); grd.addColorStop(0.7, 'rgba(255,140,40,.9)'); grd.addColorStop(1, 'rgba(230,70,20,0)');
+  g.fillStyle = grd; g.fill();
+  flame = new THREE.CanvasTexture(cv); flame.colorSpace = THREE.SRGBColorSpace;
+  return flame;
+}
 const sprite = (color, size, additive = true, opacity = 1) => {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color, transparent: true, opacity, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending }));
   s.scale.setScalar(size); return s;
@@ -30,15 +43,15 @@ export function installEventVisuals(game) {
     const vis = game.bvis.get(b.id); if (!vis) return;
     const g = new THREE.Group(), flames = [];
     const top = new THREE.Box3().setFromObject(vis.group).max.y - vis.root.position.y;
-    for (let k = 0; k < 7; k++) {
-      const f = new THREE.Group();
-      f.add(new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.6, 6), mat(0xff7a1a, { basic: true })));
-      const inner = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.38, 6), mat(0xffd34a, { basic: true })); inner.position.y = -0.06; f.add(inner);
-      const a = k / 7 * Math.PI * 2, r = 0.35 + (k % 3) * 0.22;
-      f.position.set(Math.cos(a) * r, top * (0.55 + (k % 2) * 0.3), Math.sin(a) * r);
-      f.userData.ph = k * 1.7; g.add(f); flames.push(f);
+    // flickering flame particles: they rise, shrink and cool from yellow to red
+    for (let k = 0; k < 22; k++) {
+      const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex(), transparent: true, depthWrite: false, opacity: 0.95 }));
+      const a = k * 2.399, r = 0.15 + (k % 5) * 0.12;
+      f.userData = { ph: k / 22, ox: Math.cos(a) * r, oz: Math.sin(a) * r, sp: 0.9 + (k % 3) * 0.25 };
+      g.add(f); flames.push(f);
     }
     const halo = sprite(0xff8a30, 4.5, true, 0.7); halo.position.y = top * 0.7; g.add(halo);
+    const base = sprite(0xb8301a, 2.2, false, 0.75); base.position.y = top * 0.5; g.add(base);
     const smoke = [];
     for (let k = 0; k < 6; k++) { const p = sprite(0x2a2622, 1.2, false, 0.5); p.userData.ph = k / 6; g.add(p); smoke.push(p); }
     vis.root.add(g);
@@ -74,7 +87,7 @@ export function installEventVisuals(game) {
     const wing = s => { const p = new THREE.Group(); const m = new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.2, 3).rotateZ(-s * Math.PI / 2), dark); m.position.x = s * 1.1; m.scale.y = 0.15; p.add(m); p.position.x = s * 0.25; g.add(p); return p; };
     return { g, wingL: wing(-1), wingR: wing(1), jaw: null, tail: null, mouth: head };
   }
-  const breath = [];
+  const breath = [], splash = [], puffs = [];
   function updateDragon(dt, t) {
     const e = sim.s.events.list.find(o => o.type === 'dragon');
     if (e && !dragon) { const d = makeDragon(); view.objects.add(d.g); dragon = { ...d, e, ang: 0, pos: new THREE.Vector3(), leaving: 0, lastHit: 0 }; }
@@ -95,10 +108,10 @@ export function installEventVisuals(game) {
     if (D.tail) D.tail.rotation.y = Math.sin(t * 2) * 0.3;
     if (D.jaw) D.jaw.rotation.x = sb ? 0.5 : 0.05;
     // fire breath during a swoop
-    if (sb && Math.random() < dt * 30) {
+    if (sb && Math.random() < dt * 70) {
       const from = new THREE.Vector3(); (D.mouth || D.g).getWorldPosition(from);
       const bc = sim.bCenter(sb), to = new THREE.Vector3(bc.x + (Math.random() - 0.5), 0.6, bc.z + (Math.random() - 0.5));
-      const p = sprite(Math.random() < 0.5 ? 0xff7a1a : 0xffd34a, 0.7); p.position.copy(from); view.fx.add(p); breath.push({ p, from, to, t: 0 });
+      const p = sprite(Math.random() < 0.5 ? 0xff7a1a : 0xffd34a, 1.1); p.position.copy(from); view.fx.add(p); breath.push({ p, from, to, t: 0 });
     }
     // arrows and bolts flash on the dragon when it's hit
     if (e?.data.hitAt && e.data.hitAt !== D.lastHit) { D.lastHit = e.data.hitAt; D.flash = 0.25; }
@@ -109,15 +122,18 @@ export function installEventVisuals(game) {
   // ── wisps for restless spirits ──
   function updateWisps(dt, t) {
     const haunt = sim.s.events.list.find(e => e.type === 'spirits'), want = haunt ? 12 : 0, k = Math.min(1, (game.night || 0) * 1.5);
-    while (wisps.length < want) { const s = sprite(0xa8d0ff, 1.4, true, 0); s.add(sprite(0xffffff, 0.35, true, 1)); s.userData = { a: Math.random() * 6.28, r: 2 + Math.random() * 8, h: 0.6 + Math.random() * 1.4, sp: 0.15 + Math.random() * 0.25 }; view.fx.add(s); wisps.push(s); }
+    while (wisps.length < want) { const s = sprite(0x3fe0b8, 2.0, true, 0); s.add(sprite(0xa8fff0, 0.32, true, 1)); s.userData = { a: Math.random() * 6.28, r: 2 + Math.random() * 8, h: 0.6 + Math.random() * 1.4, sp: 0.15 + Math.random() * 0.25 }; view.fx.add(s); wisps.push(s); }
     while (wisps.length > want) view.fx.remove(wisps.pop());
     if (!haunt) return;
     const c = CENTERS[haunt.sid], cx = toWorld(c.x), cz = toWorld(c.z);
-    for (const s of wisps) {
+    const folk = sim.s.villagers.filter(v => v.home === haunt.sid && !v.indoors);
+    wisps.forEach((s, i) => {
       const u = s.userData; u.a += dt * u.sp;
-      s.position.set(cx + Math.cos(u.a) * u.r, u.h + Math.sin(t * 1.5 + u.a * 3) * 0.3, cz + Math.sin(u.a * 1.3) * u.r);
-      s.material.opacity = k * (0.8 + Math.sin(t * 3 + u.r) * 0.2); s.children[0].material.opacity = k;
-    }
+      // half of them haunt whoever is still out; the rest drift round the campfire
+      const v = i % 2 && folk.length ? folk[(i * 7) % folk.length] : null, ax = v ? v.x : cx, az = v ? v.z : cz, r = v ? 0.9 : u.r;
+      s.position.set(ax + Math.cos(u.a * (v ? 2.4 : 1)) * r, u.h + 0.4 + Math.sin(t * 1.5 + u.a * 3) * 0.3, az + Math.sin(u.a * (v ? 2.4 : 1.3)) * r);
+      s.material.opacity = k * (0.65 + Math.sin(t * 3 + u.r) * 0.25); s.children[0].material.opacity = k * 0.7;
+    });
   }
 
   // ── a sickly glow over feverish villagers ──
@@ -144,20 +160,43 @@ export function installEventVisuals(game) {
         const b = sim.bById.get(id);
         if (!b?.fire) { removeFire(id); continue; }
         if (game.bvis.get(id) !== f.vis) { removeFire(id); addFire(b); continue; }   // the building was rebuilt
-        const h = 1.1 + b.fire.heat * 1.3;
-        for (const fl of f.flames) { const k = 0.8 + Math.sin(t * 12 + fl.userData.ph) * 0.2; fl.scale.set(h * k, h * (1 + Math.sin(t * 9 + fl.userData.ph) * 0.25), h * k); }
+        const h = 0.7 + b.fire.heat * 1.1, col = new THREE.Color();
+        for (const fl of f.flames) {
+          const u = fl.userData, p = (t * u.sp + u.ph) % 1;
+          fl.position.set(u.ox * (1 - p * 0.5) + Math.sin(t * 9 + u.ph * 20) * 0.05, f.top * 0.55 + p * 1.5 * h, u.oz * (1 - p * 0.5));
+          const sc = (1.2 - p * 0.8) * h; fl.scale.set(sc * 0.42, sc * 1.15, 1);
+          fl.material.color.copy(col.setHSL(0.11 - p * 0.09, 1, 0.75 - p * 0.2));
+          fl.material.opacity = (1 - p) * 0.95;
+        }
         f.halo.material.opacity = 0.45 + Math.sin(t * 7) * 0.15;
         for (const p of f.smoke) { const u = (t * 0.35 + p.userData.ph) % 1; p.position.set(Math.sin(u * 6 + p.userData.ph * 9) * 0.4, f.top + u * 3.2, Math.cos(u * 5) * 0.3); p.scale.setScalar(0.8 + u * 2); p.material.opacity = 0.45 * (1 - u); }
       }
+      // splashes from the bucket chain
+      for (const v of sim.s.villagers) {
+        if (v.fireB == null || v.act?.anim !== 'bucket' || Math.random() > dt * 2.2) continue;
+        const b = sim.bById.get(v.fireB), f = b && fires.get(b.id); if (!f) continue;
+        const c = sim.bCenter(b), from = new THREE.Vector3(v.x, sim.world.heightAt(v.x, v.z) + 0.55, v.z), to = new THREE.Vector3(c.x + (Math.random() - 0.5), f.top * 0.7, c.z + (Math.random() - 0.5));
+        for (let k = 0; k < 4; k++) { const p = sprite(0x2f8fff, 0.42 - k * 0.05, false, 1); p.position.copy(from); view.fx.add(p); splash.push({ p, from, to, t: -k * 0.05, lead: k === 0 }); }
+      }
+      for (let i = splash.length - 1; i >= 0; i--) {
+        const w = splash[i]; w.t += dt * 1.6; const q = Math.max(0, Math.min(1, w.t));
+        w.p.position.lerpVectors(w.from, w.to, q); w.p.position.y += Math.sin(q * Math.PI) * 0.6;
+        if (w.t >= 1) {
+          view.fx.remove(w.p); splash.splice(i, 1);
+          if (w.lead) { const pf = sprite(0xffffff, 0.5, false, 0.85); pf.position.copy(w.to); view.fx.add(pf); puffs.push({ p: pf, t: 0 }); }
+        }
+      }
+      // the "pssh" where water meets fire
+      for (let i = puffs.length - 1; i >= 0; i--) { const f = puffs[i]; f.t += dt * 2.5; f.p.scale.setScalar(0.5 + f.t * 0.9); f.p.position.y += dt * 0.6; f.p.material.opacity = 0.85 * (1 - f.t); if (f.t >= 1) { view.fx.remove(f.p); puffs.splice(i, 1); } }
       // breath particles
-      for (let i = breath.length - 1; i >= 0; i--) { const b = breath[i]; b.t += dt * 2.2; b.p.position.lerpVectors(b.from, b.to, Math.min(1, b.t)); b.p.scale.setScalar(0.5 + b.t * 1.4); b.p.material.opacity = 1 - b.t; if (b.t >= 1) { view.fx.remove(b.p); breath.splice(i, 1); } }
+      for (let i = breath.length - 1; i >= 0; i--) { const b = breath[i]; b.t += dt * 1.8; b.p.position.lerpVectors(b.from, b.to, Math.min(1, b.t)); b.p.scale.setScalar(0.8 + b.t * 2.6); b.p.material.opacity = 1 - b.t; if (b.t >= 1) { view.fx.remove(b.p); breath.splice(i, 1); } }
       updateDragon(dt, t);
       updateWisps(dt, t);
       // the ground shakes
       const rig = view.rig;
       rig.tx -= shook.x; rig.tz -= shook.z; shook = { x: 0, z: 0 };
       if (shake > 0) { shake -= dt; const a = Math.min(1, shake) * 0.12; shook = { x: Math.sin(t * 47) * a, z: Math.cos(t * 39) * a }; rig.tx += shook.x; rig.tz += shook.z; }
-      if ((slow += dt) > 0.5) { slow = 0; updateSick(); for (const vis of game.bvis.values()) { applyDamage(vis); if (vis.b.fire && !fires.has(vis.b.id)) addFire(vis.b); } }
+      if ((slow += dt) > 0.5) { slow = 0; for (const vis of game.bvis.values()) { applyDamage(vis); if (vis.b.fire && !fires.has(vis.b.id)) addFire(vis.b); } }
     },
   };
 }
