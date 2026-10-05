@@ -177,7 +177,13 @@ export class UI {
     $('#res').addEventListener('pointerover', e => { const p = e.target.closest('.pill'); if (p && e.pointerType === 'mouse' && !e.target.closest('.add')) this.showResTip(p); });
     $('#res').addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') this.hideResTip(); });
     document.addEventListener('pointerdown', e => { if (!e.target.closest('#res') && !e.target.closest('#restip')) this.hideResTip(); });
-    $('#restip').addEventListener('click', e => { if (e.target.closest('[data-act=inv]')) { this.hideResTip(); this.openModal('inventory'); } });
+    $('#restip').addEventListener('click', e => {
+      if (e.target.closest('[data-act=inv]')) { this.hideResTip(); this.openModal('inventory'); }
+      const go = e.target.closest('[data-act=flaggo]'); if (go) { this.hideResTip(); this.doGo({ kind: 'build', key: go.dataset.go }); }
+    });
+    // persistent problems are not toasts: beasts / beds sit in the top bar as a status chip
+    // (desktop) or above the dock (phone); food and storage problems are badges on their counters
+    $('#res').appendChild($('#alert'));
     $('#btnLog').innerHTML = svg('mail', 22) + '<span class="badge hidden" id="logBadge">0</span>';
     $('#btnStats').innerHTML = svg('trophy', 22) + '<span class="badge hidden" id="trophyBadge">0</span>';
     $('#btnSettings').innerHTML = svg('gear', 22);
@@ -566,7 +572,12 @@ export class UI {
     if (!html) html = '<div class="quest">All quests complete — you\'re a master builder!</div>';
     if (html !== this.lastQuests) { this.lastQuests = html; morph($('#qlist'), html); }
     const ready = nReady;
-    if (phone()) { const qb = Math.round($('#quests').getBoundingClientRect().bottom + 10) + 'px'; if (document.body.style.getPropertyValue('--qb') !== qb) document.body.style.setProperty('--qb', qb); }
+    // phone: the toast lane sits below whichever is lower, the quest panel or the clock panel (never over the speed buttons)
+    if (phone()) {
+      const qr = $('#quests').getBoundingClientRect(), sr = $('#speed').getBoundingClientRect();
+      const qb = Math.round(Math.max(sr.bottom, qr.height ? qr.bottom : 0) + 8) + 'px';
+      if (document.body.style.getPropertyValue('--qb') !== qb) document.body.style.setProperty('--qb', qb);
+    }
     const qh = svg('star', 18) + 'Quests' + (ready ? ` <span class="badge" style="position:static">${ready}</span>` : '');
     if (qh !== this.lastQh) { this.lastQh = qh; $('#qhead').innerHTML = qh; }
   }
@@ -576,6 +587,7 @@ export class UI {
     const g = GOODS[k], s = this.sim.s, rt = Math.round(this.sim.rate(k));
     return `<div class="gi-top">${svg(g.icon, 30)}<div><b>${esc(g.name)}</b><span>${fmt(s.res[k])}${g.capped ? ` / ${this.sim.cap()}` : ''}${g.price ? ` · sells ${g.price}` : ''}${rt ? ` · <i class="${rt > 0 ? 'up' : 'down'}">${rt > 0 ? '+' : ''}${rt}/min</i>` : ''}</span></div></div>
       <p>${esc(g.desc || '')}</p>
+      ${full && this.resFlags?.[k] ? `<div class="gi-flag ${this.resFlags[k].cls}"><span>${esc(this.resFlags[k].text)}</span><button class="btn sm gold" data-act="flaggo" data-go="${this.resFlags[k].go}">${esc(this.resFlags[k].btn)}</button></div>` : ''}
       ${g.from ? `<div class="gi-row"><em>From</em>${esc(g.from)}</div>` : ''}${g.uses ? `<div class="gi-row"><em>Used for</em>${esc(g.uses)}</div>` : ''}
       ${r7GoodHtml(this, k)}${full ? `<button class="btn sm ghost" data-act="inv">${svg('bag', 14)} Open inventory</button>` : ''}`;
   }
@@ -662,13 +674,22 @@ export class UI {
     const hungry = s.villagers.filter(v => v.hungry).length;
     const fr = sim.rate('food');
     const prowl = (s.beasts || []).filter(b => b.state === 'prowl').length;
-    if (prowl) a = { icon: 'shield', text: `${prowl === 1 ? 'A beast is' : `${prowl} beasts are`} prowling — ${s.buildings.some(b => b.type === 'watchtower' && b.built) ? 'guards are on it' : 'build a Watchtower!'}`, go: 'watchtower' };
-    else if (hungry) a = { icon: 'apple', text: `${hungry} villager${hungry > 1 ? 's are' : ' is'} hungry!`, go: 'forager' };
-    else if (s.res.food < pop * 2 && fr <= 5) a = { icon: 'apple', text: 'Food is running low', go: 'forager' };
-    else {
-      const cap = sim.cap(), full = ['wood', 'planks', 'stone', 'food', 'grain'].find(k => s.res[k] >= cap);
-      if (full && s.level >= 3) a = { icon: 'bag', text: `${GOODS[full].name} storage is full`, go: 'storehouse' };
-      else if (pop > sim.housing()) a = { icon: 'house', text: 'Not enough beds', go: 'cottage' };
+    if (prowl) a = { icon: 'shield', text: `${prowl === 1 ? 'A beast is' : `${prowl} beasts are`} prowling — ${s.buildings.some(b => b.type === 'watchtower' && b.built) ? 'guards are on it' : 'build a Watchtower!'}`, short: prowl === 1 ? 'Beast prowling!' : `${prowl} beasts prowling!`, go: 'watchtower' };
+    else if (pop > sim.housing()) a = { icon: 'house', text: 'Not enough beds — build a Cottage', short: 'Need beds', go: 'cottage' };
+    // badges on the resource counters
+    const flags = {}, cap = sim.cap();
+    if (hungry) flags.food = { cls: 'bad', label: '!', text: `${hungry} villager${hungry > 1 ? 's are' : ' is'} hungry — gather more food (Forager Hut, farms, fishing)`, go: 'forager', btn: 'Build a Forager Hut' };
+    else if (s.res.food < pop * 2 && fr <= 5) flags.food = { cls: 'warn', label: '!', text: 'Food is running low — gather more (Forager Hut, farms, fishing)', go: 'forager', btn: 'Build a Forager Hut' };
+    for (const k of TOP_GOODS) if (!flags[k] && GOODS[k].capped && s.res[k] >= cap) flags[k] = { cls: 'full', label: 'FULL', text: `${GOODS[k].name} storage is full — build or upgrade a Storehouse`, go: 'storehouse', btn: 'Build a Storehouse' };
+    this.resFlags = flags;
+    for (const p of document.querySelectorAll('#res .pill')) {
+      const f = flags[p.dataset.res]; let fl = p.querySelector('.flag');
+      p.classList.toggle('flagged', !!f);
+      if (!f) { fl?.remove(); continue; }
+      if (!fl) { fl = document.createElement('span'); p.appendChild(fl); }
+      if (fl.className !== 'flag ' + f.cls) fl.className = 'flag ' + f.cls;
+      if (fl.textContent !== f.label) fl.textContent = f.label;
+      p.setAttribute('aria-label', `${GOODS[p.dataset.res].name}: ${f.text}`);
     }
     const el = $('#alert');
     const key = a ? a.text : '';
@@ -676,7 +697,7 @@ export class UI {
     this.lastAlert = key;
     el.classList.toggle('hidden', !a);
     el.classList.toggle('calm', !!a?.calm);
-    if (a) { el.innerHTML = svg(a.icon, 18) + esc(a.text); el.dataset.go = a.go; }
+    if (a) { el.innerHTML = svg(a.icon, 18) + `<span class="full">${esc(a.text)}</span><span class="short">${esc(a.short)}</span>`; el.dataset.go = a.go; el.dataset.tip = `Needs attention|${a.text}. Tap to fix it.`; }
   }
 
   // ── info panel ──
@@ -1432,6 +1453,12 @@ export class UI {
   // replaces it once it has faded out (no stacking, no overlap); duplicates merge.
   toast(msg, icon = 'info', big = false) {
     this.tq = this.tq || [];
+    // while the first-time tips are running, family and friendship news waits in the log
+    const tut = this.sim.s.tutorial;
+    if (tut !== undefined && tut < 5 && /fell in love|best friends|baby was born|welcome to the world|grew up/i.test(msg)) return;
+    // a festival-opening toast must name the festival whose quests are actually open
+    const fm = /^(.+): festival quests and the festival shop are open!$/.exec(msg), cur = fm && this.sim.festShop?.current?.();
+    if (fm && (!cur || cur.name !== fm[1])) return;
     if (this.tq.some(t => t.msg === msg)) return;
     if (this.curToast?.msg === msg) { this.curToast.start = performance.now(); return; }
     if (/^Level \d+!/.test(msg)) this.tq = this.tq.filter(t => !/^Level \d+!/.test(t.msg));
@@ -1471,6 +1498,10 @@ export class UI {
     return el;
   }
   float(sx, sy, text, icon, cls = '') {
+    // keep floaters on screen and off the HUD edges (on phone, clear of the right-hand button column)
+    const ph = phone(), m = ph ? 30 : 40;
+    sx = Math.max(m, Math.min(innerWidth - (ph ? 76 : m), sx));
+    sy = Math.max(ph ? 140 : 90, Math.min(innerHeight - (ph ? 100 : 90), sy));
     const el = document.createElement('div');
     el.className = 'float' + (cls ? ' ' + cls : '');
     el.style.left = sx + 'px'; el.style.top = sy + 'px';

@@ -50,7 +50,7 @@ def round_tree(name, lobes, trunk_h=0.68, fork=None):
         P.append(cyl(f"b{k}", 0.05, 0.03, 0.34, (x, y, z), T, seg=4, rot=(0, ry, k * 2.1)))
     for k, (x, y, z, r) in enumerate(lobes):
         P.append(lobe(f"c{k}", r, (x, y, z), L1 if k % 2 == 0 else L2, rot=(k * 0.6, k * 0.9, 0)))
-        P.append(uvsphere(f"sc{k}", r * 1.075, (x, y, z), SNOWT, seg=11, rings=6, scale=(1, 1, 0.95), smooth=True, cut=0.2))   # winter-only cap
+        P.append(uvsphere(f"sc{k}", r * 1.12, (x, y, z + r * 0.02), SNOWT, seg=11, rings=6, scale=(1, 1, 1.0), smooth=True, cut=0.25))   # big enough that the rotated lobe never pokes through   # winter-only cap
     o = join(P, "tree"); parent(o, root)
     return root
 

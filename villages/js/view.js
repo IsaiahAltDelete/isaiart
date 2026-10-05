@@ -288,6 +288,7 @@ export class View {
       sh.uniforms.uIce = iceUniform;
       sh.uniforms.uHeight = { value: hTex };
       sh.uniforms.uMask = { value: mTex };
+      sh.uniforms.uGroundW = { value: this.groundTex };
       sh.vertexShader = 'uniform float uTime; uniform float uIce; varying vec3 vWW;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
         transformed.y += (sin(position.x * 0.9 + uTime * 1.3) * 0.035 + cos(position.z * 1.1 + uTime * 1.1) * 0.035) * (1.0 - uIce);`)
         .replace('#include <project_vertex>', '#include <project_vertex>\nvWW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
@@ -295,12 +296,19 @@ export class View {
         float wHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float wNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           return mix(mix(wHash(i), wHash(i + vec2(1.0, 0.0)), f.x), mix(wHash(i + vec2(0.0, 1.0)), wHash(i + vec2(1.0, 1.0)), f.x), f.y); }
-        uniform sampler2D uMask;
+        uniform sampler2D uMask; uniform sampler2D uGroundW;
         float wRipple(vec2 p) { float t = uTime;
           return sin(p.x * 1.6 + t * 1.5 + sin(p.y * 0.8 + t * 0.4) * 1.3) * 0.35 + sin(p.y * 2.1 - t * 1.2 + p.x * 0.6) * 0.25 + wNoise(p * 1.7 + vec2(t * 0.35, -t * 0.25)) * 0.6; }
         ` + sh.fragmentShader
         .replace('#include <map_fragment>', `#include <map_fragment>
-          if (texture2D(uMask, (vWW.xz + ${HALF.toFixed(1)}) / ${N.toFixed(1)}).r < 0.015) discard;
+          vec2 wUV = (vWW.xz + ${HALF.toFixed(1)}) / ${N.toFixed(1)};
+          float wMask = texture2D(uMask, wUV).r;
+          if (wMask < 0.015) discard;
+          // Land tiles dip below the waterline at the bank (their bank corners are sunk), so the water plane
+          // also reaches a little way over the land there. Keep it off roads, cobbles and bridge landings:
+          // cut it exactly at the bank wherever a road meets the water.
+          vec4 wG = texture2D(uGroundW, wUV);
+          if (wMask < 0.5 && max(wG.g, wG.b) > 0.3) discard;
           float wH = texture2D(uHeight, (vWW.xz + ${(HALF + 0.5).toFixed(1)}) / ${(N + 1).toFixed(1)}).r * 2.5 - 1.0;
           float depth = clamp((-0.16 - wH) / 0.55, 0.0, 1.0);          // 0 at the waterline, 1 in the deeps
           float lum = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
@@ -493,7 +501,19 @@ export class View {
       this.cobbles.userData = { free: [], used: 0, cap, slots: new Map(), sig: new Map() };
       this.cobbles.count = 0;            // only draw up to the highest slot in use
       this.scene.add(this.cobbles);
+      // kerb blocks: elongated, bevelled along the top edges, flat-shaded so each face catches the light
+      const kg = new THREE.BoxGeometry(0.3, 0.11, 0.13, 1, 1, 1), kp = kg.attributes.position;
+      for (let v = 0; v < kp.count; v++) if (kp.getY(v) > 0) { kp.setX(v, kp.getX(v) * 0.9); kp.setZ(v, kp.getZ(v) * 0.7); }
+      kg.computeVertexNormals();
+      const km = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true });
+      km.onBeforeCompile = sh => snowPatch(sh, false, 0.75, 0.99, 0.5);
+      this.kerbs = new THREE.InstancedMesh(kg, km, 12000);
+      this.kerbs.castShadow = this.kerbs.receiveShadow = true; this.kerbs.frustumCulled = false; this.kerbs.count = 0;
+      for (let k = 0; k < 12000; k++) { this.kerbs.setMatrixAt(k, tmpM.makeScale(0, 0, 0)); this.kerbs.setColorAt(k, tmpC.setHex(0x6b6e72)); }
+      this.kerbs.userData = { free: [], used: 0, cap: 12000, slots: new Map() };
+      this.scene.add(this.kerbs);
     }
+    const kb = this.kerbs, ku = kb.userData;
     const c = this.cobbles, u = c.userData, want = W.paved[i] && W.occ[i] < 0;
     const x = tileX(i), z = tileZ(i), open = [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dx, dz]) => {
       const nx = x + dx, nz = z + dz;
@@ -504,26 +524,32 @@ export class View {
     u.sig.set(i, sig);
     const have = u.slots.get(i);
     if (have) { for (const slot of have) { c.setMatrixAt(slot, tmpM.makeScale(0, 0, 0)); u.free.push(slot); } u.slots.delete(i); }
+    const kHave = ku.slots.get(i);
+    if (kHave) { for (const slot of kHave) { kb.setMatrixAt(slot, tmpM.makeScale(0, 0, 0)); ku.free.push(slot); } ku.slots.delete(i); }
     if (want) {
       const slots = [];
       const x0 = toWorld(tileX(i)), z0 = toWorld(tileZ(i));
       const take = () => u.free.length ? u.free.pop() : (u.used < u.cap ? u.used++ : -1);
-      // kerb: a continuous row of five larger, raised, cool blue-grey stones along each edge that meets the verge
+      // kerb: three rectangular blocks laid end to end (thin joints) along each edge that meets the verge,
+      // a shade darker and cooler than the setts, standing proud so the outer face steps down to the dirt
+      const kslots = [];
       open.forEach((o, e) => {
         if (!o) return;
         const [dx, dz] = [[0, -1], [1, 0], [0, 1], [-1, 0]][e];
-        for (let k = 0; k < 5; k++) {
-          const slot = take(); if (slot < 0) break;
-          const h = q => hash2(i, k + e * 5, q);
-          const along = (k - 2) * 0.2 + (h(21) - 0.5) * 0.02;
+        for (let k = 0; k < 3; k++) {
+          const slot = ku.free.length ? ku.free.pop() : (ku.used < ku.cap ? ku.used++ : -1); if (slot < 0) break;
+          const h = q => hash2(i, k + e * 3, q);
+          const along = (k - 1) * 0.32 + (h(21) - 0.5) * 0.012;
           const px = x0 + dx * 0.43 + (dz ? along : 0), pz = z0 + dz * 0.43 + (dx ? along : 0);
-          tmpQ.setFromAxisAngle(UP, (dx ? Math.PI / 2 : 0) + (h(23) - 0.5) * 0.12);
-          c.setMatrixAt(slot, tmpM.compose(tmpV.set(px, W.heightAt(px, pz) + 0.015, pz), tmpQ, tmpS.set(1.0 + h(22) * 0.08, 1.7, 0.66)));
+          tmpQ.setFromAxisAngle(UP, (dx ? Math.PI / 2 : 0) + (h(23) - 0.5) * 0.05);
+          const gy = Math.min(W.heightAt(px, pz), W.heightAt(px + dx * 0.06, pz + dz * 0.06));
+          kb.setMatrixAt(slot, tmpM.compose(tmpV.set(px, gy + 0.03, pz), tmpQ, tmpS.set(1 - h(22) * 0.04, 1 + h(25) * 0.12, 1)));
           const t = h(24);
-          c.setColorAt(slot, tmpC.setRGB(0.5 + t * 0.07, 0.53 + t * 0.07, 0.57 + t * 0.07));
-          slots.push(slot);
+          kb.setColorAt(slot, tmpC.setRGB(0.37 + t * 0.05, 0.39 + t * 0.05, 0.42 + t * 0.05));
+          kslots.push(slot);
         }
       });
+      ku.slots.set(i, kslots);
       // setts: a staggered 5×5 grid of small rounded stones, each a slightly different size, squash and warm grey
       for (let k = 0; k < 25; k++) {
         const slot = take(); if (slot < 0) break;
@@ -538,8 +564,9 @@ export class View {
       }
       u.slots.set(i, slots);
     }
-    c.count = u.used;
+    c.count = u.used; kb.count = ku.used;
     c.instanceMatrix.needsUpdate = true; if (c.instanceColor) c.instanceColor.needsUpdate = true;
+    kb.instanceMatrix.needsUpdate = true; if (kb.instanceColor) kb.instanceColor.needsUpdate = true;
   }
   updateGrass(i) {
     const W = this.world;

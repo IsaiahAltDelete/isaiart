@@ -526,7 +526,7 @@
     .cbar .t { width: 46px; height: 8px; border-radius: 4px; background: #ead9b8; overflow: hidden; }
     .cbar .t i { display: block; height: 100%; background: linear-gradient(90deg, #ffd866, #f0a826); transition: width .4s; }
     .cbar small { font-size: 10px; font-weight: 700; min-width: 22px; }
-    #restip { position: fixed; z-index: 12; width: 260px; padding: 10px 12px; font-size: 12.5px; }
+    #restip { position: fixed; z-index: 16; width: 260px; padding: 10px 12px; font-size: 12.5px; }
     #restip .gi-top { display: flex; gap: 8px; align-items: center; }
     #restip .gi-top b { display: block; font-size: 16px; }
     #restip .gi-top span { color: var(--ink2); font-size: 12px; }
@@ -590,6 +590,25 @@
     body.info-open #quests .qlist { display: none; }
     body.info-open #quests .chev { transform: rotate(180deg); }
     #alert.calm { background: #fff8e0; border-color: var(--gold-dk); color: #7a5410; animation: none; }
+    #alert .full { display: none; } #alert .short { display: inline; white-space: nowrap; }
+    /* desktop: the alert is a status tag at the end of the resource bar, not a second toast */
+    @media (min-width: 761px) {
+      #res #alert { position: static; transform: none; height: 30px; padding: 0 10px 0 5px; border-radius: 8px 16px 16px 8px; font-size: 12.5px;
+        box-shadow: 0 2px 0 rgba(90,55,20,.3); border-left-width: 5px; animation: none; white-space: nowrap; }
+      #res #alert .full { display: none; } #res #alert .short { display: inline; }
+      #res #alert:not(.hidden) .ic { animation: alertWiggle 1.8s ease-in-out infinite; }
+    }
+    @keyframes alertWiggle { 0%, 70%, 100% { transform: none; } 80% { transform: rotate(-12deg); } 90% { transform: rotate(10deg); } }
+    /* status badges on the resource counters (storage full, food low / hungry) */
+    .pill .flag { position: absolute; top: -9px; left: 12px; height: 16px; min-width: 16px; padding: 0 4px; border-radius: 8px; font-size: 9.5px; font-weight: 700; letter-spacing: .03em;
+      color: #fff; display: grid; place-items: center; border: 1.5px solid #fff; box-shadow: 0 1px 0 rgba(0,0,0,.25); pointer-events: none; animation: badgeIn var(--t3) var(--pop); z-index: 1; }
+    .pill .flag.full { background: #d9604f; }
+    .pill .flag.bad { background: #e8665a; animation: badgeIn var(--t3) var(--pop), pulse 1.4s 0.3s infinite; }
+    .pill .flag.warn { background: #f0a826; color: var(--ink); }
+    .pill.flagged { border-color: #d9604f; }
+    #restip .gi-flag { display: flex; flex-direction: column; gap: 5px; margin: 7px 0 2px; padding: 6px 8px; border-radius: 10px; background: #fde6e2; border: 2px solid #f0b2a8; color: #8a2f25; font-weight: 600; font-size: 12px; line-height: 1.25; }
+    #restip .gi-flag.warn { background: #fff3d6; border-color: #f0d58a; color: #7a5410; }
+    #restip .gi-flag .btn { width: auto; margin: 0; align-self: flex-start; }
     #rainbow { position: fixed; left: 50%; top: 0; width: 120vmax; height: 120vmax; transform: translate(-50%, -78%); border-radius: 50%; pointer-events: none; z-index: 1; opacity: 0; transition: opacity 6s;
       background: radial-gradient(circle, transparent 57%, rgba(143,123,255,.55) 58%, rgba(91,184,255,.55) 59.5%, rgba(123,217,107,.55) 61%, rgba(255,228,92,.55) 62.5%, rgba(255,174,66,.55) 64%, rgba(255,91,91,.5) 65.5%, transparent 67%); filter: blur(6px); mix-blend-mode: screen; }
     #rainbow.on { opacity: .8; }
@@ -638,7 +657,6 @@
     #season .ic { flex: none; }
     #follow { position: fixed; left: 50%; top: calc(56px + var(--sat)); transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 8px; border-radius: 14px; font-size: 13px; font-weight: 600; background: var(--cream); border: 2.5px solid var(--edge); box-shadow: var(--shadow); }
     #follow .stop { background: var(--red); border: 2px solid var(--red-dk); color: #fff; border-radius: 9px; padding: 1px 7px; font-size: 11.5px; }
-    body:has(#alert:not(.hidden)) #follow { top: calc(92px + var(--sat)); }
     .rename input { flex: 1; min-width: 0; font: inherit; font-size: 15px; font-weight: 600; color: var(--ink); background: #fff; border: 2px solid #e2c99c; border-radius: 10px; padding: 5px 8px; user-select: text; -webkit-user-select: text; }
     .rename { display: flex; gap: 6px; align-items: center; margin: 4px 0 6px; }
     .pen { width: 24px; height: 24px; border-radius: 8px; display: inline-grid; place-items: center; background: #fff; border: 2px solid #e2c99c; margin-left: 4px; vertical-align: middle; flex: none; }
@@ -660,7 +678,7 @@
 
     /* ── big screens: scale the HUD up so it doesn't read as unscaled mobile UI ── */
     @media (min-width: 1200px) and (min-height: 760px) {
-      #top, #topright, #speed, #left, #dockbar, #tray, #world, #shop, #placebar, #coach, #alert, #toasts, #home, #follow { zoom: 1.22; }
+      #top, #topright, #speed, #left, #dockbar, #tray, #world, #shop, #placebar, #coach, #toasts, #home, #follow { zoom: 1.22; }
       #left { max-height: calc((100% - 200px) / 1.22); }
       #modal .box { zoom: 1.15; max-height: min(calc(86vh / 1.15), 760px); width: min(680px, 100%); } #modal .box.tall { height: min(calc(86vh / 1.15), 760px); }
       #tip { font-size: 14.5px; max-width: 330px; padding: 10px 13px 11px; } #tip b.t { font-size: 17px; } #tip .kv, #tip .syn, #tip .flowln, #tip .note { font-size: 13.5px; } #tip .tt-hd img { width: 56px; height: 48px; }
@@ -738,8 +756,7 @@
       #info .actions .btn { padding: 6px 10px; }
       body.placing #topright { display: none; }
       body:has(#tray:not(.hidden)) #topright { bottom: calc(180px + var(--sab)); }
-      #toasts { top: calc(290px + var(--sat)) !important; }
-      body:has(#quests:not(.collapsed)) #toasts { top: var(--qb, 340px) !important; }
+      #toasts { top: var(--qb, calc(320px + var(--sat))) !important; }
       #qlist .quest { font-size: 11.5px; }
       .quest .qbar .rw, .quest.qrow .row > .ic { display: none; }
       .qfest .qtog .t small { font-size: 10px; }

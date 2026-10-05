@@ -329,7 +329,7 @@ class Game {
     }
     // penned animals keep a body's width apart (no stacked double sheep)
     if (a.animals && a.animals.length > 1) {
-      const R = a.animals[0].fast ? 0.2 : 0.42;
+      const R = a.animals[0].fast ? 0.2 : (a.animals[0].m.userData.big ? 0.62 : 0.42);   // chickens, sheep, cows
       for (let i = 0; i < a.animals.length; i++) for (let j = i + 1; j < a.animals.length; j++) {
         const p = a.animals[i].m.position, q = a.animals[j].m.position;
         let dx = p.x - q.x, dz = p.z - q.z; const d = Math.hypot(dx, dz);
@@ -1296,6 +1296,8 @@ class Game {
     const dist = starter ? (phone ? 13 : 10.5) : Math.max(phone ? 19 : 16, Math.min(phone ? 40 : 62, Math.max(fitW, fitH)));
     const k = phone ? dist * 0.05 : 0, side = phone ? dist * 0.055 : 0;
     const tx = (x0 + x1) / 2 - Math.sin(rig.yaw) * k + Math.cos(rig.yaw) * side, tz = (z0 + z1) / 2 - Math.cos(rig.yaw) * k - Math.sin(rig.yaw) * side;
+    // a starter camp is seen a little more from the side, so faces show rather than hair tops
+    if (starter) rig.pitch = Math.min(rig.pitch, 0.78);
     if (instant) Object.assign(rig, { tx, tz, dist });
     else this.view.flyTo(tx, tz, dist, 1.4);
   }
@@ -1645,7 +1647,7 @@ class Game {
   dayLight(time) {
     // at night villagers get a thin cool rim (models.js) so they read against the dark ground
     // without glowing like ghosts
-    if (Math.abs((this.vNight ?? -1) - this.night) > 0.02) { this.vNight = this.night; VILLAGER_MATS.rim.value.setRGB(0.09, 0.13, 0.26).multiplyScalar(this.night); }
+    if (Math.abs((this.vNight ?? -1) - this.night) > 0.02) { this.vNight = this.night; VILLAGER_MATS.rim.value.setRGB(0.15, 0.21, 0.42).multiplyScalar(this.night); }
     const f = (time % DAY) / DAY;                 // 0 = midnight
     const sunUp = Math.max(0, Math.sin((f - 0.22) / 0.56 * Math.PI));
     const light = f > 0.22 && f < 0.78 ? sunUp : 0;

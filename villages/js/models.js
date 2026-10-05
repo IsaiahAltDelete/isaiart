@@ -585,7 +585,7 @@ function sheep_() {
   for (const [x, z] of [[-0.09, -0.12], [0.09, -0.12], [-0.09, 0.12], [0.09, 0.12]]) g.add(box(0.04, 0.16, 0.04, 0x2e2a28, x, 0, z));
   return g;
 }
-export function cow() { return withoutSnow(() => hasModel('cow') ? critter('cow', { spot: rngPick([0x3a3230, 0x8a5a3a, 0x3a3230]) }) : cow_()); }
+export function cow() { const g = withoutSnow(() => hasModel('cow') ? critter('cow', { spot: rngPick([0x3a3230, 0x8a5a3a, 0x3a3230]) }) : cow_()); g.userData.big = true; return g; }
 function cow_() {
   const g = new THREE.Group();
   g.add(box(0.26, 0.24, 0.48, 0xf7f3ea, 0, 0.2, 0));
@@ -1077,6 +1077,23 @@ const JOB_HAT = { farmer: 'hat_straw', woodcutter: 'hat_cap', forester: 'hat_hoo
 const JOB_GEAR = { baker: 'apron', miller: 'apron', weaver: 'apron', brewer: 'apron', cheesemaker: 'apron', innkeeper: 'apron', mason: 'apron', teacher: 'apron', forager: 'pack', picker: 'pack', herder: 'pack' };
 const HAT_COLOR = { hat_straw: 0xe0b24a, hat_helmet: 0xb8bcc4, hat_toque: 0xfbf6ea, hat_hood: 0x5a7a3a, hat_bucket: 0x5f8fb0, hat_band: 0xc9473d };
 
+// Clothes should pop against brown dirt and green grass: lift dull or dark
+// shirts to a cheerful saturation and value (applies to old saves too).
+function lively(hex) {
+  const c = new THREE.Color(hex), hsl = {};
+  c.getHSL(hsl);
+  return c.setHSL(hsl.h, Math.max(hsl.s, 0.62), Math.min(0.62, Math.max(hsl.l, 0.5))).getHex();
+}
+const SHADOW_GEO = new THREE.CircleGeometry(0.2, 18).rotateX(-Math.PI / 2);
+const SHADOW_MAT = (() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+  const g = cv.getContext('2d'), grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(30,20,10,0.55)'); grad.addColorStop(0.6, 'rgba(30,20,10,0.3)'); grad.addColorStop(1, 'rgba(30,20,10,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(cv);
+  return new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+})();
+
 // every villager material, so the game can lift them a little at night
 export const VILLAGER_MATS = {
   set: new Set(),
@@ -1101,7 +1118,7 @@ export const VILLAGER_MATS = {
 function villagerBlend(v) {
   const age = v.age ?? 30, child = age < 14, elder = age >= 66;
   const hair = elder ? 0xdcdad4 : v.hair;
-  const colors = { shirt: v.shirt, skin: v.skin, hair, hat: v.hatColor ?? 0xc9a050 };
+  const colors = { shirt: lively(v.shirt), skin: v.skin, hair, hat: v.hatColor ?? 0xc9a050 };
   const inst = instanceModel('villager', (slot, c) => {
     if (slot === 'eye' || slot === 'white' || slot === 'cheek') return mat(c, { smooth: true, basic: slot === 'eye' || slot === 'white' });
     const m = mat(colors[slot] ?? c, { smooth: true }); VILLAGER_MATS.add(m); return m;
@@ -1115,6 +1132,8 @@ function villagerBlend(v) {
   const wiz = new THREE.Group(); wiz.add(cyl(0.14, 0.14, 0.015, 12, 0x4a2f8a, 0, 0.17, 0)); wiz.add(cone(0.085, 0.28, 12, 0x5b3fa0, 0, 0.175, 0)); wiz.add(ball(0.025, 0xffd54f, 0, 0.46, 0));
   wiz.rotation.x = -0.12; wiz.visible = false; N.head.add(wiz);
   const bed = box(0.34, 0.06, 0.72, 0x9a6a8a, 0, 0, 0); bed.visible = false; g.add(bed);
+  // a soft contact shadow so small figures sit on the ground and read from the overview
+  const blob = new THREE.Mesh(SHADOW_GEO, SHADOW_MAT); blob.position.y = 0.012; blob.renderOrder = 1; g.add(blob);
   const style = elder && (v.id % 3) ? 'hair_elder' : HAIR_STYLES[(v.id * 7 + 3) % HAIR_STYLES.length];
   if (N.scarf) N.scarf.visible = false;
   for (const k of [...HAIR_STYLES, 'hair_elder']) if (N[k]) N[k].visible = k === style;
