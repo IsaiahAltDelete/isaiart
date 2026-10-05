@@ -518,17 +518,22 @@ class Game {
     c.t = 0; c.root.userData.ent = null; c.sp.visible = false; this.screenSprites.delete(c.sp);
     sfx.chest();
     // a fountain of golden sparkles
-    const x = ch.x, z = ch.z, y = this.sim.world.heightAt(x, z) + 0.4, sparks = [];
-    for (let i = 0; i < 36; i++) {
-      const sp = new THREE.Mesh(leafGeo, new THREE.MeshBasicMaterial({ color: [0xffd54f, 0xfff2b0, 0xffffff, 0xf9b8cf][i % 4], transparent: true, blending: THREE.AdditiveBlending }));
-      sp.position.set(x, y, z); const a = Math.random() * 6.28, sv = 0.8 + Math.random() * 1.6;
-      sp.userData.v = new THREE.Vector3(Math.cos(a) * sv, 3 + Math.random() * 2.5, Math.sin(a) * sv); this.view.fx.add(sp); sparks.push(sp);
+    const x = ch.x, z = ch.z, y = this.sim.world.heightAt(x, z) + 0.4, n = 48;
+    const pos = new Float32Array(n * 3), cols = new Float32Array(n * 3), vel = [], tint = new THREE.Color();
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.28, sv = 0.6 + Math.random() * 1.4;
+      vel.push(new THREE.Vector3(Math.cos(a) * sv, 2.6 + Math.random() * 2.4, Math.sin(a) * sv));
+      pos.set([x, y, z], i * 3); tint.setHex([0xffd54f, 0xfff2b0, 0xffffff, 0xf9b8cf][i % 4]); cols.set([tint.r, tint.g, tint.b], i * 3);
     }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.32, map: glowTex(), vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    pts.frustumCulled = false; this.view.fx.add(pts);
     let t = 0;
     this.effects.push(dt => {
       t += dt;
-      for (const sp of sparks) { sp.userData.v.y -= dt * 6; sp.position.addScaledVector(sp.userData.v, dt); sp.material.opacity = Math.max(0, 1 - t / 1.4); sp.rotation.y += dt * 5; }
-      if (t > 1.4) { for (const sp of sparks) this.view.fx.remove(sp); return false; }
+      for (let i = 0; i < n; i++) { const v = vel[i]; v.y -= dt * 5; pos[i * 3] += v.x * dt; pos[i * 3 + 1] = Math.max(y - 0.3, pos[i * 3 + 1] + v.y * dt); pos[i * 3 + 2] += v.z * dt; }
+      geo.attributes.position.needsUpdate = true; pts.material.opacity = Math.max(0, 1 - t / 1.5);
+      if (t > 1.5) { this.view.fx.remove(pts); geo.dispose(); return false; }
       return true;
     });
     const [sx, sy] = this.screenOf(x, z);
@@ -593,7 +598,7 @@ class Game {
     // the camera looks steeply down, so bursts over the camera side of the plaza land mid-screen
     const W = this.sim.world, yaw = this.view.rig.yaw, toCam = Math.random() * 3, side = (Math.random() - 0.5) * 8;
     const ox = x + Math.sin(yaw) * toCam + Math.cos(yaw) * side, oz = z + Math.cos(yaw) * toCam - Math.sin(yaw) * side;
-    const y0 = W.heightAt(ox, oz) + 0.6, top = y0 + 3.6 + Math.random() * 2;
+    const y0 = W.heightAt(ox, oz) + 0.6, top = y0 + 3.2 + Math.random() * 1.6;
     const col = new THREE.Color([0xff6b6b, 0xffd54f, 0x7fd8ff, 0xb18cff, 0x9fff8a, 0xffb0e0][(Math.random() * 6) | 0]);
     const rocket = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xfff2b0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     rocket.scale.setScalar(0.45); rocket.position.set(ox, y0, oz); this.view.fx.add(rocket);
@@ -606,22 +611,29 @@ class Game {
       const c = i % 6 ? col : new THREE.Color(0xffffff); cols.set([c.r, c.g, c.b], i * 3);
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.62, map: glowTex(), vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.42, map: glowTex(), vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     pts.frustumCulled = false;
+    // short streaks behind each spark so a burst reads as a radial shape
+    const tpos = new Float32Array(n * 6), tgeo = new THREE.BufferGeometry(); tgeo.setAttribute('position', new THREE.BufferAttribute(tpos, 3));
+    const tcol = new Float32Array(n * 6); for (let i = 0; i < n; i++) { tcol.set(cols.subarray(i * 3, i * 3 + 3), i * 6); tcol.set(cols.subarray(i * 3, i * 3 + 3), i * 6 + 3); }
+    tgeo.setAttribute('color', new THREE.BufferAttribute(tcol, 3));
+    const trails = new THREE.LineSegments(tgeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    trails.frustumCulled = false;
     let t = 0, burst = false;
     this.effects.push(dt => {
       t += dt;
       if (!burst) {
         rocket.position.y = y0 + (top - y0) * Math.min(1, t / 0.6);
         if (t < 0.6) return true;
-        burst = true; this.view.fx.remove(rocket); this.view.fx.add(pts);
+        burst = true; this.view.fx.remove(rocket); this.view.fx.add(pts, trails);
         for (let i = 0; i < n; i++) pos.set([ox, top, oz], i * 3);
       }
       const k = t - 0.6, drag = Math.pow(0.22, dt);
       for (let i = 0; i < n; i++) { const v = vel[i]; v.multiplyScalar(drag); v.y -= dt * 1.6; pos[i * 3] += v.x * dt; pos[i * 3 + 1] += v.y * dt; pos[i * 3 + 2] += v.z * dt; }
-      geo.attributes.position.needsUpdate = true;
-      pts.material.opacity = Math.max(0, 1 - k / 1.7); pts.material.size = 0.62 + k * 0.12;
-      if (k > 1.7) { this.view.fx.remove(pts); geo.dispose(); return false; }
+      for (let i = 0; i < n; i++) { const v = vel[i]; tpos.set([pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2], pos[i * 3] - v.x * 0.16, pos[i * 3 + 1] - v.y * 0.16, pos[i * 3 + 2] - v.z * 0.16], i * 6); }
+      geo.attributes.position.needsUpdate = true; tgeo.attributes.position.needsUpdate = true;
+      pts.material.opacity = Math.max(0, 1 - k / 1.7); pts.material.size = 0.42 + k * 0.08; trails.material.opacity = Math.max(0, 0.9 - k / 1.1);
+      if (k > 1.7) { this.view.fx.remove(pts, trails); geo.dispose(); tgeo.dispose(); return false; }
       return true;
     });
   }
@@ -1087,7 +1099,8 @@ class Game {
   focus(x, z, dist) {
     const rig = this.view.rig, phone = innerWidth < 760;
     // nudge toward the camera so the thing lands in the upper part of the screen
-    const k = phone ? (dist || rig.dist) * 0.24 : 0;
+    dist = Math.max(phone ? 17 : 15, dist || rig.dist);   // close enough to see it, never so close it fills the screen
+    const k = phone ? dist * 0.24 : 0;
     this.view.flyTo(x + Math.sin(rig.yaw) * k, z + Math.cos(rig.yaw) * k, dist, 0.6);
   }
   pick(cx, cy) {
@@ -1344,7 +1357,11 @@ class Game {
     view.updateCamera(dt);
     view.adapt(dt);
 
-    if (this.tilesDirty.size) { for (const i of this.tilesDirty) { view.paintTile(i, false); view.updateGrass(i); view.updatePave(i); } view.terrainColor.needsUpdate = true; this.tilesDirty.clear(); }
+    if (this.tilesDirty.size) {
+      for (const i of this.tilesDirty) { view.paintTile(i, false); view.updateGrass(i); view.updatePave(i); }
+      view.terrainColor.needsUpdate = true; view.terrainSurface.needsUpdate = true;
+      this.tilesDirty.clear();
+    }
     while (this.stumpList.length && this.stumpList[0].t < sim.s.time) view.removeStump(this.stumpList.shift().slot);
 
     const t = now / 1000;

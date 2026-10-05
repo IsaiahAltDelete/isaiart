@@ -13,23 +13,30 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <!-- Spine faces -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@800&family=Playfair+Display:wght@800&family=Fredoka:wght@700&family=Bebas+Neue&family=Merriweather:wght@700&family=Caveat+Brush&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/studio.css?v=4">
+<link rel="stylesheet" href="../assets/studio.css?v=5">
 
 <style>
 /* ── Slot cards ───────────────────────────────────────────────────────
    One per image the cover holds; each is a selector and a drop target.
    The selected card gets the red ring the metadata page uses on focus,
    and the canvas rings the same image. */
-.slots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* minmax(0, 1fr) and min-width: 0, so a long filename is truncated by
+   its card instead of widening the card, the grid and the sidebar. */
+.slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .slot {
-    position: relative; display: flex; flex-direction: column; gap: 8px;
+    position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0;
     padding: 8px 8px 10px; border-radius: 12px; text-align: left; cursor: pointer;
     background: #fff; border: 1px solid var(--g200);
     transition: border-color .2s ease, box-shadow .2s ease, transform .12s ease, background-color .2s ease;
 }
 .slot:hover { border-color: var(--g300); box-shadow: var(--shadow-subtle); }
 .slot:active { transform: scale(.98); }
-.slot[aria-selected="true"] { border-color: #f87171; box-shadow: 0 0 0 3px var(--accent-ring); }
+/* Selected card: a slowly moving holographic border. */
+.slot[aria-selected="true"] {
+    border-color: transparent; box-shadow: 0 0 0 3px var(--accent-ring), 0 10px 24px -14px rgba(106, 75, 255, .55);
+    background: linear-gradient(#fff, #fff) padding-box, var(--iri) border-box; background-size: 100% 100%, 300% 100%;
+    animation: iri-border 5s linear infinite;
+}
 .slot.over { border-color: var(--accent); background: var(--accent-50); transform: scale(1.01); }
 .slot .thumb {
     position: relative; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden;
@@ -37,7 +44,11 @@
     display: grid; place-items: center; color: var(--g400);
     transition: border-color .3s ease, color .3s ease, background-color .3s ease;
 }
-.slot:hover .thumb { border-color: #ef4444; color: var(--accent-hover); background: var(--accent-50); }
+.slot:hover .thumb { border-color: #a99cff; color: var(--accent-hover); background: var(--iri-soft); }
+.slot { transition: border-color .2s ease, box-shadow .3s ease, transform .3s var(--spring), background-color .2s ease; }
+.slot:hover { transform: translateY(-2px); }
+.slot .thumb img { transition: opacity .3s ease, transform .6s var(--ease); }
+.slot:hover .thumb img.on { transform: scale(1.05); }
 .slot.filled .thumb { border: 0; }
 .slot .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .3s ease; }
 .slot .thumb img.on { opacity: 1; }
@@ -67,7 +78,13 @@
     transition: border-color .2s ease, box-shadow .2s ease, transform .15s ease;
 }
 .pat:hover { border-color: var(--g300); transform: translateY(-1px); box-shadow: var(--shadow-subtle); }
-.pat[aria-checked="true"] { border-color: #f87171; box-shadow: 0 0 0 3px var(--accent-ring); }
+.pat[aria-checked="true"] {
+    border-color: transparent; box-shadow: 0 0 0 3px var(--accent-ring);
+    background: linear-gradient(#fff, #fff) padding-box, var(--iri) border-box; background-size: 100% 100%, 300% 100%;
+    animation: iri-border 5s linear infinite;
+}
+.pat canvas { transition: transform .5s var(--ease); }
+.pat:hover canvas { transform: scale(1.06); }
 .pat:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .pat canvas { display: block; width: 100%; aspect-ratio: 7 / 5; }
 .pat span { padding: 3px 2px 4px; font-size: 10.5px; font-weight: 500; color: var(--g600); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -385,8 +402,8 @@
     </main>
 </div>
 
-<script src="../assets/studio.js?v=2"></script>
+<script src="../assets/studio.js?v=3"></script>
 <script src="../assets/print.js?v=1"></script>
-<script src="kdp.js?v=4"></script>
+<script src="kdp.js?v=6"></script>
 </body>
 </html>

@@ -310,7 +310,7 @@
         ctx.fillRect(0, 0, a.pw, a.ph);
         if (layer) ctx.drawImage(layer, a.x, a.y, a.w, a.h);
     }
-    var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#dc2626';
+    var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6d5dfc';
 
     var vp = S.viewport(el('wrap'), el('view'), {
         pad: 28,

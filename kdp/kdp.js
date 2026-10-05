@@ -128,17 +128,66 @@
     }
     var needsFrame = false;
 
+    /* Three resolutions per image, so a 60-megapixel upload never touches
+       the frame loop:
+         s.img   preview copy, long side ≤ PREV_MAX — what the preview,
+                 eyedropper, swatches and blur fill all draw from
+         s.hi    a sharper copy, decoded on demand only when you zoom in
+                 far enough that the preview copy would show its pixels
+         s.full  decoded at export only, at exactly the size the print
+                 needs, then released
+       Drawing a huge bitmap every frame forced the browser to resample
+       (or software-render, past the GPU's texture limit) the whole thing
+       on every pan and slider tick — that was the lag. */
+    var PREV_MAX = 2400, HI_MAX = 8192;
+    var renderScale = 0;   /* screen px per art px while drawing the preview; 0 = export */
+
     function drawSlot(ctx, id, g) {
         var s = slots[id];
         if (!s.img) return;
         var box = boxOf(id, g), p = placement(s, box);
+        var src = s.img;
+        if (!renderScale && s.full) src = s.full;
+        else if (renderScale) {
+            var need = p.w * renderScale;                 /* on-screen width in device px */
+            if (need > s.img.width * 1.25) {
+                if (s.hi && s.hi.width >= Math.min(s.iw, need) * 0.8) src = s.hi;
+                else requestHi(s, need);
+            }
+        }
         ctx.save();
         var r = (id === 'front' || id === 'back') && cfg.inset > 0 ? cfg.radius * g.k : 0;
         rrect(ctx, box.x, box.y, box.w, box.h, r);
         ctx.clip();
         ctx.globalAlpha = fadeOf(s);
-        ctx.drawImage(s.img, p.x, p.y, p.w, p.h);
+        ctx.drawImage(src, p.x, p.y, p.w, p.h);
         ctx.restore();
+    }
+
+    /* Decode a copy at (about) the given width straight from the file,
+       never upscaling past the original. */
+    function decodeAt(s, width) {
+        var w = Math.max(1, Math.min(s.iw, Math.round(width)));
+        if (!window.createImageBitmap || !s.file) return Promise.resolve(null);
+        return createImageBitmap(s.file, { resizeWidth: w, resizeHeight: Math.max(1, Math.round(w * s.ih / s.iw)), resizeQuality: 'high' });
+    }
+    function requestHi(s, need) {
+        if (s.hiPending || s.iw <= s.img.width) return;
+        var want = Math.min(s.iw, HI_MAX, Math.ceil(need * 1.5));
+        if (s.hi && s.hi.width >= want * 0.8) return;
+        s.hiPending = true;
+        decodeAt(s, want).then(function (bmp) {
+            s.hiPending = false;
+            if (!bmp) return;
+            if (slots[s.id] !== s) { bmp.close && bmp.close(); return; }   /* replaced meanwhile */
+            if (s.hi && s.hi.close) s.hi.close();
+            s.hi = bmp;
+            vp.redraw();
+        }, function () { s.hiPending = false; });
+    }
+    function releaseSlot(s) {
+        ['img', 'hi', 'full'].forEach(function (k) { if (s[k] && s[k].close) s[k].close(); });
+        if (s.url) URL.revokeObjectURL(s.url);
     }
 
     /* The BLUR fill: the art, cover-fitted to the whole sheet at 320px wide,
@@ -621,7 +670,7 @@
     function readCss() {
         var st = getComputedStyle(document.documentElement);
         css.muted = st.getPropertyValue('--g500').trim() || '#6b7280';
-        css.accent = st.getPropertyValue('--accent').trim() || '#dc2626';
+        css.accent = st.getPropertyValue('--accent').trim() || '#6d5dfc';
         css.text = st.getPropertyValue('--g800').trim() || '#1f2937';
     }
     readCss();
@@ -644,7 +693,9 @@
 
             ctx.save();
             if (cfg.pv === 'print') { ctx.beginPath(); ctx.rect(g.b, g.b, g.W - 2 * g.b, g.H - 2 * g.b); ctx.clip(); }
+            renderScale = v.s * (window.devicePixelRatio || 1);
             compose(ctx, g);
+            renderScale = 0;
             ctx.restore();
 
             if (cfg.pv !== 'print' && slots.tpl.img) {
@@ -819,7 +870,9 @@
         c.width = c.height = 1;
         var x = c.getContext('2d', { willReadFrequently: true });
         x.translate(-Math.floor(pt.x), -Math.floor(pt.y));
+        renderScale = 1;           /* preview copies are plenty for a colour sample */
         compose(x, g);
+        renderScale = 0;
         var d = x.getImageData(0, 0, 1, 1).data;
         return rgbHex([d[0], d[1], d[2]]);
     }
@@ -886,18 +939,46 @@
         return null;
     }
 
+    /* The original's pixel size, from the header: an <img> reports its
+       natural size on load without rasterising the whole picture. */
+    function readSize(file) {
+        return new Promise(function (res, rej) {
+            var u = URL.createObjectURL(file), im = new Image();
+            im.onload = function () { URL.revokeObjectURL(u); res({ w: im.naturalWidth, h: im.naturalHeight, el: im }); };
+            im.onerror = function () { URL.revokeObjectURL(u); rej(new Error('decode')); };
+            im.src = u;
+        });
+    }
+    /* A small JPEG for the slot card: 360 px wide, made once. */
+    function makeThumb(bmp) {
+        var c = document.createElement('canvas'), k = Math.min(1, 360 / bmp.width);
+        c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+        var x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+        x.drawImage(bmp, 0, 0, c.width, c.height);
+        return new Promise(function (res) {
+            c.toBlob(function (b) { res(b ? URL.createObjectURL(b) : c.toDataURL('image/jpeg', 0.85)); }, 'image/jpeg', 0.85);
+        });
+    }
+
     function load(id, file) {
         var s = slots[id];
         s.pending = true;
-        var dec = window.createImageBitmap ? createImageBitmap(file) : new Promise(function (res, rej) {
-            var im = new Image(); im.onload = function () { res(im); }; im.onerror = rej; im.src = URL.createObjectURL(file);
-        });
-        return dec.then(function (img) {
-            if (s.url) URL.revokeObjectURL(s.url);
-            if (s.img && s.img.close) s.img.close();
+        var size, prev;
+        return readSize(file).then(function (sz) {
+            size = sz;
+            var k = Math.min(1, PREV_MAX / Math.max(sz.w, sz.h));
+            if (window.createImageBitmap) {
+                return createImageBitmap(file, k < 1 ? { resizeWidth: Math.round(sz.w * k), resizeHeight: Math.round(sz.h * k), resizeQuality: 'high' } : undefined);
+            }
+            return sz.el;   /* very old browsers: the <img> itself */
+        }).then(function (bmp) {
+            prev = bmp;
+            return makeThumb(bmp);
+        }).then(function (thumbUrl) {
+            releaseSlot(slots[id]);
             slots[id] = {
-                id: id, img: img, iw: img.width, ih: img.height, name: file.name || 'pasted image',
-                url: URL.createObjectURL(file), fit: 'fill', zoom: 1, ox: 0, oy: 0, t0: performance.now()
+                id: id, file: file, img: prev, iw: size.w, ih: size.h, name: file.name || 'pasted image',
+                url: thumbUrl, fit: 'fill', zoom: 1, ox: 0, oy: 0, t0: performance.now()
             };
             if (id === 'bg') setCfg('bgmode', 'image');
             if (id === 'front' || id === 'back') refreshSwatches(true);
@@ -1051,8 +1132,7 @@
     el('replaceBtn').addEventListener('click', function () { pick(sel); });
     el('removeBtn').addEventListener('click', function () {
         var s = slots[sel]; if (!s.img) return;
-        if (s.url) URL.revokeObjectURL(s.url);
-        if (s.img.close) s.img.close();
+        releaseSlot(s);
         slots[sel] = {};
         if (sel === 'bg' && cfg.bgmode === 'image') setCfg('bgmode', 'color');
         blurCache.key = '';
@@ -1116,7 +1196,7 @@
                colours, since a pattern usually wants contrast with the ground. */
             var extras = key === 'patColor' ? ['#f9c4d2', '#a7d8f0', '#ffe08a', '#b8e6b0', '#111111']
                                             : ['#ffffff', '#111111', '#f4ecd8'];
-            var list = artColours.concat(extras).filter(function (c, i, a) { return a.indexOf(c) === i; }).slice(0, 8);
+            var list = artColours.concat(extras).filter(function (c, i, a) { return a.indexOf(c) === i; }).slice(0, 7);
             list.forEach(function (hex) {
                 var b = document.createElement('button');
                 b.type = 'button'; b.className = 'swatch';
@@ -1190,9 +1270,9 @@
         if (document.activeElement !== el('pages')) el('pages').value = cfg.pages;
         el('paper').value = cfg.paper;
         var trimNum = function (v, d) { return String(Math.round(v * Math.pow(10, d)) / Math.pow(10, d)); };
-        el('oSpine').innerHTML = trimNum(g.sp, 3) + '<small>in</small>';
-        el('oW').innerHTML = trimNum(g.Win, 3) + '<small>in</small>';
-        el('oH').innerHTML = trimNum(g.Hin, 3) + '<small>in</small>';
+        S.tweenNum(el('oSpine'), g.sp, 3, '<small>in</small>');
+        S.tweenNum(el('oW'), g.Win, 3, '<small>in</small>');
+        S.tweenNum(el('oH'), g.Hin, 3, '<small>in</small>');
         el('oSize').textContent = (Math.round(g.Win * 1000) / 1000) + ' × ' + g.Hin + ' in';
         el('oPx').textContent = g.W.toLocaleString() + ' × ' + g.H.toLocaleString() + ' px';
         el('spineBadge').textContent = trimNum(g.sp, 3) + ' in spine';
@@ -1339,12 +1419,31 @@
     }
 
     /* ── Export ──────────────────────────────────────────────────────────── */
+    /* Export: for each placed image, decode from the original file at
+       exactly the width it is drawn at in the 300 DPI sheet (never more
+       than the original), compose, then release. The print gets full
+       resolution; memory only ever holds one sheet's worth. */
     function renderSheet() {
         var g = G();
-        var c = document.createElement('canvas');
-        c.width = g.W; c.height = g.H;
-        compose(c.getContext('2d'), g);
-        return { c: c, g: g };
+        var jobs = ['bg', 'back', 'front'].filter(function (id) { return slots[id].img && slots[id].file; }).map(function (id) {
+            var s = slots[id], p = placement(s, boxOf(id, g));
+            var need = Math.ceil(p.w);
+            if (s.img.width >= Math.min(s.iw, need)) return Promise.resolve();   /* preview copy already enough */
+            return decodeAt(s, need).then(function (bmp) { s.full = bmp; });
+        });
+        return Promise.all(jobs).then(function () {
+            var c = document.createElement('canvas');
+            c.width = g.W; c.height = g.H;
+            renderScale = 0;
+            compose(c.getContext('2d'), g);
+            return { c: c, g: g };
+        }).then(function (r) {
+            ['bg', 'back', 'front'].forEach(function (id) {
+                var s = slots[id];
+                if (s.full) { if (s.full.close) s.full.close(); s.full = null; }
+            });
+            return r;
+        });
     }
     function fileBase() {
         var t = (cfg.title || '').trim().replace(/[^\w\- ]+/g, '').replace(/\s+/g, '-').toLowerCase();
@@ -1367,13 +1466,12 @@
         if (!preflight()) return;
         busy(true);
         ready().then(function () {
-            var r = renderSheet();
-            return P.canvasJpeg(r.c, DPI, 0.95).then(function (jpg) {
+            return renderSheet().then(function (r) { return P.canvasJpeg(r.c, DPI, 0.95).then(function (jpg) {
                 var pdf = new P.Pdf();
                 pdf.addJpegPage(jpg, r.g.W, r.g.H, r.g.Win * 72, r.g.Hin * 72);
                 S.download(pdf.finish(), fileBase() + '.pdf');
                 S.toast('PDF saved · ' + (Math.round(r.g.Win * 1000) / 1000) + ' × ' + r.g.Hin + ' in');
-            });
+            }); });
         }).catch(function (err) { console.error(err); S.toast('Export failed', true); })
           .then(function () { busy(false); });
     });
@@ -1381,11 +1479,10 @@
         if (!preflight()) return;
         busy(true);
         ready().then(function () {
-            var r = renderSheet();
-            return P.canvasPng(r.c, DPI).then(function (blob) {
+            return renderSheet().then(function (r) { return P.canvasPng(r.c, DPI).then(function (blob) {
                 S.download(blob, fileBase() + '.png');
                 S.toast('PNG saved · ' + r.g.W + ' × ' + r.g.H);
-            });
+            }); });
         }).catch(function (err) { console.error(err); S.toast('Export failed', true); })
           .then(function () { busy(false); });
     });

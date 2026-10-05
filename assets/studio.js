@@ -56,6 +56,25 @@
         setTimeout(function () { URL.revokeObjectURL(url); }, 8000);
     };
 
+    /* tweenNum(el, value, decimals, suffixHTML): a readout glides from its
+       current number to the new one (eased, ~420 ms) instead of snapping,
+       so a page-count change visibly "turns over" the spine width. */
+    S.tweenNum = function (el, to, dec, suffix) {
+        if (!el) return;
+        var from = el._tv == null ? to : el._tv;
+        el._tv = to;
+        var fmt = function (v) { return (Math.round(v * Math.pow(10, dec)) / Math.pow(10, dec)) + (suffix || ''); };
+        if (reduced || from === to || !isFinite(from)) { el.innerHTML = fmt(to); return; }
+        var t0 = performance.now(), id = (el._tid = (el._tid || 0) + 1);
+        el.classList.add('ticking');
+        (function step(now) {
+            if (el._tid !== id) return;
+            var t = Math.min(1, (now - t0) / 420), e = 1 - Math.pow(1 - t, 3);
+            el.innerHTML = fmt(from + (to - from) * e);
+            if (t < 1) requestAnimationFrame(step); else el.classList.remove('ticking');
+        })(t0);
+    };
+
     S.debounce = function (fn, ms) { var t; return function () { var a = arguments, self = this; clearTimeout(t); t = setTimeout(function () { fn.apply(self, a); }, ms); }; };
 
     /* ── Range fill ──────────────────────────────────────────────────────── */
