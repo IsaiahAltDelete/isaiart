@@ -23,7 +23,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = n => n >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'k' : String(Math.floor(n));
 const short = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(Math.floor(n));
-const hex = c => '#' + c.toString(16).padStart(6, '0');
+const hex = c => '#' + (c ?? 0xb09070).toString(16).padStart(6, '0');   // tolerant: portrait snapshots may lack a colour
 const costHtml = (cost, res) => Object.entries(cost || {}).map(([k, v]) =>
   `<span class="${res && (res[k] || 0) < v ? 'no' : ''}">${svg(GOODS[k].icon, 12)}${v}</span>`).join('');
 const phone = () => innerWidth < 760;
@@ -791,12 +791,12 @@ export class UI {
     }
     h += eventsBuildingHtml(this, b);   // on fire, or damaged and waiting for repairs (events.js)
     // live status with progress
-    const st = this.bStatus(b);
+    const st = b.damaged || b.fire ? null : this.bStatus(b);
     if (st) {
       let prog = 0;
       if (b.type === 'farm') prog = b.data.stage === 'ripe' ? 1 : b.data.grow || 0;
       else for (const id of b.workers) { const v = sim.vById.get(id); if (v?.act && !v.act.idle && v.act.dur < 999) prog = Math.max(prog, v.act.t / v.act.dur); }
-      h += `<div class="ip-sec"><div class="statusline ${st.dot}"><span class="dot"></span><span>${esc(st.text)}</span></div>${def.workers ? `<div class="pbar"><i style="width:${Math.round(prog * 100)}%"></i></div>` : ''}</div>`;
+      h += `<div class="ip-sec"><div class="statusline ${st.dot}"><span class="dot"></span><span>${esc(st.text)}</span></div>${def.workers && !b.damaged && !b.fire ? `<div class="pbar"><i style="width:${Math.round(prog * 100)}%"></i></div>` : ''}</div>`;
     }
     // workers as portraits: tap a face to see them, × to send them off, + to hire
     if (def.workers) {
@@ -808,7 +808,7 @@ export class UI {
           : `<div class="wslot empty"><button class="av" data-act="staff" aria-label="Add a worker" data-tip="${idle ? 'Add a worker|The nearest idle villager takes the job.' : 'No one is idle|Free someone up in the Villagers tab, or build more cottages.'}">${svg('plus', 16).replace('#fff', '#c48a4a')}</button><span class="nm">${idle ? 'Add' : 'No one idle'}</span></div>`;
       }
       if (lvl < MAX_LVL) slots += `<div class="wslot locked"><span class="av">${svg('lock', 16)}</span><span class="nm">Lv ${lvl + 1}</span></div>`;
-      h += `<div class="ip-sec"><div class="cap">${svg('people', 14)} Workers<span class="r">${b.workers.length}/${cap} ${esc(JOBS[def.job].name.toLowerCase())}s</span></div><div class="wslots">${slots}</div></div>`;
+      h += `<div class="ip-sec"><div class="cap">${svg('people', 14)} Workers<span class="r">${b.workers.length}/${cap} ${esc(JOBS[def.job].name.toLowerCase())}s</span></div><div class="wslots">${slots}</div>${b.damaged && b.workers.length ? '<div class="sub">Waiting for repairs</div>' : ''}</div>`;
     }
     // homes: who lives here
     if (def.housing) {
@@ -836,10 +836,11 @@ export class UI {
     h += eduBuildingHtml(this, b);   // home needs + auto-growing, classroom, reading room (education.js)
     h += rpgBuildingHtml(this, b);   // forge, guild hall, watch, knowledge, spell slots (rpgui.js)
     h += r7BuildingHtml(this, b) + r7SiteHtml(this, b);   // stores, specialty, carts, deliveries (panels.js)
-    h += this.chainHtml(b);
+    if (!b.damaged) h += this.chainHtml(b);
     // neighbour bonuses
     const syn = sim.synergy(b), helps = SYNERGY.filter(r => r.from === b.type);
-    if (syn.list.length) h += `<div class="synbox">${syn.list.map(r => `<div>${svg('star', 14)}<b>+${Math.round(r.bonus * r.n * 100)}%</b> ${esc(r.why)}${r.n > 1 ? ` (×${r.n})` : ''}</div>`).join('')}</div>`;
+    if (b.damaged) { /* a damaged building does nothing, so it has no bonuses to show */ }
+    else if (syn.list.length) h += `<div class="synbox">${syn.list.map(r => `<div>${svg('star', 14)}<b>+${Math.round(r.bonus * r.n * 100)}%</b> ${esc(r.why)}${r.n > 1 ? ` (×${r.n})` : ''}</div>`).join('')}</div>`;
     else { const want = SYNERGY.filter(r => r.to === b.type); if (want.length) h += `<div class="synbox dim">${want.map(r => `<div>${svg('star', 14)}Build near a ${esc(defOf(r.from).name)} for +${Math.round(r.bonus * 100)}%</div>`).join('')}</div>`; }
     if (helps.length) h += `<div class="sub" style="margin-top:4px">Boosts nearby: ${helps.map(r => defOf(r.to).name).join(', ')}</div>`;
     const hint = { 'No trees within reach': 'Woodcutters only walk about 20 tiles from the hut (zoom out to see the dashed ring). Build another Lumber Hut by the forest, or a Forester\'s Lodge to replant.',
@@ -851,7 +852,7 @@ export class UI {
     // upgrade: what changes, what it costs
     if (b.up) {
       h += `<div class="ip-sec"><div class="cap">${svg('arrowup', 14)} Upgrading to Lv ${lvl + 1}<span class="r">${Math.floor(b.up.progress * 100)}%</span></div><div class="pbar"><i style="width:${b.up.progress * 100}%"></i></div></div>`;
-    } else if (!isDecor(b.type) && lvl < MAX_LVL) {
+    } else if (!isDecor(b.type) && lvl < MAX_LVL && !b.damaged) {
       const can = sim.canUpgrade(b), cost = sim.upgradeCost(b);
       const row = (k, a, z) => `<dt>${k}</dt><dd><s>${a}</s>→<b>${z}</b></dd>`;
       let pv = '';
@@ -891,7 +892,7 @@ export class UI {
     const race = RACES[v.race] || RACES.human, gen = GENDERS[v.gender] || GENDERS.x, cls = CLASSES[classOf(v)], tier = sim.eduTier(v);
     // who they are, at a glance
     const chips = [
-      sim.wantedOf?.(v) ? `<span class="vchip wanted" data-tip="Wanted|${esc(sim.wantedOf(v).crimes.join(', '))}. The watch will catch them if they spot them.">${svg('alert', 13)}Wanted</span>` : '',
+      sim.wantedOf?.(v) ? `<span class="vchip wanted" data-tip="Wanted|${esc(Object.entries(sim.wantedOf(v).crimes.reduce((m, c) => (m[c] = (m[c] || 0) + 1, m), {})).map(([c, n]) => c + (n > 1 ? ' ×' + n : '')).join(', '))}. The watch will catch them if they spot them.">${svg('alert', 13)}Wanted</span>` : '',
       v.title ? `<span class="vchip gold" data-tip="${esc(v.title)}|${esc(v.title === 'Archmage' ? 'Leads a Wizard Tower: its wizards study faster.' : 'Leads the village government.')}">${svg('star', 13)}${esc(v.title)}</span>` : '',
       `<span class="vchip" data-tip="${esc(race.name)} · ${esc(race.trait)}|${esc(race.desc)}">${esc(race.name)} · ${esc(gen.pro)}</span>`,
       sim.quirkOf ? `<span class="vchip" data-tip="${esc(sim.quirkOf(v).name)}|${esc(sim.quirkOf(v).desc)}">${esc(sim.quirkOf(v).name)}</span>` : '',

@@ -634,6 +634,55 @@ for more things to go wrong: droughts, natural and supernatural disasters, famin
 **Tests:** new `tests/round12.test.mjs` (21 tests); model-count checks now expect at least 93.
 All 80 tests pass. Run each file on its own, e.g. `node --test tests/round12.test.mjs`.
 
+## Round 12 critic loop (2026-10-05)
+
+Critic: a lead designer of cozy village and colony sims, judging the Story page, drama, crime,
+hard times and paladins. Pass mark 8.5, three attempts. Desktop 1280×720 first, phone second.
+
+**Scores: 7.1 → 8.2 → 8.5. Passed on attempt 3.**
+
+Fixed along the way:
+- **Banners:**
+  - Every banner carries a bold "what to do" line, also on phone, where the stack sits at the
+    bottom, clear of the icon column.
+  - No duplicate popups when an event or fire starts.
+  - The fire and dragon bars are distinct and explained.
+- **Fires:**
+  - "Ring the bell" calls up to 10 helpers; the banner says whether a well is close.
+  - Crew line up toward the well and throw blue water that puffs where it lands.
+  - Flames are tapered tongues.
+- **Dragon:**
+  - The banner has an instruction and a "Sound the horn" lever (double damage for 25 s, once per
+    attack).
+  - A long breath stream, and scared "!!" bubbles over the villagers underneath.
+- **Damaged buildings:** the repair button says what's missing. Status, production, bonus and
+  upgrade rows are hidden, the workers show "Waiting for repairs", and the hover label says
+  "Damaged".
+- **Crime:**
+  - Safety counts open posters and recent thefts (Peaceful, Uneasy, Troubled). Wanted sits above
+    Households, and the Town button badges new posters.
+  - Theft is 1% of the treasury, capped at 120 × village level; the bounty is half the loot.
+  - Identified thieves lose goodwill, wear a "!" bubble, and their posters come down after four days.
+- **Scuffles:** the hot-head gets the blame, and the nearest awake keeper, fighters included, steps
+  in. No posters for scuffles.
+- **Story:**
+  - Squabble lines don't repeat.
+  - Five different kindnesses for caught hungry raiders, and same-day raids by the same catcher
+    merge into one entry. This found and fixed a crash: a portrait snapshot without a hat colour.
+- **In the world:**
+  - Speech bubbles are capped to the 6 nearest the screen centre, at most 2 of them angry.
+  - Fever shows as a 36px sick-face bubble that outranks hunger.
+  - Wisps are bigger, cyan-green, and drift around villagers.
+
+The critic's remaining notes:
+- The bucket-chain water still reads a little like blue flame.
+- The wanted villager's "!" looks like the "!" buildings use for problems.
+- At full brightness the dragon's breath whites out its target.
+
+The last three critic notes are the starting point for a future art pass. Applied after the
+passing verdict without re-scoring: the repair button shows only "Need …" (cost in the tooltip),
+the dragon row lost its redundant label, and at most two angry bubbles show at once.
+
 ## Next round — pick 5–6
 
 Ordered easiest to hardest:

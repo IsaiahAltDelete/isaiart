@@ -25,7 +25,7 @@ const SET_KEY = 'isaiart.villages.settings';
 const NEED_ICON = { sawmill: 'wood', windmill: 'wheat', bakery: 'flour', mason: 'stone' };
 const STATUS_ICON = { 'Saving wood for builders': 'hammer', 'Saving stone for builders': 'hammer', 'Storage full': 'bag', 'No trees within reach': 'axe', 'No boulders nearby': 'pick', 'Nothing to sell': 'coin', 'Waiting for berries': 'basket' };
 const SACK = { wood: 0x9a6a3e, stone: 0xa9adb0, food: 0xd8304a, grain: 0xe6c35c };
-const ANIM_TOOL = { cast: 'staff', chop: 'axe', mine: 'pick', hammer: 'hammer', saw: 'hammer', hoe: 'hoe', fish: 'rod', gather: 'basket', plant: 'sapling' };
+const ANIM_TOOL = { bucket: 'basket', cast: 'staff', chop: 'axe', mine: 'pick', hammer: 'hammer', saw: 'hammer', hoe: 'hoe', fish: 'rod', gather: 'basket', plant: 'sapling' };
 const JOB_TOOL = { guard: 'spear', wizard: 'staff', shepherd: 'hoe', picker: 'basket', milker: 'basket', herder: 'basket', woodcutter: 'axe', miner: 'pick', fisher: 'rod', forager: 'basket', farmer: 'hoe', forester: 'sapling', mason: 'hammer', sawyer: 'hammer' };
 
 // yield a frame so the loading bar paints; a timer keeps loading going in a background tab
@@ -490,12 +490,13 @@ class Game {
     m.group.rotation.y = m.rot;
     const anim = v.act?.anim;
     setTool(m, anim === 'fight' ? (v.gear?.w === 'sword' ? 'sword' : 'spear') : anim ? ANIM_TOOL[anim] ?? null : v.carry ? null : v.job === 'guard' && v.gear?.w ? v.gear.w : JOB_TOOL[v.job] ?? null);
-    const talk = v.talk && v.talk.until > this.sim.s.time && !v.indoors && !v.asleep ? v.talk.k : null;
-    const mood = v.hungry ? 'apple' : v.chat && !talk ? 'heart' : v.asleep === 'fire' && (v.id % 3 === 0) ? 'zzz' : null;
+    const talk = v.talk && v.talk.until > this.sim.s.time && !v.indoors && !v.asleep && this.talkShow?.has(v.id) ? v.talk.k : null;
+    const now = this.sim.s.time, wanted = !(v.jail > now) && this.sim.wantedOf?.(v);
+    const mood = v.sick > now ? 'sick' : v.hungry ? 'apple' : wanted && !v.asleep ? 'alert' : v.chat && !talk ? 'heart' : v.asleep === 'fire' && (v.id % 3 === 0) ? 'zzz' : null;
     if (mood !== m.mood) {
       m.mood = mood;
       if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false })); m.bubble.userData.px = 26; m.bubble.position.y = 1.0; m.group.add(m.bubble); this.screenSprites.add(m.bubble); }
-      if (m.bubble) { m.bubble.visible = !!mood; if (mood) { m.bubble.material.map = bubbleTexture(mood); m.bubble.material.needsUpdate = true; } }
+      if (m.bubble) { m.bubble.visible = !!mood; m.bubble.userData.px = mood === 'sick' || mood === 'alert' ? 36 : 26; if (mood) { m.bubble.material.map = bubbleTexture(mood); m.bubble.material.needsUpdate = true; } }
     }
     if (m.bubble && mood) m.bubble.visible = !!m.bubble.material.map?.userData.ready;
     if (m.bubble?.visible) m.bubble.position.y = 0.95 + Math.sin(time * 3 + m.phase) * 0.03;
@@ -504,7 +505,7 @@ class Game {
     if (m.talkSp) {
       if (talk) {
         m.talkPop = Math.min(1, m.talkPop + dt * 6);
-        const frame = talk === 'chat' ? Math.floor(time * 3 + m.phase) % 3 : talk === 'angry' ? Math.floor(time * 8) % 2 : 0, tex = talkTexture(talk, frame);
+        const frame = talk === 'chat' ? Math.floor(time * 3 + m.phase) % 3 : talk === 'angry' || talk === 'scared' ? Math.floor(time * 8) % 2 : 0, tex = talkTexture(talk, frame);
         if (m.talkSp.material.map !== tex) { m.talkSp.material.map = tex; m.talkSp.material.needsUpdate = true; }
       } else m.talkPop = Math.max(0, m.talkPop - dt * 5);
       const k = m.talkPop, pop = k < 1 ? 1 + Math.sin(k * Math.PI) * 0.25 : 1;
@@ -549,6 +550,9 @@ class Game {
       } else if (anim === 'saw' || anim === 'work') {
         const k = Math.sin(t * 6);
         m.armR.rotation.x = -1.1 + k * 0.35; m.armL.rotation.x = -1.1 - k * 0.35; m.body.rotation.x = 0.12;
+      } else if (anim === 'bucket') {
+        const k = Math.max(0, Math.sin(t * 5));
+        m.armR.rotation.x = -0.6 - k * 1.3; m.armL.rotation.x = -0.6 - k * 1.3; m.body.rotation.x = -0.05 + k * 0.18;
       } else if (anim === 'scuffle') {
         const k = Math.sin(t * 16);
         m.armR.rotation.x = -1.8 + k * 1.1; m.armL.rotation.x = -1.8 - k * 1.1;
@@ -1590,6 +1594,11 @@ class Game {
     const t = now / 1000;
     for (const vis of this.bvis.values()) this.updateBVis(vis, dt, t);
     this.separate(dt);
+    // only the few conversations nearest the middle of the screen get a speech bubble, so a busy village doesn't turn to confetti
+    { const r = view.rig, now = sim.s.time;
+      const near = sim.s.villagers.filter(v => v.talk?.until > now && !v.indoors && !v.asleep).sort((a, b) => Math.hypot(a.x - r.tx, a.z - r.tz) - Math.hypot(b.x - r.tx, b.z - r.tz));
+      // at most two cross words at a time, so a quiet moment doesn't read as a riot
+      let angry = 0; this.talkShow = new Set(near.filter(v => v.talk.k !== 'angry' || ++angry <= 2).slice(0, 6).map(v => v.id)); }
     for (const v of sim.s.villagers) { const m = this.vvis.get(v.id); if (m) this.updateVVis(v, m, dt, t); }
     this.effects = this.effects.filter(f => f(dt));
     // bubbles keep a constant on-screen size (px tall) however far you zoom
@@ -1769,7 +1778,7 @@ function talkTexture(kind, frame) {
   if (_talk.has(key)) return _talk.get(key);
   const W = 96, H = 112, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const g = cv.getContext('2d');
-  const fill = { chat: '#fffdf6', angry: '#ffe1d9', love: '#ffe8f0' }[kind], line = { chat: '#5b3a1e', angry: '#b0412c', love: '#c84f76' }[kind];
+  const fill = { chat: '#fffdf6', angry: '#ffe1d9', love: '#ffe8f0', scared: '#eaf2ff' }[kind], line = { chat: '#5b3a1e', angry: '#b0412c', love: '#c84f76', scared: '#3a5a9a' }[kind];
   g.lineJoin = 'round'; g.lineWidth = 5; g.fillStyle = fill; g.strokeStyle = line;
   g.beginPath();
   if (kind === 'angry') {
@@ -1785,6 +1794,10 @@ function talkTexture(kind, frame) {
     // cover the seam where the tail joins
     g.fillStyle = fill; g.fillRect(31, 72, 13, 7);
     for (let i = 0; i < 3; i++) { const on = i === frame; g.fillStyle = on ? '#5b3a1e' : '#c4a47a'; g.beginPath(); g.arc(28 + i * 20, on ? 38 : 43, on ? 8 : 6.5, 0, Math.PI * 2); g.fill(); }
+  } else if (kind === 'scared') {
+    g.fillStyle = fill; g.fillRect(31, 72, 13, 7);
+    g.fillStyle = '#3a5a9a'; g.font = '800 40px Fredoka, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('!!', 48 + (frame ? 2 : -2), 45);
   } else if (kind === 'angry') {
     g.fillStyle = '#b0412c'; g.font = '800 30px Fredoka, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText('#@!', 48 + (frame ? 2 : -2), 47 + (frame ? -1 : 1));

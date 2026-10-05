@@ -87,7 +87,12 @@ const CRIME = {
     return Math.max(0, Math.min(0.4, p));
   },
   // a word for the Town panel
-  safetyOf(sid) { const p = this.crimeChance(sid); return p < 0.04 ? 'Peaceful' : p < 0.12 ? 'Mostly quiet' : 'Troubled'; },
+  safetyOf(sid) {
+    const s = this.s, open = s.crime.wanted.filter(p => !p.caught && p.sid === sid).length;
+    const recent = s.crime.log.filter(l => s.time - l.t < DAY * 2 && /made off|sneaking off/.test(l.msg)).length;
+    const p = this.crimeChance(sid), score = p * 20 + open + recent;
+    return score < 1 ? 'Peaceful' : score < 3 ? 'Uneasy' : 'Troubled';
+  },
   startCrime(sid) {
     const s = this.s;
     const store = s.buildings.filter(b => b.built && b.sid === sid && ['storehouse', 'campfire', 'market'].includes(b.type))[0];
@@ -112,7 +117,7 @@ const CRIME = {
       { walk: this.goalBuilding(st) }, { face: [c.x, c.z] },
       { act: 3, anim: 'work', done: () => {
         if (!v.sneak) return;
-        const coins = Math.min(Math.floor(this.s.res.coins), 10 + Math.floor(this.s.villagers.length / 3));
+        const coins = Math.min(Math.floor(this.s.res.coins), Math.min(120 * this.s.level, Math.max(10 + Math.floor(this.s.villagers.length / 3), Math.floor(this.s.res.coins * 0.01))));
         if (coins > 0) { this.s.res.coins -= coins; this.track('coins', -coins); this.emit('res'); }
         v.sneak.loot = coins; v.sneak.home = true;
       } },
@@ -145,7 +150,7 @@ const CRIME = {
     v.sneak = null;
     if (!loot) return;
     this.s.crime.thefts++;
-    this.addWanted(v, `Stole ${loot} coins`, this.rng() < 0.35);   // sometimes someone glimpsed them
+    this.addWanted(v, `Theft of ${loot} coins`, this.rng() < 0.35);   // sometimes someone glimpsed them
     const msg = `Someone made off with ${loot} coins in the night.`;
     this.crimeLog(msg); this.log(msg);
     this.story('crime', msg, [], 'coin');
@@ -174,6 +179,8 @@ const CRIME = {
   },
   // two rivals come to blows: a shove, a tumble, a few bruises. Never a knock-out.
   scuffle(a, b) {
+    const temper = v => (v.quirk === 'grumpy' ? 3 : v.quirk === 'proud' ? 2 : 0) + (v.hungry ? 2 : 0) - (v.quirk === 'cheerful' ? 2 : 0);
+    if (temper(b) > temper(a)) [a, b] = [b, a];
     const s = this.s, why = ['a borrowed hammer', 'the last pie', 'whose turn it was at the well', 'a remark about their hat', 'the sunny bench', 'a game of cards'][Math.floor(this.rng() * 6)];
     for (const v of [a, b]) {
       this.dropTask(v);
@@ -183,14 +190,15 @@ const CRIME = {
     this.talk?.(a, b, 'angry', 5);
     s.happiness = Math.max(0, s.happiness - 2);
     s.crime.scuffles = (s.crime.scuffles || 0) + 1;
-    const keeper = s.villagers.find(o => ['guard', 'constable'].includes(o.job) || o.cls === 'paladin' && o.job !== 'idle');
-    const near = keeper && Math.hypot(keeper.x - a.x, keeper.z - a.z) < 12 && !keeper.asleep ? keeper : null;
+    const near = s.villagers.filter(o => o !== a && o !== b && !o.asleep && !o.quest && !(o.ko > 0) && stageOf(o) === 'adult'
+        && (['guard', 'constable'].includes(o.job) || ['paladin', 'fighter'].includes(o.cls)) && Math.hypot(o.x - a.x, o.z - a.z) < 12)
+      .sort((p, q) => Math.hypot(p.x - a.x, p.z - a.z) - Math.hypot(q.x - a.x, q.z - a.z))[0] || null;
     let msg = `${a.name.split(' ')[0]} and ${b.name.split(' ')[0]} came to blows over ${why}! Just a few bruises.`;
     if (near) {
       const house = s.buildings.find(o => o.type === 'watchhouse' && o.built && o.sid === a.home);
       msg += ` ${near.name.split(' ')[0]} broke it up${house ? `, and ${a.name.split(' ')[0]} will spend the morning in the stocks` : ''}.`;
       if (house) { const morning = (Math.floor(s.time / DAY) + (this.dayFrac() > 0.5 ? 1 : 0)) * DAY + DAY * 0.42; a.jail = Math.max(s.time + 40, morning); a.jailHouse = house.id; }
-    } else this.addWanted?.(a, 'Brawling', true);   // nobody stopped it: everyone saw who threw the first punch
+    }
     this.log(msg); this.story('scuffle', msg, [a, b], 'storm');
     this.emit('float', a.x, a.z, 'Scuffle!', 'storm');
   },
@@ -221,12 +229,24 @@ const CRIME = {
     const F = v.name.split(' ')[0];
     const seen = s.villagers.find(o => o !== v && (['guard', 'constable'].includes(o.job) || o.cls === 'paladin') && !o.asleep && Math.hypot(o.x - v.x, o.z - v.z) < 9);
     let msg = `Hungry and desperate, ${F} ${what} at the ${b.type === 'farm' ? 'fields' : b.type}.`;
+    const KIND = ['let them off with a loaf of bread', 'sent them home with a bowl of soup', 'gave them a stern word and an apple', 'shared their own lunch with them', 'made them promise to ask next time'];
     if (seen) {
       const house = v.foodThefts >= 3 && s.buildings.find(o => o.type === 'watchhouse' && o.built && o.sid === v.home);
       if (house) { v.jail = s.time + 60; v.jailHouse = house.id; msg += ` ${seen.name.split(' ')[0]} caught them again: an hour in the stocks.`; }
-      else msg += ` ${seen.name.split(' ')[0]} caught them, and let them off with a loaf of bread.`;
-    } else if (v.foodThefts >= 2) this.addWanted?.(v, 'Food theft', true);
-    this.log(msg); this.story('crime', msg, seen ? [v, seen] : [v], 'apple');
+      else {
+        msg += ` ${seen.name.split(' ')[0]} caught them, and ${KIND[(v.id + v.foodThefts) % KIND.length]}.`;
+        // the same kind-hearted catcher, the same day: one entry that counts them up
+        const top = s.story?.[0], day = Math.floor(s.time / DAY);
+        if (top?.raidBy === seen.id && Math.floor(top.t / DAY) === day) {
+          top.raids = (top.raids || 1) + 1; top.t = s.time; top.n = s.storyN = (s.storyN || 0) + 1;
+          top.text = `Hungry neighbours kept raiding the fields and coops today. ${seen.name.split(' ')[0]} caught ${top.raids} of them, and sent each home with something to eat.`;
+          if (!top.faces.some(f => f.id === v.id) && top.faces.length < 6) top.faces.push({ id: v.id, name: v.name, skin: v.skin, hair: v.hair, shirt: v.shirt, hat: v.hat, hatColor: v.hatColor, race: v.race, horn: v.horn });
+          this.log(msg); this.emit('float', v.x, v.z, 'Munch', 'apple'); return;
+        }
+      }
+    } else if (v.foodThefts >= 2) this.addWanted?.(v, 'Stealing food', true);
+    this.log(msg);
+    const e = this.story('crime', msg, seen ? [v, seen] : [v], 'apple'); if (seen && e) e.raidBy = seen.id;
     this.emit('float', v.x, v.z, 'Munch', 'apple');
   },
   // ── wanted posters ──
@@ -236,23 +256,28 @@ const CRIME = {
     const c = this.s.crime, W = c.wanted;
     let p = W.find(o => o.vid === v.id && !o.caught);
     if (!p) {
-      if (W.filter(o => !o.caught).length >= 6) return null;
+      if (W.filter(o => !o.caught).length >= 6) { const old = [...W].reverse().find(o => !o.caught); W.splice(W.indexOf(old), 1); }
       p = { id: ++c.pid, vid: v.id, name: v.name, face: { id: v.id, name: v.name, skin: v.skin, hair: v.hair, shirt: v.shirt, hat: false, race: v.race, horn: v.horn },
         crimes: [], known: false, bounty: 0, since: this.s.time, sid: v.home, caught: false };
       W.unshift(p);
     }
     p.crimes.push(crime); p.since = this.s.time;
+    const m = /([0-9]+) coins/.exec(crime); if (m) p.loot = (p.loot || 0) + +m[1];
     if (known && !p.known) this.identify(p, null);
     return p;
   },
   identify(p, by) {
-    p.known = true;
+    p.known = true; p.knownAt = this.s.time;
+    const v0 = this.vById.get(p.vid);
+    if (v0 && this.bumpAffinity) for (const o of this.s.villagers.filter(o => o !== v0 && o.home === v0.home && o.age >= 14).slice(0, 5)) this.bumpAffinity(v0, o, -6);
     const v = this.vById.get(p.vid), msg = by ? `${by.name} worked out who it was: ${p.name} is wanted for ${p.crimes[0].toLowerCase()}.` : `A witness saw the culprit: ${p.name} is wanted for ${p.crimes[0].toLowerCase()}.`;
     this.log(msg); this.story('wanted', msg, by ? [v, by] : [v], 'alert');
   },
+  bountyCost(p) { return Math.min(300, Math.max(20, Math.round((p?.loot || 0) * 0.5))); },
   postBounty(p) {
-    if (!p || p.caught || p.bounty || this.s.res.coins < 20) return false;
-    this.s.res.coins -= 20; this.track('coins', -20); p.bounty = 20; this.emit('res');
+    const cost = this.bountyCost(p);
+    if (!p || p.caught || p.bounty || this.s.res.coins < cost) return false;
+    this.s.res.coins -= cost; this.track('coins', -cost); p.bounty = cost; this.emit('res');
     return true;
   },
   wantedSecond() {
@@ -269,6 +294,7 @@ const CRIME = {
         if (s.time - p.since > DAY * 3) { W.splice(W.indexOf(p), 1); this.log('The trail of the night thief went cold.'); }
         continue;
       }
+      if (s.time - (p.knownAt || p.since) > DAY * 4) { W.splice(W.indexOf(p), 1); this.log(`${p.name} made amends, and the poster came down.`); continue; }
       if (v.jail > s.time || v.quest || v.asleep || v.indoors) continue;
       const seen = watchers.find(o => Math.hypot(o.x - v.x, o.z - v.z) < 6);
       if (seen && this.rng() < 0.08 * k) {

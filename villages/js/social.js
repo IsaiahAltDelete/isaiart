@@ -107,7 +107,10 @@ export function installSocial(sim) {
       const fuse = [qa, qb].some(q => q === 'grumpy' || q === 'proud') || a.hungry || b.hungry;
       if (aff(a, b) <= -60 && fuse && stageOf(a) !== 'child' && stageOf(b) !== 'child' && sim.rng() < 0.2) { sim.scuffle?.(a, b); return; }
       if (sim.rng() < 0.35) {
-        const line = SQUABBLES[(sim.rng() * SQUABBLES.length) | 0], [x, y] = sim.rng() < 0.5 ? [a, b] : [b, a];
+        // a line the Story hasn't used lately
+        const recent = D.lines || (D.lines = []), fresh = SQUABBLES.map((_, i) => i).filter(i => !recent.includes(i));
+        const li = fresh[(sim.rng() * fresh.length) | 0]; recent.push(li); if (recent.length > 5) recent.shift();
+        const line = SQUABBLES[li], [x, y] = sim.rng() < 0.5 ? [a, b] : [b, a];
         tell('squabble', line.replace(/\{a\}/g, first(x)).replace(/\{b\}/g, first(y)), x, y, 'storm');
       }
       return;
