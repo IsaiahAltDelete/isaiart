@@ -17,6 +17,7 @@ import { RACES, GENDERS } from './society.js';
 import { CLASS_DUTY } from './classduties.js';
 import { eventsInit, eventsFrame, eventsBuildingHtml, eventsSettingsHtml, eventsClick } from './events.js';
 import { CLASSES, classOf, maxHp } from './rpg.js';
+import { lifeInit, wishVillagerHtml, petChip, petRowHtml, wishListHtml, rankQuestRow, chronicleHtml, lifeClick } from './lifeui.js';
 import { townInit, townHtml, townClick, townChange, townBuildingHtml, seedHtml, seedClick } from './townui.js';
 
 const $ = s => document.querySelector(s);
@@ -173,7 +174,7 @@ export class UI {
     this.initTips();
     this.initKeys();
     r7Init(this);
-    this.face = faceSvg; townInit(this); eventsInit(this);
+    this.face = faceSvg; townInit(this); eventsInit(this); lifeInit(this, sfx);
     boardsInit(this);
   }
   get sim() { return this.g.sim; }
@@ -214,7 +215,7 @@ export class UI {
       // open whichever page has something waiting
       const sim = this.sim, news = (sim.s.storyN || 0) > (sim.s.storySeen || 0);
       const fest = sim.festShop?.open() && sim.festShop.quests().some(q => q.done && !q.claimed), trophies = sim.achievements().some(x => x.done && !x.claimed);
-      this.openModal(fest ? 'festival' : trophies && !news ? 'stats' : 'story');
+      this.openModal(fest ? 'festival' : sim.s.chronNew ? 'chronicle' : trophies && !news ? 'stats' : 'story');
     };
     $('#btnStats').onclick = () => this.openModal('stats');
     $('#btnSettings').onclick = () => this.openModal('settings');
@@ -237,6 +238,7 @@ export class UI {
       const fc = e.target.closest('[data-fclaim]');
       if (fc && this.sim.festShop?.claim(fc.dataset.fclaim)) { this.toast('Festival tokens earned!', 'party'); this.drawQuests(); return; }
       if (e.target.closest('[data-fest]')) { this.openModal('festival'); return; }
+      if (e.target.closest('[data-rank]')) { this.openModal('town'); return; }
       if (e.target.closest('[data-fqtoggle]')) { this.fqOpen = !this.fqOpen; sfx.click(); this.drawQuests(); }
     });
     $('#speeds [data-s="0"]').innerHTML = svg('pause', 13);
@@ -411,7 +413,7 @@ export class UI {
       else if (k === 'l') toggle('buildings');
       else if (k === 'i') toggle('inventory');
       else if (k === 'm') toggle('worldmap');
-      else if (k === 'n') { if (['story', 'log', 'stats', 'festival'].includes(this.modal)) this.closeModal(); else $('#btnLog').click(); }
+      else if (k === 'n') { if (['story', 'chronicle', 'log', 'stats', 'festival'].includes(this.modal)) this.closeModal(); else $('#btnLog').click(); }
       else if (k === '?' || k === 'f1') { e.preventDefault(); toggle('settings'); }
       else if (k === 'g') this.tray === 'decor' ? this.closeTray() : this.openTray('decor');
       else if (k === 'h') this.g.goHome();
@@ -591,6 +593,7 @@ export class UI {
         <div class="row"><span class="t">${esc(q.title)}</span><span class="qmeta">${fmt(p)}/${fmt(q.n)}</span>${this.goFor(q) ? `<button class="go" data-go="${q.id}" aria-label="Show me" data-tip="Show me|Jump to where you can do this.">${svg('target', 16)}</button>` : ''}</div>
         <div class="qbar"><div class="bar"><i style="width:${p / q.n * 100}%"></i></div><div class="rw">${rw(q)}</div></div>
       </div>`).join('');
+    if (todo.length < room) html += rankQuestRow(this);
     if (!html) html = '<div class="quest">All quests complete — you\'re a master builder!</div>';
     if (html !== this.lastQuests) { this.lastQuests = html; morph($('#qlist'), html); }
     const ready = nReady;
@@ -898,6 +901,7 @@ export class UI {
       sim.quirkOf ? `<span class="vchip" data-tip="${esc(sim.quirkOf(v).name)}|${esc(sim.quirkOf(v).desc)}">${esc(sim.quirkOf(v).name)}</span>` : '',
       st !== 'child' ? `<span class="vchip" data-tip="${esc(cls.name)} · level ${v.lvl || 1}|${esc(cls.desc)} In the village: ${esc(CLASS_DUTY[classOf(v)] || '')}">${svg(cls.icon, 13)}${esc(cls.name)} ${v.lvl || 1}</span>` : '',
       st !== 'child' ? `<span class="vchip" data-tip="${esc(TIERS[tier].name)}|${esc(TIERS[tier].desc)}">${v.grade ? `<span class="grade g${v.grade}">${v.grade}</span>` : svg('cap', 13)}${esc(TIERS[tier].name)}</span>` : '',
+      petChip(this, v),
       home ? `<button class="vchip link" data-act="chainb" data-id="${home.id}" data-tip="Home|${esc(sim.homeName(home))}">${svg('house', 13)}${esc(sim.homeName(home))}</button>` : '',
     ].join('');
     const fed = v.hungry ? '<span style="color:#c0392b">Hungry!</span>' : Math.round(100 - v.hunger / 80 * 100) + '%';
@@ -912,9 +916,10 @@ export class UI {
       ${v.carry ? `<dt>Carrying</dt><dd>${v.carry.n} ${GOODS[v.carry.res].name.toLowerCase()}</dd>` : ''}
       ${work ? `<dt>Works at</dt><dd><a href="#" data-act="chainb" data-id="${work.id}" style="color:inherit">${esc(sim.homeName(work))} ›</a></dd>` : ''}</dl>
       ${st === 'adult' ? `<select data-act="job" data-id="${v.id}" style="width:100%;margin-top:8px" aria-label="Job">${this.workOptions(v)}</select>` : `<div class="desc" style="margin-top:6px">${st === 'child' ? 'Too young to work — plays, and studies if there is a school.' : 'Retired, enjoying the quiet life.'}</div>`}</div>
+      ${wishVillagerHtml(this, v)}
       ${this.fold('skills', 'Skills & health', 'heart', `${hp}/${mx} HP`, () => rpgVillagerHtml(this, v))}
       ${this.fold('edu', st === 'child' ? 'Schooling' : 'Education', 'cap', v.grade ? `Grade ${v.grade}` : TIERS[tier].name, () => eduVillagerHtml(this, v) + progressVillagerHtml(this, v))}
-      ${this.fold('friends', 'Friends & rivals', 'heart', `${sim.friendsOf?.(v).filter(f => f.hearts > 0).length || 0}${sim.rivalsOf?.(v).length ? ` · ${sim.rivalsOf(v).length} rival${sim.rivalsOf(v).length > 1 ? 's' : ''}` : ''}`, () => r7VillagerHtml(this, v))}
+      ${this.fold('friends', 'Friends & rivals', 'heart', `${sim.friendsOf?.(v).filter(f => f.hearts > 0).length || 0}${sim.rivalsOf?.(v).length ? ` · ${sim.rivalsOf(v).length} rival${sim.rivalsOf(v).length > 1 ? 's' : ''}` : ''}`, () => r7VillagerHtml(this, v) + petRowHtml(this, v))}
       <div class="actions"><button class="btn blue sm" data-act="follow">${svg('eye', 14)} ${this.g.followV === v ? 'Stop following' : 'Follow'}</button><button class="btn sm" data-act="vlist" data-tip="All villagers|Everyone in your villages, with jobs.|V">${svg('people', 14)} All villagers</button></div></div>`;
   }
   // a section that opens on tap (remembered while the game runs)
@@ -974,6 +979,7 @@ export class UI {
     if (act.startsWith('town-')) { townClick(this, act, a); this.drawInfo(true); return; }
     if (act.startsWith('ev-')) { eventsClick(this, act, a, sel?.b); this.drawInfo(true); return; }
     if (act.startsWith('r7-')) { if (r7Click(this, act, a)) this.drawInfo(true); return; }
+    if (act.startsWith('lv-')) { lifeClick(this, act, a); this.dirty.res = true; this.drawInfo(true); return; }
     if (act === 'close') { this.g.select(null); return; }
     if (act === 'fold') { (this.folds ||= new Set()).has(a.dataset.k) ? this.folds.delete(a.dataset.k) : this.folds.add(a.dataset.k); sfx.click(); this.drawInfo(true); return; }
     if (act === 'selv') { const v = sim.vById.get(+a.dataset.id); if (v) this.g.select({ kind: 'v', v }, true); return; }
@@ -1147,7 +1153,7 @@ export class UI {
     this.modal = kind;
     m.classList.remove('hidden', 'closing');
     if (!was) restart(m, 'opening');
-    m.querySelector('.box').classList.toggle('tall', ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'log', 'story', 'festival', 'settings', 'guild', 'town'].includes(kind));
+    m.querySelector('.box').classList.toggle('tall', ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'log', 'story', 'chronicle', 'festival', 'settings', 'guild', 'town'].includes(kind));
     this.drawModal(false, was);
     this.drawDock();
     this.hideTip(); this.hideResTip();
@@ -1171,11 +1177,11 @@ export class UI {
     const k = this.modal, sim = this.sim, s = sim.s;
     if (!k) return;
     const titles = { villagers: ['people', 'Villagers'], jobs: ['hammer','Jobs'], buildings: ['list', 'Buildings'], inventory: ['bag', 'Inventory'], worldmap: ['map', 'World'], shop: ['shop', 'Shop'],
-      settings: ['gear', 'Settings'], town: ['house', 'Town'], log: ['mail', 'Village News'], story: ['heart', 'Story'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
+      settings: ['gear', 'Settings'], town: ['house', 'Town'], log: ['mail', 'Village News'], story: ['heart', 'Story'], chronicle: ['scroll', 'Chronicle'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
     const seg = (label, tabs) => `<span class="seg" role="tablist" aria-label="${label}">` + tabs.map(([id, name]) => `<button data-act="mtab" data-m="${id}" class="${k === id ? 'on' : ''}" role="tab" aria-selected="${k === id}">${name}</button>`).join('') + '</span>';
-    const journal = ['story', 'log', 'stats', 'festival'].includes(k), boards = ['villagers', 'jobs', 'buildings'].includes(k);
+    const journal = ['story', 'chronicle', 'log', 'stats', 'festival'].includes(k), boards = ['villagers', 'jobs', 'buildings'].includes(k);
     const head = boards ? seg('Village boards', [['villagers', 'Villagers'], ['jobs', 'Jobs'], ['buildings', 'Buildings']])
-      : journal ? seg('Journal', [['story', 'Story'], ['log', 'News'], ['stats', 'Achievements'], ...(sim.festShop?.open() || k === 'festival' ? [['festival', 'Festival']] : [])])
+      : journal ? seg('Journal', [['story', 'Story'], ['chronicle', `Chronicle${s.chronNew ? ' •' : ''}`], ['log', 'News'], ['stats', 'Achievements'], ...(sim.festShop?.open() || k === 'festival' ? [['festival', 'Festival']] : [])])
       : esc(titles[k][1]);
     if (head !== this.lastHead) { this.lastHead = head; $('#mTitle').innerHTML = head; }
     $('#mIcon').innerHTML = boards || journal ? '' : svg(titles[k][0], 26);
@@ -1231,6 +1237,8 @@ export class UI {
         ${eventsSettingsHtml(this)}${seedHtml(this)}<div class="actions"><button class="btn red" data-act="reset">${svg('trash', 16)} Start a new village with this seed</button></div>`;
     } else if (k === 'story') {
       h += this.storyHtml();
+    } else if (k === 'chronicle') {
+      h += chronicleHtml(this);
     } else if (k === 'log') {
       h += s.log.map(l => `<div class="logline"><small>Day ${Math.floor(l.t / DAY) + 1}</small>${esc(l.msg)}</div>`).join('') || '<p>No news yet.</p>';
       this.seenLog = s.log.length; this.markLog();
@@ -1305,6 +1313,7 @@ export class UI {
     if (seedClick(this, act)) { this.drawModal(true); return; }
     if (act.startsWith('town-')) { townClick(this, act, a); if (this.modal) this.drawModal(true); return; }
     if (act.startsWith('ev-')) { eventsClick(this, act, a); if (this.modal) this.drawModal(true); return; }
+    if (act.startsWith('lv-')) { lifeClick(this, act, a); this.dirty.res = true; if (this.modal) this.drawModal(true); return; }
     if (act === 'job') return;                       // the dropdown itself; handled on change
     if (act.startsWith('rpg-')) { rpgModalClick(this, act, a); this.dirty.res = true; this.drawModal(true); return; }
     if (act.startsWith('r7-')) { r7Click(this, act, a); this.dirty.res = true; if (this.modal) this.drawModal(true); return; }
@@ -1442,9 +1451,10 @@ export class UI {
     if (this.storyOpenSeen == null) this.storyOpenSeen = s.storySeen || 0;
     const seen = this.storyOpenSeen;
     if (s.storySeen !== s.storyN) { s.storySeen = s.storyN || 0; this.markLog(); }
-    const KINDS = { family: ['love', 'baby', 'farewell', 'breakup'], friends: ['friends', 'rivals', 'squabble', 'makeup'], milestones: ['arrive', 'grow', 'study', 'leader', 'archmage'], trouble: ['crime', 'mischief'] };
+    const KINDS = { family: ['love', 'baby', 'farewell', 'breakup', 'wedding'], friends: ['friends', 'rivals', 'squabble', 'makeup'], wishes: ['wish', 'granted', 'pet'], milestones: ['arrive', 'grow', 'study', 'leader', 'archmage', 'rank', 'visitor'], trouble: ['crime', 'mischief'] };
     const shown = list.filter(e => f === 'all' || KINDS[f]?.includes(e.kind));
-    let h = `<div class="storybar">${[['all', 'Everything'], ['family', 'Love & family'], ['friends', 'Friends & rivals'], ['milestones', 'Milestones'], ['trouble', 'Mischief']].map(([k, t]) => `<button class="tog ${f === k ? 'on' : ''}" data-act="storyf" data-k="${k}">${t}</button>`).join('')}</div>`;
+    let h = `<div class="storybar">${[['all', 'Everything'], ['family', 'Love & family'], ['friends', 'Friends & rivals'], ['wishes', 'Wishes & pets'], ['milestones', 'Milestones'], ['trouble', 'Mischief']].map(([k, t]) => `<button class="tog ${f === k ? 'on' : ''}" data-act="storyf" data-k="${k}">${t}</button>`).join('')}</div>`;
+    if (f === 'all' || f === 'wishes') h += wishListHtml(this);
     if (!shown.length) return h + '<p class="sub" style="text-align:center;padding:20px">Nothing yet. Life in the village will be written here.</p>';
     let day = null;
     for (const e of shown.slice(0, 80)) {
@@ -1460,7 +1470,7 @@ export class UI {
     const sim = this.sim, news = Math.max(0, (sim.s.storyN || 0) - (sim.s.storySeen || 0));
     const trophies = sim.achievements().filter(x => x.done && !x.claimed).length;
     const fest = sim.festShop?.open() ? sim.festShop.quests().filter(q => q.done && !q.claimed).length : 0;
-    const n = news + trophies + fest, b = $('#logBadge'); if (!b) return;
+    const n = news + trophies + fest + (sim.s.chronNew || 0), b = $('#logBadge'); if (!b) return;
     b.classList.toggle('hidden', n <= 0); b.textContent = n > 9 ? '9+' : n;
     b.classList.toggle('gold', trophies + fest > 0);
   }

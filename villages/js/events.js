@@ -301,7 +301,7 @@ const EV = {
     if (dmg) { d.hp -= dmg * (d.horn > s.time ? 2 : 1); d.hitAt = s.time; }
     if (d.hp <= 0) {
       const gems = 8 + Math.floor(s.level / 2);
-      s.res.gems += gems; this.track('gems', gems); this.emit('res');
+      s.res.gems += gems; this.track('gems', gems); this.emit('res'); s.stats.dragonsRepelled = (s.stats.dragonsRepelled || 0) + 1;
       this.endEvent(e, `The village drove the dragon away! It dropped ${gems} gems from its hoard as it fled.`);
       this.emit('toast', `Driven off! The dragon fled and dropped ${gems} gems!`, 'trophy');
       return;
@@ -357,7 +357,7 @@ const EV = {
           break;
         }
       }
-      if (e.type === 'raiders' && e.data.struck && !this.isNight() && !s.beasts.some(b => b.sid === e.sid && b.state !== 'flee')) { this.endEvent(e, `The goblin raid on ${this.sname(e.sid)} is over.`); continue; }
+      if (e.type === 'raiders' && e.data.struck && !this.isNight() && !s.beasts.some(b => b.sid === e.sid && b.state !== 'flee')) { s.stats.raidsRepelled = (s.stats.raidsRepelled || 0) + 1; this.endEvent(e, `The goblin raid on ${this.sname(e.sid)} is over.`); continue; }
       if (e.type === 'spirits' && this.isNight()) s.happiness = Math.max(0, s.happiness - 0.3);
       if (e.type === 'dragon') { this.dragonSecond(e); if (!s.events.list.includes(e)) continue; }
       if (s.time >= e.until) {
@@ -377,6 +377,7 @@ export function eventsInit(ui) {
   document.body.appendChild(bar);
   bar.addEventListener('click', e => {
     const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act.startsWith('lv-')) { ui.lifeClick?.(a.dataset.act, a); return; }
     const sim = ui.sim, ev = sim.s.events.list.find(o => o.id === +a.dataset.id);
     if (a.dataset.act === 'ev-offer') { if (!sim.makeOffering(ev)) ui.toast('You need 5 honey or 5 cheese for the offering.', 'blossom'); }
     if (a.dataset.act === 'ev-bell') sim.ringBell(sim.bById.get(+a.dataset.bid));
@@ -386,12 +387,12 @@ export function eventsInit(ui) {
   const st = document.createElement('style');
   st.textContent = `#eventbar{position:fixed;left:50%;top:calc(92px + var(--sat));transform:translateX(-50%);z-index:15;display:flex;flex-direction:column;gap:5px;max-width:min(560px,calc(100vw - 24px))}
 #eventbar .evrow{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 7px;border-radius:13px;background:#fff6e6;border:2.5px solid #c9813a;box-shadow:var(--shadow);font-size:12.5px;color:var(--ink);animation:chipIn var(--t2) var(--ease)}
-#eventbar .evrow.fire{border-color:#d9604f;background:#fff0e8}#eventbar .evrow.dragon{border-color:#a8322a;background:#ffe9e0}#eventbar .evrow.spirits{border-color:#6a7ab0;background:#eef2ff}
+#eventbar .evrow.fire{border-color:#d9604f;background:#fff0e8}#eventbar .evrow.dragon{border-color:#a8322a;background:#ffe9e0}#eventbar .evrow.spirits{border-color:#6a7ab0;background:#eef2ff}#eventbar .evrow.visitor{border-color:#5c8a3a;background:#f2f9e6}#eventbar .evrow.wedding{border-color:#d07a9a;background:#fff0f5}
 #eventbar .evrow b{white-space:nowrap}#eventbar .evrow.more{padding:3px 10px;justify-content:center;border-width:1.5px;font-size:11.5px}#eventbar .evrow.more span{flex-basis:auto;order:0;color:var(--ink2)}#eventbar .evrow span{flex:1;min-width:0;color:var(--ink2);line-height:1.3}#eventbar .evrow .btn{flex:none}
 #eventbar .evbar{width:70px;height:8px;border-radius:4px;background:#eadcb6;overflow:hidden;flex:none}#eventbar .evbar.heat i{display:block;height:100%;background:linear-gradient(90deg,#ffb030,#e0482a)}#eventbar .evbar.hp i{display:block;height:100%;background:#a8322a}#eventbar .evlab{display:flex;align-items:center;gap:2px;font-size:11px;font-weight:700;color:#a8322a;flex:none}#eventbar .evrow span strong{color:var(--ink);font-weight:700}#eventbar .evrow em{color:#b0412c;font-style:normal;font-weight:700}
 @media(max-width:760px){#eventbar{top:auto;bottom:calc(84px + var(--sab, 0px));gap:4px;width:calc(100vw - 72px);left:12px;transform:none}#eventbar .evrow{flex-wrap:wrap;gap:4px 6px;padding:4px 7px;font-size:11.5px;border-width:2px}#eventbar .evrow>.icon,#eventbar .evrow>svg{width:18px;height:18px}
 #eventbar .evrow b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}#eventbar .evrow .btn{padding:2px 7px;font-size:11px;min-height:0}#eventbar .evbar{width:44px}#eventbar .evlab{display:none}
-#eventbar .evrow span{flex-basis:100%;order:5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}#eventbar .evrow:nth-child(n+3):not(.more){display:none}}
+#eventbar .evrow span{flex-basis:100%;order:5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}#eventbar .evrow:nth-child(n+3):not(.more){display:none}body.info-open #eventbar{display:none}}
 @media(min-width:761px){html body:has(#eventbar:not(.hidden)) #toasts{top:calc(96px + var(--evh, 40px) + var(--sat)) !important}}
 body.placing #eventbar{display:none}
 body:has(#eventbar:not(.hidden)) #toasts{top:calc(96px + var(--evh, 40px) + var(--sat))}`;
@@ -410,6 +411,7 @@ export function eventsFrame(ui) {
     if (e.type === 'dragon') continue;   // drawn first, above
     rows.push(`<div class="evrow ${e.type}" data-tip="${esc(d.name)}|${esc(d.help)}">${svg(d.icon, 22)}<b>${esc(d.name)}</b><span><strong>${esc(d.todo)}</strong> · ${left(sim, e)}</span>${e.type === 'fae' ? `<button class="btn gold sm" data-act="ev-offer" data-id="${e.id}" ${(s.res.honey || 0) >= 5 || (s.res.cheese || 0) >= 5 ? '' : 'disabled data-tip="No honey or cheese|You need 5 honey or 5 cheese in store."'}>Offer 5 honey or cheese</button>` : ''}</div>`);
   }
+  rows.push(...(ui.lifeRows?.() || []));   // visitors at the gate, weddings (lifeui.js)
   const cap = innerWidth <= 760 ? 2 : 3, more = rows.length > cap ? `<div class="evrow more"><span>+${rows.length - cap} more · see the Story page</span></div>` : '';
   const html = rows.slice(0, cap).join('') + more;
   if (bar.dataset.h !== html) { bar.dataset.h = html; bar.innerHTML = html; }

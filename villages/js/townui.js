@@ -1,6 +1,7 @@
 // The Town panel (government, taxes, policies, how the village is doing) and the
 // building/villager panel sections for homes, towers, the university and venues.
 // Actions are prefixed "town-"; all user-entered text is escaped.
+import { rankHtml } from './lifeui.js';
 import { svg } from './icons.js';
 import { JOBS, HOME_TYPES, LODGING_TYPES } from './data.js';
 import { GOVERNMENTS, POLICIES } from './government.js';
@@ -47,7 +48,7 @@ export function townInit(ui) {
 export function townHtml(ui) {
   if (ui.sim.s.crime) ui.sim.s.crime.seenPid = ui.sim.s.crime.pid;
   const sim = ui.sim, s = sim.s, g = s.gov, hall = sim.townHall(), info = sim.govInfo(), leader = sim.govLeader();
-  let h = '';
+  let h = rankHtml(ui);
   // government
   h += `<section class="town-section"><h3>${svg(info.icon, 18)} ${esc(info.name)}</h3>`;
   h += `<div class="leader">${leader && ui.face ? ui.face(leader, 40) : ''}<div><small>${esc(info.title)}</small><b>${leader ? linkV(leader) : 'nobody yet'}</b><small>${esc(info.desc)}</small></div></div>`;

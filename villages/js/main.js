@@ -5,6 +5,7 @@ import { BEASTS } from './data.js';
 import { View, bubbleTexture, timeUniform, iceUniform } from './view.js';
 import { loadModels, hasModel, instanceModel } from './blender.js';
 import { installEventVisuals } from './eventsview.js';
+import { installLifeVisuals } from './lifeview.js';
 import { Highlight } from './select.js';
 import { buildModel, scaffold, villagerModel, dressVillager, propModel, slotMaterial, VILLAGER_MATS, SNOWCAP_MAT, setTool, mat, C, pineGeo, stumpGeo, beastModel, chestModel, bunting } from './models.js';
 import { snowUniform } from './snow.js';
@@ -80,6 +81,7 @@ class Game {
     this.ui = new UI(this);
     this.extras = new Extras(this);                    // carts, ferry, bridges, chest arrows, share codes…
     this.eventsVis = installEventVisuals(this);         // fires, wisps, fever, quakes, the dragon (events.js)
+    this.lifeVis = installLifeVisuals(this);            // pets, visitors, wedding petals, the crest banner (lifeview.js)
     this.hookEvents();
     this.bindInput();
     setSound(this.settings.sound);
@@ -492,11 +494,11 @@ class Game {
     setTool(m, anim === 'fight' ? (v.gear?.w === 'sword' ? 'sword' : 'spear') : anim ? ANIM_TOOL[anim] ?? null : v.carry ? null : v.job === 'guard' && v.gear?.w ? v.gear.w : JOB_TOOL[v.job] ?? null);
     const talk = v.talk && v.talk.until > this.sim.s.time && !v.indoors && !v.asleep && this.talkShow?.has(v.id) ? v.talk.k : null;
     const now = this.sim.s.time, wanted = !(v.jail > now) && this.sim.wantedOf?.(v);
-    const mood = v.sick > now ? 'sick' : v.hungry ? 'apple' : wanted && !v.asleep ? 'alert' : v.chat && !talk ? 'heart' : v.asleep === 'fire' && (v.id % 3 === 0) ? 'zzz' : null;
+    const mood = v.sick > now ? 'sick' : v.hungry ? 'apple' : wanted && !v.asleep ? 'alert' : v.beamUntil > now ? 'smile' : v.wish && v.wish.until > now && !v.asleep && !v.indoors ? 'wish' : v.chat && !talk ? 'heart' : v.asleep === 'fire' && (v.id % 3 === 0) ? 'zzz' : null;
     if (mood !== m.mood) {
       m.mood = mood;
       if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false })); m.bubble.userData.px = 26; m.bubble.position.y = 1.0; m.group.add(m.bubble); this.screenSprites.add(m.bubble); }
-      if (m.bubble) { m.bubble.visible = !!mood; m.bubble.userData.px = mood === 'sick' || mood === 'alert' ? 36 : 26; if (mood) { m.bubble.material.map = bubbleTexture(mood); m.bubble.material.needsUpdate = true; } }
+      if (m.bubble) { m.bubble.visible = !!mood; m.bubble.userData.px = mood === 'sick' || mood === 'alert' ? 36 : mood === 'wish' ? 32 : 26; if (mood) { m.bubble.material.map = bubbleTexture(mood); m.bubble.material.needsUpdate = true; } }
     }
     if (m.bubble && mood) m.bubble.visible = !!m.bubble.material.map?.userData.ready;
     if (m.bubble?.visible) m.bubble.position.y = 0.95 + Math.sin(time * 3 + m.phase) * 0.03;
@@ -945,6 +947,8 @@ class Game {
       if (ui.tray) ui.refreshCards();
     });
     sim.on('log', () => ui.markLog());
+    sim.on('rank', R => { sfx.level(); ui.toast(`${sim.sname(sim.s.unlocked.meadow ? 'meadow' : Object.keys(sim.s.unlocked)[0])} is a ${R.name} now! +${R.gems} gems`, 'crest', true); this.lifeVis?.celebrate(); });
+    sim.on('chronicle', ch => { ui.toast(`The Chronicle of Year ${ch.year} is written. Read it in the Journal.`, 'scroll', true); ui.markLog(); });
     sim.on('sfx', name => sfx[name]?.());
     sim.on('merchant', st => { if (st === 'here') sfx.coin(); });
     sim.on('settlements', () => { this.makeLockMarkers(); this.life?.placeButterflies(); });
@@ -1611,6 +1615,7 @@ class Game {
     this.updateFestival(dt, t);
     this.updateBeasts(dt, t);
     this.eventsVis?.update(dt, t);
+    this.lifeVis?.update(dt, t);
     this.updateWard();
     this.drawBars();
     rpgFrame(this, dt);               // health bars, knocked-out poses (rpgview.js)
