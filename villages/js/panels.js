@@ -25,11 +25,6 @@ export const specChip = sid => { const sp = specOf(sid); return sp ? `<span clas
 // ── one-time setup: styles, the festival button ──
 export function r7Init(ui) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
-  const b = document.createElement('button');
-  b.className = 'round hidden'; b.id = 'btnFest'; b.setAttribute('aria-label', 'Festival quests and shop');
-  b.dataset.tip = 'Festival|Festival quests pay tokens; spend them on seasonal decorations at the festival shop.';
-  b.onclick = () => ui.openModal('festival');
-  const tr = document.getElementById('topright'); tr.insertBefore(b, document.getElementById('btnLog'));
   ui.r7share = { code: '', status: '', confirm: null, err: '' };
 }
 

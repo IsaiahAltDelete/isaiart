@@ -102,7 +102,7 @@ const usersOf = g => Object.keys(CHAIN).filter(t => (CHAIN[t].in || []).includes
 // build-tray categories; anything new that isn't listed lands in "Services"
 const CATS = {
   build: [
-    { id: 'all', name: 'All', icon: 'hammer' },
+    { id: 'all', name: 'All', icon: 'grid' },
     { id: 'homes', name: 'Homes', icon: 'house', types: ['cottage', 'tiled', 'rowhouse', 'hostel', 'manor', 'storehouse'] },
     { id: 'food', name: 'Food', icon: 'apple', types: ['forager', 'farm', 'dock', 'coop', 'orchard', 'windmill', 'bakery', 'beehive', 'dairy', 'creamery'] },
     { id: 'industry', name: 'Industry', icon: 'axe', types: ['clear', 'lumber', 'forester', 'quarry', 'sawmill', 'mason', 'pasture', 'weaver', 'brewery', 'forge', 'road', 'pave', 'tradepost'] },
@@ -111,7 +111,7 @@ const CATS = {
     { id: 'def', name: 'Defense', icon: 'shield', types: ['watchtower', 'watchhouse', 'torch', 'palisade'] },
   ],
   decor: [
-    { id: 'all', name: 'All', icon: 'flower' },
+    { id: 'all', name: 'All', icon: 'grid' },
     { id: 'garden', name: 'Garden', icon: 'flower', types: ['flowers', 'bench', 'lantern', 'hay', 'pumpkins', 'sign', 'well', 'memorial', 'statue'], rest: true },
     { id: 'paths', name: 'Paths & Fences', icon: 'stone', types: ['road', 'pave', 'fence', 'palisade', 'torch'] },
     { id: 'rare', name: 'Treasures', icon: 'gift', types: RARE },
@@ -148,14 +148,16 @@ function skyAt(f) {
 // a point on the dial's arc (quadratic curve 6,44 → 50,-18 → 94,44 in a 100×50 box), as percentages
 const arcAt = t => { const u = 1 - t; return [u * u * 6 + 2 * u * t * 50 + t * t * 94, (u * u * 44 + 2 * u * t * -18 + t * t * 44) * 2]; };
 
+// which main-bar button each page belongs to
+const DOCK_OF = { villagers: 'people', jobs: 'people', buildings: 'people', town: 'town', inventory: 'town', story: 'journal', chronicle: 'journal', log: 'journal', stats: 'journal', festival: 'journal', worldmap: 'world', trade: 'world', guild: 'world' };
 // static tooltips for the HUD: "Title|Body|Key"
 const HUD_TIPS = {
-  '#btnHome': 'Home|Fly back to your village.|H', '#btnChest': 'Gift chest|A gift chest is waiting in the woods. Tap to fly to it.',
-  '#btnLog': 'Journal|Village news, achievements and festival quests.|N', '#btnStats': 'Achievements|Goals, gem rewards and village records.',
-  '#btnMagic': 'Spell book|Cast the spells your wizards have learned.', '#btnSettings': 'Settings & help|Sound, music, graphics and how to play.|?',
-  '#world': 'World map|See the whole forest and settle new clearings.|M', '#shop': 'Shop|Trade gems for supplies.',
-  '#dockbar [data-tab=build]': 'Build|Homes, workplaces, farms and defenses.|B', '#dockbar [data-tab=decor]': 'Decorate|Flowers, paths, fences and treasures. Happier villagers work faster.|G',
-  '#dockbar [data-tab=villagers]': 'Villagers & buildings|Give people jobs and manage every building.|V', '#dockbar [data-tab=inventory]': 'Inventory|Everything in storage, with quick sales.|I',
+  '#btnHome': 'Home|Fly back to your village.|H', '#btnShop': 'Shop|Trade gems for supplies.', '#btnSettings': 'Settings & help|Sound, music, graphics and how to play.|?',
+  '#dockbar [data-tab=build]': 'Build|Homes, workplaces and farms, and decorations (G) in the same tray.|B',
+  '#dockbar [data-tab=people]': 'People|Everyone in your villages, their jobs, and every building.|V',
+  '#dockbar [data-tab=town]': 'Town|Your rank and its goals, government, treasury, safety and wanted posters, and the stores (I).|T',
+  '#dockbar [data-tab=journal]': 'Journal|The Story, the yearly Chronicle, news, achievements and festival quests.|N',
+  '#dockbar [data-tab=world]': 'World|The map: settle new clearings, see your regions, and trade between them.|M',
   '#profile': '@xp', '#follow': 'Stop following|The camera is following a villager. Tap to stop, or drag the view.',
   '#alert': 'Needs attention|The most urgent problem in your village. Tap to fix it.',
 };
@@ -199,25 +201,20 @@ export class UI {
     // persistent problems are not toasts: beasts / beds sit in the top bar as a status chip
     // (desktop) or above the dock (phone); food and storage problems are badges on their counters
     $('#res').appendChild($('#alert'));
-    $('#btnLog').innerHTML = svg('mail', 22) + '<span class="badge hidden" id="logBadge">0</span>';
-    $('#btnStats').innerHTML = svg('trophy', 22) + '<span class="badge hidden" id="trophyBadge">0</span>';
     $('#btnSettings').innerHTML = svg('gear', 22);
     $('#btnHome').innerHTML = svg('home', 24);
     $('#btnHome').onclick = () => g.goHome();
-    $('#btnChest').onclick = () => this.flyToChest();
+    $('#btnShop').innerHTML = svg('shop', 22);
+    $('#btnShop').onclick = () => this.modal === 'shop' ? this.closeModal() : this.openModal('shop');
+    $('#nowbar').addEventListener('click', e => {
+      const c = e.target.closest('[data-now]'); if (!c) return;
+      if (c.dataset.now === 'chest') this.flyToChest();
+      else this.modal === c.dataset.now ? this.closeModal() : this.openModal(c.dataset.now);
+    });
     $('#follow').onclick = () => g.follow(null);
     $('#info').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { const b = $('#info [data-act=renameok]'); if (b) b.click(); } });
-    $('#btnMagic').innerHTML = svg('staff', 22);
-    $('#btnMagic').onclick = () => this.openModal('magic');
     // on smaller screens the clock folds to a slim pill; tap the sky for the forecast
     $('#sky').addEventListener('click', () => { $('#speed').classList.toggle('open'); sfx.click(); });
-    $('#btnLog').onclick = () => {
-      // open whichever page has something waiting
-      const sim = this.sim, news = (sim.s.storyN || 0) > (sim.s.storySeen || 0);
-      const fest = sim.festShop?.open() && sim.festShop.quests().some(q => q.done && !q.claimed), trophies = sim.achievements().some(x => x.done && !x.claimed);
-      this.openModal(fest ? 'festival' : sim.s.chronNew ? 'chronicle' : trophies && !news ? 'stats' : 'story');
-    };
-    $('#btnStats').onclick = () => this.openModal('stats');
     $('#btnSettings').onclick = () => this.openModal('settings');
     $('#profile').onclick = () => this.openModal('profile');
     $('#qhead').innerHTML = svg('star', 18) + 'Quests';
@@ -243,33 +240,20 @@ export class UI {
     });
     $('#speeds [data-s="0"]').innerHTML = svg('pause', 13);
     $('#speeds').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { g.setSpeed(+b.dataset.s); sfx.click(); } });
-    const sideIcons = { quests: 'star', villagers: 'people', worldmap: 'map', inventory: 'bag' };
-    document.querySelectorAll('#side [data-open]').forEach(b => {
-      b.innerHTML = svg(sideIcons[b.dataset.open], 24);
-      b.onclick = () => {
-        if (b.dataset.open === 'quests') { $('#quests').classList.toggle('collapsed'); sfx.click(); }
-        else this.openModal(b.dataset.open);
-      };
-    });
-    $('#world').innerHTML = svg('map', 32) + 'World<span class="kbd">M</span>';
-    $('#shop').innerHTML = svg('shop', 32) + 'Shop';
-    $('#world').onclick = () => this.openModal('worldmap');
-    $('#shop').onclick = () => this.openModal('shop');
-    const tabs = { build: ['hammer', 'Build', 'B'], decor: ['flower', 'Decorate', 'G'], villagers: ['people', 'Villagers', 'V'], inventory: ['bag', 'Inventory', 'I'] };
+    // the main bar: five places, each opening its group of pages (tabs along the top of the window)
+    const tabs = { build: ['hammer', 'Build', 'B'], people: ['people', 'People', 'V'], town: ['crest', 'Town', 'T'], journal: ['book', 'Journal', 'N'], world: ['map', 'World', 'M'] };
     document.querySelectorAll('#dockbar [data-tab]').forEach(b => {
       const [ic, label, key] = tabs[b.dataset.tab];
-      b.innerHTML = svg(ic, 26) + label + `<span class="kbd">${key}</span>`;
-      b.onclick = () => {
-        const t = b.dataset.tab;
-        if (t === 'build' || t === 'decor') this.openTray(t);
-        else if (this.modal === t || (t === 'villagers' && this.modal === 'buildings')) this.closeModal();
-        else this.openModal(t);
-      };
+      b.innerHTML = svg(ic, 26) + label + `<span class="kbd">${key}</span><span class="badge hidden"></span><span class="dot hidden"></span>`;
+      b.dataset.label = label; b.setAttribute('aria-label', label);
+      b.onclick = () => this.dockGo(b.dataset.tab);
     });
     for (const [sel, tip] of Object.entries(HUD_TIPS)) { const el = $(sel); if (el) el.dataset.tip = tip; }
     $('#trayBack').innerHTML = svg('back', 18) + 'Back';
     $('#trayBack').onclick = () => { this.closeTray(); g.cancelPlace(); sfx.click(); };
     $('#trayTabs').addEventListener('click', e => {
+      const kb = e.target.closest('[data-kind]');
+      if (kb) { if (kb.dataset.kind !== this.tray) { this.openTray(kb.dataset.kind); sfx.click(); } return; }
       const b = e.target.closest('[data-cat]'); if (!b || b.dataset.cat === this.trayCat) return;
       this.setTrayCat(b.dataset.cat); sfx.click();
     });
@@ -282,6 +266,17 @@ export class UI {
       g.startPlace(type);
       this.markCard(type);
     });
+    // edge arrows for the two scrolling rows
+    for (const row of ['tabs', 'cards']) for (const side of ['l', 'r']) {
+      const a = document.createElement('button'); a.className = 'trayarrow hidden'; a.dataset.row = row; a.dataset.side = side;
+      a.setAttribute('aria-label', side === 'l' ? 'Scroll left' : 'Scroll right'); a.innerHTML = svg(side === 'l' ? 'back' : 'next', 14);
+      if (row === 'tabs') { a.style.width = a.style.height = '24px'; }
+      a.onclick = () => { const el = row === 'tabs' ? $('#trayTabs') : $('#cards'); el.scrollBy({ left: (side === 'l' ? -1 : 1) * el.clientWidth * 0.7, behavior: 'smooth' }); };
+      $('#tray .traymain').appendChild(a);
+    }
+    $('#trayTabs').addEventListener('scroll', () => this.trayEdges(), { passive: true });
+    $('#cards').addEventListener('scroll', () => this.trayEdges(), { passive: true });
+    addEventListener('resize', () => { if (this.tray) this.trayEdges(); });
     $('#cards').addEventListener('wheel', e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { $('#cards').scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
     $('#pCancel').innerHTML = svg('close', 22); $('#pRot').innerHTML = svg('rotate', 22); $('#pOk').innerHTML = svg('check', 22);
     $('#pCancel').dataset.tip = 'Cancel|Stop placing.|Esc'; $('#pRot').dataset.tip = 'Rotate|Turn the building.|R';
@@ -409,11 +404,12 @@ export class UI {
       if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, select, textarea')) return;
       const k = e.key.toLowerCase(), toggle = m => this.modal === m ? this.closeModal() : this.openModal(m);
       if (k === 'escape') { this.hideTip(); this.hideResTip(); return; }
-      if (k === 'v') toggle('villagers');
+      if (k === 'v') this.dockGo('people');
       else if (k === 'l') toggle('buildings');
       else if (k === 'i') toggle('inventory');
-      else if (k === 'm') toggle('worldmap');
-      else if (k === 'n') { if (['story', 'chronicle', 'log', 'stats', 'festival'].includes(this.modal)) this.closeModal(); else $('#btnLog').click(); }
+      else if (k === 't') this.dockGo('town');
+      else if (k === 'm') this.dockGo('world');
+      else if (k === 'n') this.dockGo('journal');
       else if (k === '?' || k === 'f1') { e.preventDefault(); toggle('settings'); }
       else if (k === 'g') this.tray === 'decor' ? this.closeTray() : this.openTray('decor');
       else if (k === 'h') this.g.goHome();
@@ -437,9 +433,7 @@ export class UI {
       this.drawAlert();
       this.drawCoach();
       this.drawForecast();
-      $('#btnMagic').classList.toggle('hidden', !this.sim.s.buildings.some(b => b.type === 'wizard' && b.built));
-      const nch = this.sim.s.chests?.length || 0, cb = $('#btnChest');
-      if (cb.dataset.n !== String(nch)) { cb.dataset.n = nch; cb.classList.toggle('hidden', !nch); cb.innerHTML = svg('gift', 24) + (nch > 1 ? `<span class="badge">${nch}</span>` : ''); }
+      this.drawNow();
       this.markLog();
       const ae = document.activeElement;
       if (this.modal && ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'worldmap', 'merchant', 'magic', 'guild', 'town', 'story', ...R7_LIVE].includes(this.modal) && !($('#modal').contains(ae) && /SELECT|INPUT/.test(ae.tagName))) this.drawModal(true);
@@ -866,7 +860,7 @@ export class UI {
       h += `<div class="ip-sec upgrade"><div class="cap">${svg('arrowup', 14)} Upgrade to Lv ${lvl + 1}<span class="r costline">${costHtml(cost, s.res)}</span></div><dl class="uppv">${pv}</dl>
         <button class="btn gold sm" style="width:100%" data-act="upgrade" ${can.ok ? '' : 'disabled'}>${svg('star', 14)} ${can.ok ? 'Upgrade' : esc(can.why || 'Upgrade')}</button></div>`;
     }
-    if (b.type !== 'campfire') h += `<div class="actions"><button class="btn blue sm" data-act="move">${svg('rotate', 14)} Move</button><button class="btn red sm" data-act="demolish">${svg('trash', 14)} Demolish</button></div>`;
+    if (b.type !== 'campfire') h += `<div class="actions"><button class="btn ghost sm" data-act="move">${svg('rotate', 14)} Move</button><button class="btn red sm" data-act="demolish">${svg('trash', 14)} Demolish</button></div>`;
     return h + '</div>';
   }
   // inputs → this building → outputs, with what it really made and used in the last minute,
@@ -911,16 +905,16 @@ export class UI {
         : `<h3>${esc(v.name)}<button class="pen" data-act="rename" aria-label="Rename" data-tip="Rename">${svg('pencil', 14)}</button></h3>`}
       <div class="sub">${esc(sname)} · ${JOBS[v.job].name} · age ${Math.floor(v.age ?? 30)}</div></div></div>
       <div class="vchips">${chips}</div>
+      ${wishVillagerHtml(this, v)}
       <div class="ip-sec"><div class="statusline ${v.hungry ? 'bad' : v.asleep ? 'off' : 'ok'}"><span class="dot"></span><span>${esc(this.doingOf(v))}</span></div>
       <dl class="kv" style="margin:6px 0 0">${this.family(v)}<dt>Fed</dt><dd>${fed}</dd>
       ${v.carry ? `<dt>Carrying</dt><dd>${v.carry.n} ${GOODS[v.carry.res].name.toLowerCase()}</dd>` : ''}
       ${work ? `<dt>Works at</dt><dd><a href="#" data-act="chainb" data-id="${work.id}" style="color:inherit">${esc(sim.homeName(work))} ›</a></dd>` : ''}</dl>
       ${st === 'adult' ? `<select data-act="job" data-id="${v.id}" style="width:100%;margin-top:8px" aria-label="Job">${this.workOptions(v)}</select>` : `<div class="desc" style="margin-top:6px">${st === 'child' ? 'Too young to work — plays, and studies if there is a school.' : 'Retired, enjoying the quiet life.'}</div>`}</div>
-      ${wishVillagerHtml(this, v)}
       ${this.fold('skills', 'Skills & health', 'heart', `${hp}/${mx} HP`, () => rpgVillagerHtml(this, v))}
       ${this.fold('edu', st === 'child' ? 'Schooling' : 'Education', 'cap', v.grade ? `Grade ${v.grade}` : TIERS[tier].name, () => eduVillagerHtml(this, v) + progressVillagerHtml(this, v))}
       ${this.fold('friends', 'Friends & rivals', 'heart', `${sim.friendsOf?.(v).filter(f => f.hearts > 0).length || 0}${sim.rivalsOf?.(v).length ? ` · ${sim.rivalsOf(v).length} rival${sim.rivalsOf(v).length > 1 ? 's' : ''}` : ''}`, () => r7VillagerHtml(this, v) + petRowHtml(this, v))}
-      <div class="actions"><button class="btn blue sm" data-act="follow">${svg('eye', 14)} ${this.g.followV === v ? 'Stop following' : 'Follow'}</button><button class="btn sm" data-act="vlist" data-tip="All villagers|Everyone in your villages, with jobs.|V">${svg('people', 14)} All villagers</button></div></div>`;
+      <div class="actions"><button class="btn ghost sm" data-act="follow">${svg('eye', 14)} ${this.g.followV === v ? 'Stop following' : 'Follow'}</button><button class="btn ghost sm" data-act="vlist" data-tip="People|Everyone in your villages, with jobs.|V">${svg('people', 14)} All villagers</button></div></div>`;
   }
   // a section that opens on tap (remembered while the game runs)
   fold(key, title, icon, hint, body) {
@@ -1029,17 +1023,17 @@ export class UI {
   isLocked(t) { const s = this.sim.s, d = defOf(t); return !d ? false : d.rare ? !(s.tokens?.[t] > 0) : d.lvl > s.level; }
   openTray(kind, cat) {
     if (this.modal) this.closeModal();
-    const t = $('#tray'), was = this.tray === kind;
+    const t = $('#tray'), was = this.tray === kind, open = !!this.tray;
     clearTimeout(this.trayT);
     this.tray = kind;
     t.classList.remove('hidden', 'out');
-    if (!was) restart(t, 'in');
+    if (!open) restart(t, 'in');
     $('#dockbar').classList.add('hidden');
     this.trayCat = cat || (was ? this.trayCat : this.catMem[kind]) || 'all';
     if (!CATS[kind].some(c => c.id === this.trayCat)) this.trayCat = 'all';
     this.drawTrayTabs();
     this.drawCards(!was);
-    if (!was) sfx.open();
+    if (!open) sfx.open();
   }
   setTrayCat(id) {
     this.trayCat = this.catMem[this.tray] = id;
@@ -1048,18 +1042,38 @@ export class UI {
   }
   drawTrayTabs() {
     const kind = this.tray;
-    $('#trayTabs').innerHTML = CATS[kind].map(c => {
+    $('#trayTabs').innerHTML = `<span class="kindseg" role="tablist" aria-label="Build or decorate">${[['build', 'hammer', 'Build'], ['decor', 'flower', 'Decorate']].map(([k, ic, t]) => `<button data-kind="${k}" class="${k === kind ? 'on' : ''}" role="tab" aria-selected="${k === kind}" data-tip="${t}|${k === 'build' ? 'Homes, workplaces, farms and defenses.|B' : 'Flowers, paths, fences and treasures. Happier villagers work faster.|G'}">${svg(ic, 16)}${t}</button>`).join('')}</span>` + CATS[kind].map(c => {
       const types = this.catTypes(kind, c), open = types.filter(t => !this.isLocked(t)).length;
-      return `<button role="tab" aria-selected="${c.id === this.trayCat}" class="${c.id === this.trayCat ? 'on' : ''}" data-cat="${c.id}" data-tip="${esc(c.name)}|${open} of ${types.length} available${finePointer() ? ' · [ and ] switch tabs' : ''}">${svg(c.icon, 18)}${esc(c.name)}<span class="n">${open}</span></button>${c.id === 'all' ? '<span class="sep"></span>' : ''}`;
+      const nnew = types.filter(t => this.freshCard(t)).length;
+      return `<button role="tab" aria-selected="${c.id === this.trayCat}" class="${c.id === this.trayCat ? 'on' : ''}" data-cat="${c.id}" data-tip="${esc(c.name)}|${open} of ${types.length} available${nnew ? ` · ${nnew} new` : ''}${finePointer() ? ' · [ and ] switch tabs' : ''}">${svg(c.icon, 18)}<span class="lb">${esc(c.name)}</span><span class="n">${open}</span>${nnew ? '<i class="tdot"></i>' : ''}</button>${c.id === 'all' ? '<span class="sep"></span>' : ''}`;
     }).join('');
     const on = $('#trayTabs .on'), tt = $('#trayTabs');
     if (on && (on.offsetLeft < tt.scrollLeft || on.offsetLeft + on.offsetWidth > tt.scrollLeft + tt.clientWidth)) tt.scrollLeft = on.offsetLeft - 30;
+    requestAnimationFrame(() => this.trayEdges());
+  }
+  // a building that has just unlocked and hasn't been seen in the tray yet
+  freshCard(t) {
+    const d = defOf(t), s = this.sim.s;
+    return this.tray === 'build' && !!d && !d.rare && !this.isLocked(t) && d.lvl > 1 && !(s.seenCards || []).includes(t) && !s.buildings.some(o => o.type === t);
+  }
+  // rows that scroll sideways fade at the edge and get an arrow, so the rest is discoverable
+  trayEdges() {
+    for (const [el, key] of [[$('#trayTabs'), 'tabs'], [$('#cards'), 'cards']]) {
+      const l = el.scrollLeft > 4, r = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+      el.classList.toggle('more-l', l); el.classList.toggle('more-r', r);
+      for (const [side, on] of [['l', l], ['r', r]]) {
+        const a = $(`.trayarrow[data-row="${key}"][data-side="${side}"]`); if (!a) continue;
+        a.classList.toggle('hidden', !on);
+        a.style.top = el.offsetTop + el.offsetHeight / 2 - 15 + 'px';
+        a.style[side === 'l' ? 'left' : 'right'] = side === 'l' ? el.offsetLeft - 6 + 'px' : '-6px';
+      }
+    }
   }
   drawCards(anim) {
     const kind = this.tray, cat = CATS[kind].find(c => c.id === this.trayCat);
     // available first (in the usual order), then locked by unlock level
     const types = this.catTypes(kind, cat).map((t, i) => ({ t, i, lk: this.isLocked(t), lvl: defOf(t)?.lvl || 0 }))
-      .sort((a, b) => a.lk - b.lk || (a.lk ? a.lvl - b.lvl : 0) || a.i - b.i).map(o => o.t);
+      .map(o => ({ ...o, nw: this.freshCard(o.t) })).sort((a, b) => a.lk - b.lk || b.nw - a.nw || (a.lk ? a.lvl - b.lvl : 0) || a.i - b.i).map(o => o.t);
     $('#cards').innerHTML = types.map((t, i) => {
       const a = anim ? ` in" style="--i:${Math.min(i, 14)}` : '';
       if (t === 'clear') return `<button class="card${a}" data-type="clear" data-tip="@card"><img alt="" src="${this.g.thumbs.clear}"><div class="nm">Clear Trees</div><div class="cost"><span class="txt">tap trees</span></div></button>`;
@@ -1170,8 +1184,46 @@ export class UI {
     this.drawDock(); this.hideTip();
   }
   drawDock() {
-    const on = { villagers: 'villagers', jobs: 'villagers', buildings: 'villagers', inventory: 'inventory' }[this.modal];
-    document.querySelectorAll('#dockbar [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === on));
+    const on = DOCK_OF[this.modal];
+    document.querySelectorAll('#dockbar [data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === on); b.setAttribute('aria-pressed', b.dataset.tab === on); });
+  }
+  // a main-bar button: open its group (on the page with something waiting), or close it if it's open
+  dockGo(tab) {
+    if (tab === 'build') { this.tray ? this.closeTray() : this.openTray('build'); return; }
+    if (DOCK_OF[this.modal] === tab) { this.closeModal(); return; }
+    const sim = this.sim;
+    if (tab === 'people') this.openModal('villagers');
+    else if (tab === 'town') this.openModal('town');
+    else if (tab === 'world') this.openModal('worldmap');
+    else if (tab === 'journal') {
+      const news = (sim.s.storyN || 0) > (sim.s.storySeen || 0);
+      const fest = sim.festShop?.open() && sim.festShop.quests().some(q => q.done && !q.claimed), trophies = sim.achievements().some(x => x.done && !x.claimed);
+      this.openModal(fest ? 'festival' : sim.s.chronNew ? 'chronicle' : trophies && !news ? 'stats' : 'story');
+    }
+  }
+  // things that come and go, as labelled chips: a gift chest, the festival, the spell book
+  drawNow() {
+    const s = this.sim.s, fs = this.sim.festShop, chips = [];
+    const nch = s.chests?.length || 0;
+    if (nch) chips.push(['chest', 'gift', 'gift', nch > 1 ? `${nch} gift chests` : 'Gift chest', 'Gift chest|A gift chest is waiting in the woods. Tap to fly to it.', 0]);
+    if (fs?.open()) chips.push(['festival', 'fest', 'party', fs.current()?.name || 'Festival', 'Festival|Festival quests pay tokens; spend them on seasonal decorations at the festival shop.', 0]);
+    if (s.buildings.some(b => b.type === 'wizard' && b.built)) chips.push(['magic', 'magic', 'staff', 'Spells', 'Spell book|Cast the spells your wizards have learned.', 0]);
+    const html = chips.map(([k, cls, ic, label, tip, n]) => `<button class="nowchip ${cls}" data-now="${k}" data-tip="${esc(tip)}" aria-label="${esc(label)}">${svg(ic, 22)}<span class="l">${esc(label)}</span>${n ? `<span class="badge">${n}</span>` : ''}</button>`).join('');
+    const bar = $('#nowbar'); if (bar.dataset.h !== html) { bar.dataset.h = html; bar.innerHTML = html; }
+    // a count on Build for buildings that have just unlocked
+    const fresh = BUILD_ORDER.filter(t => { const d = defOf(t); return d && !d.rare && d.lvl > 1 && !this.isLocked(t) && !(s.seenCards || []).includes(t) && !s.buildings.some(o => o.type === t); }).length;
+    this.dockBadge('build', 0, '', { dot: fresh > 0 });
+    $('#dockbar [data-tab=build]').dataset.tip = `Build|Homes, workplaces and farms, and decorations (G) in the same tray.${fresh ? ` ${fresh} new building${fresh > 1 ? 's' : ''} to look at.` : ''}|B`;
+  }
+  // a number (or just a dot) on a main-bar button
+  dockBadge(tab, n, label, { bad = false, dot = false } = {}) {
+    const b = $(`#dockbar [data-tab=${tab}]`); if (!b) return;
+    const bd = b.querySelector('.badge'), dt = b.querySelector('.dot'), key = `${n}|${bad}|${dot}`;
+    if (b.dataset.bk === key) return; b.dataset.bk = key;
+    bd.classList.toggle('hidden', !(n > 0)); bd.textContent = n > 9 ? '9+' : n; bd.classList.toggle('bad', bad);
+    if (n > 0) restart(bd, 'pop');
+    dt.classList.toggle('hidden', !(dot && !(n > 0)));
+    b.setAttribute('aria-label', b.dataset.label + (n > 0 ? ` (${n} ${label})` : dot ? ' (something new)' : ''));
   }
   drawModal(refresh, swap) {
     const k = this.modal, sim = this.sim, s = sim.s;
@@ -1180,11 +1232,18 @@ export class UI {
       settings: ['gear', 'Settings'], town: ['house', 'Town'], log: ['mail', 'Village News'], story: ['heart', 'Story'], chronicle: ['scroll', 'Chronicle'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
     const seg = (label, tabs) => `<span class="seg" role="tablist" aria-label="${label}">` + tabs.map(([id, name]) => `<button data-act="mtab" data-m="${id}" class="${k === id ? 'on' : ''}" role="tab" aria-selected="${k === id}">${name}</button>`).join('') + '</span>';
     const journal = ['story', 'chronicle', 'log', 'stats', 'festival'].includes(k), boards = ['villagers', 'jobs', 'buildings'].includes(k);
-    const head = boards ? seg('Village boards', [['villagers', 'Villagers'], ['jobs', 'Jobs'], ['buildings', 'Buildings']])
-      : journal ? seg('Journal', [['story', 'Story'], ['chronicle', `Chronicle${s.chronNew ? ' •' : ''}`], ['log', 'News'], ['stats', 'Achievements'], ...(sim.festShop?.open() || k === 'festival' ? [['festival', 'Festival']] : [])])
+    const townG = ['town', 'inventory'].includes(k), worldG = ['worldmap', 'trade'].includes(k);
+    const head = boards ? seg('People', [['villagers', 'Villagers'], ['jobs', 'Jobs'], ['buildings', 'Buildings']])
+      : townG ? seg('Town', [['town', 'Town'], ['inventory', 'Stores']])
+      : worldG && (Object.keys(s.unlocked).length > 1 || k === 'trade') ? seg('World', [['worldmap', 'Map'], ['trade', 'Trade']])
+      : journal ? (() => {
+        const tn = n => n > 0 ? `<span class="tn">${n > 9 ? '9+' : n}</span>` : '', unread = k !== 'story' && (s.storyN || 0) > (s.storySeen || 0);
+        const trophies = sim.achievements().filter(x => x.done && !x.claimed).length;
+        return seg('Journal', [['story', `Story${unread ? '<i class="tdot"></i>' : ''}`], ['chronicle', `Chronicle${tn(s.chronNew)}`], ['log', 'News'], ['stats', `Achievements${tn(trophies)}`], ...(sim.festShop?.open() || k === 'festival' ? [['festival', 'Festival']] : [])]);
+      })()
       : esc(titles[k][1]);
     if (head !== this.lastHead) { this.lastHead = head; $('#mTitle').innerHTML = head; }
-    $('#mIcon').innerHTML = boards || journal ? '' : svg(titles[k][0], 26);
+    $('#mIcon').innerHTML = boards || journal || townG || (worldG && head.startsWith('<span class="seg')) ? '' : svg(titles[k][0], 26);
     let h = '';
     if (k === 'villagers') h = this.villagersHtml();
     else if(k === 'jobs') h = jobsBoardHtml(this);
@@ -1226,13 +1285,13 @@ export class UI {
         <button class="btn blue" data-act="quality">Graphics: ${{ high: 'High', medium: 'Medium', low: 'Low' }[st.quality] || 'High'}</button>
         <button class="btn gold" data-act="savenow">Save now</button>
         <button class="btn blue" data-act="r7-share" data-tip="Share code|Turn your village into a line of text to send to a friend, or load someone else's.">${svg('star', 18)} Share / load a village</button></div>
-        <div class="help"><p><b>How to play.</b> Build a Lumber Hut and a Forager Hut first so you have wood and food. Idle villagers automatically build construction sites. Tap a building to add or remove workers, or use the Villagers tab to give anyone a job.</p>
+        <div class="help"><p><b>How to play.</b> Build a Lumber Hut and a Forager Hut first so you have wood and food. Idle villagers automatically build construction sites. Tap a building to add or remove workers, or open <b>People</b> to give anyone a job.</p>
         <p><b>Seasons.</b> Each season lasts three days. Spring blossom, summer sun, autumn apples, then snow — fields and berry bushes grow slowly in winter, so stock up. On the second day of every season the village holds a festival at dusk: everyone dances round the campfire, and it lifts their spirits for a whole day.</p>
         <p><b>Weather.</b> The clock shows a three-day forecast. Rain makes crops grow faster. Storms (and winter blizzards) send everyone indoors for a while, so outdoor work and building pause — workshops keep going. You'll get a warning before one arrives.</p>
         <p><b>Gift chests</b> appear in the woods now and then — tap one to open it. Tap the campfire to rename your village, and the pencil next to anyone's name to rename them. Double-tap a villager to follow them around; the house button brings you home.</p>
         <p>Cottages bring new villagers, as long as there is food and folks are happy. Decorations raise happiness, which makes everyone work faster. Level up to unlock new buildings, then settle more clearings from the World map.</p>
         <p><b>Controls.</b> Drag to move · scroll or pinch to zoom · right-drag, two-finger twist or <kbd>Q</kbd>/<kbd>E</kbd> to rotate · <kbd>WASD</kbd> to pan · <kbd>R</kbd> rotates while placing · <kbd>Space</kbd> pauses · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> set the speed · <kbd>Esc</kbd> closes or cancels.</p>
-        <p><b>Shortcuts.</b> <kbd>B</kbd> build · <kbd>G</kbd> decorate · <kbd>V</kbd> villagers · <kbd>L</kbd> buildings · <kbd>I</kbd> inventory · <kbd>M</kbd> world map · <kbd>N</kbd> news · <kbd>H</kbd> home · <kbd>[</kbd> <kbd>]</kbd> switch build tabs · <kbd>?</kbd> this page. Hover (or long-press) almost anything for an explanation.</p>
+        <p><b>Shortcuts.</b> <kbd>B</kbd> build · <kbd>G</kbd> decorate · <kbd>V</kbd> people · <kbd>T</kbd> town · <kbd>N</kbd> journal · <kbd>M</kbd> world · <kbd>L</kbd> buildings · <kbd>I</kbd> stores · <kbd>H</kbd> home · <kbd>[</kbd> <kbd>]</kbd> switch build tabs · <kbd>?</kbd> this page. Hover (or long-press) almost anything for an explanation.</p>
         <p>Your village saves automatically in this browser.</p></div>
         ${eventsSettingsHtml(this)}${seedHtml(this)}<div class="actions"><button class="btn red" data-act="reset">${svg('trash', 16)} Start a new village with this seed</button></div>`;
     } else if (k === 'story') {
@@ -1452,7 +1511,8 @@ export class UI {
     const seen = this.storyOpenSeen;
     if (s.storySeen !== s.storyN) { s.storySeen = s.storyN || 0; this.markLog(); }
     const KINDS = { family: ['love', 'baby', 'farewell', 'breakup', 'wedding'], friends: ['friends', 'rivals', 'squabble', 'makeup'], wishes: ['wish', 'granted', 'pet'], milestones: ['arrive', 'grow', 'study', 'leader', 'archmage', 'rank', 'visitor'], trouble: ['crime', 'mischief'] };
-    const shown = list.filter(e => f === 'all' || KINDS[f]?.includes(e.kind));
+    const pinned = e => e.kind === 'wish' && this.sim.vById.get(e.faces[0]?.id)?.wish?.made === e.t;
+    const shown = list.filter(e => (f === 'all' || KINDS[f]?.includes(e.kind)) && !pinned(e));
     let h = `<div class="storybar">${[['all', 'Everything'], ['family', 'Love & family'], ['friends', 'Friends & rivals'], ['wishes', 'Wishes & pets'], ['milestones', 'Milestones'], ['trouble', 'Mischief']].map(([k, t]) => `<button class="tog ${f === k ? 'on' : ''}" data-act="storyf" data-k="${k}">${t}</button>`).join('')}</div>`;
     if (f === 'all' || f === 'wishes') h += wishListHtml(this);
     if (!shown.length) return h + '<p class="sub" style="text-align:center;padding:20px">Nothing yet. Life in the village will be written here.</p>';
@@ -1470,9 +1530,8 @@ export class UI {
     const sim = this.sim, news = Math.max(0, (sim.s.storyN || 0) - (sim.s.storySeen || 0));
     const trophies = sim.achievements().filter(x => x.done && !x.claimed).length;
     const fest = sim.festShop?.open() ? sim.festShop.quests().filter(q => q.done && !q.claimed).length : 0;
-    const n = news + trophies + fest + (sim.s.chronNew || 0), b = $('#logBadge'); if (!b) return;
-    b.classList.toggle('hidden', n <= 0); b.textContent = n > 9 ? '9+' : n;
-    b.classList.toggle('gold', trophies + fest > 0);
+    const n = trophies + (sim.s.chronNew || 0);
+    this.dockBadge('journal', n, 'to collect', { dot: news > 0 }); void fest;
   }
 
   // ── toasts & floats ──

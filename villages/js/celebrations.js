@@ -33,7 +33,7 @@ export const RANKS = [
     { id: 'comfy', text: '3 comfortable homes', n: 3, have: comfy, tip: 'A home is Comfortable when the family is fed, buys a luxury (honey, cheese, cloth or ale) at a Market, and has a Park or Pub within reach.' },
     { id: 'market', text: 'A Market Stall', n: 1, have: sim => +built(sim, 'market') },
     { id: 'fest', text: 'Hold a festival', n: 1, have: sim => sim.s.stats.festivals || 0 },
-    { id: 'wish', text: 'Grant a wish', n: 1, tip: 'Villagers wish for small things now and then (a star over their heads). See the Story page.', have: sim => sim.s.stats.wishes || 0 },
+    { id: 'wish', text: 'Grant a wish', n: 1, tip: 'Villagers wish for small things now and then: a star over their heads.', have: sim => sim.s.stats.wishes || 0 },
   ] },
   { id: 'town', name: 'Town', gems: 25, goals: [
     { id: 'pop', text: '30 villagers', n: 30, have: sim => sim.s.villagers.length },

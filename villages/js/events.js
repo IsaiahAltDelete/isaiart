@@ -382,17 +382,19 @@ export function eventsInit(ui) {
     if (a.dataset.act === 'ev-offer') { if (!sim.makeOffering(ev)) ui.toast('You need 5 honey or 5 cheese for the offering.', 'blossom'); }
     if (a.dataset.act === 'ev-bell') sim.ringBell(sim.bById.get(+a.dataset.bid));
     if (a.dataset.act === 'ev-horn') sim.soundHorn(ev);
+    if (a.dataset.act === 'ev-more') { ui.evOpen = !ui.evOpen; eventsFrame(ui); return; }
     if (a.dataset.act === 'ev-go') { const b = sim.bById.get(+a.dataset.bid); if (b) ui.g.select({ kind: 'b', b }, true); else if (ev) ui.g.flyToSettlement?.(ev.sid); }
   });
   const st = document.createElement('style');
-  st.textContent = `#eventbar{position:fixed;left:50%;top:calc(92px + var(--sat));transform:translateX(-50%);z-index:15;display:flex;flex-direction:column;gap:5px;max-width:min(560px,calc(100vw - 24px))}
+  st.textContent = `#eventbar{position:fixed;left:50%;top:calc(92px + var(--sat));transform:translateX(-50%);z-index:15;display:flex;flex-direction:column;gap:5px;max-width:min(660px,calc(100vw - 24px))}
 #eventbar .evrow{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 7px;border-radius:13px;background:#fff6e6;border:2.5px solid #c9813a;box-shadow:var(--shadow);font-size:12.5px;color:var(--ink);animation:chipIn var(--t2) var(--ease)}
 #eventbar .evrow.fire{border-color:#d9604f;background:#fff0e8}#eventbar .evrow.dragon{border-color:#a8322a;background:#ffe9e0}#eventbar .evrow.spirits{border-color:#6a7ab0;background:#eef2ff}#eventbar .evrow.visitor{border-color:#5c8a3a;background:#f2f9e6}#eventbar .evrow.wedding{border-color:#d07a9a;background:#fff0f5}
 #eventbar .evrow b{white-space:nowrap}#eventbar .evrow.more{padding:3px 10px;justify-content:center;border-width:1.5px;font-size:11.5px}#eventbar .evrow.more span{flex-basis:auto;order:0;color:var(--ink2)}#eventbar .evrow span{flex:1;min-width:0;color:var(--ink2);line-height:1.3}#eventbar .evrow .btn{flex:none}
 #eventbar .evbar{width:70px;height:8px;border-radius:4px;background:#eadcb6;overflow:hidden;flex:none}#eventbar .evbar.heat i{display:block;height:100%;background:linear-gradient(90deg,#ffb030,#e0482a)}#eventbar .evbar.hp i{display:block;height:100%;background:#a8322a}#eventbar .evlab{display:flex;align-items:center;gap:2px;font-size:11px;font-weight:700;color:#a8322a;flex:none}#eventbar .evrow span strong{color:var(--ink);font-weight:700}#eventbar .evrow em{color:#b0412c;font-style:normal;font-weight:700}
 @media(max-width:760px){#eventbar{top:auto;bottom:calc(84px + var(--sab, 0px));gap:4px;width:calc(100vw - 72px);left:12px;transform:none}#eventbar .evrow{flex-wrap:wrap;gap:4px 6px;padding:4px 7px;font-size:11.5px;border-width:2px}#eventbar .evrow>.icon,#eventbar .evrow>svg{width:18px;height:18px}
 #eventbar .evrow b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}#eventbar .evrow .btn{padding:2px 7px;font-size:11px;min-height:0}#eventbar .evbar{width:44px}#eventbar .evlab{display:none}
-#eventbar .evrow span{flex-basis:100%;order:5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}#eventbar .evrow:nth-child(n+3):not(.more){display:none}body.info-open #eventbar{display:none}}
+#eventbar .evrow span{flex-basis:100%;order:5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}body.info-open #eventbar,body.placing #eventbar{display:none}body:has(#tray:not(.hidden)) #eventbar{bottom:calc(186px + var(--sab, 0px))}#eventbar .evrow:has(.btn) > b{order:1;flex:none;overflow:visible}#eventbar .evrow:has(.btn) > span{order:2;flex:1 1 0;flex-basis:0;white-space:normal;font-size:11.5px;line-height:1.3}#eventbar .evrow:has(.btn) > .evmore{order:5;margin-left:0}#eventbar .evrow:has(.btn) > .btn{order:6}#eventbar .evrow:has(.btn)::after{content:'';order:4;flex-basis:100%;height:0}#eventbar .evrow:has(.btn) > .btn:first-of-type{margin-left:auto}#eventbar .evrow .evmore{margin-left:auto}}
+@media(min-width:761px){#eventbar{width:min(640px,calc(100vw - 660px))}}
 @media(min-width:761px){html body:has(#eventbar:not(.hidden)) #toasts{top:calc(96px + var(--evh, 40px) + var(--sat)) !important}}
 body.placing #eventbar{display:none}
 body:has(#eventbar:not(.hidden)) #toasts{top:calc(96px + var(--evh, 40px) + var(--sat))}`;
@@ -401,24 +403,28 @@ body:has(#eventbar:not(.hidden)) #toasts{top:calc(96px + var(--evh, 40px) + var(
 const left = (sim, e) => { const t = sim.eventLeft(e); return t >= DAY * 0.6 ? `${(t / DAY).toFixed(1)} days left` : `${Math.ceil(t / 60)} min left`; };
 export function eventsFrame(ui) {
   const sim = ui.sim, s = sim.s, bar = document.getElementById('eventbar'); if (!bar) return;
-  const rows = [];
+  const rows = [], later = [];
   const dragon = s.events.list.find(e => e.type === 'dragon');
-  if (dragon) rows.push(`<div class="evrow dragon">${svg('dragon', 22)}<b>Dragon attack!</b><span data-tip="Dragon attack|It swoops every few seconds, setting fires or snatching coins. Watchtower guards, wizards, paladins and rangers wear it down; at zero health it flees and drops gems."><strong>${dragon.data.horn > s.time ? 'To arms! Every fighter is on it' : 'Rally every fighter with the horn'}</strong></span>${dragon.data.horn ? '' : `<button class="btn gold sm" data-act="ev-horn" data-id="${dragon.id}" data-tip="Sound the horn|Once per attack: for 25 seconds every guard, paladin, fighter, ranger and wizard fights twice as hard.">Sound the horn</button>`}<div class="evbar hp" data-tip="The dragon's health|Guards, wizards and paladins wear it down. At zero it flees and drops gems."><i style="width:${Math.round(Math.max(0, dragon.data.hp) / dragon.data.max * 100)}%"></i></div><button class="btn sm" data-act="ev-go" data-id="${dragon.id}">Show</button></div>`);
-  if (s.events.famine) rows.push(`<div class="evrow fire">${svg('apple', 22)}<b>Famine</b><span>Many villagers are hungry. Gather food: foragers, farms, fishing, the merchant.</span></div>`);
-  for (const b of s.buildings) if (b.fire) rows.push(`<div class="evrow fire">${svg('fire', 22)}<b>${esc(defOf(b.type).name)} on fire</b><span>${s.villagers.filter(v => v.fireB === b.id).length} on the bucket chain · ${b.fire.well ? 'well close by' : '<em>no well nearby!</em>'}</span><div class="evbar heat" data-tip="Fire|How far the fire has spread. At 100% the building is lost; the bucket chain beats it back."><i style="width:${Math.round(b.fire.heat * 100)}%"></i></div>${b.fire.bell ? '' : `<button class="btn gold sm" data-act="ev-bell" data-bid="${b.id}" data-tip="Ring the alarm bell|Up to ${BELL} villagers rush to the bucket chain instead of ${FIGHTERS}.">Ring the bell</button>`}<button class="btn sm" data-act="ev-go" data-bid="${b.id}">Show</button></div>`);
+  if (dragon) rows.push(`<div class="evrow dragon">${svg('dragon', 22)}<b>Dragon attack!</b><span data-tip="Dragon attack|It swoops every few seconds, setting fires or snatching coins. Watchtower guards, wizards, paladins and rangers wear it down; at zero health it flees and drops gems."><strong>${dragon.data.horn > s.time ? 'To arms! Every fighter is on it' : 'Rally every fighter with the horn'}</strong></span>${dragon.data.horn ? '' : `<button class="btn gold sm" data-act="ev-horn" data-id="${dragon.id}" data-tip="Sound the horn|Once per attack: for 25 seconds every guard, paladin, fighter, ranger and wizard fights twice as hard.">Sound the horn</button>`}<div class="evbar hp" data-tip="The dragon's health|Guards, wizards and paladins wear it down. At zero it flees and drops gems."><i style="width:${Math.round(Math.max(0, dragon.data.hp) / dragon.data.max * 100)}%"></i></div><button class="btn ghost sm" data-act="ev-go" data-id="${dragon.id}">Show</button></div>`);
+  if (s.events.famine) later.push(`<div class="evrow fire">${svg('apple', 22)}<b>Famine</b><span>Many villagers are hungry. Gather food: foragers, farms, fishing, the merchant.</span></div>`);
+  for (const b of s.buildings) if (b.fire) rows.push(`<div class="evrow fire">${svg('fire', 22)}<b>${esc(defOf(b.type).name)} on fire</b><span>${s.villagers.filter(v => v.fireB === b.id).length} on the bucket chain · ${b.fire.well ? 'well close by' : '<em>no well nearby!</em>'}</span><div class="evbar heat" data-tip="Fire|How far the fire has spread. At 100% the building is lost; the bucket chain beats it back."><i style="width:${Math.round(b.fire.heat * 100)}%"></i></div>${b.fire.bell ? '' : `<button class="btn gold sm" data-act="ev-bell" data-bid="${b.id}" data-tip="Ring the alarm bell|Up to ${BELL} villagers rush to the bucket chain instead of ${FIGHTERS}.">Ring the bell</button>`}<button class="btn ghost sm" data-act="ev-go" data-bid="${b.id}">Show</button></div>`);
   for (const e of s.events.list) {
     const d = EVENTS[e.type];
     if (e.type === 'dragon') continue;   // drawn first, above
-    rows.push(`<div class="evrow ${e.type}" data-tip="${esc(d.name)}|${esc(d.help)}">${svg(d.icon, 22)}<b>${esc(d.name)}</b><span><strong>${esc(d.todo)}</strong> · ${left(sim, e)}</span>${e.type === 'fae' ? `<button class="btn gold sm" data-act="ev-offer" data-id="${e.id}" ${(s.res.honey || 0) >= 5 || (s.res.cheese || 0) >= 5 ? '' : 'disabled data-tip="No honey or cheese|You need 5 honey or 5 cheese in store."'}>Offer 5 honey or cheese</button>` : ''}</div>`);
+    later.push(`<div class="evrow ${e.type}" data-tip="${esc(d.name)}|${esc(d.help)}">${svg(d.icon, 22)}<b>${esc(d.name)}</b><span><strong>${esc(d.todo)}</strong> · ${left(sim, e)}</span>${e.type === 'fae' ? `<button class="btn gold sm" data-act="ev-offer" data-id="${e.id}" ${(s.res.honey || 0) >= 5 || (s.res.cheese || 0) >= 5 ? '' : 'disabled data-tip="No honey or cheese|You need 5 honey or 5 cheese in store."'}>Offer 5 honey or cheese</button>` : ''}</div>`);
   }
-  rows.push(...(ui.lifeRows?.() || []));   // visitors at the gate, weddings (lifeui.js)
-  const cap = innerWidth <= 760 ? 2 : 3, more = rows.length > cap ? `<div class="evrow more"><span>+${rows.length - cap} more · see the Story page</span></div>` : '';
-  const html = rows.slice(0, cap).join('') + more;
+  // the order: danger (dragon, fires), then anything waiting on a choice (visitors, weddings), then the rest
+  rows.push(...(ui.lifeRows?.() || []), ...later);
+  // one banner at a time; "+N" opens the rest
+  if (rows.length < 2) ui.evOpen = false;
+  const cap = ui.evOpen ? 4 : 1, extra = rows.length - 1;
+  const moreBtn = extra > 0 ? `<button class="evmore" data-act="ev-more" aria-expanded="${!!ui.evOpen}" data-tip="${ui.evOpen ? 'Show one|Fold the list back to the most urgent banner.' : `${extra} more|Show the other ${extra === 1 ? 'banner' : 'banners'}.`}">${ui.evOpen ? 'Less' : '+' + extra}</button>` : '';
+  const html = rows.slice(0, cap).map((r, i) => i === 0 && moreBtn ? r.replace(/<\/div>$/, moreBtn + '</div>') : r).join('');
   if (bar.dataset.h !== html) { bar.dataset.h = html; bar.innerHTML = html; }
   bar.classList.toggle('hidden', !rows.length);
   // a badge on the Town button for wanted posters you haven't seen yet
-  const tb = document.getElementById('btnTown'), cr = s.crime, fresh = cr ? cr.wanted.filter(p => !p.caught && p.id > (cr.seenPid || 0)).length : 0;
-  if (tb && tb.dataset.n !== String(fresh)) { tb.dataset.n = fresh; tb.querySelector('.badge')?.remove(); if (fresh) tb.insertAdjacentHTML('beforeend', `<span class="badge">${fresh}</span>`); }
+  const cr = s.crime, fresh = cr ? cr.wanted.filter(p => !p.caught && p.id > (cr.seenPid || 0)).length : 0;
+  ui.dockBadge?.('town', fresh, 'new wanted poster' + (fresh > 1 ? 's' : ''), { bad: true });
   // popups slide down below the banners
   if (rows.length) document.documentElement.style.setProperty('--evh', bar.offsetHeight + 6 + 'px');
 }

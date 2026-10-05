@@ -589,7 +589,7 @@ class Game {
   hudHit(x, y) {
     if (!this.hudRects || performance.now() - this.hudT > 500) {
       this.hudT = performance.now();
-      this.hudRects = ['#dockbar', '#tray', '#world', '#shop', '#placebar', '#topright', '#info', '#regionQuick'].map(q => document.querySelector(q))
+      this.hudRects = ['#dockbar', '#tray', '#placebar', '#topright', '#nowbar', '#info', '#regionQuick'].map(q => document.querySelector(q))
         // (fixed panels have no offsetParent, so test their size instead)
         .filter(el => el && !el.classList.contains('hidden')).map(el => el.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);
     }
