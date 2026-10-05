@@ -64,9 +64,7 @@ class Game {
     await loadModels();             // the forest and buildings are built from these
     await step(55);
     this.view = new View(document.getElementById('c'), this.sim.world, this.settings.quality);
-    await step(65);
-    this.makeThumbs();
-    await step(80);
+    await step(70);
     for (const b of this.sim.s.buildings) this.addBVis(b);
     for (const v of this.sim.s.villagers) this.addVVis(v);
     for (const ch of this.sim.s.chests) this.addChest(ch);
@@ -86,6 +84,11 @@ class Game {
     this.bindInput();
     setSound(this.settings.sound);
     this.frameSettlement('meadow', true);
+    await step(90);
+    // warm up the GPU behind the loading screen: compile every shader and draw one full frame
+    // (otherwise the first frame of play freezes for half a second or more while it all compiles)
+    try { await this.view.renderer.compileAsync(this.view.scene, this.view.camera); } catch { /* older drivers: compiled on first draw instead */ }
+    this.view.updateCamera(0.016); this.view.render();
     await step(100);
     document.getElementById('loading').classList.add('gone');
     setTimeout(() => document.getElementById('loading').remove(), 700);
@@ -93,12 +96,14 @@ class Game {
     this.last = performance.now();
     this.saveTimer = 0;
     this.loop();
+    // build-tray thumbnails, in small batches between frames (the tray redraws when they're ready)
+    setTimeout(() => this.makeThumbs().then(() => { if (this.ui.tray) this.ui.drawCards(false); }), 400);
     addEventListener('pagehide', () => this.save());
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.save(); });
   }
 
   // ── thumbnails for the build tray ──
-  makeThumbs() {
+  async makeThumbs() {
     const W = 160, H = 140;
     let r;
     try { r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); }
@@ -118,10 +123,12 @@ class Game {
       this.thumbs[key] = r.domElement.toDataURL();
       sc.remove(obj);
     };
+    let n = 0;
     for (const t of [...BUILD_ORDER, ...DECOR_ORDER, 'campfire']) {
       const { group, anim } = buildModel(t, defOf(t).size);
       anim.smoke?.update(0.4);
       shoot(group, t);
+      if (++n % 3 === 0) { if (this.ui?.tray) this.ui.drawCards(false); await new Promise(r => (window.requestIdleCallback || setTimeout)(r, { timeout: 120 })); }
     }
     const clear = new THREE.Group();
     const vm = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
@@ -146,6 +153,9 @@ class Game {
     const def = defOf(b.type);
     const variant = b.type === 'cottage' || b.type === 'tiled';
     const { group, anim } = buildModel(b.type, def.size, variant ? b.id : 0, lvlOf(b));
+    // performance: small trim (window frames, planks, flower boxes...) doesn't need a real shadow
+    group.updateMatrixWorld(true);
+    group.traverse(o => { if (o.isMesh && o.castShadow) { _bb.setFromObject(o).getSize(_bs); if (Math.max(_bs.x, _bs.y, _bs.z) < 0.4) o.castShadow = false; } });
     const root = new THREE.Group(); root.add(group);
     const c = this.sim.bCenter(b);
     root.position.set(c.x, this.baseY(b), c.z);
@@ -450,9 +460,12 @@ class Game {
     m.group.userData.ent = { kind: 'v', v };
     m.group.position.set(v.x, this.sim.world.heightAt(v.x, v.z), v.z);
     m.phase = Math.random() * 6; m.rot = v.face || 0; m.walk = 0;
+    if (this.vLodFar) this.villagerLod(m, true);
     this.view.objects.add(m.group);
     this.vvis.set(v.id, m);
   }
+  // far from the camera, a villager's tiny details are a pixel or two: skip drawing them
+  villagerLod(m, far) { m.group.traverse(o => { if (o.userData.detail) o.visible = !far; }); }
   // villagers gently push apart so two never stand inside each other
   separate(dt) {
     // the chibi villagers are wide-headed, so keep a full head's width apart
@@ -1586,6 +1599,8 @@ class Game {
     this.dayLight(sim.s.time);
     this.weather(dt);
     view.updateCamera(dt);
+    const far = rig.dist > (this.vLodFar ? 24 : 28);   // a little hysteresis so it doesn't flicker at the edge
+    if (far !== !!this.vLodFar) { this.vLodFar = far; for (const m of this.vvis.values()) this.villagerLod(m, far); }
     view.adapt(dt);
 
     if (this.tilesDirty.size) {
@@ -1770,6 +1785,7 @@ class Game {
 }
 
 const tmpV = new THREE.Vector3();
+const _bb = new THREE.Box3(), _bs = new THREE.Vector3();
 const at3 = (m, x, y, z, shadow = false) => { m.position.set(x, y, z); m.castShadow = shadow; return m; };
 const PAINT = { clear: 'Clear Trees', pave: 'Cobble Road', road: 'Dirt Road' };
 const leafGeo = new THREE.IcosahedronGeometry(0.09, 0);
