@@ -10,6 +10,7 @@ import { FESTIVE } from './data.js';
 import { r7Init, r7Frame, r7QuestsHtml, r7GoodHtml, r7WorldRow, r7SiteHtml, r7BuildingHtml, r7VillagerHtml, r7ModalHtml, r7Click, r7Change,
   r7CardTip, r7CardHtml, r7SpecNote, R7_MODALS, R7_LIVE } from './panels.js';   // roads, trade, festivals, friends, share codes
 import { rpgVillagerHtml, rpgBuildingHtml, rpgGuildHtml, rpgSpellbookHtml, rpgInfoClick, rpgModalClick, fitStars } from './rpgui.js';
+import { eduVillagerHtml, eduBuildingHtml, eduClick, JOB_EDU, TIERS } from './education.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -93,7 +94,7 @@ const CATS = {
     { id: 'res', name: 'Resources', icon: 'axe', types: ['clear', 'lumber', 'forester', 'quarry', 'sawmill', 'mason'] },
     { id: 'food', name: 'Food', icon: 'apple', types: ['forager', 'farm', 'dock', 'coop', 'orchard', 'windmill', 'bakery'] },
     { id: 'craft', name: 'Crafts', icon: 'wool', types: ['beehive', 'pasture', 'weaver', 'dairy', 'creamery', 'brewery'] },
-    { id: 'serv', name: 'Services', icon: 'staff', types: ['market', 'tavern', 'school', 'wizard'], rest: true },
+    { id: 'serv', name: 'Services', icon: 'staff', types: ['market', 'tavern', 'school', 'library', 'wizard'], rest: true },
     { id: 'roads', name: 'Roads & Trade', icon: 'stone', types: ['road', 'pave', 'tradepost'] },
     { id: 'def', name: 'Defense', icon: 'shield', types: ['watchtower', 'torch', 'palisade'] },
   ],
@@ -804,6 +805,7 @@ export class UI {
     if (b.type === 'memorial' && s.departed?.length) h += `<div class="sub" style="margin-top:6px">In loving memory: ${s.departed.slice(-6).reverse().map(d => `${esc(d.name)} (${d.age})`).join(', ')}</div>`;
     if (b.type === 'market') h += `<div class="sub" style="margin-top:6px">Sell when above reserve:</div><div class="sell-toggles">${SELLABLE.map(k => `<button class="tog ${s.sell[k] ? 'on' : ''}" data-act="sell" data-k="${k}">${svg(GOODS[k].icon, 16)}${GOODS[k].name} · ${GOODS[k].price}</button>`).join('')}</div>`;
     h += `</div>`;
+    h += eduBuildingHtml(this, b);   // home needs + auto-growing, classroom, reading room (education.js)
     h += rpgBuildingHtml(this, b);   // forge, guild hall, watch, knowledge, spell slots (rpgui.js)
     h += r7BuildingHtml(this, b) + r7SiteHtml(this, b);   // stores, specialty, carts, deliveries (panels.js)
     h += this.chainHtml(b);
@@ -870,6 +872,7 @@ export class UI {
       <dt>Fed</dt><dd>${v.hungry ? '<span style="color:#c0392b">Hungry!</span>' : Math.round(100 - v.hunger / 80 * 100) + '%'}</dd>
       ${v.carry ? `<dt>Carrying</dt><dd>${v.carry.n} ${GOODS[v.carry.res].name.toLowerCase()}</dd>` : ''}
       ${work ? `<dt>Works at</dt><dd><a href="#" data-act="chainb" data-id="${work.id}" style="color:inherit">${esc(defOf(work.type).name)} ›</a></dd>` : ''}</dl></div>
+      ${eduVillagerHtml(this, v)}
       ${rpgVillagerHtml(this, v)}
       ${r7VillagerHtml(this, v)}
       ${stageOf(v) === 'adult' ? `<div class="ip-sec"><div class="cap">${svg('hammer', 14)} Job</div><select data-act="job" data-id="${v.id}" style="width:100%">${opts}</select></div>` : `<div class="ip-sec"><div class="desc">${stageOf(v) === 'child' ? 'Too young to work — plays, and studies if there\'s a school.' : 'Retired, enjoying the quiet life.'}</div></div>`}
@@ -909,9 +912,10 @@ export class UI {
       const key = b.type + b.sid, k = seen[key] = (seen[key] || 0) + 1;
       const mine = v.work === b.id;
       if (!mine && b.workers.length >= workersOf(b)) continue;
-      const job = JOBS[def.job].name + fitStars(v, def.job);
+      const need = JOB_EDU[def.job] || 0, barred = !mine && need && this.sim.eduTier(v) < need;
+      const job = JOBS[def.job].name + (barred ? ` · needs ${TIERS[need].name.toLowerCase()}` : fitStars(v, def.job));
       const where = `${def.name}${k > 1 ? ` #${k}` : ''} ${b.workers.length}/${workersOf(b)}${multi ? ' · ' + this.sim.sname(b.sid) : ''}`;
-      o += `<option value="${b.id}" ${mine ? 'selected' : ''}>${mine ? job : `${job} · ${where}`}</option>`;
+      o += `<option value="${b.id}" ${mine ? 'selected' : ''}${barred ? ' disabled' : ''}>${mine ? job : `${job} · ${where}`}</option>`;
     }
     return o;
   }
@@ -940,6 +944,7 @@ export class UI {
     if (act === 'chainb') { const b = sim.bById.get(+a.dataset.id); if (b) this.g.select({ kind: 'b', b }, true); return; }
     if (act === 'chainbuild') { this.g.select(null); this.doGo({ kind: 'build', key: a.dataset.type }); return; }
     if (act.startsWith('rpg-')) { rpgInfoClick(this, act, a, sel); this.drawInfo(true); return; }
+    if (act.startsWith('edu-')) { eduClick(this, act, sel?.b); this.drawInfo(true); return; }
     if (!sel || sel.kind !== 'b') return;
     const b = sel.b;
     if (act === 'bnav') { const same = this.sameType(b), n = same[(same.indexOf(b) + +a.dataset.d + same.length) % same.length]; if (n) this.g.select({ kind: 'b', b: n }, true); return; }

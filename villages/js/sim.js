@@ -528,6 +528,7 @@ export class Sim {
     if (PRODUCE[job]) return this.taskProduce(v, b, PRODUCE[job]);
     if (job === 'innkeeper') return this.taskTavern(v, b);
     if (job === 'teacher') return this.taskTeach(v, b);
+    if (job === 'scholar') return this.taskLibrary(v, b);
     if (job === 'guard') return this.taskGuard(v, b);
     if (job === 'wizard') return this.taskStudy(v, b);
     if (job === 'smith') return this.taskForge(v, b);
@@ -771,7 +772,7 @@ export class Sim {
     if (school && day > 0.3 && day < 0.65 && v.age >= 5) {
       const p = this.local(school, (this.rng() - 0.5) * 1.4, this.bCenter(school).d / 2 + 0.6 + this.rng() * 0.5);
       return this.setTask(v, 'At school', [{ walk: this.goalBuilding(school) }, { to: [p.x, p.z] }, { face: [this.bCenter(school).x, this.bCenter(school).z] },
-        { act: 8, anim: 'rest', done: () => { v.edu = (v.edu || 0) + 8; } }]);
+        { act: 8, anim: 'rest', done: () => this.learn(v, school) }]);   // lesson points (education.js)
     }
     const c = CENTERS[v.home] || CENTERS.meadow;
     let tx = c.x, tz = c.z + 2;
@@ -1207,7 +1208,7 @@ export class Sim {
 
   workRate(v) {
     const b = v.work ? this.bById.get(v.work) : null;
-    return (0.85 + this.s.happiness / 100 * 0.6) * ((this.s.hasteUntil || 0) > this.s.time ? 1.35 : 1) * (v.hungry ? 0.6 : 1) * (b ? (1 + (lvlOf(b) - 1) * 0.15) * this.synergy(b).mult : 1) * (v.educated ? 1.15 : 1) * this.abilityWork(v);
+    return (0.85 + this.s.happiness / 100 * 0.6) * ((this.s.hasteUntil || 0) > this.s.time ? 1.35 : 1) * (v.hungry ? 0.6 : 1) * (b ? (1 + (lvlOf(b) - 1) * 0.15) * this.synergy(b).mult : 1) * this.eduMult(v) * this.abilityWork(v);
   }
 
   // ── per-frame update ──
@@ -1438,7 +1439,7 @@ export class Sim {
       st.oldest = Math.max(st.oldest || 0, Math.floor(v.age));
       if (before !== now) {
         if (now === 'adult') {
-          v.job = 'idle'; v.educated = (v.edu || 0) >= 60; this.dropTask(v);
+          v.job = 'idle'; this.graduate(v); this.dropTask(v);   // grade + education tier (education.js)
           this.log(`${v.name} is all grown up${v.educated ? ' — and top of the class' : ''}!`);
           this.emit('toast', `${v.name.split(' ')[0]} grew up!`, 'star');
           this.rpgStage(v, 'adult');

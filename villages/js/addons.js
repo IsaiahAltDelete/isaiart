@@ -9,11 +9,13 @@
 //                place, upgrade, demolish, isSite, unlock, openChest, merchantDeal
 //   social.js    friendships and evening visits: think, dropTask, second, endFestival
 //   festival.js  festival quests and shop: second
+//   education.js school grades, the Library, homes that grow by themselves: assign, second
 import { installRoads } from './roads.js';
 import { installIsland } from './island.js';
 import { installTrade } from './trade.js';
 import { installSocial } from './social.js';
 import { installFestival } from './festival.js';
+import { installEducation } from './education.js';
 
 export function installAddons(sim, save) {
   installRoads(sim, save);
@@ -21,4 +23,5 @@ export function installAddons(sim, save) {
   installTrade(sim);
   installSocial(sim);
   installFestival(sim);
+  installEducation(sim);
 }

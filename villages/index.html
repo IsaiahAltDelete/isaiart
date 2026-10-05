@@ -631,6 +631,18 @@
     .chipf { padding: 3px 9px; border-radius: 10px; border: 2px solid #e2c99c; background: #fff; font-size: 12px; font-weight: 600; }
     .chipf.on { background: linear-gradient(#7dd35a, var(--green)); border-color: var(--green-dk); color: #fff; }
     #tag { position: fixed; z-index: 3; pointer-events: none; transform: translate(-50%, -100%); background: rgba(255,248,232,.95); border: 2px solid var(--edge); border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+    /* education: grades, home needs, classroom, reading room (js/education.js) */
+    .grade { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 6px; font-size: 11.5px; font-weight: 700; color: #fff; vertical-align: middle; box-shadow: inset 0 -2px 0 rgba(0,0,0,.15); }
+    .grade.gA { background: #3f9a4a; } .grade.gB { background: #4f8fd9; } .grade.gC { background: #c98a2a; }
+    ul.needs { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin: 6px 0; padding: 0; }
+    ul.needs li { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink2); line-height: 1.15; }
+    ul.needs li.ok { color: var(--ink); }
+    .autorow { display: flex; gap: 6px; flex-wrap: wrap; }
+    .autorow .tog { flex: 1; }
+    .pupils { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .pupil { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 9px; background: var(--cream2); border: 1.5px solid #e2c99c; font-size: 12px; font-weight: 600; }
+    .studyrow { margin: 4px 0 6px; font-size: 12.5px; } .studyrow small { color: var(--ink2); }
+    @media (max-width: 760px) { ul.needs { grid-template-columns: 1fr; } }
     /* hover pre-selection and selected-building labels (js/select.js) */
     #hovertag, #seltag { position: fixed; z-index: 3; pointer-events: none; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 1px;
       background: rgba(255,248,232,.96); border: 2px solid var(--edge); border-radius: 12px; padding: 3px 10px 4px; box-shadow: 0 3px 0 rgba(90,55,20,.18); white-space: nowrap; line-height: 1.15;

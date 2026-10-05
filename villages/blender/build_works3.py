@@ -185,3 +185,38 @@ def build_cart():
         wm = join(parts, f"wheel_mesh{k}"); parent(wm, w)
     E = empty("pt_glow_lamp", (0.4, -0.68, 0.84)); parent(E, root)
     return root
+
+# ── Library: a stone reading hall with tall arched windows and a giant open book ──
+def build_library():
+    M = wslots(); rnd = random.Random(71)
+    root = empty("library", (0, 0, 0)); P, E = [pad("pad", M, 1.9, 1.9)], []
+    W, D = 1.3, 1.15; cy = 0.25
+    P.append(plinth("plinth", M, W, D, rnd=rnd)); P[-1].location = (0, cy, 0)
+    P += block("hall", M, W, D, 1.05, 0.7, front_gable=True, over=0.13, rows=4, y=cy, wall_mat=M["stone"], rnd=rnd)
+    P.append(box("band", (W + 0.06, D + 0.06, 0.06), (0, cy, 1.0), M["cut"], bev=0.015))
+    # tall arched windows either side of the door, glowing at night
+    for x in (-0.42, 0.42):
+        P.append(poly_extrude(f"wf{x}", arch_pts(0.28, 0.62, 8), 0.06, (x, cy - D / 2 - 0.01, 0.2), M["cut"], bev=0.01))
+        P.append(poly_extrude(f"wg{x}", arch_pts(0.2, 0.54, 8), 0.07, (x, cy - D / 2 - 0.018, 0.24), M["win"]))
+        P.append(box(f"wm{x}", (0.02, 0.08, 0.54), (x, cy - D / 2 - 0.03, 0.24), M["trim"]))
+        E.append(empty("pt_glow_win", (x, cy - D / 2 - 0.05, 0.5)))
+    P.append(door("door", M, (0, cy - D / 2 - 0.01, 0.0), w=0.3, h=0.56))
+    P.append(cyl("rose", 0.14, 0.14, 0.05, (0, cy - D / 2, 1.38), M["cut"], seg=14, rot=(math.pi / 2, 0, 0)))
+    P.append(cyl("roseg", 0.1, 0.1, 0.06, (0, cy - D / 2 + 0.005, 1.38), M["win"], seg=14, rot=(math.pi / 2, 0, 0)))
+    # hero: a giant open book on a lectern post
+    bx, by = 0.68, -0.6
+    P.append(box("lpost", (0.08, 0.08, 0.62), (bx, by, 0), M["wood"], bev=0.015))
+    P.append(box("lfoot", (0.26, 0.26, 0.05), (bx, by, 0), M["wood"], bev=0.015))
+    for s in (-1, 1):
+        P.append(box(f"cover{s}", (0.24, 0.32, 0.03), (bx + s * 0.12, by, 0.64), M["shutter"], bev=0.01, base=False, rot=(0.5, s * -0.18, 0)))
+        P.append(box(f"pages{s}", (0.21, 0.28, 0.035), (bx + s * 0.115, by - 0.005, 0.665), M["cloth"], bev=0.01, base=False, rot=(0.5, s * -0.26, 0)))
+    P.append(box("ribbon", (0.02, 0.01, 0.2), (bx + 0.02, by - 0.15, 0.56), M["red"], rot=(0.4, 0, 0)))
+    # a cart of books and a reading bench
+    P.append(box("cart", (0.42, 0.24, 0.2), (-0.62, -0.62, 0.1), M["wood"], bev=0.02))
+    for k in range(6):
+        P.append(box(f"bk{k}", (0.05, 0.16, 0.13 + (k % 3) * 0.02), (-0.78 + k * 0.064, -0.62, 0.3), [M["red"], M["shutter"], M["gold"], M["purple"]][k % 4], bev=0.006, rot=(0, 0, (k % 2) * 0.12)))
+    for x in (-0.8, -0.44): P.append(cyl(f"cw{x}", 0.07, 0.07, 0.03, (x, -0.5, 0.07), M["dark"], seg=10, rot=(math.pi / 2, 0, 0)))
+    P.append(box("bench", (0.45, 0.14, 0.04), (0.1, -0.8, 0.2), M["plank"], bev=0.01))
+    for x in (-0.08, 0.28): P.append(box(f"bl{x}", (0.04, 0.12, 0.2), (x, -0.8, 0), M["wood"]))
+    E += chimney("chim", M, (0.35, cy + 0.3, 1.5), h=0.45, lean=0.03, rnd=rnd)
+    return finish(root, P, E)

@@ -101,7 +101,9 @@ export const BUILDINGS = {
   tavern:     { name: 'Tavern', size: [3, 2], cost: { planks: 80, bricks: 20, coins: 150 }, time: 26, lvl: 6, workers: 1, job: 'innkeeper',
                 desc: 'Serves ale, cheese and honey for a big happiness boost.' },
   school:     { name: 'Schoolhouse', size: [2, 2], cost: { planks: 60, bricks: 10, coins: 80 }, time: 20, lvl: 5, workers: 1, job: 'teacher',
-                desc: 'Children study here and grow up 15% faster workers.' },
+                desc: 'Children take lessons here and graduate with a grade (A, B or C). Schooled grown-ups work faster, can take skilled jobs, and help their homes grow.' },
+  library:    { name: 'Library', size: [2, 2], cost: { planks: 60, stone: 40, coins: 120 }, time: 18, lvl: 6, workers: 2, job: 'scholar',
+                desc: 'Grown-ups study here as Scholars, climbing from Unschooled to Schooled, Honours and Scholar. Each step speeds up their work, and study adds to the village\'s knowledge.' },
   watchtower: { name: 'Watchtower', size: [2, 2], cost: { wood: 60, stone: 30 }, time: 16, lvl: 3, workers: 2, job: 'guard',
                 desc: 'Guards stay up all night and drive off wolves, boars and goblins.' },
   wizard:     { name: 'Wizard Tower', size: [2, 2], cost: { stone: 80, planks: 40, gems: 10 }, time: 30, lvl: 4, workers: 2, job: 'wizard',
@@ -117,7 +119,7 @@ export const BUILDINGS = {
 };
 export const BUILD_ORDER = ['cottage', 'lumber', 'forager', 'farm', 'coop', 'sawmill', 'quarry', 'storehouse', 'dock',
   'market', 'forester', 'orchard', 'beehive', 'windmill', 'pasture', 'weaver', 'bakery', 'mason', 'dairy', 'creamery',
-  'school', 'brewery', 'tavern', 'watchtower', 'wizard', 'forge', 'guild', 'tiled', 'tradepost'];
+  'school', 'library', 'brewery', 'tavern', 'watchtower', 'wizard', 'forge', 'guild', 'tiled', 'tradepost'];
 
 // Buildings near each other help out: "to" works faster when a "from"
 // building is within range tiles of it.
@@ -251,6 +253,7 @@ export const JOBS = {
   brewer:     { name: 'Brewer',     tool: null },
   innkeeper:  { name: 'Innkeeper',  tool: null },
   teacher:    { name: 'Teacher',    tool: null },
+  scholar:    { name: 'Scholar',    tool: null },
   child:      { name: 'Child',      tool: null },
   guard:      { name: 'Guard',      tool: 'spear' },
   wizard:     { name: 'Wizard',     tool: 'staff' },
