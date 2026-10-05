@@ -1293,7 +1293,7 @@ export class UI {
         <p><b>Controls.</b> Drag to move · scroll or pinch to zoom · right-drag, two-finger twist or <kbd>Q</kbd>/<kbd>E</kbd> to rotate · <kbd>WASD</kbd> to pan · <kbd>R</kbd> rotates while placing · <kbd>Space</kbd> pauses · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> set the speed · <kbd>Esc</kbd> closes or cancels.</p>
         <p><b>Shortcuts.</b> <kbd>B</kbd> build · <kbd>G</kbd> decorate · <kbd>V</kbd> people · <kbd>T</kbd> town · <kbd>N</kbd> journal · <kbd>M</kbd> world · <kbd>L</kbd> buildings · <kbd>I</kbd> stores · <kbd>H</kbd> home · <kbd>[</kbd> <kbd>]</kbd> switch build tabs · <kbd>?</kbd> this page. Hover (or long-press) almost anything for an explanation.</p>
         <p>Your village saves automatically in this browser.</p></div>
-        ${eventsSettingsHtml(this)}${seedHtml(this)}<div class="actions"><button class="btn red" data-act="reset">${svg('trash', 16)} Start a new village with this seed</button></div>`;
+        ${eventsSettingsHtml(this)}${seedHtml(this)}<div class="actions"><button class="btn red" data-act="reset">${svg('trash', 16)} Start a new village with this seed</button><a class="btn ghost" href="/">${svg('back', 16)} Back to isaiart.com</a></div>`;
     } else if (k === 'story') {
       h += this.storyHtml();
     } else if (k === 'chronicle') {
