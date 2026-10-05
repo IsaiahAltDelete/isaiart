@@ -4,6 +4,7 @@ import { Sim, defOf, isDecor, footprint, DAY, lvlOf, RANGE } from './sim.js';
 import { BEASTS } from './data.js';
 import { View, bubbleTexture, timeUniform, iceUniform } from './view.js';
 import { loadModels, hasModel, instanceModel } from './blender.js';
+import { installEventVisuals } from './eventsview.js';
 import { Highlight } from './select.js';
 import { buildModel, scaffold, villagerModel, dressVillager, propModel, slotMaterial, VILLAGER_MATS, SNOWCAP_MAT, setTool, mat, C, pineGeo, stumpGeo, beastModel, chestModel, bunting } from './models.js';
 import { snowUniform } from './snow.js';
@@ -78,6 +79,7 @@ class Game {
     this.hl = new Highlight(this);
     this.ui = new UI(this);
     this.extras = new Extras(this);                    // carts, ferry, bridges, chest arrows, share codes…
+    this.eventsVis = installEventVisuals(this);         // fires, wisps, fever, quakes, the dragon (events.js)
     this.hookEvents();
     this.bindInput();
     setSound(this.settings.sound);
@@ -386,7 +388,7 @@ class Game {
   }
 
   // ── villager visuals ──
-  removeVVis(v) { const m = this.vvis.get(v.id); if (m) { this.view.objects.remove(m.group); this.screenSprites.delete(m.bubble); this.vvis.delete(v.id); } }
+  removeVVis(v) { const m = this.vvis.get(v.id); if (m) { this.view.objects.remove(m.group); this.screenSprites.delete(m.bubble); this.screenSprites.delete(m.talkSp); this.vvis.delete(v.id); } }
   screenOf(x, z) { const p = this.view.project(new THREE.Vector3(x, this.sim.world.heightAt(x, z) + 1, z)); return [p.x, p.y]; }
 
   // ── night beasts ──
@@ -488,7 +490,8 @@ class Game {
     m.group.rotation.y = m.rot;
     const anim = v.act?.anim;
     setTool(m, anim === 'fight' ? (v.gear?.w === 'sword' ? 'sword' : 'spear') : anim ? ANIM_TOOL[anim] ?? null : v.carry ? null : v.job === 'guard' && v.gear?.w ? v.gear.w : JOB_TOOL[v.job] ?? null);
-    const mood = v.hungry ? 'apple' : v.chat ? 'heart' : v.asleep === 'fire' && (v.id % 3 === 0) ? 'zzz' : null;
+    const talk = v.talk && v.talk.until > this.sim.s.time && !v.indoors && !v.asleep ? v.talk.k : null;
+    const mood = v.hungry ? 'apple' : v.chat && !talk ? 'heart' : v.asleep === 'fire' && (v.id % 3 === 0) ? 'zzz' : null;
     if (mood !== m.mood) {
       m.mood = mood;
       if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false })); m.bubble.userData.px = 26; m.bubble.position.y = 1.0; m.group.add(m.bubble); this.screenSprites.add(m.bubble); }
@@ -496,6 +499,20 @@ class Game {
     }
     if (m.bubble && mood) m.bubble.visible = !!m.bubble.material.map?.userData.ready;
     if (m.bubble?.visible) m.bubble.position.y = 0.95 + Math.sin(time * 3 + m.phase) * 0.03;
+    // speech bubbles (social.js sets v.talk): dots while chatting, a jagged "#@!" when cross, a heart for sweethearts
+    if (talk && !m.talkSp) { m.talkSp = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false })); m.talkSp.userData.px = 0; m.talkSp.position.set(0.2, 1.22, 0); m.talkSp.renderOrder = 6; m.group.add(m.talkSp); this.screenSprites.add(m.talkSp); m.talkPop = 0; }
+    if (m.talkSp) {
+      if (talk) {
+        m.talkPop = Math.min(1, m.talkPop + dt * 6);
+        const frame = talk === 'chat' ? Math.floor(time * 3 + m.phase) % 3 : talk === 'angry' ? Math.floor(time * 8) % 2 : 0, tex = talkTexture(talk, frame);
+        if (m.talkSp.material.map !== tex) { m.talkSp.material.map = tex; m.talkSp.material.needsUpdate = true; }
+      } else m.talkPop = Math.max(0, m.talkPop - dt * 5);
+      const k = m.talkPop, pop = k < 1 ? 1 + Math.sin(k * Math.PI) * 0.25 : 1;
+      m.talkSp.visible = k > 0.02;
+      m.talkSp.userData.px = 44 * k * pop * (talk === 'love' ? 1 + Math.sin(time * 6) * 0.06 : 1);
+      m.talkSp.position.y = 1.22 + Math.sin(time * 4 + m.phase) * 0.025;
+      m.talkSp.position.x = 0.2 + (talk === 'angry' ? Math.sin(time * 40) * 0.012 : 0);
+    }
     m.sack.visible = !!v.carry || !!v.sneak?.loot;
     if (v.carry) m.sack.material = mat(SACK[v.carry.res] ?? 0xc9a46a);
     else if (v.sneak?.loot) m.sack.material = mat(0x6b5a3a);
@@ -532,6 +549,11 @@ class Game {
       } else if (anim === 'saw' || anim === 'work') {
         const k = Math.sin(t * 6);
         m.armR.rotation.x = -1.1 + k * 0.35; m.armL.rotation.x = -1.1 - k * 0.35; m.body.rotation.x = 0.12;
+      } else if (anim === 'scuffle') {
+        const k = Math.sin(t * 16);
+        m.armR.rotation.x = -1.8 + k * 1.1; m.armL.rotation.x = -1.8 - k * 1.1;
+        m.armR.rotation.z = 0.4; m.armL.rotation.z = -0.4;
+        m.body.position.y = Math.abs(Math.sin(t * 8)) * 0.06; m.body.rotation.z = Math.sin(t * 8) * 0.12;
       } else if (anim === 'sell') {
         m.armR.rotation.z = 2.4 + Math.sin(t * 6) * 0.35;
       } else if (anim === 'play') {
@@ -907,6 +929,11 @@ class Game {
       if (p.vis) ui.float(p.x, p.y, text, icon);
     });
     sim.on('toast', (msg, icon) => ui.toast(msg, icon));
+    // village life: no popup, just a little icon rising over the people involved (the Journal keeps the story)
+    sim.on('story', (e, people) => {
+      for (const v of people.slice(0, 2)) if (v && sim.vById.has(v.id) && !v.indoors) sim.emit('float', v.x, v.z, '', e.icon);
+      ui.markLog();
+    });
     sim.on('levelup', (lvl, unlocked, gems) => {
       sfx.level();
       ui.toast(`Level ${lvl}! +${gems} gems`, 'star', true);
@@ -1574,6 +1601,7 @@ class Game {
     this.extras?.update(dt, t);
     this.updateFestival(dt, t);
     this.updateBeasts(dt, t);
+    this.eventsVis?.update(dt, t);
     this.updateWard();
     this.drawBars();
     rpgFrame(this, dt);               // health bars, knocked-out poses (rpgview.js)
@@ -1733,6 +1761,40 @@ const PAINT = { clear: 'Clear Trees', pave: 'Cobble Road', road: 'Dirt Road' };
 const leafGeo = new THREE.IcosahedronGeometry(0.09, 0);
 let _fall = null;
 const fallMat = () => _fall || (_fall = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+
+// speech bubbles: chat (three dots, one bouncing), angry (spiky, red, grumbling), love (a heart)
+const _talk = new Map();
+function talkTexture(kind, frame) {
+  const key = kind + frame;
+  if (_talk.has(key)) return _talk.get(key);
+  const W = 96, H = 112, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  const fill = { chat: '#fffdf6', angry: '#ffe1d9', love: '#ffe8f0' }[kind], line = { chat: '#5b3a1e', angry: '#b0412c', love: '#c84f76' }[kind];
+  g.lineJoin = 'round'; g.lineWidth = 5; g.fillStyle = fill; g.strokeStyle = line;
+  g.beginPath();
+  if (kind === 'angry') {
+    // a jagged shout bubble
+    const cx = 48, cy = 46, n = 14;
+    for (let i = 0; i <= n * 2; i++) { const a = i / (n * 2) * Math.PI * 2, r = i % 2 ? 30 : 41; const x = cx + Math.cos(a) * r * 1.08, y = cy + Math.sin(a) * r * 0.86; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+  } else {
+    g.roundRect(6, 8, 84, 70, 24);
+    g.moveTo(30, 76); g.lineTo(22, 102); g.lineTo(46, 77);
+  }
+  g.fill(); g.stroke();
+  if (kind === 'chat') {
+    // cover the seam where the tail joins
+    g.fillStyle = fill; g.fillRect(31, 72, 13, 7);
+    for (let i = 0; i < 3; i++) { const on = i === frame; g.fillStyle = on ? '#5b3a1e' : '#c4a47a'; g.beginPath(); g.arc(28 + i * 20, on ? 38 : 43, on ? 8 : 6.5, 0, Math.PI * 2); g.fill(); }
+  } else if (kind === 'angry') {
+    g.fillStyle = '#b0412c'; g.font = '800 30px Fredoka, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('#@!', 48 + (frame ? 2 : -2), 47 + (frame ? -1 : 1));
+  } else {
+    g.fillStyle = fill; g.fillRect(31, 72, 13, 7);
+    g.fillStyle = '#e0466e'; g.beginPath(); g.moveTo(48, 64); g.bezierCurveTo(20, 46, 26, 18, 48, 32); g.bezierCurveTo(70, 18, 76, 46, 48, 64); g.fill();
+  }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+  _talk.set(key, t); return t;
+}
 
 const _labels = new Map();
 function labelTex(text) {

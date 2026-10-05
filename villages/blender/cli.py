@@ -58,7 +58,9 @@ if cmd == "preview":
     c = (lo + hi) / 2; r = (hi - lo).length / 2
     yaw = float(os.environ.get("VYAW", "0.55")); pitch = float(os.environ.get("VPITCH", "0.85"))
     preview_setup((int(os.environ.get("VW", "800")), int(os.environ.get("VH", "700"))))
-    ground = box("ground", (40, 40, 0.02), (0, 0, -0.02), material("ground", 0x8cc463)); ground.data.materials[0] = material("ground", 0x8cc463)
+    if os.environ.get("VGROUND") != "0":
+      ground = box("ground", (40, 40, 0.02), (0, 0, -0.02), material("ground", 0x8cc463))
+      ground.data.materials[0] = material("ground", 0x8cc463)
     preview_camera(target=tuple(c), dist=r * float(os.environ.get("VDIST", "3.2")), yaw=yaw, pitch=pitch, lens=50)
     sc = bpy.context.scene
     sc.render.filepath = out

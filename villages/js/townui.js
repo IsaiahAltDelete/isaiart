@@ -31,6 +31,13 @@ export function townInit(ui) {
 .pols{display:grid;gap:6px}.pol{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;background:#fffaf0;border:1px solid #e6d3a6}.pol>div{flex:1;min-width:0}.pol b{font-size:13px}.pol small{display:block;font-size:11.5px;color:var(--ink2)}
 .prosbar{display:flex;height:12px;border-radius:7px;overflow:hidden;background:#eadcb6;margin:6px 0}.prosbar i{display:block;height:100%}
 .pros{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:9px;color:#fff}.pros.p0{background:${PROS_COL[0]}}.pros.p1{background:${PROS_COL[1]}}.pros.p2{background:${PROS_COL[2]}}.pros.p3{background:${PROS_COL[3]}}
+.posters{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}.poster{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 8px 9px;background:linear-gradient(#f6e6c0,#ead39f);border:1px solid #c9a35e;border-radius:4px;box-shadow:0 2px 0 #b8925066,inset 0 0 18px #c9a35e55;transform:rotate(-1deg);font-family:Georgia,'Times New Roman',serif;color:#4a2f14}.poster:nth-child(2n){transform:rotate(1.2deg)}
+.poster::before{content:'';position:absolute;top:4px;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:#b8432f;box-shadow:0 1px 0 #6a1f14}
+.ptitle{font-size:19px;font-weight:900;letter-spacing:.12em;color:#7a2416;margin-top:4px}.pface{width:60px;height:60px;display:grid;place-items:center;border:2px solid #7a5a2e;background:#fff5dc;filter:sepia(.35)}.psil{font-size:34px;font-weight:900;color:#8a6a3a}
+.pname{font-size:14px;font-weight:700;text-align:center}.pcrimes{font-size:11px;text-align:center;color:#6a4a24;line-height:1.3}.pbounty{font-size:11px;font-weight:700;color:#7a2416}
+.pbtn{font:inherit;font-family:Georgia,serif;font-size:11.5px;font-weight:700;color:#4a2f14;background:#fff5dc;border:1.5px solid #7a5a2e;border-radius:4px;padding:3px 9px;cursor:pointer;margin-top:2px}.pbtn:hover{background:#fff}
+.plink{border:0;background:none;font:inherit;font-size:11px;color:#6a4a24;text-decoration:underline;cursor:pointer}
+.poster.caught .pface,.poster.caught .pname{opacity:.6}.pstamp{position:absolute;top:44%;left:50%;transform:translate(-50%,-50%) rotate(-14deg);font-size:22px;font-weight:900;letter-spacing:.1em;color:#2f7a3a;border:3px solid #2f7a3a;border-radius:6px;padding:0 8px;background:#f6e6c0cc}
 .crimelog{font-size:12px;line-height:1.5;color:var(--ink2);margin:4px 0 0;padding-left:16px}
 .seed-row{display:flex;gap:6px}.seed-row input{flex:1;min-width:0}.seed-traits{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.seed-traits span{font-size:12px;padding:5px 9px;border-radius:15px;background:#edf0d2}`;
   document.head.appendChild(style);
@@ -72,6 +79,15 @@ export function townHtml(ui) {
   h += `<section class="town-section"><h3>${svg('shield', 18)} Safety</h3><div class="ledger">${sids.map(sid => `<span>${esc(sim.sname(sid))}: <b>${esc(sim.safetyOf(sid))}</b></span>`).join('')}</div>
     <p>Struggling homes and a glum village tempt someone to sneak off with a sack of coins at night. Guards, constables (Watch House), lanterns and the Night watch catch them; with a Watch House they spend the morning in the stocks.</p>
     ${log.length ? `<ul class="crimelog">${log.slice(0, 4).map(l => `<li>${esc(l.msg)}</li>`).join('')}</ul>` : ''}</section>`;
+  // the notice board: wanted posters
+  const W = s.crime?.wanted || [];
+  h += `<section class="town-section"><h3>${svg('alert', 18)} Wanted</h3>${W.length ? `<div class="posters">${W.map(p => {
+    const v = sim.vById.get(p.vid);
+    return `<div class="poster${p.caught ? ' caught' : ''}"><div class="ptitle">WANTED</div><div class="pface">${p.known && ui.face ? ui.face(p.face, 56) : '<span class="psil">?</span>'}</div>
+      <div class="pname">${p.known ? esc(p.name) : 'Unknown'}</div><div class="pcrimes">${p.crimes.slice(-3).map(c => esc(c)).join(' · ')}</div>
+      ${p.caught ? '<div class="pstamp">CAUGHT</div>' : p.bounty ? '<div class="pbounty">Bounty posted · 20 coins</div>' : `<button class="pbtn" data-act="town-bounty" data-id="${p.id}" data-tip="Post a bounty|20 coins: the watch looks twice as hard, and works out unknown culprits faster.">Post bounty · 20</button>`}
+      ${p.known && v && !p.caught ? `<button class="plink" data-act="town-person" data-id="${v.id}">Last seen in ${esc(sim.sname(v.home))}</button>` : !p.known ? '<div class="pcrimes">Constables and rogues are on the trail.</div>' : ''}</div>`;
+  }).join('')}</div>` : '<p>No one is wanted. The notice board is all lost cats and pie recipes.</p>'}</section>`;
   return h;
 }
 
@@ -110,6 +126,7 @@ export function townClick(ui, act, a) {
   if (act === 'town-open') ui.openModal('town');
   if (act === 'town-gov' && !sim.setGovernment(a.dataset.k)) ui.toast('Build a Town Hall first (a Magocracy also needs an Archmage).', 'house');
   if (act === 'town-policy') sim.setPolicy(a.dataset.k, !sim.s.gov.policies[a.dataset.k]);
+  if (act === 'town-bounty' && !sim.postBounty(sim.s.crime.wanted.find(p => p.id === +a.dataset.id))) ui.toast('You need 20 coins to post a bounty.', 'coin');
   if (act === 'town-archmage') sim.appointArchmage(sim.bById.get(+a.dataset.bid), sim.vById.get(+a.dataset.id));
   if (act === 'town-enrol' && !sim.enrol(sim.vById.get(+document.getElementById('universityApplicant')?.value), sim.bById.get(+a.dataset.bid))) ui.toast('This student cannot enrol here yet.', 'cap');
   if (act === 'town-unenrol') { const v = sim.vById.get(+a.dataset.id); if (v) sim.unassign(v); }

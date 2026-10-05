@@ -119,7 +119,7 @@ const EDU = {
       const reach = STUDY.findLastIndex(n => v.study >= n);
       if (reach > this.eduTier(v)) {
         v.tier = reach; v.educated = true;
-        this.emit('toast', `${v.name.split(' ')[0]} studied hard and is now ${TIERS[reach].name === 'Scholar' ? 'a Scholar' : TIERS[reach].name.toLowerCase()}!`, 'cap');
+        this.story('study', `${v.name} studied hard at the Library and is now ${TIERS[reach].name === 'Scholar' ? 'a Scholar' : TIERS[reach].name.toLowerCase()}.`, [v], 'cap');
         this.log(`${v.name} reached ${TIERS[reach].name} at the Library.`);
       }
       if (this.s.rpg) this.s.rpg.know = (this.s.rpg.know || 0) + 0.4 * (1 + 0.1 * mod(v.abil?.int));
@@ -160,7 +160,7 @@ const EDU = {
             this.rpg().know += 0.5; b.status = null;
             if (v.university >= UNIVERSITY_POINTS) {
               this.unassign(v); v.tier = 4; v.educated = true; v.cls = 'wizard'; v.lvl = Math.max(2, v.lvl || 1); v.hp = maxHp(v);
-              this.emit('toast', `${v.name.split(' ')[0]} graduated as a Magister!`, 'cap');
+              this.story('study', `${v.name} graduated from the Arcane University as a Magister.`, [v], 'cap');
               this.log(`${v.name} became a Magister and a level 2 wizard.`); this.socSecond(); return;
             }
           }

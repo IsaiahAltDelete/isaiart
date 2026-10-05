@@ -103,7 +103,7 @@ test('boards expose upgrade costs, blockers, construction and regional vacancies
 });
 test('all five exported models have valid binary mesh ranges and node hierarchy',()=>{
   const data=JSON.parse(fs.readFileSync(new URL('../models/models.json',import.meta.url))),bin=fs.readFileSync(new URL('../models/models.bin',import.meta.url));
-  assert.equal(Object.keys(data.models).length,92);
+  assert.ok(Object.keys(data.models).length>=93);
   for(const type of ['chapel','temple','trainingyard','rangerlodge','rogueguild']){
     const nodes=data.models[type]?.nodes;assert.ok(nodes?.length>=2,type);assert.ok(nodes.some(n=>n.meshes?.length>=10));assert.deepEqual(footprint(type,0),footprint(type,1));
     for(let i=0;i<nodes.length;i++) {const n=nodes[i];assert.ok(n.parent<i);for(const m of n.meshes||[]){assert.ok(m.nv>0&&m.ni>0);assert.ok(m.pos>=0&&m.pos+m.nv*6<=bin.length);assert.ok(m.idx>=0&&m.idx+m.ni*2<=bin.length);}}

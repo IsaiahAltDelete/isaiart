@@ -531,6 +531,109 @@ Run them per file: `node --test tests/round8.test.mjs` (`node --test tests/` fai
 Check syntax as ES modules (copy to `.mjs` first); plain `node --check` missed an unescaped quote
 this round.
 
+## Round 12 — the Story page, village drama and hard times (2026-10-05)
+
+The client found the relationship popups too pushy, felt everyone ended up best friends, and asked
+for more things to go wrong: droughts, natural and supernatural disasters, famine, dragons.
+
+**The Story page** (Journal → Story, `sim.story()`)
+- Life events no longer pop up: love, babies, growing up, newcomers, farewells, new leaders,
+  graduations, the Archmage, squabbles, rivals, break-ups, mischief and thefts. Each becomes an entry
+  with portraits, grouped by day.
+- Filters: Everything, Love & family, Friends & rivals, Milestones, Mischief.
+- In the village, a small icon floats up over the people involved.
+- The Journal badge now counts unread story entries, achievements and festival rewards, not every
+  log line. The Journal opens on whichever page has something waiting.
+- Each entry keeps a snapshot of the faces involved, so a farewell still shows who it was.
+- A burst of new best friends (a festival, say) merges into one entry. "Good friends" only goes to
+  News.
+
+**Drama** (`social.js`)
+- Affinity now runs from −100 to 100; at −30 or below, two villagers are rivals.
+- Each villager has a quirk: Cheerful, Grumpy, Prankster, Proud, Shy or Chatterbox. It shows as a tag
+  on their panel.
+- Time together usually builds a friendship, but now and then it ends in a squabble. Squabbles are
+  more likely between clashing quirks, when someone is hungry, and in a glum village; good friends
+  forgive more.
+- Friendships fade without time together, and grudges fade too. Couples don't fade.
+- Festivals mend some rivalries.
+- Couples now form out of friendship (the closest friend, at least 15). A couple who fall to
+  negative affinity may part ways.
+- Rivalries take a little happiness away from the village.
+- The villager panel lists rivals under "Friends & rivals".
+
+**Mischief and crime** (`crime.js`)
+- Nightly theft is a bit more likely (base chance 0.07).
+- Once a day per settlement, a prankster or a youngster may pull a harmless prank: a "borrowed" pie,
+  a frog in someone's boot, a pink well bucket, chickens let loose, salt and sugar swapped, a snowman
+  that looks like someone, tied bootlaces. Some pranks ruffle a friendship.
+
+**Hard times** (`events.js`, visuals in `eventsview.js`)
+- One roll a day at dawn, from day 4 and village level 3. Never on the first day after loading,
+  never more than one event at a time (fires aside), and repeats are spaced out.
+- Settings → Hard times: Off, Gentle or Normal.
+- A banner under the resource bar says what's happening and what to do; popups move down below it.
+- **Drought:** crops and berries grow slowly; rain ends it.
+- **Crop blight:** a field or two withers and orchards bear half.
+- **Fever:** about a quarter of a settlement falls ill (green glow, slower work). A cleric's round at
+  a Chapel or Temple, or a bath, cures them.
+- **Earthquake:** the camera shakes and one or two buildings are damaged.
+- **Raiders:** announced at dawn, a war band of 4–8 goblins strikes after dark.
+- **Restless spirits:** wisps drift through the village at night and happiness drops. Clerics lay them
+  to rest.
+- **The fair folk are offended:** work is 15% slower. An offering of 5 honey or cheese ends it and
+  blesses the fields for a day (crops +30%).
+- **Dragon attack** (level 8 and up):
+  - A Blender dragon (`blender/build_dragon.py`) circles the settlement and swoops every 8–12 s,
+    breathing fire on a building or snatching up to 5% of the coins.
+  - Guards, wizards (the Archmage hits harder) and constables wear it down. Driven off, it drops gems
+    (8 plus half the village level); otherwise it leaves after 80 s with its loot.
+- **Fire** (lightning in a storm, or the dragon):
+  - Flames and smoke on the building; up to 6 villagers form a bucket chain. A well or fountain within
+    10 tiles makes them 40% better at it, and rain helps too.
+  - If the fire wins, the building is damaged: it looks charred and stops working.
+  - Its panel offers a repair for about 40% of the build cost, done through the normal upgrade work.
+- **Famine** isn't rolled. It's declared when more than 40% of villagers are hungry (droughts and blight make that likely) and lifted below 10%. It shows a banner and a Story entry.
+- Nobody dies.
+
+**Speech bubbles, scuffles, hunger theft, wanted posters and paladins** (follow-up the same day)
+- **Speech bubbles** (`v.talk`, drawn in main.js): three bouncing dots while chatting, a jagged red
+  "#@!" that shakes during a squabble, a pulsing heart between sweethearts. They pop in, bob, and fade.
+  The pair turns to face each other.
+- **Scuffles:** rivals at −60 or worse may come to blows (20% of their squabbles) if one is grumpy,
+  proud or hungry. A comic windmilling `scuffle` animation; 1–2 HP lost, never a knock-out.
+  - A guard, constable or paladin within 12 breaks it up, and with a Watch House the instigator gets
+    the stocks until morning.
+  - If nobody stops it, the instigator gets a wanted poster.
+- **Hunger theft:** every 15 s by day, a hungry grown-up has a 12% chance to raid a growing field,
+  orchard, coop, hive or dairy. They eat (it sets back a field's growth), and the raid goes to the
+  Story.
+  - A watcher who catches them lets them off with a loaf of bread; on the third raid it's an hour in
+    the stocks.
+  - Hunger also raises the nightly theft chance.
+- **Wanted posters** (Town → Wanted):
+  - An escaped thief or an unstopped brawler gets a parchment poster. It's unknown ("?") until a
+    witness, constable, rogue or paladin works out who it was; then it shows their face, crimes and
+    village.
+  - Watchers who spot a known culprit catch them (the stocks, with a Watch House). The poster is
+    stamped CAUGHT and comes down a day later. Unknown trails go cold after three days.
+  - A 20-coin bounty doubles both identifying and catching. Wanted villagers get a red "Wanted" tag on
+    their panel.
+- **Paladins** (new class, `classduties.js`):
+  - Temple acolytes become Clerics or Paladins, whichever suits them. Paladin: d10 hit die, armour
+    and shield. On expeditions, Divine Smite (+2d8 once per fight) and Lay on Hands.
+  - In the village they answer the alarm, waking to charge any beast or raider within 16 and opening
+    with a smite. Once a day each lifts a knocked-out neighbour back up, and they hit the dragon hard.
+- **Other class duties:**
+  - Rangers shoot at prowling beasts in bowshot.
+  - Rogues spot sneaks and crack wanted cases.
+  - Bards halve squabbles nearby.
+  - Fighters and rangers help against the dragon.
+  - The class tag's tooltip says what each class does in the village.
+
+**Tests:** new `tests/round12.test.mjs` (21 tests); model-count checks now expect at least 93.
+All 80 tests pass. Run each file on its own, e.g. `node --test tests/round12.test.mjs`.
+
 ## Next round — pick 5–6
 
 Ordered easiest to hardest:

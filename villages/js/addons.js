@@ -24,6 +24,8 @@ import { installCrime } from './crime.js';
 import { installClassPlaces } from './classplaces.js';
 import { installCareers } from './careers.js';
 import { installArcane } from './arcane.js';
+import { installEvents } from './events.js';
+import { installClassDuties } from './classduties.js';
 
 export function installAddons(sim, save) {
   installRoads(sim, save);
@@ -40,4 +42,6 @@ export function installAddons(sim, save) {
   installClassPlaces(sim);
   installCareers(sim);
   installArcane(sim);
+  installEvents(sim);       // droughts, fevers, fires, raiders, spirits, the fair folk, dragons
+  installClassDuties(sim);  // paladins answer the alarm, rangers shoot, rogues spot thieves, bards calm tempers
 }

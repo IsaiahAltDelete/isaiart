@@ -109,11 +109,12 @@ export function r7BuildingHtml(ui, b) {
 // ── villager panel: friends ──
 export function r7VillagerHtml(ui, v) {
   const sim = ui.sim; if (!sim.friendsOf) return '';
-  const list = sim.friendsOf(v).slice(0, 4);
+  const list = sim.friendsOf(v).slice(0, 4), rivals = (sim.rivalsOf?.(v) || []).slice(0, 3);
+  const rv = rivals.length ? `<div class="r7rivals">${svg('storm', 13)} Rivals: ${rivals.map(r => `<a href="#" data-act="selv" data-id="${r.v.id}">${esc(r.v.name.split(' ')[0])}</a>`).join(', ')}</div>` : '';
   const visit = v.task?.label?.startsWith('Visiting') ? `<div class="desc">${svg('heart', 12)} ${esc(v.task.label)} this evening.</div>` : '';
-  if (!list.length) return `<div class="ip-sec"><div class="cap">${svg('heart', 14)} Friends</div><div class="desc">No close friends yet. Working, resting and dancing together brings villagers closer.</div>${visit}</div>`;
+  if (!list.length) return `<div class="ip-sec"><div class="cap">${svg('heart', 14)} Friends</div><div class="desc">No close friends yet. Working, resting and dancing together brings villagers closer.</div>${rv}${visit}</div>`;
   return `<div class="ip-sec"><div class="cap">${svg('heart', 14)} Friends<span class="r" data-tip="Friendship|Villagers grow closer working, resting and dancing together, and visit good friends in the evening. Friendships make the whole village happier.">?</span></div>
-    ${list.map(f => `<div class="r7friend"><a href="#" data-act="selv" data-id="${f.v.id}">${esc(f.v.name)}</a>${hearts(f.hearts)}<small>${f.hearts === 3 ? 'best friends' : f.hearts === 2 ? 'good friends' : f.hearts === 1 ? 'friends' : 'getting to know'}</small></div>`).join('')}${visit}</div>`;
+    ${list.map(f => `<div class="r7friend"><a href="#" data-act="selv" data-id="${f.v.id}">${esc(f.v.name)}</a>${hearts(f.hearts)}<small>${f.hearts === 3 ? 'best friends' : f.hearts === 2 ? 'good friends' : f.hearts === 1 ? 'friends' : 'getting to know'}</small></div>`).join('')}${rv}${visit}</div>`;
 }
 
 // ── modals ──

@@ -99,7 +99,7 @@ const GOV = {
     const before = g.leader; g.leader = winner?.id ?? null;
     if (!quiet && winner && (g.type === 'mayor' || g.type === 'republic' || before !== g.leader)) {
       this.log(`${winner.name} became ${this.govInfo().title} of ${this.sname('meadow')}.`);
-      this.emit('toast', `${winner.name.split(' ')[0]} is now ${this.govInfo().title}!`, 'star');
+      this.story('leader', `${winner.name} is now ${this.govInfo().title} of ${this.sname('meadow')}.`, [winner], 'star');
     }
   },
   // the government's perks, plus a nudge from the leader's best traits

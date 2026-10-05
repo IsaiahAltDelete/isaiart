@@ -14,6 +14,8 @@ import { eduVillagerHtml, eduBuildingHtml, eduClick, JOB_EDU, TIERS } from './ed
 import { boardsInit, boardsFrame, boardClick, boardChange, peopleBoardHtml, jobsBoardHtml, buildingsBoardHtml, worldRegionsHtml } from './boards.js';
 import {progressBuildingHtml,progressVillagerHtml,progressClick} from './progressui.js';
 import { RACES, GENDERS } from './society.js';
+import { CLASS_DUTY } from './classduties.js';
+import { eventsInit, eventsFrame, eventsBuildingHtml, eventsSettingsHtml, eventsClick } from './events.js';
 import { CLASSES, classOf, maxHp } from './rpg.js';
 import { townInit, townHtml, townClick, townChange, townBuildingHtml, seedHtml, seedClick } from './townui.js';
 
@@ -171,7 +173,7 @@ export class UI {
     this.initTips();
     this.initKeys();
     r7Init(this);
-    this.face = faceSvg; townInit(this);
+    this.face = faceSvg; townInit(this); eventsInit(this);
     boardsInit(this);
   }
   get sim() { return this.g.sim; }
@@ -210,9 +212,9 @@ export class UI {
     $('#sky').addEventListener('click', () => { $('#speed').classList.toggle('open'); sfx.click(); });
     $('#btnLog').onclick = () => {
       // open whichever page has something waiting
-      const sim = this.sim, news = sim.s.log.length > (this.seenLog || 0);
+      const sim = this.sim, news = (sim.s.storyN || 0) > (sim.s.storySeen || 0);
       const fest = sim.festShop?.open() && sim.festShop.quests().some(q => q.done && !q.claimed), trophies = sim.achievements().some(x => x.done && !x.claimed);
-      this.openModal(fest ? 'festival' : trophies && !news ? 'stats' : 'log');
+      this.openModal(fest ? 'festival' : trophies && !news ? 'stats' : 'story');
     };
     $('#btnStats').onclick = () => this.openModal('stats');
     $('#btnSettings').onclick = () => this.openModal('settings');
@@ -409,7 +411,7 @@ export class UI {
       else if (k === 'l') toggle('buildings');
       else if (k === 'i') toggle('inventory');
       else if (k === 'm') toggle('worldmap');
-      else if (k === 'n') toggle('log');
+      else if (k === 'n') { if (['story', 'log', 'stats', 'festival'].includes(this.modal)) this.closeModal(); else $('#btnLog').click(); }
       else if (k === '?' || k === 'f1') { e.preventDefault(); toggle('settings'); }
       else if (k === 'g') this.tray === 'decor' ? this.closeTray() : this.openTray('decor');
       else if (k === 'h') this.g.goHome();
@@ -438,9 +440,10 @@ export class UI {
       if (cb.dataset.n !== String(nch)) { cb.dataset.n = nch; cb.classList.toggle('hidden', !nch); cb.innerHTML = svg('gift', 24) + (nch > 1 ? `<span class="badge">${nch}</span>` : ''); }
       this.markLog();
       const ae = document.activeElement;
-      if (this.modal && ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'worldmap', 'merchant', 'magic', 'guild', 'town', ...R7_LIVE].includes(this.modal) && !($('#modal').contains(ae) && /SELECT|INPUT/.test(ae.tagName))) this.drawModal(true);
+      if (this.modal && ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'worldmap', 'merchant', 'magic', 'guild', 'town', 'story', ...R7_LIVE].includes(this.modal) && !($('#modal').contains(ae) && /SELECT|INPUT/.test(ae.tagName))) this.drawModal(true);
       this.drawQuests();
       r7Frame(this);
+      eventsFrame(this);
       boardsFrame(this);
       if (this.tray) this.refreshCards();
       if (this.tipEl && (!this.tipEl.isConnected || !this.tipEl.offsetParent)) this.hideTip();
@@ -744,6 +747,9 @@ export class UI {
   bStatus(b) {
     const sim = this.sim, s = sim.s, def = defOf(b.type);
     if (!b.built) return { cls: 'info', dot: 'warn', text: `Under construction · ${Math.floor(b.progress * 100)}%` };
+    if (b.fire) return { cls: 'bad', dot: 'bad', text: 'On fire!' };
+    if (b.up?.repair) return { cls: 'info', dot: 'warn', text: `Repairing · ${Math.floor(b.up.progress * 100)}%` };
+    if (b.damaged) return { cls: 'bad', dot: 'bad', text: 'Damaged · needs repair' };
     if (b.up) return { cls: 'info', dot: 'warn', text: `Upgrading · ${Math.floor(b.up.progress * 100)}%` };
     if (!def.workers) {
       if (def.housing) { const n = s.villagers.filter(v => sim.bedFor(v).b === b).length; return { cls: n ? 'ok' : 'info', dot: n ? 'ok' : 'off', text: `${n}/${housingOf(b)} beds used` }; }
@@ -783,6 +789,7 @@ export class UI {
         ${r7SiteHtml(this, b)}<div class="actions"><button class="btn red sm" data-act="demolish">${svg('trash', 14)} Cancel (refund)</button></div>`;
       return h + '</div>';
     }
+    h += eventsBuildingHtml(this, b);   // on fire, or damaged and waiting for repairs (events.js)
     // live status with progress
     const st = this.bStatus(b);
     if (st) {
@@ -884,9 +891,11 @@ export class UI {
     const race = RACES[v.race] || RACES.human, gen = GENDERS[v.gender] || GENDERS.x, cls = CLASSES[classOf(v)], tier = sim.eduTier(v);
     // who they are, at a glance
     const chips = [
+      sim.wantedOf?.(v) ? `<span class="vchip wanted" data-tip="Wanted|${esc(sim.wantedOf(v).crimes.join(', '))}. The watch will catch them if they spot them.">${svg('alert', 13)}Wanted</span>` : '',
       v.title ? `<span class="vchip gold" data-tip="${esc(v.title)}|${esc(v.title === 'Archmage' ? 'Leads a Wizard Tower: its wizards study faster.' : 'Leads the village government.')}">${svg('star', 13)}${esc(v.title)}</span>` : '',
       `<span class="vchip" data-tip="${esc(race.name)} · ${esc(race.trait)}|${esc(race.desc)}">${esc(race.name)} · ${esc(gen.pro)}</span>`,
-      st !== 'child' ? `<span class="vchip" data-tip="${esc(cls.name)} · level ${v.lvl || 1}|${esc(cls.desc)}">${svg(cls.icon, 13)}${esc(cls.name)} ${v.lvl || 1}</span>` : '',
+      sim.quirkOf ? `<span class="vchip" data-tip="${esc(sim.quirkOf(v).name)}|${esc(sim.quirkOf(v).desc)}">${esc(sim.quirkOf(v).name)}</span>` : '',
+      st !== 'child' ? `<span class="vchip" data-tip="${esc(cls.name)} · level ${v.lvl || 1}|${esc(cls.desc)} In the village: ${esc(CLASS_DUTY[classOf(v)] || '')}">${svg(cls.icon, 13)}${esc(cls.name)} ${v.lvl || 1}</span>` : '',
       st !== 'child' ? `<span class="vchip" data-tip="${esc(TIERS[tier].name)}|${esc(TIERS[tier].desc)}">${v.grade ? `<span class="grade g${v.grade}">${v.grade}</span>` : svg('cap', 13)}${esc(TIERS[tier].name)}</span>` : '',
       home ? `<button class="vchip link" data-act="chainb" data-id="${home.id}" data-tip="Home|${esc(sim.homeName(home))}">${svg('house', 13)}${esc(sim.homeName(home))}</button>` : '',
     ].join('');
@@ -904,7 +913,7 @@ export class UI {
       ${st === 'adult' ? `<select data-act="job" data-id="${v.id}" style="width:100%;margin-top:8px" aria-label="Job">${this.workOptions(v)}</select>` : `<div class="desc" style="margin-top:6px">${st === 'child' ? 'Too young to work — plays, and studies if there is a school.' : 'Retired, enjoying the quiet life.'}</div>`}</div>
       ${this.fold('skills', 'Skills & health', 'heart', `${hp}/${mx} HP`, () => rpgVillagerHtml(this, v))}
       ${this.fold('edu', st === 'child' ? 'Schooling' : 'Education', 'cap', v.grade ? `Grade ${v.grade}` : TIERS[tier].name, () => eduVillagerHtml(this, v) + progressVillagerHtml(this, v))}
-      ${this.fold('friends', 'Friends', 'heart', String(sim.friendsOf?.(v).filter(f => f.hearts > 0).length || 0), () => r7VillagerHtml(this, v))}
+      ${this.fold('friends', 'Friends & rivals', 'heart', `${sim.friendsOf?.(v).filter(f => f.hearts > 0).length || 0}${sim.rivalsOf?.(v).length ? ` · ${sim.rivalsOf(v).length} rival${sim.rivalsOf(v).length > 1 ? 's' : ''}` : ''}`, () => r7VillagerHtml(this, v))}
       <div class="actions"><button class="btn blue sm" data-act="follow">${svg('eye', 14)} ${this.g.followV === v ? 'Stop following' : 'Follow'}</button><button class="btn sm" data-act="vlist" data-tip="All villagers|Everyone in your villages, with jobs.|V">${svg('people', 14)} All villagers</button></div></div>`;
   }
   // a section that opens on tap (remembered while the game runs)
@@ -962,6 +971,7 @@ export class UI {
     const act = a.dataset.act;
     if (progressClick(this,act,a,sel)) { this.drawInfo(true); return; }
     if (act.startsWith('town-')) { townClick(this, act, a); this.drawInfo(true); return; }
+    if (act.startsWith('ev-')) { eventsClick(this, act, a, sel?.b); this.drawInfo(true); return; }
     if (act.startsWith('r7-')) { if (r7Click(this, act, a)) this.drawInfo(true); return; }
     if (act === 'close') { this.g.select(null); return; }
     if (act === 'fold') { (this.folds ||= new Set()).has(a.dataset.k) ? this.folds.delete(a.dataset.k) : this.folds.add(a.dataset.k); sfx.click(); this.drawInfo(true); return; }
@@ -1136,7 +1146,7 @@ export class UI {
     this.modal = kind;
     m.classList.remove('hidden', 'closing');
     if (!was) restart(m, 'opening');
-    m.querySelector('.box').classList.toggle('tall', ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'log', 'festival', 'settings', 'guild', 'town'].includes(kind));
+    m.querySelector('.box').classList.toggle('tall', ['villagers', 'jobs', 'buildings', 'inventory', 'stats', 'log', 'story', 'festival', 'settings', 'guild', 'town'].includes(kind));
     this.drawModal(false, was);
     this.drawDock();
     this.hideTip(); this.hideResTip();
@@ -1144,6 +1154,7 @@ export class UI {
   }
   closeModal() {
     if (!this.modal) return;
+    this.storyOpenSeen = null;
     this.modal = null;
     const m = $('#modal');
     m.classList.remove('opening'); m.classList.add('closing');
@@ -1159,11 +1170,11 @@ export class UI {
     const k = this.modal, sim = this.sim, s = sim.s;
     if (!k) return;
     const titles = { villagers: ['people', 'Villagers'], jobs: ['hammer','Jobs'], buildings: ['list', 'Buildings'], inventory: ['bag', 'Inventory'], worldmap: ['map', 'World'], shop: ['shop', 'Shop'],
-      settings: ['gear', 'Settings'], town: ['house', 'Town'], log: ['mail', 'Village News'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
+      settings: ['gear', 'Settings'], town: ['house', 'Town'], log: ['mail', 'Village News'], story: ['heart', 'Story'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
     const seg = (label, tabs) => `<span class="seg" role="tablist" aria-label="${label}">` + tabs.map(([id, name]) => `<button data-act="mtab" data-m="${id}" class="${k === id ? 'on' : ''}" role="tab" aria-selected="${k === id}">${name}</button>`).join('') + '</span>';
-    const journal = ['log', 'stats', 'festival'].includes(k), boards = ['villagers', 'jobs', 'buildings'].includes(k);
+    const journal = ['story', 'log', 'stats', 'festival'].includes(k), boards = ['villagers', 'jobs', 'buildings'].includes(k);
     const head = boards ? seg('Village boards', [['villagers', 'Villagers'], ['jobs', 'Jobs'], ['buildings', 'Buildings']])
-      : journal ? seg('Journal', [['log', 'News'], ['stats', 'Achievements'], ...(sim.festShop?.open() || k === 'festival' ? [['festival', 'Festival']] : [])])
+      : journal ? seg('Journal', [['story', 'Story'], ['log', 'News'], ['stats', 'Achievements'], ...(sim.festShop?.open() || k === 'festival' ? [['festival', 'Festival']] : [])])
       : esc(titles[k][1]);
     if (head !== this.lastHead) { this.lastHead = head; $('#mTitle').innerHTML = head; }
     $('#mIcon').innerHTML = boards || journal ? '' : svg(titles[k][0], 26);
@@ -1216,7 +1227,9 @@ export class UI {
         <p><b>Controls.</b> Drag to move · scroll or pinch to zoom · right-drag, two-finger twist or <kbd>Q</kbd>/<kbd>E</kbd> to rotate · <kbd>WASD</kbd> to pan · <kbd>R</kbd> rotates while placing · <kbd>Space</kbd> pauses · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> set the speed · <kbd>Esc</kbd> closes or cancels.</p>
         <p><b>Shortcuts.</b> <kbd>B</kbd> build · <kbd>G</kbd> decorate · <kbd>V</kbd> villagers · <kbd>L</kbd> buildings · <kbd>I</kbd> inventory · <kbd>M</kbd> world map · <kbd>N</kbd> news · <kbd>H</kbd> home · <kbd>[</kbd> <kbd>]</kbd> switch build tabs · <kbd>?</kbd> this page. Hover (or long-press) almost anything for an explanation.</p>
         <p>Your village saves automatically in this browser.</p></div>
-        ${seedHtml(this)}<div class="actions"><button class="btn red" data-act="reset">${svg('trash', 16)} Start a new village with this seed</button></div>`;
+        ${eventsSettingsHtml(this)}${seedHtml(this)}<div class="actions"><button class="btn red" data-act="reset">${svg('trash', 16)} Start a new village with this seed</button></div>`;
+    } else if (k === 'story') {
+      h += this.storyHtml();
     } else if (k === 'log') {
       h += s.log.map(l => `<div class="logline"><small>Day ${Math.floor(l.t / DAY) + 1}</small>${esc(l.msg)}</div>`).join('') || '<p>No news yet.</p>';
       this.seenLog = s.log.length; this.markLog();
@@ -1290,6 +1303,7 @@ export class UI {
     if (act === 'seed-input') return;
     if (seedClick(this, act)) { this.drawModal(true); return; }
     if (act.startsWith('town-')) { townClick(this, act, a); if (this.modal) this.drawModal(true); return; }
+    if (act.startsWith('ev-')) { eventsClick(this, act, a); if (this.modal) this.drawModal(true); return; }
     if (act === 'job') return;                       // the dropdown itself; handled on change
     if (act.startsWith('rpg-')) { rpgModalClick(this, act, a); this.dirty.res = true; this.drawModal(true); return; }
     if (act.startsWith('r7-')) { r7Click(this, act, a); this.dirty.res = true; if (this.modal) this.drawModal(true); return; }
@@ -1297,6 +1311,7 @@ export class UI {
       const k = a.dataset.k, half = Math.max(1, Math.floor(GOODS[k].price / 2));
       if (s.res[k] >= 10) { s.res[k] -= 10; s.res.coins += half * 10; s.stats.earned += half * 10; sfx.coin(); this.dirty.res = true; }
     }
+    if (act === 'storyf') { this.storyFilter = a.dataset.k; sfx.click(); this.drawModal(true); return; }
     if (act === 'mtab') { if (a.dataset.m !== this.modal) { this.modal = a.dataset.m; this.drawModal(false, true); this.drawDock(); sfx.click(); } return; }
     if (act === 'vsel') { const v = sim.vById.get(+a.dataset.id); if (v) { this.closeModal(); this.g.select({ kind: 'v', v }, true); } return; }
     if (act === 'bsel') { const b = sim.bById.get(+a.dataset.id); if (b) { this.closeModal(); this.g.select({ kind: 'b', b }, true); } return; }
@@ -1419,9 +1434,29 @@ export class UI {
     }
   }
 
-  // one badge on the Journal: unread news, achievements to claim, festival rewards
+  // the village's story: love, friendships, squabbles, babies, farewells… grouped by day
+  storyHtml() {
+    const s = this.sim.s, list = s.story || [], f = this.storyFilter || 'all';
+    // entries that arrived since you last looked get a soft highlight; opening the page reads them
+    if (this.storyOpenSeen == null) this.storyOpenSeen = s.storySeen || 0;
+    const seen = this.storyOpenSeen;
+    if (s.storySeen !== s.storyN) { s.storySeen = s.storyN || 0; this.markLog(); }
+    const KINDS = { family: ['love', 'baby', 'farewell', 'breakup'], friends: ['friends', 'rivals', 'squabble', 'makeup'], milestones: ['arrive', 'grow', 'study', 'leader', 'archmage'], trouble: ['crime', 'mischief'] };
+    const shown = list.filter(e => f === 'all' || KINDS[f]?.includes(e.kind));
+    let h = `<div class="storybar">${[['all', 'Everything'], ['family', 'Love & family'], ['friends', 'Friends & rivals'], ['milestones', 'Milestones'], ['trouble', 'Mischief']].map(([k, t]) => `<button class="tog ${f === k ? 'on' : ''}" data-act="storyf" data-k="${k}">${t}</button>`).join('')}</div>`;
+    if (!shown.length) return h + '<p class="sub" style="text-align:center;padding:20px">Nothing yet. Life in the village will be written here.</p>';
+    let day = null;
+    for (const e of shown.slice(0, 80)) {
+      const d = Math.floor(e.t / DAY) + 1;
+      if (d !== day) { day = d; h += `<h4 class="sday">Day ${d}</h4>`; }
+      const faces = e.faces.map(p => this.sim.vById.has(p.id) ? `<button class="sface" data-act="vsel" data-id="${p.id}" data-tip="${esc(p.name)}|Tap to visit">${faceSvg(p, 34)}</button>` : `<span class="sface gone" data-tip="${esc(p.name)}|No longer in the village">${faceSvg(p, 34)}</span>`).join('');
+      h += `<div class="sentry k-${e.kind}${e.n > seen ? ' fresh' : ''}">${faces ? `<div class="sfaces">${faces}</div>` : `<div class="sfaces"><span class="sic">${svg(e.icon, 22)}</span></div>`}<div class="stext">${esc(e.text)}<small>${svg(e.icon, 12)} ${hm((e.t % DAY) / DAY)}</small></div></div>`;
+    }
+    return h;
+  }
+  // one badge on the Journal: unread story, achievements to claim, festival rewards
   markLog() {
-    const sim = this.sim, news = Math.max(0, sim.s.log.length - (this.seenLog || 0));
+    const sim = this.sim, news = Math.max(0, (sim.s.storyN || 0) - (sim.s.storySeen || 0));
     const trophies = sim.achievements().filter(x => x.done && !x.claimed).length;
     const fest = sim.festShop?.open() ? sim.festShop.quests().filter(q => q.done && !q.claimed).length : 0;
     const n = news + trophies + fest, b = $('#logBadge'); if (!b) return;
