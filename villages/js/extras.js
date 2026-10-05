@@ -195,6 +195,7 @@ export class Extras {
       const k = Math.min(Math.abs((m.r - cx) / (dx || 1e-6)), Math.abs((m.b - cy) / (dy || 1e-6)));
       let t = k;
       while (t > 0.05 && blocked(cx + dx * t, cy + dy * t)) t *= 0.96;
+      if (blocked(cx + dx * t, cy + dy * t)) continue;          // no free spot: better no arrow than one on a panel
       want.set(ch.id, { x: cx + dx * t, y: cy + dy * t, a: Math.atan2(dy, dx), ch });
     }
     for (const n of [...el.children]) if (!want.has(+n.dataset.chest)) n.remove();

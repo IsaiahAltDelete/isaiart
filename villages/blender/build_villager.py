@@ -79,12 +79,12 @@ def build_villager():
     fy = -HEAD_R * 0.93
     face = []
     for sx in (-1, 1):
-        face.append(uvsphere(f"h_eye{sx}", 0.011, (sx * 0.03, fy + 0.006, hz + 0.008), EY, seg=8, rings=5, scale=(0.85, 0.5, 1.15)))
-        face.append(box(f"h_brow{sx}", (0.026, 0.008, 0.007), (sx * 0.031, fy + 0.004, hz + 0.03), HA, base=False, rot=(0, sx * -0.12, 0)))
+        face.append(uvsphere(f"h_eye{sx}", 0.0145, (sx * 0.033, fy + 0.007, hz + 0.008), EY, seg=8, rings=5, scale=(0.8, 0.5, 1.2)))
+        face.append(box(f"h_brow{sx}", (0.03, 0.01, 0.01), (sx * 0.034, fy + 0.004, hz + 0.034), HA, base=False, rot=(0, sx * -0.14, 0)))
     face.append(uvsphere("h_nose", 0.014, (0, fy - 0.006, hz - 0.012), SK, seg=8, rings=6, scale=(0.9, 1.0, 1.15)))
     face.append(box("h_mouth", (0.024, 0.006, 0.005), (0, fy + 0.012, hz - 0.04), material("lip", 0x9a5a48), base=False))
     headm = join([skull] + ears + face, "head_mesh")
-    TILT = (-0.12, 0, 0)               # a gentle nod toward the camera, not a chibi tilt
+    TILT = (-0.22, 0, 0)               # faces tipped toward the high game camera (still not a chibi tilt)
     NECK = (0, 0, NECK_Z)
     rotate_about(headm, NECK, TILT); parent(headm, head)
 

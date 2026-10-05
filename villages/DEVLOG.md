@@ -157,12 +157,12 @@ All ten "next round" ideas, plus a long client wish list.
   settlement specialties, friendships and evening visits, festival quests and a festival shop,
   share codes, the gift-chest arrow, and Pearl Isle with a ferry.
 
-**Critic loop (round 7):** 6.3 → 7.8 → 8.3 → 8.5 → 8.5 → 8.7 against a 9.0 pass mark; it did not pass.
-Along the way the client swapped the chibi villagers for ~3.6-head "storybook folk" at about 1.2x door
-height, with seeded body types. The critic's remaining notes: villagers are hard to read at overview zoom and
-at night (brown clothes on brown dirt; wants contact shadows, more contrast or an outline), the cobble kerb
-reads as a string of pearls, the storage-full pill stacks above toasts, and a few snow domes clip their
-tree lobes up close.
+**Critic loop (round 7):** 6.3 → 7.8 → 8.3 → 8.5 → 8.5 → 8.7 → 8.8 → 8.9 against a 9.0 pass mark; it did
+not pass. Along the way the client swapped the chibi villagers for ~3.6-head "storybook folk" at about 1.2x
+door height. The last two passes added contact shadows and livelier shirts, kerb blocks, status badges on
+the resource bar instead of stacked toasts, water kept off road banks, and a cleaner opening frame. The
+critic's last notes: straw brims still hide faces from the default pitch, and the slab roofs, flat ground
+and small villagers sit a notch below the Tiny Glade / Townscaper bar.
 
 ## Next round — pick 5–6
 
