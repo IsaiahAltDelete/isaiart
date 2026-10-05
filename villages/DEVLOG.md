@@ -765,6 +765,82 @@ Six systems that make the villagers feel like people, each built around a single
   - Oversized music notes.
   - The phone banner covering the villager panel.
 
+## Round 14 — the HUD redesign, with a critic loop (2026-10-05)
+
+The game had outgrown its first toolbar, so the HUD was rebuilt around one rule: every part of
+the game has one obvious home.
+
+- **Main bar (bottom):** five labelled places.
+  - Build (key B): Build and Decorate are two halves of one tray, switched on a dark track; G
+    still opens Decorate.
+  - People (V): Villagers, Jobs, Buildings.
+  - Town (T): rank and goals, government, treasury, safety, wanted posters, plus a **Stores**
+    tab (the old Inventory, also key I).
+  - Journal (N): Story, Chronicle, News, Achievements, Festival.
+  - World (M): the map, plus a Trade tab once you have 2+ settlements.
+  - Each place opens its window on the page with something waiting, and the current place is
+    underlined.
+  - Windows sit between the top bar and the main bar (`--topspace` / `--dockspace`), so the main
+    bar stays usable and switches sections while a window is open.
+- **Top right:** only Home, Shop (gold) and Settings stay fixed.
+  - Things that come and go (gift chests, the festival, the spell book) are labelled
+    "right now" chips (`#nowbar`) to their left, so the fixed buttons never move.
+  - On phone they stack above Home/Shop/Settings.
+  - The old World and Shop corner buttons, the phone side column and the 4–6 unlabelled round
+    icons are gone.
+- **Signal rules:**
+  - **Gold** = something for you, or the main action: counts, NEW tags, Claim, Welcome, Hire,
+    Give, Settle, Watch.
+  - **Cream ghost** = decline or neutral: Turn away, No thanks, Show, Follow, Visit, Move.
+  - **Red** = problems only (FULL, wanted posters, fires, the close button).
+- **Badges:**
+  - Build gets a gold pip for new buildings. In the tray, new cards come first with gold NEW
+    tags, and the category tabs holding them carry pips.
+  - Journal's count is the achievements to claim plus a new chronicle, matched by the tab
+    counts inside. A dot means the Story has unread entries.
+  - Town gets a red count for new wanted posters.
+  - The quest header shows a count only when folded. The festival chip has no count, because
+    its rewards are claimed from the quest panel.
+- **Calmer top band:**
+  - Banners show one at a time, in order: danger, then choices waiting (visitors, weddings),
+    then the rest. A "+N" pill expands the list.
+  - Visitor titles are short.
+  - On laptops and phones the clock is one row.
+  - The main bar is about 15% larger.
+- **Tray:** both scroll rows fade at the edges and get arrows. On phone the categories are
+  icon-only (the selected one keeps its name and count), the Build/Decorate switch is
+  icon-only, and "All" has its own grid icon.
+- **Panels:**
+  - The villager panel shows the wish card right under the chips, and its Follow / All
+    villagers footer is sticky.
+  - Name and rename pencil sit on one line.
+  - Every dropdown is a cream pill with a brown chevron.
+  - Locked governments stay readable (dashed outline, muted text).
+- **Town rank card:** a labelled ladder (Hamlet → Village → Town → City). Unmet goals come
+  first, each with a how-to and a jump button ("See the wishes ›", "Build one ›"). Completed
+  goals collapse to ticks.
+- **Phone:**
+  - Windows open below the two-row resource bar.
+  - The banner reads title and message first, then the choices, and moves above the tray. It
+    hides while placing or while a panel is open.
+  - Gift-chest pointers stay off the panel, and the Quests header stays beside the clock.
+
+**Critic loop** (a HUD/UX lead for cozy builders; pass mark 8.5; 1280×720 first, phone
+second): **7.3 → 8.3 → 8.5, passed on attempt 3.**
+
+Applied after the passing verdict, without re-scoring:
+- the phone tray keeps the selected category's name;
+- the phone banner's "+N" moved to the choices row;
+- locked government text was darkened.
+
+The critic's remaining notes, all minor:
+- slivers of the right-edge chips peek out beside a phone window;
+- the phone tray's Back column costs about one card of width;
+- the clock card's top edge doesn't line up with the Quests header and banner.
+
+Note: the preview pane pauses `requestAnimationFrame` while it's in the background, so the HUD
+can look half-drawn in a screenshot taken right after load. Take a second screenshot.
+
 ## Next round — pick 5–6
 
 Ordered easiest to hardest:

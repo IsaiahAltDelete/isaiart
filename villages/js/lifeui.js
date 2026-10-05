@@ -2,7 +2,8 @@
 // the wish card on a villager's panel, the open wishes on the Story page, the rank
 // card in the Town panel (and a row in the quest panel), the Chronicle tab in the
 // Journal, and the visitor / wedding rows in the banner under the resource bar.
-import { svg } from './icons.js';
+import { svg, addIcons } from './icons.js';
+addIcons({ grid: '<rect x="5" y="5" width="9" height="9" rx="2" fill="#f3c64f" stroke="#5b3a1e" stroke-width="1.6"/><rect x="18" y="5" width="9" height="9" rx="2" fill="#7cc05a" stroke="#5b3a1e" stroke-width="1.6"/><rect x="5" y="18" width="9" height="9" rx="2" fill="#6fb2f0" stroke="#5b3a1e" stroke-width="1.6"/><rect x="18" y="18" width="9" height="9" rx="2" fill="#e88a6a" stroke="#5b3a1e" stroke-width="1.6"/>' });
 import { DAY, stageOf } from './sim.js';
 import { GOODS } from './data.js';
 let sfx = {};   // handed over by ui.js (audio.js needs a browser, and the tests load this file)
@@ -23,7 +24,10 @@ export function lifeInit(ui, audio) {
 .petrow{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;color:var(--ink2)}.petrow .btn{margin-left:auto}
 .vchip.pet{background:#fff3e0;border-color:#e0b070}
 .wishlist{margin:0 0 12px;padding:8px 10px;border-radius:14px;background:#fffbe8;border:2px solid #e8c860}.wishlist h4{margin:0 0 6px;font-size:13px;display:flex;align-items:center;gap:6px}.wishlist .wrow{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px dashed #ecd8a0;font-size:12.5px}.wishlist .wrow:first-of-type{border-top:0}.wishlist .wrow span{flex:1;min-width:0;line-height:1.35}.wishlist .wrow small{display:block;color:var(--ink2);font-size:11.5px}.wishlist .sface{flex:none}
-.rankcard .rk{display:flex;align-items:center;gap:10px;margin-bottom:8px}.rankcard .rk b{font-size:17px;display:block}.rankcard .rk small{color:var(--ink2);font-size:12px}.rankcard .steps{display:flex;gap:4px;margin:0 0 8px}.rankcard .steps i{flex:1;height:6px;border-radius:3px;background:#eadcb6}.rankcard .steps i.on{background:#c8453a}
+.rankcard .rk{display:flex;align-items:center;gap:10px;margin-bottom:8px}.rankcard .rk b{font-size:17px;display:block}.rankcard .rk small{color:var(--ink2);font-size:12px}
+.ladder{display:flex;list-style:none;margin:0 0 10px;padding:0;gap:0}.ladder li{flex:1;position:relative;text-align:center;font-size:11.5px;font-weight:700;color:#a8916a;padding:3px 0;border-bottom:4px solid #eadcb6;display:flex;align-items:center;justify-content:center;gap:3px}.ladder li.past{color:#3f7a39;border-color:#7cc05a}.ladder li.now{color:var(--ink);border-color:var(--gold)}.ladder li.now::after{content:'';position:absolute;bottom:-7px;left:50%;margin-left:-5px;border:5px solid transparent;border-top-color:var(--gold-dk)}
+.rtodo{padding:8px 10px;border-radius:12px;background:#fff7e0;border:2px solid #e8c860;margin-bottom:6px}.rtodo .rt{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.rtodo .rt b{font-size:13.5px}.rtodo .rt em{font-style:normal;font-size:12px;font-weight:700;color:var(--ink2)}.rtodo .bar{height:6px;border-radius:3px;background:#eadcb6;overflow:hidden;margin:5px 0 2px}.rtodo .bar i{display:block;height:100%;background:#d9a43a}.rtodo .rh{display:flex;align-items:center;gap:8px;margin-top:4px}.rtodo .rh span{flex:1;font-size:12px;color:var(--ink2);line-height:1.4}.rtodo .rh .btn{flex:none}
+.rdone{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px}.rdone span{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;color:#3f7a39}
 .rgoals{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}.rgoal{font-size:12px;display:flex;flex-direction:column;gap:2px}.rgoal span{display:flex;justify-content:space-between;gap:6px}.rgoal span b{font-weight:inherit;display:flex;align-items:center;gap:3px}.rgoal span em{font-style:normal;color:var(--ink2)}.rgoal.done span{color:#3f7a39;font-weight:700}.rgoal .bar{height:5px;border-radius:3px;background:#eadcb6;overflow:hidden}.rgoal .bar i{display:block;height:100%;background:#d9a43a}.rgoal.done .bar i{background:#5cae4a}
 @media(max-width:520px){.rgoals{grid-template-columns:1fr}}
 .chron{margin:0 0 14px;padding:14px 16px 12px;border-radius:6px;background:#f8ecd0;border:2px solid #b98c4f;box-shadow:inset 0 0 0 4px #f8ecd0,inset 0 0 0 5px #d8b780,0 3px 8px rgba(90,60,20,.18);font-family:Georgia,'Times New Roman',serif;color:#4a3218}
@@ -78,12 +82,37 @@ export function wishListHtml(ui) {
 }
 
 // ── the town's rank ──
+// how to meet each goal, and where to go for it
+const GOAL_HELP = {
+  pop: ['More homes bring more villagers, as long as there is food and folks are happy.', 'build:cottage', 'Build homes'],
+  comfy: [null, 'modal:inventory', 'See the stores'],
+  pros: [null, 'modal:inventory', 'See the stores'],
+  market: ['A Market Stall unlocks at level 3 (Build → Services).', 'build:market', 'Build one'],
+  fest: ['A festival is held at dusk on the second day of every season.', null],
+  wish: ['Villagers wish for small things now and then: a star over their heads.', 'story:wishes', 'See the wishes'],
+  hall: ['A Town Hall unlocks at level 4 (Build → Services).', 'build:townhall', 'Build one'],
+  safe: [null, null],
+  wed: ['Couples marry at the campfire the evening after they fall in love.', null],
+  uni: ['The Arcane University unlocks at level 8.', 'build:university', 'Build one'],
+  brave: ['Watchtowers, guards, wizards and paladins drive dragons and raiders off.', null],
+  land: ['Settle new clearings from the World map.', 'modal:worldmap', 'Open the map'],
+};
 export function rankHtml(ui) {
   const sim = ui.sim, s = sim.s, R = sim.rankOf?.(); if (!R) return '';
-  const nx = sim.nextRank(), goals = sim.rankGoals(), name = sim.sname(mainSid(sim));
-  let h = `<section class="town-section rankcard"><div class="rk">${svg('crest', 36)}<div><b>${esc(name)} · ${esc(R.name)}</b><small>${nx ? `${goals.filter(g => g.done).length} of ${goals.length} goals to become a ${esc(nx.name)} · +${nx.gems} gems` : 'A City! The crest banner flies over the square.'}</small></div></div>`;
-  h += `<div class="steps">${RANKS.slice(1).map((r, i) => `<i class="${i < (s.rank || 0) ? 'on' : ''}" data-tip="${esc(r.name)}|${i < (s.rank || 0) ? 'Reached!' : 'Not yet'}"></i>`).join('')}</div>`;
-  if (nx) h += `<div class="rgoals">${goals.map(g => `<div class="rgoal${g.done ? ' done' : ''}"${g.tip ? ` data-tip="${esc(g.text)}|${esc(g.tip)}"` : ''}><span><b>${g.done ? svg('check', 12) : ''}${esc(g.text)}</b><em>${g.n > 1 ? `${Math.min(g.have, g.n)}/${g.n}` : g.done ? '' : '—'}</em></span><div class="bar"><i style="width:${Math.min(1, g.have / g.n) * 100}%"></i></div></div>`).join('')}</div>`;
+  const nx = sim.nextRank(), goals = sim.rankGoals(), name = sim.sname(mainSid(sim)), rank = s.rank || 0;
+  const todo = goals.filter(g => !g.done), done = goals.filter(g => g.done);
+  let h = `<section class="town-section rankcard"><div class="rk">${svg('crest', 36)}<div><b>${esc(name)} · ${esc(R.name)}</b><small>${nx ? `${todo.length ? `${todo.length} goal${todo.length > 1 ? 's' : ''} left to become a ${esc(nx.name)}` : `Becoming a ${esc(nx.name)}…`} · +${nx.gems} gems` : 'A City! The crest banner flies over the square.'}</small></div></div>`;
+  // the ladder, with names
+  h += `<ol class="ladder">${RANKS.map((r, i) => `<li class="${i < rank ? 'past' : i === rank ? 'now' : ''}">${i <= rank ? svg('check', 11) : ''}${esc(r.name)}</li>`).join('')}</ol>`;
+  if (nx) {
+    // what's left, first and in full: progress, how, and a button to go and do it
+    h += todo.map(g => {
+      const [how, go, goLabel] = GOAL_HELP[g.id] || [];
+      return `<div class="rtodo"><div class="rt"><b>${esc(g.text)}</b><em>${g.n > 1 ? `${Math.min(g.have, g.n)} / ${g.n}` : 'not yet'}</em></div>${g.n > 1 ? `<div class="bar"><i style="width:${Math.min(1, g.have / g.n) * 100}%"></i></div>` : ''}<div class="rh"><span>${esc(g.tip || how || '')}</span>${go ? `<button class="btn ghost sm" data-act="lv-goal" data-go="${go}">${esc(goLabel)} ›</button>` : ''}</div></div>`;
+    }).join('');
+    // what's done, as ticks
+    if (done.length) h += `<div class="rdone">${done.map(g => `<span>${svg('check', 12)}${esc(g.text)}</span>`).join('')}</div>`;
+  }
   return h + '</section>';
 }
 export function rankQuestRow(ui) {
@@ -119,11 +148,11 @@ function lifeRows(ui) {
   if (c && !c.answered && !c.leaving) {
     const D = VISITORS[c.kind];
     const poor = D.fee && s.res.coins < D.fee;
-    rows.push(`<div class="evrow visitor">${svg(D.icon, 22)}<b>${esc(D.name)}</b><span data-tip="${esc(D.name)}|${esc(D.ask(c))} ${esc(D.tip(c))}"><strong>${esc(D.brief(c))}</strong></span><button class="btn gold sm" data-act="lv-yes" ${poor ? `disabled data-tip="Not enough coins|Needs ${D.fee} coins."` : `data-tip="${esc(D.yes)}|${esc(D.tip(c))}"`}>${esc(D.yes)}${D.fee ? svg('coin', 12) : ''}</button><button class="btn sm" data-act="lv-no">${esc(D.no)}</button><button class="btn sm" data-act="lv-vgo" aria-label="Show">Show</button></div>`);
+    rows.push(`<div class="evrow visitor">${svg(D.icon, 22)}<b>${esc(D.short || D.name)}</b><span data-tip="${esc(D.name)}|${esc(D.ask(c))} ${esc(D.tip(c))}"><strong>${esc(D.brief(c))}</strong></span><button class="btn gold sm" data-act="lv-yes" ${poor ? `disabled data-tip="Not enough coins|Needs ${D.fee} coins."` : `data-tip="${esc(D.yes)}|${esc(D.tip(c))}"`}>${esc(D.yes)}${D.fee ? svg('coin', 12) : ''}</button><button class="btn ghost sm" data-act="lv-no">${esc(D.no)}</button><button class="btn ghost sm" data-act="lv-vgo" aria-label="Show">Show</button></div>`);
   }
   for (const w of s.weddings || []) if (w.on) {
     const a = sim.vById.get(w.a), b = sim.vById.get(w.b); if (!a || !b) continue;
-    rows.push(`<div class="evrow wedding">${svg('rings', 22)}<b>A wedding!</b><span><strong>${esc(first(a.name))} &amp; ${esc(first(b.name))}</strong> are getting married at the campfire · ${w.guests.length - 2} guests</span><button class="btn sm" data-act="lv-wgo" data-sid="${w.sid}">Watch</button></div>`);
+    rows.push(`<div class="evrow wedding">${svg('rings', 22)}<b>A wedding!</b><span><strong>${esc(first(a.name))} &amp; ${esc(first(b.name))}</strong> are getting married at the campfire · ${w.guests.length - 2} guests</span><button class="btn gold sm" data-act="lv-wgo" data-sid="${w.sid}">Watch</button></div>`);
   }
   return rows;
 }
@@ -145,6 +174,13 @@ export function lifeClick(ui, act, a) {
   if (act === 'lv-wish' && v) {
     const r = sim.answerWish(v, WISHES[v.wish?.kind]?.act);
     if (!r.ok) ui.toast(r.why || 'Not yet', 'wish');
+    return true;
+  }
+  if (act === 'lv-goal') {
+    const [k, v] = a.dataset.go.split(':');
+    if (k === 'build') { ui.closeModal(); ui.doGo({ kind: 'build', key: v }); }
+    else if (k === 'story') { ui.storyFilter = v; ui.openModal('story'); }
+    else ui.openModal(v);
     return true;
   }
   if (act === 'lv-chron') { ui.chronOpen = a.dataset.i === 'now' ? 'now' : +a.dataset.i; sfx.click?.(); return true; }

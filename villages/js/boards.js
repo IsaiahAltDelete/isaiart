@@ -84,7 +84,7 @@ export function worldRegionsHtml(ui, rowExtra) {
   const sim = ui.sim, s = sim.s, active = currentRegion(ui);
   return SETTLEMENTS.map(st => {
     const un = s.unlocked[st.id], m = regionSummary(sim, st.id), ok = un || s.level >= st.unlock.lvl && sim.canAfford(st.unlock.cost);
-    return `<article class="region-card ${active === st.id && un ? 'active' : ''}"><div class="rc-head"><div><b>${esc(sim.sname(st.id))}</b><small>${un && active === st.id ? 'You are here' : un ? 'Settled' : esc(st.blurb)}</small></div><button class="btn ${un ? 'blue' : ok ? 'gold' : 'ghost'} sm" data-act="${un ? 'travel' : 'settle'}" data-sid="${st.id}" ${ok ? '' : 'disabled'}>${un ? 'Visit' : 'Settle'}</button></div>
+    return `<article class="region-card ${active === st.id && un ? 'active' : ''}"><div class="rc-head"><div><b>${esc(sim.sname(st.id))}</b><small>${un && active === st.id ? 'You are here' : un ? 'Settled' : esc(st.blurb)}</small></div>${un && active === st.id ? '' : `<button class="btn ${un ? 'ghost' : ok ? 'gold' : 'ghost'} sm" data-act="${un ? 'travel' : 'settle'}" data-sid="${st.id}" ${ok ? '' : 'disabled'}>${un ? 'Visit' : 'Settle'}</button>`}</div>
       ${un ? `<div class="bstat">${m.pop}/${m.beds} beds · ${plural(m.jobs, 'open job')} · ${m.upgrades} can upgrade · ${esc(sim.safetyOf?.(st.id) || '')} · ${[['villagers', 'Villagers'], ['jobs', 'Jobs'], ['buildings', 'Buildings']].map(([k, t]) => `<button class="mini" data-act="board-open-region" data-sid="${st.id}" data-panel="${k}">${t}</button>`).join('')}</div>` : `<div class="bstat">Level ${st.unlock.lvl} · <span class="bcost">${costChips(st.unlock.cost, s)}</span></div>`}${rowExtra(ui, st.id)}</article>`;
   }).join('');
 }
@@ -108,7 +108,7 @@ export function boardsInit(ui) {
 #pFace{max-width:95px;white-space:normal;font-size:11px}#pFace[aria-pressed=true]{background:#dbedc6;border-color:#6d9a4c}
 @media(max-width:600px){.brow{flex-wrap:wrap}.bmain{flex:1 1 140px}.bsel{flex:1 1 60%;width:auto}#regionQuick{bottom:80px;max-width:calc(100vw - 32px)}.seg button{padding:7px!important;font-size:12px!important}.seg small{display:none}}
 `; document.head.appendChild(style);
-  const bar = document.createElement('div'); bar.id = 'regionQuick'; bar.setAttribute('aria-label', 'Current region'); bar.innerHTML = '<select id="regionSelect" aria-label="Visit region"></select><button class="btn ghost sm" aria-label="Region overview">Regions</button>'; document.body.appendChild(bar);
+  const bar = document.createElement('div'); bar.id = 'regionQuick'; bar.className = 'hidden'; bar.setAttribute('aria-label', 'Current region'); bar.innerHTML = '<select id="regionSelect" aria-label="Visit region"></select><button class="btn ghost sm" aria-label="Region overview">Regions</button>'; document.body.appendChild(bar);
   bar.querySelector('select').onchange = e => { ui.boardSid = e.target.value; ui.g.flyToSettlement(e.target.value); };
   bar.querySelector('button').onclick = () => ui.openModal('worldmap');
   const search = e => { if (e.target.dataset.act !== 'board-search') return; (ui.boardQuery ||= {})[e.target.dataset.kind] = e.target.value; ui.drawModal(true); };

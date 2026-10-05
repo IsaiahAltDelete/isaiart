@@ -33,6 +33,8 @@
       --shadow: 0 4px 0 rgba(90, 55, 20, .28), 0 8px 18px rgba(40, 25, 5, .22);
       --sat: env(safe-area-inset-top, 0px);
       --sab: env(safe-area-inset-bottom, 0px);
+      --dockspace: 92px;   /* windows stop above the main bar, so it stays usable */
+      --topspace: 56px;    /* ...and below the top bar */
       /* motion: one easing family, quick durations */
       --ease: cubic-bezier(.2, .8, .25, 1);
       --pop: cubic-bezier(.3, 1.45, .55, 1);
@@ -78,7 +80,6 @@
       .round:hover { transform: translateY(-2px) rotate(-3deg); filter: brightness(1.04); }
       #dockbar > button:hover { background: #fbeccd; border-radius: 10px; }
       #dockbar > button:hover .ic { transform: translateY(-2px) rotate(-4deg); }
-      #world:hover, #shop:hover { transform: translateY(-2px) scale(1.03); filter: brightness(1.05); }
       .chipf:hover { border-color: var(--edge); transform: translateY(-1px); }
     }
     :focus-visible { outline: 3px solid #4f9be0; outline-offset: 2px; }
@@ -155,7 +156,8 @@
     #topright .round { width: 40px; height: 40px; }
 
     /* ── left column: quests + info ─────────────────── */
-    #left { position: fixed; left: 10px; top: calc(96px + var(--sat)); width: 232px; transition: width .15s; display: flex; flex-direction: column; gap: 10px; z-index: 4; max-height: calc(100% - 200px); }
+    #left { position: fixed; left: 10px; top: calc(96px + var(--sat)); width: 232px; transition: width .15s; display: flex; flex-direction: column; gap: 10px; z-index: 4; max-height: calc(100% - 96px - var(--dockspace) - var(--sat)); }
+    #info .actions { position: sticky; bottom: -12px; z-index: 2; margin: 10px -12px -12px; padding: 8px 12px 10px; background: var(--cream); border-top: 2px dashed #ead2a6; box-shadow: 0 -10px 10px -6px var(--cream); border-radius: 0 0 14px 14px; }
     #quests { padding: 8px 10px 10px; }
     #quests header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
     #quests header .chev { transition: transform .2s; font-size: 14px; }
@@ -206,7 +208,7 @@
     .ip-hd { display: flex; gap: 9px; align-items: center; padding-right: 32px; }
     .ip-hd .thumb { width: 52px; height: 46px; flex: none; border-radius: 11px; background: radial-gradient(circle at 50% 80%, #d9efc6, #eef7ff 70%); border: 2px solid #ead2a6; object-fit: contain; padding: 1px; }
     .ip-hd .face { flex: none; }
-    .ip-hd h3 { font-size: 16.5px; line-height: 1.1; flex-wrap: wrap; }
+    .ip-hd h3 { font-size: 16.5px; line-height: 1.1; flex-wrap: nowrap; align-items: center; padding-right: 0 !important; }
     .ip-hd .sub { margin: 1px 0 0; }
     .ip-nav { display: flex; align-items: center; gap: 4px; margin-top: 7px; }
     .ip-nav button { display: inline-flex; align-items: center; gap: 3px; height: 24px; padding: 0 8px; border-radius: 12px; background: #fff; border: 2px solid #e2c99c; font-size: 11.5px; font-weight: 600; color: var(--ink2); transition: border-color var(--t1), color var(--t1), transform var(--t1) var(--ease); }
@@ -259,7 +261,10 @@
     .sell-toggles { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
     .tog { display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px 2px 2px; border-radius: 10px; border: 2px solid #e2c99c; background: #fff; font-size: 11.5px; opacity: .55; }
     .tog.on { opacity: 1; border-color: var(--green); background: #effbe6; }
-    select { font: inherit; font-size: 12.5px; color: var(--ink); background: #fff; border: 2px solid #e2c99c; border-radius: 8px; padding: 3px 6px; max-width: 100%; }
+    select { font: inherit; font-size: 12.5px; color: var(--ink); max-width: 100%; -webkit-appearance: none; appearance: none; cursor: pointer;
+      background: linear-gradient(#fffaf0, #f6e8c8) padding-box, var(--edge) border-box; border: 2px solid transparent; border-radius: 12px; padding: 4px 28px 4px 10px; box-shadow: 0 1px 0 rgba(90,55,20,.15); }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.5 6 6l4.5-4.5' fill='none' stroke='%235b3a1e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"), linear-gradient(#fffaf0, #f6e8c8); background-repeat: no-repeat; background-position: right 9px center, 0 0; background-size: 11px 8px, 100% 100%; border: 2px solid #d4b07a; }
+    select:hover { border-color: var(--edge); } select:focus-visible { outline: 3px solid #f4c24a; outline-offset: 1px; }
 
     /* ── right column ─────────────────────────────── */
     /* ── the clock: a little sky window with the sun or moon travelling its arc ── */
@@ -327,35 +332,25 @@
     #speeds button.on { color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.25); }
     #speeds button.on .ic rect { fill: #fff; }
     @media (hover: hover) { #speeds button:not(.on):hover { color: var(--ink); } }
-    #side { position: fixed; right: 10px; top: 50%; transform: translateY(-50%); display: none; flex-direction: column; gap: 10px; z-index: 4; }
 
     /* ── bottom ──────────────────────────────────── */
-    #world, #shop {
-      position: fixed; bottom: calc(12px + var(--sab)); z-index: 6;
-      width: 64px; height: 64px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.35);
-      box-shadow: var(--shadow);
-    }
-    #world { left: 12px; background: linear-gradient(#6fb2f0, var(--blue)); border: 3px solid var(--blue-dk); }
-    #shop { right: 12px; background: linear-gradient(#ffd866, #f0a826); border: 3px solid var(--gold-dk); }
-    #world:active, #shop:active { transform: translateY(2px); }
 
     #dockbar {
       position: fixed; left: 50%; bottom: calc(12px + var(--sab)); transform: translateX(-50%); z-index: 5;
       display: flex; padding: 4px; gap: 0;
     }
     #dockbar > button {
-      width: 86px; height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+      width: 98px; height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
       font-size: 12px; font-weight: 600; border-right: 2px solid #ead2a6; position: relative; transition: background var(--t1);
     }
-    #dockbar > button .ic { transition: transform var(--t2) var(--pop); }
+    #dockbar > button .ic { width: 30px; height: 30px; transition: transform var(--t2) var(--pop); }
+    #dockbar > button { font-size: 13.5px; }
     #dockbar > button:last-child { border-right: none; }
     #dockbar > button:active .ic { transform: scale(.88); }
     #dockbar > button:active, #dockbar > button.on { background: #f7e6c2; border-radius: 10px; }
     #dockbar > button.on::after { content: ''; position: absolute; left: 30%; right: 30%; bottom: 3px; height: 3px; border-radius: 2px; background: var(--green); }
     .kbd { position: absolute; top: 3px; right: 5px; font-size: 9.5px; font-weight: 700; color: var(--ink2); border: 1.5px solid #e2c99c; border-bottom-width: 2.5px; border-radius: 5px; padding: 0 3px; line-height: 12px; background: #fff; opacity: 0; transition: opacity var(--t2); }
-    @media (hover: hover) and (pointer: fine) { #dockbar:hover .kbd, #world:hover .kbd, #shop:hover .kbd { opacity: 1; } }
-    #world .kbd, #shop .kbd { color: var(--ink); }
+    @media (hover: hover) and (pointer: fine) { #dockbar:hover .kbd { opacity: 1; } }
 
     #tray {
       position: fixed; left: 50%; bottom: calc(10px + var(--sab)); transform: translateX(-50%); z-index: 6;
@@ -417,8 +412,10 @@
     @keyframes fadeOut { to { background: rgba(40, 30, 10, 0); } }
     @keyframes boxIn { from { opacity: 0; transform: translateY(14px) scale(.95); } }
     @keyframes boxOut { to { opacity: 0; transform: translateY(10px) scale(.97); } }
-    #modal .box { width: min(640px, 100%); min-width: 0; max-height: min(86vh, 760px); display: flex; flex-direction: column; position: relative; }
-    #modal .box.tall { height: min(86vh, 760px); }
+    #modal { padding-bottom: calc(var(--dockspace) + var(--sab)); padding-top: calc(var(--topspace) + var(--sat)); }
+    body:has(#modal:not(.hidden)) #dockbar { z-index: 21; }
+    #modal .box { width: min(640px, 100%); min-width: 0; max-height: min(calc(100vh - var(--topspace) - var(--dockspace) - var(--sab) - var(--sat)), 760px); display: flex; flex-direction: column; position: relative; }
+    #modal .box.tall { height: min(calc(100vh - var(--topspace) - var(--dockspace) - var(--sab) - var(--sat)), 760px); }
     #modal .hd { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 2px dashed #e2c99c; }
     #modal .hd h2 { font-size: 19px; flex: 1; }
     #modal .bd { padding: 12px 14px 14px; overflow-y: auto; touch-action: pan-y; scrollbar-width: thin; }
@@ -690,9 +687,10 @@
 
     /* ── big screens: scale the HUD up so it doesn't read as unscaled mobile UI ── */
     @media (min-width: 1200px) and (min-height: 760px) {
-      #top, #topright, #speed, #left, #dockbar, #tray, #world, #shop, #placebar, #coach, #toasts, #home, #follow { zoom: 1.22; }
-      #left { max-height: calc((100% - 200px) / 1.22); }
-      #modal .box { zoom: 1.15; max-height: min(calc(86vh / 1.15), 760px); width: min(680px, 100%); } #modal .box.tall { height: min(calc(86vh / 1.15), 760px); }
+      #top, #topright, #nowbar, #speed, #left, #dockbar, #tray, #placebar, #coach, #toasts, #home, #follow { zoom: 1.22; }
+      #left { max-height: calc((100% - 96px * 1.22 - var(--dockspace)) / 1.22); }
+      :root { --dockspace: 110px; --topspace: 68px; }
+      #modal .box { zoom: 1.15; max-height: min(calc((100vh - var(--topspace) - var(--dockspace)) / 1.15), 760px); width: min(680px, 100%); } #modal .box.tall { height: min(calc((100vh - var(--topspace) - var(--dockspace)) / 1.15), 760px); }
       #tip { font-size: 14.5px; max-width: 330px; padding: 10px 13px 11px; } #tip b.t { font-size: 17px; } #tip .kv, #tip .syn, #tip .flowln, #tip .note { font-size: 13.5px; } #tip .tt-hd img { width: 56px; height: 48px; }
     }
 
@@ -717,6 +715,7 @@
 
     /* ── phones ──────────────────────────────────── */
     @media (max-width: 760px) {
+      :root { --dockspace: 72px; --topspace: 78px; }
       #top { right: 10px; gap: 6px; }
       #profile { width: 60px; }
       #avatar { width: 46px; height: 46px; border-radius: 12px; }
@@ -729,9 +728,14 @@
       .pill .add .ic { width: 12px; height: 12px; }
       .pill .n { padding: 0 3px; min-width: 30px; }
       #topright { top: auto; bottom: calc(150px + var(--sab)); right: 10px; flex-direction: column; }
-      #topright .round, #side .round { width: 38px; height: 38px; }
-      #topright .round .ic, #side .round .ic { width: 20px; height: 20px; }
+      #topright .round { width: 38px; height: 38px; }
+      #topright .round .ic { width: 20px; height: 20px; }
       #speed { top: calc(108px + var(--sat)); right: 8px; width: 156px; padding: 4px; gap: 4px; }
+      #speed:not(.open) { flex-direction: row; align-items: center; width: auto; }
+      #speed:not(.open) #sky { width: 100px; height: 34px; flex: none; }
+      #speed:not(.open) #sky .dayno { font-size: 9.5px; }
+      #speed:not(.open) #speeds { width: 96px; }
+      #speed:not(.open) #speeds button { height: 26px; }
       #sky { height: 50px; border-radius: 9px; }
       #sky .tm { left: 6px; bottom: 2px; } #sky .tm b { font-size: 16px; } #sky .tm small { display: none; }
       #sky .dayno { font-size: 10px; right: 4px; bottom: 3px; line-height: 14px; padding: 0 4px; }
@@ -751,9 +755,8 @@
       body:has(#alert:not(.hidden)) #follow { top: auto; bottom: calc(110px + var(--sab)); }
       body.info-open #follow { display: none; }
       #speeds button { height: 22px; font-size: 11px; }
-      #left { top: calc(108px + var(--sat)); width: min(196px, calc(100vw - 186px)); }
+      #left, body.info-open #left { top: calc(108px + var(--sat)); width: min(196px, calc(100vw - 236px)); }
       #quests .quest { font-size: 11.5px; padding: 4px 6px; }
-      #side { top: calc(190px + var(--sat)); transform: none; }
       #info { position: fixed; left: 8px; right: 8px; bottom: calc(80px + var(--sab)); top: auto; max-height: 46vh; width: auto; z-index: 8; padding: 8px 12px 10px; font-size: 12.5px; }
       #info.in { animation-name: infoUp; }
       @keyframes infoUp { from { opacity: 0; transform: translateY(18px); } }
@@ -766,7 +769,7 @@
       #info { padding-bottom: 0; }
       #info .actions { margin: 10px -12px 0; padding: 8px 12px 10px; position: sticky; bottom: -1px; background: var(--cream); border-top: 2px dashed #ead2a6; box-shadow: 0 -10px 10px -6px var(--cream); }
       #info .actions .btn { padding: 6px 10px; }
-      body.placing #topright { display: none; }
+      body.placing #topright, body.placing #nowbar { display: none; }
       body:has(#tray:not(.hidden)) #topright { bottom: calc(180px + var(--sab)); }
       #toasts { top: var(--qb, calc(320px + var(--sat))) !important; }
       #qlist .quest { font-size: 11.5px; }
@@ -775,10 +778,9 @@
       .quest.qrow .btn.sm { padding: 3px 8px; font-size: 12px; }
       #placebar { left: 12px; right: 12px; transform: none; justify-content: space-between; }
       #placebar .msg { flex: 1; max-width: none !important; }
-      #world, #shop { width: 54px; height: 54px; font-size: 10px; border-radius: 14px; }
-      #world .ic, #shop .ic { width: 26px; height: 26px; }
       #dockbar { bottom: calc(10px + var(--sab)); }
-      #dockbar > button { width: 58px; height: 50px; font-size: 10.5px; }
+      #dockbar > button { width: 64px; height: 50px; font-size: 10.5px; }
+      #dockbar > button .ic { width: 24px; height: 24px; }
       #tray { width: calc(100% - 16px); bottom: calc(8px + var(--sab)); padding: 5px; }
       #tray .back { width: 38px; }
       .card { width: 84px; }
@@ -796,9 +798,9 @@
       .worldwrap { grid-template-columns: 1fr; }
       #home { display: none; }
       #loading h1 { font-size: 40px; }
-      #side { display: none; }
       #alert { top: auto; bottom: calc(76px + var(--sab)); font-size: 12px; }
-      body.info-open #topright, body.info-open #alert, body.info-open #coach { display: none; }
+      body.info-open #chestArrows { display: none; }
+      body.info-open #topright, body.info-open #nowbar, body.info-open #alert, body.info-open #coach { display: none; }
       #coach { font-size: 12.5px; bottom: calc(78px + var(--sab)); }
       body:has(#tray:not(.hidden)) #coach { bottom: calc(164px + var(--sab)); }
       body:has(#placebar:not(.hidden)) #coach { bottom: calc(232px + var(--sab)); }
@@ -809,18 +811,78 @@
       #placebar .msg { max-width: 150px; font-size: 12px; }
     }
     @media (max-width: 380px) {
-      #dockbar > button { width: 52px; }
-      #world, #shop { width: 48px; height: 48px; }
+      #dockbar > button { width: 60px; }
     }
 
     /* ── simplify pass: one Journal button, a compact clock, villager chips and folds ── */
+    /* ── the toolbar: five places on the main bar, two fixed buttons top right, "right now" chips ── */
+    #topright .round.gold { background: radial-gradient(circle at 50% 35%, #fff1b8, #f4c24a); border-color: var(--gold-dk); }
+    #nowbar { position: fixed; top: calc(12px + var(--sat)); right: 156px; display: flex; gap: 6px; z-index: 5; }
+    #nowbar:empty { display: none; }
+    .nowchip { display: flex; align-items: center; gap: 5px; height: 34px; padding: 0 12px 0 6px; border-radius: 17px; background: var(--cream); border: 2.5px solid var(--edge); box-shadow: var(--shadow); font-size: 12.5px; font-weight: 700; color: var(--ink); position: relative; white-space: nowrap; animation: nowIn var(--t3) var(--pop); transition: transform var(--t1) var(--pop); }
+    @keyframes nowIn { from { opacity: 0; transform: translateY(-8px) scale(.85); } }
+    .nowchip .ic { width: 22px; height: 22px; }
+    .nowchip.gift { background: #fff3dc; border-color: #d39a4a; }
+    .nowchip.fest { background: #fff0f5; border-color: #d07a9a; }
+    .nowchip.magic { background: #f1edff; border-color: #8a72c8; }
+    .nowchip .badge { top: -7px; right: -6px; }
+    @media (hover: hover) { .nowchip:hover { transform: translateY(-2px); } }
+    #dockbar > button .badge { top: 2px; right: 16px; background: linear-gradient(#ffd866, var(--gold)); color: var(--ink); border-color: var(--gold-dk); }
+    #dockbar > button .badge.bad { background: var(--red); color: #fff; border-color: var(--red-dk); }
+    #dockbar > button .dot { position: absolute; top: 6px; right: 24px; width: 11px; height: 11px; border-radius: 50%; background: linear-gradient(#ffd866, var(--gold)); border: 2px solid var(--gold-dk); box-shadow: 0 0 0 2px #fff; }
+    .seg button .tdot { display: inline-block; width: 8px; height: 8px; margin-left: 4px; border-radius: 50%; background: var(--gold); border: 1.5px solid var(--gold-dk); vertical-align: 1px; }
+    .seg button .tn { display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; margin-left: 4px; border-radius: 9px; font-size: 11px; background: linear-gradient(#ffd866, var(--gold)); border: 1.5px solid var(--gold-dk); color: var(--ink); vertical-align: 1px; }
+    #trayTabs .tdot { position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); border: 1.5px solid var(--gold-dk); }
+    #trayTabs button { position: relative; }
+    @media (max-width: 1100px) and (min-width: 761px) { .nowchip span.l { display: none; } .nowchip { padding: 0 6px; } }
+    @media (max-width: 760px) {
+      #nowbar { top: auto; right: 10px; bottom: calc(150px + 3 * 38px + 2 * 8px + 10px + var(--sab)); flex-direction: column; align-items: flex-end; gap: 6px; }
+      body:has(#tray:not(.hidden)) #nowbar { bottom: calc(180px + 3 * 38px + 2 * 8px + 10px + var(--sab)); }
+      .nowchip { height: 30px; font-size: 11px; padding: 0 9px 0 4px; }
+      .nowchip .ic { width: 20px; height: 20px; }
+      #dockbar > button .badge { right: 6px; }
+      #dockbar > button .dot { right: 12px; }
+    }
+    /* the tray: Build and Decorate are two halves of the same tray */
+    #trayTabs .kindseg { display: inline-flex; flex: none; padding: 3px; border-radius: 14px; background: #8c6a48; margin-right: 8px; position: relative; }
+    #trayTabs .kindseg::after { content: ''; position: absolute; right: -6px; top: 4px; bottom: 4px; width: 2px; border-radius: 1px; background: #d9bb86; }
+    #trayTabs .kindseg button { color: #f6ead0 !important; }
+    #trayTabs .kindseg button.on { color: var(--ink) !important; }
+    #trayTabs.more-r, #cards.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); }
+    #trayTabs.more-l.more-r, #cards.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 48px), transparent); }
+    #trayTabs.more-l:not(.more-r), #cards.more-l:not(.more-r) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px); mask-image: linear-gradient(90deg, transparent, #000 40px); }
+    .traymain { position: relative; }
+    .trayarrow { position: absolute; z-index: 3; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--cream); border: 2.5px solid var(--edge); box-shadow: var(--shadow); }
+    .trayarrow.hidden { display: none; }
+    @media (max-width: 760px) {
+      #trayTabs [data-cat] { padding: 0 6px 0 4px !important; }
+      #trayTabs [data-cat]:not(.on) .lb { display: none; }
+      #trayTabs .kindseg button { padding: 0; width: 34px; justify-content: center; font-size: 0; gap: 0; }
+      #trayTabs [data-cat]:not(.on) .n { display: none; }
+      #trayTabs .kindseg button .ic { width: 18px; height: 18px; }
+      #trayTabs .kindseg { margin-right: 6px; }
+    }
+    #trayTabs .kindseg button { height: 26px; padding: 0 10px 0 5px; border-radius: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px; color: var(--ink2); background: none; border: 0; }
+    #trayTabs .kindseg button.on { background: var(--cream); color: var(--ink); box-shadow: 0 1px 2px rgba(80,50,20,.25); }
     #btnStats, #btnFest { display: none !important; }
+    #quests:not(.collapsed) #qhead .badge { display: none; }
+    .qfest .qtog { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; } .qfest .qtog .t { flex: 1; min-width: 0; } .qfest .qtog .chev { flex: none; margin-left: auto; }
+    #qhead .badge { background: linear-gradient(#ffd866, var(--gold)); color: var(--ink); border-color: var(--gold-dk); }
+    #eventbar .evmore { flex: none; font: inherit; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #efe2be; border: 1.5px solid #d9bb86; color: var(--ink2); cursor: pointer; }
+    #eventbar .evrow .btn.ghost { color: var(--ink); }
     #logBadge.gold { background: linear-gradient(#ffd866, var(--gold)); color: var(--ink); border-color: var(--gold-dk); }
     @media (max-width: 1199px), (max-height: 759px) {
       #speed:not(.open) #forecast, #speed:not(.open) #season { display: none; }
       #speed:not(.open) #sky { height: 44px; }
       #speed:not(.open) #sky .hills { height: 14px; }
       #sky { cursor: pointer; }
+    }
+    @media (max-width: 1199px) and (min-width: 761px), (max-height: 759px) and (min-width: 761px) {
+      #speed:not(.open) { flex-direction: row; align-items: center; width: 262px; padding: 4px; gap: 5px; }
+      #speed:not(.open) #sky { flex: 1; height: 38px; }
+      #speed:not(.open) #sky .tm b { font-size: 16px; } #speed:not(.open) #sky .tm small { display: none; }
+      #speed:not(.open) #speeds { flex: none; width: 112px; }
+      #speed:not(.open) #speeds button { height: 30px; }
     }
     .vchips { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 8px; }
     .vchip { display: inline-flex; align-items: center; gap: 4px; font: inherit; font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 10px; background: #f3e7c6; border: 1px solid #e2cd99; color: var(--ink); line-height: 1.3; }
@@ -836,7 +898,7 @@
     .fold-hd:hover { color: var(--edge-dk); }
     .fold-bd { padding-bottom: 6px; animation: chipIn var(--t2) var(--ease); }
     .fold-bd > .ip-sec:first-child > .cap:first-child { display: none; }
-    .card .newb { position: absolute; top: 3px; left: 3px; font-size: 9.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: #fff; background: #e0584a; border-radius: 6px; padding: 1px 5px; box-shadow: 0 1px 0 #9a2f24; }
+    .card .newb { position: absolute; top: 3px; left: 3px; font-size: 9.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: var(--ink); background: linear-gradient(#ffe27a, var(--gold)); border-radius: 6px; padding: 1px 5px; box-shadow: 0 1px 0 var(--gold-dk); }
     .r7rivals { font-size: 12px; margin-top: 6px; color: #6a4f8a; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; } .r7rivals a { color: inherit; }
     /* ── the Story page in the Journal ── */
     .storybar { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
@@ -869,12 +931,12 @@
     <div id="res"></div>
   </div>
 
+  <!-- things that come and go (a gift chest, the festival, the spell book) sit in their own row,
+       so the fixed buttons never move -->
+  <div id="nowbar" aria-label="Right now"></div>
   <div id="topright">
     <button class="round" id="btnHome" aria-label="Back to the village"></button>
-    <button class="round hidden" id="btnChest" aria-label="Find the gift chest"></button>
-    <button class="round" id="btnLog" aria-label="Village news"></button>
-    <button class="round" id="btnStats" aria-label="Village records"></button>
-    <button class="round hidden" id="btnMagic" aria-label="Spell book"></button>
+    <button class="round gold" id="btnShop" aria-label="Shop"></button>
     <button class="round" id="btnSettings" aria-label="Settings"></button>
   </div>
 
@@ -909,21 +971,13 @@
     </div>
   </div>
 
-  <div id="side">
-    <button class="round" data-open="quests" aria-label="Quests"></button>
-    <button class="round" data-open="villagers" aria-label="Villagers"></button>
-    <button class="round" data-open="worldmap" aria-label="World map"></button>
-    <button class="round" data-open="inventory" aria-label="Inventory"></button>
-  </div>
-
-  <button id="world" aria-label="World map"></button>
-  <button id="shop" aria-label="Shop"></button>
-
-  <nav id="dockbar" class="panel">
+  <!-- the main bar: one button for each part of the game -->
+  <nav id="dockbar" class="panel" aria-label="Main">
     <button data-tab="build"></button>
-    <button data-tab="decor"></button>
-    <button data-tab="villagers"></button>
-    <button data-tab="inventory"></button>
+    <button data-tab="people"></button>
+    <button data-tab="town"></button>
+    <button data-tab="journal"></button>
+    <button data-tab="world"></button>
   </nav>
   <div id="tray" class="panel hidden">
     <button class="back" id="trayBack" data-tip="Close the tray|Back to the main bar.|Esc"></button>

@@ -182,7 +182,7 @@ export class Extras {
     const m = { l: rect.left + (phone ? 24 : 34), r: rect.right - (phone ? 104 : 34), t: rect.top + (phone ? 150 : 104), b: rect.bottom - (phone ? 150 : 128) };
     const cx = (m.l + m.r) / 2, cy = (m.t + m.b) / 2, want = new Map();
     // keep clear of the HUD panels: slide in along the ray until the arrow is free
-    const huds = ['#speed', '#left', '#quests', '#topright', '#dockbar', '#tray', '#world', '#shop', '#side', '#placebar'].map(q => document.querySelector(q))
+    const huds = ['#speed', '#left', '#quests', '#topright', '#nowbar', '#dockbar', '#tray', '#placebar', '#info', '#eventbar'].map(q => document.querySelector(q))
       .filter(e => e && !e.classList.contains('hidden')).map(e => e.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);   // (fixed panels have no offsetParent)
     const pad = phone ? 28 : 30, blocked = (x, y) => huds.some(r => x > r.left - pad && x < r.right + pad && y > r.top - pad && y < r.bottom + pad);
     for (const ch of chests) {
