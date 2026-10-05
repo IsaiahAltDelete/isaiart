@@ -3,13 +3,19 @@ import * as THREE from '../vendor/three.module.min.js';
 import { Sim, defOf, isDecor, footprint, DAY, lvlOf, RANGE } from './sim.js';
 import { BEASTS } from './data.js';
 import { View, bubbleTexture, timeUniform, iceUniform } from './view.js';
-import { buildModel, scaffold, villagerModel, setTool, mat, C, pineGeo, stumpGeo, beastModel, chestModel, bunting } from './models.js';
+import { loadModels, hasModel, instanceModel } from './blender.js';
+import { Highlight } from './select.js';
+import { buildModel, scaffold, villagerModel, dressVillager, propModel, slotMaterial, VILLAGER_MATS, SNOWCAP_MAT, setTool, mat, C, pineGeo, stumpGeo, beastModel, chestModel, bunting } from './models.js';
 import { snowUniform } from './snow.js';
 import { UI } from './ui.js';
 import { N, HALF, idx, toWorld, inMap, CENTERS, tileX, tileZ } from './world.js';
 import { SETTLEMENTS, BUILD_ORDER, DECOR_ORDER, GOODS, SEASON_DAYS, DECOR } from './data.js';
 import { initAudio, sfx, setSound, ambient, rainSound, setMusic, setMood } from './audio.js';
 import { Life } from './life.js';
+import { hookRpg, rpgFrame } from './rpgview.js';
+import './props.js';                                   // trade post, cart, ferry and festive decor models
+import { Extras } from './extras.js';
+import { paintRoad, paintCobble } from './roads.js';
 
 const SAVE_KEY = 'isaiart.villages.v1';
 const SET_KEY = 'isaiart.villages.settings';
@@ -19,7 +25,8 @@ const SACK = { wood: 0x9a6a3e, stone: 0xa9adb0, food: 0xd8304a, grain: 0xe6c35c 
 const ANIM_TOOL = { cast: 'staff', chop: 'axe', mine: 'pick', hammer: 'hammer', saw: 'hammer', hoe: 'hoe', fish: 'rod', gather: 'basket', plant: 'sapling' };
 const JOB_TOOL = { guard: 'spear', wizard: 'staff', shepherd: 'hoe', picker: 'basket', milker: 'basket', herder: 'basket', woodcutter: 'axe', miner: 'pick', fisher: 'rod', forager: 'basket', farmer: 'hoe', forester: 'sapling', mason: 'hammer', sawyer: 'hammer' };
 
-const tick = () => new Promise(r => requestAnimationFrame(() => r()));
+// yield a frame so the loading bar paints; a timer keeps loading going in a background tab
+const tick = () => new Promise(r => { requestAnimationFrame(() => r()); setTimeout(r, 60); });
 const lerp = (a, b, t) => a + (b - a) * t;
 
 class Game {
@@ -50,6 +57,8 @@ class Game {
     try { save = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch { save = null; }
     try { this.sim = new Sim(save); } catch (err) { console.warn('Save failed to load, starting fresh', err); this.sim = new Sim(null); }
     await step(40);
+    await loadModels();             // the forest and buildings are built from these
+    await step(55);
     this.view = new View(document.getElementById('c'), this.sim.world, this.settings.quality);
     await step(65);
     this.makeThumbs();
@@ -64,7 +73,9 @@ class Game {
     this.selRing = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.9, depthTest: false }));
     this.selRing.renderOrder = 10; this.selRing.visible = false;
     this.view.scene.add(this.selRing);
+    this.hl = new Highlight(this);
     this.ui = new UI(this);
+    this.extras = new Extras(this);                    // carts, ferry, bridges, chest arrows, share codes…
     this.hookEvents();
     this.bindInput();
     setSound(this.settings.sound);
@@ -153,8 +164,16 @@ class Game {
   // warm glow sprites on every window and lantern, faded in at night
   addHalos(group) {
     const win = mat(C.window, { emissive: 0x3a2a00 }), lamp = mat(0xffe08a);
+    const blended = [];
+    group.traverse(o => { if (o.userData.halo) blended.push(o); });
+    for (const o of blended) {
+      const big = o.userData.halo === 'lamp';
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: big ? 0xffc46a : 0xffa848, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+      sp.scale.setScalar(big ? 1.3 : 0.8); sp.position.copy(o.position); sp.renderOrder = 3;
+      o.parent.add(sp); this.halos.push({ m: sp, k: big ? 0.9 : 0.6 });
+    }
     group.traverse(o => {
-      if (!o.isMesh || (o.material !== win && o.material !== lamp)) return;
+      if (!o.isMesh || o.userData.slot || (o.material !== win && o.material !== lamp)) return;
       const big = o.material === lamp;
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: big ? 0xffc46a : 0xffa848, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
       sp.scale.setScalar(big ? 1.6 : 0.9); sp.position.copy(o.position); sp.renderOrder = 3;
@@ -216,6 +235,22 @@ class Game {
     const ripe = d.stage === 'ripe' || d.grow > 0.7;
     const col = crop === 'wheat' ? (d.stage === 'ripe' ? 0xe8c14a : d.grow > 0.7 ? 0xb5c84a : C.leaf)
       : crop === 'veg' ? (ripe ? 0x3f8f35 : 0x6fbf3f) : (ripe ? 0xe58a3a : 0x6fae45);
+    if (crops.userData.blend) {
+      // modelled plants: show the chosen crop, grow it, ripen its colours
+      const kind = crop === 'pumpkins' ? 'pumpkin' : crop;
+      const tint = { ear: d.stage === 'ripe' ? 0xe8c14a : d.grow > 0.7 ? 0xc9c45a : 0x8fbf4a, stalk: d.stage === 'ripe' ? 0xc9b04a : 0x8fbf4a,
+        pumpkin: ripe ? 0xe58a3a : 0x9fbf4a, head: ripe ? 0x9fd36a : 0x6fbf3f };
+      for (const bunch of crops.children) {
+        const k = s * bunch.userData.jit;
+        bunch.scale.set(Math.max(0.001, 0.55 + k * 0.6), Math.max(0.001, k), Math.max(0.001, 0.55 + k * 0.6));
+        bunch.visible = d.stage !== 'empty';
+        for (const plant of bunch.children) {
+          plant.visible = plant.userData.kind === kind;
+          if (plant.visible) plant.traverse(o => { if (o.isMesh && tint[o.userData.slot] !== undefined) o.material = mat(tint[o.userData.slot]); });
+        }
+      }
+      return;
+    }
     const m = mat(col);
     for (const c of crops.children) {
       c.material = m;
@@ -263,7 +298,7 @@ class Game {
     if (!b.built) return;
     const busy = b.workers.length > 0 && !b.status;
     if (a.blades) a.blades.rotation.z += dt * (busy ? 1.6 : 0.25);
-    if (a.blade && busy) a.blade.rotation.y += dt * 12;
+    if (a.blade && busy) a.blade.rotation[a.bladeAxis || 'y'] += dt * 12;
     if (a.smoke) a.smoke.update(dt);
     if (a.fire) {
       const big = a.light && this.fest ? 1.9 : 1;    // a roaring festival bonfire
@@ -290,6 +325,18 @@ class Game {
       } else {
         if (an.m.userData.head) an.m.userData.head.rotation.x = 0.4 + Math.sin(time * (an.fast ? 9 : 2) + an.tx) * 0.3;   // grazing / pecking
         if (an.t <= 0) { an.t = 2 + Math.random() * 5; an.tx = (Math.random() - 0.5) * an.w; an.tz = (Math.random() - 0.5) * an.d; }
+      }
+    }
+    // penned animals keep a body's width apart (no stacked double sheep)
+    if (a.animals && a.animals.length > 1) {
+      const R = a.animals[0].fast ? 0.2 : 0.42;
+      for (let i = 0; i < a.animals.length; i++) for (let j = i + 1; j < a.animals.length; j++) {
+        const p = a.animals[i].m.position, q = a.animals[j].m.position;
+        let dx = p.x - q.x, dz = p.z - q.z; const d = Math.hypot(dx, dz);
+        if (d >= R) continue;
+        if (d < 1e-4) { dx = 1; dz = 0; } else { dx /= d; dz /= d; }
+        const push = (R - d) * 0.5;
+        p.x += dx * push; p.z += dz * push; q.x -= dx * push; q.z -= dz * push;
       }
     }
     if (a.bees) for (const bee of a.bees) { const t = time * 2.2 + bee.ph; bee.m.position.set(bee.h[0] + Math.cos(t) * bee.r, 0.55 + Math.sin(t * 2.3) * 0.15, bee.h[1] + Math.sin(t * 1.3) * bee.r); bee.m.visible = this.night < 0.6; }
@@ -337,7 +384,9 @@ class Game {
   // a burst of sparkles over every settlement when a spell goes off
   spellEffect(id) {
     sfx.level();
-    const color = { harvest: 0xffd54f, rain: 0x7fd8ff, haste: 0x9fff8a, ward: 0xfff2b0, bloom: 0x8ee07a, transmute: 0xc79af2 }[id] || 0xffffff;
+    const color = { harvest: 0xffd54f, rain: 0x7fd8ff, haste: 0x9fff8a, ward: 0xfff2b0, bloom: 0x8ee07a, transmute: 0xc79af2,
+      mending: 0xffd27a, guidance: 0xfff2b0, light: 0xfff6c0, cure: 0xff9ecb, goodberry: 0x8ee07a, water: 0x7fd8ff, bless: 0xffe08a, magearmor: 0x9fc8ff,
+      faerie: 0xc79af2, spike: 0x9ccf5a, plant: 0xffd54f, fireball: 0xff7a2a, lightning: 0xbfe6ff, fabricate: 0xd8a86a, hallow: 0xfff2b0, weather: 0xbfe6ff }[id] || 0xffffff;
     for (const sid of Object.keys(this.sim.s.unlocked)) {
       const c = CENTERS[sid], x = toWorld(c.x), z = toWorld(c.z), y = this.sim.world.heightAt(x, z);
       const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -364,7 +413,8 @@ class Game {
   }
   // villagers gently push apart so two never stand inside each other
   separate(dt) {
-    const vs = this.sim.s.villagers, R = 0.42;
+    // the chibi villagers are wide-headed, so keep a full head's width apart
+    const vs = this.sim.s.villagers.filter(v => !v.indoors), R = 0.42;
     for (const v of vs) { const m = this.vvis.get(v.id); if (m) { m.px = m.px || 0; m.pz = m.pz || 0; m.fx = 0; m.fz = 0; } }
     for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) {
       const a = vs[i], b = vs[j], ma = this.vvis.get(a.id), mb = this.vvis.get(b.id);
@@ -380,7 +430,7 @@ class Game {
     for (const v of vs) {
       const m = this.vvis.get(v.id); if (!m) continue;
       m.px += (m.fx * 1.6 - m.px * 0.25) * k; m.pz += (m.fz * 1.6 - m.pz * 0.25) * k;
-      const l = Math.hypot(m.px, m.pz); if (l > 0.45) { m.px *= 0.45 / l; m.pz *= 0.45 / l; }
+      const l = Math.hypot(m.px, m.pz); if (l > 0.6) { m.px *= 0.6 / l; m.pz *= 0.6 / l; }
     }
   }
   updateVVis(v, m, dt, time) {
@@ -392,14 +442,15 @@ class Game {
     m.group.position.set(vx, y, vz);
     m.group.visible = !v.indoors;
     m.wiz.visible = v.job === 'wizard';
+    dressVillager(m, v, this.si === 3 && this.sim.snowLevel() > 0.2);
     m.bed.visible = v.asleep === 'fire';
     if (v.asleep === 'fire') { m.body.rotation.set(-Math.PI / 2, 0, 0); m.body.position.set(0, 0.1, -0.25); m.bed.position.set(0, 0.03, 0); }
     let d = v.face - m.rot; d = Math.atan2(Math.sin(d), Math.cos(d));
     m.rot += d * Math.min(1, dt * 10);
     m.group.rotation.y = m.rot;
     const anim = v.act?.anim;
-    setTool(m, anim ? ANIM_TOOL[anim] ?? null : v.carry ? null : JOB_TOOL[v.job] ?? null);
-    const mood = v.hungry ? 'apple' : v.asleep === 'fire' && (v.id % 3 === 0) ? 'zzz' : null;
+    setTool(m, anim === 'fight' ? (v.gear?.w === 'sword' ? 'sword' : 'spear') : anim ? ANIM_TOOL[anim] ?? null : v.carry ? null : v.job === 'guard' && v.gear?.w ? v.gear.w : JOB_TOOL[v.job] ?? null);
+    const mood = v.hungry ? 'apple' : v.chat ? 'heart' : v.asleep === 'fire' && (v.id % 3 === 0) ? 'zzz' : null;
     if (mood !== m.mood) {
       m.mood = mood;
       if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false })); m.bubble.userData.px = 26; m.bubble.position.y = 1.0; m.group.add(m.bubble); this.screenSprites.add(m.bubble); }
@@ -413,7 +464,16 @@ class Game {
     m.armL.rotation.set(0, 0, 0); m.armR.rotation.set(0, 0, 0);
     m.hipL.rotation.x = 0; m.hipR.rotation.x = 0;
     const sp = this.sim.s.speed || 0;
-    if (v.moving) {
+    // children sled about once the snow is deep
+    const sled = m.stage === 'child' && v.moving && !v.carry && this.si === 3 && this.sim.snowLevel() > 0.4;
+    if (sled && !m.sled) { m.sled = propModel('sled'); if (m.sled) { m.sled.scale.setScalar(1.1); m.group.add(m.sled); } }
+    if (m.sled) m.sled.visible = sled;
+    if (sled && m.sled) {
+      m.walk += dt * 4;
+      m.body.position.set(0, 0.07, 0.04); m.body.rotation.x = -0.18;
+      m.hipL.rotation.x = m.hipR.rotation.x = -1.35;
+      m.armL.rotation.z = -0.9 - Math.sin(m.walk) * 0.3; m.armR.rotation.z = 0.9 + Math.sin(m.walk) * 0.3;
+    } else if (v.moving) {
       m.walk += dt * 11 * Math.max(1, sp * 0.8);
       const s = Math.sin(m.walk);
       m.hipL.rotation.x = s * 0.7; m.hipR.rotation.x = -s * 0.7;
@@ -421,7 +481,7 @@ class Game {
       m.body.position.y = Math.abs(Math.cos(m.walk)) * 0.03;
     } else if (anim) {
       const t = time * Math.max(1, sp) + m.phase;
-      if (anim === 'chop' || anim === 'mine' || anim === 'hammer') {
+      if (anim === 'chop' || anim === 'mine' || anim === 'hammer' || anim === 'fight') {
         const k = Math.sin(t * 7);
         m.armR.rotation.x = -1.6 - k * 0.9; m.armL.rotation.x = -1.2 - k * 0.6;
         m.body.rotation.x = 0.1 + k * 0.08;
@@ -436,7 +496,11 @@ class Game {
       } else if (anim === 'sell') {
         m.armR.rotation.z = 2.4 + Math.sin(t * 6) * 0.35;
       } else if (anim === 'play') {
-        m.body.position.y = Math.abs(Math.sin(t * 7)) * 0.1; m.armL.rotation.z = -1.2 - Math.sin(t * 7) * 0.4; m.armR.rotation.z = 1.2 + Math.sin(t * 7) * 0.4;
+        // a skipping, hopping play: elbows soft and arms out of step (never a stiff T)
+        const k = Math.sin(t * 7);
+        m.body.position.y = Math.abs(k) * 0.08; m.body.rotation.z = Math.sin(t * 3.5) * 0.12;
+        m.armL.rotation.z = -0.3 - k * 0.12; m.armL.rotation.x = -0.75 * k; m.armR.rotation.z = 0.3 - k * 0.12; m.armR.rotation.x = 0.75 * k;   // arms swing low, one forward, one back
+        m.hipL.rotation.x = Math.max(0, k) * 0.6; m.hipR.rotation.x = Math.max(0, -k) * 0.6;
       } else if (anim === 'cast') {
         m.armL.rotation.x = -2.6 + Math.sin(t * 3) * 0.2; m.armR.rotation.x = -2.6 - Math.sin(t * 3) * 0.2; m.body.position.y = Math.sin(t * 2) * 0.03;
       } else if (anim === 'dance') {
@@ -459,7 +523,8 @@ class Game {
     if (!this.hudRects || performance.now() - this.hudT > 500) {
       this.hudT = performance.now();
       this.hudRects = ['#dockbar', '#tray', '#world', '#shop', '#placebar', '#topright', '#info'].map(q => document.querySelector(q))
-        .filter(el => el && el.offsetParent !== null && !el.classList.contains('hidden')).map(el => el.getBoundingClientRect());
+        // (fixed panels have no offsetParent, so test their size instead)
+        .filter(el => el && !el.classList.contains('hidden')).map(el => el.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);
     }
     return this.hudRects.some(r => x > r.left - 20 && x < r.right + 20 && y > r.top - 40 && y < r.bottom);
   }
@@ -489,7 +554,7 @@ class Game {
     m.group.rotation.y = ch.rot; root.scale.setScalar(1.3);
     root.userData.ent = { kind: 'chest', ch };
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture('gift'), transparent: true, depthWrite: false, sizeAttenuation: false }));
-    sp.userData.px = 40; sp.position.y = 0.95; sp.renderOrder = 5; root.add(sp); this.screenSprites.add(sp);
+    sp.userData.px = innerWidth < 760 ? 28 : 32; sp.position.y = 0.95; sp.renderOrder = 5; root.add(sp); this.screenSprites.add(sp);
     const glow = new THREE.Mesh(new THREE.CircleGeometry(1.0, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: glowTex(), color: 0xffd76a, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
     glow.position.y = 0.06; glow.renderOrder = 2; root.add(glow);
     this.view.objects.add(root);
@@ -501,7 +566,9 @@ class Game {
         c.sp.position.y = 0.95 + Math.sin(time * 3 + c.phase) * 0.05;
         c.glow.material.opacity = 0.45 + Math.sin(time * 2.4 + c.phase) * 0.2 + this.night * 0.25;
         const p = this.view.project(c.sp.getWorldPosition(tmpV));
-        c.sp.visible = !!c.sp.material.map?.userData.ready && !this.hudHit(p.x, p.y);
+        // the bubble only pops up when you're looking nearby; edge arrows cover the rest
+        const r = this.view.rig, near = r.dist < 24 && Math.hypot(c.ch.x - r.tx, c.ch.z - r.tz) < r.dist * 0.75;
+        c.sp.visible = near && !!c.sp.material.map?.userData.ready && !this.hudHit(p.x, p.y);
         continue;
       }
       c.t += dt;
@@ -588,10 +655,12 @@ class Game {
   skyLantern(x, z) {
     const F = this.fest; if (F.floaters.length > 40) return;
     const g = new THREE.Group(), a = Math.random() * 6.28, rr = 1.5 + Math.random() * 2;
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 0.16), new THREE.MeshBasicMaterial({ color: 0xffb35a, transparent: true })));
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xffa040, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-    halo.scale.setScalar(1.1); g.add(halo);
-    g.position.set(x + Math.cos(a) * rr, this.sim.world.heightAt(x, z) + 1, z + Math.sin(a) * rr);
+    // a paper lantern (wider at the top) with a warm halo that only shows after dusk
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 0.24, 8), new THREE.MeshBasicMaterial({ color: 0xffb35a, transparent: true })));
+    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 8), new THREE.MeshBasicMaterial({ color: 0x8a4a1a })), { position: new THREE.Vector3(0, -0.13, 0) }));
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xffa040, transparent: true, opacity: Math.min(1, this.night * 1.4), blending: THREE.AdditiveBlending, depthWrite: false }));
+    halo.scale.setScalar(0.9); g.add(halo);
+    g.position.set(x + Math.cos(a) * rr, this.sim.world.heightAt(x, z) + 1.7, z + Math.sin(a) * rr);   // released above head height
     this.view.fx.add(g); F.floaters.push({ m: g, t: 0, v: 0.55 + Math.random() * 0.3, ph: Math.random() * 6 });
   }
   firework(x, z, near) {
@@ -649,12 +718,56 @@ class Game {
     iceUniform.value = Math.max(0, Math.min(1, (snow - 0.25) / 0.6));
     this.view.pads.visible = iceUniform.value < 0.5;
     this.si = si;
+    SNOWCAP_MAT.visible = snow > 0.42;      // roofs wear their snow pillows once the snow is deep
+    this.updateSnowmen(snow);
+  }
+  // Villagers build snowmen around each campfire once the snow settles; they
+  // slump and melt away as it thaws.
+  updateSnowmen(snow) {
+    const want = this.si === 3 && snow > 0.35;
+    this.snowmen ||= [];
+    if (want && !this.snowmen.length) {
+      const W = this.sim.world;
+      for (const b of this.sim.s.buildings) {
+        if (b.type !== 'campfire') continue;
+        const c = this.sim.bCenter(b);
+        let made = 0;
+        // only in open snow: the tile and the tiles on the camera's side must be
+        // clear, so a snowman never hides behind a cottage
+        const open = (tx, tz, n) => { for (let dz = 0; dz <= n; dz++) for (let dx = 0; dx <= n; dx++) {
+          if (!inMap(tx + dx, tz + dz)) return false;
+          const i = idx(tx + dx, tz + dz);
+          if (W.occ[i] >= 0 || W.block[i] || W.type[i] === 1 || W.tree[i] >= 0 || W.rock[i] >= 0) return false;
+        } return true; };
+        // prefer a roomy spot; in a crowded village settle for any free tile
+        for (let k = 0; k < 180 && made < 2; k++) {
+          const ang = (b.id * 1.7 + k * 2.39) % (Math.PI * 2), r = 2.4 + (k % 9) * 0.75;
+          const x = c.x + Math.cos(ang) * r, z = c.z + Math.sin(ang) * r;
+          const tx = Math.floor(x + HALF), tz = Math.floor(z + HALF);
+          if (!open(tx, tz, k < 90 ? 2 : 0)) continue;
+          const sm = propModel('snowman'); if (!sm) return;
+          sm.position.set(x, W.heightAt(x, z), z); sm.rotation.y = Math.atan2(c.x - x, c.z - z);
+          sm.userData.s = 0; this.view.objects.add(sm); this.snowmen.push(sm); made++;
+        }
+      }
+    }
+    const k = Math.max(0, Math.min(1, (snow - 0.35) / 0.25));
+    for (const sm of this.snowmen) { sm.scale.set(0.9 * Math.max(0.001, k), 0.9 * Math.max(0.001, k * k), 0.9 * Math.max(0.001, k)); sm.visible = k > 0.01; }
+    if (!want && k <= 0.01 && this.snowmen.length) { for (const sm of this.snowmen) this.view.objects.remove(sm); this.snowmen = []; }
   }
 
   // the travelling merchant's cart
   makeCart() {
     const g = new THREE.Group();
     const body = new THREE.Group(); g.add(body);
+    // the Blender wagon when it's exported; its wheel nodes spin as it rolls
+    const wagon = hasModel('cart') && instanceModel('cart', (slot, c, ms) => slotMaterial(slot, c, ms.smooth));
+    if (wagon) {
+      body.add(wagon.group);
+      this.cartWheels = ['wheel0', 'wheel1', 'wheel2', 'wheel3'].map(k => wagon.nodes[k]).filter(Boolean);
+      for (const p of wagon.points) if (p.name === 'glow_lamp') p.obj.userData.halo = 'lamp';
+      this.addHalos(wagon.group);
+    } else {
     body.add(at3(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.35, 1.3), mat(C.plank)), 0, 0.45, 0, true));
     const canopy = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.3, 10, 1, true, -Math.PI / 2, Math.PI), mat(0x9b6bd1));
     canopy.rotation.x = Math.PI / 2; canopy.rotation.z = Math.PI / 2; canopy.rotation.y = 0; canopy.position.set(0, 0.62, 0);
@@ -665,10 +778,11 @@ class Game {
     }
     for (const [x, c] of [[-0.2, C.berry], [0.1, C.yellow], [0.25, 0x5ab0e0]]) body.add(at3(new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), mat(c)), x, 0.72, -0.3));
     for (const x of [-0.25, 0.25]) body.add(at3(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.8), mat(C.timber)), x, 0.4, 1.0));
+    }
     const vm = villagerModel({ shirt: 0x7a4aa8, skin: 0xe8b590, hair: 0x6b4226, hat: true, hatColor: 0x4a2f6b });
     vm.group.position.set(0, 0, 1.45); g.add(vm.group); this.cartMan = vm;
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture('shop'), transparent: true, depthWrite: false }));
-    sp.scale.set(0.7, 0.82, 1); sp.position.y = 1.7; g.add(sp); this.cartBubble = sp;
+    sp.scale.set(0.42, 0.49, 1); sp.position.y = 1.95; g.add(sp); this.cartBubble = sp;   // small, above the cover
     g.userData.ent = { kind: 'merchant' };
     g.visible = false;
     this.view.objects.add(g);
@@ -687,7 +801,7 @@ class Game {
     const moving = m.state !== 'here';
     this.cartBubble.visible = !moving;
     if (moving) { for (const w of this.cartWheels) w.rotation.x += dt * 6 * Math.max(1, this.sim.s.speed); const k = Math.sin(time * 10) * 0.6; this.cartMan.hipL.rotation.x = k; this.cartMan.hipR.rotation.x = -k; this.cartMan.armR.rotation.x = -0.9; this.cartMan.armL.rotation.x = -0.9; }
-    else { this.cartMan.hipL.rotation.x = this.cartMan.hipR.rotation.x = 0; this.cartMan.armR.rotation.z = 2.4 + Math.sin(time * 5) * 0.3; this.cartBubble.position.y = 1.7 + Math.sin(time * 3) * 0.04; }
+    else { this.cartMan.hipL.rotation.x = this.cartMan.hipR.rotation.x = 0; this.cartMan.armR.rotation.z = 2.4 + Math.sin(time * 5) * 0.3; this.cartBubble.position.y = 1.95 + Math.sin(time * 3) * 0.04; }
   }
 
   makeLockMarkers() {
@@ -696,6 +810,7 @@ class Game {
     for (const st of SETTLEMENTS) {
       if (this.sim.s.unlocked[st.id]) continue;
       const c = CENTERS[st.id];
+      if (!c) continue;                       // e.g. Pearl Isle on a map whose lake had no room for it
       const { group } = buildModel('sign', [1, 1]);
       const root = new THREE.Group(); root.add(group);
       root.position.set(toWorld(c.x), this.sim.world.heightAt(toWorld(c.x), toWorld(c.z)), toWorld(c.z));
@@ -763,7 +878,7 @@ class Game {
     sim.on('settlements', () => { this.makeLockMarkers(); this.life?.placeButterflies(); });
     sim.on('chest', ch => this.addChest(ch));
     sim.on('season', sea => { this.updateSeason(); if (sea.id === 'winter') sfx.snow(); });
-    sim.on('birth', kid => this.ui.askBabyName(kid));
+    hookRpg(this);                    // damage numbers and spell flashes (rpgview.js)
   }
 
   // ── little effects: falling trees and leaf puffs ──
@@ -933,15 +1048,19 @@ class Game {
     const fake = { type: p.type, tx: p.tx, tz: p.tz, rot: p.rot };
     let y = 0.1;
     try { if (inMap(p.tx, p.tz) && inMap(p.tx + w - 1, p.tz + d - 1)) y = this.baseY(fake); } catch { /* off map */ }
-    p.ghost.position.set(cx, y, cz);
+    // the ghost glides to its tile (see loop); the first placement snaps
+    p.target = (p.target || new THREE.Vector3()).set(cx, y, cz);
+    if (!p.placed) { p.ghost.position.copy(p.target); p.placed = true; }
     p.model.rotation.y = p.rot * Math.PI / 2;
     p.plane.position.set(cx, y + 0.06, cz); p.plane.scale.set(w, 1, d);
     p.plane.material.color.setHex(p.ok ? 0x7dff6a : 0xff5a4a);
+    p.plane.visible = false;                    // per-tile cells (select.js) show what blocks
+    this.hl.showCells(p);
     if (p.okShown !== p.ok) { p.okShown = p.ok; p.model.traverse(o => { if (o.isMesh && o.userData.base) o.material = ghostMat(o.userData.base, p.ok); }); }
     if (!p.edge) {
       // a thick coloured rim just outside the footprint
       p.edge = new THREE.Group();
-      const m = new THREE.MeshBasicMaterial({ color: 0x5fd94a, transparent: true, opacity: 0.95, depthTest: false });
+      const m = new THREE.MeshBasicMaterial({ color: 0x5fd94a, transparent: true, opacity: 0.95, polygonOffset: true, polygonOffsetFactor: -4 });
       for (let k = 0; k < 4; k++) { const bar = new THREE.Mesh(new THREE.BoxGeometry(1, 0.03, 1), m); bar.renderOrder = 10; p.edge.add(bar); }
       p.edge.userData.m = m; this.view.scene.add(p.edge);
     }
@@ -961,7 +1080,8 @@ class Game {
     const touch = this.lastPointer !== 'mouse';
     const title = PAINT[p.type] ? PAINT[p.type] : (p.moving ? 'Move ' : '') + defOf(p.type).name;
     if (p.type === 'clear') this.ui.placeBar(true, touch ? 'Tap or drag over trees to mark them' : 'Click or drag over trees · right-drag to pan', false, false, title);
-    else if (p.type === 'pave') this.ui.placeBar(true, (touch ? 'Tap or drag to lay stones' : 'Click or drag to lay stones · right-drag to pan') + ' · 1 stone each, tap again to lift', false, false, title);
+    else if (p.type === 'pave') this.ui.placeBar(true, (touch ? 'Tap or drag to cobble' : 'Click or drag to cobble · right-drag to pan') + ' · 1 stone a tile, tap again to lift', false, false, title);
+    else if (p.type === 'road') this.ui.placeBar(true, (touch ? 'Drag from a road to lay a dirt road' : 'Drag from a road to lay a dirt road · right-drag to pan') + ' · free, bridges 3 planks a tile', false, false, title);
     else if (p.ok) {
       const gets = (p.syn || []).filter(l => l.gets), gives = (p.syn || []).filter(l => !l.gets);
       const syn = gets.length ? ` · +${Math.round(gets.reduce((a, l) => a + l.rule.bonus, 0) * 100)}% from neighbours` : gives.length ? ` · boosts ${gives.length} neighbour${gives.length > 1 ? 's' : ''}` : '';
@@ -1023,6 +1143,7 @@ class Game {
     if (p.edge) this.view.scene.remove(p.edge);
     if (p.links) this.view.scene.remove(p.links);
     if (p.moving) { const vis = this.bvis.get(p.moving.id); if (vis) vis.root.visible = true; }
+    this.hl.showCells(null);
     this.place = null;
     if (this.terr) { this.view.scene.remove(this.terr); this.terr = null; }
     if (this.rangeRing) this.rangeRing.visible = false;
@@ -1046,17 +1167,28 @@ class Game {
     this.view.scene.add(g);
   }
   paint(cx, cy, first) {
-    if (this.place?.type === 'pave') return this.paintPave(cx, cy, first);
+    if (this.place?.type === 'pave' || this.place?.type === 'road') return this.paintPave(cx, cy, first);
     return this.paintClear(cx, cy, first);
   }
+  // roads and cobbles (roads.js): the first tile decides lay or lift; a fast drag fills the gaps
   paintPave(cx, cy, first) {
     const p = this.view.groundAt(cx, cy), tx = Math.floor(p.x + HALF), tz = Math.floor(p.z + HALF);
     if (!inMap(tx, tz)) return;
-    const i = idx(tx, tz), W = this.sim.world;
-    if (first) this.paintMode = !W.paved[i];
-    const r = this.sim.pave(i, this.paintMode);
-    if (r === 'stone' && !this.noStoneWarned) { this.noStoneWarned = true; this.ui.toast('You need stone to lay paths', 'stone'); sfx.error(); setTimeout(() => this.noStoneWarned = false, 3000); }
-    else if (r === true) sfx.chop();
+    const W = this.sim.world, road = this.place.type === 'road', i0 = idx(tx, tz);
+    if (first) { this.paintMode = road ? !((W.road[i0] === 2 && !W.paved[i0]) || W.bridge[i0] === 2) : !W.paved[i0]; this.lastPaint = null; }
+    const [lx, lz] = this.lastPaint || [tx, tz], n = Math.max(Math.abs(tx - lx), Math.abs(tz - lz));
+    this.lastPaint = [tx, tz];
+    for (let k = n ? 1 : 0; k <= n; k++) {
+      const x = Math.round(lx + (tx - lx) * (n ? k / n : 1)), z = Math.round(lz + (tz - lz) * (n ? k / n : 1)), i = idx(x, z);
+      const r = road ? paintRoad(this.sim, i, this.paintMode) : paintCobble(this.sim, i, this.paintMode);
+      if (r === true) { this.sim.trade?.settleAt(i); W.bridge[i] && road ? sfx.place() : sfx.chop(); continue; }
+      if (typeof r === 'string' && !this.noStoneWarned) {
+        this.noStoneWarned = true; setTimeout(() => this.noStoneWarned = false, 2500);
+        const msg = r === 'stone' ? 'You need stone to cobble roads' : r === 'planks' ? 'Bridges need 3 planks a tile' : r;
+        this.ui.toast(msg, r === 'planks' ? 'plank' : r === 'stone' ? 'stone' : 'alert'); sfx.error();
+        break;
+      }
+    }
   }
   paintClear(cx, cy, first) {
     const W = this.sim.world, p = this.view.groundAt(cx, cy);
@@ -1094,7 +1226,8 @@ class Game {
       this.selRing.scale.setScalar(0.35);
       if (fly || innerWidth < 760) this.focus(ent.v.x, ent.v.z);
     }
-    this.selRing.visible = !!this.selected;
+    this.selRing.visible = false;          // the outline in select.js replaces the old ring
+    this.hl.setSelected(this.selected);
   }
   focus(x, z, dist) {
     const rig = this.view.rig, phone = innerWidth < 760;
@@ -1151,12 +1284,16 @@ class Game {
       a0 = Math.min(a0, a - e); a1 = Math.max(a1, a + e); c0 = Math.min(c0, f - e); c1 = Math.max(c1, f + e);
     }
     const w = a1 - a0, h = c1 - c0;
-    const vt = Math.tan(cam.fov * Math.PI / 360), ht = vt * (innerWidth / innerHeight);
+    // a hidden or zero-size window has no aspect yet; assume a landscape one rather than NaN
+    const aspect = innerWidth > 0 && innerHeight > 0 ? innerWidth / innerHeight : 1.6;
+    const vt = Math.tan(cam.fov * Math.PI / 360), ht = vt * aspect;
     // usable fraction of the screen once the HUD is taken out
     const useW = phone ? 1.0 : 0.72, useH = phone ? 0.7 : 0.7;
     // ground depth is stretched by the camera's tilt (~1.25x at our pitch)
     const fitW = (w / 2 + 1.5) / (ht * useW), fitH = (h / 2 + 1.5) / (vt * 1.25 * useH);
-    const dist = Math.max(phone ? 22 : 20, Math.min(phone ? 40 : 62, Math.max(fitW, fitH)));
+    // a starter camp (a cottage and a campfire) opens close enough to see faces
+    const starter = this.sim.s.buildings.filter(b => b.sid === sid && !isDecor(b.type)).length <= 3;
+    const dist = starter ? (phone ? 13 : 10.5) : Math.max(phone ? 19 : 16, Math.min(phone ? 40 : 62, Math.max(fitW, fitH)));
     const k = phone ? dist * 0.05 : 0, side = phone ? dist * 0.055 : 0;
     const tx = (x0 + x1) / 2 - Math.sin(rig.yaw) * k + Math.cos(rig.yaw) * side, tz = (z0 + z1) / 2 - Math.cos(rig.yaw) * k - Math.sin(rig.yaw) * side;
     if (instant) Object.assign(rig, { tx, tz, dist });
@@ -1197,8 +1334,14 @@ class Game {
       const p = ptrs.get(e.pointerId);
       if (!p) {
         if (e.pointerType === 'mouse' && this.place) { this.lastPointer = 'mouse'; this.ghostAt(e.clientX, e.clientY); }
+        // hover pre-selection, a few times a second is plenty
+        else if (e.pointerType === 'mouse' && !this.place) {
+          const now = performance.now();
+          if (now - (this.hoverT || 0) > 70) { this.hoverT = now; this.hl.setHover(this.pick(e.clientX, e.clientY)); }
+        }
         return;
       }
+      this.hl.setHover(null);
       p.x = e.clientX; p.y = e.clientY;
       if (pinch && ptrs.size >= 2) {
         const [a, b] = [...ptrs.values()];
@@ -1375,10 +1518,12 @@ class Game {
     this.life.update(dt, t, this.night, this.rainK || 0, this.si, iceUniform.value);
     this.updateCart(dt, t);
     this.updateChests(dt, t);
+    this.extras?.update(dt, t);
     this.updateFestival(dt, t);
     this.updateBeasts(dt, t);
     this.updateWard();
     this.drawBars();
+    rpgFrame(this, dt);               // health bars, knocked-out poses (rpgview.js)
 
     // selection ring + name tag
     const tag = document.getElementById('tag');
@@ -1390,6 +1535,8 @@ class Game {
       tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px';
     } else tag.classList.add('hidden');
     if (this.place?.model) this.place.model.position.y = 0.08 + Math.sin(t * 4) * 0.06;
+    if (this.place?.ghost && this.place.target) this.place.ghost.position.lerp(this.place.target, 1 - Math.exp(-dt * 22));
+    this.hl.update(dt);
     if (this.rangeRing?.visible) { this.rangeRing.material.opacity = 0.75 + Math.sin(t * 3) * 0.2; this.placeRangeLabel(); }
     if (this.selRing.visible) this.selRing.material.opacity = 0.65 + Math.sin(t * 4) * 0.25;
 
@@ -1404,31 +1551,48 @@ class Game {
   weather(dt) {
     const wx = this.sim.s.weather || {}, view = this.view, rig = view.rig;
     this.rainK = lerp(this.rainK || 0, wx.rain ? 1 : 0, Math.min(1, dt * 0.6));
-    const winter = this.si === 3;
+    this.stormK = lerp(this.stormK || 0, wx.storm ? 1 : 0, Math.min(1, dt * 0.5));
+    this.cloudK = lerp(this.cloudK || 0, wx.cloud || 0, Math.min(1, dt * 0.3));
+    const winter = this.si === 3, sk = this.stormK;
     this.seasonFall(dt);
+    // storms: lightning now and then, thunder rolling in a moment later
+    this.flashK = Math.max(0, (this.flashK || 0) - dt * 4.5);
+    if (sk > 0.6 && !winter) {
+      if ((this.boltT = (this.boltT ?? 2) - dt) <= 0) {
+        this.boltT = 3.5 + Math.random() * 7;
+        this.flashK = 1; setTimeout(() => { this.flashK = Math.max(this.flashK, 0.7); }, 140);
+        const far = Math.random();
+        setTimeout(() => sfx.thunder?.(1 - far * 0.5), 250 + far * 1400);
+      }
+    }
+    const fl = document.getElementById('flash');
+    if (fl && (this.flashK > 0.01 || this.flashOn)) { this.flashOn = this.flashK > 0.01; fl.style.opacity = (this.flashK * 0.32).toFixed(3); }
+    const gl = document.getElementById('gloom'), go = (sk * (winter ? 0.25 : 0.42) * (1 - this.flashK)).toFixed(3);
+    if (gl && gl.style.opacity !== go) gl.style.opacity = go;
     if (this.rainK > 0.01 && !winter) {
       if (!this.rain) {
-        const n = 1400, pos = new Float32Array(n * 6);
+        const n = 2400, pos = new Float32Array(n * 6);
         const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         this.rain = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.5, depthWrite: false }));
         this.rain.frustumCulled = false; this.rainDrops = Array.from({ length: n }, () => [Math.random() * 44 - 22, Math.random() * 16, Math.random() * 36 - 18]);
         view.scene.add(this.rain);
       }
-      const pos = this.rain.geometry.attributes.position.array, fall = dt * 14;
-      // the rain volume scales with zoom so close-ups aren't a wall of streaks
-      const zk = Math.max(0.45, Math.min(1.5, rig.dist / 30)), cnt = Math.round(this.rainDrops.length * Math.min(1, zk));
+      const pos = this.rain.geometry.attributes.position.array, fall = dt * (14 + sk * 9);
+      // the rain volume scales with zoom so close-ups aren't a wall of streaks; storms pour and slant
+      const zk = Math.max(0.45, Math.min(1.5, rig.dist / 30)), cnt = Math.round(Math.min(this.rainDrops.length, 1400 * (1 + sk * 0.7)) * Math.min(1, zk));
+      const wind = 0.05 + sk * 0.3;
       this.rain.geometry.setDrawRange(0, cnt * 2);
       this.rainDrops.forEach((d, i) => {
         if (i >= cnt) return;
         d[1] -= fall; if (d[1] < 0) { d[1] += 16; d[0] = Math.random() * 44 - 22; d[2] = Math.random() * 36 - 18; }
         const x = rig.tx + d[0] * zk, z = rig.tz + d[2] * zk, y = d[1];
-        pos.set([x, y, z, x - 0.05, y + 0.45, z - 0.03], i * 6);
+        pos.set([x, y, z, x - wind, y + 0.45 + sk * 0.25, z - 0.03], i * 6);
       });
       this.rain.geometry.attributes.position.needsUpdate = true;
-      this.rain.material.opacity = 0.45 * this.rainK;
+      this.rain.material.opacity = (0.45 + sk * 0.15) * this.rainK;
       this.rain.visible = true;
     } else if (this.rain) this.rain.visible = false;
-    rainSound(winter ? 0 : this.rainK);
+    rainSound(winter ? 0 : this.rainK * (1 + sk * 0.6));
     // rainbow (a soft screen-space arc; the camera looks too steeply down for a 3D one)
     const show = (wx.rainbow || 0) > 0 && this.night < 0.4;
     if (show !== this.rainbowOn) { this.rainbowOn = show; document.getElementById('rainbow').classList.toggle('on', show); }
@@ -1446,6 +1610,8 @@ class Game {
       const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
       this.fall = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.2, map: flakeTex(), vertexColors: true, transparent: true, depthWrite: false, alphaTest: 0.05 }));
+      // flakes right by the camera would balloon into blobs: cap their size on screen
+      this.fall.material.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <fog_vertex>', 'gl_PointSize = min(gl_PointSize, 16.0);\n#include <fog_vertex>'); };
       this.fall.frustumCulled = false;
       this.fallP = Array.from({ length: n }, () => [Math.random() * 44 - 22, Math.random() * 14, Math.random() * 36 - 18, Math.random() * 6.28, 0.7 + Math.random() * 0.6]);
       this.view.scene.add(this.fall);
@@ -1477,21 +1643,24 @@ class Game {
   }
 
   dayLight(time) {
+    // at night villagers get a thin cool rim (models.js) so they read against the dark ground
+    // without glowing like ghosts
+    if (Math.abs((this.vNight ?? -1) - this.night) > 0.02) { this.vNight = this.night; VILLAGER_MATS.rim.value.setRGB(0.09, 0.13, 0.26).multiplyScalar(this.night); }
     const f = (time % DAY) / DAY;                 // 0 = midnight
     const sunUp = Math.max(0, Math.sin((f - 0.22) / 0.56 * Math.PI));
     const light = f > 0.22 && f < 0.78 ? sunUp : 0;
     const night = this.night = 1 - Math.min(1, light * 2.2);
     document.body.classList.toggle('night', night > 0.6);
     setMood(this.sim.festivalActive() ? 'festival' : f < 0.21 || f > 0.86 ? 'night' : f < 0.34 ? 'morning' : f < 0.7 ? 'day' : 'evening');
-    const v = this.view, rk = this.rainK || 0;
-    // the sun by day, a cool moon by night
-    v.sun.intensity = (0.35 + 2.2 * light) * (1 - rk * 0.55);
+    const v = this.view, rk = this.rainK || 0, sk = this.stormK || 0, ck = this.cloudK || 0, fk = this.flashK || 0;
+    // the sun by day, a cool moon by night (dimmed by clouds and storms, lit up by lightning)
+    v.sun.intensity = (0.28 + 2.27 * light) * (1 - rk * 0.55) * (1 - ck * 0.22) * (1 - sk * 0.4) + fk * 1.5;
     v.sun.color.setRGB(lerp(0.62, 1, 1 - night), lerp(0.7, lerp(0.72, 0.95, Math.min(1, light * 1.6)), 1 - night), lerp(1, lerp(0.55, 0.85, Math.min(1, light * 1.6)), 1 - night));
-    v.hemi.intensity = lerp(0.55, 1.6, 1 - night);
-    v.hemi.color.setRGB(lerp(0.42, 1, 1 - night), lerp(0.5, 0.97, 1 - night), lerp(0.95, 0.88, 1 - night));
-    v.hemi.groundColor.setRGB(lerp(0.12, 0.36, 1 - night), lerp(0.14, 0.54, 1 - night), lerp(0.26, 0.23, 1 - night));
+    v.hemi.intensity = lerp(0.42, 1.6, 1 - night) * (1 - sk * 0.3) + fk * 2.2;
+    v.hemi.color.setRGB(lerp(0.34, 1, 1 - night), lerp(0.44, 0.97, 1 - night), lerp(1.0, 0.88, 1 - night));    // deep blue nights so warm windows glow
+    v.hemi.groundColor.setRGB(lerp(0.07, 0.36, 1 - night), lerp(0.09, 0.54, 1 - night), lerp(0.22, 0.23, 1 - night));
     const S = v.season, SKY = [0x9cd3c0, 0xa2d7c2, 0xcbd3ad, 0xc4d5e0];
-    const sky = new THREE.Color(SKY[S.a]).lerp(new THREE.Color(SKY[S.b]), S.k).lerp(new THREE.Color(0x8396a3), rk * 0.7).lerp(new THREE.Color(0x1b2847), night * 0.92);
+    const sky = new THREE.Color(SKY[S.a]).lerp(new THREE.Color(SKY[S.b]), S.k).lerp(new THREE.Color(0x8396a3), Math.max(rk * 0.7, ck * 0.32)).lerp(new THREE.Color(0x3c4552), sk * 0.55).lerp(new THREE.Color(0x1b2847), night * 0.92).lerp(new THREE.Color(0xdfe6ff), fk * 0.45);
     v.scene.background.copy(sky); v.scene.fog.color.copy(sky);
     const ice = iceUniform.value;
     v.water.material.color.setRGB(lerp(lerp(0.33, 0.12, night), lerp(0.8, 0.3, night), ice), lerp(lerp(0.75, 0.27, night), lerp(0.9, 0.36, night), ice), lerp(lerp(0.91, 0.5, night), lerp(0.97, 0.55, night), ice));
@@ -1506,7 +1675,7 @@ class Game {
 
 const tmpV = new THREE.Vector3();
 const at3 = (m, x, y, z, shadow = false) => { m.position.set(x, y, z); m.castShadow = shadow; return m; };
-const PAINT = { clear: 'Clear Trees', pave: 'Stone Path' };
+const PAINT = { clear: 'Clear Trees', pave: 'Cobble Road', road: 'Dirt Road' };
 const leafGeo = new THREE.IcosahedronGeometry(0.09, 0);
 let _fall = null;
 const fallMat = () => _fall || (_fall = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
@@ -1548,7 +1717,9 @@ const ghostCache = new Map();
 function ghostMat(m, ok) {
   const key = m.uuid + ok;
   if (!ghostCache.has(key)) {
-    const g = m.clone(); g.transparent = true; g.opacity = ok ? 0.94 : 0.8; g.depthWrite = true;
+    // a placement ghost reads as not-yet-built: see-through, with a green (ok) or red (blocked) glow
+    const g = m.clone(); g.transparent = true; g.opacity = ok ? 0.8 : 0.72; g.depthWrite = true;
+    if (ok && g.emissive) g.emissive.setHex(0x16380f);
     if (!ok && g.emissive) g.emissive.setHex(0x5a0e0a);
     ghostCache.set(key, g);
   }
