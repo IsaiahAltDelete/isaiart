@@ -69,8 +69,22 @@ const P = {
   lantern: `<path d="M16 2v4" ${O}/><path d="M10 9c0-2 2-3 6-3s6 1 6 3c2 3 2 11 0 14 0 2-2 3-6 3s-6-1-6-3c-2-3-2-11 0-14z" fill="#f0743a" ${O}/><path d="M12 9c-1 4-1 10 0 14M20 9c1 4 1 10 0 14" fill="none" stroke="#b5461d" stroke-width="1.2"/><ellipse cx="16" cy="16" rx="3" ry="5" fill="#ffd27a"/><path d="M14 28h4" ${O}/>`,
   pencil: `<path d="M6 26l2-7L21 6l5 5L13 24z" fill="#ffd54f" ${O}/><path d="M21 6l2-2 5 5-2 2z" fill="#f28a8a" ${O}/><path d="M6 26l2-7 5 5z" fill="#f4dcb4" ${O}/><path d="M6 26l1-3 2 2z" fill="#5b3a1e"/>`,
   party: `<path d="M4 28L10 9l13 13z" fill="#f6c53f" ${O}/><path d="M7 19l7 7M9 13l10 10" stroke="#e2413c" stroke-width="2"/><circle cx="22" cy="6" r="2" fill="#4f8fd9"/><circle cx="27" cy="13" r="1.8" fill="#6cc04a"/><circle cx="17" cy="4" r="1.5" fill="#f06292"/><path d="M20 12c2-2 5-2 7 0M14 8c0-3 2-5 4-5" fill="none" stroke="#a66be0" stroke-width="1.8" stroke-linecap="round"/>`,
+  // weather
+  cloud: `<path d="M8 24a5.5 5.5 0 01-.6-11A7.5 7.5 0 0121.6 11 5.6 5.6 0 0124.5 24z" fill="#eef3f8" ${O}/><path d="M11 20.5h11" stroke="#c9d3de" stroke-width="1.6" stroke-linecap="round"/>`,
+  suncloud: `<g stroke="#e8a826" stroke-width="2.2" stroke-linecap="round"><path d="M12 2.5v3M3.5 11h3M5.6 4.6l2 2M18.4 4.6l-2 2"/></g><circle cx="12" cy="11.5" r="5.5" fill="#ffd54f" ${O}/><path d="M11 27a5 5 0 01-.5-10 7 7 0 0112.8-2 5 5 0 012.7 12z" fill="#eef3f8" ${O}/>`,
+  rain: `<path d="M8 19a5.5 5.5 0 01-.6-11A7.5 7.5 0 0121.6 6 5.6 5.6 0 0124.5 19z" fill="#d6e1ec" ${O}/><g stroke="#4f8fd9" stroke-width="2.2" stroke-linecap="round"><path d="M10 23l-1.5 4M16 23l-1.5 4M22 23l-1.5 4"/></g>`,
+  storm: `<path d="M8 18a5.5 5.5 0 01-.6-11A7.5 7.5 0 0121.6 5 5.6 5.6 0 0124.5 18z" fill="#8e9aab" ${O}/><path d="M17 15l-5 8h4l-2 7 7-10h-4l2-5z" fill="#ffd54f" ${O}/><g stroke="#4f8fd9" stroke-width="2" stroke-linecap="round"><path d="M9 22l-1.2 3.5M25 21l-1.2 3.5"/></g>`,
+  snowfall: `<path d="M8 18a5.5 5.5 0 01-.6-11A7.5 7.5 0 0121.6 5 5.6 5.6 0 0124.5 18z" fill="#eef3f8" ${O}/><g fill="#7fa6d6"><circle cx="10" cy="23" r="1.8"/><circle cx="16" cy="26" r="1.8"/><circle cx="22" cy="23" r="1.8"/><circle cx="13" cy="29.5" r="1.4"/><circle cx="20" cy="29.5" r="1.4"/></g>`,
+  blizzard: `<path d="M8 17a5.5 5.5 0 01-.6-11A7.5 7.5 0 0121.6 4 5.6 5.6 0 0124.5 17z" fill="#b9c6d6" ${O}/><path d="M4 21h15M8 25h18M3 29h12" stroke="#5a7fae" stroke-width="2" stroke-linecap="round"/><g fill="#fff" stroke="#5a7fae" stroke-width="1"><circle cx="23" cy="21" r="1.8"/><circle cx="19" cy="29" r="1.8"/></g>`,
+  list: `<rect x="4" y="5" width="24" height="22" rx="4" fill="#fbf3e4" ${O}/><path d="M11 11h12M11 16h12M11 21h12" stroke="#8c6a48" stroke-width="2" stroke-linecap="round"/><g fill="#6cc04a"><circle cx="8" cy="11" r="1.6"/><circle cx="8" cy="16" r="1.6"/><circle cx="8" cy="21" r="1.6"/></g>`,
+  next: `<path d="M12 6l10 10-10 10" fill="none" stroke="#5b3a1e" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>`,
+  arrowup: `<path d="M16 27V7M8 14l8-8 8 8" fill="none" stroke="#3f8a2a" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>`,
+  warn: `<path d="M16 4L29 27H3z" fill="#f6c53f" ${O}/><path d="M16 12v7" stroke="#5b3a1e" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="23" r="1.7" fill="#5b3a1e"/>`,
   home: `<circle cx="16" cy="16" r="13" fill="#fbf3e4" ${O}/><path d="M8 16l8-7 8 7" fill="none" ${O}/><path d="M10 15v8h12v-8" fill="#f3e3c3" ${O}/><path d="M14.5 23v-4h3v4" fill="#8a5a33" ${O}/>`,
 };
+
+// other modules (rpgui.js) can add their own icons
+export function addIcons(more) { Object.assign(P, more); }
 
 export const svg = (name, size = 24) =>
   `<svg class="ic" viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true">${P[name] ?? P.info}</svg>`;

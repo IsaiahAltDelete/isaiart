@@ -126,20 +126,58 @@ production-chain view.
 A critic pass on the first draft scored 8.6; its notes (winter whiteout, a sticky chest banner,
 over-zoomed close-ups, a cramped desktop panel, glittery fireworks) were fixed afterwards.
 
+## Round 7 — Blender models, RPG layer, roads and trade (client requests)
+
+All ten "next round" ideas, plus a long client wish list.
+
+- **Models from Blender.** Every building, villager, animal, crop, beast, tree and decoration is
+  now authored as a Python script in `blender/` and exported headless
+  (`blender -b -P blender/cli.py -- export ../models/models.json`) to a compact binary that
+  `js/blender.js` loads. Material names are slots (wall, roof, shirt, hair…) so each house and
+  villager is still recoloured from its seed. Roofs are thick texture-mapped slabs (client call).
+  - Chibi villagers with big readable faces, six hairstyles and a hat or apron per job.
+  - Four cottage archetypes, each with a two-storey version, and a hero prop on every workplace
+    (pretzel sign and dome oven, windmill sails, saw blade, giant axe, cheese tower…).
+  - Guild Hall, Forge, Trade Post, a real Wishing Fountain, sheep, cows, chickens, wolves, boars,
+    goblins, wheat/cabbage/pumpkin crops, stylized pines and round trees, festival decorations.
+- **Winter**: white snow caps on roofs, knitted scarves and woolly hats, snowmen round the
+  campfires and children sledging.
+- **UI**: a sky-dial clock with a 3-day forecast, build-tray categories, a reworked Villagers tab,
+  shared animated tooltips, motion and keyboard shortcuts, a sectioned building panel and a
+  Buildings list. Hovering a building outlines it and shows a label; selecting draws a gold
+  footprint outline; placing shows each footprint tile green or red. Baby-naming popups are gone.
+- **Weather**: forecast days (clear, cloudy, rain, storm, snow, blizzard); storms send everyone
+  indoors with lightning and thunder.
+- **RPG layer** (`js/rpg.js`, `rpgui.js`, `rpgview.js`): D&D ability scores that set work speed and
+  job fit, hit points and health bars, d20 combat against night beasts, a Guild Hall that sends
+  parties on dice-driven expeditions, a Forge whose recipes unlock with Schoolhouse knowledge, and
+  a spellbook of SRD 5.1 spells (CC-BY-4.0).
+- **World** (`js/roads.js`, `trade.js`, `social.js`, `festival.js`, `share.js`, `island.js`): dirt and
+  cobble roads with bridges, nicer water and soft ground, per-settlement stockpiles with trade carts,
+  settlement specialties, friendships and evening visits, festival quests and a festival shop,
+  share codes, the gift-chest arrow, and Pearl Isle with a ferry.
+
+**Critic loop (round 7):** 6.3 → 7.8 → 8.3 → 8.5 → 8.5 → 8.7 against a 9.0 pass mark; it did not pass.
+Along the way the client swapped the chibi villagers for ~3.6-head "storybook folk" at about 1.2x door
+height, with seeded body types. The critic's remaining notes: villagers are hard to read at overview zoom and
+at night (brown clothes on brown dirt; wants contact shadows, more contrast or an outline), the cobble kerb
+reads as a string of pearls, the storage-full pill stacks above toasts, and a few snow domes clip their
+tree lobes up close.
+
 ## Next round — pick 5–6
 
 Ordered easiest to hardest:
 
-1. An arrow at the screen edge pointing to off-screen gift chests
-2. Seasonal clothes: scarves and woolly hats in winter
-3. Settlement specialties (Pinehollow timber bonus, Shallows fishing, Stonecrest stone)
-4. Snowmen and sledging children in winter
-5. Festival quests and a festival shop with seasonal decorations
-6. Weather forecasts and storms that need shelter
-7. Villager friendships and visits between homes
-8. Export / import a village as a share code
-9. Per-settlement stockpiles with trade carts hauling goods between villages
-10. A boat and island to settle across the lake
+1. Light spell visuals and villagers visibly carrying a knocked-out friend home
+2. Merchant cart and ferry boat remodelled in Blender
+3. Interior cutaways when you select a house
+4. Expedition destinations shown on the world map
+5. Seasonal clothes for summer (sun hats) and rain (coats and umbrellas)
+6. Villager portraits rendered from the 3D models
+7. Level-of-detail models for phones
+8. Building variants for upgrades at every level, not just cottages
+9. Rival bandit camps that expeditions can clear
+10. A second biome (snowy mountain pass) to settle
 
 ---
 
@@ -158,6 +196,11 @@ Ordered easiest to hardest:
 | `js/audio.js` | WebAudio sound effects, rain and the procedural score |
 | `js/snow.js` | Shared shader patch: snow on upward faces, slush on paths |
 | `js/textures.js` | Canvas-drawn surface textures for buildings and ground |
+| `js/blender.js` | Loads the Blender models (`models/models.json` + `.bin`) into three.js |
+| `js/select.js` | Hover and selection outlines, placement footprint cells |
+| `js/rpg.js`, `rpgui.js`, `rpgview.js` | Ability scores, combat, Guild Hall, Forge, spellbook |
+| `js/roads.js`, `trade.js`, `social.js`, `festival.js`, `share.js`, `island.js` | Roads, stockpiles and carts, friendships, festivals, share codes, Pearl Isle |
+| `blender/*.py` | Model scripts; `cli.py` builds, previews and exports them |
 | `vendor/three.module.min.js` | Three.js r170 (MIT) |
 
 Saves live in `localStorage` under `isaiart.villages.v1`.

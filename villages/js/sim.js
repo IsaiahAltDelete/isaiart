@@ -6,6 +6,9 @@ import { BUILDINGS, DECOR, GOODS, SELLABLE, QUESTS, SETTLEMENTS, ACHIEVEMENTS, M
   SEASONS, SEASON_DAYS, FESTIVALS, RARE,
   FIRST_NAMES, LAST_NAMES, SHIRTS, SKINS, HAIRS, JOBS } from './data.js';
 import { mulberry32, pick } from './rng.js';
+import { installRpg } from './rpg.js';
+import { applyIsland } from './island.js';
+import { installAddons } from './addons.js';
 
 export const defOf = type => BUILDINGS[type] || DECOR[type];
 export const isDecor = type => !!DECOR[type];
@@ -46,6 +49,7 @@ export class Sim {
     this.rng = mulberry32((Math.random() * 1e9) | 0);
     const seed = save?.seed ?? ((Math.random() * 1e9) | 0);
     this.world = new World(seed);
+    applyIsland(this.world);                 // Pearl Isle, if the lake has room (island.js)
     this.origTrees = this.world.trees.length;
     this.bById = new Map(); this.vById = new Map();
     this.stumps = [];
@@ -53,6 +57,7 @@ export class Sim {
     this.flow = {}; this.flowHist = []; this.flowT = 0;
     this.bflow = new Map(); this.bflowHist = [];
     if (save) this.load(save); else this.newGame(seed);
+    installAddons(this, save);               // roads, ferry, stockpiles & carts, friendships, festival shop
   }
   on(name, fn) { this.handlers[name] = fn; }
   emit(name, ...a) { this.handlers[name]?.(...a); }
@@ -228,7 +233,7 @@ export class Sim {
       if (!inMap(ex, ez) || (W.type[ei] === T_WATER && !W.bridge[ei]) || (W.block[ei] && W.occ[ei] !== ignoreId) || W.rock[ei] >= 0) return { ok: false, why: 'The door needs open ground in front' };
     }
     if (ignoreId === -1) {   // -2 = free starter props: no cost or level check
-      if (def.rare && !(this.s.tokens?.[type] > 0)) return { ok: false, why: 'Found only in gift chests' };
+      if (def.rare && !(this.s.tokens?.[type] > 0)) return { ok: false, why: def.festive ? 'Buy one at the festival shop' : 'Found only in gift chests' };
       if (def.lvl && this.s.level < def.lvl) return { ok: false, why: `Needs level ${def.lvl}` };
       if (!this.canAfford(def.cost)) return { ok: false, why: 'Not enough resources' };
     }
@@ -437,6 +442,7 @@ export class Sim {
     };
     if (o.look) Object.assign(v, o.look);
     if (v.age < ADULT) v.job = 'child';
+    this.rpgInit(v, o);                // ability scores and hit points (rpg.js)
     this.s.villagers.push(v); this.vById.set(v.id, v);
     this.emit('villager', v);
     return v;
@@ -449,7 +455,7 @@ export class Sim {
       const c = this.bCenter(b);
       const idle = this.s.villagers.filter(o => o.job === 'idle' && stageOf(o) === 'adult');
       if (!idle.length) return false;
-      idle.sort((a, o) => (a.home !== b.sid) - (o.home !== b.sid) || Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(o.x - c.x, o.z - c.z));
+      idle.sort((a, o) => (a.home !== b.sid) - (o.home !== b.sid) || this.jobFit(o, def.job) - this.jobFit(a, def.job) || Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(o.x - c.x, o.z - c.z));
       v = idle[0];
     }
     if (stageOf(v) !== 'adult') return false;
@@ -497,10 +503,12 @@ export class Sim {
   }
 
   think(v) {
+    if (this.rpgThink(v)) return;     // knocked out, resting, adventuring or fighting (rpg.js)
     const job = v.job;
     if (v.carry) return this.taskDeliver(v);
     const b = v.work ? this.bById.get(v.work) : null;
     if (this.sleepy(v) && job !== 'guard') return this.taskSleep(v);
+    if (this.stormy() && !this.indoorJob(v)) return this.taskShelter(v);
     if (this.festivalActive() && this.s.buildings.some(o => o.type === 'campfire' && o.sid === v.home)) return this.taskFestival(v);
     if (job === 'child') return this.thinkChild(v);
     if (job === 'retired') return this.thinkRetired(v);
@@ -522,12 +530,13 @@ export class Sim {
     if (job === 'teacher') return this.taskTeach(v, b);
     if (job === 'guard') return this.taskGuard(v, b);
     if (job === 'wizard') return this.taskStudy(v, b);
+    if (job === 'smith') return this.taskForge(v, b);
   }
 
   // ── night: everyone but the guards turns in ──
   dayFrac() { return (this.s.time % DAY) / DAY; }
   isNight() { const f = this.dayFrac(); return f >= 0.935 || f < 0.225; }
-  sleepy(v) { const f = this.dayFrac(); return v.age < ADULT ? (f >= 0.9 || f < 0.24) : this.isNight(); }
+  sleepy(v) { const f = this.dayFrac(); return v.age < ADULT ? (f >= 0.9 || f < 0.24) : this.isNight() && !this.litNight(v); }
   // beds: houses in the settlement fill up in villager order; the rest sleep by the fire
   bedFor(v) {
     const s = this.s, key = (s.time / 5) | 0;
@@ -602,62 +611,10 @@ export class Sim {
     this.setTask(v, night ? 'On night watch' : 'Keeping watch', [{ walk: this.goalBuilding(b) }, { to: [p.x, p.z], onTower: night }, { act: 6, anim: 'rest', start: () => { v.onTower = night; } , done: () => { v.onTower = false; } }]);
   }
   manaCap() { let c = 0; for (const b of this.s.buildings) if (b.type === 'wizard' && b.built) c += 60 + 40 * (lvlOf(b) - 1); return c; }
-  taskStudy(v, b) {
-    const p = this.spot(b, b.workers.indexOf(v.id)), c = this.bCenter(b), m = this.s.magic;
-    this.setTask(v, 'Studying the arcane', [{ walk: this.goalBuilding(b) }, { to: [p.x, p.z] }, { face: [c.x, c.z] },
-      { act: 10, anim: 'cast', done: () => {
-        const rate = this.workRate(v);
-        m.mana = Math.min(this.manaCap(), m.mana + 3 * rate);
-        const next = SPELLS.find(sp => !m.known.includes(sp.id));
-        if (next) {
-          m.study += 4 * rate;
-          if (m.study >= next.study) {
-            m.study = 0; m.known.push(next.id);
-            this.log(`Your wizards learned a new spell: ${next.name}.`);
-            this.emit('toast', `New spell learned: ${next.name}!`, 'staff'); this.emit('sfx', 'level');
-          }
-        }
-        this.emit('float', c.x, c.z, `+${Math.round(3 * rate)}`, 'staff');
-        this.repeat(v);
-      } }]);
-  }
-  canCast(id) {
-    const m = this.s.magic, sp = SPELLS.find(o => o.id === id);
-    if (!sp || !m.known.includes(id)) return { ok: false, why: 'Not learned yet' };
-    if ((m.cds[id] || 0) > this.s.time) return { ok: false, why: `Ready in ${Math.ceil(m.cds[id] - this.s.time)}s` };
-    if (m.mana < sp.cost) return { ok: false, why: 'Not enough mana' };
-    if (id === 'transmute' && this.s.res.stone < 60) return { ok: false, why: 'Needs 60 stone' };
-    return { ok: true };
-  }
-  cast(id) {
-    if (!this.canCast(id).ok) return false;
-    const s = this.s, m = s.magic, sp = SPELLS.find(o => o.id === id), W = this.world;
-    m.mana -= sp.cost; m.cds[id] = s.time + sp.cd;
-    s.stats.spells = (s.stats.spells || 0) + 1;
-    if (id === 'harvest') for (const b of s.buildings) { if (b.type === 'farm' && b.data.stage === 'growing') { b.data.grow = 1; b.data.stage = 'ripe'; this.emit('farm', b); } }
-    if (id === 'rain') { s.weather = { rain: true, t: 70 }; this.emit('weather', true); }
-    if (id === 'haste') s.hasteUntil = s.time + 90;
-    if (id === 'ward') { s.wardUntil = s.time + DAY * 3; for (const bst of s.beasts) bst.state = 'flee'; }
-    if (id === 'bloom') {
-      W.bushes.forEach((b, i) => { if (b.alive && !b.ripe) { b.ripe = true; this.emit('bush', i); } });
-      let planted = 0;
-      for (const sid of Object.keys(s.unlocked)) {
-        const c = CENTERS[sid], R = this.settlementRadius(sid);
-        for (let k = 0; k < 60 && planted < 18; k++) {
-          const a = this.rng() * Math.PI * 2, r = R + 1 + this.rng() * 6;
-          const tx = Math.round(c.x + Math.cos(a) * r), tz = Math.round(c.z + Math.sin(a) * r);
-          if (!inMap(tx, tz)) continue;
-          const i = idx(tx, tz);
-          if (W.type[i] !== 0 || W.tree[i] >= 0 || W.occ[i] >= 0 || W.rock[i] >= 0 || W.wear[i] > 0.2 || W.paved[i]) continue;
-          W.addTree(tx, tz, this.rng, 0.35); this.emit('treeNew', W.trees.length - 1); planted++;
-        }
-      }
-    }
-    if (id === 'transmute') { s.res.stone -= 60; s.res.gems += 4; }
-    this.log(`Your wizards cast ${sp.name}!`);
-    this.emit('spell', id); this.emit('res');
-    return true;
-  }
+  // studying and casting from the spell book: rules in rpg.js (SRD 5.1 spells, spell slots)
+  taskStudy(v, b) { return this.rpgTaskStudy(v, b); }
+  canCast(id) { return this.rpgCanCast(id); }
+  cast(id) { return this.rpgCast(id); }
 
   // ── beasts that prowl at night, and the defences that drive them off ──
   beastNight() {
@@ -687,6 +644,7 @@ export class Sim {
     const target = targets.length ? targets[(this.rng() * targets.length) | 0] : fire;
     if (!target) return;
     const bst = { id: s.nextId++, kind, sid, x, z, hp: def.hp, state: 'prowl', target: target.id, path: null, pi: 1, t: 0, face: 0 };
+    this.rpgBeast(bst);               // real hit points and armour class (rpg.js)
     s.beasts.push(bst);
     this.emit('beast', bst);
   }
@@ -695,6 +653,7 @@ export class Sim {
     for (const bst of s.beasts) {
       const def = BEASTS[bst.kind];
       bst.t += dt;
+      if (bst.state === 'fight') continue;      // squaring up to a guard (rpg.js)
       if (bst.state === 'prowl' && (bst.t > 90 || !this.isNight() && bst.t > 20)) { bst.state = 'flee'; bst.path = null; }
       if (!bst.path) {
         const from = idx(toTile(bst.x), toTile(bst.z));
@@ -747,27 +706,8 @@ export class Sim {
     s.happiness = Math.max(0, s.happiness - 4);
     bst.state = 'flee'; bst.path = null;
   }
-  // guards shoot, torches scare: once a second
-  defend() {
-    const s = this.s;
-    if (!s.beasts.length) return;
-    const towers = s.buildings.filter(b => b.type === 'watchtower' && b.built);
-    const torches = s.buildings.filter(b => b.type === 'torch' || b.type === 'lantern');
-    for (const bst of s.beasts) {
-      if (bst.state !== 'prowl') continue;
-      for (const tw of towers) {
-        const c = this.bCenter(tw), guards = tw.workers.map(id => this.vById.get(id)).filter(g => g && !g.carry && Math.hypot(g.x - c.x, g.z - c.z) < 4);
-        if (!guards.length || Math.hypot(bst.x - c.x, bst.z - c.z) > 13 + lvlOf(tw) * 2) continue;
-        for (const g of guards) { if (this.rng() < 0.75) { bst.hp -= 1; this.emit('arrow', c.x, c.z, bst); } }
-      }
-      for (const t of torches) { const c = this.bCenter(t); if (Math.hypot(bst.x - c.x, bst.z - c.z) < 3) bst.hp -= 0.4; }
-      if (bst.hp <= 0) {
-        bst.state = 'flee'; bst.path = null; s.stats.fended = (s.stats.fended || 0) + 1;
-        this.addXp(6); this.emit('beastFled', bst, 'guards');
-        if (bst.kind === 'goblin') { s.res.coins += 15; this.emit('float', bst.x, bst.z, '+15', 'coin'); }
-      }
-    }
-  }
+  // guards shoot and fight, torches scare, spells help: once a second (rpg.js)
+  defend() { this.rpgDefend(); }
 
 
   // ── gift chests tucked in the woods ──
@@ -1015,7 +955,7 @@ export class Sim {
   // let a villager keep working the same task without a fresh plan
   repeat(v) { if (v.task && !this.mustBreak(v)) v.task.again = true; }
   // bedtime and festivals pull workers out of their work loops
-  mustBreak(v) { return (this.sleepy(v) && v.job !== 'guard') || (this.festivalActive() && v.job !== 'guard'); }
+  mustBreak(v) { return (this.sleepy(v) && v.job !== 'guard') || (this.festivalActive() && v.job !== 'guard') || (this.stormy() && !this.indoorJob(v)); }
 
   taskChopMarked(v, ti) {
     const t = this.world.trees[ti];
@@ -1095,7 +1035,7 @@ export class Sim {
         if (!o.alive) return;
         if (kind === 't') { this.fellTree(i, true); v.carry = { res: 'wood', n: 6 }; }
         else if (kind === 'r') {
-          o.hp -= 7; v.carry = { res: 'stone', n: 7 };
+          o.hp -= 7; v.carry = { res: 'stone', n: 7 }; this.rpgOre(v, b);
           if (o.hp <= 0) this.breakRock(i); else this.emit('rock', i);
           o.claimed = -1;
         } else { o.ripe = false; o.regrow = 55 + this.rng() * 20; o.claimed = -1; this.emit('bush', i); v.carry = { res: 'food', n: 5 }; }
@@ -1267,7 +1207,7 @@ export class Sim {
 
   workRate(v) {
     const b = v.work ? this.bById.get(v.work) : null;
-    return (0.85 + this.s.happiness / 100 * 0.6) * ((this.s.hasteUntil || 0) > this.s.time ? 1.35 : 1) * (v.hungry ? 0.6 : 1) * (b ? (1 + (lvlOf(b) - 1) * 0.15) * this.synergy(b).mult : 1) * (v.educated ? 1.15 : 1);
+    return (0.85 + this.s.happiness / 100 * 0.6) * ((this.s.hasteUntil || 0) > this.s.time ? 1.35 : 1) * (v.hungry ? 0.6 : 1) * (b ? (1 + (lvlOf(b) - 1) * 0.15) * this.synergy(b).mult : 1) * (v.educated ? 1.15 : 1) * this.abilityWork(v);
   }
 
   // ── per-frame update ──
@@ -1318,17 +1258,9 @@ export class Sim {
     s.happiness += (target - s.happiness) * 0.05;
     this.merchantTick();
     s.stats.bestHappy = Math.max(s.stats.bestHappy || 0, s.happiness);
-    // weather: the occasional rain shower
-    const wx = s.weather || (s.weather = { rain: false, t: 60 });
-    if ((wx.t -= 1) <= 0) {
-      if (wx.rain) { wx.rain = false; wx.t = 180 + this.rng() * 260; wx.rainbow = this.seasonIdx() === 3 ? 0 : 30; this.emit('weather', false); }
-      else if (this.rng() < 0.5) {
-        wx.rain = true; wx.t = 45 + this.rng() * 60; this.emit('weather', true);
-        if (this.seasonIdx() === 3) this.log('Snow is falling softly.');
-        else { s.stats.rains = (s.stats.rains || 0) + 1; this.log('A gentle rain falls. Crops grow faster.'); }
-      }
-      else wx.t = 90 + this.rng() * 120;
-    }
+    // weather: follows the forecast (showers, storms, snow), see stepWeather()
+    this.stepWeather();
+    const wx = s.weather;
     if (wx.rainbow > 0) wx.rainbow -= 1;
     // production flow history (10-second buckets)
     if (++this.flowT >= 10) {
@@ -1342,6 +1274,7 @@ export class Sim {
     if (f >= 0.94 && !this._nightRolled) { this._nightRolled = true; this.beastNight(); }
     if (f < 0.5) this._nightRolled = false;
     this.defend();
+    this.rpgSecond();                 // healing, knowledge, the armory, expeditions (rpg.js)
     // newcomers (slower now that families grow on their own)
     s.popTimer += 1;
     if (pop < housing && s.res.food >= 5 && s.happiness >= 35 && s.popTimer >= 34) {
@@ -1373,6 +1306,96 @@ export class Sim {
     this.emit('second');
   }
 
+  // ── weather forecast ──
+  // Every day gets one forecast entry, rolled from the save's weather seed so it is
+  // stable once shown: clear, cloudy, rain or storm (snow / blizzard in winter).
+  // Wet days have one window (start, len as fractions of the day) when it falls.
+  dayWeather(d) {
+    const s = this.s, fc = s.forecast || (s.forecast = []);
+    let e = fc.find(o => o.d === d);
+    if (e) return e;
+    if (s.wseed === undefined) s.wseed = ((s.seed ?? 1) ^ 0x5eed) >>> 0;
+    const r = mulberry32((s.wseed + d * 7919) >>> 0); r();
+    const si = this.seasonIdx(d * DAY), fest = d % SEASON_DAYS === 1;
+    const odds = [[0.35, 0.25, 0.3], [0.5, 0.2, 0.17], [0.3, 0.28, 0.3], [0.32, 0.3, 0.28]][si];   // clear, cloudy, wet; the rest is storms
+    const x = r();
+    let kind = x < odds[0] ? 'clear' : x < odds[0] + odds[1] ? 'cloudy' : x < odds[0] + odds[1] + odds[2] ? 'wet' : 'storm';
+    if (d === 0 || (fest && kind === 'storm')) kind = d === 0 ? 'clear' : 'wet';   // a calm first day; no storms on festival days
+    let start = 0, len = 0;
+    if (kind === 'wet') { start = fest ? 0.26 + r() * 0.1 : 0.27 + r() * 0.42; len = 0.12 + r() * (fest ? 0.1 : 0.16); }
+    if (kind === 'storm') { start = 0.32 + r() * 0.3; len = 0.1 + r() * 0.08; }
+    if (si === 3) kind = kind === 'wet' ? 'snow' : kind === 'storm' ? 'blizzard' : kind;
+    else if (kind === 'wet') kind = 'rain';
+    e = { d, kind, start: +start.toFixed(3), len: +len.toFixed(3) };
+    fc.push(e); fc.sort((a, b) => a.d - b.d);
+    return e;
+  }
+  // today and the next few days
+  forecast(n = 3) { const d = this.dayNum(); return Array.from({ length: n }, (_, k) => this.dayWeather(d + k)); }
+  stormy() { return !!this.s.weather?.storm; }
+  // jobs done under a roof keep going through a storm
+  indoorJob(v) { return !!v.work && (!!CONVERT[v.job] && v.job !== 'herder' || ['innkeeper', 'teacher', 'wizard', 'smith'].includes(v.job)); }
+  stepWeather() {
+    const s = this.s, wx = s.weather || (s.weather = { rain: false, t: 0 });
+    const d = this.dayNum(), f = this.dayFrac(), si = this.seasonIdx();
+    if (s.forecast) s.forecast = s.forecast.filter(o => o.d >= d);
+    for (let k = 0; k < 4; k++) this.dayWeather(d + k);
+    const e = this.dayWeather(d), wet = !['clear', 'cloudy'].includes(e.kind);
+    const on = wet && f >= e.start && f < e.start + e.len;
+    const forced = wx.rain && !wx.sched && wx.t > 0;          // Call the Rain, the first snowfall
+    if (wx.t > 0) wx.t -= 1;
+    const storm = on && (e.kind === 'storm' || e.kind === 'blizzard');
+    wx.cloud = e.kind === 'cloudy' ? 1 : wet ? (on ? 1 : Math.max(0, 1 - Math.min(Math.abs(f - e.start), Math.abs(f - e.start - e.len)) / 0.06) * 0.8) : 0;
+    const rain = on || forced;
+    if (rain && !wx.rain) {
+      wx.rain = true; wx.sched = on; this.emit('weather', true);
+      if (!storm) {
+        if (si === 3) this.log('Snow is falling softly.');
+        else { s.stats.rains = (s.stats.rains || 0) + 1; this.log('A gentle rain falls. Crops grow faster.'); }
+      }
+    } else if (!rain && wx.rain) { wx.rain = false; wx.sched = false; wx.rainbow = si === 3 ? 0 : 30; this.emit('weather', false); }
+    else if (on) wx.sched = true;
+    if (storm !== !!wx.storm) {
+      wx.storm = storm;
+      if (storm) {
+        if (si !== 3) s.stats.rains = (s.stats.rains || 0) + 1;
+        this.log(si === 3 ? 'A blizzard howls through the village. Everyone shelters indoors.' : 'A storm breaks! Villagers hurry indoors until it passes.');
+        this.emit('toast', si === 3 ? 'Blizzard! Everyone is sheltering indoors.' : 'Storm! Everyone is sheltering indoors.', si === 3 ? 'snow' : 'storm');
+        // send outdoor workers straight home
+        for (const v of s.villagers) if (!v.carry && !v.asleep && !this.indoorJob(v) && v.task && !/shelter/i.test(v.task.label)) { this.dropTask(v); v.thinkCd = this.rng() * 1.2; }
+      } else this.log('The storm has passed. Back to work!');
+      this.emit('storm', storm);
+    }
+    // a warning a couple of hours before a storm arrives
+    for (const o of [e, this.dayWeather(d + 1)]) {
+      if (o.kind !== 'storm' && o.kind !== 'blizzard') continue;
+      const ahead = o.d - d + o.start - f;
+      if (ahead > 0 && ahead < 0.1 && wx.warned !== o.d) {
+        wx.warned = o.d;
+        const name = o.kind === 'blizzard' ? 'blizzard' : 'storm';
+        this.log(`Dark clouds gather: a ${name} is coming.`);
+        this.emit('toast', `A ${name} is coming! Villagers will shelter indoors.`, o.kind === 'blizzard' ? 'snow' : 'storm');
+      }
+    }
+  }
+  // wait out the storm under the nearest roof: home first, else any building nearby
+  taskShelter(v) {
+    const s = this.s, bed = this.bedFor(v).b;
+    let b = bed && bed.type !== 'campfire' ? bed : null;
+    if (!b) {
+      let bd = 1e9;
+      for (const o of s.buildings) {
+        if (!o.built || isDecor(o.type) || o.type === 'campfire' || defOf(o.type).size[0] >= 3 && o.type !== 'storehouse' && o.type !== 'tavern') continue;
+        const c = this.bCenter(o), dd = Math.hypot(c.x - v.x, c.z - v.z) + (o.sid === v.home ? 0 : 30);
+        if (dd < bd) { bd = dd; b = o; }
+      }
+    }
+    if (!b) return this.thinkIdle(v);
+    const [ex, ez] = this.entryTile(b), door = this.local(b, 0, this.bCenter(b).d / 2 - 0.2);
+    this.setTask(v, 'Sheltering from the storm', [{ walk: { tx: ex, tz: ez } }, { to: [door.x, door.z] },
+      { act: 9999, anim: 'rest', until: () => !this.stormy() || this.sleepy(v), start: () => { v.indoors = true; v.act.idle = true; }, done: () => { v.indoors = false; } }]);
+  }
+
   // seasons turning, festival announcements and the festival itself, gift chests
   calendar() {
     const s = this.s, si = this.seasonIdx(), f = this.dayFrac();
@@ -1385,7 +1408,7 @@ export class Sim {
       const sea = SEASONS[si];
       this.log(`${sea.name} has arrived. ${sea.blurb}`);
       this.emit('toast', `${sea.name} has arrived! ${sea.blurb}`, sea.icon);
-      if (si === 3) { s.weather = { rain: true, t: 80 }; this.emit('weather', true); }    // the first snowfall
+      if (si === 3) { s.weather = { ...s.weather, rain: true, t: 80, sched: false }; this.emit('weather', true); }    // the first snowfall
       this.emit('season', sea);
     }
     const fest = this.festivalToday(), key = this.dayNum();
@@ -1418,8 +1441,9 @@ export class Sim {
           v.job = 'idle'; v.educated = (v.edu || 0) >= 60; this.dropTask(v);
           this.log(`${v.name} is all grown up${v.educated ? ' — and top of the class' : ''}!`);
           this.emit('toast', `${v.name.split(' ')[0]} grew up!`, 'star');
+          this.rpgStage(v, 'adult');
         } else if (now === 'elder') {
-          this.unassign(v); v.job = 'retired';
+          this.unassign(v); v.job = 'retired'; this.rpgStage(v, 'elder');
           this.log(`${v.name} retired after a lifetime of work.`);
         }
         this.emit('villagerStage', v);
@@ -1598,6 +1622,7 @@ export class Sim {
       case 'spells': return st.spells || 0;
       case 'chests': return st.chests || 0;
       case 'festivals': return st.festivals || 0;
+      case 'expeditions': return st.expeditions || 0;
       case 'synergy': return this.s.buildings.some(b => b.built && this.synergy(b).list.some(r => r.from === q.key)) ? 1 : 0;
     }
     return 0;
@@ -1712,7 +1737,8 @@ export class Sim {
     const { world, ...s } = save;
     this.s = s;
     const alive = unb64(world.alive);
-    for (let i = 0; i < this.origTrees; i++) if (!(alive[i >> 3] & (1 << (i & 7)))) W.removeTree(i);
+    const known = Math.min(this.origTrees, world.ntrees ?? W.baseTrees ?? this.origTrees);   // older saves predate the isle's trees
+    for (let i = 0; i < known; i++) if (!(alive[i >> 3] & (1 << (i & 7)))) W.removeTree(i);
     for (const i of world.marked || []) if (W.trees[i]) W.trees[i].marked = true;
     for (const [tx, tz, g] of world.planted) W.addTree(tx, tz, this.rng, g);
     const wear = unb64(world.wear);
@@ -1740,8 +1766,10 @@ export class Sim {
     for (const k of SELLABLE) if (s.sell[k] === undefined) s.sell[k] = false;
     if (!world.lanes) for (const b of s.buildings) if (b.built) this.carveLane(b);
     if (s.tutorial === undefined || s.buildings.length > 4) s.tutorial = 99;
+    this.rpgLoad();                   // ability scores for old saves, spell slots, parties (rpg.js)
   }
 }
+installRpg(Sim);
 
 function b64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
 function unb64(str) { const s = atob(str), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }

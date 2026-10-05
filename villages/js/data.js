@@ -31,9 +31,25 @@ export const GOODS = {
             desc: 'A frothy village brew.', from: 'Brewery (2 grain → 1 ale)', uses: 'Tavern' },
   gems:   { name: 'Gems',   icon: 'gem',
             desc: 'Rare gems.', from: 'Quests, levelling up, achievements', uses: 'Shop deals, statues' },
+  // the forge and the armory (see rpg.js)
+  ore:    { name: 'Iron Ore', icon: 'ore',  price: 2, reserve: 20, capped: true,
+            desc: 'Rusty lumps of iron ore.', from: 'Quarry miners turn some up once a Forge is built; expeditions', uses: 'Forge → iron bars' },
+  iron:   { name: 'Iron Bars', icon: 'iron', price: 6, reserve: 10, capped: true,
+            desc: 'Smelted iron, ready for the anvil.', from: 'Forge (3 ore + 2 wood → 1 bar)', uses: 'Swords, shields, bows, armour' },
+  sword:  { name: 'Swords',  icon: 'sword',  price: 22, reserve: 2,
+            desc: 'A trusty longsword. Melee attacks hit more often (+1) and harder (d8).', from: 'Forge', uses: 'Guards, Fighters, Rogues and Bards' },
+  bow:    { name: 'Bows',    icon: 'bow',    price: 20, reserve: 2,
+            desc: 'A yew longbow. Ranged attacks hit more often (+1) and harder (d8).', from: 'Forge', uses: 'Guards on watchtowers, Rangers and Rogues' },
+  shield: { name: 'Shields', icon: 'shield', price: 16, reserve: 2,
+            desc: 'A round oak shield with an iron rim. +2 armour class.', from: 'Forge', uses: 'Guards, Fighters and Clerics' },
+  armor:  { name: 'Armour',  icon: 'armor',  price: 40, reserve: 2,
+            desc: 'A padded chain shirt. +3 armour class (wizards can\'t wear it).', from: 'Forge', uses: 'Guards and adventurers' },
+  staff:  { name: 'Staves',  icon: 'staff',  price: 36, reserve: 1,
+            desc: 'A carved staff set with a gem — an arcane focus. +1 to spell attacks and damage.', from: 'Forge', uses: 'Wizards and Clerics' },
 };
 export const TOP_GOODS = ['coins', 'wood', 'planks', 'stone', 'food', 'gems'];
-export const SELLABLE = ['wood', 'planks', 'stone', 'bricks', 'grain', 'flour', 'food', 'wool', 'cloth', 'milk', 'cheese', 'honey', 'ale'];
+export const SELLABLE = ['wood', 'planks', 'stone', 'bricks', 'grain', 'flour', 'food', 'wool', 'cloth', 'milk', 'cheese', 'honey', 'ale',
+  'ore', 'iron', 'sword', 'bow', 'shield', 'armor', 'staff'];
 
 // size = [w, d] in tiles. time = builder-seconds of work.
 // lvl = player level needed. workers/job = staffed production.
@@ -92,10 +108,16 @@ export const BUILDINGS = {
                 desc: 'Apprentices study the arcane: they gather mana and learn new spells.' },
   tiled:      { name: 'Tiled Cottage', size: [2, 2], cost: { planks: 60, bricks: 30 }, time: 22, lvl: 6, housing: 6,
                 desc: 'A sturdy home for 6 villagers.' },
+  forge:      { name: 'Forge', size: [2, 2], cost: { planks: 40, stone: 70, coins: 80 }, time: 20, lvl: 6, workers: 1, job: 'smith',
+                desc: 'Smiths smelt iron ore into bars, then forge swords, bows, shields and armour. Better recipes unlock as the village gains knowledge.' },
+  guild:      { name: 'Guild Hall', size: [3, 2], cost: { wood: 60, planks: 80, stone: 60, coins: 200 }, time: 28, lvl: 7,
+                desc: 'Gather a party of 2–4 adventurers and send them off on expeditions for coins, gems, ore and treasure.' },
+  tradepost:  { name: 'Trade Post', size: [2, 2], cost: { wood: 60, planks: 30, coins: 60 }, time: 18, lvl: 4,
+                desc: 'Keeps a cart and a driver who haul goods between your villages along the roads. Set up trade routes here.' },
 };
 export const BUILD_ORDER = ['cottage', 'lumber', 'forager', 'farm', 'coop', 'sawmill', 'quarry', 'storehouse', 'dock',
   'market', 'forester', 'orchard', 'beehive', 'windmill', 'pasture', 'weaver', 'bakery', 'mason', 'dairy', 'creamery',
-  'school', 'brewery', 'tavern', 'watchtower', 'wizard', 'tiled'];
+  'school', 'brewery', 'tavern', 'watchtower', 'wizard', 'forge', 'guild', 'tiled', 'tradepost'];
 
 // Buildings near each other help out: "to" works faster when a "from"
 // building is within range tiles of it.
@@ -115,14 +137,29 @@ export const SYNERGY = [
   { to: 'lumber',   from: 'forester', bonus: 0.15, range: 9, why: 'The forester keeps the woods stocked' },
 ];
 
-// spells the Wizard Tower can learn, in study order
+// The Wizard Tower's spell book: real spells from the D&D 5e System Reference Document
+// (SRD 5.1, CC-BY-4.0) with their real names, schools and levels. "desc" is what the spell
+// does at the table (in our own words); "fx" is what it does for the village. Wizards learn
+// them in this order; a spell of level n needs a wizard of level 2n-1, and casting one spends
+// a spell slot (slots come back each dawn). Cantrips (level 0) cost no slot. Rules: rpg.js.
 export const SPELLS = [
-  { id: 'harvest',   name: 'Bountiful Harvest', icon: 'wheat',  cost: 30, study: 120,  cd: 120, desc: 'Every growing field ripens at once.' },
-  { id: 'rain',      name: 'Call the Rain',     icon: 'sound',  cost: 20, study: 160,  cd: 120, desc: 'Summon a gentle shower — crops grow 60% faster in rain.' },
-  { id: 'haste',     name: 'Swift Feet',        icon: 'fast',   cost: 40, study: 220, cd: 180, desc: 'For 90 seconds everyone walks and works 35% faster.' },
-  { id: 'ward',      name: 'Ward of Light',     icon: 'star',   cost: 50, study: 280, cd: 300, desc: 'Glowing wards keep every beast away for three nights.' },
-  { id: 'bloom',     name: 'Forest Bloom',      icon: 'sapling', cost: 35, study: 340, cd: 240, desc: 'Plants a ring of saplings and refills every berry bush.' },
-  { id: 'transmute', name: 'Stone to Gems',     icon: 'gem',    cost: 60, study: 440, cd: 300, desc: 'Turns 60 stone into 4 gems.' },
+  { id: 'mending',   name: 'Mending',      lvl: 0, school: 'Transmutation', icon: 'hammer',  cd: 90,  desc: 'Knits a break or tear in an object back together.', fx: 'Every construction site and upgrade jumps 12% closer to done.' },
+  { id: 'guidance',  name: 'Guidance',     lvl: 0, school: 'Divination',    icon: 'star',    cd: 150, desc: 'A touch that steadies someone\'s hand for their next task.', fx: 'Everyone works 10% faster for 2 minutes.' },
+  { id: 'light',     name: 'Light',        lvl: 0, school: 'Evocation',     icon: 'lantern', cd: 60,  desc: 'Makes an object glow like a torch.', fx: 'After dark: grown-ups keep working by magic light until dawn instead of going to bed.' },
+  { id: 'cure',      name: 'Cure Wounds',  lvl: 1, school: 'Evocation',     icon: 'heart',   cd: 10,  desc: 'A touch of healing magic that closes wounds.', fx: 'Heals the four most hurt villagers (1d8 + the caster\'s modifier each).' },
+  { id: 'goodberry', name: 'Goodberry',    lvl: 1, school: 'Transmutation', icon: 'apple',   cd: 30,  desc: 'Ten magic berries, each one a whole day\'s meal.', fx: '+40 food, and every berry bush ripens.' },
+  { id: 'water',     name: 'Create or Destroy Water', lvl: 1, school: 'Transmutation', icon: 'rain', cd: 60, desc: 'Fills a space with water — or makes it vanish.', fx: 'A gentle shower over the fields: crops grow 60% faster while it falls.' },
+  { id: 'bless',     name: 'Bless',        lvl: 1, school: 'Enchantment',   icon: 'sun',     cd: 30,  desc: 'Blesses allies: they add a d4 to attack rolls and saving throws.', fx: 'Until dawn, guards and adventurers add 1d4 to every attack roll and save.' },
+  { id: 'magearmor', name: 'Mage Armor',   lvl: 1, school: 'Abjuration',    icon: 'shield',  cd: 30,  desc: 'An invisible shimmer of force protects someone without armour.', fx: 'Until dawn, guards and adventurers without armour have AC 13 + DEX.' },
+  { id: 'faerie',    name: 'Faerie Fire',  lvl: 1, school: 'Evocation',     icon: 'sparkle', cd: 30,  desc: 'Outlines creatures in violet light so they can\'t hide.', fx: 'Until dawn, prowling beasts glow and guards attack them with advantage.' },
+  { id: 'spike',     name: 'Spike Growth', lvl: 2, school: 'Transmutation', icon: 'thorns',  cd: 30,  desc: 'Twists the ground into hidden thorns that hurt anyone moving through.', fx: 'Until dawn, thorns ring every village: beasts take 1d4 damage each step inside.' },
+  { id: 'plant',     name: 'Plant Growth', lvl: 3, school: 'Transmutation', icon: 'wheat',   cd: 60,  desc: 'Plants in a wide area burst into growth.', fx: 'Every growing field ripens at once, ready to harvest.' },
+  { id: 'haste',     name: 'Haste',        lvl: 3, school: 'Transmutation', icon: 'fast',    cd: 60,  desc: 'Someone moves and acts at twice their speed.', fx: 'Everyone walks and works 35% faster for 90 seconds.' },
+  { id: 'fireball',  name: 'Fireball',     lvl: 3, school: 'Evocation',     icon: 'fire',    cd: 10,  desc: 'A bead of flame that blossoms into a roaring explosion.', fx: '8d6 fire to every beast near the worst-hit village (DEX save for half). Needs beasts in sight.' },
+  { id: 'lightning', name: 'Lightning Bolt', lvl: 3, school: 'Evocation',   icon: 'bolt',    cd: 10,  desc: 'A crackling line of lightning.', fx: '8d6 lightning to the three nearest beasts (DEX save for half). Needs beasts in sight.' },
+  { id: 'fabricate', name: 'Fabricate',    lvl: 4, school: 'Transmutation', icon: 'plank',   cd: 60,  desc: 'Turns raw materials into finished goods in moments.', fx: 'Turns 80 wood into 40 planks, or 60 stone into 20 bricks.' },
+  { id: 'hallow',    name: 'Hallow',       lvl: 5, school: 'Evocation',     icon: 'blossom', cd: 60,  desc: 'Consecrates a place against unwelcome creatures.', fx: 'No beasts come near any village for three nights.' },
+  { id: 'weather',   name: 'Control Weather', lvl: 8, school: 'Transmutation', icon: 'suncloud', cd: 60, desc: 'Takes command of the sky for hours.', fx: 'Clears any storm or blizzard at once and keeps today and tomorrow fair.' },
 ];
 
 // beasts that prowl at night
@@ -158,9 +195,21 @@ export const DECOR = {
   fairyring: { name: 'Fairy Ring',  size: [1, 1], cost: {}, lvl: 1, joy: 6, rare: true, desc: 'A ring of spotted toadstools that glows softly after dark.' },
   gnome:     { name: 'Garden Gnome', size: [1, 1], cost: {}, lvl: 1, joy: 4, rare: true, desc: 'He has seen things. He will not say what.' },
   swing:     { name: 'Tree Swing',  size: [1, 1], cost: {}, lvl: 1, joy: 5, rare: true, desc: 'A rope swing for the children (and the grown-ups, secretly).' },
+  // festive decorations: bought with festival tokens at each festival's shop, placed for free
+  maypole:   { name: 'Maypole',     size: [1, 1], cost: {}, lvl: 1, joy: 6, rare: true, festive: 'fair', price: 6, desc: 'A ribboned pole for the spring dances.' },
+  flowerarch: { name: 'Flower Arch', size: [1, 1], cost: {}, lvl: 1, joy: 5, rare: true, festive: 'fair', price: 5, desc: 'A wooden arch twined with roses and daisies.' },
+  sunflowers: { name: 'Sunflower Patch', size: [1, 1], cost: {}, lvl: 1, joy: 4, rare: true, festive: 'bonfire', price: 4, desc: 'Tall sunflowers that follow the midsummer sun.' },
+  windchime: { name: 'Wind Chimes', size: [1, 1], cost: {}, lvl: 1, joy: 5, rare: true, festive: 'bonfire', price: 5, desc: 'Painted chimes that tinkle in the summer breeze.' },
+  pumpkinlantern: { name: 'Pumpkin Lantern', size: [1, 1], cost: {}, lvl: 1, joy: 5, rare: true, festive: 'harvest', price: 5, desc: 'A grinning carved pumpkin with a candle inside. Glows at night.' },
+  scarecrow: { name: 'Scarecrow',   size: [1, 1], cost: {}, lvl: 1, joy: 4, rare: true, festive: 'harvest', price: 4, desc: 'Keeps the crows guessing. Wears last year\'s hat.' },
+  snowlantern: { name: 'Snow Lantern', size: [1, 1], cost: {}, lvl: 1, joy: 5, rare: true, festive: 'lantern', price: 5, desc: 'A little stone lantern with a warm light for the long nights.' },
+  wintertree: { name: 'Winter Fir',  size: [1, 1], cost: {}, lvl: 1, joy: 6, rare: true, festive: 'lantern', price: 6, desc: 'A small fir hung with glowing baubles and a gold star.' },
 };
-export const DECOR_ORDER = ['flowers', 'bench', 'fence', 'lantern', 'torch', 'palisade', 'hay', 'pumpkins', 'sign', 'well', 'memorial', 'statue', 'fountain', 'fairyring', 'gnome', 'swing'];
+export const DECOR_ORDER = ['flowers', 'bench', 'fence', 'lantern', 'torch', 'palisade', 'hay', 'pumpkins', 'sign', 'well', 'memorial', 'statue', 'fountain', 'fairyring', 'gnome', 'swing',
+  'maypole', 'flowerarch', 'sunflowers', 'windchime', 'pumpkinlantern', 'scarecrow', 'snowlantern', 'wintertree'];
 export const RARE = ['fountain', 'fairyring', 'gnome', 'swing'];
+// what each festival's shop sells (festival id -> decorations)
+export const FESTIVE = { fair: ['maypole', 'flowerarch'], bonfire: ['sunflowers', 'windchime'], harvest: ['pumpkinlantern', 'scarecrow'], lantern: ['snowlantern', 'wintertree'] };
 
 // The calendar: each season lasts three in-game days.
 export const SEASON_DAYS = 3;
@@ -206,13 +255,22 @@ export const JOBS = {
   guard:      { name: 'Guard',      tool: 'spear' },
   wizard:     { name: 'Wizard',     tool: 'staff' },
   retired:    { name: 'Retired',    tool: null },
+  smith:      { name: 'Blacksmith', tool: 'hammer' },
+  adventurer: { name: 'Adventurer', tool: null },
 };
 
+// spec: each clearing's specialty: workers with that job bring home more there
 export const SETTLEMENTS = [
-  { id: 'meadow', name: 'Meadowbrook', unlock: null, blurb: 'Your first clearing.' },
-  { id: 'pine',   name: 'Pinehollow',  unlock: { lvl: 4, cost: { coins: 400, wood: 200 } }, blurb: 'Deep woods, endless timber.' },
-  { id: 'shallows', name: 'The Shallows', unlock: { lvl: 6, cost: { coins: 900, planks: 150 } }, blurb: 'A lakeside hamlet. Great fishing.' },
-  { id: 'stone',  name: 'Stonecrest',  unlock: { lvl: 8, cost: { coins: 1600, bricks: 60 } }, blurb: 'Rocky hills full of boulders.' },
+  { id: 'meadow', name: 'Meadowbrook', unlock: null, blurb: 'Your first clearing.',
+    spec: { job: 'farmer', mult: 1.25, name: 'Farming', icon: 'wheat', desc: 'Rich meadow soil: farm harvests here are 25% bigger.' } },
+  { id: 'pine',   name: 'Pinehollow',  unlock: { lvl: 4, cost: { coins: 400, wood: 200 } }, blurb: 'Deep woods, endless timber.',
+    spec: { job: 'woodcutter', mult: 1.35, name: 'Timber', icon: 'wood', desc: 'Old, tall pines: woodcutters here bring back 35% more wood.' } },
+  { id: 'shallows', name: 'The Shallows', unlock: { lvl: 6, cost: { coins: 900, planks: 150 } }, blurb: 'A lakeside hamlet. Great fishing.',
+    spec: { job: 'fisher', mult: 1.4, name: 'Fishing', icon: 'fish', desc: 'Teeming shallows: fishers here catch 40% more.' } },
+  { id: 'stone',  name: 'Stonecrest',  unlock: { lvl: 8, cost: { coins: 1600, bricks: 60 } }, blurb: 'Rocky hills full of boulders.',
+    spec: { job: 'miner', mult: 1.35, name: 'Stone', icon: 'stone', desc: 'Rich seams: miners here break 35% more stone.' } },
+  { id: 'isle',   name: 'Pearl Isle',  unlock: { lvl: 9, cost: { coins: 1400, planks: 150 } }, blurb: 'An island in the lake, reached by ferry.', island: true,
+    spec: { job: 'fisher', mult: 1.25, name: 'Pearls', icon: 'gem', desc: 'Oyster beds: fishers here catch 25% more and sometimes find a pearl (+1 gem).', pearls: true } },
 ];
 
 // Quests unlock in order; three are shown at a time.
@@ -249,8 +307,13 @@ export const QUESTS = [
   { id: 'q_wizard',  title: 'Raise a Wizard Tower',  kind: 'build', key: 'wizard', n: 1, reward: { gems: 15, xp: 120 } },
   { id: 'q_spell',   title: 'Cast Your First Spell', kind: 'spells', n: 1,               reward: { gems: 10, xp: 100 } },
   { id: 'q_tavern',  title: 'Open a Tavern',         kind: 'build', key: 'tavern', n: 1, reward: { gems: 25, coins: 300, xp: 200 } },
+  { id: 'q_forge',   title: 'Light a Forge',         kind: 'build', key: 'forge', n: 1, reward: { gems: 15, coins: 150, xp: 150 } },
+  { id: 'q_guild',   title: 'Found a Guild Hall',    kind: 'build', key: 'guild', n: 1, reward: { gems: 20, coins: 200, xp: 200 } },
+  { id: 'q_exp',     title: 'Complete an Expedition', kind: 'expeditions', n: 1,         reward: { gems: 20, xp: 200 } },
   { id: 'q_tiled',   title: 'Build 3 Tiled Cottages', kind: 'build', key: 'tiled', n: 3, reward: { gems: 30, xp: 200 } },
+  { id: 'q_trade',   title: 'Build a Trade Post',   kind: 'build', key: 'tradepost', n: 1, reward: { gems: 15, coins: 200, xp: 150 } },
   { id: 'q_stone',   title: 'Settle Stonecrest',    kind: 'unlock', key: 'stone', n: 1, reward: { gems: 40, coins: 500, xp: 300 } },
+  { id: 'q_isle',    title: 'Settle Pearl Isle',    kind: 'unlock', key: 'isle', n: 1, reward: { gems: 40, coins: 500, xp: 300 } },
   { id: 'q_pop50',   title: 'Reach 50 Villagers',   kind: 'pop', n: 50, reward: { gems: 50, coins: 800, xp: 400 } },
 ];
 
@@ -277,6 +340,13 @@ export const ACHIEVEMENTS = [
   { id: 'a_fest',    name: 'Party Village',   desc: 'Celebrate 4 festivals',    stat: 'festivals', n: 4,    gems: 15, icon: 'party' },
   { id: 'a_year',    name: 'Full Circle',     desc: 'See all four seasons',     stat: 'seasons',   n: 4,    gems: 10, icon: 'leaf' },
   { id: 'a_merch',   name: 'Good Customer',   desc: 'Trade with the merchant 5 times', stat: 'deals', n: 5,  gems: 10, icon: 'shop' },
+  { id: 'a_adv',     name: 'Heroes of the Vale', desc: 'Complete 5 expeditions', stat: 'expeditions', n: 5, gems: 20, icon: 'sword' },
+  { id: 'a_crit',    name: 'Natural 20',      desc: 'Roll 10 critical hits',    stat: 'crits',     n: 10,   gems: 10, icon: 'd20' },
+  { id: 'a_roads',   name: 'All Roads Lead Home', desc: 'Lay 80 road tiles',     stat: 'roads',     n: 80,   gems: 10, icon: 'stone' },
+  { id: 'a_haul',    name: 'Carters',         desc: 'Make 25 cart deliveries',  stat: 'hauls',     n: 25,   gems: 15, icon: 'wood' },
+  { id: 'a_friends', name: 'Kindred Spirits', desc: 'Have 5 best friendships',  stat: 'bestfriends', n: 5, gems: 15, icon: 'heart' },
+  { id: 'a_ferry',   name: 'Ferry Fares',     desc: 'Ferry 20 passengers to and from the isle', stat: 'ferried', n: 20, gems: 10, icon: 'fish' },
+  { id: 'a_fest2',   name: 'Festival Spirit', desc: 'Complete 6 festival quests', stat: 'festquests', n: 6, gems: 15, icon: 'party' },
 ];
 
 // the travelling merchant picks three of these each visit

@@ -256,6 +256,8 @@ export class World {
     if (this.bush[i] >= 0) c += 0.6;
     c -= Math.min(this.wear[i], 1) * 0.45;
     if (this.paved[i]) c = 0.45;
+    else if (this.road[i] || this.bridge[i]) c = Math.min(c, 0.55);   // dirt roads (see roads.js)
+    if (this.costHook) c = this.costHook(i, c);                       // e.g. carts that keep to the roads
     if (this.block[i]) c += 6;
     return c;
   }

@@ -37,8 +37,9 @@ export function snowPatch(sh, paths = false, lo = 0.28, hi = 0.62, max = 1) {
 }
 const plain = sh => snowPatch(sh, false);
 const pathy = sh => snowPatch(sh, true);
-// buildings: snow only partway up a roof slope and never pure white, so each roof keeps its colour
-const built = sh => snowPatch(sh, false, 0.6, 0.98, 0.7);
+// buildings: only a light dusting from the shader; roofs get modelled snow
+// pillows (SNOWCAP_MAT) so their colour still shows at the eaves
+const built = sh => snowPatch(sh, false, 0.55, 0.85, 0.45);
 export function snowify(m, paths = false, kind = null) {
   m.onBeforeCompile = kind === 'built' ? built : paths ? pathy : plain;
   return m;

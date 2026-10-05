@@ -1,21 +1,60 @@
-// DOM interface: resource bar, quests, info panel, build tray, modals,
-// toasts and floating numbers.
+// DOM interface: resource bar, clock and forecast, quests, info panel, build tray,
+// modals, tooltips, toasts and floating numbers.
 import { svg, iconImage } from './icons.js';
 import { GOODS, TOP_GOODS, BUILDINGS, DECOR, BUILD_ORDER, DECOR_ORDER, SETTLEMENTS, JOBS, SELLABLE, QUESTS, SYNERGY, CROPS, SPELLS, BEASTS, xpForLevel,
   SEASONS, SEASON_DAYS, FESTIVALS, RARE, FIRST_NAMES } from './data.js';
 import { defOf, isDecor, DAY, workersOf, lvlOf, MAX_LVL, housingOf, storageOf, stageOf } from './sim.js';
 import { N, CENTERS, T_WATER, T_SAND } from './world.js';
 import { sfx } from './audio.js';
+import { FESTIVE } from './data.js';
+import { r7Init, r7Frame, r7QuestsHtml, r7GoodHtml, r7WorldRow, r7SiteHtml, r7BuildingHtml, r7VillagerHtml, r7ModalHtml, r7Click, r7Change,
+  r7CardTip, r7CardHtml, r7SpecNote, R7_MODALS, R7_LIVE } from './panels.js';   // roads, trade, festivals, friends, share codes
+import { rpgVillagerHtml, rpgBuildingHtml, rpgGuildHtml, rpgSpellbookHtml, rpgInfoClick, rpgModalClick, fitStars } from './rpgui.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = n => n >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'k' : String(Math.floor(n));
+const short = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(Math.floor(n));
 const hex = c => '#' + c.toString(16).padStart(6, '0');
 const costHtml = (cost, res) => Object.entries(cost || {}).map(([k, v]) =>
   `<span class="${res && (res[k] || 0) < v ? 'no' : ''}">${svg(GOODS[k].icon, 12)}${v}</span>`).join('');
+const phone = () => innerWidth < 760;
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const finePointer = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
+// "HH:MM" for a fraction of the day, in ten-minute steps
+const hm = f => { const h = ((f % 1) + 1) % 1 * 24; return `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 6) * 10).padStart(2, '0')}`; };
+const partOfDay = f => f < 0.2 ? 'night' : f < 0.27 ? 'dawn' : f < 0.48 ? 'morning' : f < 0.7 ? 'afternoon' : f < 0.8 ? 'evening' : f < 0.86 ? 'dusk' : 'night';
+const restart = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+
+// Patch a container's DOM toward new HTML, keeping the elements that didn't change.
+// Re-rendering by innerHTML every half second swallowed clicks (the button under the
+// pointer was replaced between pointerdown and click), reset hover states and closed
+// dropdowns; this keeps nodes alive so clicks, focus and scroll all survive refreshes.
+function morph(el, html) {
+  const t = document.createElement('template');
+  t.innerHTML = html;
+  patchKids(el, t.content);
+}
+function patchKids(a, b) {
+  const an = [...a.childNodes], bn = [...b.childNodes];
+  for (let i = 0; i < bn.length; i++) {
+    const x = an[i], y = bn[i];
+    if (!x) { a.appendChild(y); continue; }
+    if (x.nodeType !== y.nodeType || x.nodeName !== y.nodeName || (x.nodeType === 1 && x.getAttribute('data-key') !== y.getAttribute('data-key'))) { a.replaceChild(y, x); continue; }
+    if (x.nodeType !== 1) { if (x.nodeValue !== y.nodeValue) x.nodeValue = y.nodeValue; continue; }
+    if (x.isEqualNode(y)) continue;
+    for (const at of [...x.attributes]) if (!y.hasAttribute(at.name)) x.removeAttribute(at.name);
+    for (const at of y.attributes) if (x.getAttribute(at.name) !== at.value) x.setAttribute(at.name, at.value);
+    if ((x.tagName === 'SELECT' || x.tagName === 'INPUT') && x === document.activeElement) continue;
+    patchKids(x, y);
+    if (x.tagName === 'SELECT') for (const o of x.options) o.selected = o.hasAttribute('selected');
+    if (x.tagName === 'INPUT') x.value = y.getAttribute('value') ?? '';
+  }
+  for (let i = an.length - 1; i >= bn.length; i--) an[i].remove();
+}
 
 // a little portrait: shirt, face, hair or hat, eyes, cheeks and a smile
-function faceSvg(v, size = 34) {
+export function faceSvg(v, size = 34) {
   const hair = hex(v.hair), skin = hex(v.skin);
   const top = v.hat
     ? `<path d="M6 13h20v2H6z" fill="${hex(v.hatColor)}" stroke="#5b3a1e" stroke-width="1"/><path d="M10 13c0-5 12-5 12 0z" fill="${hex(v.hatColor)}" stroke="#5b3a1e" stroke-width="1"/>`
@@ -42,10 +81,71 @@ const CHAIN = {
   brewery: { in: ['grain'], out: ['ale'] }, tavern: { in: ['ale', 'cheese', 'honey'], out: [] }, market: { in: [], out: ['coins'] },
 };
 const farmOut = b => [CROPS[b.data?.crop || 'wheat'].out];
-const outsOf = b => b.type === 'farm' ? farmOut(b) : CHAIN[b.type]?.out || [];
 // building types that make / use a good
 const makersOf = g => [...Object.keys(CHAIN).filter(t => CHAIN[t].out.includes(g)), ...(g === 'grain' || g === 'food' ? ['farm'] : [])];
 const usersOf = g => Object.keys(CHAIN).filter(t => (CHAIN[t].in || []).includes(g));
+
+// build-tray categories; anything new that isn't listed lands in "Services"
+const CATS = {
+  build: [
+    { id: 'all', name: 'All', icon: 'hammer' },
+    { id: 'homes', name: 'Homes', icon: 'house', types: ['cottage', 'tiled', 'storehouse'] },
+    { id: 'res', name: 'Resources', icon: 'axe', types: ['clear', 'lumber', 'forester', 'quarry', 'sawmill', 'mason'] },
+    { id: 'food', name: 'Food', icon: 'apple', types: ['forager', 'farm', 'dock', 'coop', 'orchard', 'windmill', 'bakery'] },
+    { id: 'craft', name: 'Crafts', icon: 'wool', types: ['beehive', 'pasture', 'weaver', 'dairy', 'creamery', 'brewery'] },
+    { id: 'serv', name: 'Services', icon: 'staff', types: ['market', 'tavern', 'school', 'wizard'], rest: true },
+    { id: 'roads', name: 'Roads & Trade', icon: 'stone', types: ['road', 'pave', 'tradepost'] },
+    { id: 'def', name: 'Defense', icon: 'shield', types: ['watchtower', 'torch', 'palisade'] },
+  ],
+  decor: [
+    { id: 'all', name: 'All', icon: 'flower' },
+    { id: 'garden', name: 'Garden', icon: 'flower', types: ['flowers', 'bench', 'lantern', 'hay', 'pumpkins', 'sign', 'well', 'memorial', 'statue'], rest: true },
+    { id: 'paths', name: 'Paths & Fences', icon: 'stone', types: ['road', 'pave', 'fence', 'palisade', 'torch'] },
+    { id: 'rare', name: 'Treasures', icon: 'gift', types: RARE },
+    { id: 'festive', name: 'Festive', icon: 'party', types: Object.values(FESTIVE).flat() },
+  ],
+};
+const CAT_OF = {};
+for (const c of CATS.build) for (const t of c.types || []) CAT_OF[t] ??= c.name;
+
+// the weather, as the forecast shows it
+const WX = {
+  clear:    { name: 'Sunny',    icon: 'sun',      tip: 'Clear skies all day.' },
+  cloudy:   { name: 'Cloudy',   icon: 'suncloud', tip: 'Grey skies, but dry.' },
+  rain:     { name: 'Rain',     icon: 'rain',     tip: 'A passing shower. Crops grow 60% faster while it rains, and a rainbow often follows.' },
+  storm:    { name: 'Storm',    icon: 'storm',    tip: 'Thunder, lightning and heavy rain. Villagers shelter indoors and outdoor work pauses until it passes; workshops like the sawmill and bakery keep going. Crops still enjoy the rain.' },
+  snow:     { name: 'Snow',     icon: 'snowfall', tip: 'Soft snowfall. Fields and berry bushes grow slowly in winter.' },
+  blizzard: { name: 'Blizzard', icon: 'blizzard', tip: 'Howling snow. Villagers shelter indoors and outdoor work pauses until it blows over.' },
+};
+const STORMY = k => k === 'storm' || k === 'blizzard';
+
+// sky colours through the day: [day fraction, top, bottom]
+const SKY = [
+  [0.00, [14, 24, 56], [34, 48, 90]], [0.19, [22, 34, 78], [60, 64, 120]], [0.24, [104, 130, 200], [255, 170, 120]],
+  [0.30, [110, 180, 236], [200, 232, 246]], [0.50, [86, 170, 232], [190, 228, 250]], [0.70, [104, 176, 230], [236, 226, 190]],
+  [0.77, [104, 100, 180], [255, 150, 98]], [0.83, [42, 52, 112], [138, 90, 140]], [0.90, [16, 26, 62], [38, 50, 94]], [1.00, [14, 24, 56], [34, 48, 90]],
+];
+const mix = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
+const rgb = c => `rgb(${c.map(v => Math.round(v)).join(',')})`;
+function skyAt(f) {
+  let i = 0; while (i < SKY.length - 2 && SKY[i + 1][0] <= f) i++;
+  const [f0, t0, b0] = SKY[i], [f1, t1, b1] = SKY[i + 1], k = Math.min(1, Math.max(0, (f - f0) / (f1 - f0)));
+  return [mix(t0, t1, k), mix(b0, b1, k)];
+}
+// a point on the dial's arc (quadratic curve 6,44 → 50,-18 → 94,44 in a 100×50 box), as percentages
+const arcAt = t => { const u = 1 - t; return [u * u * 6 + 2 * u * t * 50 + t * t * 94, (u * u * 44 + 2 * u * t * -18 + t * t * 44) * 2]; };
+
+// static tooltips for the HUD: "Title|Body|Key"
+const HUD_TIPS = {
+  '#btnHome': 'Home|Fly back to your village.|H', '#btnChest': 'Gift chest|A gift chest is waiting in the woods. Tap to fly to it.',
+  '#btnLog': 'Village news|Everything that has happened lately.|N', '#btnStats': 'Achievements|Goals, gem rewards and village records.',
+  '#btnMagic': 'Spell book|Cast the spells your wizards have learned.', '#btnSettings': 'Settings & help|Sound, music, graphics and how to play.|?',
+  '#world': 'World map|See the whole forest and settle new clearings.|M', '#shop': 'Shop|Trade gems for supplies.',
+  '#dockbar [data-tab=build]': 'Build|Homes, workplaces, farms and defenses.|B', '#dockbar [data-tab=decor]': 'Decorate|Flowers, paths, fences and treasures. Happier villagers work faster.|G',
+  '#dockbar [data-tab=villagers]': 'Villagers & buildings|Give people jobs and manage every building.|V', '#dockbar [data-tab=inventory]': 'Inventory|Everything in storage, with quick sales.|I',
+  '#profile': '@xp', '#follow': 'Stop following|The camera is following a villager. Tap to stop, or drag the view.',
+  '#alert': 'Needs attention|The most urgent problem in your village. Tap to fix it.',
+};
 
 export class UI {
   constructor(game) {
@@ -54,14 +154,20 @@ export class UI {
     this.tray = null;
     this.modal = null;
     this.timer = 0;
+    this.shown = {};                        // resource numbers as currently displayed (they tick toward the real values)
+    this.catMem = { build: 'all', decor: 'all' };
+    this.vFilter = 'all'; this.bFilter = { sid: 'all', cat: 'all' };
     this.initStatic();
+    this.initTips();
+    this.initKeys();
+    r7Init(this);
   }
   get sim() { return this.g.sim; }
 
   initStatic() {
     const g = this.g;
     $('#avatar').innerHTML = `<svg viewBox="0 0 32 32" width="52" height="52"><circle cx="16" cy="13" r="7.5" fill="#f2c9a0" stroke="#5b3a1e" stroke-width="1.4"/><path d="M8.5 12c0-7 15-7 15 0-2-2.5-5-3-7.5-3s-5.5.5-7.5 3z" fill="#7a4a26" stroke="#5b3a1e" stroke-width="1.4"/><circle cx="13" cy="14" r="1" fill="#5b3a1e"/><circle cx="19" cy="14" r="1" fill="#5b3a1e"/><path d="M13.5 17.3c1.5 1.2 3.5 1.2 5 0" stroke="#5b3a1e" stroke-width="1.2" fill="none" stroke-linecap="round"/><path d="M4 32c0-7 5-11 12-11s12 4 12 11z" fill="#5cb85c" stroke="#5b3a1e" stroke-width="1.4"/></svg>`;
-    $('#res').innerHTML = TOP_GOODS.map(k => `<div class="pill" data-res="${k}" title="${GOODS[k].name}">${svg(GOODS[k].icon, 26)}<span class="n">0</span><button class="add" data-shop="${k}" aria-label="Get more ${GOODS[k].name}">${svg('plus', 14)}</button></div>`).join('');
+    $('#res').innerHTML = TOP_GOODS.map(k => `<div class="pill" data-res="${k}" aria-label="${GOODS[k].name}">${svg(GOODS[k].icon, 26)}<span class="n">0</span><button class="add" data-shop="${k}" aria-label="Get more ${GOODS[k].name}" data-tip="Get more|Open the shop to trade gems for ${GOODS[k].name.toLowerCase()}.">${svg('plus', 14)}</button></div>`).join('');
     $('#res').addEventListener('click', e => {
       if (e.target.closest('.add')) { this.openModal('shop'); return; }
       const pill = e.target.closest('.pill'); if (!pill) return;
@@ -79,9 +185,6 @@ export class UI {
     $('#btnHome').onclick = () => g.goHome();
     $('#btnChest').onclick = () => this.flyToChest();
     $('#follow').onclick = () => g.follow(null);
-    $('#season').onclick = () => { const sea = this.sim.season(), f = this.sim.festivalToday(); this.toast(f ? `${f.name}: ${f.desc}` : `${sea.name}: ${sea.blurb}`, f ? f.icon : sea.icon); };
-    $('#namecard').addEventListener('click', e => { if (e.target.closest('[data-act=babyok]')) this.nameBaby(); if (e.target.closest('[data-act=babyskip]')) this.nameBaby(true); });
-    $('#namecard').addEventListener('keydown', e => { if (e.key === 'Enter') this.nameBaby(); e.stopPropagation(); });
     $('#info').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { const b = $('#info [data-act=renameok]'); if (b) b.click(); } });
     $('#btnMagic').innerHTML = svg('staff', 22);
     $('#btnMagic').onclick = () => this.openModal('magic');
@@ -97,8 +200,18 @@ export class UI {
       if (go) { this.doGo(QUESTS.find(q => q.id === go.dataset.go)); return; }
       const b = e.target.closest('[data-claim]');
       if (b && this.sim.claim(b.dataset.claim)) { this.toast('Reward claimed!', 'gem'); this.dirty.quests = true; }
+      if (e.target.closest('[data-claimall]')) {
+        const ids = this.sim.activeQuests().filter(x => x.done).map(x => x.q.id), fs = this.sim.festShop;
+        let n = ids.filter(id => this.sim.claim(id)).length, t = 0;
+        if (fs?.open()) for (const q of fs.quests()) if (q.done && !q.claimed && fs.claim(q.id)) { n++; t += q.tokens; }
+        if (n) { this.toast(`${n} reward${n > 1 ? 's' : ''} claimed!${t ? ` +${t} festival tokens` : ''}`, 'gem'); this.dirty.quests = true; }
+        return;
+      }
+      const fc = e.target.closest('[data-fclaim]');
+      if (fc && this.sim.festShop?.claim(fc.dataset.fclaim)) { this.toast('Festival tokens earned!', 'party'); this.drawQuests(); return; }
+      if (e.target.closest('[data-fest]')) { this.openModal('festival'); return; }
+      if (e.target.closest('[data-fqtoggle]')) { this.fqOpen = !this.fqOpen; sfx.click(); this.drawQuests(); }
     });
-    $('#speedLbl').innerHTML = svg('clock', 13) + 'Speed';
     $('#speeds [data-s="0"]').innerHTML = svg('pause', 13);
     $('#speeds').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { g.setSpeed(+b.dataset.s); sfx.click(); } });
     const sideIcons = { quests: 'star', villagers: 'people', worldmap: 'map', inventory: 'bag' };
@@ -109,42 +222,45 @@ export class UI {
         else this.openModal(b.dataset.open);
       };
     });
-    $('#world').innerHTML = svg('map', 32) + 'World';
+    $('#world').innerHTML = svg('map', 32) + 'World<span class="kbd">M</span>';
     $('#shop').innerHTML = svg('shop', 32) + 'Shop';
     $('#world').onclick = () => this.openModal('worldmap');
     $('#shop').onclick = () => this.openModal('shop');
-    const tabs = { build: ['hammer', 'Build'], decor: ['flower', 'Decorate'], villagers: ['people', 'Villagers'], inventory: ['bag', 'Inventory'] };
+    const tabs = { build: ['hammer', 'Build', 'B'], decor: ['flower', 'Decorate', 'G'], villagers: ['people', 'Villagers', 'V'], inventory: ['bag', 'Inventory', 'I'] };
     document.querySelectorAll('#dockbar [data-tab]').forEach(b => {
-      const [ic, label] = tabs[b.dataset.tab];
-      b.innerHTML = svg(ic, 26) + label;
+      const [ic, label, key] = tabs[b.dataset.tab];
+      b.innerHTML = svg(ic, 26) + label + `<span class="kbd">${key}</span>`;
       b.onclick = () => {
         const t = b.dataset.tab;
         if (t === 'build' || t === 'decor') this.openTray(t);
+        else if (this.modal === t || (t === 'villagers' && this.modal === 'buildings')) this.closeModal();
         else this.openModal(t);
       };
     });
+    for (const [sel, tip] of Object.entries(HUD_TIPS)) { const el = $(sel); if (el) el.dataset.tip = tip; }
     $('#trayBack').innerHTML = svg('back', 18) + 'Back';
     $('#trayBack').onclick = () => { this.closeTray(); g.cancelPlace(); sfx.click(); };
+    $('#trayTabs').addEventListener('click', e => {
+      const b = e.target.closest('[data-cat]'); if (!b || b.dataset.cat === this.trayCat) return;
+      this.setTrayCat(b.dataset.cat); sfx.click();
+    });
     $('#cards').addEventListener('click', e => {
       const c = e.target.closest('.card');
       if (!c) return;
       const type = c.dataset.type;
-      if (c.classList.contains('locked')) { this.toast(defOf(type).rare ? `The ${defOf(type).name} can only be found in gift chests in the woods` : `Reach level ${defOf(type).lvl} to unlock`, defOf(type).rare ? 'gift' : 'lock'); sfx.error(); return; }
+      if (c.classList.contains('locked')) { this.toast(defOf(type).festive ? `The ${defOf(type).name} is sold at the festival shop during its festival` : defOf(type).rare ? `The ${defOf(type).name} can only be found in gift chests in the woods` : `${defOf(type).name} unlocks at level ${defOf(type).lvl}`, defOf(type).rare ? 'gift' : 'lock'); sfx.error(); return; }
+      this.hideTip();
       g.startPlace(type);
       this.markCard(type);
     });
-    $('#cards').addEventListener('pointerover', e => {
-      const c = e.target.closest('.card');
-      if (c && e.pointerType === 'mouse') this.cardTip(c); else if (!c) $('#cardtip').classList.add('hidden');
-    });
-    $('#cards').addEventListener('pointerleave', () => $('#cardtip').classList.add('hidden'));
-    $('#cards').addEventListener('scroll', () => $('#cardtip').classList.add('hidden'));
     $('#cards').addEventListener('wheel', e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { $('#cards').scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
     $('#pCancel').innerHTML = svg('close', 22); $('#pRot').innerHTML = svg('rotate', 22); $('#pOk').innerHTML = svg('check', 22);
+    $('#pCancel').dataset.tip = 'Cancel|Stop placing.|Esc'; $('#pRot').dataset.tip = 'Rotate|Turn the building.|R';
     $('#pCancel').onclick = () => g.cancelPlace();
     $('#pRot').onclick = () => g.rotatePlace();
     $('#pOk').onclick = () => g.confirmPlace();
     $('#mClose').innerHTML = svg('close', 18);
+    $('#mClose').dataset.tip = 'Close|Esc';
     $('#mClose').onclick = () => this.closeModal();
     $('#modal').addEventListener('pointerdown', e => { if (e.target.id === 'modal') this.closeModal(); });
     $('#modal').addEventListener('click', e => this.modalClick(e));
@@ -161,32 +277,219 @@ export class UI {
     };
   }
 
+  // ── tooltips: one floating card, hover on desktop, long-press on touch ──
+  initTips() {
+    const tip = $('#tip');
+    document.addEventListener('pointerover', e => {
+      if (e.pointerType !== 'mouse') return;
+      const el = e.target.closest?.('[data-tip]');
+      if (el && el === this.tipEl) { clearTimeout(this.tipT); return; }
+      clearTimeout(this.tipT);
+      if (!el) { if (this.tipEl) this.tipT = setTimeout(() => this.hideTip(), 90); return; }
+      this.tipT = setTimeout(() => this.showTip(el), tip.classList.contains('on') ? 50 : 330);
+    });
+    document.addEventListener('pointerdown', e => {
+      this.lastPtr = e.pointerType;
+      clearTimeout(this.tipT); clearTimeout(this.lpT);
+      if (e.target.closest?.('#tip')) return;
+      const el = e.target.closest?.('[data-tip]');
+      if (e.pointerType === 'mouse') { this.hideTip(); return; }
+      if (this.tipEl && this.tipEl !== el) this.hideTip();
+      if (!el) return;
+      this.lp = { x: e.clientX, y: e.clientY };
+      this.lpT = setTimeout(() => { this.showTip(el); this.tipLong = true; navigator.vibrate?.(8); }, 430);
+    }, true);
+    document.addEventListener('pointermove', e => { if (this.lp && Math.hypot(e.clientX - this.lp.x, e.clientY - this.lp.y) > 10) { clearTimeout(this.lpT); this.lp = null; } }, true);
+    const up = () => { clearTimeout(this.lpT); this.lp = null; };
+    document.addEventListener('pointerup', up, true); document.addEventListener('pointercancel', up, true);
+    document.addEventListener('click', e => {
+      // a long-press shows the tip instead of tapping the thing
+      if (this.tipLong) { this.tipLong = false; e.stopPropagation(); e.preventDefault(); return; }
+      const el = e.target.closest?.('[data-tiptap]');
+      if (el && this.lastPtr && this.lastPtr !== 'mouse') { if (this.tipEl === el) this.hideTip(); else this.showTip(el); e.stopPropagation(); }
+    }, true);
+    document.addEventListener('scroll', () => this.hideTip(), true);
+    document.addEventListener('contextmenu', e => { if (e.target.closest?.('[data-tip]')) e.preventDefault(); });
+  }
+  showTip(el) {
+    if (!el.isConnected) return;
+    const html = this.tipHtml(el); if (!html) return;
+    const tip = $('#tip'), wasOn = tip.classList.contains('on');
+    tip.innerHTML = html;
+    const r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight, cx = r.left + r.width / 2;
+    const above = r.top - th - 12 > 4 && (r.top + r.height / 2 > innerHeight * 0.4 || r.bottom + th + 14 > innerHeight);
+    const left = Math.max(8, Math.min(innerWidth - tw - 8, cx - tw / 2));
+    const top = above ? r.top - th - 11 : Math.min(innerHeight - th - 6, r.bottom + 11);
+    const ax = Math.max(14, Math.min(tw - 14, cx - left));
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+    tip.style.setProperty('--ax', ax + 'px'); tip.style.setProperty('--oy', above ? '100%' : '0%'); tip.style.setProperty('--dy', above ? '6px' : '-6px');
+    tip.classList.toggle('above', above); tip.classList.toggle('below', !above);
+    if (!wasOn) void tip.offsetWidth;
+    tip.classList.add('on');
+    this.tipEl = el;
+  }
+  hideTip() { clearTimeout(this.tipT); $('#tip').classList.remove('on'); this.tipEl = null; }
+  tipHtml(el) {
+    const k = el.dataset.tip; if (!k) return '';
+    if (k[0] !== '@') {
+      const [t, body, key] = k.split('|');
+      const kb = key && finePointer() ? `<span class="k">${esc(key)}</span>` : '';
+      return body !== undefined ? `<b class="t">${kb}${esc(t)}</b>${body ? `<p>${esc(body)}</p>` : ''}` : `<p>${esc(t)}</p>`;
+    }
+    const sim = this.sim, s = sim.s;
+    if (k === '@card') return this.cardTipHtml(el.dataset.type);
+    if (k === '@clock') {
+      const f = sim.dayFrac(), fest = sim.festivalToday();
+      return `<b class="t">Day ${sim.dayNum() + 1} · ${hm(f)}</b><p>${partOfDay(f)[0].toUpperCase() + partOfDay(f).slice(1)}. A whole day lasts 4 minutes at 1× speed.</p>
+        <p>Villagers wake around 05:20 and head to bed around 22:30. After dark, wolves and goblins may prowl in from the forest.</p>
+        ${fest ? `<div class="note">${esc(fest.name)} tonight at dusk (17:20).</div>` : ''}${s.weather?.storm ? '<div class="note bad">A storm is raging: everyone is sheltering indoors.</div>' : ''}`;
+    }
+    if (k === '@season') {
+      const sea = sim.season(), d = sim.seasonDay(), fest = sim.festivalToday(), on = sim.festivalActive();
+      const next = SEASONS[(sim.seasonIdx() + 1) % 4], left = SEASON_DAYS - d;
+      const nf = fest ? null : d === 0 ? FESTIVALS[sea.id] : FESTIVALS[next.id];
+      return `<b class="t">${esc(sea.name)} · day ${d + 1} of ${SEASON_DAYS}</b><p>${esc(sea.blurb)}</p>
+        ${fest ? `<div class="note good">${svg('party', 14)} <b>${esc(fest.name)}</b> ${on ? 'is on now!' : 'tonight at dusk.'} ${esc(fest.desc)} Everyone feasts afterwards and stays happier for a day.</div>` : ''}
+        <p>${esc(next.name)} arrives in ${left} day${left > 1 ? 's' : ''}.${nf ? ` Next festival: ${esc(nf.name)} (${d === 0 ? 'tomorrow' : `in ${left + 1} days`}).` : ''}</p>`;
+    }
+    if (k === '@wx') {
+      const e = sim.forecast(3)[+el.dataset.i], w = WX[e.kind], wet = e.len > 0;
+      const when = wet ? `${hm(e.start)}–${hm(e.start + e.len)}` : '';
+      const day = +el.dataset.i === 0 ? 'Today' : +el.dataset.i === 1 ? 'Tomorrow' : `Day ${e.d + 1}`;
+      return `<b class="t">${day}: ${w.name}${when ? ` · ${when}` : ''}</b><p>${esc(w.tip)}</p>${STORMY(e.kind) ? '<div class="note bad">Plan ahead: builders and gatherers stop while it blows.</div>' : ''}`;
+    }
+    if (k === '@speed') {
+      const n = +el.dataset.s;
+      return [`<b class="t">${finePointer() ? '<span class="k">Space</span>' : ''}Pause</b><p>Freeze time. You can still build and plan.</p>`,
+        `<b class="t">${finePointer() ? '<span class="k">1</span>' : ''}Normal speed</b><p>A day lasts 4 minutes.</p>`,
+        `<b class="t">${finePointer() ? '<span class="k">2</span>' : ''}Double speed</b>`,
+        `<b class="t">${finePointer() ? '<span class="k">3</span>' : ''}Triple speed</b><p>Handy for waiting on harvests and builds.</p>`][n];
+    }
+    if (k === '@xp') {
+      const need = xpForLevel(s.level), nx = [...Object.entries(BUILDINGS), ...Object.entries(DECOR)].filter(([, d]) => d.lvl === s.level + 1).map(([, d]) => d.name);
+      return `<b class="t">Level ${s.level}</b><p>${Math.floor(s.xp)} / ${need} xp (${Math.floor(s.xp / need * 100)}%). ${need - Math.floor(s.xp)} xp to level ${s.level + 1}.</p>
+        <p>Earn xp by finishing buildings, completing quests and bringing goods home.</p>${nx.length ? `<div class="note good">Level ${s.level + 1} unlocks ${esc(nx.join(', '))}.</div>` : ''}`;
+    }
+    if (k === '@stat') return `<b class="t">${esc(el.dataset.t)}</b><p>${esc(el.dataset.b)}</p>`;
+    return '';
+  }
+
+  // ── keyboard shortcuts (the game handles WASD, Q/E, R, Space, 1-3, B and Esc) ──
+  initKeys() {
+    addEventListener('keydown', e => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, select, textarea')) return;
+      const k = e.key.toLowerCase(), toggle = m => this.modal === m ? this.closeModal() : this.openModal(m);
+      if (k === 'escape') { this.hideTip(); this.hideResTip(); return; }
+      if (k === 'v') toggle('villagers');
+      else if (k === 'l') toggle('buildings');
+      else if (k === 'i') toggle('inventory');
+      else if (k === 'm') toggle('worldmap');
+      else if (k === 'n') toggle('log');
+      else if (k === '?' || k === 'f1') { e.preventDefault(); toggle('settings'); }
+      else if (k === 'g') this.tray === 'decor' ? this.closeTray() : this.openTray('decor');
+      else if (k === 'h') this.g.goHome();
+      else if ((k === '[' || k === ']') && this.tray) {
+        const cats = this.trayCats(), i = cats.findIndex(c => c.id === this.trayCat);
+        this.setTrayCat(cats[(i + (k === ']' ? 1 : cats.length - 1)) % cats.length].id); sfx.click();
+      }
+    });
+  }
+
   // ── per-frame ──
   frame(dt) {
     const s = this.sim.s;
     this.timer += dt;
     if (this.dirty.res) { this.dirty.res = false; this.drawRes(); }
+    if (this.resAnim) this.tweenRes(dt);
     if (this.dirty.quests) { this.dirty.quests = false; this.drawQuests(); }
     if (this.timer > 0.5) {
       this.timer = 0;
       this.drawInfo();
       this.drawAlert();
       this.drawCoach();
+      this.drawForecast();
       $('#btnMagic').classList.toggle('hidden', !this.sim.s.buildings.some(b => b.type === 'wizard' && b.built));
       const nch = this.sim.s.chests?.length || 0, cb = $('#btnChest');
       if (cb.dataset.n !== String(nch)) { cb.dataset.n = nch; cb.classList.toggle('hidden', !nch); cb.innerHTML = svg('gift', 24) + (nch > 1 ? `<span class="badge">${nch}</span>` : ''); }
       const ready = this.sim.achievements().filter(x => x.done && !x.claimed).length;
       const tb = $('#trophyBadge'); tb.classList.toggle('hidden', !ready); tb.textContent = ready;
-      if (this.modal && ['villagers', 'inventory', 'stats', 'worldmap', 'merchant', 'magic'].includes(this.modal) && !$('#modal').contains(document.activeElement)) this.drawModal(true);
+      const ae = document.activeElement;
+      if (this.modal && ['villagers', 'buildings', 'inventory', 'stats', 'worldmap', 'merchant', 'magic', 'guild', ...R7_LIVE].includes(this.modal) && !($('#modal').contains(ae) && /SELECT|INPUT/.test(ae.tagName))) this.drawModal(true);
       this.drawQuests();
+      r7Frame(this);
       if (this.tray) this.refreshCards();
+      if (this.tipEl && (!this.tipEl.isConnected || !this.tipEl.offsetParent)) this.hideTip();
     }
-    const t = s.time / DAY, day = Math.floor(t) + 1, hm = (t % 1) * 24;
-    const clock = `Day ${day} · ${String(Math.floor(hm)).padStart(2, '0')}:${String(Math.floor((hm % 1) * 60 / 10) * 10).padStart(2, '0')}`;
-    if (this.lastClock !== clock) { this.lastClock = clock; $('#clock').textContent = clock; this.drawSeason(); }
+    this.drawClock(dt);
     const fv = this.g.followV, fk = fv ? fv.id + fv.name : '';
     if (fk !== this.lastFollow) { this.lastFollow = fk; $('#follow').classList.toggle('hidden', !fv); if (fv) $('#follow').innerHTML = `${svg('eye', 16)}Following ${esc(fv.name.split(' ')[0])}<span class="stop">Stop</span>`; }
-    document.querySelectorAll('#speeds button').forEach(b => b.classList.toggle('on', +b.dataset.s === s.speed));
+    if (this.lastSpeed !== s.speed) {
+      this.lastSpeed = s.speed;
+      document.querySelectorAll('#speeds button').forEach(b => b.classList.toggle('on', +b.dataset.s === s.speed));
+      const th = $('#speeds .thumb'); th.style.transform = `translateX(${s.speed * 100}%)`; th.classList.toggle('paused', !s.speed);
+      $('#sky').classList.toggle('paused', !s.speed);
+    }
+  }
+
+  // ── the clock: sky colour, sun / moon on the arc, weather in the window ──
+  drawClock(dt) {
+    const sim = this.sim, s = sim.s, f = sim.dayFrac(), g = this.g, wx = s.weather || {};
+    const sky = $('#sky');
+    // the orb moves every frame; colours only need a few updates a second
+    const day = f >= 0.21 && f < 0.79, t = day ? (f - 0.21) / 0.58 : ((f - 0.79 + 1) % 1) / 0.42;
+    const [x, y] = arcAt(t), orb = $('#orb');
+    orb.style.left = x.toFixed(2) + '%'; orb.style.top = y.toFixed(2) + '%';
+    if (orb.dataset.k !== String(day)) { orb.dataset.k = day; orb.className = day ? 'sun' : 'moon'; }
+    const fk = g.flashK || 0;
+    if (fk > 0.01 || this.boltOn) { this.boltOn = fk > 0.01; sky.querySelector('.bolt').style.opacity = (fk * 0.85).toFixed(3); }
+    this.clockT = (this.clockT || 0) + dt;
+    const clock = hm(f);
+    // keyed on the day too: a time jump to the same HH:MM on another day must still redraw day, season and festival
+    const dayKey = sim.dayNum() + '|' + clock;
+    if (this.lastClock !== dayKey) {
+      this.lastClock = dayKey;
+      $('#clockT').innerHTML = clock.replace(':', '<i>:</i>');
+      $('#clockP').textContent = partOfDay(f);
+      $('#clockD').textContent = `Day ${sim.dayNum() + 1}`;
+      this.drawSeason();
+    }
+    if (this.clockT < 0.25 && this.skyDone) return;
+    this.clockT = 0; this.skyDone = true;
+    const rk = g.rainK ?? (wx.rain ? 1 : 0), sk = g.stormK ?? (wx.storm ? 1 : 0), ck = g.cloudK ?? (wx.cloud || 0);
+    let [top, bot] = skyAt(f);
+    const night = day ? Math.max(0, 1 - Math.min(1, Math.sin(t * Math.PI) * 2.6)) : 1;
+    const grey = Math.max(ck * 0.35, rk * 0.55) + sk * 0.3;
+    top = mix(top, mix([128, 142, 158], [28, 34, 52], night), grey); bot = mix(bot, mix([168, 178, 188], [44, 52, 72], night), grey);
+    if (sk > 0.05) { top = mix(top, [52, 60, 74], sk * 0.45 * (1 - night * 0.5)); bot = mix(bot, [86, 94, 106], sk * 0.4 * (1 - night * 0.5)); }
+    sky.style.setProperty('--sky1', rgb(top)); sky.style.setProperty('--sky2', rgb(bot));
+    sky.querySelector('.stars').style.opacity = (Math.max(0, night - grey * 0.8) * 0.95).toFixed(2);
+    sky.querySelector('.clouds').style.opacity = Math.min(1, Math.max(ck * 0.75, rk * 0.9, sk)).toFixed(2);
+    sky.querySelector('.rainfx').style.opacity = Math.min(1, rk * (0.75 + sk * 0.25)).toFixed(2);
+    orb.style.opacity = (1 - Math.min(0.75, grey * 0.9)).toFixed(2);
+    const si = sim.seasonIdx(), winter = si === 3;
+    sky.classList.toggle('storm', sk > 0.4); sky.classList.toggle('snow', winter); sky.classList.toggle('dark', sk > 0.3 || night > 0.6);
+    const H = [[[127, 191, 90], [79, 154, 54]], [[118, 186, 80], [70, 146, 48]], [[214, 168, 82], [176, 112, 52]], [[236, 242, 248], [196, 212, 228]]][si];
+    const nk = night * 0.72 + grey * 0.2;
+    $('#hill1').setAttribute('fill', rgb(mix(H[0], [26, 38, 58], nk))); $('#hill2').setAttribute('fill', rgb(mix(H[1], [18, 28, 44], nk)));
+  }
+  drawSeason() {
+    const sim = this.sim, sea = sim.season(), d = sim.seasonDay(), fest = sim.festivalToday(), on = sim.festivalActive();
+    const pips = Array.from({ length: SEASON_DAYS }, (_, i) => `<i class="${i < d ? 'on' : i === d ? 'now' : ''}"></i>`).join('');
+    const html = `<span class="sb">${svg(sea.icon, 16)}${esc(sea.name)}<span class="pips" aria-label="day ${d + 1} of ${SEASON_DAYS}">${pips}</span></span>${fest ? `<span class="fest${on ? ' now' : ''}">${svg('party', 14)}<span><b>${esc(fest.name)}</b> <em>${on ? 'now!' : sim.dayFrac() > 0.925 ? 'was tonight' : 'tonight'}</em></span></span>` : ''}`;
+    if (html !== this.lastSeason) { this.lastSeason = html; $('#season').innerHTML = html; $('#season').setAttribute('aria-label', `${sea.name}, day ${d + 1} of ${SEASON_DAYS}${fest ? `, ${fest.name} tonight` : ''}`); }
+  }
+  drawForecast() {
+    const sim = this.sim, f = sim.dayFrac(), list = sim.forecast(3), night = f < 0.21 || f > 0.82;
+    const cells = list.map((e, i) => {
+      const w = WX[e.kind], wet = e.len > 0;
+      const live = i === 0 && wet && f >= e.start && f < e.start + e.len, done = i === 0 && wet && f >= e.start + e.len;
+      const icon = i === 0 && e.kind === 'clear' && night ? 'moon' : i === 0 && done ? 'suncloud' : w.icon;
+      const name = i === 0 && done ? 'Cleared' : i === 0 && e.kind === 'clear' && night ? 'Clear' : w.name;
+      const when = !wet ? '' : live ? 'now' : done ? `ended ${hm(e.start + e.len)}` : `from ${hm(e.start)}`;
+      const lbl = i === 0 ? 'Today' : i === 1 ? 'Tmrw' : `Day ${e.d + 1}`;
+      return `<div class="fc${i === 0 ? ' today' : ''}${STORMY(e.kind) && !done ? ' storm' : ''}${live ? ' live' : ''}" data-tip="@wx" data-tiptap data-i="${i}"><small>${lbl}</small>${svg(icon, phone() ? 18 : 22)}<b>${name}</b>${when ? `<span class="when">${when}</span>` : ''}</div>`;
+    }).join('');
+    if (cells !== this.lastFc) { this.lastFc = cells; morph($('#forecast'), cells); }
   }
 
   // the chest button: fly to the next unopened gift chest
@@ -198,40 +501,74 @@ export class UI {
     g.view.flyTo(ch.x + Math.sin(r.yaw) * 2, ch.z + Math.cos(r.yaw) * 2, Math.max(16, Math.min(r.dist, 22)), 0.9);
     sfx.click();
   }
-  drawSeason() {
-    const sim = this.sim, sea = sim.season(), d = sim.seasonDay() + 1, fest = sim.festivalToday(), on = sim.festivalActive();
-    const html = `${svg(sea.icon, 16)}<span><span>${sea.name} · <span class="dl">day </span>${d}/${SEASON_DAYS}</span>${fest ? `<span class="fest">${svg('party', 12)}<span class="fn">${esc(fest.name)} </span>${on ? 'now!' : 'tonight'}</span>` : ''}</span>`;
-    if (html !== this.lastSeason) { this.lastSeason = html; $('#season').innerHTML = html; $('#season').classList.toggle('festday', !!fest); }
-  }
 
+  // resources: the numbers tick toward their new values instead of jumping
   drawRes() {
     const s = this.sim.s, cap = this.sim.cap();
     for (const el of document.querySelectorAll('#res .pill')) {
-      const k = el.dataset.res, n = el.querySelector('.n');
-      const txt = fmt(s.res[k]);
-      if (n.textContent !== txt) {
-        if (+n.dataset.v < s.res[k]) { n.classList.remove('bump'); void n.offsetWidth; n.classList.add('bump'); }
-        n.textContent = txt; n.dataset.v = s.res[k];
+      const k = el.dataset.res, n = el.querySelector('.n'), want = s.res[k], was = this.shown[k];
+      if (was === undefined) { this.shown[k] = want; n.textContent = fmt(want); }
+      else if (Math.floor(was) !== Math.floor(want)) {
+        this.resAnim = true;
+        const prev = +n.dataset.t || 0;
+        if (want > prev) restart(n, 'bump'); else if (want < prev - 4) restart(n, 'drop');
       }
-      n.classList.toggle('full', !!GOODS[k].capped && s.res[k] >= cap);
+      n.dataset.t = want;
+      n.classList.toggle('full', !!GOODS[k].capped && want >= cap);
     }
     const need = xpForLevel(s.level);
     $('#lvl').textContent = s.level;
     $('#xpfill').style.width = Math.min(100, s.xp / need * 100) + '%';
-    $('#xptext').textContent = `${Math.floor(s.xp)}/${need}`;
+    $('#xptext').textContent = phone() ? `${short(s.xp)}/${short(need)}` : `${Math.floor(s.xp)} / ${need}`;
+  }
+  tweenRes(dt) {
+    const s = this.sim.s, snap = reduced();
+    let moving = false;
+    for (const el of document.querySelectorAll('#res .pill')) {
+      const k = el.dataset.res, want = s.res[k];
+      let v = this.shown[k] ?? want;
+      if (v === want) continue;
+      v = snap || Math.abs(want - v) < 1 ? want : v + (want - v) * Math.min(1, dt * 9);
+      this.shown[k] = v; moving ||= v !== want;
+      const txt = fmt(v), n = el.querySelector('.n');
+      if (n.textContent !== txt) n.textContent = txt;
+    }
+    this.resAnim = moving;
   }
 
   drawQuests() {
-    const list = this.sim.activeQuests();
-    const html = list.map(({ q, p, done }) => `
-      <div class="quest ${done ? 'done' : ''}">
-        <div class="row"><span class="t">${esc(q.title)}</span>${done ? `<button class="btn sm gold claim" data-claim="${q.id}">Claim</button>` : `<span style="font-size:11px;color:var(--ink2)">${fmt(p)}/${fmt(q.n)}</span>${this.goFor(q) ? `<button class="go" data-go="${q.id}" aria-label="Show me">${svg('target', 16)}</button>` : ''}`}</div>
-        <div class="bar"><i style="width:${p / q.n * 100}%"></i></div>
-        <div class="rw">${q.reward.gems ? `<span>${svg('gem', 12)}${q.reward.gems}</span>` : ''}${q.reward.coins ? `<span>${svg('coin', 12)}${q.reward.coins}</span>` : ''}${q.reward.xp ? `<span>${svg('xp', 12)}${q.reward.xp} xp</span>` : ''}</div>
-      </div>`).join('') || '<div class="quest">All quests complete — you\'re a master builder!</div>';
-    if (html !== this.lastQuests) { this.lastQuests = html; $('#qlist').innerHTML = html; }
-    const ready = list.filter(x => x.done).length;
-    $('#qhead').innerHTML = svg('star', 18) + 'Quests' + (ready ? ` <span class="badge" style="position:static">${ready}</span>` : '');
+    // compact: one festival row (expands on click), one "rewards to claim" row, then at most
+    // a few in-progress quests, so the panel never runs down the whole screen
+    const list = this.sim.activeQuests(), fs = this.sim.festShop, fopen = !!fs?.open();
+    const fq = fopen ? fs.quests() : [], fready = fq.filter(q => q.done && !q.claimed);
+    const doneQ = list.filter(x => x.done), todo = list.filter(x => !x.done);
+    const rw = q => `${q.reward.gems ? `<span>${svg('gem', 12)}${q.reward.gems}</span>` : ''}${q.reward.coins ? `<span>${svg('coin', 12)}${q.reward.coins}</span>` : ''}${q.reward.xp ? `<span>${svg('xp', 12)}${q.reward.xp} xp</span>` : ''}`;
+    let html = '';
+    if (fopen) {
+      const f = fs.current(), nd = fq.filter(q => q.done).length, tok = fq.reduce((n, q) => n + (q.claimed ? 0 : q.tokens), 0);
+      html += `<div class="quest qrow qfest${this.fqOpen ? ' open' : ''}" data-key="fest"><div class="row"><button class="qtog" data-fqtoggle aria-expanded="${!!this.fqOpen}">${svg('party', 16)}<span class="t">${esc(f.name)}<small class="qmeta">${nd}/${fq.length} festival quests · ${tok} token${tok === 1 ? '' : 's'}</small></span><span class="chev">▾</span></button><button class="go" data-fest aria-label="Festival shop" data-tip="Festival shop|Spend festival tokens on seasonal decorations.">${svg('shop', 16)}</button></div>`;
+      if (this.fqOpen) html += `<div class="qsub">${fq.map(q => `<div class="row"><span class="t">${svg(q.icon, 13)} ${esc(q.title)}</span>${q.claimed ? `<span class="r7got">${svg('check', 12)}</span>` : q.done ? `<button class="btn sm gold" data-fclaim="${q.id}">+${q.tokens}</button>` : `<span class="qmeta">${fmt(q.p)}/${fmt(q.n)}</span>`}</div><div class="bar"><i style="width:${q.p / q.n * 100}%"></i></div>`).join('')}</div>`;
+      html += `</div>`;
+    }
+    const nReady = doneQ.length + fready.length;
+    if (nReady === 1 && doneQ.length) {
+      const { q } = doneQ[0];
+      html += `<div class="quest qrow done" data-key="claim"><div class="row"><span class="t">${esc(q.title)}</span><button class="btn sm gold claim" data-claim="${q.id}">Claim</button></div><div class="rw">${rw(q)}</div></div>`;
+    } else if (nReady) {
+      html += `<div class="quest qrow done" data-key="claim"><div class="row">${svg('gift', 18)}<span class="t">${nReady} rewards ready</span><button class="btn sm gold claim" data-claimall>Claim all</button></div></div>`;
+    }
+    const room = Math.max(1, 3 - (fopen ? 1 : 0) - (nReady ? 1 : 0));
+    html += todo.slice(0, room).map(({ q, p }) => `
+      <div class="quest" data-key="q${q.id}">
+        <div class="row"><span class="t">${esc(q.title)}</span><span class="qmeta">${fmt(p)}/${fmt(q.n)}</span>${this.goFor(q) ? `<button class="go" data-go="${q.id}" aria-label="Show me" data-tip="Show me|Jump to where you can do this.">${svg('target', 16)}</button>` : ''}</div>
+        <div class="qbar"><div class="bar"><i style="width:${p / q.n * 100}%"></i></div><div class="rw">${rw(q)}</div></div>
+      </div>`).join('');
+    if (!html) html = '<div class="quest">All quests complete — you\'re a master builder!</div>';
+    if (html !== this.lastQuests) { this.lastQuests = html; morph($('#qlist'), html); }
+    const ready = nReady;
+    if (phone()) { const qb = Math.round($('#quests').getBoundingClientRect().bottom + 10) + 'px'; if (document.body.style.getPropertyValue('--qb') !== qb) document.body.style.setProperty('--qb', qb); }
+    const qh = svg('star', 18) + 'Quests' + (ready ? ` <span class="badge" style="position:static">${ready}</span>` : '');
+    if (qh !== this.lastQh) { this.lastQh = qh; $('#qhead').innerHTML = qh; }
   }
 
   // what a good is, where it comes from, what uses it
@@ -240,10 +577,11 @@ export class UI {
     return `<div class="gi-top">${svg(g.icon, 30)}<div><b>${esc(g.name)}</b><span>${fmt(s.res[k])}${g.capped ? ` / ${this.sim.cap()}` : ''}${g.price ? ` · sells ${g.price}` : ''}${rt ? ` · <i class="${rt > 0 ? 'up' : 'down'}">${rt > 0 ? '+' : ''}${rt}/min</i>` : ''}</span></div></div>
       <p>${esc(g.desc || '')}</p>
       ${g.from ? `<div class="gi-row"><em>From</em>${esc(g.from)}</div>` : ''}${g.uses ? `<div class="gi-row"><em>Used for</em>${esc(g.uses)}</div>` : ''}
-      ${full ? `<button class="btn sm ghost" data-act="inv">${svg('bag', 14)} Open inventory</button>` : ''}`;
+      ${r7GoodHtml(this, k)}${full ? `<button class="btn sm ghost" data-act="inv">${svg('bag', 14)} Open inventory</button>` : ''}`;
   }
   showResTip(pill) {
     const k = pill.dataset.res, tip = $('#restip');
+    if (this.resTipFor === k && !tip.classList.contains('hidden')) return;
     this.resTipFor = k;
     tip.innerHTML = this.goodInfo(k);
     const r = pill.getBoundingClientRect();
@@ -276,7 +614,8 @@ export class UI {
     const g = this.goFor(q); if (!g) return;
     if (g.modal) return this.openModal(g.modal);
     if (g.select) { this.g.select({ kind: 'b', b: g.select }, true); return; }
-    this.openTray(g.tray);
+    const cats = CATS[g.tray], cur = cats.find(c => c.id === (this.tray === g.tray ? this.trayCat : this.catMem[g.tray]));
+    this.openTray(g.tray, g.type && !this.catTypes(g.tray, cur).includes(g.type) ? 'all' : undefined);
     if (g.type) {
       const card = document.querySelector(`#cards .card[data-type="${g.type}"]`);
       if (card) {
@@ -344,49 +683,109 @@ export class UI {
   drawInfo(force) {
     const sel = this.g.selected, el = $('#info');
     document.body.classList.toggle('info-open', !!sel);
-    if (!sel) { el.classList.add('hidden'); return; }
+    if (!sel) { el.classList.add('hidden'); this.infoKey = null; return; }
     if (!force && el.contains(document.activeElement) && ['SELECT', 'INPUT'].includes(document.activeElement.tagName)) return;
-    if (this.renaming && !(sel.kind === 'b' ? 'b' + sel.b?.id : 'v' + sel.v?.id) === this.renaming) this.renaming = null;
+    const key = sel.kind === 'b' ? 'b' + sel.b?.id : 'v' + sel.v?.id;
+    if (this.renaming && this.renaming !== key) this.renaming = null;
+    const wasHidden = el.classList.contains('hidden');
     el.classList.remove('hidden');
+    if (wasHidden) restart(el, 'in');
     const html = sel.kind === 'b' ? this.buildingInfo(sel.b) : this.villagerInfo(sel.v);
-    if (html !== this.lastInfo) { this.lastInfo = html; el.innerHTML = html; }
+    if (key !== this.infoKey) {
+      el.innerHTML = html; el.scrollTop = 0;
+      if (!wasHidden && this.infoKey) { const w = el.querySelector('.ipwrap'); if (w) w.classList.add('swap'); }
+      this.infoKey = key;
+    } else if (html !== this.lastInfo) morph(el, html);
+    this.lastInfo = html;
+  }
+  // same-type neighbours for the ‹ › arrows
+  sameType(b) { return this.sim.s.buildings.filter(o => o.type === b.type).sort((a, c) => a.id - c.id); }
+  // a short, honest status for a building
+  bStatus(b) {
+    const sim = this.sim, s = sim.s, def = defOf(b.type);
+    if (!b.built) return { cls: 'info', dot: 'warn', text: `Under construction · ${Math.floor(b.progress * 100)}%` };
+    if (b.up) return { cls: 'info', dot: 'warn', text: `Upgrading · ${Math.floor(b.up.progress * 100)}%` };
+    if (!def.workers) {
+      if (def.housing) { const n = s.villagers.filter(v => sim.bedFor(v).b === b).length; return { cls: n ? 'ok' : 'info', dot: n ? 'ok' : 'off', text: `${n}/${housingOf(b)} beds used` }; }
+      return null;
+    }
+    const ws = b.workers.map(id => sim.vById.get(id)).filter(Boolean), cap = workersOf(b);
+    if (!ws.length) return { cls: 'bad', dot: 'bad', text: 'No workers' };
+    if (s.weather?.storm && ws.every(v => /shelter/i.test(v.task?.label || ''))) return { cls: 'warn', dot: 'warn', text: 'Sheltering from the storm' };
+    if (ws.every(v => v.asleep)) return { cls: 'info', dot: 'off', text: 'Workers are asleep' };
+    if (b.status) return { cls: 'warn', dot: 'warn', text: b.status };
+    if (ws.length < cap) return { cls: 'info', dot: 'ok', text: `${ws.length}/${cap} workers · ${(ws.map(v => v.task?.label).find(Boolean) || 'working').toLowerCase()}` };
+    const labels = ws.map(v => v.task?.label).filter(Boolean), top = labels.sort((a, c) => labels.filter(x => x === c).length - labels.filter(x => x === a).length)[0];
+    return { cls: 'ok', dot: 'ok', text: top || 'Working' };
   }
   buildingInfo(b) {
     const sim = this.sim, def = defOf(b.type), s = sim.s;
-    const sname = sim.sname(b.sid);
-    let h = `<button class="x" data-act="close" aria-label="Close">${svg('close', 14)}</button>
-      ${this.renaming === 'b' + b.id ? `<div class="rename"><input id="renameIn" maxlength="22" value="${esc(sname)}" aria-label="Village name"><button class="btn sm" data-act="renameok">Save</button></div>`
-        : `<h3>${esc(b.type === 'campfire' ? sname : def.name)}${!isDecor(b.type) ? ` <span class="lvchip">Lv ${lvlOf(b)}</span>` : ''}${b.type === 'campfire' ? `<button class="pen" data-act="rename" aria-label="Rename village">${svg('pencil', 14)}</button>` : ''}</h3>`}
-      <div class="sub">${b.type === 'campfire' ? 'Village campfire · the heart of the settlement' : `${esc(sname)} · ${b.built ? (b.up ? 'being upgraded' : isDecor(b.type) ? 'decoration' : 'building') : 'under construction'}`}</div>`;
+    const sname = sim.sname(b.sid), lvl = lvlOf(b);
+    const title = b.type === 'campfire' ? sname : def.name;
+    let h = `<button class="x" data-act="close" aria-label="Close" data-tip="Close|Esc">${svg('close', 14)}</button><div class="ipwrap">`;
+    // header: picture, name, level, where
+    h += `<div class="ip-hd"><img class="thumb" alt="" src="${this.g.thumbs[b.type] || ''}"><div style="min-width:0;flex:1">${this.renaming === 'b' + b.id
+      ? `<div class="rename"><input id="renameIn" maxlength="22" value="${esc(sname)}" aria-label="Village name"><button class="btn sm" data-act="renameok">Save</button></div>`
+      : `<h3>${esc(title)}${!isDecor(b.type) ? ` <span class="lvchip">Lv ${lvl}</span>` : ''}${b.type === 'campfire' ? `<button class="pen" data-act="rename" aria-label="Rename village" data-tip="Rename your village">${svg('pencil', 14)}</button>` : ''}</h3>`}
+      <div class="sub">${b.type === 'campfire' ? 'Village campfire · the heart of the settlement' : `${esc(sname)} · ${isDecor(b.type) ? 'decoration' : esc(CAT_OF[b.type] || 'building')}`}</div></div></div>`;
+    // browse buildings of this type, or all of them
+    if (!isDecor(b.type)) {
+      const same = this.sameType(b), i = same.indexOf(b);
+      h += `<div class="ip-nav">${same.length > 1 ? `<button class="ar" data-act="bnav" data-d="-1" aria-label="Previous ${esc(def.name)}" data-tip="Previous ${esc(def.name)}">${svg('back', 12)}</button><span class="of">${i + 1} of ${same.length}</span><button class="ar" data-act="bnav" data-d="1" aria-label="Next ${esc(def.name)}" data-tip="Next ${esc(def.name)}">${svg('next', 12)}</button>` : ''}<span class="grow"></span><button data-act="blist" data-tip="All buildings|Every building in your villages, with problems flagged.|L">${svg('list', 14)} All buildings</button></div>`;
+    }
     if (!b.built) {
       const builders = s.villagers.filter(v => v.task?.bid === b.id).length;
-      h += `<div class="prog"><i style="width:${b.progress * 100}%"></i></div>
-        <dl class="kv"><dt>Progress</dt><dd>${Math.floor(b.progress * 100)}%</dd><dt>Builders</dt><dd>${builders}</dd>
-        ${b.clear.length ? `<dt>Clearing</dt><dd>${b.clear.length} left</dd>` : ''}</dl>
-        <div class="sub">${builders ? 'Idle villagers come help automatically.' : 'Waiting for an idle villager to help.'}</div>
-        <div class="actions"><button class="btn red sm" data-act="demolish">${svg('trash', 14)} Cancel (refund)</button></div>`;
-      return h;
+      h += `<div class="ip-sec"><div class="cap">${svg('hammer', 14)} Construction<span class="r">${Math.floor(b.progress * 100)}%</span></div>
+        <div class="pbar"><i style="width:${b.progress * 100}%"></i></div>
+        <dl class="kv"><dt>Builders</dt><dd>${builders}</dd>${b.clear.length ? `<dt>Trees to clear</dt><dd>${b.clear.length}</dd>` : ''}</dl>
+        <div class="desc">${builders ? 'Idle villagers come and help automatically.' : s.weather?.storm ? 'Builders are sheltering from the storm.' : 'Waiting for an idle villager to help. Free someone up in the Villagers tab.'}</div></div>
+        ${r7SiteHtml(this, b)}<div class="actions"><button class="btn red sm" data-act="demolish">${svg('trash', 14)} Cancel (refund)</button></div>`;
+      return h + '</div>';
     }
-    h += `<dl class="kv">`;
-    if (def.workers) h += `<dt>Workers</dt><dd><span class="stepper"><button class="minus" data-act="unstaff" aria-label="Remove worker">${svg('minus', 12)}</button>${b.workers.length}/${workersOf(b)}<button data-act="staff" aria-label="Add worker">${svg('plus', 12)}</button></span></dd>`;
-    if (def.workers) h += `<dt>Status</dt><dd>${esc(b.status || (b.workers.length ? 'Working' : 'No workers'))}</dd>`;
-    if (def.housing) h += `<dt>Housing</dt><dd>${housingOf(b)} beds</dd>`;
-    if (def.storage && b.type !== 'campfire') h += `<dt>Storage</dt><dd>+${storageOf(b)}</dd>`;
-    if (DECOR[b.type]) h += `<dt>Happiness</dt><dd>+${DECOR[b.type].joy}</dd>`;
-    if (b.type === 'farm') h += `<dt>Crop</dt><dd>${CROPS[b.data.crop || 'wheat'].name}</dd><dt>Field</dt><dd>${{ empty: 'Needs sowing', growing: `Growing ${Math.floor(b.data.grow * 100)}%`, ripe: 'Ready to harvest!' }[b.data.stage]}</dd>`;
-    if (b.type === 'watchtower') h += `<dt>Beasts driven off</dt><dd>${s.stats.fended || 0}</dd><dt>Watch range</dt><dd>${13 + lvlOf(b) * 2} tiles</dd>`;
-    if (b.type === 'tavern') h += `<dt>Tavern cheer</dt><dd>${s.tavernJoy > 0 ? `+12 joy · ${Math.ceil(s.tavernJoy)}s` : 'Quiet'}</dd>`;
-    if (b.type === 'wizard') h += `<dt>Mana</dt><dd>${Math.floor(s.magic.mana)} / ${sim.manaCap()}</dd>`;
-    if (b.type === 'school') h += `<dt>Pupils</dt><dd>${s.villagers.filter(v => v.home === b.sid && v.age >= 5 && v.age < 14).length}</dd>`;
-    if (b.type === 'campfire') {
-      const pop = s.villagers.filter(v => v.home === b.sid).length;
-      h += `<dt>Villagers</dt><dd>${pop}/${sim.housingIn(b.sid)}</dd><dt>Territory</dt><dd>${sim.settlementRadius(b.sid)} tiles</dd>`;
+    // live status with progress
+    const st = this.bStatus(b);
+    if (st) {
+      let prog = 0;
+      if (b.type === 'farm') prog = b.data.stage === 'ripe' ? 1 : b.data.grow || 0;
+      else for (const id of b.workers) { const v = sim.vById.get(id); if (v?.act && !v.act.idle && v.act.dur < 999) prog = Math.max(prog, v.act.t / v.act.dur); }
+      h += `<div class="ip-sec"><div class="statusline ${st.dot}"><span class="dot"></span><span>${esc(st.text)}</span></div>${def.workers ? `<div class="pbar"><i style="width:${Math.round(prog * 100)}%"></i></div>` : ''}</div>`;
     }
-    h += `</dl><div class="sub">${esc(def.desc || '')}</div>`;
-    h += this.chainHtml(b);
+    // workers as portraits: tap a face to see them, × to send them off, + to hire
+    if (def.workers) {
+      const cap = workersOf(b), idle = s.villagers.some(v => v.job === 'idle' && stageOf(v) === 'adult');
+      let slots = '';
+      for (let i = 0; i < cap; i++) {
+        const v = sim.vById.get(b.workers[i]);
+        slots += v ? `<div class="wslot"><button class="av" data-act="selv" data-id="${v.id}" data-tip="${esc(v.name)}|${esc(v.task?.label || JOBS[v.job].name)}">${faceSvg(v, 38)}</button><button class="rm" data-act="unstaffv" data-id="${v.id}" aria-label="Remove ${esc(v.name)}" data-tip="Remove from this job|They become idle and help with building.">${svg('minus', 10)}</button><span class="nm">${esc(v.name.split(' ')[0])}</span></div>`
+          : `<div class="wslot empty"><button class="av" data-act="staff" aria-label="Add a worker" data-tip="${idle ? 'Add a worker|The nearest idle villager takes the job.' : 'No one is idle|Free someone up in the Villagers tab, or build more cottages.'}">${svg('plus', 16).replace('#fff', '#c48a4a')}</button><span class="nm">${idle ? 'Add' : 'No one idle'}</span></div>`;
+      }
+      if (lvl < MAX_LVL) slots += `<div class="wslot locked"><span class="av">${svg('lock', 16)}</span><span class="nm">Lv ${lvl + 1}</span></div>`;
+      h += `<div class="ip-sec"><div class="cap">${svg('people', 14)} Workers<span class="r">${b.workers.length}/${cap} ${esc(JOBS[def.job].name.toLowerCase())}s</span></div><div class="wslots">${slots}</div></div>`;
+    }
+    // homes: who lives here
+    if (def.housing) {
+      const res = s.villagers.filter(v => sim.bedFor(v).b === b);
+      if (res.length) h += `<div class="ip-sec"><div class="cap">${svg('house', 14)} Residents<span class="r">${res.length}/${housingOf(b)}</span></div><div class="wslots">${res.map(v => `<div class="wslot"><button class="av" data-act="selv" data-id="${v.id}">${faceSvg(v, 38)}</button><span class="nm">${esc(v.name.split(' ')[0])}</span></div>`).join('')}</div></div>`;
+    }
+    // details
+    let kv = '';
+    if (def.housing) kv += `<dt>Beds</dt><dd>${housingOf(b)}</dd>`;
+    if (def.storage && b.type !== 'campfire') kv += `<dt>Storage</dt><dd>+${storageOf(b)} each good</dd>`;
+    if (DECOR[b.type]) kv += `<dt>Happiness</dt><dd>+${DECOR[b.type].joy}</dd>`;
+    if (b.type === 'farm') kv += `<dt>Crop</dt><dd>${CROPS[b.data.crop || 'wheat'].name}</dd><dt>Field</dt><dd>${{ empty: 'Needs sowing', growing: `Growing ${Math.floor(b.data.grow * 100)}%${s.weather?.rain && sim.seasonIdx() !== 3 ? ' · rain +60%' : ''}`, ripe: 'Ready to harvest!' }[b.data.stage]}</dd>`;
+    if (b.type === 'watchtower') kv += `<dt>Beasts driven off</dt><dd>${s.stats.fended || 0}</dd><dt>Watch range</dt><dd>${13 + lvl * 2} tiles</dd>`;
+    if (b.type === 'tavern') kv += `<dt>Tavern cheer</dt><dd>${s.tavernJoy > 0 ? `+12 joy · ${Math.ceil(s.tavernJoy)}s` : 'Quiet'}</dd>`;
+    if (b.type === 'school') kv += `<dt>Pupils</dt><dd>${s.villagers.filter(v => v.home === b.sid && v.age >= 5 && v.age < 14).length}</dd>`;
+    if (b.type === 'campfire') { const pop = s.villagers.filter(v => v.home === b.sid).length; kv += `<dt>Villagers</dt><dd>${pop}/${sim.housingIn(b.sid)}</dd><dt>Territory</dt><dd>${sim.settlementRadius(b.sid)} tiles</dd>`; }
+    h += `<div class="ip-sec"><div class="desc">${esc(def.desc || (DECOR[b.type] ? 'A cozy touch that makes villagers happier.' : ''))}</div>${kv ? `<dl class="kv">${kv}</dl>` : ''}`;
     if (b.type === 'farm') h += `<div class="crops">${Object.entries(CROPS).map(([k, c]) => `<button class="tog ${(b.data.crop || 'wheat') === k ? 'on' : ''}" data-act="crop" data-k="${k}">${svg(c.out === 'grain' ? 'wheat' : 'apple', 16)}${c.name}<small>${c.desc}</small></button>`).join('')}</div>`;
     if (b.type === 'wizard') h += `<button class="btn sm" style="background:linear-gradient(#b18cff,#7a5ad8);border-color:#4a2f8a;margin-top:6px;width:100%" data-act="spellbook">${svg('staff', 16)} Open the spell book</button>`;
     if (b.type === 'memorial' && s.departed?.length) h += `<div class="sub" style="margin-top:6px">In loving memory: ${s.departed.slice(-6).reverse().map(d => `${esc(d.name)} (${d.age})`).join(', ')}</div>`;
+    if (b.type === 'market') h += `<div class="sub" style="margin-top:6px">Sell when above reserve:</div><div class="sell-toggles">${SELLABLE.map(k => `<button class="tog ${s.sell[k] ? 'on' : ''}" data-act="sell" data-k="${k}">${svg(GOODS[k].icon, 16)}${GOODS[k].name} · ${GOODS[k].price}</button>`).join('')}</div>`;
+    h += `</div>`;
+    h += rpgBuildingHtml(this, b);   // forge, guild hall, watch, knowledge, spell slots (rpgui.js)
+    h += r7BuildingHtml(this, b) + r7SiteHtml(this, b);   // stores, specialty, carts, deliveries (panels.js)
+    h += this.chainHtml(b);
     // neighbour bonuses
     const syn = sim.synergy(b), helps = SYNERGY.filter(r => r.from === b.type);
     if (syn.list.length) h += `<div class="synbox">${syn.list.map(r => `<div>${svg('star', 14)}<b>+${Math.round(r.bonus * r.n * 100)}%</b> ${esc(r.why)}${r.n > 1 ? ` (×${r.n})` : ''}</div>`).join('')}</div>`;
@@ -395,62 +794,69 @@ export class UI {
     const hint = { 'No trees within reach': 'Woodcutters only walk about 20 tiles from the hut (zoom out to see the dashed ring). Build another Lumber Hut by the forest, or a Forester\'s Lodge to replant.',
       'No boulders nearby': 'Miners have broken every boulder in range. Build a Quarry near rocks — Stonecrest is full of them.',
       'Waiting for berries': 'Bushes regrow in about a minute. More bushes in the ring means more food.',
-      'Nothing to sell': 'Turn on more goods below, or wait until you have more than you keep in reserve.' }[b.status];
+      'Storage full': 'Build a Storehouse, upgrade one, or sell the surplus at a Market Stall.',
+      'Nothing to sell': 'Turn on more goods above, or wait until you have more than you keep in reserve.' }[b.status];
     if (hint) h += `<div class="hintbox">${svg('info', 16)}<span>${esc(hint)}</span></div>`;
-    if (b.type === 'market') {
-      h += `<div class="sub" style="margin-top:6px">Sell when above reserve:</div><div class="sell-toggles">${SELLABLE.map(k =>
-        `<button class="tog ${s.sell[k] ? 'on' : ''}" data-act="sell" data-k="${k}">${svg(GOODS[k].icon, 16)}${GOODS[k].name} · ${GOODS[k].price}</button>`).join('')}</div>`;
-    }
-    if (b.workers.length) {
-      h += `<div class="sub" style="margin-top:6px">${b.workers.map(id => { const v = s.villagers.find(o => o.id === id); return v ? `<a href="#" data-act="selv" data-id="${v.id}" style="color:inherit">${esc(v.name)}</a>` : ''; }).join(', ')}</div>`;
-    }
+    // upgrade: what changes, what it costs
     if (b.up) {
-      h += `<div class="sub" style="margin-top:6px">Upgrading to level ${lvlOf(b) + 1}…</div><div class="prog"><i style="width:${b.up.progress * 100}%"></i></div>`;
-    } else if (!isDecor(b.type) && lvlOf(b) < MAX_LVL) {
+      h += `<div class="ip-sec"><div class="cap">${svg('arrowup', 14)} Upgrading to Lv ${lvl + 1}<span class="r">${Math.floor(b.up.progress * 100)}%</span></div><div class="pbar"><i style="width:${b.up.progress * 100}%"></i></div></div>`;
+    } else if (!isDecor(b.type) && lvl < MAX_LVL) {
       const can = sim.canUpgrade(b), cost = sim.upgradeCost(b);
-      h += `<div class="upbox"><div class="uprow"><b>Lv ${lvlOf(b) + 1}</b><span class="cost">${costHtml(cost, s.res)}</span>
-        <button class="btn gold sm" data-act="upgrade" ${can.ok ? '' : 'disabled'}>${svg('star', 14)} Upgrade</button></div>
-        <span>${esc(sim.upgradeEffect(b))}${can.ok ? '' : ` · <em>${esc(can.why)}</em>`}</span></div>`;
+      const row = (k, a, z) => `<dt>${k}</dt><dd><s>${a}</s>→<b>${z}</b></dd>`;
+      let pv = '';
+      if (def.workers) pv += row('Workers', workersOf(b), workersOf(b) + 1) + row('Work speed', `+${(lvl - 1) * 15}%`, `+${lvl * 15}%`);
+      if (def.housing || b.type === 'campfire') pv += row('Beds', housingOf(b), housingOf(b) + 2);
+      if (def.storage) pv += row('Storage', storageOf(b), storageOf(b) + 300);
+      if (!pv) pv = `<dt>Effect</dt><dd>${esc(sim.upgradeEffect(b) || 'A sturdier look')}</dd>`;
+      h += `<div class="ip-sec upgrade"><div class="cap">${svg('arrowup', 14)} Upgrade to Lv ${lvl + 1}<span class="r costline">${costHtml(cost, s.res)}</span></div><dl class="uppv">${pv}</dl>
+        <button class="btn gold sm" style="width:100%" data-act="upgrade" ${can.ok ? '' : 'disabled'}>${svg('star', 14)} ${can.ok ? 'Upgrade' : esc(can.why || 'Upgrade')}</button></div>`;
     }
     if (b.type !== 'campfire') h += `<div class="actions"><button class="btn blue sm" data-act="move">${svg('rotate', 14)} Move</button><button class="btn red sm" data-act="demolish">${svg('trash', 14)} Demolish</button></div>`;
-    return h;
+    return h + '</div>';
   }
   // inputs → this building → outputs, with what it really made and used in the last minute,
   // plus links to the buildings that supply it and the ones that use what it makes
   chainHtml(b) {
     const sim = this.sim, ch = b.type === 'farm' ? { in: [], out: farmOut(b) } : CHAIN[b.type];
     if (!ch || !b.built) return '';
-    const ins = ch.in || [], outs = ch.out || [];
+    const ins = ch.in || [], outs = ch.out || [], res = sim.s.res;
     const rate = r => { const n = Math.round(sim.bRate(b, r)); return n ? `<i class="${n > 0 ? 'up' : 'down'}">${n > 0 ? '+' : ''}${n}/min</i>` : '<i>—</i>'; };
-    const node = r => `<span class="node">${svg(GOODS[r].icon, 22)}${esc(GOODS[r].name)}${rate(r)}</span>`;
+    const node = (r, inp) => `<span class="node">${svg(GOODS[r].icon, 22)}${esc(GOODS[r].name)}${rate(r)}<i class="stock${inp && res[r] < 5 ? ' low' : ''}">${fmt(res[r] || 0)} in store</i></span>`;
     let h = `<div class="chain"><div class="cap">Production · last minute</div><div class="flow${ins.length > 1 ? ' many' : ''}">`;
-    if (ins.length) h += ins.map(node).join('') + `<span class="arr">→</span>`;
+    if (ins.length) h += ins.map(r => node(r, true)).join('') + `<span class="arr">→</span>`;
     h += `<span class="node me"><img alt="" src="${this.g.thumbs[b.type] || ''}">${esc(defOf(b.type).name)}</span>`;
-    if (outs.length) h += `<span class="arr">→</span>` + outs.map(node).join('');
+    if (outs.length) h += `<span class="arr">→</span>` + outs.map(r => node(r, false)).join('');
     h += `</div>`;
-    // who supplies the inputs, who uses the outputs
     const near = t => { const c = sim.bCenter(b); let best = null, bd = 1e9; for (const o of sim.s.buildings) { if (o.type !== t || !o.built || o === b) continue; const oc = sim.bCenter(o), d = Math.hypot(oc.x - c.x, oc.z - c.z); if (d < bd) { bd = d; best = o; } } return best; };
-    const link = (t, verb) => { const o = near(t), d = defOf(t); return o ? `<button data-act="chainb" data-id="${o.id}">${svg(verb, 13)}${esc(d.name)}</button>` : `<button class="missing" data-act="chainbuild" data-type="${t}">${svg('plus', 13).replace('#fff', '#8a5a2b')}${esc(d.name)}</button>`; };
+    const link = (t, verb) => { const o = near(t), d = defOf(t); return o ? `<button data-act="chainb" data-id="${o.id}">${svg(verb, 13)}${esc(d.name)}</button>` : `<button class="missing" data-act="chainbuild" data-type="${t}" data-tip="Not built yet|Tap to build a ${esc(d.name)}.">${svg('plus', 13).replace('#fff', '#8a5a2b')}${esc(d.name)}</button>`; };
     const sup = [...new Set(ins.flatMap(makersOf))].filter(t => t !== b.type && BUILDINGS[t]).slice(0, 3);
     const use = [...new Set(outs.flatMap(usersOf))].filter(t => t !== b.type && BUILDINGS[t]).slice(0, 3);
     if (sup.length || use.length) h += `<div class="links">${sup.map(t => link(t, 'back')).join('')}${use.map(t => link(t, 'fast')).join('')}</div>`;
     return h + `</div>`;
   }
   villagerInfo(v) {
-    const sim = this.sim, s = sim.s;
+    const sim = this.sim;
     const opts = this.workOptions(v);
-    const sname = sim.sname(v.home);
-    const doing = v.task?.label ?? (v.job === 'idle' ? 'Looking for something to do' : 'Thinking');
-    return `<button class="x" data-act="close" aria-label="Close">${svg('close', 14)}</button>
-      ${this.renaming === 'v' + v.id ? `<div class="rename">${faceSvg(v, 26)}<input id="renameIn" maxlength="22" value="${esc(v.name)}" aria-label="Name"><button class="btn sm" data-act="renameok">Save</button></div>`
-        : `<h3>${faceSvg(v, 26)}${esc(v.name)}<button class="pen" data-act="rename" aria-label="Rename">${svg('pencil', 14)}</button></h3>`}
-      <div class="sub">${esc(sname)} · ${JOBS[v.job].name}</div>
-      <dl class="kv"><dt>Age</dt><dd>${Math.floor(v.age ?? 30)} · ${{ child: 'child', adult: 'adult', elder: 'elder' }[stageOf(v)]}${v.educated ? ' · schooled' : ''}</dd>
+    const sname = sim.sname(v.home), work = v.work ? sim.bById.get(v.work) : null;
+    return `<button class="x" data-act="close" aria-label="Close" data-tip="Close|Esc">${svg('close', 14)}</button><div class="ipwrap">
+      <div class="ip-hd">${faceSvg(v, 44)}<div style="min-width:0;flex:1">${this.renaming === 'v' + v.id ? `<div class="rename"><input id="renameIn" maxlength="22" value="${esc(v.name)}" aria-label="Name"><button class="btn sm" data-act="renameok">Save</button></div>`
+        : `<h3>${esc(v.name)}<button class="pen" data-act="rename" aria-label="Rename" data-tip="Rename">${svg('pencil', 14)}</button></h3>`}
+      <div class="sub">${esc(sname)} · ${JOBS[v.job].name}</div></div></div>
+      <div class="ip-nav"><span class="grow"></span><button data-act="vlist" data-tip="All villagers|Everyone in your villages, with jobs.|V">${svg('people', 14)} All villagers</button></div>
+      <div class="ip-sec"><div class="statusline ${v.hungry ? 'bad' : v.asleep ? 'off' : 'ok'}"><span class="dot"></span><span>${esc(this.doingOf(v))}</span></div></div>
+      <div class="ip-sec"><dl class="kv" style="margin:0"><dt>Age</dt><dd>${Math.floor(v.age ?? 30)} · ${{ child: 'child', adult: 'adult', elder: 'elder' }[stageOf(v)]}${v.educated ? ' · schooled' : ''}</dd>
       ${this.family(v)}
-      <dt>Doing</dt><dd>${esc(doing)}</dd><dt>Fed</dt><dd>${v.hungry ? '<span style="color:#c0392b">Hungry!</span>' : Math.round(100 - v.hunger / 80 * 100) + '%'}</dd>
-      ${v.carry ? `<dt>Carrying</dt><dd>${v.carry.n} ${GOODS[v.carry.res].name.toLowerCase()}</dd>` : ''}</dl>
-      ${stageOf(v) === 'adult' ? `<label class="sub" style="display:block">Job</label><select data-act="job" data-id="${v.id}" style="width:100%">${opts}</select>` : `<div class="sub">${stageOf(v) === 'child' ? 'Too young to work — plays, and studies if there\'s a school.' : 'Retired, enjoying the quiet life.'}</div>`}
-      <div class="actions"><button class="btn blue sm" data-act="follow">${svg('eye', 14)} ${this.g.followV === v ? 'Stop following' : 'Follow'}</button></div>`;
+      <dt>Fed</dt><dd>${v.hungry ? '<span style="color:#c0392b">Hungry!</span>' : Math.round(100 - v.hunger / 80 * 100) + '%'}</dd>
+      ${v.carry ? `<dt>Carrying</dt><dd>${v.carry.n} ${GOODS[v.carry.res].name.toLowerCase()}</dd>` : ''}
+      ${work ? `<dt>Works at</dt><dd><a href="#" data-act="chainb" data-id="${work.id}" style="color:inherit">${esc(defOf(work.type).name)} ›</a></dd>` : ''}</dl></div>
+      ${rpgVillagerHtml(this, v)}
+      ${r7VillagerHtml(this, v)}
+      ${stageOf(v) === 'adult' ? `<div class="ip-sec"><div class="cap">${svg('hammer', 14)} Job</div><select data-act="job" data-id="${v.id}" style="width:100%">${opts}</select></div>` : `<div class="ip-sec"><div class="desc">${stageOf(v) === 'child' ? 'Too young to work — plays, and studies if there\'s a school.' : 'Retired, enjoying the quiet life.'}</div></div>`}
+      <div class="actions"><button class="btn blue sm" data-act="follow">${svg('eye', 14)} ${this.g.followV === v ? 'Stop following' : 'Follow'}</button></div></div>`;
+  }
+  doingOf(v) {
+    if (v.task?.label) return v.task.label;
+    return v.job === 'idle' ? 'Looking for something to do' : v.job === 'child' ? 'Playing' : v.job === 'retired' ? 'Taking it easy' : this.sim.s.speed ? 'Thinking' : 'Waiting (paused)';
   }
   family(v) {
     const vb = id => this.sim.vById.get(id), link = o => o ? `<a href="#" data-act="selv" data-id="${o.id}" style="color:inherit">${esc(o.name.split(' ')[0])}</a>` : '';
@@ -463,35 +869,43 @@ export class UI {
   waitWhy(v) {
     const b = v.work ? this.sim.bById.get(v.work) : null;
     if (!b?.status || !/Waiting|Resting|Working/.test(v.task?.label || '')) return '';
-    const short = { 'No trees within reach': 'no trees', 'No boulders nearby': 'no boulders', 'Storage full': 'storage full', 'Nothing to sell': 'nothing to sell', 'Waiting for berries': 'berries regrowing' }[b.status] || b.status.toLowerCase();
-    return ` · <span class="why">${esc(short)}</span>`;
+    const sh = { 'No trees within reach': 'no trees', 'No boulders nearby': 'no boulders', 'Storage full': 'storage full', 'Nothing to sell': 'nothing to sell', 'Waiting for berries': 'berries regrowing' }[b.status] || b.status.toLowerCase();
+    return ` · <span class="why">${esc(sh)}</span>`;
   }
   workplaceCaption(v) {
     const b = v.work ? this.sim.bById.get(v.work) : null;
     return b ? `${defOf(b.type).name} · ${b.workers.length}/${workersOf(b)}` : 'Builds & clears';
   }
-  workOptions(v, short = false) {
+  workOptions(v, compact = false) {
     const s = this.sim.s;
-    let o = `<option value="0" ${v.job === 'idle' ? 'selected' : ''}>${short ? 'Idle' : 'Idle / builder'}</option>`;
+    // short labels so the closed dropdown never truncates: the current job reads "Woodcutter ★★★",
+    // the open list "Woodcutter ★★☆ · Lumber Hut 1/2" (plus #2 / the village when there are several)
+    let o = `<option value="0" ${v.job === 'idle' ? 'selected' : ''}>${compact ? 'Idle' : 'Idle / builder'}</option>`;
+    const multi = Object.keys(s.unlocked).length > 1, seen = {};
     for (const b of s.buildings) {
       const def = defOf(b.type);
       if (!def.workers || !b.built) continue;
+      const key = b.type + b.sid, k = seen[key] = (seen[key] || 0) + 1;
       const mine = v.work === b.id;
       if (!mine && b.workers.length >= workersOf(b)) continue;
-      const sn = this.sim.sname(b.sid);
-      o += `<option value="${b.id}" ${mine ? 'selected' : ''}>${mine && short ? JOBS[def.job].name : `${JOBS[def.job].name} — ${def.name} (${b.workers.length}/${workersOf(b)})${Object.keys(s.unlocked).length > 1 ? ' · ' + sn : ''}`}</option>`;
+      const job = JOBS[def.job].name + fitStars(v, def.job);
+      const where = `${def.name}${k > 1 ? ` #${k}` : ''} ${b.workers.length}/${workersOf(b)}${multi ? ' · ' + this.sim.sname(b.sid) : ''}`;
+      o += `<option value="${b.id}" ${mine ? 'selected' : ''}>${mine ? job : `${job} · ${where}`}</option>`;
     }
     return o;
   }
   infoClick(e) {
     const a = e.target.closest('[data-act]');
-    if (!a) return;
+    if (!a || a.tagName === 'SELECT') return;
     e.preventDefault();
     const sim = this.sim, sel = this.g.selected;
     const act = a.dataset.act;
+    if (act.startsWith('r7-')) { if (r7Click(this, act, a)) this.drawInfo(true); return; }
     if (act === 'close') { this.g.select(null); return; }
     if (act === 'selv') { const v = sim.vById.get(+a.dataset.id); if (v) this.g.select({ kind: 'v', v }, true); return; }
     if (act === 'follow') { this.g.follow(this.g.followV === sel.v ? null : sel.v); return; }
+    if (act === 'vlist') { this.openModal('villagers'); return; }
+    if (act === 'blist') { this.openModal('buildings'); return; }
     if (act === 'rename') {
       this.renaming = sel.kind === 'b' ? 'b' + sel.b.id : 'v' + sel.v.id; this.drawInfo(true);
       const inp = $('#renameIn'); if (inp) { inp.focus(); inp.select(); } return;
@@ -504,14 +918,16 @@ export class UI {
     }
     if (act === 'chainb') { const b = sim.bById.get(+a.dataset.id); if (b) this.g.select({ kind: 'b', b }, true); return; }
     if (act === 'chainbuild') { this.g.select(null); this.doGo({ kind: 'build', key: a.dataset.type }); return; }
+    if (act.startsWith('rpg-')) { rpgInfoClick(this, act, a, sel); this.drawInfo(true); return; }
     if (!sel || sel.kind !== 'b') return;
     const b = sel.b;
+    if (act === 'bnav') { const same = this.sameType(b), n = same[(same.indexOf(b) + +a.dataset.d + same.length) % same.length]; if (n) this.g.select({ kind: 'b', b: n }, true); return; }
     if (act === 'move') { this.g.startPlace(b.type, b); return; }
     if (act === 'crop') { b.data.crop = a.dataset.k; sfx.pop(); }
     if (act === 'spellbook') { this.openModal('magic'); return; }
     if (act === 'upgrade') { if (sim.upgrade(b)) this.toast('Builders are on their way!', 'hammer'); }
-    if (act === 'staff') { if (!sim.assign(b, null)) { this.toast(b.workers.length >= workersOf(b) ? 'This building is fully staffed' : 'No idle villagers — build more cottages!', 'person'); sfx.error(); } else sfx.pop(); }
-    if (act === 'unstaff') { const id = b.workers[b.workers.length - 1]; if (id) { sim.unassign(sim.vById.get(id)); sfx.click(); } }
+    if (act === 'staff') { if (!sim.assign(b, null)) { this.toast(b.workers.length >= workersOf(b) ? 'This building is fully staffed' : 'No idle villagers — free someone up or build more cottages', 'person'); sfx.error(); } else sfx.pop(); }
+    if (act === 'unstaffv') { const v = sim.vById.get(+a.dataset.id); if (v) { sim.unassign(v); sfx.click(); this.toast(`${v.name.split(' ')[0]} is now idle`, 'person'); } }
     if (act === 'sell') { sim.s.sell[a.dataset.k] = !sim.s.sell[a.dataset.k]; sfx.click(); }
     if (act === 'demolish') {
       if (a.dataset.sure) { sim.demolish(b); this.g.select(null); sfx.place(); return; }
@@ -520,74 +936,123 @@ export class UI {
     this.drawInfo(true);
   }
 
-  // ── build tray ──
-  openTray(kind) {
+  // ── build tray: category tabs, then cards ──
+  trayCats(kind = this.tray) { return CATS[kind]; }
+  catTypes(kind, cat) {
+    const order = kind === 'build' ? ['clear', ...BUILD_ORDER, 'road', 'pave'] : ['road', 'pave', ...DECOR_ORDER];
+    if (!cat || cat.id === 'all') return order;
+    const listed = new Set(CATS[kind].flatMap(c => c.types || []));
+    return [...cat.types, ...(cat.rest ? order.filter(t => !listed.has(t)) : [])].filter(t => t === 'clear' || t === 'pave' || t === 'road' || defOf(t));
+  }
+  isLocked(t) { const s = this.sim.s, d = defOf(t); return !d ? false : d.rare ? !(s.tokens?.[t] > 0) : d.lvl > s.level; }
+  openTray(kind, cat) {
+    if (this.modal) this.closeModal();
+    const t = $('#tray'), was = this.tray === kind;
+    clearTimeout(this.trayT);
     this.tray = kind;
-    $('#tray').classList.remove('hidden');
+    t.classList.remove('hidden', 'out');
+    if (!was) restart(t, 'in');
     $('#dockbar').classList.add('hidden');
-    const order = kind === 'build' ? ['clear', ...BUILD_ORDER] : ['pave', ...DECOR_ORDER];
-    $('#cards').innerHTML = order.map(t => {
-      if (t === 'clear') return `<button class="card" data-type="clear"><img alt="" src="${this.g.thumbs.clear}"><div class="nm">Clear Trees</div><div class="cost"><span>tap trees</span></div></button>`;
-      if (t === 'pave') return `<button class="card" data-type="pave"><img alt="" src="${this.g.thumbs.pave}"><div class="nm">Stone Path</div><div class="cost"><span>${svg('stone', 12)}1 / tile</span></div></button>`;
+    this.trayCat = cat || (was ? this.trayCat : this.catMem[kind]) || 'all';
+    if (!CATS[kind].some(c => c.id === this.trayCat)) this.trayCat = 'all';
+    this.drawTrayTabs();
+    this.drawCards(!was);
+    if (!was) sfx.open();
+  }
+  setTrayCat(id) {
+    this.trayCat = this.catMem[this.tray] = id;
+    this.drawTrayTabs(); this.drawCards(true);
+    $('#cards').scrollLeft = 0;
+  }
+  drawTrayTabs() {
+    const kind = this.tray;
+    $('#trayTabs').innerHTML = CATS[kind].map(c => {
+      const types = this.catTypes(kind, c), open = types.filter(t => !this.isLocked(t)).length;
+      return `<button role="tab" aria-selected="${c.id === this.trayCat}" class="${c.id === this.trayCat ? 'on' : ''}" data-cat="${c.id}" data-tip="${esc(c.name)}|${open} of ${types.length} available${finePointer() ? ' · [ and ] switch tabs' : ''}">${svg(c.icon, 18)}${esc(c.name)}<span class="n">${open}</span></button>${c.id === 'all' ? '<span class="sep"></span>' : ''}`;
+    }).join('');
+    const on = $('#trayTabs .on'), tt = $('#trayTabs');
+    if (on && (on.offsetLeft < tt.scrollLeft || on.offsetLeft + on.offsetWidth > tt.scrollLeft + tt.clientWidth)) tt.scrollLeft = on.offsetLeft - 30;
+  }
+  drawCards(anim) {
+    const kind = this.tray, cat = CATS[kind].find(c => c.id === this.trayCat);
+    // available first (in the usual order), then locked by unlock level
+    const types = this.catTypes(kind, cat).map((t, i) => ({ t, i, lk: this.isLocked(t), lvl: defOf(t)?.lvl || 0 }))
+      .sort((a, b) => a.lk - b.lk || (a.lk ? a.lvl - b.lvl : 0) || a.i - b.i).map(o => o.t);
+    $('#cards').innerHTML = types.map((t, i) => {
+      const a = anim ? ` in" style="--i:${Math.min(i, 14)}` : '';
+      if (t === 'clear') return `<button class="card${a}" data-type="clear" data-tip="@card"><img alt="" src="${this.g.thumbs.clear}"><div class="nm">Clear Trees</div><div class="cost"><span class="txt">tap trees</span></div></button>`;
+      if (t === 'pave' || t === 'road') return r7CardHtml(t, this, a);
       const d = defOf(t);
-      return `<button class="card${d.rare ? ' rare' : ''}" data-type="${t}"><img alt="" src="${this.g.thumbs[t] || ''}"><div class="nm">${esc(d.name)}</div><div class="cost"></div></button>`;
+      const role = d.workers ? `${svg('person', 12)}${d.workers}` : d.housing ? `${svg('house', 12)}${d.housing}` : d.storage ? `${svg('bag', 12)}+` : DECOR[t] && d.joy ? `${svg('smile', 12)}+${d.joy}` : '';
+      return `<button class="card${d.rare ? ' rare' : ''}${a}" data-type="${t}" data-tip="@card"><img alt="" src="${this.g.thumbs[t] || ''}">${role ? `<span class="role">${role}</span>` : ''}<div class="nm">${esc(d.name)}</div><div class="cost"></div></button>`;
     }).join('');
     this.refreshCards();
-    sfx.open();
+    if (this.g.place) this.markCard(this.g.place.type);
   }
   refreshCards() {
     const s = this.sim.s;
     for (const c of document.querySelectorAll('#cards .card')) {
       const t = c.dataset.type;
-      if (t === 'clear' || t === 'pave') continue;
-      const d = defOf(t), have = s.tokens?.[t] || 0, locked = d.rare ? !have : d.lvl > s.level;
-      c.classList.toggle('locked', locked);
-      const cost = costHtml(d.cost, s.res);
-      const html = d.rare ? (have ? `<span>Free · ×${have}</span>` : `<span>Chests only</span>`) : locked ? `<span>Level ${d.lvl}</span>` : cost;
+      if (t === 'clear' || t === 'pave' || t === 'road') continue;
+      const d = defOf(t), have = s.tokens?.[t] || 0, locked = this.isLocked(t);
+      const cant = !locked && !d.rare && !this.sim.canAfford(d.cost);
+      c.classList.toggle('locked', locked); c.classList.toggle('cant', cant);
+      const html = d.rare ? (have ? `<span class="txt">Free · ×${have}</span>` : (d.festive ? '<span class="txt">Festival shop</span>' : `<span class="txt">Chests only</span>`)) : locked ? `<span class="txt">Unlocks at Lv ${d.lvl}</span>` : costHtml(d.cost, s.res);
       const ce = c.querySelector('.cost');
       if (ce.innerHTML !== html) ce.innerHTML = html;
-      let lk = c.querySelector('.lock');
-      if (locked && !lk && !d.rare) c.insertAdjacentHTML('beforeend', `<span class="lock">${svg('lock', 12)}${d.lvl}</span>`);
+      const lk = c.querySelector('.lock');
+      if (locked && !lk && !d.rare) c.insertAdjacentHTML('beforeend', `<span class="lock">${svg('lock', 12)}Lv ${d.lvl}</span>`);
       if (!locked && lk) lk.remove();
     }
   }
-  cardTip(card) {
-    const type = card.dataset.type, tip = $('#cardtip');
-    if (type === 'pave') {
-      tip.innerHTML = `<b>Stone Path</b><p>Paint cobbled paths inside your settlements. Villagers walk 50% faster on stone. Costs 1 stone per tile; tap a stone again to lift it and get the stone back.</p>`;
-    } else if (type === 'clear') {
-      tip.innerHTML = `<b>Clear Trees</b><p>Mark trees to fell. Woodcutters go for marked trees first, and idle villagers help too. Click a marked tree again to unmark it.</p>`;
-    } else {
-      const d = defOf(type), s = this.sim.s;
-      let rows = '';
-      if (d.workers) rows += `<dt>Workers</dt><dd>${d.workers} ${JOBS[d.job].name.toLowerCase()}${d.workers > 1 ? 's' : ''}</dd>`;
-      if (d.housing) rows += `<dt>Homes</dt><dd>${d.housing} villagers</dd>`;
-      if (d.storage) rows += `<dt>Storage</dt><dd>+${d.storage} each</dd>`;
-      if (DECOR[type]) rows += `<dt>Happiness</dt><dd>+${d.joy}</dd>`;
-      if (d.time) rows += `<dt>Build work</dt><dd>${d.time}s</dd>`;
-      const near = SYNERGY.filter(r => r.to === type), helps = SYNERGY.filter(r => r.from === type);
-      if (near.length) rows += `<dt>Likes being near</dt><dd>${near.map(r => `${defOf(r.from).name} +${Math.round(r.bonus * 100)}%`).join(', ')}</dd>`;
-      if (helps.length) rows += `<dt>Boosts</dt><dd>${helps.map(r => defOf(r.to).name).join(', ')}</dd>`;
-      if (!d.rare) rows += `<dt>Cost</dt><dd>${Object.entries(d.cost || {}).map(([k, v]) => `<span style="display:inline-flex;align-items:center;gap:2px;margin-left:6px;${(s.res[k] || 0) < v ? 'color:#c0392b' : ''}">${svg(GOODS[k].icon, 14)}${v}</span>`).join('')}</dd>`;
-      if (d.lvl > s.level && !d.rare) rows += `<dt>Unlocks at</dt><dd>Level ${d.lvl}</dd>`;
-      if (d.rare) rows += `<dt>Owned</dt><dd>${s.tokens?.[type] || 0} · from gift chests</dd>`;
-      tip.innerHTML = `<b>${esc(d.name)}</b><p>${esc(d.desc || (DECOR[type] ? 'A cozy touch that makes villagers happier.' : ''))}</p><dl class="kv">${rows}</dl>`;
+  // the rich tooltip for a build card: what it is, what it makes, workers, bonuses, cost
+  cardTipHtml(type) {
+    if (type === 'pave' || type === 'road') return r7CardTip(type, this);
+    if (type === 'clear') return `<b class="t">Clear Trees</b><p>Mark trees to fell. Woodcutters go for marked trees first, and idle villagers help too. Tap a marked tree again to unmark it.</p>`;
+    const d = defOf(type), s = this.sim.s; if (!d) return '';
+    const locked = this.isLocked(type);
+    let h = `<div class="tt-hd"><img alt="" src="${this.g.thumbs[type] || ''}"><div><b class="t">${esc(d.name)}</b><span>${DECOR[type] ? (d.rare ? 'Treasure' : 'Decoration') : esc(CAT_OF[type] || 'Building')} · ${d.size[0]}×${d.size[1]} tiles</span></div></div>`;
+    h += `<p>${esc(d.desc || (DECOR[type] ? 'A cozy touch that makes villagers happier.' : ''))}</p>`;
+    const ch = type === 'farm' ? { in: [], out: ['grain', 'food'] } : CHAIN[type];
+    if (ch && (ch.out?.length || ch.in?.length)) {
+      const g = r => `${svg(GOODS[r].icon, 15)}${esc(GOODS[r].name)}`;
+      h += `<div class="flowln">${ch.in?.length ? ch.in.map(g).join(' ') + '<em>→</em>' : ''}${ch.out?.length ? ch.out.map(g).join(type === 'farm' ? ' or ' : ' ') : 'happiness'}</div>`;
     }
-    const r = card.getBoundingClientRect();
-    tip.style.left = Math.max(125, Math.min(innerWidth - 125, r.left + r.width / 2)) + 'px';
-    tip.style.top = (r.top - 10) + 'px';
-    tip.classList.remove('hidden');
+    let rows = '';
+    if (d.workers) rows += `<dt>Workers</dt><dd>${d.workers} ${esc(JOBS[d.job].name.toLowerCase())}${d.workers > 1 ? 's' : ''}</dd>`;
+    if (d.housing) rows += `<dt>Homes</dt><dd>${d.housing} villagers</dd>`;
+    if (d.storage) rows += `<dt>Storage</dt><dd>+${d.storage} each good</dd>`;
+    if (DECOR[type] && d.joy) rows += `<dt>Happiness</dt><dd>+${d.joy}</dd>`;
+    if (d.time) rows += `<dt>Build work</dt><dd>${d.time}s</dd>`;
+    if (!d.rare && Object.keys(d.cost || {}).length) rows += `<dt>Cost</dt><dd>${Object.entries(d.cost).map(([k, v]) => `<span style="display:inline-flex;align-items:center;gap:2px;${(s.res[k] || 0) < v ? 'color:#c0392b' : ''}">${svg(GOODS[k].icon, 14)}${v}</span>`).join('')}</dd>`;
+    if (d.rare) rows += `<dt>Owned</dt><dd>${s.tokens?.[type] || 0} · from gift chests</dd>`;
+    h += `<dl class="kv">${rows}</dl>`;
+    const near = SYNERGY.filter(r => r.to === type), helps = SYNERGY.filter(r => r.from === type);
+    for (const r of near) h += `<div class="syn">${svg('star', 13)}<span>+${Math.round(r.bonus * 100)}% near a ${esc(defOf(r.from).name)}: ${esc(r.why.toLowerCase())}</span></div>`;
+    h += r7SpecNote(type);
+    if (helps.length) h += `<div class="syn">${svg('fast', 13)}<span>Boosts nearby ${esc([...new Set(helps.map(r => defOf(r.to).name))].join(', '))}</span></div>`;
+    if (d.needsWater) h += `<div class="note">Must touch the shore of a lake or river.</div>`;
+    if (locked && !d.rare) h += `<div class="note bad">${svg('lock', 13)} Unlocks at level ${d.lvl} (you're level ${s.level}).</div>`;
+    else if (locked) h += `<div class="note">${d.festive ? 'Buy one with festival tokens at the festival shop.' : 'Find one in a gift chest in the woods.'}</div>`;
+    else if (!d.rare && !this.sim.canAfford(d.cost)) h += `<div class="note bad">Not enough resources yet.</div>`;
+    return h;
   }
   markCard(type) { document.querySelectorAll('#cards .card').forEach(c => c.classList.toggle('sel', c.dataset.type === type)); }
   closeTray() {
+    if (!this.tray) return;
     this.tray = null;
-    $('#tray').classList.add('hidden');
-    $('#dockbar').classList.remove('hidden');
+    const t = $('#tray'), d = $('#dockbar');
+    t.classList.remove('in'); t.classList.add('out');
+    clearTimeout(this.trayT);
+    this.trayT = setTimeout(() => { t.classList.add('hidden'); t.classList.remove('out'); }, 170);
+    d.classList.remove('hidden'); restart(d, 'in');
+    this.hideTip();
   }
 
   placeBar(show, msg = '', bad = false, touch = false, title = '') {
-    $('#placebar').classList.toggle('hidden', !show);
-    $('#cardtip').classList.add('hidden');
+    const pb = $('#placebar'), was = !pb.classList.contains('hidden');
+    pb.classList.toggle('hidden', !show);
+    if (show && !was) restart(pb, 'in');
     $('#pMsg').innerHTML = (title ? `<b>${esc(title)}</b>` : '') + esc(msg);
     $('#pMsg').classList.toggle('bad', bad);
     $('#pOk').classList.toggle('hidden', !touch);
@@ -595,36 +1060,45 @@ export class UI {
 
   // ── modals ──
   openModal(kind) {
+    const m = $('#modal');
+    clearTimeout(this.modalT);
+    const was = !!this.modal;
     this.modal = kind;
-    $('#modal').classList.remove('hidden');
-    this.drawModal();
-    sfx.open();
+    m.classList.remove('hidden', 'closing');
+    if (!was) restart(m, 'opening');
+    m.querySelector('.box').classList.toggle('tall', ['villagers', 'buildings', 'inventory', 'stats', 'log', 'settings', 'guild'].includes(kind));
+    this.drawModal(false, was);
+    this.drawDock();
+    this.hideTip(); this.hideResTip();
+    if (!was) sfx.open(); else sfx.click();
   }
-  closeModal() { this.modal = null; $('#modal').classList.add('hidden'); }
-  drawModal(refresh) {
+  closeModal() {
+    if (!this.modal) return;
+    this.modal = null;
+    const m = $('#modal');
+    m.classList.remove('opening'); m.classList.add('closing');
+    clearTimeout(this.modalT);
+    this.modalT = setTimeout(() => { m.classList.add('hidden'); m.classList.remove('closing'); }, 170);
+    this.drawDock(); this.hideTip();
+  }
+  drawDock() {
+    const on = { villagers: 'villagers', buildings: 'villagers', inventory: 'inventory' }[this.modal];
+    document.querySelectorAll('#dockbar [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === on));
+  }
+  drawModal(refresh, swap) {
     const k = this.modal, sim = this.sim, s = sim.s;
-    const titles = { villagers: ['people', 'Villagers'], inventory: ['bag', 'Inventory'], worldmap: ['map', 'World'], shop: ['shop', 'Shop'],
-      settings: ['gear', 'Settings'], log: ['mail', 'Village News'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'] };
-    $('#mIcon').innerHTML = svg(titles[k][0], 26);
-    $('#mTitle').textContent = titles[k][1];
+    if (!k) return;
+    const titles = { villagers: ['people', 'Villagers'], buildings: ['list', 'Buildings'], inventory: ['bag', 'Inventory'], worldmap: ['map', 'World'], shop: ['shop', 'Shop'],
+      settings: ['gear', 'Settings'], log: ['mail', 'Village News'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
+    const head = k === 'villagers' || k === 'buildings'
+      ? `<span class="seg" role="tablist"><button data-act="mtab" data-m="villagers" class="${k === 'villagers' ? 'on' : ''}" role="tab">${svg('people', 18)}Villagers <small>${s.villagers.length}</small></button><button data-act="mtab" data-m="buildings" class="${k === 'buildings' ? 'on' : ''}" role="tab">${svg('house', 18)}Buildings <small>${s.buildings.filter(b => !isDecor(b.type)).length}</small></button></span>`
+      : esc(titles[k][1]);
+    if (head !== this.lastHead) { this.lastHead = head; $('#mTitle').innerHTML = head; }
+    $('#mIcon').innerHTML = k === 'villagers' || k === 'buildings' ? '' : svg(titles[k][0], 26);
     let h = '';
-    if (k === 'villagers') {
-      const idle = s.villagers.filter(v => v.job === 'idle').length;
-      h += `<div class="summary tight"><span class="chip" title="Housed">${svg('house', 16)}${s.villagers.length}/${sim.housing()}</span>
-        <span class="chip" title="Happiness">${svg('smile', 16)}${Math.round(s.happiness)}</span>
-        <span class="chip" title="Idle">${svg('person', 16)}${idle} idle</span>
-        <span class="chip" title="Hungry">${svg('apple', 16)}${s.villagers.filter(v => v.hungry).length}</span></div>`;
-      const jobs = [...new Set(s.villagers.map(v => v.job))];
-      const multi = Object.keys(s.unlocked).length > 1;
-      const f = this.vFilter && jobs.includes(this.vFilter) ? this.vFilter : 'all';
-      h += `<div class="chips"><button class="chipf ${f === 'all' ? 'on' : ''}" data-act="vf" data-f="all">All ${s.villagers.length}</button>${jobs.map(j =>
-        `<button class="chipf ${f === j ? 'on' : ''}" data-act="vf" data-f="${j}">${JOBS[j].name} ${s.villagers.filter(v => v.job === j).length}</button>`).join('')}</div>`;
-      h += `<div class="actions" style="margin:0 0 8px"><button class="btn sm" data-act="autoassign" ${idle ? '' : 'disabled'}>${svg('people', 16)} Give idle villagers jobs</button></div>`;
-      h += `<div class="sub" style="font-size:12px;color:var(--ink2);margin-bottom:6px">Idle villagers build construction sites and clear marked trees. Pick a job to send someone to work.</div>`;
-      h += s.villagers.filter(v => f === 'all' || v.job === f).map(v => `<div class="vrow">${faceSvg(v)}
-        <div><b>${esc(v.name)} <span class="age">${Math.floor(v.age ?? 30)}</span></b> ${v.hungry ? '<span style="color:#c0392b;font-size:11px">hungry</span>' : ''}<div class="doing">${esc(v.task?.label ?? 'Idle')}${this.waitWhy(v)}${multi ? ' · ' + esc(sim.sname(v.home)) : ''}</div></div>
-        <div class="jobcell"><select data-act="job" data-id="${v.id}">${this.workOptions(v, true)}</select>${v.work ? `<button class="cap" data-act="openb" data-id="${v.work}">${esc(this.workplaceCaption(v))} ›</button>` : `<small>${esc(this.workplaceCaption(v))}</small>`}</div></div>`).join('');
-    } else if (k === 'inventory') {
+    if (k === 'villagers') h = this.villagersHtml();
+    else if (k === 'buildings') h = this.buildingsHtml();
+    else if (k === 'inventory') {
       const cap = sim.cap();
       h += `<div class="summary"><span class="chip">${svg('house', 18)}Storage ${cap} per good</span><span class="chip">${svg('coin', 18)}${fmt(s.res.coins)}</span><span class="chip">${svg('gem', 18)}${s.res.gems}</span></div><div class="grid">`;
       for (const key of SELLABLE) {
@@ -635,7 +1109,7 @@ export class UI {
           <div class="small">${esc(g.desc)}</div><div class="small"><b>From:</b> ${esc(g.from)}</div><div class="small"><b>Uses:</b> ${esc(g.uses)}</div>
           <button class="btn gold sm" data-act="sell10" data-k="${key}" ${n < 10 ? 'disabled' : ''}>Sell 10 · ${svg('coin', 12)}${half * 10}</button></div>`;
       }
-      const tok = RARE.filter(t => s.tokens?.[t] > 0);
+      const tok = [...RARE, ...Object.values(FESTIVE).flat()].filter(t => s.tokens?.[t] > 0);
       h += `</div><h3 style="margin:12px 0 6px">${svg('gift', 20)} Treasures</h3>` + (tok.length
         ? `<div class="grid">${tok.map(t => `<div class="tile" style="align-items:center;text-align:center"><img src="${this.g.thumbs[t]}" width="64" height="56" alt=""><b style="font-size:13px">${esc(DECOR[t].name)} ×${s.tokens[t]}</b><span class="small">${esc(DECOR[t].desc)}</span><button class="btn sm" data-act="placetok" data-t="${t}">Place it</button></div>`).join('')}</div>`
         : `<p class="sub" style="font-size:12px;color:var(--ink2)">Gift chests turn up in the woods every day or so. Some hold rare decorations you can't build.</p>`);
@@ -652,8 +1126,9 @@ export class UI {
           right = `<button class="btn sm ${ok ? '' : 'ghost'}" data-act="settle" data-sid="${st.id}" ${ok ? '' : 'disabled'}>Settle</button>`;
         }
         h += `<div class="sett">${svg(un ? 'house' : 'lock', 28)}<div class="meta"><b>${esc(sim.sname(st.id))}</b>${un ? `${pop} villagers · ${st.blurb}` :
-          `<span class="costline">Level ${st.unlock.lvl} · ${costHtml(st.unlock.cost, s.res)}</span>${st.blurb}`}</div>${right}</div>`;
+          `<span class="costline">Level ${st.unlock.lvl} · ${costHtml(st.unlock.cost, s.res)}</span>${st.blurb}`}${r7WorldRow(this, st.id)}</div>${right}</div>`;
       }
+      if (Object.keys(s.unlocked).length > 1) h += `<button class="btn sm" style="margin-top:8px;width:100%" data-act="r7-trade">${svg('wood', 16)} Stores &amp; trade routes</button>`;
       h += `</div></div>`;
     } else if (k === 'shop') {
       h += `<div class="summary"><span class="chip">${svg('gem', 18)}${s.res.gems} gems</span></div><p class="sub" style="font-size:12px;color:var(--ink2);margin-bottom:8px">Gems come from quests and levelling up. No real money here — just cozy trades.</p><div class="grid">`;
@@ -668,28 +1143,24 @@ export class UI {
       h += `<div class="summary"><button class="btn ${st.sound ? '' : 'ghost'}" data-act="sound">${svg(st.sound ? 'sound' : 'mute', 18)} Sound ${st.sound ? 'on' : 'off'}</button>
         <button class="btn ${st.music ? '' : 'ghost'}" data-act="music">${svg('star', 18)} Music ${st.music ? 'on' : 'off'}</button>
         <button class="btn blue" data-act="quality">Graphics: ${{ high: 'High', medium: 'Medium', low: 'Low' }[st.quality] || 'High'}</button>
-        <button class="btn gold" data-act="savenow">Save now</button></div>
+        <button class="btn gold" data-act="savenow">Save now</button>
+        <button class="btn blue" data-act="r7-share" data-tip="Share code|Turn your village into a line of text to send to a friend, or load someone else's.">${svg('star', 18)} Share / load a village</button></div>
         <div class="help"><p><b>How to play.</b> Build a Lumber Hut and a Forager Hut first so you have wood and food. Idle villagers automatically build construction sites. Tap a building to add or remove workers, or use the Villagers tab to give anyone a job.</p>
         <p><b>Seasons.</b> Each season lasts three days. Spring blossom, summer sun, autumn apples, then snow — fields and berry bushes grow slowly in winter, so stock up. On the second day of every season the village holds a festival at dusk: everyone dances round the campfire, and it lifts their spirits for a whole day.</p>
+        <p><b>Weather.</b> The clock shows a three-day forecast. Rain makes crops grow faster. Storms (and winter blizzards) send everyone indoors for a while, so outdoor work and building pause — workshops keep going. You'll get a warning before one arrives.</p>
         <p><b>Gift chests</b> appear in the woods now and then — tap one to open it. Tap the campfire to rename your village, and the pencil next to anyone's name to rename them. Double-tap a villager to follow them around; the house button brings you home.</p>
         <p>Cottages bring new villagers, as long as there is food and folks are happy. Decorations raise happiness, which makes everyone work faster. Level up to unlock new buildings, then settle more clearings from the World map.</p>
-        <p><b>Controls.</b> Drag to move · scroll or pinch to zoom · right-drag, two-finger twist or <kbd>Q</kbd>/<kbd>E</kbd> to rotate · <kbd>WASD</kbd> to pan · <kbd>R</kbd> rotates while placing · <kbd>Space</kbd> pauses · <kbd>Esc</kbd> cancels.</p>
+        <p><b>Controls.</b> Drag to move · scroll or pinch to zoom · right-drag, two-finger twist or <kbd>Q</kbd>/<kbd>E</kbd> to rotate · <kbd>WASD</kbd> to pan · <kbd>R</kbd> rotates while placing · <kbd>Space</kbd> pauses · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> set the speed · <kbd>Esc</kbd> closes or cancels.</p>
+        <p><b>Shortcuts.</b> <kbd>B</kbd> build · <kbd>G</kbd> decorate · <kbd>V</kbd> villagers · <kbd>L</kbd> buildings · <kbd>I</kbd> inventory · <kbd>M</kbd> world map · <kbd>N</kbd> news · <kbd>H</kbd> home · <kbd>[</kbd> <kbd>]</kbd> switch build tabs · <kbd>?</kbd> this page. Hover (or long-press) almost anything for an explanation.</p>
         <p>Your village saves automatically in this browser.</p></div>
         <div class="actions"><button class="btn red" data-act="reset">${svg('trash', 16)} Start a new village</button></div>`;
     } else if (k === 'log') {
       h += s.log.map(l => `<div class="logline"><small>Day ${Math.floor(l.t / DAY) + 1}</small>${esc(l.msg)}</div>`).join('') || '<p>No news yet.</p>';
       this.seenLog = s.log.length; this.markLog();
     } else if (k === 'magic') {
-      const m = s.magic, cap = sim.manaCap(), next = SPELLS.find(sp => !m.known.includes(sp.id));
-      if (!cap) h += `<p class="sub" style="font-size:13.5px">Build a <b>Wizard Tower</b> (level 4) and give it apprentices. They gather mana and slowly learn the spells below.</p>`;
-      h += `<div class="summary"><span class="chip">${svg('staff', 18)}Mana ${Math.floor(m.mana)} / ${cap}</span>${next ? `<span class="chip">${svg('star', 18)}Studying ${esc(next.name)} · ${Math.floor(m.study / next.study * 100)}%</span>` : '<span class="chip">All spells learned</span>'}</div>
-        <div class="prog"><i style="width:${cap ? m.mana / cap * 100 : 0}%;background:linear-gradient(90deg,#b18cff,#7fd8ff)"></i></div><div class="grid">`;
-      for (const sp of SPELLS) {
-        const known = m.known.includes(sp.id), c = sim.canCast(sp.id);
-        h += `<div class="tile ${known ? '' : 'locked'}"><div class="top">${svg(known ? sp.icon : 'lock', 24)}${esc(sp.name)}</div><div class="small">${esc(sp.desc)}</div>
-          <button class="btn sm" style="${known ? 'background:linear-gradient(#b18cff,#7a5ad8);border-color:#4a2f8a' : ''}" data-act="cast" data-id="${sp.id}" ${c.ok ? '' : 'disabled'}>${svg('staff', 14)} ${known ? (c.ok ? `Cast · ${sp.cost} mana` : esc(c.why)) : 'Not learned yet'}</button></div>`;
-      }
-      h += `</div>`;
+      h += rpgSpellbookHtml(this);          // SRD 5.1 spells, slots and attribution (rpgui.js)
+    } else if (k === 'guild') {
+      h += rpgGuildHtml(this);
     } else if (k === 'merchant') {
       const m = s.merchant;
       if (!m || m.state !== 'here') h += `<p class="sub" style="font-size:13.5px">${m && m.state === 'arriving' ? 'The merchant\'s cart is rolling up the road…' : 'The merchant is out on the road. Check back soon — they visit every few days.'}</p>`;
@@ -714,7 +1185,7 @@ export class UI {
       h += `<div class="grid">${[
         ['clock', 'Days', Math.floor(s.time / DAY) + 1], ['people', 'Villagers', s.villagers.length], ['hammer', 'Buildings', built],
         ['flower', 'Decorations', st.decor], ['axe', 'Trees felled', st.felled || 0], ['sapling', 'Saplings planted', st.produced.sapling || 0],
-        ['coin', 'Coins traded', st.earned], ['smile', 'Happiness', Math.round(s.happiness)],
+        ['coin', 'Coins traded', st.earned], ['smile', 'Happiness', Math.round(s.happiness)], ['rain', 'Showers & storms', st.rains || 0],
         ['baby', 'Babies born', st.births || 0], ['flower', 'Passed away', st.deaths || 0], ['clock', 'Oldest villager', st.oldest || 0],
         ['shield', 'Beasts driven off', st.fended || 0], ['staff', 'Spells cast', st.spells || 0],
         ...SELLABLE.map(k => [GOODS[k].icon, GOODS[k].name + ' made', st.produced[k] || 0]),
@@ -727,12 +1198,92 @@ export class UI {
       const up = [...Object.entries(BUILDINGS), ...Object.entries(DECOR)].filter(([, d]) => d.lvl > s.level).sort((a, b) => a[1].lvl - b[1].lvl).slice(0, 8);
       h += up.map(([t, d]) => `<div class="tile" style="align-items:center"><img src="${this.g.thumbs[t]}" width="64" height="56" alt=""><b style="font-size:13px">${d.name}</b><span class="small">Level ${d.lvl}</span></div>`).join('') + '</div>';
     }
+    if (R7_MODALS[k]) h = r7ModalHtml(this, k);
     const body = $('#mBody');
-    const scroll = body.scrollTop;
-    body.innerHTML = h;
-    if (refresh) body.scrollTop = scroll;
+    if (refresh) morph(body, h);
+    else {
+      body.innerHTML = h; body.scrollTop = 0;
+      if (swap) restart(body, 'swap');
+    }
     if (k === 'worldmap') this.drawMinimap();
   }
+
+  // ── villagers: who does what, with filters, grouping and one-tap jobs ──
+  villagersHtml() {
+    const sim = this.sim, s = sim.s, V = s.villagers, multi = Object.keys(s.unlocked).length > 1;
+    const adult = v => stageOf(v) === 'adult', isIdle = v => v.job === 'idle' && adult(v);
+    const idle = V.filter(isIdle).length, hungry = V.filter(v => v.hungry).length;
+    const kids = V.filter(v => stageOf(v) === 'child').length, elders = V.filter(v => stageOf(v) === 'elder').length;
+    const open = s.buildings.filter(b => b.built && defOf(b.type).workers).reduce((n, b) => n + Math.max(0, workersOf(b) - b.workers.length), 0);
+    let h = `<div class="summary tight">
+      <span class="chip" data-tip="@stat" data-t="Beds" data-b="Villagers / beds. Newcomers move in while there are free beds, food and good cheer.">${svg('house', 16)}${V.length}/${sim.housing()} beds</span>
+      <span class="chip" data-tip="@stat" data-t="Happiness" data-b="Happy villagers work faster. Decorations, food, festivals and the tavern all help.">${svg('smile', 16)}${Math.round(s.happiness)}% happy</span>
+      <span class="chip" data-tip="@stat" data-t="Open jobs" data-b="Empty worker slots in your workplaces. Upgrading a building adds a slot.">${svg('hammer', 16)}${open} open job${open === 1 ? '' : 's'}</span></div>`;
+    // filters
+    const jobs = {};
+    for (const v of V) if (adult(v) && v.job !== 'idle') jobs[v.job] = (jobs[v.job] || 0) + 1;
+    const keys = ['all', 'idle', 'hungry', ...Object.keys(jobs).sort((a, b) => jobs[b] - jobs[a] || JOBS[a].name.localeCompare(JOBS[b].name)), 'kids', 'elders'];
+    const count = { all: V.length, idle, hungry, kids, elders, ...jobs };
+    const label = { all: 'All', idle: 'Idle', hungry: 'Hungry', kids: 'Children', elders: 'Elders' };
+    let f = this.vFilter;
+    if (f !== 'all' && !count[f]) f = this.vFilter = 'all';
+    h += `<div class="chips scroll">${keys.filter(x => x === 'all' || count[x]).map(x => `<button class="chipf${(x === 'idle' || x === 'hungry') ? ' warn' : ''}${f === x ? ' on' : ''}" data-act="vf" data-f="${x}">${esc(label[x] || JOBS[x].name)} <i>${count[x]}</i></button>`).join('')}</div>`;
+    if (idle) h += `<div class="callout">${svg('person', 22)}<span><b>${idle} idle villager${idle > 1 ? 's' : ''}.</b> ${open ? `There ${open === 1 ? 'is' : 'are'} ${open} open job${open > 1 ? 's' : ''}.` : 'Every job is taken — idle folk build and clear trees. Build or upgrade workplaces for more jobs.'}</span>${open ? `<button class="btn sm" data-act="autoassign">${svg('people', 16)} Fill jobs</button>` : ''}</div>`;
+    else h += `<div class="callout calm">${svg('smile', 20)}<span>Everyone has something to do.${open ? ` ${open} job${open > 1 ? 's are' : ' is'} still open — new villagers will need them.` : ''}</span></div>`;
+    // rows, grouped when showing everyone
+    const pick = { all: () => true, idle: isIdle, hungry: v => v.hungry, kids: v => stageOf(v) === 'child', elders: v => stageOf(v) === 'elder' }[f] || (v => v.job === f && adult(v));
+    const order = v => isIdle(v) ? 0 : adult(v) ? 1 : stageOf(v) === 'child' ? 2 : 3;
+    const list = V.filter(pick).sort((a, b) => order(a) - order(b) || (order(a) === 1 ? JOBS[a.job].name.localeCompare(JOBS[b.job].name) : 0) || a.name.localeCompare(b.name));
+    const groupName = ['Idle — ready for a job', 'Working', 'Children', 'Elders'];
+    let last = -1;
+    for (const v of list) {
+      const o = order(v);
+      if (f === 'all' && o !== last) { last = o; h += `<div class="vgroup">${groupName[o]}</div>`; }
+      const tags = (v.hungry ? `<span class="vtag hungry">${svg('apple', 11)}hungry</span>` : '') + (v.asleep ? `<span class="vtag sleep">${svg('moon', 11)}asleep</span>` : '') + (v.indoors && !v.asleep && s.weather?.storm ? `<span class="vtag shelter">${svg('house', 11)}inside</span>` : '');
+      const st = stageOf(v);
+      const job = st === 'adult'
+        ? `<select data-act="job" data-id="${v.id}" aria-label="Job for ${esc(v.name)}">${this.workOptions(v, true)}</select>${v.work ? `<button class="cap" data-act="openb" data-id="${v.work}">${esc(this.workplaceCaption(v))} ›</button>` : `<small>${esc(this.workplaceCaption(v))}</small>`}`
+        : `<span class="fixed">${st === 'child' ? (v.age < 5 ? 'Toddler' : 'Too young to work') : 'Retired'}</span>`;
+      h += `<div class="vrow${isIdle(v) ? ' idle' : ''}" data-key="v${v.id}" data-act="vsel" data-id="${v.id}" aria-label="Show ${esc(v.name)} in the village">${faceSvg(v)}
+        <div><b>${esc(v.name)} <span class="age">${Math.floor(v.age ?? 30)}</span>${tags}</b><div class="doing">${esc(this.doingOf(v))}${this.waitWhy(v)}${multi ? ' · ' + esc(sim.sname(v.home)) : ''}</div></div>
+        <div class="jobcell">${job}</div></div>`;
+    }
+    return h;
+  }
+
+  // ── buildings: every building, filterable, with problems flagged ──
+  buildingsHtml() {
+    const sim = this.sim, s = sim.s, multi = Object.keys(s.unlocked).length > 1, F = this.bFilter;
+    const all = s.buildings.filter(b => !isDecor(b.type));
+    const catOf = b => b.type === 'campfire' ? 'Homes' : CAT_OF[b.type] || 'Services';
+    const attn = b => { const st = this.bStatus(b); return st && (st.cls === 'bad' || st.cls === 'warn') && !/Sheltering/.test(st.text); };
+    const nAttn = all.filter(attn).length, idle = s.villagers.filter(v => v.job === 'idle' && stageOf(v) === 'adult').length;
+    if (F.sid !== 'all' && !s.unlocked[F.sid]) F.sid = 'all';
+    let h = '';
+    if (nAttn) h += `<div class="callout">${svg('warn', 22)}<span><b>${nAttn} building${nAttn > 1 ? 's need' : ' needs'} attention.</b> ${idle ? `${idle} villager${idle > 1 ? 's are' : ' is'} idle.` : 'Tap one to see why.'}</span>${idle ? `<button class="btn sm" data-act="autoassign">${svg('people', 16)} Fill jobs</button>` : `<button class="btn sm ghost" data-act="bf" data-k="cat" data-v="attn">Show them</button>`}</div>`;
+    else h += `<div class="callout calm">${svg('smile', 20)}<span>Every building is ticking along nicely.</span></div>`;
+    if (multi) h += `<div class="chips scroll"><span class="chiplbl">Village</span>${['all', ...Object.keys(s.unlocked)].map(id => `<button class="chipf${F.sid === id ? ' on' : ''}" data-act="bf" data-k="sid" data-v="${id}">${id === 'all' ? 'All' : esc(sim.sname(id))}</button>`).join('')}</div>`;
+    const inSid = all.filter(b => F.sid === 'all' || b.sid === F.sid);
+    const cats = ['Homes', 'Resources', 'Food', 'Crafts', 'Services', 'Defense'].filter(c => inSid.some(b => catOf(b) === c));
+    if (F.cat !== 'all' && F.cat !== 'attn' && !cats.includes(F.cat)) F.cat = 'all';
+    h += `<div class="chips scroll"><button class="chipf${F.cat === 'all' ? ' on' : ''}" data-act="bf" data-k="cat" data-v="all">All <i>${inSid.length}</i></button>${nAttn ? `<button class="chipf warn${F.cat === 'attn' ? ' on' : ''}" data-act="bf" data-k="cat" data-v="attn">Needs attention <i>${inSid.filter(attn).length}</i></button>` : ''}${cats.map(c => `<button class="chipf${F.cat === c ? ' on' : ''}" data-act="bf" data-k="cat" data-v="${c}">${c} <i>${inSid.filter(b => catOf(b) === c).length}</i></button>`).join('')}</div>`;
+    const catIx = c => ['Homes', 'Resources', 'Food', 'Crafts', 'Services', 'Defense'].indexOf(c);
+    const list = inSid.filter(b => F.cat === 'all' || (F.cat === 'attn' ? attn(b) : catOf(b) === F.cat))
+      .sort((a, b) => catIx(catOf(a)) - catIx(catOf(b)) || BUILD_ORDER.indexOf(a.type) - BUILD_ORDER.indexOf(b.type) || a.id - b.id);
+    let last = '';
+    for (const b of list) {
+      const c = catOf(b);
+      if (F.cat === 'all' && c !== last) { last = c; h += `<div class="vgroup">${c}</div>`; }
+      const def = defOf(b.type), st = this.bStatus(b);
+      const slots = def.workers && b.built ? `<span class="slots" aria-label="${b.workers.length} of ${workersOf(b)} workers">${Array.from({ length: workersOf(b) }, (_, i) => `<i class="${i < b.workers.length ? '' : 'empty'}"></i>`).join('')}</span>` : '';
+      h += `<div class="brow" data-key="b${b.id}" data-act="bsel" data-id="${b.id}"><img alt="" src="${this.g.thumbs[b.type] || ''}">
+        <div style="min-width:0"><b>${esc(b.type === 'campfire' ? sim.sname(b.sid) + ' campfire' : def.name)} <span class="lvchip">Lv ${lvlOf(b)}</span></b><div class="meta">${multi ? esc(sim.sname(b.sid)) + ' · ' : ''}${st ? `<span class="stat ${st.cls}">${esc(st.text)}</span>` : esc(def.desc || '')}</div></div>
+        ${slots || '<span></span>'}<span class="chev">${svg('next', 12)}</span></div>`;
+    }
+    if (!list.length) h += `<p class="sub" style="font-size:12.5px;color:var(--ink2);padding:8px 4px">Nothing here yet.</p>`;
+    return h;
+  }
+
   modalClick(e) {
     const a = e.target.closest('[data-act]');
     if (!a) {
@@ -744,16 +1295,23 @@ export class UI {
       return;
     }
     const sim = this.sim, s = sim.s, act = a.dataset.act;
+    if (act === 'job') return;                       // the dropdown itself; handled on change
+    if (act.startsWith('rpg-')) { rpgModalClick(this, act, a); this.dirty.res = true; this.drawModal(true); return; }
+    if (act.startsWith('r7-')) { r7Click(this, act, a); this.dirty.res = true; if (this.modal) this.drawModal(true); return; }
     if (act === 'sell10') {
       const k = a.dataset.k, half = Math.max(1, Math.floor(GOODS[k].price / 2));
       if (s.res[k] >= 10) { s.res[k] -= 10; s.res.coins += half * 10; s.stats.earned += half * 10; sfx.coin(); this.dirty.res = true; }
     }
+    if (act === 'mtab') { if (a.dataset.m !== this.modal) { this.modal = a.dataset.m; this.drawModal(false, true); this.drawDock(); sfx.click(); } return; }
+    if (act === 'vsel') { const v = sim.vById.get(+a.dataset.id); if (v) { this.closeModal(); this.g.select({ kind: 'v', v }, true); } return; }
+    if (act === 'bsel') { const b = sim.bById.get(+a.dataset.id); if (b) { this.closeModal(); this.g.select({ kind: 'b', b }, true); } return; }
+    if (act === 'bf') { this.bFilter[a.dataset.k] = a.dataset.v; sfx.click(); this.drawModal(true); return; }
     if (act === 'cast') { if (sim.cast(a.dataset.id)) { this.toast(`${SPELLS.find(o => o.id === a.dataset.id).name}!`, 'staff'); this.closeModal(); return; } }
     if (act === 'ach') { if (sim.claimAch(a.dataset.id)) this.toast('Achievement reward claimed!', 'trophy'); }
     if (act === 'deal') { if (sim.merchantDeal(+a.dataset.i)) this.toast('Pleasure doing business!', 'shop'); }
-    if (act === 'placetok') { this.closeModal(); this.openTray('decor'); this.g.startPlace(a.dataset.t); this.markCard(a.dataset.t); return; }
+    if (act === 'placetok') { this.closeModal(); this.openTray('decor', DECOR[a.dataset.t]?.festive ? 'festive' : 'rare'); this.g.startPlace(a.dataset.t); this.markCard(a.dataset.t); return; }
     if (act === 'openb') { const b = sim.bById.get(+a.dataset.id); if (b) { this.closeModal(); this.g.select({ kind: 'b', b }, true); } return; }
-    if (act === 'vf') { this.vFilter = a.dataset.f; this.drawModal(true); return; }
+    if (act === 'vf') { this.vFilter = a.dataset.f; sfx.click(); this.drawModal(true); $('#mBody').scrollTop = 0; return; }
     if (act === 'autoassign') { const n = sim.autoAssign(); this.toast(n ? `${n} villager${n > 1 ? 's' : ''} got a job` : 'No open jobs — build or upgrade workplaces', 'people'); sfx.pop(); }
     if (act === 'travel') { this.g.flyToSettlement(a.dataset.sid); this.closeModal(); return; }
     if (act === 'settle') {
@@ -779,12 +1337,18 @@ export class UI {
     this.drawModal(true);
   }
   modalChange(e) {
+    if (r7Change(this, e)) return;
     const t = e.target;
     if (t.dataset.act !== 'job') return;
     const sim = this.sim, v = sim.vById.get(+t.dataset.id), bid = +t.value;
     if (!v) return;
-    if (!bid) sim.unassign(v);
-    else { const b = sim.bById.get(bid); if (b && !sim.assign(b, v)) { this.toast('That job is full', 'person'); sfx.error(); } }
+    const first = v.name.split(' ')[0];
+    if (!bid) { sim.unassign(v); this.toast(`${first} is now idle — they'll help build`, 'person'); }
+    else {
+      const b = sim.bById.get(bid);
+      if (b && sim.assign(b, v)) this.toast(`${first} is now a ${JOBS[defOf(b.type).job].name.toLowerCase()} at the ${defOf(b.type).name}`, 'hammer');
+      else { this.toast(stageOf(v) !== 'adult' ? `${first} is too young or too old to work` : 'That job is full', 'person'); sfx.error(); }
+    }
     sfx.pop();
     t.blur();
     if (this.modal === 'villagers') this.drawModal(true);
@@ -834,10 +1398,17 @@ export class UI {
     const r = this.g.view.rig;
     g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2.5; g.setLineDash([6, 4]);
     g.beginPath(); g.roundRect((r.tx + N / 2) * S - 34, (r.tz + N / 2) * S - 24, 68, 48, 10); g.stroke(); g.setLineDash([]);
+    // the ferry crossing
+    const I = this.sim.world.island;
+    if (I) {
+      g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 2; g.setLineDash([4, 4]);
+      g.beginPath(); g.moveTo((I.moor[0][0] + N / 2) * S, (I.moor[0][1] + N / 2) * S); g.lineTo((I.moor[1][0] + N / 2) * S, (I.moor[1][1] + N / 2) * S); g.stroke(); g.setLineDash([]);
+    }
     // settlement medallions + labels below
     g.font = '600 14px Fredoka, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
     for (const st of SETTLEMENTS) {
-      const c = CENTERS[st.id], un = this.sim.s.unlocked[st.id], x = (c.x + 0.5) * S, y = (c.z + 0.5) * S;
+      const c = CENTERS[st.id]; if (!c) continue;
+      const un = this.sim.s.unlocked[st.id], x = (c.x + 0.5) * S, y = (c.z + 0.5) * S;
       if (un) { g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, this.sim.settlementRadius(st.id) * S, 0, Math.PI * 2); g.stroke(); }
       g.fillStyle = un ? '#fff8e8' : '#f3e2bf'; g.strokeStyle = '#8a5a2b'; g.lineWidth = 3;
       g.beginPath(); g.arc(x, y, 13, 0, Math.PI * 2); g.fill(); g.stroke();
@@ -856,43 +1427,21 @@ export class UI {
     b.classList.toggle('hidden', n <= 0); b.textContent = n > 9 ? '9+' : n;
   }
 
-  // ── naming a newborn: a little card that doesn't stop the game ──
-  askBabyName(kid) {
-    (this.babies || (this.babies = [])).push(kid.id);
-    if (this.babies.length === 1) this.drawNameCard();
-  }
-  drawNameCard() {
-    const el = $('#namecard'), id = this.babies?.[0], kid = id && this.sim.vById.get(id);
-    if (!kid) { this.babies?.shift(); if (this.babies?.length) return this.drawNameCard(); el.classList.add('hidden'); return; }
-    const [first, ...rest] = kid.name.split(' '), par = (kid.parents || []).map(p => this.sim.vById.get(p)?.name.split(' ')[0]).filter(Boolean);
-    el.innerHTML = `<div class="row">${svg('baby', 30)}<div><b>A baby for ${esc(par.join(' & ') || 'the village')}!</b><br><small>Pick a name, or keep the one the parents chose.</small></div></div>
-      <div class="row"><input id="babyName" maxlength="14" value="${esc(first)}" aria-label="Baby's first name"><span style="font-weight:600">${esc(rest.join(' '))}</span></div>
-      <div class="row"><button class="btn sm ghost" data-act="babyskip">Keep ${esc(first)}</button><button class="btn sm" data-act="babyok" style="flex:1">${svg('heart', 14)} Name the baby</button></div>`;
-    el.classList.remove('hidden');
-    clearTimeout(this.babyTimer); this.babyTimer = setTimeout(() => this.nameBaby(true), 40000);
-  }
-  nameBaby(keep) {
-    const id = this.babies?.shift(), kid = id && this.sim.vById.get(id), inp = $('#babyName');
-    if (kid && !keep && inp?.value.trim()) {
-      const old = kid.name.split(' ')[0];
-      this.sim.renameVillager(kid, inp.value.trim().split(' ')[0]);
-      if (kid.name.split(' ')[0] !== old) this.toast(`Welcome to the world, ${kid.name.split(' ')[0]}!`, 'baby');
-    }
-    sfx.pop();
-    $('#namecard').classList.add('hidden');
-    if (this.babies?.length) setTimeout(() => this.drawNameCard(), 400);
-  }
-
   // ── toasts & floats ──
+  // One toast at a time: a new one waits until the current one has been up briefly, then
+  // replaces it once it has faded out (no stacking, no overlap); duplicates merge.
   toast(msg, icon = 'info', big = false) {
     this.tq = this.tq || [];
     if (this.tq.some(t => t.msg === msg)) return;
+    if (this.curToast?.msg === msg) { this.curToast.start = performance.now(); return; }
     if (/^Level \d+!/.test(msg)) this.tq = this.tq.filter(t => !/^Level \d+!/.test(t.msg));
     const done = / complete!$/.test(msg) && this.tq.find(t => t.done);
     if (done) { done.n++; done.msg = `${done.n} buildings complete!`; return; }
     const joined = / joined the village!$/.test(msg) && this.tq.find(t => t.joined);
     if (joined) { joined.n++; joined.msg = `${joined.n} villagers joined!`; return; }
     this.tq.push({ msg, icon, big, done: / complete!$/.test(msg), joined: / joined the village!$/.test(msg), n: 1 });
+    // a long backlog is just noise (it's all in the news log): drop the oldest small ones
+    while (this.tq.length > 4) { const i = this.tq.findIndex(t => !t.big); this.tq.splice(i < 0 ? 0 : i, 1); }
     if (!this.toastBusy) this.nextToast();
   }
   nextToast() {
@@ -900,16 +1449,26 @@ export class UI {
     const t = this.tq.shift();
     if (!t) { this.toastBusy = false; return; }
     this.toastBusy = true;
-    this.showToast(t.msg, t.icon, t.big);
-    setTimeout(() => this.nextToast(), this.tq.length ? 1400 : 600);
+    const warn = t.icon === 'storm' || /storm|blizzard/i.test(t.msg);
+    const el = this.showToast(t.msg, t.icon, t.big, warn);
+    const cur = this.curToast = { msg: t.msg, el, start: performance.now() };
+    const min = warn ? 2200 : t.big ? 1800 : 1300, life = warn ? 4400 : t.big ? 3000 : 2500;
+    const step = () => {
+      const age = performance.now() - cur.start;
+      if (age < life && !(age >= min && this.tq.length)) { this.toastT = setTimeout(step, 150); return; }
+      el.classList.add('leave');
+      setTimeout(() => { el.remove(); if (this.curToast === cur) this.curToast = null; this.nextToast(); }, 190);
+    };
+    this.toastT = setTimeout(step, 150);
   }
-  showToast(msg, icon, big) {
+  showToast(msg, icon, big, warn) {
     const el = document.createElement('div');
-    el.className = 'toast panel' + (big ? ' big' : '');
+    el.className = 'toast panel' + (big ? ' big' : '') + (warn ? ' warn' : '');
     el.innerHTML = svg(icon, big ? 30 : 22) + `<span>${esc(msg)}</span>`;
-    $('#toasts').appendChild(el);
-    while ($('#toasts').children.length > 2) $('#toasts').firstChild.remove();
-    setTimeout(() => el.remove(), 2600);
+    const box = $('#toasts');
+    for (const o of [...box.children]) o.remove();
+    box.appendChild(el);
+    return el;
   }
   float(sx, sy, text, icon, cls = '') {
     const el = document.createElement('div');

@@ -4,6 +4,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import { mulberry32 } from './rng.js';
 import { snowify } from './snow.js';
 import { surfaceTexture, mapBoxSurface, stripedCloth } from './textures.js';
+import { hasModel, instanceModel, bakedGeometry, SLOT_SURFACE } from './blender.js';
 
 // Materials are cached by colour + options. Everything gets a dusting of snow
 // in winter except people and animals (built inside withoutSnow).
@@ -15,9 +16,9 @@ export function mat(color, opts = {}) {
   if (!matCache.has(key)) {
     const m = opts.basic
       ? new THREE.MeshBasicMaterial({ color, transparent: !!opts.opacity, opacity: opts.opacity ?? 1 })
-      : new THREE.MeshLambertMaterial({ color, flatShading: true, emissive: opts.emissive ?? 0x000000,
+      : new THREE.MeshLambertMaterial({ color, flatShading: !opts.smooth, emissive: opts.emissive ?? 0x000000,
         transparent: !!opts.opacity, opacity: opts.opacity ?? 1, map: opts.map ?? null });
-    if (!opts.basic && !NOSNOW && !opts.opacity) snowify(m, false, 'built');
+    if (!opts.basic && !NOSNOW && !opts.opacity) snowify(m, false, opts.snow === 'ground' ? null : 'built');   // ground-like parts take full snow
     matCache.set(key, m);
   }
   return matCache.get(key);
@@ -141,23 +142,26 @@ function door(x, y, z, ry = 0, c = C.door) {
   return g;
 }
 
+const SMOKE_GEO = new THREE.IcosahedronGeometry(0.1, 0);
 // Smoke puffs that drift up from a chimney.
 export class Smoke {
   constructor(parent, x, y, z, color = 0xeeeeee) {
     this.puffs = [];
-    for (let i = 0; i < 5; i++) {
-      const m = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x606060, transparent: true, opacity: 0.5, depthWrite: false }));
-      m.userData.t = i / 5; parent.add(m); this.puffs.push(m);
+    // small faceted puffs that swell and fade quickly, like a toy's cotton smoke
+    for (let i = 0; i < 6; i++) {
+      const m = new THREE.Mesh(SMOKE_GEO, new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x9a9a9a, flatShading: true, transparent: true, opacity: 0.8, depthWrite: false }));
+      m.userData.t = i / 6; m.userData.spin = Math.random() * 6; parent.add(m); this.puffs.push(m);
     }
     this.o = new THREE.Vector3(x, y, z); this.on = true;
   }
   update(dt) {
     for (const p of this.puffs) {
-      p.userData.t = (p.userData.t + dt * 0.35) % 1;
+      p.userData.t = (p.userData.t + dt * 0.42) % 1;
       const t = p.userData.t;
-      p.position.set(this.o.x + Math.sin(t * 6 + p.id) * 0.08 + t * 0.25, this.o.y + t * 1.3, this.o.z);
-      p.scale.setScalar(0.5 + t * 1.6);
-      p.material.opacity = this.on ? 0.5 * Math.sin(Math.min(1, t * 4) * Math.PI / 2) * (1 - t) : 0;
+      p.position.set(this.o.x + Math.sin(t * 5 + p.id) * 0.05 + t * 0.22, this.o.y + t * 0.95, this.o.z + Math.cos(t * 4 + p.id) * 0.03);
+      p.rotation.set(t * 2 + p.userData.spin, t * 3, 0);
+      p.scale.setScalar(0.35 + t * 0.9);
+      p.material.opacity = this.on ? 0.85 * Math.min(1, t * 6) * (1 - t) * (1 - t) : 0;
     }
   }
 }
@@ -199,6 +203,47 @@ function finishSurfaces(group) {
     m.material = mat(c, { map: surfaceTexture(kind), emissive: m.material.emissive.getHex() });
   });
 }
+// ── models authored in Blender (see villages/blender) ──
+// Slots are recoloured per building; surfaces share the canvas textures.
+const SLOT_MAT = {
+  win: () => mat(C.window, { emissive: 0x3a2a00 }),
+  lamp: () => mat(0xffe08a),
+  water: () => mat(0x6cc4ee, { emissive: 0x0a3550 }),
+  snowcap: () => SNOWCAP_MAT,
+};
+// one shared material for every roof's winter snow pillow; the game shows it in deep snow
+export const SNOWCAP_MAT = new THREE.MeshLambertMaterial({ color: 0xf2f6fc, emissive: 0x1a2230 });
+SNOWCAP_MAT.visible = false;
+export function slotMaterial(slot, color, smooth = false) {
+  if (SLOT_MAT[slot]) return SLOT_MAT[slot]();
+  if (slot === 'grass' || slot === 'tuft' || slot === 'ground') return mat(color, { snow: 'ground' });   // pens and gardens snow over like the meadow
+  const surf = SLOT_SURFACE[slot];
+  if (smooth || !surf) return mat(color, smooth ? { smooth: true } : {});
+  if (surf === 'roof') return roofMat(color);
+  return mat(color, { map: surfaceTexture(surf) });
+}
+// Instance a Blender model into g; colours maps slot -> hex. Wires up the
+// chimney smoke and the night-glow markers the game looks for.
+export function blendInto(g, a, name, colours = {}) {
+  const inst = instanceModel(name, (slot, c, ms) => slotMaterial(slot, colours[slot] ?? c, ms.smooth));
+  g.add(inst.group);
+  for (const p of inst.points) {
+    if (p.name === 'smoke' && !a.smoke) { const w = p.obj.position; a.smoke = new Smoke(p.obj.parent, w.x, w.y, w.z); }
+    if (p.name === 'glow_win') p.obj.userData.halo = 'win';
+    if (p.name === 'glow_lamp') p.obj.userData.halo = 'lamp';
+  }
+  for (const [k, o] of Object.entries(inst.nodes)) if (k.startsWith('anim_')) a[k.slice(5)] = o;
+  return inst;
+}
+const TRIMS = [C.timber, C.darkwood, 0x6e4a32, 0x9a6a42];
+const SHUTTERS = [0x4f8a5a, 0x3f7fc4, 0xc9473d, 0x2f9e98, 0x8a5aa8, 0xe8a23c, 0x6b8a3a];
+const DOORS = [C.door, 0x4a6a8a, 0x8a4a3a, 0x3f6f4a, 0x7a5aa8, 0xb85a3a];
+function cottageBlend(g, a, seed, lvl) {
+  const rng = mulberry32(seed * 7919 + 13), pick = arr => arr[(rng() * arr.length) | 0];
+  const arch = (rng() * 4) | 0, two = lvl >= 3 ? 1 : 0;
+  blendInto(g, a, `cottage_${arch}_${two}`, { wall: pick(WALLS), roof: pick(ROOFS), trim: pick(TRIMS), shutter: pick(SHUTTERS), door: pick(DOORS) });
+}
+
 // Each cottage is seeded by its building id: wall and roof colours, roof
 // shape, porch, window boxes, dormer, chimney side, garden, and at level 3 an
 // upper storey.
@@ -245,6 +290,7 @@ function cottageVariant(g, a, seed, lvl) {
 }
 
 function cottage(g, a, opts = {}) {
+  if (hasModel('cottage_0_0')) return cottageBlend(g, a, opts.seed || 1, opts.lvl || 1);
   if (opts.seed) return cottageVariant(g, a, opts.seed, opts.lvl || 1);
   const wall = opts.wall ?? C.wall, roofC = opts.roof ?? C.red;
   g.add(box(1.5, 0.9, 1.3, wall, 0, 0, 0));
@@ -332,10 +378,26 @@ function farm(g, a) {
   g.add(box(2.7, 0.08, 2.7, C.soil, 0, 0, 0));
   for (let i = 0; i < 5; i++) g.add(box(2.5, 0.06, 0.22, 0x8d6340, 0, 0.08, -1.0 + i * 0.5));
   const crops = new THREE.Group(); g.add(crops);
-  const geo = new THREE.ConeGeometry(0.07, 0.4, 4);
-  for (let r = 0; r < 5; r++) for (let c = 0; c < 9; c++) {
-    const m = new THREE.Mesh(geo, mat(C.leaf)); m.castShadow = true;
-    m.position.set(-1.1 + c * 0.275, 0.3, -1.0 + r * 0.5); crops.add(m);
+  if (hasModel('crop_wheat')) {
+    // each bunch holds a wheat, cabbage and pumpkin plant; the game shows one
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 6; c++) {
+      const bunch = new THREE.Group();
+      bunch.position.set(-1.0 + c * 0.4 + (r % 2) * 0.1, 0.08, -0.9 + r * 0.6);
+      bunch.rotation.y = (r * 7 + c * 3) * 0.9;
+      for (const kind of ['wheat', 'veg', 'pumpkin']) {
+        const inst = instanceModel('crop_' + kind, (slot, col) => mat(col));
+        inst.group.userData.kind = kind; bunch.add(inst.group);
+      }
+      bunch.userData.jit = 0.85 + ((r * 5 + c * 11) % 7) / 20;
+      crops.add(bunch);
+    }
+    crops.userData.blend = true;
+  } else {
+    const geo = new THREE.ConeGeometry(0.07, 0.4, 4);
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 9; c++) {
+      const m = new THREE.Mesh(geo, mat(C.leaf)); m.castShadow = true;
+      m.position.set(-1.1 + c * 0.275, 0.3, -1.0 + r * 0.5); crops.add(m);
+    }
   }
   a.crops = crops;
   // fence on two sides
@@ -500,7 +562,13 @@ function statue(g) {
 }
 
 // ── farm animals (wander inside their pens; main.js moves them) ──
-export function chicken() { return withoutSnow(chicken_); }
+// Blender animals: the "head" node nods while grazing or pecking.
+function critter(name, colours = {}) {
+  const inst = instanceModel(name, (slot, c, ms) => mat(colours[slot] ?? c, { smooth: ms.smooth, basic: slot === 'eye' }));
+  inst.group.userData.head = inst.nodes.head;
+  return inst.group;
+}
+export function chicken() { return withoutSnow(() => hasModel('chicken') ? critter('chicken', { plume: rngPick([0xfaf6ee, 0xc98a4a, 0xf0e2c8]) }) : chicken_()); }
 function chicken_() {
   const g = new THREE.Group(), white = rngPick([0xfaf6ee, 0xc98a4a, 0xf0e2c8]);
   g.add(ball(0.09, white, 0, 0.1, 0, 1)); g.add(ball(0.055, white, 0, 0.19, 0.06, 1));
@@ -509,7 +577,7 @@ function chicken_() {
   g.userData.head = g.children[1];
   return g;
 }
-export function sheep() { return withoutSnow(sheep_); }
+export function sheep() { return withoutSnow(() => hasModel('sheep') ? critter('sheep') : sheep_()); }
 function sheep_() {
   const g = new THREE.Group();
   const wool = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 1), mat(0xf6f3ea)); wool.scale.set(1, 0.85, 1.25); wool.position.y = 0.28; wool.castShadow = true; g.add(wool);
@@ -517,7 +585,7 @@ function sheep_() {
   for (const [x, z] of [[-0.09, -0.12], [0.09, -0.12], [-0.09, 0.12], [0.09, 0.12]]) g.add(box(0.04, 0.16, 0.04, 0x2e2a28, x, 0, z));
   return g;
 }
-export function cow() { return withoutSnow(cow_); }
+export function cow() { return withoutSnow(() => hasModel('cow') ? critter('cow', { spot: rngPick([0x3a3230, 0x8a5a3a, 0x3a3230]) }) : cow_()); }
 function cow_() {
   const g = new THREE.Group();
   g.add(box(0.26, 0.24, 0.48, 0xf7f3ea, 0, 0.2, 0));
@@ -537,6 +605,14 @@ function fenceRing(g, w, d, gap = true) {
     const len = Math.hypot(x1 - x0, z1 - z0), n = Math.round(len / 0.5);
     for (let k = 0; k <= n; k++) { const t = k / n; if (gap && z0 === hd && z1 === hd && Math.abs(x0 + (x1 - x0) * t) < 0.35) continue; g.add(box(0.06, 0.34, 0.06, C.timber, x0 + (x1 - x0) * t, 0, z0 + (z1 - z0) * t)); }
     const rail = box(len, 0.04, 0.03, C.plank, (x0 + x1) / 2, 0.24, (z0 + z1) / 2); rail.rotation.y = Math.atan2(-(z1 - z0), x1 - x0); g.add(rail);
+  }
+}
+function penAnimals(g, a, w, d, make, n) {
+  a.animals = [];
+  for (let i = 0; i < n; i++) {
+    const m = make(); const x = (Math.random() - 0.5) * (w - 1), z = (Math.random() - 0.5) * (d - 1);
+    m.position.set(x, 0.04, z); g.add(m);
+    a.animals.push({ m, tx: x, tz: z, t: Math.random() * 3, w: w - 0.9, d: d - 0.9 });
   }
 }
 function pen(g, a, w, d, make, n, ground = 0x8cc463) {
@@ -693,7 +769,13 @@ function palisade(g) {
 }
 
 // ── night beasts ──
-export function beastModel(kind) { return withoutSnow(() => beast_(kind)); }
+export function beastModel(kind) { return withoutSnow(() => hasModel(kind) ? beastBlend(kind) : beast_(kind)); }
+function beastBlend(kind) {
+  const inst = instanceModel(kind, (slot, c, ms) => mat(c, { smooth: ms.smooth, basic: slot === 'eye' }));
+  const N = inst.nodes, legs = ['leg0', 'leg1', 'leg2', 'leg3'].map(k => N[k]).filter(Boolean);
+  inst.group.scale.setScalar(1.25);
+  return { group: inst.group, body: N.body, legs };
+}
 function beast_(kind) {
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   const eye = mat(0xffe25a, { basic: true });
@@ -832,12 +914,75 @@ const BUILDERS = { cottage, tiled, lumber, forager, farm, sawmill, quarry, store
   coop, orchard, beehive, pasture, weaver, dairy, creamery, brewery, tavern, school, watchtower, wizard, memorial, torch, palisade,
   fountain, fairyring, gnome, swing };
 
+// Other modules can add building builders (fn(g, a, opts)); a Blender model of
+// the same name still wins when one is exported.
+export function registerBuilder(type, fn, { pad: withPad = true } = {}) { BUILDERS[type] = fn; if (!withPad) NO_PAD.add(type); }
+const NO_PAD = new Set();
+
+// Blender models bring their own ground pad.
+const blended = type => hasModel(type) || hasModel(type + '_0') || (type === 'cottage' && hasModel('cottage_0_0'));
+
+// Per-type colours for Blender buildings, so neighbouring workplaces don't all
+// wear the same red roof.
+const TYPE_COLOURS = {
+  lumber: { roof: 0x4f8a3a }, sawmill: { roof: 0xc9473d }, bakery: { roof: C.orange, wall: 0xf6e6b4, awning: 0xf3ead6 },
+  windmill: { roof: C.red }, storehouse: { roof: 0x7a2e2a }, mason: { roof: 0x6b5a4a }, weaver: { roof: 0x7a5aa8, wall: 0xe9d8c4 },
+  creamery: { roof: 0x4f8fd9 }, brewery: { roof: 0x6b4a2a }, tavern: { roof: 0x8a3a2a }, school: { roof: C.red, wall: 0xf6e6b4 },
+  watchtower: { roof: 0x4f8a3a }, forester: {}, dock: { shutter: C.teal }, market: {},
+};
+// Dynamic bits a Blender building still needs from code (bees, orbs, flames).
+const BLEND_EXTRAS = {
+  sawmill: (g, a) => { a.bladeAxis = 'z'; },
+  beehive: (g, a) => {
+    a.bees = [];
+    const hives = [[-0.42, -0.1], [0, -0.1], [0.42, -0.1]];
+    for (let i = 0; i < 9; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.022, 5, 4), mat(0xffc81e, { basic: true })); g.add(b); a.bees.push({ m: b, h: hives[i % 3], ph: Math.random() * 6, r: 0.2 + Math.random() * 0.3 }); }
+  },
+  wizard: (g, a) => {
+    a.orbs = [];
+    for (let i = 0; i < 3; i++) { const o = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({ color: [0xb18cff, 0x7fd8ff, 0xff9ed8][i] })); g.add(o); a.orbs.push(o); }
+  },
+  coop: (g, a) => {
+    a.animals = [];
+    for (let i = 0; i < 5; i++) { const m = chicken(); const x = 0.1 + Math.random() * 0.6, z = Math.random() * 0.6 - 0.1; m.position.set(x, 0.04, z); g.add(m); a.animals.push({ m, tx: x, tz: z, t: Math.random() * 2, w: 1.3, d: 1.3, fast: true }); }
+  },
+  pasture: (g, a) => penAnimals(g, a, 2.9, 2.9, sheep, 5),
+  dairy: (g, a) => penAnimals(g, a, 2.9, 2.9, cow, 3),
+  fountain: (g, a) => {
+    const jets = new THREE.Group(); g.add(jets); a.jets = [];
+    const jm = new THREE.MeshBasicMaterial({ color: 0xcfefff, transparent: true, opacity: 0.85 });
+    for (let k = 0; k < 14; k++) { const d = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), jm); jets.add(d); a.jets.push({ m: d, t: k / 14, ang: k * 2.4 }); }
+  },
+  torch: (g, a) => {
+    const f = new THREE.Group(); f.position.y = 0.86; g.add(f);
+    f.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.22, 6), mat(0xff8a1e, { basic: true })), 0, 0.1, 0));
+    f.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.15, 6), mat(0xffd34a, { basic: true })), 0, 0.08, 0));
+    a.fire = f;
+  },
+};
+const blendName = (type, lvl) => type === 'tiled' ? `tiled_${lvl >= 3 ? 1 : 0}` : type;
+function blendBuilding(type, g, a, seed, lvl) {
+  let colours = TYPE_COLOURS[type] || {};
+  if (type === 'tiled') {
+    const rng = mulberry32(seed * 104729 + 7), pick = arr => arr[(rng() * arr.length) | 0];
+    colours = { roof: pick([C.blue, 0x66788a, 0x3f6f9a, 0x8a4f8f, 0x4f8a3a]), wall: pick([C.wall2, 0xe8e1d0, 0xd9c8b0, 0xefe3cf]), shutter: pick(SHUTTERS), door: pick(DOORS), trim: pick(TRIMS) };
+  }
+  blendInto(g, a, blendName(type, lvl), colours);
+  BLEND_EXTRAS[type]?.(g, a);
+}
+
 // Returns { group, anim } — anim holds handles to animated parts.
 export function buildModel(type, size = [2, 2], seed = 0, lvl = 1) {
   const g = new THREE.Group(), a = {};
   const inner = new THREE.Group(); g.add(inner);
-  if (!['campfire', 'farm', 'dock', 'fence', 'flowers', 'sign', 'lantern', 'bench', 'torch', 'palisade', 'coop', 'orchard', 'beehive', 'pasture', 'dairy', 'memorial', 'fountain', 'fairyring', 'gnome', 'swing'].includes(type)) inner.add(pad(size[0] * 0.92, size[1] * 0.92));
-  BUILDERS[type](inner, a, seed ? { seed, lvl } : {});
+  if (type !== 'cottage' && hasModel(blendName(type, lvl))) {
+    blendBuilding(type, inner, a, seed, lvl);
+    a.inner = inner;
+    return { group: g, anim: a };
+  }
+  if (!['campfire', 'farm', 'dock', 'fence', 'flowers', 'sign', 'lantern', 'bench', 'torch', 'palisade', 'coop', 'orchard', 'beehive', 'pasture', 'dairy', 'memorial', 'fountain', 'fairyring', 'gnome', 'swing'].includes(type) && !blended(type) && !NO_PAD.has(type)) inner.add(pad(size[0] * 0.92, size[1] * 0.92));
+  if (BUILDERS[type]) BUILDERS[type](inner, a, seed ? { seed, lvl } : {});
+  else { console.warn('No model for', type); inner.add(box(0.8, 0.6, 0.8, C.plank, 0, 0, 0)); }   // never crash on a new type
   finishSurfaces(inner);
   a.inner = inner;
   return { group: g, anim: a };
@@ -877,7 +1022,14 @@ export function merge(list) {
 }
 const T = (x, y, z, s = 1, sy = s) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion(), new THREE.Vector3(s, sy, s));
 
+// every forest shape available: Blender variants when exported, else the procedural pair
+export function treeGeos() {
+  const pick = names => names.filter(n => hasModel(n)).map(n => bakedGeometry(n));
+  const pine = pick(['tree_pine', 'tree_pine2']), round = pick(['tree_round', 'tree_round2', 'tree_round3']);
+  return { pine: pine.length ? pine : [pineGeo()], round: round.length ? round : [roundGeo()] };
+}
 export function pineGeo() {
+  if (hasModel('tree_pine')) return bakedGeometry('tree_pine');
   return merge([
     colored(new THREE.CylinderGeometry(0.06, 0.09, 0.4, 5), 0x7a4e2c, T(0, 0.2, 0)),
     colored(new THREE.ConeGeometry(0.58, 0.75, 7), 0x2f7d3a, T(0, 0.65, 0)),
@@ -886,6 +1038,7 @@ export function pineGeo() {
   ]);
 }
 export function roundGeo() {
+  if (hasModel('tree_round')) return bakedGeometry('tree_round');
   return merge([
     colored(new THREE.CylinderGeometry(0.07, 0.11, 0.55, 5), 0x7a4e2c, T(0, 0.27, 0)),
     colored(new THREE.IcosahedronGeometry(0.5, 0), 0x56a83c, T(0, 0.9, 0)),
@@ -915,7 +1068,119 @@ export function berriesGeo() {
 }
 
 // ── villagers ──
-export function villagerModel(v) { return withoutSnow(() => villager_(v)); }
+export function villagerModel(v) { return withoutSnow(() => hasModel('villager') ? villagerBlend(v) : villager_(v)); }
+
+const HAIR_STYLES = ['hair_short', 'hair_bob', 'hair_bun', 'hair_tails', 'hair_tuft', 'hair_long'];
+// a hat that says what each villager does, readable from the overview
+const JOB_HAT = { farmer: 'hat_straw', woodcutter: 'hat_cap', forester: 'hat_hood', miner: 'hat_helmet', guard: 'hat_helmet', fisher: 'hat_bucket',
+  baker: 'hat_toque', miller: 'hat_toque', mason: 'hat_band', sawyer: 'hat_band', shepherd: 'hat_straw', picker: 'hat_straw', forager: 'hat_hood', beekeeper: 'hat_bucket', milker: 'hat_cap' };
+const JOB_GEAR = { baker: 'apron', miller: 'apron', weaver: 'apron', brewer: 'apron', cheesemaker: 'apron', innkeeper: 'apron', mason: 'apron', teacher: 'apron', forager: 'pack', picker: 'pack', herder: 'pack' };
+const HAT_COLOR = { hat_straw: 0xe0b24a, hat_helmet: 0xb8bcc4, hat_toque: 0xfbf6ea, hat_hood: 0x5a7a3a, hat_bucket: 0x5f8fb0, hat_band: 0xc9473d };
+
+// every villager material, so the game can lift them a little at night
+export const VILLAGER_MATS = {
+  set: new Set(),
+  // a thin cool rim on the silhouette at night (uRim is set by the game), so villagers
+  // read against the dark without losing their colours
+  rim: { value: new THREE.Color(0, 0, 0) },
+  add(m) {
+    if (this.set.has(m)) return m;
+    this.set.add(m);
+    const rim = this.rim;
+    m.onBeforeCompile = sh => {
+      sh.uniforms.uRim = rim;
+      sh.fragmentShader = 'uniform vec3 uRim;\n' + sh.fragmentShader.replace('#include <opaque_fragment>',
+        'outgoingLight += uRim * pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 3.5);\n#include <opaque_fragment>');
+    };
+    m.customProgramCacheKey = () => 'villager-rim';
+    m.needsUpdate = true;
+    return m;
+  },
+  [Symbol.iterator]() { return this.set[Symbol.iterator](); },
+};
+function villagerBlend(v) {
+  const age = v.age ?? 30, child = age < 14, elder = age >= 66;
+  const hair = elder ? 0xdcdad4 : v.hair;
+  const colors = { shirt: v.shirt, skin: v.skin, hair, hat: v.hatColor ?? 0xc9a050 };
+  const inst = instanceModel('villager', (slot, c) => {
+    if (slot === 'eye' || slot === 'white' || slot === 'cheek') return mat(c, { smooth: true, basic: slot === 'eye' || slot === 'white' });
+    const m = mat(colors[slot] ?? c, { smooth: true }); VILLAGER_MATS.add(m); return m;
+  });
+  const N = inst.nodes, g = inst.group, body = N.body;
+  const hand = inst.points.find(p => p.name === 'hand');
+  const tool = new THREE.Group(); (hand?.obj || N.armR).add(tool);
+  if (hand) tool.position.y += 0.03;
+  const sack = ball(0.09, 0xc9a46a, 0, 0.4, 0); sack.position.z = -0.13; sack.visible = false; body.add(sack);   // slung on the back
+  // a pointy wizard hat, shown while studying magic
+  const wiz = new THREE.Group(); wiz.add(cyl(0.14, 0.14, 0.015, 12, 0x4a2f8a, 0, 0.17, 0)); wiz.add(cone(0.085, 0.28, 12, 0x5b3fa0, 0, 0.175, 0)); wiz.add(ball(0.025, 0xffd54f, 0, 0.46, 0));
+  wiz.rotation.x = -0.12; wiz.visible = false; N.head.add(wiz);
+  const bed = box(0.34, 0.06, 0.72, 0x9a6a8a, 0, 0, 0); bed.visible = false; g.add(bed);
+  const style = elder && (v.id % 3) ? 'hair_elder' : HAIR_STYLES[(v.id * 7 + 3) % HAIR_STYLES.length];
+  if (N.scarf) N.scarf.visible = false;
+  for (const k of [...HAIR_STYLES, 'hair_elder']) if (N[k]) N[k].visible = k === style;
+  // storybook proportions: adults stand about 1.2x door height; children are smaller
+  // with relatively bigger heads
+  g.scale.setScalar(child ? 0.42 + age / 14 * 0.46 : 0.9);
+  if (child) N.head.scale.setScalar(1.3 - age / 14 * 0.25);
+  // four body types, seeded per villager: stout, lanky, short and broad-shouldered
+  if (!child) {
+    const bt = (v.id * 13 + 5) % 4, T = N.torso;
+    const girth = [1.22, 0.9, 1.05, 1.1][bt], tall = [0.96, 1.08, 0.92, 1.0][bt], shoulders = [1.08, 0.94, 1.0, 1.18][bt];
+    if (T) T.scale.set(girth * (bt === 3 ? 1.08 : 1), 1, girth);
+    g.scale.y *= tall;
+    N.armL.position.x *= shoulders; N.armR.position.x *= shoulders;
+    if (N.apron) N.apron.scale.set(girth, 1, girth);
+    if (N.pack) N.pack.position.z -= (girth - 1) * 0.1;
+  }
+  // elders stoop a little: head and shoulders forward
+  if (elder) { N.head.rotation.x = 0.22; N.head.position.z += 0.02; if (N.torso) N.torso.rotation.x = 0.1; }
+  const m = { group: g, body, hipL: N.hipL, hipR: N.hipR, armL: N.armL, armR: N.armR, head: N.head, tool, sack, toolKind: null, wiz, bed,
+    stage: child ? 'child' : elder ? 'elder' : 'adult', nodes: N, style, blend: true };
+  dressVillager(m, v);
+  return m;
+}
+
+// Show the hat and gear for a villager's current job (called when it changes).
+// A loose prop from the Blender set (snowman, sled...), or null if missing.
+export function propModel(name) {
+  if (!hasModel(name)) return null;
+  return withoutSnow(() => instanceModel(name, (slot, c, ms) => mat(c, { smooth: ms.smooth, basic: slot === 'eye' || slot === 'coal' })).group);
+}
+
+// Knitted winter colours, picked per villager so a crowd isn't a uniform.
+const WOOLS = [0xb8463e, 0x3f6f9a, 0x2f7f78, 0xc0843a, 0x6f5a8f, 0x4f7f3a, 0xb05878, 0x2f5a8a, 0x8a3a5a, 0x3a7a5a, 0x9a5a2a, 0x5a6a9a];   // mid-value knits
+export function dressVillager(m, v, winter = false) {
+  if (!m.blend) return;
+  const key = `${v.job}|${v.hat}|${winter}`;
+  if (m.dressed === key) return;
+  m.dressed = key;
+  const N = m.nodes;
+  let hat = JOB_HAT[v.job] || null;
+  if (v.job === 'wizard') hat = null;
+  else if (!hat && v.hat && m.stage !== 'child') hat = ['hat_straw', 'hat_bucket', 'hat_cap'][v.id % 3];
+  // in winter everyone wraps up: a scarf, and a woolly hat unless the job has a helmet or toque
+  if (winter && v.job !== 'wizard' && !['hat_helmet', 'hat_toque', 'hat_hood'].includes(hat)) hat = 'hat_beanie';
+  if (N.scarf) N.scarf.visible = winter;
+  const wool = WOOLS[(v.id * 5 + 2) % WOOLS.length];
+  if (winter) {
+    // the cuff and scarf fringe a shade darker, the pompom a shade lighter, all matte
+    const cuff = v.id % 2 ? 0xe9dfc8 : new THREE.Color(wool).multiplyScalar(0.7).getHex();   // half get a cream contrast cuff
+    const knit = { winter: wool, wintercuff: cuff, wintercuffrib: new THREE.Color(cuff).multiplyScalar(0.8).getHex(), winterpom: v.id % 3 ? new THREE.Color(wool).lerp(new THREE.Color(0xffffff), 0.25).getHex() : cuff };
+    for (const k of ['scarf', 'hat_beanie']) N[k]?.traverse(o => { if (o.isMesh && knit[o.userData.slot] !== undefined) VILLAGER_MATS.add(o.material = mat(knit[o.userData.slot], { smooth: true })); });
+  }
+  for (const k of Object.keys(N)) if (k.startsWith('hat_')) {
+    N[k].visible = k === hat;
+    if (k === hat && HAT_COLOR[k] === undefined) N[k].traverse(o => { if (o.isMesh && o.userData.slot === 'hat') VILLAGER_MATS.add(o.material = mat(v.hatColor ?? 0xc9a050, { smooth: true })); });
+    else if (k === hat) N[k].traverse(o => { if (o.isMesh && o.userData.slot === 'hat') VILLAGER_MATS.add(o.material = mat(HAT_COLOR[k], { smooth: true })); });
+  }
+  // short hair tucks under a hat; long styles and buns stay visible below the brim
+  const under = hat && ['hat_helmet', 'hat_hood', 'hat_cap', 'hat_toque', 'hat_beanie'].includes(hat);
+  if (N[m.style]) N[m.style].visible = !under || m.style === 'hair_long' || m.style === 'hair_tails';
+  const gear = JOB_GEAR[v.job];
+  if (N.apron) N.apron.visible = gear === 'apron';
+  if (N.pack) N.pack.visible = gear === 'pack';
+}
+
 function villager_(v) {
   const g = new THREE.Group();
   const body = new THREE.Group(); g.add(body);
@@ -967,4 +1232,7 @@ export function setTool(vm, kind) {
   else if (kind === 'spear') { t.add(box(0.02, 0.75, 0.02, C.darkwood, 0, 0.15, 0.05)); t.add(cone(0.035, 0.12, 4, 0xb8bcc0, 0, 0.55, 0.05)); }
   else if (kind === 'staff') { t.add(box(0.025, 0.6, 0.025, 0x6b4428, 0, 0.1, 0.05)); t.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshBasicMaterial({ color: 0x9fd8ff })), 0, 0.42, 0.05)); }
   else if (kind === 'sapling') { t.add(cone(0.06, 0.16, 5, C.leaf, 0, -0.08, 0.05)); }
+  // forged gear (rpg.js): a longsword and a longbow
+  else if (kind === 'sword') { t.add(box(0.03, 0.42, 0.012, 0xdfe5ea, 0, 0.12, 0.05)); t.add(box(0.12, 0.025, 0.03, 0xd9a520, 0, -0.1, 0.05)); t.add(box(0.025, 0.1, 0.025, C.darkwood, 0, -0.17, 0.05)); }
+  else if (kind === 'bow') { const b = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.012, 4, 12, Math.PI * 0.8), mat(0x8a5a33)); b.rotation.set(0, Math.PI / 2, Math.PI * 0.6); b.position.set(0, 0.1, 0.02); t.add(b); }
 }

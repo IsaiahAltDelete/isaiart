@@ -46,6 +46,8 @@ export const sfx = {
   chest: () => { noise(0.18, 0.18, 900); [784, 988, 1175, 1568, 1976].forEach((f, i) => tone(f, 0.35, { type: 'sine', vol: 0.13, delay: 0.12 + i * 0.07 })); },
   firework: () => { tone(500, 0.6, { type: 'sine', vol: 0.03, slide: 900, attack: 0.05 }); noise(0.5, 0.22, 700, 0.62); noise(0.9, 0.08, 4000, 0.66); },
   snow: () => [1319, 1568, 1976].forEach((f, i) => tone(f, 0.5, { type: 'sine', vol: 0.05, delay: i * 0.12 })),
+  // a crack and a long low rumble; k = loudness (far-off thunder is softer)
+  thunder: (k = 1) => { noise(0.3, 0.22 * k, 1400); noise(2.8, 0.9 * k, 70, 0.04); noise(2.2, 0.5 * k, 150, 0.12); noise(1.4, 0.3 * k, 320, 0.3); },
   howl: () => { tone(380, 0.5, { type: 'sine', vol: 0.06, slide: 260, attack: 0.15 }); tone(640, 1.1, { type: 'sine', vol: 0.05, slide: -180, delay: 0.45, attack: 0.1 }); },
 };
 
