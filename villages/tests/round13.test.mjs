@@ -206,3 +206,14 @@ test('the census keeps a daily population history, through saves', async () => {
   const html = censusHtml({ sim, popSid: 'all' });
   assert.match(html, /villagers/); assert.match(html, /<svg class="pchart"/); assert.match(html, /Peoples/);
 });
+
+test('the Grant button on a job wish grants it on the spot', () => {
+  const sim = fresh();
+  const lumber = build(sim, 'lumber');
+  const v = adults(sim).find(o => o.job === 'idle') || adults(sim)[0];
+  if (v.work) sim.unassign(v);
+  v.wish = { kind: 'job', made: sim.s.time, until: sim.s.time + DAY, data: { job: 'woodcutter', tier: 0 } };
+  const r = sim.answerWish(v, 'job');
+  assert.ok(r.ok); assert.equal(v.job, 'woodcutter'); assert.equal(v.work, lumber.id);
+  assert.equal(v.wish, null, 'granted immediately, not at the next check'); assert.equal(sim.s.stats.wishes, 1);
+});

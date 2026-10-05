@@ -7,7 +7,7 @@ addIcons({ grid: '<rect x="5" y="5" width="9" height="9" rx="2" fill="#f3c64f" s
 import { DAY, stageOf } from './sim.js';
 import { GOODS } from './data.js';
 let sfx = {};   // handed over by ui.js (audio.js needs a browser, and the tests load this file)
-import { WISHES, PET_COST } from './wishes.js';
+import { WISHES, PET_COST, wishVerb } from './wishes.js';
 import { RANKS, mainSid } from './celebrations.js';
 import { VISITORS } from './visitors.js';
 
@@ -46,7 +46,7 @@ export function wishVillagerHtml(ui, v) {
   if (!w || w.until < sim.s.time) return '';
   const W = WISHES[w.kind]; if (!W) return '';
   const btns = wishButtons(ui, v, false);
-  return `<div class="ip-sec wishcard"><div class="cap">${svg('wish', 14)} ${esc(first(v.name))} wishes for<span class="r">fades in ${left(sim, w.until)}</span></div>
+  return `<div class="ip-sec wishcard"><div class="cap">${svg('wish', 14)} ${esc(first(v.name))} ${wishVerb(W.text(v, w, sim))}<span class="r">fades in ${left(sim, w.until)}</span></div>
     <div class="wtext">${esc(W.text(v, w, sim))}</div><div class="desc">${esc(W.how)}</div>${btns ? `<div class="wbtns">${btns}</div>` : ''}</div>`;
 }
 // the one-tap answer to a wish (short labels in the Story page's list)
@@ -77,7 +77,7 @@ export function wishListHtml(ui) {
   if (!open.length) return '';
   return `<div class="wishlist"><h4>${svg('wish', 18)} Wishes · ${open.length}<small style="font-weight:400;color:var(--ink2);margin-left:auto">granting one lifts the whole village</small></h4>${open.map(v => {
     const W = WISHES[v.wish.kind];
-    return `<div class="wrow"><button class="sface" data-act="vsel" data-id="${v.id}" data-tip="${esc(v.name)}|Tap to visit">${ui.face(v, 30)}</button><span><b>${esc(first(v.name))}</b> wishes for ${esc(W.text(v, v.wish, sim))}<small>${esc(W.how)}</small></span>${wishButtons(ui, v, true)}</div>`;
+    return `<div class="wrow"><button class="sface" data-act="vsel" data-id="${v.id}" data-tip="${esc(v.name)}|Tap to visit">${ui.face(v, 30)}</button><span><b>${esc(first(v.name))}</b> ${wishVerb(W.text(v, v.wish, sim))} ${esc(W.text(v, v.wish, sim))}<small>${esc(W.how)}</small></span>${wishButtons(ui, v, true)}</div>`;
   }).join('')}</div>`;
 }
 

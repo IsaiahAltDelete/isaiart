@@ -20,6 +20,8 @@ addIcons({
 });
 
 const first = v => v.name.split(' ')[0];
+// "wishes for a bench", but "wishes to study"
+export const wishVerb = text => text.startsWith('to ') ? 'wishes' : 'wishes for';
 const PET_NAMES = { cat: ['Biscuit', 'Pip', 'Mittens', 'Saffron', 'Pudding', 'Tansy', 'Juniper', 'Marmalade', 'Socks', 'Clove'],
   dog: ['Barley', 'Scout', 'Muddle', 'Bramble', 'Rufus', 'Pepper', 'Hazel', 'Turnip', 'Wiggles', 'Oatcake'] };
 export const PET_COST = 15;
@@ -99,7 +101,7 @@ const WISH = {
     const w = { kind, made: s.time, until: s.time + DAY * 2, data: { tier: v.tier || 0, ...(W.make?.(this, v) || {}) } };
     if (kind === 'job' && !w.data.job) return null;
     v.wish = w; v.wishDay = this.dayNum();
-    const msg = `${v.name} wishes for ${W.text(v, w, this)}.`;
+    const t = W.text(v, w, this), msg = `${v.name} ${wishVerb(t)} ${t}.`;
     this.log(msg); this.story('wish', msg, [v], 'wish');
     return w;
   },
@@ -133,7 +135,9 @@ const WISH = {
       const b = s.buildings.find(o => o.built && o.sid === v.home && defOf(o.type).job === job && o.workers.length < workersOf(o));
       if (!b) return { ok: false, why: 'No free place for that job' };
       if (v.work) this.unassign(v);
-      return { ok: !!this.assign(b, v) };
+      if (!this.assign(b, v)) return { ok: false, why: act === 'study' ? 'The Library is full' : 'They can\'t take that job yet' };
+      // granted on the spot (not at the next wish check, which made the button look broken)
+      return { ok: this.grantWish(v) };
     }
     return { ok: false, why: '' };
   },
