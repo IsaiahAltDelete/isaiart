@@ -661,7 +661,6 @@
     #loading .bar { width: 220px; height: 14px; border-radius: 7px; background: rgba(0,0,0,.2); margin: 18px auto 0; overflow: hidden; border: 2px solid rgba(255,255,255,.5); }
     #loading .bar i { display: block; height: 100%; width: 10%; background: #fff; transition: width .2s; }
     #loading.gone { opacity: 0; pointer-events: none; }
-    #home { position: fixed; left: 14px; bottom: calc(84px + var(--sab)); z-index: 4; font-size: 11px; font-weight: 600; color: #fff; text-decoration: none; text-shadow: 0 1px 2px rgba(0,0,0,.6); opacity: .85; }
 
     #season .ic { flex: none; }
     #follow { position: fixed; left: 50%; top: calc(56px + var(--sat)); transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 8px; border-radius: 14px; font-size: 13px; font-weight: 600; background: var(--cream); border: 2.5px solid var(--edge); box-shadow: var(--shadow); }
@@ -687,7 +686,7 @@
 
     /* ── big screens: scale the HUD up so it doesn't read as unscaled mobile UI ── */
     @media (min-width: 1200px) and (min-height: 760px) {
-      #top, #topright, #nowbar, #speed, #left, #dockbar, #tray, #placebar, #coach, #toasts, #home, #follow { zoom: 1.22; }
+      #top, #topright, #nowbar, #speed, #left, #dockbar, #tray, #placebar, #coach, #toasts, #follow { zoom: 1.22; }
       #left { max-height: calc((100% - 96px * 1.22 - var(--dockspace)) / 1.22); }
       :root { --dockspace: 110px; --topspace: 68px; }
       #modal .box { zoom: 1.15; max-height: min(calc((100vh - var(--topspace) - var(--dockspace)) / 1.15), 760px); width: min(680px, 100%); } #modal .box.tall { height: min(calc((100vh - var(--topspace) - var(--dockspace)) / 1.15), 760px); }
@@ -796,7 +795,6 @@
       #chestArrows .chestarrow .pt::after { border-width: 6px; border-left-width: 9px; margin-top: -6px; }
       .seg button { font-size: 13px; padding: 3px 8px 3px 4px; }
       .worldwrap { grid-template-columns: 1fr; }
-      #home { display: none; }
       #loading h1 { font-size: 40px; }
       #alert { top: auto; bottom: calc(76px + var(--sab)); font-size: 12px; }
       body.info-open #chestArrows { display: none; }
@@ -1006,7 +1004,6 @@
   <div id="tip" class="panel" role="tooltip"></div>
   <div id="restip" class="panel hidden"></div>
   <div id="tag" class="hidden"></div>
-  <a id="home" href="/">← isaiart.com</a>
 
   <div id="loading"><div class="in"><h1>Villages</h1><p>Clearing a spot in the forest…</p><div class="bar"><i id="loadbar"></i></div></div></div>
 
