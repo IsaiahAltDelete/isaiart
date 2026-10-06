@@ -9,10 +9,12 @@ const geoCache = new Map();
 
 export async function loadModels(base = 'models/models.json') {
   try {
-    const res = await fetch(base, { cache: 'no-cache' });
+    // fingerprinted URLs (tools/stamp.mjs) so a CDN never serves stale models after a deploy
+    const ver = p => globalThis.__villagesV?.[p] ? `${p}?v=${globalThis.__villagesV[p]}` : p;
+    const res = await fetch(ver(base), { cache: 'no-cache' });
     if (!res.ok) throw new Error(res.status);
     const json = await res.json();
-    const bin = await (await fetch(base.replace(/[^/]+$/, json.bin), { cache: 'no-cache' })).arrayBuffer();
+    const bin = await (await fetch(ver(base.replace(/[^/]+$/, json.bin)), { cache: 'no-cache' })).arrayBuffer();
     DATA = json; BIN = bin;
   } catch (err) {
     console.warn('Blender models unavailable; using procedural models', err);

@@ -841,6 +841,24 @@ The critic's remaining notes, all minor:
 Note: the preview pane pauses `requestAnimationFrame` while it's in the background, so the HUD
 can look half-drawn in a screenshot taken right after load. Take a second screenshot.
 
+## Deploying: cache-busting (2026-10-06)
+
+isaiart.com is GitHub Pages behind **Cloudflare**, which caches `.js` files for 4 hours but
+serves `index.html` fresh. The first deploy of rounds 7–14 broke the live game:
+
+- A fresh page ran with Cloudflare's stale `ui.js`.
+- The error was "Cannot set properties of null (setting 'innerHTML')".
+- Cause: the old code filled in a Journal button the new page no longer has.
+
+**Fix:** `tools/stamp.mjs` writes an import map into `index.html`.
+- Every module, `three`, and the two model files load as `file?v=<content hash>`.
+- A changed file always gets a new URL; unchanged files stay cached.
+- `main.js` is now imported from an inline module so the map applies to it.
+- `blender.js` reads the model fingerprints from `window.__villagesV`.
+
+**Rule:** after changing any `js/` or `models/` file, run `node tools/stamp.mjs`.
+`tests/stamp.test.mjs` fails if the stamp is stale.
+
 ## Next round — pick 5–6
 
 Ordered easiest to hardest:
