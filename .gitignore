@@ -12,3 +12,6 @@ DND GAME.zip
 # python bytecode
 __pycache__/
 *.pyc
+
+# painted icon masters from ChatGPT: tools/icons.py turns them into art/icons/*.webp; not published
+villages/art/incoming/
