@@ -192,7 +192,8 @@ export function installPeek(game) {
     const occupied = new Set(), bedOf = new Map();
     for (const v of c.folk) {
       const m = game.vvis.get(v.id);
-      if (!m || !v.indoors) { if (c.posed.has(v.id)) unpose(c, v.id); continue; }
+      const here = v.indoors && (v.inside == null || v.inside === c.vis.b.id);   // not someone at work in the bakery
+      if (!m || !here) { if (c.posed.has(v.id)) unpose(c, v.id); continue; }
       const bed = v.asleep ? c.L.beds[bedN++] : null, T = !v.asleep && seat < 3 ? c.L.table : null;
       if (!bed && !T) { m.group.visible = false; continue; }
       if (!c.posed.has(v.id)) c.posed.set(v.id, m.group.scale.x);
@@ -217,7 +218,7 @@ export function installPeek(game) {
     });
     // and the pet, curled up on its cushion by the hearth
     for (const p of sim.s.pets || []) {
-      if (!c.folk.some(v => v.id === p.owner && v.indoors) || (!c.L.hearth && !bedOf.get(p.owner))) continue;
+      if (!c.folk.some(v => v.id === p.owner && v.indoors && (v.inside == null || v.inside === c.vis.b.id)) || (!c.L.hearth && !bedOf.get(p.owner))) continue;
       const g = game.lifeVis?.petMesh?.(p.id); if (!g) continue;
       const ob = bedOf.get(p.owner);
       if (ob && !ob.roll) { const yaw = ob.yaw || 0, f = ob.l / 2 - 0.13; place(c, g, ob.x + Math.sin(yaw) * f, B.floor + ob.top + 0.1, ob.z + Math.cos(yaw) * f, yaw + Math.PI / 2); }

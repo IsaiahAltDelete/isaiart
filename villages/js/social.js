@@ -193,7 +193,7 @@ export function installSocial(sim) {
       { act: 8 + sim.rng() * 5, anim: 'sell', start: () => {
         v.chat = f.id; talk(v, f, v.partner === f.id ? 'love' : 'chat', 9);
         // the friend pops out to say hello if they're about
-        if (!f.asleep && !f.carry && near(f, v, 14) && (!f.task || CHATTY.test(f.task.label) || f.job === 'idle' || f.job === 'retired' || f.indoors && !f.asleep)) {
+        if (!f.asleep && !f.carry && near(f, v, 14) && (!f.task || CHATTY.test(f.task.label) || f.job === 'idle' || f.job === 'retired' || f.indoors && !f.asleep && (f.inside == null || f.inside === house.id))) {
           sim.setTask(f, `Chatting with ${first(v)}`, [{ walk: { tx: ex, tz: ez } }, { to: [door.x - 0.3, door.z] }, { face: [v.x, v.z] },
             { act: 9, anim: 'sell', start: () => { f.chat = v.id; }, done: () => { f.chat = null; } }]);
         }

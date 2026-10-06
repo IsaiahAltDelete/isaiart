@@ -42,6 +42,8 @@ const PRODUCE = {
 export const YEAR = 180;             // sim seconds per year of villager age
 const ADULT = 14, RETIRE = 66, OLD = 72;
 export const stageOf = v => v.age < ADULT ? 'child' : v.age >= RETIRE ? 'elder' : 'adult';
+// indoor jobs whose workbench stands out front (sawmill blade, anvil, loom, mason's bench): staff stay out
+const WORK_OUTSIDE = new Set(['sawyer', 'smith', 'weaver', 'mason']);
 export const RANGE = { woodcutter: 20, forager: 16, miner: 20, forester: 9.5 };
 
 export class Sim {
@@ -520,7 +522,7 @@ export class Sim {
     const t = v.task;
     if (t?.claim) { const [k, i] = t.claim; const o = k === 't' ? this.world.trees[i] : k === 'r' ? this.world.rocks[i] : this.world.bushes[i]; if (o && o.claimed === v.id) o.claimed = -1; }
     v.task = null; v.act = null; v.path = null;
-    v.asleep = null; v.indoors = false; v.dancing = false; v.onTower = false;
+    v.asleep = null; v.indoors = false; v.inside = null; v.dancing = false; v.onTower = false;
   }
 
   // Tasks are a list of steps run in order. Steps:
@@ -531,6 +533,19 @@ export class Sim {
   setTask(v, label, steps, extra = {}) {
     this.dropTask(v);
     v.task = { label, steps, i: 0, ...extra };
+    this.workInside(v, steps);
+  }
+  // Workshop staff work inside instead of standing at the wall: a work task at their own workplace
+  // ({walk} to it, {to} a spot by the wall, {face} it, {act}) goes through the door instead and the
+  // worker is indoors while working. Workplaces with a workbench out front keep their staff outside,
+  // where you can watch them saw, hammer and weave.
+  workInside(v, steps) {
+    if (!this.indoorJob(v) || WORK_OUTSIDE.has(v.job)) return;
+    const b = this.bById.get(v.work), w = steps[0]?.walk, act = steps[3];
+    if (!b || w?.near !== b || !steps[1]?.to || !steps[2]?.face || !act?.act) return;
+    const door = this.local(b, 0, this.bCenter(b).d / 2 - 0.2), start = act.start;
+    steps.splice(1, 2, { to: [door.x, door.z] });
+    act.start = () => { v.indoors = true; v.inside = b.id; start?.(); };
   }
 
   think(v) {
@@ -600,7 +615,7 @@ export class Sim {
     }
     const [ex, ez] = this.entryTile(b), door = this.local(b, 0, this.bCenter(b).d / 2 - 0.2);
     this.setTask(v, 'Asleep at home', [{ walk: { tx: ex, tz: ez } }, { to: [door.x, door.z] },
-      { act: 9999, anim: 'sleep', until: wake, start: () => { v.asleep = 'home'; v.indoors = true; }, done: () => { v.asleep = null; v.indoors = false; } }]);
+      { act: 9999, anim: 'sleep', until: wake, start: () => { v.asleep = 'home'; v.indoors = true; v.inside = b.id; }, done: () => { v.asleep = null; v.indoors = false; v.inside = null; } }]);
   }
 
   // festival evening: everyone gathers in rings round their campfire and dances
@@ -1429,7 +1444,7 @@ export class Sim {
     if (!b) return this.thinkIdle(v);
     const [ex, ez] = this.entryTile(b), door = this.local(b, 0, this.bCenter(b).d / 2 - 0.2);
     this.setTask(v, 'Sheltering from the storm', [{ walk: { tx: ex, tz: ez } }, { to: [door.x, door.z] },
-      { act: 9999, anim: 'rest', until: () => !this.stormy() || this.sleepy(v), start: () => { v.indoors = true; v.act.idle = true; }, done: () => { v.indoors = false; } }]);
+      { act: 9999, anim: 'rest', until: () => !this.stormy() || this.sleepy(v), start: () => { v.indoors = true; v.inside = b.id; v.act.idle = true; }, done: () => { v.indoors = false; v.inside = null; } }]);
   }
 
   // seasons turning, festival announcements and the festival itself, gift chests
@@ -1800,7 +1815,7 @@ export class Sim {
     s.fest = null;
     for (const v of s.villagers) v.dancing = false;
     s.beasts = [];
-    for (const v of s.villagers) { v.asleep = null; v.indoors = false; v.onTower = false; }
+    for (const v of s.villagers) { v.asleep = null; v.indoors = false; v.inside = null; v.onTower = false; }
     for (const k of SELLABLE) if (s.sell[k] === undefined) s.sell[k] = false;
     if (!world.lanes) for (const b of s.buildings) if (b.built) this.carveLane(b);
     if (s.tutorial === undefined || s.buildings.length > 4) s.tutorial = 99;

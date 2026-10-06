@@ -936,6 +936,17 @@ Tests: `tests/round15.test.mjs` (expedition legs and sites, story beats, room la
 Frostpeak's site, firewood, wolves and ore). The dev kit `tools/devkit.js` stages scenes, steps frames
 in a hidden preview, and magnifies regions of the frame for inspection.
 
+## Workers go inside (2026-10-06)
+
+Workshop staff no longer stand at the wall of their workplace: a work task at their own building now
+walks to the door and the worker is indoors while working (`Sim.workInside`, called from `setTask`).
+It covers every job in `indoorJob()` (miller, baker, cheesemaker, brewer, innkeeper, teacher,
+scholars, students, professors, wizards, bathhouse, theatre and chapel staff). The sawmill, forge,
+weaver and stonemason keep their staff outside (`WORK_OUTSIDE`), because their workbench (the saw,
+anvil, loom, mason's bench) stands out front. `v.inside` records which building someone is in, so
+a home's peek only shows people who are actually there, and a friend working next door doesn't drop
+work to chat. Tests: `tests/workinside.test.mjs`.
+
 ## Next round — pick 5–6
 
 Critic leftovers from round 15:
