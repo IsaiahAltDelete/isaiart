@@ -141,7 +141,8 @@ def build_villager():
     t_buckle = box("t_buckle", (0.03, 0.012, 0.022), (0, -0.092, 0.335), material("gold", 0xd9a520))
     neck = cyl("t_neck", 0.03, 0.032, 0.05, (0, 0, NECK_Z - 0.02), SK, seg=10, smooth=True)
     collar = cyl("t_collar", 0.05, 0.06, 0.022, (0, 0, NECK_Z - 0.03), SH, seg=12, bev=0.008, smooth=True)
-    torso = join([t_shirt, t_hem, t_hips, t_belt, t_buckle, neck, collar], "torso"); parent(torso, body)
+    buttons = [sphere(f"t_button{k}", 0.007, (0, -(0.0905 + k * 0.0015), 0.47 - k * 0.045), material("gold", 0xd9a520), sub=1) for k in range(2)]
+    torso = join([t_shirt, t_hem, t_hips, t_belt, t_buckle, neck, collar] + buttons, "torso"); parent(torso, body)
 
     # head: a slightly tall egg; small dot eyes, brows, a little nose; pivot at the neck
     head = empty("head", (0, 0, NECK_Z)); parent(head, body)
@@ -149,12 +150,20 @@ def build_villager():
     skull = uvsphere("h_skull", HEAD_R, HEAD_C, SK, seg=16, rings=10, scale=(0.95, 0.95, 1.06))
     ears = [sphere(f"h_ear{s}", 0.02, (s * 0.085, 0.004, hz - 0.004), SK, sub=1, scale=(0.55, 0.9, 1.2), smooth=True) for s in (-1, 1)]
     fy = -HEAD_R * 0.93
+    WH = material("white", 0xfffaf0, True); CH = material("cheek", 0xf2a08e, True); LI = material("lip", 0x9a5a48, True)
     face = []
     for sx in (-1, 1):
-        face.append(uvsphere(f"h_eye{sx}", 0.0145, (sx * 0.033, fy + 0.007, hz + 0.008), EY, seg=8, rings=5, scale=(0.8, 0.5, 1.2)))
-        face.append(box(f"h_brow{sx}", (0.03, 0.01, 0.01), (sx * 0.034, fy + 0.004, hz + 0.034), HA, base=False, rot=(0, sx * -0.14, 0)))
-    face.append(uvsphere("h_nose", 0.014, (0, fy - 0.006, hz - 0.012), SK, seg=8, rings=6, scale=(0.9, 1.0, 1.15)))
-    face.append(box("h_mouth", (0.024, 0.006, 0.005), (0, fy + 0.012, hz - 0.04), material("lip", 0x9a5a48), base=False))
+        # big friendly eyes: a dark oval with a white catch-light (sized to the bandit mask's eye holes)
+        face.append(uvsphere(f"h_eye{sx}", 0.019, (sx * 0.034, fy + 0.006, hz + 0.007), EY, seg=10, rings=7, scale=(0.78, 0.45, 1.0)))
+        face.append(uvsphere(f"h_shine{sx}", 0.0055, (sx * 0.029, fy - 0.004, hz + 0.015), WH, seg=7, rings=5, scale=(1.0, 0.5, 1.0)))
+        # a soft arched brow, thinner and higher than before, so the face reads kind rather than cross
+        face.append(box(f"h_brow{sx}", (0.026, 0.007, 0.007), (sx * 0.037, fy + 0.006, hz + 0.04), HA, base=False, bev=0.003, rot=(0, sx * -0.22, 0)))
+        # rosy cheeks, turned to sit flat on the side of the face (hidden by the game when the camera is far out)
+        face.append(uvsphere(f"h_cheek{sx}", 0.016, (sx * 0.066, -0.07, hz - 0.02), CH, seg=9, rings=6, scale=(1.0, 0.35, 0.75), rot=(0, 0, sx * 0.73)))
+    face.append(uvsphere("h_nose", 0.0125, (0, fy - 0.007, hz - 0.012), SK, seg=8, rings=6, scale=(0.9, 1.0, 1.1)))
+    # a little smile: a shallow arc under the nose
+    face.append(tube("h_mouth", [(-0.017, fy + 0.012, hz - 0.033), (0, fy + 0.007, hz - 0.042), (0.017, fy + 0.012, hz - 0.033)],
+                     lambda u: (0.0035, 0.0035), LI, seg=6, steps=4))
     headm = join([skull] + ears + face, "head_mesh")
     TILT = (-0.22, 0, 0)               # faces tipped toward the high game camera (still not a chibi tilt)
     NECK = (0, 0, NECK_Z)
@@ -237,18 +246,23 @@ def build_villager():
     for s, nm in ((-1, "hipL"), (1, "hipR")):
         hip = empty(nm, (s * 0.042, 0, HIP)); parent(hip, body)
         leg = cyl(f"{nm}_leg", 0.034, 0.03, HIP - 0.03, (s * 0.042, 0, 0.03), PA, seg=10, smooth=True)
-        boot = box(f"{nm}_boot", (0.072, 0.118, 0.066), (s * 0.045, -0.018, 0.0), BO, bev=0.024, segs=2)
-        cuff = cyl(f"{nm}_bcuff", 0.036, 0.036, 0.02, (s * 0.044, 0, 0.055), BO, seg=10, smooth=True)
-        lg = join([leg, boot, cuff], f"{nm}_mesh"); parent(lg, hip)
+        boot = box(f"{nm}_boot", (0.072, 0.1, 0.062), (s * 0.045, -0.008, 0.008), BO, bev=0.022, segs=2)
+        toe = uvsphere(f"{nm}_toe", 0.034, (s * 0.045, -0.058, 0.036), BO, seg=10, rings=7, scale=(1.05, 0.9, 0.85))
+        sole = box(f"{nm}_sole", (0.078, 0.128, 0.012), (s * 0.045, -0.022, 0.0), BE, bev=0.005)
+        cuff = cyl(f"{nm}_bcuff", 0.037, 0.036, 0.022, (s * 0.044, 0, 0.058), BO, seg=10, smooth=True)
+        lg = join([leg, boot, toe, sole, cuff], f"{nm}_mesh"); parent(lg, hip)
 
     # ── arms (shoulder pivots) ──
     SHZ = NECK_Z - 0.04
     for s, nm in ((-1, "armL"), (1, "armR")):
         sh = empty(nm, (s * 0.108, 0, SHZ)); parent(sh, body)
-        slv = cyl(f"{nm}_sleeve", 0.03, 0.037, 0.19, (s * 0.108, 0, SHZ - 0.19), SH, seg=10, bev=0.01, smooth=True)
-        cuff = cyl(f"{nm}_cuff", 0.034, 0.034, 0.02, (s * 0.108, 0, SHZ - 0.197), SH, seg=10, smooth=True)
-        hand = uvsphere(f"{nm}_hand", 0.037, (s * 0.108, -0.006, SHZ - 0.222), SK, seg=10, rings=8, scale=(0.85, 0.78, 1.08))   # a mitten
-        am = join([slv, cuff, hand], f"{nm}_mesh"); parent(am, sh)
+        # a rounded shoulder cap where the sleeve meets the tunic, a sleeve that tapers to the cuff
+        cap = uvsphere(f"{nm}_shoulder", 0.04, (s * 0.1, 0, SHZ - 0.006), SH, seg=12, rings=8, scale=(1.0, 0.95, 0.8))
+        slv = cyl(f"{nm}_sleeve", 0.031, 0.04, 0.19, (s * 0.108, 0, SHZ - 0.19), SH, seg=10, bev=0.01, smooth=True)
+        cuff = cyl(f"{nm}_cuff", 0.035, 0.035, 0.022, (s * 0.108, 0, SHZ - 0.198), SH, seg=10, smooth=True)
+        hand = uvsphere(f"{nm}_hand", 0.039, (s * 0.108, -0.006, SHZ - 0.224), SK, seg=10, rings=8, scale=(0.85, 0.78, 1.08))   # a mitten
+        thumb = uvsphere(f"{nm}_thumb", 0.0145, (s * 0.082, -0.016, SHZ - 0.212), SK, seg=8, rings=6, scale=(1.0, 1.0, 1.35), rot=(0, s * -0.35, 0))
+        am = join([cap, slv, cuff, hand, thumb], f"{nm}_mesh"); parent(am, sh)
         if s == 1:
             p = empty("pt_hand", (s * 0.108, -0.01, SHZ - 0.225)); parent(p, sh)
 
