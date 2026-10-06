@@ -26,6 +26,17 @@ def fit(im):
     return out
 
 OUT.mkdir(parents=True, exist_ok=True)
+# frames (9-slice skins for CSS border-image): trimmed to the shape and scaled so the corner slice is
+# FRAME_SLICE px. Only the ones the game uses are listed; the rest stay in incoming/ for later.
+FRAMES = {'frame_modal': ('modal', 616)}
+(ROOT / 'art' / 'frames').mkdir(parents=True, exist_ok=True)
+for src, (name, size) in FRAMES.items():
+    f = SRC / f'{src}.png'
+    if not f.exists(): continue
+    im = Image.open(f).convert('RGBA'); im = im.crop(im.getchannel('A').point(lambda v: 255 if v > 8 else 0).getbbox())
+    im.resize((size, round(im.height * size / im.width)), Image.LANCZOS).save(ROOT / 'art' / 'frames' / f'{name}.webp', 'WEBP', quality=94, method=6)
+    print(f'{f.name} -> art/frames/{name}.webp')
+
 for f in sorted(SRC.glob('icon_*.png')):
     name = f.stem[5:]
     key = KEYS.get(name, name)
