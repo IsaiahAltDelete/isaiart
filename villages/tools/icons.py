@@ -12,6 +12,9 @@ SRC, OUT = ROOT / 'art' / 'incoming', ROOT / 'art' / 'icons'
 SIZE, FILL = 128, 0.9
 # master file name -> the game's icon key (where they differ)
 KEYS = {'build': 'hammer', 'town': 'crest', 'journal': 'book', 'world': 'map'}
+# glyphs that sit inside coloured buttons (the green +, the red close, the round home button) read better
+# as the plain drawn SVG: a painted badge inside a button looks doubled up
+SKIP = {'plus', 'close', 'home'}
 
 def fit(im):
     alpha = im.getchannel('A').point(lambda v: 255 if v > 8 else 0)
@@ -26,5 +29,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 for f in sorted(SRC.glob('icon_*.png')):
     name = f.stem[5:]
     key = KEYS.get(name, name)
+    if key in SKIP:
+        (OUT / f'{key}.webp').unlink(missing_ok=True); continue
     fit(Image.open(f).convert('RGBA')).save(OUT / f'{key}.webp', 'WEBP', quality=92, method=6)
     print(f'{f.name} -> art/icons/{key}.webp')
