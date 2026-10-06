@@ -86,8 +86,16 @@ const P = {
 // other modules (rpgui.js) can add their own icons
 export function addIcons(more) { Object.assign(P, more); }
 
-export const svg = (name, size = 24) =>
-  `<svg class="ic" viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true">${P[name] ?? P.info}</svg>`;
+// Painted icons (art/icons/<name>.webp, made by tools/icons.py) replace the drawn SVG of the same name.
+// The stamp (tools/stamp.mjs) lists them with a content hash, so a repainted icon is never served stale.
+const V = globalThis.__villagesV || {};
+const raster = name => { const v = V[`art/icons/${name}.webp`]; return v ? `art/icons/${name}.webp?v=${v}` : null; };
+
+export const svg = (name, size = 24) => {
+  const r = raster(name);
+  // still an <svg>, so every rule styling icons keeps working; the painting sits inside it
+  return `<svg class="ic" viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true">${r ? `<image href="${r}" width="32" height="32"/>` : P[name] ?? P.info}</svg>`;
+};
 
 export const svgUrl = name =>
   'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64">${P[name] ?? P.info}</svg>`);
@@ -96,7 +104,7 @@ const imgCache = new Map();
 export function iconImage(name) {
   if (!imgCache.has(name)) {
     const img = new Image();
-    img.src = svgUrl(name);
+    img.src = raster(name) || svgUrl(name);
     imgCache.set(name, img);
   }
   return imgCache.get(name);
