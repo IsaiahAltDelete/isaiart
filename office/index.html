@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Office</title>
+<meta name="description" content="A 3D office showing what the coding agents on this machine are doing right now.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --cream: #fff8e8; --edge: #c48a4a; --ink: #5b3a1e; --ink2: #8c6a48; --green: #6cc04a; --gold: #f6c53f; --red: #e8665a; --blue: #4f9be0; }
+  html, body { margin: 0; height: 100%; background: #2b2a33; color: var(--ink); font-family: Fredoka, system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #hud { position: fixed; left: 14px; top: 14px; width: min(340px, calc(100vw - 28px)); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .card { background: var(--cream); border: 3px solid var(--edge); border-radius: 14px; padding: 10px 12px; box-shadow: 0 4px 0 rgba(90,55,20,.25), 0 8px 18px rgba(0,0,0,.3); pointer-events: auto; }
+  h1 { margin: 0; font-size: 18px; display: flex; align-items: center; justify-content: space-between; }
+  h1 small { font-weight: 400; font-size: 12px; color: var(--ink2); }
+  .row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #ead9b6; font-size: 13px; }
+  .row:first-of-type { border-top: 0; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: #bbb; }
+  .working .dot { background: var(--green); } .waiting .dot { background: var(--gold); animation: pulse 1.2s infinite; } .idle .dot { background: #b9b2a6; }
+  @keyframes pulse { 50% { transform: scale(1.4); } }
+  .row b { font-weight: 600; } .row .act { color: var(--ink2); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .ag { font-size: 11px; padding: 1px 7px; border-radius: 8px; background: #efe2be; }
+  #note { font-size: 12px; color: var(--ink2); }
+  #note.bad { color: #a8392f; }
+  .tag { position: fixed; transform: translate(-50%, -100%); background: var(--cream); border: 2px solid var(--edge); border-radius: 10px; padding: 4px 9px; font-size: 12px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 0 rgba(90,55,20,.25); }
+  .tag b { display: block; font-weight: 600; font-size: 13px; }
+  .tag::after { content: ''; position: absolute; left: 50%; bottom: -8px; margin-left: -6px; border: 6px solid transparent; border-top-color: var(--edge); border-bottom: 0; }
+  .tag.waiting { border-color: #c48a1a; background: #fff2c4; }
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; background: #2b2a33; color: #fff8e8; font-size: 18px; z-index: 5; }
+  #loading.gone { display: none; }
+  @media (max-width: 600px) { #hud { width: calc(100vw - 28px); } .row .act { display: none; } }
+</style>
+</head>
+<body>
+<div id="loading">Setting up the office…</div>
+<div id="hud">
+  <div class="card"><h1>The Office <small id="count"></small></h1><div id="list"></div><div id="note"></div></div>
+</div>
+<div id="tags"></div>
+<script type="importmap">{ "imports": { "three": "../villages/vendor/three.module.min.js" } }</script>
+<script type="module" src="./office.js"></script>
+</body>
+</html>
