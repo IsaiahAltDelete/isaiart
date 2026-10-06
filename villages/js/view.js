@@ -6,7 +6,9 @@ import { pineGeo, roundGeo, treeGeos, stumpGeo, rockGeo, bushGeo, berriesGeo } f
 import { iconImage } from './icons.js';
 import { snowPatch, snowify } from './snow.js';
 import { surfaceTexture, mapBoxSurface } from './textures.js';
+import { PERF_OFF } from './perf.js';
 
+const SHADOW_ONLY = 2;      // layer for objects drawn only into the shadow map
 const CH = 16;               // chunk size for instanced forest culling
 const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpV = new THREE.Vector3(), tmpS = new THREE.Vector3(), tmpC = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -37,9 +39,57 @@ function swayMaterial() {
       #endif`);
     snowPatch(sh, false, 0.6, 0.9, 0.35);    // only a light frost from the shader: the trees carry modelled snow caps
     // the caps only exist in deep snow
-    sh.fragmentShader = 'varying float vSnowy;\n' + sh.fragmentShader.replace('void main() {', 'void main() {\n  if (vSnowy > 0.5 && uSnow < 0.4) discard;');
+    sh.fragmentShader = 'varying float vSnowy;\n' + sh.fragmentShader.replace('void main() {', 'void main() {\n  if (vSnowy > 0.5 && max(uSnow, frostAt(vSnowW.xz)) < 0.4) discard;');
   };
   return m;
+}
+
+// A far-away stand-in for a tree model: the same height, spread and colours in a few dozen triangles
+// (a two-tier cone for pines, a faceted blob for round trees, a trunk, and a snow cap that only shows
+// in deep snow like the real ones'). Chunks of forest far from the camera draw these instead.
+export function treeLod(geo, pine) {
+  const P = geo.attributes.position, Cc = geo.attributes.color, S = geo.attributes.snowy, n = P.count;
+  const leaf = new THREE.Box3(), bark = new THREE.Box3(), v = new THREE.Vector3(), lc = new THREE.Color(0, 0, 0), bc = new THREE.Color(0, 0, 0);
+  let nl = 0, nb = 0;
+  for (let i = 0; i < n; i++) {
+    if (S && S.getX(i) > 0.5) continue;
+    v.fromBufferAttribute(P, i); const r = Cc.getX(i), g = Cc.getY(i), b = Cc.getZ(i);
+    if (g > r * 1.15) { leaf.expandByPoint(v); lc.r += r; lc.g += g; lc.b += b; nl++; } else { bark.expandByPoint(v); bc.r += r; bc.g += g; bc.b += b; nb++; }
+  }
+  if (!nl) return geo;
+  lc.multiplyScalar(1 / nl); if (nb) bc.multiplyScalar(1 / nb); else bc.setRGB(0.36, 0.24, 0.15);
+  const parts = [], add = (g, col, snowy) => {
+    g = g.index ? g.toNonIndexed() : g; const k = g.attributes.position.count;
+    g.setAttribute('color', new THREE.Float32BufferAttribute(new Array(k).fill(0).flatMap(() => [col.r, col.g, col.b]), 3));
+    g.setAttribute('snowy', new THREE.Float32BufferAttribute(new Array(k).fill(snowy), 1));
+    g.deleteAttribute('uv'); parts.push(g);
+  };
+  const ls = leaf.getSize(new THREE.Vector3()), lcx = (leaf.min.x + leaf.max.x) / 2, lcz = (leaf.min.z + leaf.max.z) / 2, R = Math.max(ls.x, ls.z) / 2;
+  const trunkTop = Math.min(nb ? bark.max.y : leaf.min.y, leaf.min.y + ls.y * 0.3), tr = nb ? Math.max(0.04, Math.min(0.12, (bark.max.x - bark.min.x) / 2)) : 0.06;
+  add(new THREE.CylinderGeometry(tr * 0.8, tr, trunkTop, 5).translate(0, trunkTop / 2, 0), bc, 0);
+  const snow = new THREE.Color(0.95, 0.97, 1.0);
+  if (pine) {
+    const h = ls.y, y0 = leaf.min.y;
+    add(new THREE.ConeGeometry(R, h * 0.62, 7).translate(lcx, y0 + h * 0.31, lcz), lc, 0);
+    add(new THREE.ConeGeometry(R * 0.7, h * 0.55, 7).translate(lcx, y0 + h * 0.725, lcz), lc, 0);
+    add(new THREE.ConeGeometry(R * 0.42, h * 0.3, 7).translate(lcx, y0 + h * 0.86, lcz), snow, 1);
+  } else {
+    add(new THREE.IcosahedronGeometry(1, 0).scale(ls.x / 2, ls.y / 2, ls.z / 2).translate(lcx, (leaf.min.y + leaf.max.y) / 2, lcz), lc, 0);
+    add(new THREE.SphereGeometry(1, 6, 2, 0, Math.PI * 2, 0, Math.PI / 2.6).scale(ls.x * 0.4, ls.y * 0.32, ls.z * 0.4).translate(lcx, leaf.min.y + ls.y * 0.72, lcz), snow, 1);
+  }
+  const out = mergeAll(parts); out.computeVertexNormals(); out.computeBoundingSphere();
+  return out;
+}
+function mergeAll(list) {
+  const names = ['position', 'normal', 'color', 'snowy'], out = new THREE.BufferGeometry();
+  for (const name of names) {
+    const size = list[0].attributes[name]?.itemSize ?? 3; let total = 0;
+    for (const g of list) total += g.attributes.position.count * size;
+    const arr = new Float32Array(total); let o = 0;
+    for (const g of list) { const a = g.attributes[name]; if (a) arr.set(a.array, o); o += g.attributes.position.count * size; }
+    out.setAttribute(name, new THREE.BufferAttribute(arr, size));
+  }
+  return out;
 }
 
 // seasonal leaf colours: pines stay evergreen, round trees blossom, turn and go bare
@@ -94,6 +144,7 @@ export class View {
     this.buildSkirt();
     this.buildBridges();
     this.buildGrass();
+    this.buildPeaks();
 
     this.objects = new THREE.Group(); scene.add(this.objects);
     this.fx = new THREE.Group(); scene.add(this.fx);
@@ -184,7 +235,12 @@ export class View {
         float edgeK = 1.0 - smoothstep(0.62, 0.97, wv);
         float speck = smoothstep(0.58, 0.72, gNoise(vGW * 3.3 + 9.1) * 0.65 + n3 * 0.35);
         dirt *= 1.0 - speck * edgeK * (1.0 - road * 0.7) * (1.0 - fringe) * 0.85;
-        float cob = smoothstep(0.5, 0.68, gd.g + (n3 - 0.5) * 0.08);             // grout bed stops at the kerb line
+        // the paved field, blurred over five taps so the road outline turns rounded corners, not tile steps
+        vec2 gUV = (vGW + ${HALF.toFixed(1)}) / ${N.toFixed(1)}, gO = vec2(${(0.42 / N).toFixed(5)}, 0.0);
+        float pv = (gd.g * 2.0 + texture2D(uGround, gUV + gO).g + texture2D(uGround, gUV - gO).g + texture2D(uGround, gUV + gO.yx).g + texture2D(uGround, gUV - gO.yx).g) / 6.0;
+        vec2 pvGrad = vec2(texture2D(uGround, gUV + gO).g - texture2D(uGround, gUV - gO).g, texture2D(uGround, gUV + gO.yx).g - texture2D(uGround, gUV - gO.yx).g);
+        float cob = smoothstep(0.55, 0.58, pv + (n3 - 0.5) * 0.02);                // the cobbled bed, inside the kerb
+        float kerb = smoothstep(0.43, 0.455, pv) * (1.0 - cob) * smoothstep(0.18, 0.3, gd.g);   // a flat stone kerb along its edge, crisp outside, never swelling at inside corners
         // two tones: a darker, scuffed centre and a lighter, compacted edge, under gentle low-frequency value noise
         float lowN = gNoise(vGW * 0.31 + 2.3) * 0.6 + gNoise(vGW * 0.83 + 7.7) * 0.4;
         vec3 wornC = vec3(0.55, 0.375, 0.19), packedC = vec3(0.69, 0.52, 0.3);
@@ -196,34 +252,50 @@ export class View {
         // cobbles: flat setts laid flush in a dark gritty bed. A staggered grid (5 a tile) of
         // rounded stones, each its own warm grey, lit from the top-left, with the bed showing
         // through the joints.
-        vec3 bed = vec3(0.43, 0.38, 0.32) * mix(cobT.rgb, earthT.rgb, 0.5);
+        vec3 bed = vec3(0.41, 0.31, 0.2) * mix(earthT.rgb, vec3(1.0), 0.45);   // the warm brown ground, showing (shaded) in the joints
         vec2 sp = vGW * 5.0;
         float sRow = floor(sp.y);
-        sp.x += mod(sRow, 2.0) * 0.5 + (gHash(vec2(sRow, 7.3)) - 0.5) * 0.3;
+        sp.x += mod(sRow, 2.0) * 0.5 + (gHash(vec2(sRow, 7.3)) - 0.5) * 0.4;
         vec2 sCell = floor(sp), sf = fract(sp) - 0.5;
-        float sr1 = gHash(sCell + 3.1), sr2 = gHash(sCell + 11.7), sr3 = gHash(sCell + 23.9);
-        sf += (vec2(sr1, sr2) - 0.5) * 0.07;
-        vec2 sq = abs(sf) - vec2(0.37 - sr3 * 0.06, 0.34 - sr1 * 0.05) + 0.2;
-        float sd = length(max(sq, 0.0)) + min(max(sq.x, sq.y), 0.0) - 0.2;   // rounded-box distance, < 0 inside the stone
+        // now and then two neighbours are one long sett
+        float longS = step(gHash(vec2(floor(sp.x * 0.5), sCell.y) + 5.5), 0.16);
+        if (longS > 0.5) { sCell.x = floor(sp.x * 0.5) * 2.0; sf.x = fract(sp.x * 0.5) * 2.0 - 1.0; }
+        float sr1 = gHash(sCell + 3.1), sr2 = gHash(sCell + 11.7), sr3 = gHash(sCell + 23.9), sr4 = gHash(sCell + 41.3);
+        sf += (vec2(sr1, sr2) - 0.5) * 0.18;                                      // laid by hand: not quite on the line
+        vec2 sHalf = vec2(0.4 + longS * 0.5, 0.39) * (0.86 + sr3 * 0.3);         // ±15% in size
+        float sR = 0.07 + sr4 * 0.13;                                            // some square-ish, some well worn
+        vec2 sq = abs(sf) - sHalf + sR;
+        float sd = length(max(sq, 0.0)) + min(max(sq.x, sq.y), 0.0) - sR;    // rounded-box distance, < 0 inside the stone
         float aa = fwidth(sd) * 1.2 + 0.006;
         float stone = 1.0 - smoothstep(-aa, aa, sd);
-        vec3 stoneC = mix(vec3(0.76, 0.67, 0.54), vec3(0.64, 0.6, 0.55), sr2) * (0.82 + sr1 * 0.28) * mix(vec3(1.0), cobT.rgb * 1.25, 0.3);
-        stoneC *= 0.88 + clamp(0.5 - (sf.x - sf.y) * 0.8, 0.0, 1.0) * 0.24;  // a soft dome, lighter towards the top-left
-        stoneC *= 1.0 - smoothstep(-0.12, 0.0, sd) * 0.2;                    // a worn, darker rim
+        // warm greys, a few buff and rusty stones; a calm mid-tone so villagers read on top
+        vec3 sTint = mix(mix(vec3(0.6, 0.55, 0.48), vec3(0.53, 0.51, 0.48), sr2), vec3(0.62, 0.5, 0.38), step(0.82, sr4) * 0.8);
+        vec3 stoneC = sTint * (0.76 + sr1 * 0.28) * mix(vec3(1.0), cobT.rgb * 1.2, 0.3);
+        stoneC *= 0.9 + clamp(0.5 - (sf.x - sf.y) * 0.7, 0.0, 1.0) * 0.18;   // a soft dome, lighter towards the top-left
+        stoneC *= 1.0 - smoothstep(-0.1, 0.0, sd) * 0.14;                    // a worn, darker rim
         col = mix(col, mix(bed, stoneC, stone), cob);
+        // the kerb: long grey-blue blocks, a lighter worn top towards the road and a darker outer lip
+        float kt = clamp((pv - 0.43) / 0.13, 0.0, 1.0);                                  // 0 at the outer lip, 1 at the road
+        float kAlong = abs(pvGrad.x) > abs(pvGrad.y) ? vGW.y : vGW.x;                        // measure along the edge
+        float kBlock = floor(kAlong * 2.0);                                                  // a block every half tile
+        float kJoint = smoothstep(0.43, 0.48, abs(fract(kAlong * 2.0) - 0.5));               // the thin gap between blocks
+        vec3 kerbC = vec3(0.5, 0.46, 0.41) * (0.88 + gHash(vec2(kBlock, 3.7)) * 0.16) * mix(0.8, 1.04, smoothstep(0.0, 0.5, kt));
+        kerbC *= 1.0 - kJoint * 0.5;
+        kerbC = mix(kerbC * 0.62, kerbC, smoothstep(0.0, 0.16, kt));                         // the dark outer lip
+        col = mix(col, kerbC, kerb);
         float wetK = (1.0 - smoothstep(-0.26, -0.04, vGY)) * gd.a;   // only real shores, not low meadow                          // damp bank below the waterline
         col = mix(col, col * vec3(0.6, 0.64, 0.68), wetK);
         diffuseColor.rgb = col;
         // under snow: built roads and cobbles turn to slush; lanes and trodden ground only thin the snow a little,
         // so the snow round houses matches their snowy ground pads instead of showing worn shapes
-        float gPath = max(max(road * dirt, cob * 0.8), dirt * 0.35) * (1.0 - sandK);
+        float gPath = max(max(road * dirt, max(cob, kerb) * 0.8), dirt * 0.35) * (1.0 - sandK);
       `).replace('#include <color_fragment>', '');
       snowPatch(sh, false);   // winter: snow on the meadow…
-      sh.fragmentShader = sh.fragmentShader.replace('diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.9, 0.97), cover);',
+      sh.fragmentShader = sh.fragmentShader.replace('diffuseColor.rgb = mix(diffuseColor.rgb, snowC, cover);',
         // …and cold slush on paths and roads
-        'cover *= 1.0 - gPath * 0.62; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.5, 0.47, 0.45), gPath * uSnow * 0.5); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.9, 0.97), cover);');
+        'cover *= 1.0 - gPath * 0.62; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.5, 0.47, 0.45), gPath * uSn * 0.5); diffuseColor.rgb = mix(diffuseColor.rgb, snowC, cover);');
     };
-    material.customProgramCacheKey = () => 'villages-storybook-ground-v4-flat-cobbles';
+    material.customProgramCacheKey = () => 'villages-storybook-ground-v9-drifts';
     const m = this.terrain = new THREE.Mesh(g, material);
     m.receiveShadow = true;
     this.scene.add(m);
@@ -424,6 +496,8 @@ export class View {
       const r = rng();
       if (r < 0.32) spots.push(i); else if (r < 0.4) flowers.push(i); else if (r < 0.47) piles.push(i);
     }
+    const F = W.frost, bare = i => F && Math.hypot(tileX(i) - F.x, tileZ(i) - F.z) < F.R * 0.82;
+    if (F) for (const list of [spots, flowers, piles]) { const keep = list.filter(i => !bare(i)); list.length = 0; list.push(...keep); }
     // little heaps of fallen leaves, only shown in autumn
     const pGeo = mergeSimple([0, 1, 2, 3].map(k => new THREE.IcosahedronGeometry(0.13 - k * 0.015, 0).scale(1, 0.32, 1).translate(Math.cos(k * 2.2) * 0.12 * (k > 0), 0.03, Math.sin(k * 2.2) * 0.12 * (k > 0))));
     const mk = (geo, list, colorFn) => {
@@ -450,7 +524,7 @@ export class View {
     this.piles = mk(pGeo, piles, () => tmpC.setHex(lpal[(rng() * lpal.length) | 0]));
     this.piles.visible = false;
     this.buildLitter(rng);
-    for (let i = 0; i < N * N; i++) { this.updateGrass(i); if (W.paved[i]) this.updatePave(i); }
+    for (let i = 0; i < N * N; i++) this.updateGrass(i);
   }
   // little things lying on bare, trodden ground (shown only while a tile is worn)
   buildLitter(rng) {
@@ -504,58 +578,6 @@ export class View {
       im.instanceMatrix.needsUpdate = true;
     }
   }
-  // kerbs along the edges of paved tiles (the setts themselves are painted into the ground shader)
-  updatePave(i) {
-    const W = this.world;
-    if (!this.kerbs) {
-      // kerb blocks: elongated, bevelled along the top edges, flat-shaded so each face catches the light
-      const kg = new THREE.BoxGeometry(0.3, 0.11, 0.13, 1, 1, 1), kp = kg.attributes.position;
-      for (let v = 0; v < kp.count; v++) if (kp.getY(v) > 0) { kp.setX(v, kp.getX(v) * 0.9); kp.setZ(v, kp.getZ(v) * 0.7); }
-      kg.computeVertexNormals();
-      const km = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true });
-      km.onBeforeCompile = sh => snowPatch(sh, false, 0.75, 0.99, 0.5);
-      this.kerbs = new THREE.InstancedMesh(kg, km, 12000);
-      this.kerbs.castShadow = this.kerbs.receiveShadow = true; this.kerbs.frustumCulled = false; this.kerbs.count = 0;
-      for (let k = 0; k < 12000; k++) { this.kerbs.setMatrixAt(k, tmpM.makeScale(0, 0, 0)); this.kerbs.setColorAt(k, tmpC.setHex(0x6b6e72)); }
-      this.kerbs.userData = { free: [], used: 0, cap: 12000, slots: new Map(), sig: new Map() };
-      this.scene.add(this.kerbs);
-    }
-    const kb = this.kerbs, ku = kb.userData, want = W.paved[i] && W.occ[i] < 0;
-    const x = tileX(i), z = tileZ(i), open = [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dx, dz]) => {
-      const nx = x + dx, nz = z + dz;
-      return nx >= 0 && nz >= 0 && nx < N && nz < N && !W.paved[nz * N + nx] && !W.bridge[nz * N + nx];
-    });
-    const sig = want ? 'p' + open.map(Number).join('') : '';
-    if ((ku.sig.get(i) || '') === sig) return;
-    ku.sig.set(i, sig);
-    const kHave = ku.slots.get(i);
-    if (kHave) { for (const slot of kHave) { kb.setMatrixAt(slot, tmpM.makeScale(0, 0, 0)); ku.free.push(slot); } ku.slots.delete(i); }
-    if (want) {
-      const x0 = toWorld(tileX(i)), z0 = toWorld(tileZ(i));
-      // kerb: three rectangular blocks laid end to end (thin joints) along each edge that meets the verge,
-      // a shade darker and cooler than the setts, standing proud so the outer face steps down to the dirt
-      const kslots = [];
-      open.forEach((o, e) => {
-        if (!o) return;
-        const [dx, dz] = [[0, -1], [1, 0], [0, 1], [-1, 0]][e];
-        for (let k = 0; k < 3; k++) {
-          const slot = ku.free.length ? ku.free.pop() : (ku.used < ku.cap ? ku.used++ : -1); if (slot < 0) break;
-          const h = q => hash2(i, k + e * 3, q);
-          const along = (k - 1) * 0.32 + (h(21) - 0.5) * 0.012;
-          const px = x0 + dx * 0.43 + (dz ? along : 0), pz = z0 + dz * 0.43 + (dx ? along : 0);
-          tmpQ.setFromAxisAngle(UP, (dx ? Math.PI / 2 : 0) + (h(23) - 0.5) * 0.05);
-          const gy = Math.min(W.heightAt(px, pz), W.heightAt(px + dx * 0.06, pz + dz * 0.06));
-          kb.setMatrixAt(slot, tmpM.compose(tmpV.set(px, gy + 0.03, pz), tmpQ, tmpS.set(1 - h(22) * 0.04, 1 + h(25) * 0.12, 1)));
-          const t = h(24);
-          kb.setColorAt(slot, tmpC.setRGB(0.37 + t * 0.05, 0.39 + t * 0.05, 0.42 + t * 0.05));
-          kslots.push(slot);
-        }
-      });
-      ku.slots.set(i, kslots);
-    }
-    kb.count = ku.used;
-    kb.instanceMatrix.needsUpdate = true; if (kb.instanceColor) kb.instanceColor.needsUpdate = true;
-  }
   updateGrass(i) {
     const W = this.world;
     this.updateLitter(i);
@@ -604,6 +626,48 @@ export class View {
     }
   }
 
+  // Frostpeak Pass: a ring of craggy, snow-topped peaks round the outside of the pass, open where
+  // the road comes up from home. Scenery only (one merged mesh): the sim never sees them.
+  buildPeaks() {
+    const F = this.world.frost; if (!F) return;
+    const rng = mulberry32((this.world.seed ^ 0x5eed) >>> 0), pos = [], col = [], rock = new THREE.Color(), snow = new THREE.Color(0xf4f7fc);
+    const cx = F.x - HALF + 0.5, cz = F.z - HALF + 0.5;
+    for (let k = 0; k < 46; k++) {
+      // two staggered rows round the back of the pass, open toward the road home; the front row
+      // starts beyond the furthest a settlement can grow, so nothing is ever built inside a mountain
+      const row = k % 2, a = F.passA + 0.7 + ((k >> 1) / 23) * (Math.PI * 2 - 1.4) + (rng() - 0.5) * 0.1;
+      // ...except toward the map's edge: nothing is ever built off the map, so there they crowd right up to it
+      const ca = Math.cos(a), sa = Math.sin(a), edge = Math.min(ca < 0 ? (F.x + 0.5) / -ca : ca > 0 ? (N - F.x - 0.5) / ca : 1e9, sa < 0 ? (F.z + 0.5) / -sa : sa > 0 ? (N - F.z - 0.5) / sa : 1e9);
+      const d = Math.min(F.r + 13, edge + 2.5) + row * 4.5 + rng() * 2.5, x = cx + ca * d, z = cz + sa * d;   // (bases stay off the map)
+      const tx = Math.floor(x + HALF), tz = Math.floor(z + HALF);
+      if (tx >= 0 && tz >= 0 && tx < N && tz < N && this.world.type[idx(tx, tz)] === T_WATER) continue;
+      // the front row are big crags; the back row are real mountains that tower over the treeline
+      const r = row ? 4.5 + rng() * 2 : 3 + rng() * 2, h = r * (row ? 2.4 + rng() * 0.6 : 2 + rng() * 0.6), seg = 6 + ((rng() * 2) | 0);
+      const geo = new THREE.ConeGeometry(r, h, seg, 3).toNonIndexed(), p = geo.attributes.position;
+      // craggy: nudge every ring of the cone (not the tip) a little in and out
+      for (let i = 0; i < p.count; i++) {
+        const y = p.getY(i); if (y > h / 2 - 0.01) continue;
+        const ang = Math.atan2(p.getZ(i), p.getX(i)), j = 0.82 + hash2(Math.round(ang * 5) + k * 31, Math.round(y * 4), 7) * 0.36;
+        p.setX(i, p.getX(i) * j); p.setZ(i, p.getZ(i) * j);
+      }
+      geo.rotateY(rng() * 6.28);
+      const gy = this.world.heightAt(x, z) - 0.35 + h / 2, snowLine = h * (-0.3 + rng() * 0.14);    // snowfields down the flanks, bare rock and scree at the foot
+      rock.setHex([0x7f8288, 0x8d8a86, 0x75797f][k % 3]);
+      for (let i = 0; i < p.count; i += 3) {
+        // whole faces go white above a ragged snow line
+        const ym = (p.getY(i) + p.getY(i + 1) + p.getY(i + 2)) / 3, white = ym > snowLine + (hash2(i, k, 11) - 0.5) * h * 0.18;
+        for (let v = 0; v < 3; v++) { pos.push(p.getX(i + v) + x, p.getY(i + v) + gy, p.getZ(i + v) + z); const c = white ? snow : rock; col.push(c.r, c.g, c.b); }
+      }
+      geo.dispose();
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.computeVertexNormals();
+    const m = this.peaks = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+    m.castShadow = true; m.receiveShadow = true;
+    this.scene.add(m);
+  }
   buildSkirt() {
     // forest floor beyond the map edge (four strips framing the square map)
     // plus a ring of decorative trees so the world never ends in a cliff
@@ -634,7 +698,7 @@ export class View {
           im.setMatrixAt(k, tmpM.compose(tmpV.set(x, 0.88, z), tmpQ, tmpS.set(s, s * (0.9 + t * 0.3), s)));
         });
         im.computeBoundingSphere(); im.frustumCulled = true;
-        im.userData = { kind, tints: part.map(p => p[4]) };
+        im.userData = { kind, tints: part.map(p => p[4]), cx: im.boundingSphere.center.x, cz: im.boundingSphere.center.z, cast: false };
         im.receiveShadow = true;
         this.scene.add(im); this.skirtTrees.push(im);
       }
@@ -650,6 +714,8 @@ export class View {
     // several shapes per kind so the forest doesn't repeat; each tree keeps its shape by position
     const tg = treeGeos();
     this.treeTypes = [...tg.pine, ...tg.round]; this.nPine = tg.pine.length; this.nRound = tg.round.length;
+    this.treeLow = this.treeTypes.map((g, i) => treeLod(g, i < this.nPine));
+    this.skirtLow = [treeLod(this.pineG, true), treeLod(this.roundG, false)];
     const TT = this.TT = this.treeTypes.length;
     const plain = snowify(new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
     const CN = N / CH;
@@ -663,14 +729,31 @@ export class View {
       im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       const cx = ((k / TT | 0) % CN) * CH - HALF + CH / 2, cz = ((k / TT / CN) | 0) * CH - HALF + CH / 2;
       im.frustumCulled = true;
-      im.userData = { used: 0, free: [], cx, cz };
+      im.userData = { used: 0, free: [], cx, cz, type: k % TT, cap };
       for (let s = 0; s < cap; s++) { im.setMatrixAt(s, tmpM.makeScale(0, 0, 0)); im.setColorAt(s, tmpC.setRGB(1, 1, 1)); }
-      im.count = cap;
+      im.count = 0; im.visible = false;   // grows with the trees placed in it (placeTree)
       this.chunks.push(im);
       this.scene.add(im);
     }
     for (let ti = 0; ti < W.trees.length; ti++) if (W.trees[ti].alive) this.placeTree(ti);
     for (const im of this.chunks) this.fixBounds(im);
+    // shadows from the stand-ins: each chunk gets a twin that shares its instance matrices but only
+    // draws into the shadow map (no colour, no depth in the main pass), so the shadow pass draws
+    // ~60-triangle trees instead of 160–630. The full trees no longer cast shadows themselves.
+    if (!PERF_OFF) {
+      // shadow-only objects live on their own layer, which the camera only sees while shadows are drawn
+      const sm = this.renderer.shadowMap, render = sm.render.bind(sm);
+      sm.render = (lights, scene, camera) => { camera.layers.enable(SHADOW_ONLY); try { render(lights, scene, camera); } finally { camera.layers.disable(SHADOW_ONLY); } };
+      const ghost = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+      for (const im of this.chunks) {
+        const sh = new THREE.InstancedMesh(this.treeLow[im.userData.type], ghost, im.userData.cap);
+        sh.instanceMatrix = im.instanceMatrix; sh.count = im.count; sh.visible = im.visible; sh.castShadow = true; sh.receiveShadow = false;
+        sh.boundingSphere = im.boundingSphere; sh.frustumCulled = true; sh.renderOrder = -1;
+        sh.layers.set(SHADOW_ONLY);
+        im.castShadow = false; im.userData.cast = false; im.userData.shadow = sh;
+        this.scene.add(sh);
+      }
+    }
 
     // stumps
     this.stumps = new THREE.InstancedMesh(stumpGeo(), plain, 1500);
@@ -700,10 +783,17 @@ export class View {
   placeTree(ti) {
     const t = this.world.trees[ti];
     const im = this.chunkFor(t), u = im.userData;
-    let slot = u.free.length ? u.free.pop() : (u.used < im.count ? u.used++ : -1);
+    let slot = u.free.length ? u.free.pop() : (u.used < u.cap ? u.used++ : -1);
     if (slot < 0) return;
     t.slot = slot;
+    this.chunkCount(im);
     this.updateTree(ti);
+  }
+  // draw only up to the highest slot in use (the rest are spare), and nothing for an empty chunk
+  chunkCount(im) {
+    const u = im.userData, live = u.used - u.free.length;
+    im.count = u.used; im.visible = live > 0;
+    if (u.shadow) { u.shadow.count = u.used; u.shadow.visible = live > 0 && !u.lo; }
   }
   updateTree(ti) {
     const t = this.world.trees[ti];
@@ -712,6 +802,7 @@ export class View {
     if (!t.alive) {
       im.setMatrixAt(t.slot, tmpM.makeScale(0, 0, 0));
       im.userData.free.push(t.slot); t.slot = undefined;
+      this.chunkCount(im);
     } else {
       const s = t.s * Math.max(0.05, t.growth);
       // a slight lean so rows of trees don't stand to attention
@@ -795,7 +886,8 @@ export class View {
     tmpQ.setFromAxisAngle(UP, k * 1.7);
     tmpM.compose(tmpV.set(b.x, this.world.heightAt(b.x, b.z) - 0.03, b.z), tmpQ, tmpS.set(s, s, s));
     this.bushMesh.setMatrixAt(k, tmpM);
-    if (!b.ripe || !b.alive) tmpM.makeScale(0, 0, 0);
+    const F = this.world.frost;
+    if (!b.ripe || !b.alive || (F && Math.hypot(b.x + HALF - F.x, b.z + HALF - F.z) < F.R * 0.85)) tmpM.makeScale(0, 0, 0);   // no summer berries in the snow
     this.berryMesh.setMatrixAt(k, tmpM);
     this.bushMesh.instanceMatrix.needsUpdate = true; this.berryMesh.instanceMatrix.needsUpdate = true;
   }
@@ -851,12 +943,29 @@ export class View {
     const rect = this.canvas.getBoundingClientRect();
     const nx = ((clientX - rect.left) / rect.width) * 2 - 1, ny = -((clientY - rect.top) / rect.height) * 2 + 1;
     this.ray.setFromCamera({ x: nx, y: ny }, this.camera);
+    this.ray.layers.enableAll();   // batched buildings keep their (undrawn) originals for picking
     return this.ray.intersectObjects(objects, true);
   }
   project(v) {
     const p = tmpV.copy(v).project(this.camera);
     const rect = this.canvas.getBoundingClientRect();
     return { x: (p.x * 0.5 + 0.5) * rect.width + rect.left, y: (-p.y * 0.5 + 0.5) * rect.height + rect.top, vis: p.z < 1 && p.z > -1 };
+  }
+
+  // Forest level of detail: chunks far from the camera draw the stand-ins (and cast no shadow).
+  // Phones and lower quality settings switch sooner.
+  updateTreeLod(dt) {
+    this.lodT = (this.lodT || 0) - dt;
+    if (this.lodT > 0 || !this.treeLow || PERF_OFF) return;
+    this.lodT = 0.25;
+    const cam = this.camera.position, far = this.quality === 'high' && innerWidth >= 760 ? 46 : 32;
+    const swap = (im, low, full) => {
+      const u = im.userData, dx = Math.max(0, Math.abs(u.cx - cam.x) - CH / 2), dz = Math.max(0, Math.abs(u.cz - cam.z) - CH / 2);
+      const d = Math.hypot(dx, dz, cam.y), lo = u.lo ? d > far - 3 : d > far + 3;   // nearest edge, with a little hysteresis
+      if (lo !== !!u.lo) { u.lo = lo; im.geometry = lo ? low : full; im.castShadow = !lo && im.userData.cast !== false; if (u.shadow) u.shadow.visible = !lo && im.visible; }   // far chunks: no shadow at all
+    };
+    for (const im of this.chunks) swap(im, this.treeLow[im.userData.type], this.treeTypes[im.userData.type]);
+    for (const im of this.skirtTrees || []) swap(im, this.skirtLow[im.userData.kind], im.userData.kind ? this.roundG : this.pineG);
   }
 
   // dynamic resolution: drop pixel ratio when frames are slow, recover when fast
@@ -910,12 +1019,13 @@ export function bubbleTexture(icon) {
   const draw = () => {
     const g = cv.getContext('2d');
     g.clearRect(0, 0, 96, 112);
-    g.fillStyle = '#fffaf0'; g.strokeStyle = '#8a5a2b'; g.lineWidth = 5;
-    g.beginPath(); g.roundRect(6, 6, 84, 80, 22); g.fill(); g.stroke();
+    const poster = icon === 'mask';   // a wanted villager: a parchment poster with a red border
+    g.fillStyle = poster ? '#f3dfae' : '#fffaf0'; g.strokeStyle = poster ? '#a8322a' : '#8a5a2b'; g.lineWidth = poster ? 7 : 5;
+    g.beginPath(); g.roundRect(6, 6, 84, 80, poster ? 8 : 22); g.fill(); g.stroke();
     g.beginPath(); g.moveTo(36, 84); g.lineTo(48, 104); g.lineTo(60, 84); g.closePath(); g.fill(); g.stroke();
     g.fillRect(38, 78, 20, 8);
     const img = iconImage(icon);
-    if (img.complete && img.naturalWidth) { g.drawImage(img, 18, 16, 60, 60); tex.needsUpdate = true; tex.userData.ready = true; }
+    if (img.complete && img.naturalWidth) { if (poster) g.drawImage(img, 12, 14, 72, 72); else g.drawImage(img, 18, 16, 60, 60); tex.needsUpdate = true; tex.userData.ready = true; }
     else img.addEventListener('load', draw, { once: true });
   };
   draw();

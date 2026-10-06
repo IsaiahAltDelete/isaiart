@@ -7,6 +7,7 @@ import { CLASSES, classOf, jobFit, fitLabel, stars } from './rpg.js';
 import { RACES } from './society.js';
 import { TIERS, JOB_EDU } from './education.js';
 import { svg } from './icons.js';
+import { woodpileNights, FIREWOOD } from './frost.js';
 const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const selected = (a, b) => a === b ? 'selected' : '';
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -80,11 +81,17 @@ export function buildingsBoardHtml(ui) {
   return h + '</div>' + (!list.length ? '<p class="board-empty">Nothing matches.</p>' : '');
 }
 
+// the pass: what the cold costs, and how long the woodpile lasts
+function frostNote(sim, un) {
+  if (!un) return ` <span class="bad">Burns ${FIREWOOD} wood a night per settler · wolves</span>`;
+  const w = woodpileNights(sim);
+  return w.folk ? ` · <span class="${w.nights < 2 ? 'bad' : ''}">${w.wood} wood: ${Math.min(99, w.nights)} night${w.nights === 1 ? '' : 's'} of firewood</span>` : '';
+}
 export function worldRegionsHtml(ui, rowExtra) {
   const sim = ui.sim, s = sim.s, active = currentRegion(ui);
   return SETTLEMENTS.map(st => {
     const un = s.unlocked[st.id], m = regionSummary(sim, st.id), ok = un || s.level >= st.unlock.lvl && sim.canAfford(st.unlock.cost);
-    return `<article class="region-card ${active === st.id && un ? 'active' : ''}"><div class="rc-head"><div><b>${esc(sim.sname(st.id))}</b><small>${un && active === st.id ? 'You are here' : un ? 'Settled' : esc(st.blurb)}</small></div>${un && active === st.id ? '' : `<button class="btn ${un ? 'ghost' : ok ? 'gold' : 'ghost'} sm" data-act="${un ? 'travel' : 'settle'}" data-sid="${st.id}" ${ok ? '' : 'disabled'}>${un ? 'Visit' : 'Settle'}</button>`}</div>
+    return `<article class="region-card ${active === st.id && un ? 'active' : ''}"><div class="rc-head"><div><b>${esc(sim.sname(st.id))}</b><small>${un && active === st.id ? 'You are here' : un ? 'Settled' : esc(st.blurb)}${st.cold ? frostNote(sim, un) : ''}</small></div>${un && active === st.id ? '' : `<button class="btn ${un ? 'ghost' : ok ? 'gold' : 'ghost'} sm" data-act="${un ? 'travel' : 'settle'}" data-sid="${st.id}" ${ok ? '' : 'disabled'}>${un ? 'Visit' : 'Settle'}</button>`}</div>
       ${un ? `<div class="bstat">${m.pop}/${m.beds} beds · ${plural(m.jobs, 'open job')} · ${m.upgrades} can upgrade · ${esc(sim.safetyOf?.(st.id) || '')} · ${[['villagers', 'Villagers'], ['jobs', 'Jobs'], ['buildings', 'Buildings']].map(([k, t]) => `<button class="mini" data-act="board-open-region" data-sid="${st.id}" data-panel="${k}">${t}</button>`).join('')}</div>` : `<div class="bstat">Level ${st.unlock.lvl} · <span class="bcost">${costChips(st.unlock.cost, s)}</span></div>`}${rowExtra(ui, st.id)}</article>`;
   }).join('');
 }
@@ -105,6 +112,7 @@ export function boardsInit(ui) {
 .board-empty{text-align:center;padding:20px;font-size:13px;color:var(--ink2)}
 .region-card{border:1px solid #e3cf9f;border-radius:12px;padding:10px 12px;background:#fffaf0;margin-bottom:8px}.region-card.active{border-color:#6d9a4c;background:#f4f6e5}.rc-head{display:flex;align-items:center;gap:10px}.rc-head>div{flex:1}.rc-head small{display:block;font-size:11.5px;color:var(--ink2)}
 #regionQuick{position:fixed;left:12px;bottom:83px;z-index:5;display:flex;gap:6px;align-items:center;background:#fff5db;border:2px solid #caa064;border-radius:12px;padding:5px;box-shadow:0 2px 6px #50361f30}#regionQuick select{max-width:170px;font-size:12px;margin:0}#regionQuick button{font-size:12px;padding:6px}.placing #regionQuick,body.info-open #regionQuick,body:has(#modal:not(.hidden)) #regionQuick{display:none}
+#woodpile{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;white-space:nowrap}#woodpile em{font-style:normal;font-weight:700;margin-left:4px;padding:1px 6px;border-radius:8px;background:#b0412c;color:#fff}#woodpile.low{background:#fbe0d6;border-color:#b0412c;color:#8a2a1c;animation:pulse 1.6s ease-in-out infinite}
 #pFace{max-width:95px;white-space:normal;font-size:11px}#pFace[aria-pressed=true]{background:#dbedc6;border-color:#6d9a4c}
 @media(max-width:600px){.brow{flex-wrap:wrap}.bmain{flex:1 1 140px}.bsel{flex:1 1 60%;width:auto}#regionQuick{bottom:80px;max-width:calc(100vw - 32px)}.seg button{padding:7px!important;font-size:12px!important}.seg small{display:none}}
 `; document.head.appendChild(style);
@@ -122,6 +130,14 @@ export function boardsFrame(ui) {
   document.getElementById('regionQuick').classList.toggle('hidden', unlocked.length < 2);
   const active = currentRegion(ui), markup = unlocked.map(sid => `<option value="${sid}" ${selected(active, sid)}>${esc(ui.sim.sname(sid))} · ${ui.sim.s.villagers.filter(v => v.home === sid).length}</option>`).join('');
   if (markup !== ui.regionMarkup) { ui.regionMarkup = markup; select.innerHTML = markup; }
+  // the pass's woodpile, always in view once it's settled
+  let chip = document.getElementById('woodpile');
+  if (ui.sim.s.unlocked.frost) {
+    if (!chip) { chip = document.createElement('button'); chip.id = 'woodpile'; chip.className = 'btn ghost sm'; chip.onclick = () => ui.openModal('trade'); document.getElementById('regionQuick').appendChild(chip); }
+    const w = woodpileNights(ui.sim), low = w.folk && w.nights < 2;
+    const html = `${svg('wood', 14)}<span>${esc(ui.sim.sname('frost').split(' ')[0])} woodpile: <b>${w.wood}</b>${w.folk ? ` · ${Math.min(w.nights, 99)} night${w.nights === 1 ? '' : 's'}` : ''}</span>${low ? '<em>Send wood</em>' : ''}`;
+    if (chip.dataset.h !== html + low) { chip.dataset.h = html + low; chip.innerHTML = html; chip.classList.toggle('low', !!low); chip.title = `${ui.sim.sname('frost')} keeps its own woodpile (the wood count at the top is the whole realm's). It burns ${FIREWOOD} wood a night for each settler. Tap to send wood up the pass by trade route.`; }
+  } else chip?.remove();
 }
 export function boardChange(ui, e) {
   const t = e.target, act = t.dataset.act; if (!act?.startsWith('board-')) return false;

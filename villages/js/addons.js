@@ -30,6 +30,7 @@ import { installWishes } from './wishes.js';
 import { installCelebrations } from './celebrations.js';
 import { installVisitors } from './visitors.js';
 import { installCensus } from './census.js';
+import { installFrost } from './frost.js';
 
 export function installAddons(sim, save) {
   installRoads(sim, save);
@@ -52,4 +53,5 @@ export function installAddons(sim, save) {
   installCelebrations(sim, !save);  // weddings, the town's rank, the yearly chronicle
   installVisitors(sim);     // a family, a bard, a scholar or a stranger at the gate
   installCensus(sim);       // a daily population history for the Population page
+  installFrost(sim);        // Frostpeak Pass: firewood, wolves, and a glade cleared when it's settled
 }

@@ -859,7 +859,95 @@ serves `index.html` fresh. The first deploy of rounds 7–14 broke the live game
 **Rule:** after changing any `js/` or `models/` file, run `node tools/stamp.mjs`.
 `tests/stamp.test.mjs` fails if the stamp is stale.
 
+## Round 15 — snow pass, peek inside, expeditions on the map, and a performance pass (2026-10-06)
+
+Nine items, three critic loops (A visual art lead, B lead designer, C staff graphics engineer), 3 attempts each,
+pass mark 8.5. None passed: A 6.3 → 7.4 → 7.8, B 6.6 → 7.2 → 7.5, C 6.0 → 7.6 → 7.7. Their remaining notes are
+under "Next round".
+
+**Visual polish (critic A: 6.3 → 7.4 → 7.8).** Flat painted kerbs to match the cobbles. Bucket water is
+three soft-rimmed drops a throw, the dragon's breath a stream of chunky flame tongues pointed along the
+flight, and the wanted villager's bubble a parchment poster with a red border. Seasonal clothes: straw
+hats in summer, and in rain a third of villagers wear a yellow raincoat with the hood up while the rest
+hold an umbrella, which is baked as a rigid prop held in the left fist.
+
+**Welcome back** (`lifeui.js welcomeBack`). On load, if two or more Story entries are unread: a parchment
+card with counts (babies, weddings, wishes granted, newcomers, hard times), the top four headlines, and
+"Read the Story" / "Carry on". The event bar and toasts hide while it's open, and a visitor at the gate is
+mentioned inside it.
+
+**Expeditions on the World map** (`expmap.js`). Every expedition has a site on the map's rim
+(`EXP_SITES`). A party walks a bold dashed trail out from the Guild Hall (`expLeg`: out for the first 30%
+of its time, camped for the middle 40%, home for the last 30%). The trail bows away from towns and water,
+and at the site the party pitches a tent by a campfire. The caption under the map tells the story without
+dice rolls (`storyBeat`) and says when they'll be home.
+
+**Peek inside a home** (`peek.js`, `roomplan.js`). Select a house: the roof floats up and fades, the door
+fades, and the walls are clipped at 42% of the eave height like a doll's house. The room is found by
+dropping rays onto the wall volumes (each grid cell counts the volumes over it, so a rectangle of one
+count never crosses a wall). Beds go in the biggest room, a straw bedroll in the next for anyone without
+a bed, then the table, a pot-bellied stove with firelight, and a chest in any room left bare. Whoever is
+home appears inside at room scale: asleep under a quilt with a zzz, or round the table. The family pet
+curls up on its owner's bed, lit by the stove. Lamplight glows at night.
+
+**Frostpeak Pass** (`frost.js`). A sixth settlement, tucked into the map's emptiest corner and snowbound
+all year (a `uFrost` term in every snow shader; drifts with cool hollows). Craggy snow-capped peaks stand
+beyond the map edge (`view.buildPeaks`), and the classic map's ridges are raised.
+- Old saves: the base map's trees are untouched (the glade is felled when you settle). Ridge heights are
+  rebuilt on every load, and `frost.raised` records the corners it changed, so `round8`'s fixture test
+  still proves the rest of the classic map is byte for byte the same.
+- Specialty: miners break 20% more stone and dig up iron ore.
+- Dangers: each night it burns 1 wood per settler from its own woodpile (a chip in the region bar shows
+  nights left, opens trade routes, and warns at dusk). Running out makes everyone cold, and wolf packs
+  come down from the peaks.
+
+**Performance** (critic C: 6.0 → 7.6 → 7.7, below the 8.5 bar). Measured with `tools/devkit.js` `perfScene()` (40 buildings, 64
+villagers) and `callsBy()` (draws per category, main pass and shadow pass), A/B against
+`sessionStorage.villagesPerfOff = '1'`.
+- Villagers (`models.js bakeVillager`, `batch.js`): each rigid part (body, head, limbs, plus the tool,
+  umbrella, sack, wizard hat and bedroll) is baked to vertex-coloured geometry, in full and without the
+  tiny details for far views. Every part of every villager draws from two `BatchedMesh`es. Originals stay
+  in the tree on layer 31 (never drawn) so dressing still toggles them. Rebakes are capped at 6 a frame
+  (`bakeBudget`), so rain ripples through a crowd instead of hitching. Eyes stay unlit via an `unlit`
+  attribute.
+- Buildings: once settled (built, not upgrading, popping, damaged, burning, being moved or peeked into),
+  a building's static meshes become instances in one `BatchedMesh` per material for the whole town.
+  `applyLevel`/`applyProsperity`/`removeBVis` drop it out first, only when they're about to change it.
+- Blob shadows and chimney smoke: one instanced mesh each (smoke fades via a per-instance `aOp`).
+- Forest: far chunks draw ~60-triangle stand-ins (`treeLod`, nearest-edge distance with hysteresis). Every
+  chunk's shadow comes from a stand-in twin on layer 2, which the camera only sees while the shadow map
+  renders (`shadowMap.render` is wrapped).
+- Scene matrices update once a frame, just before the batches copy them (`matrixWorldAutoUpdate = false`).
+- Paired A/B, distance 30: desktop 2,098 → 351 draw calls, 2.89M → 2.19M triangles, median 19.5 → 16.3 ms;
+  phone (375×812) 1,745 → ~267 calls, 2.29M → 1.63M triangles, median 17.4 → 15.6 ms. In rain with
+  umbrellas up: 244 calls.
+- Known remaining wins: ~97 building batches (one per material) could fold into ~15 by baking colours, but
+  window glow, lamps and seasonal palettes change material colours at runtime, so each material would
+  need a "static" tag first. Also untested: BatchedMesh without WEBGL_multi_draw on real phones.
+
+After the last reviews (not re-scored): tools and the sack were taken back out of the villager bake
+(they change every work step; rebaking them caused spikes and a stale sack colour), flat-shaded props keep
+their facets, forest chunks draw only their used slots (empty spare slots were ~0.6M wasted triangles:
+desktop now ~1.56M triangles, ~350 calls), batching switches itself off where WEBGL_multi_draw is
+missing (`perf.js BATCHING`; three.js would otherwise draw per instance), grown instanced meshes are
+disposed, sleepers lie flat again, and a travelling party stops short of its site's medallion.
+
+Tests: `tests/round15.test.mjs` (expedition legs and sites, story beats, room layout across walls,
+Frostpeak's site, firewood, wolves and ore). The dev kit `tools/devkit.js` stages scenes, steps frames
+in a hidden preview, and magnifies regions of the frame for inspection.
+
 ## Next round — pick 5–6
+
+Critic leftovers from round 15:
+- Peek: sleepers tucked under a quilt to the chin; the stove's glowing mouth toward the camera with its
+  light pool in front; a door remnant still stands in the doorway on some cottages.
+- Frostpeak: rock crags and outcrops in the pine belt so the pass reads as mountains at play zoom; darker
+  lower flanks on the peaks.
+- Map: a bigger World map so the camp and fire read; the tutorial tip can cover the woodpile chip.
+- Performance: fold the ~97 building batches into ~15 by baking colours (needs a per-material "static" tag
+  first, since window glow, lamps and seasons change colours); a per-type forest BatchedMesh (~160 → ~10
+  calls); profile the per-frame batch sync on a real phone; check iOS Safari.
+- Visual: umbrellas sit high; dragon flames; rain cues and wet ground.
 
 Ordered easiest to hardest:
 
@@ -908,6 +996,11 @@ Ordered easiest to hardest:
 | `js/wishes.js`, `celebrations.js`, `visitors.js` | Wishes and pets; weddings, town rank, the chronicle; visitors at the gate |
 | `js/lifeui.js`, `lifeview.js` | Their panels and banner rows; pets, visitors, petals, crest banner, fireworks |
 | `tests/round8.test.mjs`, `tests/round9.test.mjs`, `tests/round10.test.mjs` | Save compatibility and gameplay/board integration checks |
+| `js/expmap.js` | Expeditions on the World map: sites, the party's trail, camp and captions |
+| `js/peek.js`, `js/roomplan.js` | Peek inside a home: roof lift, wall cut, furniture layout, family and pet |
+| `js/frost.js` | Frostpeak Pass: the site, ridges, glade, firewood, wolves and the iron-ore specialty |
+| `js/batch.js`, `js/perf.js` | Draw batching for villagers, buildings, blob shadows and smoke; the A/B switch |
+| `tools/devkit.js` | Dev-only helpers: staging scenes, stepping frames, magnify, perf and draw-call breakdowns |
 | `blender/*.py` | Model scripts; `cli.py` builds, previews and exports them |
 | `vendor/three.module.min.js` | Three.js r170 (MIT) |
 

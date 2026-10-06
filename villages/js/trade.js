@@ -159,6 +159,11 @@ export function installTrade(sim) {
         s.res.gems += 1; s.stats.pearls = (s.stats.pearls || 0) + 1;
         sim.emit('float', v.x, v.z - 0.6, 'Pearl!', 'gem');
       }
+      // up in the mountains a miner's stone often comes with a lump or two of iron ore
+      if (sp?.ore && v.job === 'miner' && res === 'stone' && sim.rng() < 0.35) {
+        const got = sim.add('ore', 1 + (sim.rng() < 0.25 ? 1 : 0));
+        if (got) sim.emit('float', v.x, v.z - 0.6, `+${got} iron ore`, 'ore');
+      }
       if (GOODS[res]?.capped) {
         const r = Math.max(0, Math.floor(room(sid, res) - (L.pend[res] || 0)));
         if (n > r) {

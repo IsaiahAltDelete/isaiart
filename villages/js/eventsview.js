@@ -28,6 +28,19 @@ function flameTex() {
   flame = new THREE.CanvasTexture(cv); flame.colorSpace = THREE.SRGBColorSpace;
   return flame;
 }
+// a water droplet: opaque, with a white highlight and a darker edge, so it reads as water and not light
+let drop = null;
+function dropTex() {
+  if (drop) return drop;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 32;
+  const g = cv.getContext('2d');
+  g.beginPath(); g.moveTo(16, 3); g.bezierCurveTo(22, 12, 27, 17, 26, 21); g.bezierCurveTo(25, 28, 7, 28, 6, 21); g.bezierCurveTo(5, 17, 10, 12, 16, 3); g.closePath();
+  const grd = g.createLinearGradient(8, 6, 24, 28); grd.addColorStop(0, '#bfe6ff'); grd.addColorStop(0.6, '#4aa3f0'); grd.addColorStop(1, '#2a6fc0');
+  g.fillStyle = grd; g.fill(); g.lineWidth = 1; g.strokeStyle = 'rgba(31,90,160,.45)'; g.stroke();
+  g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.ellipse(12.5, 18, 2.2, 3.4, -0.4, 0, Math.PI * 2); g.fill();
+  drop = new THREE.CanvasTexture(cv); drop.colorSpace = THREE.SRGBColorSpace;
+  return drop;
+}
 const sprite = (color, size, additive = true, opacity = 1) => {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color, transparent: true, opacity, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending }));
   s.scale.setScalar(size); return s;
@@ -111,7 +124,12 @@ export function installEventVisuals(game) {
     if (sb && Math.random() < dt * 70) {
       const from = new THREE.Vector3(); (D.mouth || D.g).getWorldPosition(from);
       const bc = sim.bCenter(sb), to = new THREE.Vector3(bc.x + (Math.random() - 0.5), 0.6, bc.z + (Math.random() - 0.5));
-      const p = sprite(Math.random() < 0.5 ? 0xff7a1a : 0xffd34a, 1.1); p.position.copy(from); view.fx.add(p); breath.push({ p, from, to, t: 0 });
+      const p = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex(), transparent: true, depthWrite: false }));
+      // the round end leads and the tip trails back towards the jaw, along the flight on screen
+      const sa = from.clone().project(view.camera), sz = to.clone().project(view.camera);
+      p.material.rotation = Math.atan2(sz.x - sa.x, -(sz.y - sa.y) * (innerHeight / innerWidth));
+      p.scale.set(0.22, 0.36, 1); p.position.copy(from); view.fx.add(p); breath.push({ p, from, to, t: 0, flame: true });
+      if (Math.random() < 0.2) { const gl = sprite(0xff6a1a, 0.5, true, 0.25); gl.position.copy(from); view.fx.add(gl); breath.push({ p: gl, from, to, t: 0, glow: true }); }
     }
     // arrows and bolts flash on the dragon when it's hit
     if (e?.data.hitAt && e.data.hitAt !== D.lastHit) { D.lastHit = e.data.hitAt; D.flash = 0.25; }
@@ -176,11 +194,23 @@ export function installEventVisuals(game) {
         if (v.fireB == null || v.act?.anim !== 'bucket' || Math.random() > dt * 2.2) continue;
         const b = sim.bById.get(v.fireB), f = b && fires.get(b.id); if (!f) continue;
         const c = sim.bCenter(b), from = new THREE.Vector3(v.x, sim.world.heightAt(v.x, v.z) + 0.55, v.z), to = new THREE.Vector3(c.x + (Math.random() - 0.5), f.top * 0.7, c.z + (Math.random() - 0.5));
-        for (let k = 0; k < 4; k++) { const p = sprite(0x2f8fff, 0.42 - k * 0.05, false, 1); p.position.copy(from); view.fx.add(p); splash.push({ p, from, to, t: -k * 0.05, lead: k === 0 }); }
+        for (let k = 0; k < 3; k++) {
+          const p = new THREE.Sprite(new THREE.SpriteMaterial({ map: dropTex(), transparent: true, depthWrite: false }));
+          p.scale.setScalar(0.13 + Math.random() * 0.08); p.position.copy(from); view.fx.add(p);
+          const spread = new THREE.Vector3((Math.random() - 0.5) * 0.25, 0, (Math.random() - 0.5) * 0.25);
+          splash.push({ p, from, to: to.clone().add(spread), t: -k * 0.09, lead: k === 0, arc: 0.45 + Math.random() * 0.35, s0: p.scale.x });
+        }
       }
       for (let i = splash.length - 1; i >= 0; i--) {
         const w = splash[i]; w.t += dt * 1.6; const q = Math.max(0, Math.min(1, w.t));
-        w.p.position.lerpVectors(w.from, w.to, q); w.p.position.y += Math.sin(q * Math.PI) * 0.6;
+        const prev = w.p.position.clone();
+        w.p.position.lerpVectors(w.from, w.to, q); w.p.position.y += Math.sin(q * Math.PI) * (w.arc ?? 0.6);
+        if (w.s0) {
+          // turn the drop to trail along its flight (the tip points back), stretched a little by speed
+          const a = prev.project(view.camera), b = w.p.position.clone().project(view.camera);
+          if (b.distanceToSquared(a) > 1e-8) w.p.material.rotation = Math.atan2(b.y - a.y, b.x - a.x) + Math.PI / 2;
+          w.p.visible = w.t >= 0; w.p.scale.set(w.s0 * 0.8, w.s0 * 1.3, 1); w.p.material.opacity = 1 - Math.max(0, q - 0.8) * 5;
+        }
         if (w.t >= 1) {
           view.fx.remove(w.p); splash.splice(i, 1);
           if (w.lead) { const pf = sprite(0xffffff, 0.5, false, 0.85); pf.position.copy(w.to); view.fx.add(pf); puffs.push({ p: pf, t: 0 }); }
@@ -188,8 +218,8 @@ export function installEventVisuals(game) {
       }
       // the "pssh" where water meets fire
       for (let i = puffs.length - 1; i >= 0; i--) { const f = puffs[i]; f.t += dt * 2.5; f.p.scale.setScalar(0.5 + f.t * 0.9); f.p.position.y += dt * 0.6; f.p.material.opacity = 0.85 * (1 - f.t); if (f.t >= 1) { view.fx.remove(f.p); puffs.splice(i, 1); } }
-      // breath particles
-      for (let i = breath.length - 1; i >= 0; i--) { const b = breath[i]; b.t += dt * 1.8; b.p.position.lerpVectors(b.from, b.to, Math.min(1, b.t)); b.p.scale.setScalar(0.8 + b.t * 2.6); b.p.material.opacity = 1 - b.t; if (b.t >= 1) { view.fx.remove(b.p); breath.splice(i, 1); } }
+      // breath particles: yellow at the jaw to red at the roof; the glow fades before it reaches the walls
+      for (let i = breath.length - 1; i >= 0; i--) { const b = breath[i]; b.t += dt * 1.8; b.p.position.lerpVectors(b.from, b.to, Math.min(1, b.t)); if (b.flame) { b.p.scale.set(0.22 + b.t * 0.3, 0.36 + b.t * 0.4, 1); b.p.material.color.setRGB(1, Math.max(0.28, 1 - b.t * 1.1), Math.max(0.08, 0.7 - b.t * 1.3)); b.p.material.opacity = b.t < 0.85 ? 1 : (1 - b.t) / 0.15; } else { b.p.scale.setScalar(0.5 + b.t * 1.2); b.p.material.opacity = 0.25 * Math.max(0, 1 - b.t * 2); }  if (b.t >= 1) { view.fx.remove(b.p); breath.splice(i, 1); } }
       updateDragon(dt, t);
       updateWisps(dt, t);
       // the ground shakes

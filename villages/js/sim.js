@@ -8,6 +8,7 @@ import { BUILDINGS, DECOR, GOODS, SELLABLE, QUESTS, SETTLEMENTS, ACHIEVEMENTS, M
 import { mulberry32, pick } from './rng.js';
 import { installRpg } from './rpg.js';
 import { applyIsland } from './island.js';
+import { applyFrost } from './frost.js';
 import { installAddons } from './addons.js';
 
 export const defOf = type => BUILDINGS[type] || DECOR[type];
@@ -51,6 +52,7 @@ export class Sim {
     this.rng = mulberry32((seed ^ 0xA17C9E23) >>> 0);
     this.world = new World(seed, { gen: save ? save.wgen || 1 : WORLD_GEN, label });
     applyIsland(this.world);                 // Pearl Isle, if the lake has room (island.js)
+    applyFrost(this.world);                  // Frostpeak Pass, up in the far corner's mountains (frost.js)
     this.origTrees = this.world.trees.length;
     this.bById = new Map(); this.vById = new Map();
     this.stumps = [];

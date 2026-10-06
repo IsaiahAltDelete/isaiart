@@ -69,7 +69,10 @@ test('varied map seeds preserve dry clearings, usable roads and fishing shore', 
 test('classic save loads without changing terrain or tree indices', () => {
   const { save, checks } = JSON.parse(fs.readFileSync(new URL('./fixtures/classic-save.json', import.meta.url), 'utf8'));
   const sim = new Sim(save);
-  assert.equal(sim.world.gen, 1); assert.equal(hash(sim.world.type), checks.type); assert.equal(hash(sim.world.hv), checks.height);
+  assert.equal(sim.world.gen, 1); assert.equal(hash(sim.world.type), checks.type);
+  // Frostpeak Pass raises its ridges (round 15); every other corner of the map is exactly as it was
+  const hv = Float32Array.from(sim.world.hv); for (const [i, h0] of sim.world.frost?.raised || []) hv[i] = h0;
+  assert.equal(hash(hv), checks.height);
   assert.deepEqual(sim.world.trees.map(t => [t.tx, t.tz, t.kind ?? null]), checks.trees);
   assert.equal(sim.world.trees[0].alive, false);
   assert.equal(new Sim(sim.serialize()).world.gen, 1);

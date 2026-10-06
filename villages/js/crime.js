@@ -8,6 +8,10 @@
 // the way: the loot goes back, and with a Watch House in the settlement they
 // spend the next morning in the stocks out front (v.jail = until when).
 import { stageOf, defOf, DAY } from './sim.js';
+import { addIcons } from './icons.js';
+
+// a bandit's domino mask: the bubble over a wanted villager (distinct from the "!" buildings use for problems)
+addIcons({ mask: '<path d="M1 10c4-4.6 9.5-5.2 15-2.4C21.5 4.8 27 5.4 31 10c-.2 7.4-4 12.6-9.4 12.6-3 0-5-1.6-5.6-4-.6 2.4-2.6 4-5.6 4C5 22.6 1.2 17.4 1 10z" fill="#231c26" stroke="#0d0a0f" stroke-width="1.6" stroke-linejoin="round"/><path d="M5.5 12.6c1.6-2 4.6-2.2 6.6-.6.4 2.2-1.2 4.2-3.6 4.2-2 0-3.2-1.6-3-3.6zM26.5 12.6c-1.6-2-4.6-2.2-6.6-.6-.4 2.2 1.2 4.2 3.6 4.2 2 0 3.2-1.6 3-3.6z" fill="#fffaf0"/><path d="M6 7.6c3-1.6 6.4-1.6 9 .2" stroke="#4a3c50" stroke-width="1.4" fill="none" stroke-linecap="round"/>' });
 
 const SIGHT = 7;            // world units
 const first = v => v.name.split(' ')[0];

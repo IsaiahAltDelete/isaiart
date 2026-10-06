@@ -6,9 +6,13 @@ import { View, bubbleTexture, timeUniform, iceUniform } from './view.js';
 import { loadModels, hasModel, instanceModel } from './blender.js';
 import { installEventVisuals } from './eventsview.js';
 import { installLifeVisuals } from './lifeview.js';
+import { installPeek } from './peek.js';
+import { installBatches } from './batch.js';
+import { frostAt } from './frost.js';
 import { Highlight } from './select.js';
+import { bakeBudget } from './models.js';
 import { buildModel, scaffold, villagerModel, dressVillager, propModel, slotMaterial, VILLAGER_MATS, SNOWCAP_MAT, setTool, mat, C, pineGeo, stumpGeo, beastModel, chestModel, bunting } from './models.js';
-import { snowUniform } from './snow.js';
+import { snowUniform, frostUniform } from './snow.js';
 import { UI } from './ui.js';
 import { N, HALF, idx, toWorld, inMap, CENTERS, tileX, tileZ } from './world.js';
 import { SETTLEMENTS, BUILD_ORDER, DECOR_ORDER, GOODS, SEASON_DAYS, DECOR, HOME_TYPES, LODGING_TYPES } from './data.js';
@@ -80,6 +84,9 @@ class Game {
     this.extras = new Extras(this);                    // carts, ferry, bridges, chest arrows, share codes…
     this.eventsVis = installEventVisuals(this);         // fires, wisps, fever, quakes, the dragon (events.js)
     this.lifeVis = installLifeVisuals(this);            // pets, visitors, wedding petals, the crest banner (lifeview.js)
+    this.peek = installPeek(this);                      // a selected home lifts its roof to show the family inside (peek.js)
+    this.batches = installBatches(this);                // villagers and settled buildings drawn in a few dozen draw calls (batch.js)
+    if (this.batches) this.view.scene.matrixWorldAutoUpdate = false;   // updated once a frame, just before the batches copy it
     this.hookEvents();
     this.bindInput();
     setSound(this.settings.sound);
@@ -93,6 +100,7 @@ class Game {
     document.getElementById('loading').classList.add('gone');
     setTimeout(() => document.getElementById('loading').remove(), 700);
     if (!save && this.sim.s.tutorial >= 99) setTimeout(() => this.ui.toast('Welcome to Meadowbrook! Open Build to begin.', 'house', true), 900);
+    if (save) setTimeout(() => this.ui.welcomeBack?.(), 1100);   // what's new in the Story since you last read it
     this.last = performance.now();
     this.saveTimer = 0;
     this.loop();
@@ -171,6 +179,9 @@ class Game {
       marker.position.set(0,Math.max(2.4,top+0.2),0);root.add(marker);vis.arcaneMarker=marker;
     }
     this.addHalos(group);
+    // up in the snowbound pass, window boxes have no summer flowers
+    const snowy = frostAt(this.sim.world.frost, c.x, c.z) > 0.5;
+    group.traverse(o => { if (o.userData.slot === 'snowcap') o.castShadow = false; if (snowy && /^flower/.test(o.userData.slot || '')) o.visible = false; });   // (the pillows sit on the roof: no shadow of their own)
     if (b.type === 'campfire') {
       const pool = new THREE.Mesh(new THREE.CircleGeometry(3.2, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: glowTex(), color: 0xff9a40, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
       pool.position.y = 0.08; pool.renderOrder = 2; root.add(pool); this.halos.push({ m: pool, k: 0.55 });
@@ -190,6 +201,7 @@ class Game {
     if (vis.prosG) { vis.group.remove(vis.prosG); this.halos = this.halos.filter(h => h.m.parent !== vis.prosG); }
     vis.prosG = null;
     if (lvl < 2) return;
+    { const c = this.sim.bCenter(b); if (frostAt(this.sim.world.frost, c.x, c.z) > 0.5) return; }   // no flower boxes in the snow
     const [w, d] = defOf(b.type).size, g = new THREE.Group(), z = d / 2 - 0.12;
     const COLS = [0xe85d75, 0xffd24a, 0xf5f0ff, 0xb07ae8, 0xff8a3d];
     for (const sx of [-1, 1]) {
@@ -465,7 +477,7 @@ class Game {
     this.vvis.set(v.id, m);
   }
   // far from the camera, a villager's tiny details are a pixel or two: skip drawing them
-  villagerLod(m, far) { m.group.traverse(o => { if (o.userData.detail) o.visible = !far; }); }
+  villagerLod(m, far) { m.far = far; m.group.traverse(o => { if (o.userData.detail) o.visible = !far; }); }   // (baked villagers swap to their no-detail bake: batch.js)
   // villagers gently push apart so two never stand inside each other
   separate(dt) {
     // the chibi villagers are wide-headed, so keep a full head's width apart
@@ -497,7 +509,7 @@ class Game {
     m.group.position.set(vx, y, vz);
     m.group.visible = !v.indoors;
     m.wiz.visible = v.job === 'wizard' && v.title !== 'Archmage' && v.title !== 'High Archmage';
-    dressVillager(m, v, this.si === 3 && this.sim.snowLevel() > 0.2);
+    dressVillager(m, v, { winter: (this.si === 3 && this.sim.snowLevel() > 0.2) || v.home === 'frost', summer: this.si === 1, rain: (this.rainK || 0) > 0.35 });
     m.bed.visible = v.asleep === 'fire';
     if (v.asleep === 'fire') { m.body.rotation.set(-Math.PI / 2, 0, 0); m.body.position.set(0, 0.1, -0.25); m.bed.position.set(0, 0.03, 0); }
     let d = v.face - m.rot; d = Math.atan2(Math.sin(d), Math.cos(d));
@@ -507,11 +519,11 @@ class Game {
     setTool(m, anim === 'fight' ? (v.gear?.w === 'sword' ? 'sword' : 'spear') : anim ? ANIM_TOOL[anim] ?? null : v.carry ? null : v.job === 'guard' && v.gear?.w ? v.gear.w : JOB_TOOL[v.job] ?? null);
     const talk = v.talk && v.talk.until > this.sim.s.time && !v.indoors && !v.asleep && this.talkShow?.has(v.id) ? v.talk.k : null;
     const now = this.sim.s.time, wanted = !(v.jail > now) && this.sim.wantedOf?.(v);
-    const mood = v.sick > now ? 'sick' : v.hungry ? 'apple' : wanted && !v.asleep ? 'alert' : v.beamUntil > now ? 'smile' : v.wish && v.wish.until > now && !v.asleep && !v.indoors ? 'wish' : v.chat && !talk ? 'heart' : v.asleep === 'fire' && (v.id % 3 === 0) ? 'zzz' : null;
+    const mood = v.sick > now ? 'sick' : v.cold > now && !v.asleep ? 'snow' : v.hungry ? 'apple' : wanted && !v.asleep ? 'mask' : v.beamUntil > now ? 'smile' : v.wish && v.wish.until > now && !v.asleep && !v.indoors ? 'wish' : v.chat && !talk ? 'heart' : (v.asleep === 'fire' && (v.id % 3 === 0)) || this.peek?.showing(v) ? 'zzz' : null;
     if (mood !== m.mood) {
       m.mood = mood;
       if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false })); m.bubble.userData.px = 26; m.bubble.position.y = 1.0; m.group.add(m.bubble); this.screenSprites.add(m.bubble); }
-      if (m.bubble) { m.bubble.visible = !!mood; m.bubble.userData.px = mood === 'sick' || mood === 'alert' ? 36 : mood === 'wish' ? 32 : 26; if (mood) { m.bubble.material.map = bubbleTexture(mood); m.bubble.material.needsUpdate = true; } }
+      if (m.bubble) { m.bubble.visible = !!mood; m.bubble.userData.px = mood === 'sick' || mood === 'mask' ? 36 : mood === 'wish' ? 32 : mood === 'zzz' && this.peek?.showing(v) ? 40 : 26; if (mood) { m.bubble.material.map = bubbleTexture(mood); m.bubble.material.needsUpdate = true; } }
     }
     if (m.bubble && mood) m.bubble.visible = !!m.bubble.material.map?.userData.ready;
     if (m.bubble?.visible) m.bubble.position.y = 0.95 + Math.sin(time * 3 + m.phase) * 0.03;
@@ -596,6 +608,15 @@ class Game {
         m.body.position.y = Math.sin(t * 2) * 0.006;
         m.armL.rotation.z = -0.08; m.armR.rotation.z = 0.08;
       }
+    }
+    // rain: up goes the umbrella (left hand) while walking or standing about; work and play put it away
+    if (m.umb) {
+      const up = (this.rainK || 0) > 0.35 && this.si !== 3 && !m.coat && !v.indoors && !v.asleep && (v.moving || !HANDS_BUSY.has(anim));
+      m.umb.visible = up;
+      if (up) { m.armL.rotation.set(-1.25, 0, -0.32); m.umb.rotation.set(-0.42 + (v.moving ? 0.1 : 0), 0, -0.3); }
+      // bubbles sit straight above the canopy, not under it or off to the side
+      if (m.bubble) m.bubble.position.y = up ? 1.5 : 1.0;
+      if (m.talkSp) { m.talkSp.position.y = up ? 1.62 : 1.22; m.talkSp.position.x = up ? 0 : 0.2; }
     }
   }
   // is a screen point under a piece of the bottom HUD?
@@ -799,7 +820,8 @@ class Game {
     iceUniform.value = Math.max(0, Math.min(1, (snow - 0.25) / 0.6));
     this.view.pads.visible = iceUniform.value < 0.5;
     this.si = si;
-    SNOWCAP_MAT.visible = snow > 0.42;      // roofs wear their snow pillows once the snow is deep
+    SNOWCAP_MAT.visible = snow > 0.42 || !!sim.world.frost;      // roofs wear their snow pillows once the snow is deep (and always up in the pass)
+    const F = sim.world.frost; frostUniform.value = F ? { x: F.x - N / 2 + 0.5, y: F.z - N / 2 + 0.5, z: F.R, w: 1 } : { x: 0, y: 0, z: 0, w: 0 };
     this.updateSnowmen(snow);
   }
   // Villagers build snowmen around each campfire once the snow settles; they
@@ -1572,6 +1594,7 @@ class Game {
   // ── main loop ──
   loop() {
     requestAnimationFrame(() => this.loop());
+    bakeBudget(6);
     const now = performance.now();
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
@@ -1602,9 +1625,10 @@ class Game {
     const far = rig.dist > (this.vLodFar ? 24 : 28);   // a little hysteresis so it doesn't flicker at the edge
     if (far !== !!this.vLodFar) { this.vLodFar = far; for (const m of this.vvis.values()) this.villagerLod(m, far); }
     view.adapt(dt);
+    view.updateTreeLod(dt);      // far chunks of forest draw simple stand-ins
 
     if (this.tilesDirty.size) {
-      for (const i of this.tilesDirty) { view.paintTile(i, false); view.updateGrass(i); view.updatePave(i); }
+      for (const i of this.tilesDirty) { view.paintTile(i, false); view.updateGrass(i); }
       view.terrainColor.needsUpdate = true; view.terrainSurface.needsUpdate = true;
       this.tilesDirty.clear();
     }
@@ -1634,6 +1658,7 @@ class Game {
     this.updateWard();
     this.drawBars();
     rpgFrame(this, dt);               // health bars, knocked-out poses (rpgview.js)
+    this.peek?.update(dt, t);
 
     // selection ring + name tag
     const tag = document.getElementById('tag');
@@ -1653,6 +1678,7 @@ class Game {
 
     ambient(dt * (this.night > 0.5 ? 0.2 : 1));
     this.ui.frame(dt);
+    if (this.batches) { view.scene.updateMatrixWorld(); this.batches.sync(); }
     view.render();
     this.saveTimer += dt;
     if (this.saveTimer > 20) { this.saveTimer = 0; this.save(); }
@@ -1786,6 +1812,8 @@ class Game {
 
 const tmpV = new THREE.Vector3();
 const _bb = new THREE.Box3(), _bs = new THREE.Vector3();
+// work and play that need both hands: the umbrella goes away
+const HANDS_BUSY = new Set(['chop', 'mine', 'hammer', 'fight', 'gather', 'plant', 'hoe', 'fish', 'saw', 'work', 'bucket', 'scuffle', 'dance', 'cast', 'play', 'sleep']);
 const at3 = (m, x, y, z, shadow = false) => { m.position.set(x, y, z); m.castShadow = shadow; return m; };
 const PAINT = { clear: 'Clear Trees', pave: 'Cobble Road', road: 'Dirt Road' };
 const leafGeo = new THREE.IcosahedronGeometry(0.09, 0);

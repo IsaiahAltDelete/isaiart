@@ -18,6 +18,7 @@ import { CLASS_DUTY } from './classduties.js';
 import { eventsInit, eventsFrame, eventsBuildingHtml, eventsSettingsHtml, eventsClick } from './events.js';
 import { CLASSES, classOf, maxHp } from './rpg.js';
 import { censusHtml, CENSUS_CSS } from './census.js';
+import { expMapHtml, drawExpMap, EXPMAP_CSS } from './expmap.js';
 import { lifeInit, wishVillagerHtml, petChip, petRowHtml, wishListHtml, rankQuestRow, chronicleHtml, lifeClick } from './lifeui.js';
 import { townInit, townHtml, townClick, townChange, townBuildingHtml, seedHtml, seedClick } from './townui.js';
 
@@ -1269,7 +1270,7 @@ export class UI {
         : `<p class="sub" style="font-size:12px;color:var(--ink2)">Gift chests turn up in the woods every day or so. Some hold rare decorations you can't build.</p>`);
       h += `<p class="sub" style="font-size:12px;color:var(--ink2);margin-top:8px">Quick sales pay half price. A staffed Market Stall sells your surplus at full price.</p>`;
     } else if (k === 'worldmap') {
-      h += `<div class="worldwrap"><canvas id="minimap" width="384" height="384"></canvas><div>`;
+      h += `<div class="worldwrap"><div><div class="mapstack"><canvas id="minimap" width="384" height="384"></canvas>${expMapHtml()}</div><div id="expnote"></div></div><div>`;
       h += worldRegionsHtml(this, r7WorldRow);
       if (Object.keys(s.unlocked).length > 1) h += `<button class="btn sm" style="margin-top:8px;width:100%" data-act="r7-trade">${svg('wood', 16)} Stores &amp; trade routes</button>`;
       h += `</div></div>`;
@@ -1352,7 +1353,13 @@ export class UI {
       body.innerHTML = h; body.scrollTop = 0;
       if (swap) restart(body, 'swap');
     }
-    if (k === 'worldmap') this.drawMinimap();
+    if (k === 'worldmap') {
+      this.drawMinimap();
+      // parties out on expeditions walk across the map while it's open
+      if (!document.getElementById('expmapcss')) { const st = document.createElement('style'); st.id = 'expmapcss'; st.textContent = EXPMAP_CSS; document.head.appendChild(st); }
+      clearInterval(this._expT); drawExpMap(this, svg);
+      this._expT = setInterval(() => { if (!drawExpMap(this, svg)) clearInterval(this._expT); }, 120);
+    }
   }
 
   // ── villagers: who does what, with filters, grouping and one-tap jobs ──
@@ -1466,6 +1473,24 @@ export class UI {
         g.beginPath(); g.arc((t.x + N / 2) * S, (t.z + N / 2) * S, S * r * t.s, 0, Math.PI * 2); g.fill();
       }
     }
+    // the snowbound pass, white up to its ragged snow line
+    if (W.frost) {
+      const F = W.frost, fx = (F.x + 0.5) * S, fz = (F.z + 0.5) * S, gr = g.createRadialGradient(fx, fz, F.R * S * 0.55, fx, fz, F.R * S);
+      gr.addColorStop(0, 'rgba(240,246,255,.92)'); gr.addColorStop(0.82, 'rgba(226,236,250,.88)'); gr.addColorStop(1, 'rgba(226,236,250,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(fx, fz, F.R * S, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = 'rgba(120,150,190,.55)'; g.lineWidth = 1.5; g.setLineDash([3, 3]); g.beginPath(); g.arc(fx, fz, F.R * S * 0.86, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+      // a little range of snow-capped peaks round the back of the pass
+      g.lineJoin = 'round';
+      for (let k = 0; k < 9; k++) {
+        const a = F.passA + 0.9 + (k / 8) * (Math.PI * 2 - 1.8), d = F.R * S * (0.5 + (k % 2) * 0.14), px = fx + Math.cos(a) * d, py = fz + Math.sin(a) * d;
+        if (px < 12 || py < 16 || px > cv.width - 12) continue;
+        const w = 14 + (k * 7 % 5) * 1.8, h = w * 1.1;
+        g.fillStyle = '#7d828c'; g.strokeStyle = '#3f434b'; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(px - w, py + h * 0.45); g.lineTo(px, py - h * 0.55); g.lineTo(px + w, py + h * 0.45); g.closePath(); g.fill(); g.stroke();
+        g.fillStyle = '#f7faff';
+        g.beginPath(); g.moveTo(px - w * 0.42, py - h * 0.13); g.lineTo(px, py - h * 0.55); g.lineTo(px + w * 0.42, py - h * 0.13); g.lineTo(px + w * 0.15, py - h * 0.2); g.lineTo(px - w * 0.1, py - h * 0.08); g.closePath(); g.fill();
+      }
+    }
     g.fillStyle = '#9a9d9f';
     for (const r of W.rocks) if (r.alive) { g.beginPath(); g.arc((r.x + N / 2) * S, (r.z + N / 2) * S, S * 0.45, 0, Math.PI * 2); g.fill(); }
     // buildings as little roofs
@@ -1500,10 +1525,10 @@ export class UI {
       g.beginPath(); g.arc(x, y, 13, 0, Math.PI * 2); g.fill(); g.stroke();
       const ic = iconImage(un ? 'house' : 'lock');
       if (ic.complete) g.drawImage(ic, x - 9, y - 9, 18, 18); else ic.onload = () => this.drawMinimap();
-      const nm = this.sim.sname(st.id), tw = g.measureText(nm).width + 14, ly = y + 25;
+      const nm = this.sim.sname(st.id), tw = g.measureText(nm).width + 14, ly = y + 25, lx = Math.min(cv.width - tw / 2 - 3, Math.max(tw / 2 + 3, x));   // kept inside the map
       g.fillStyle = 'rgba(255,248,232,.95)'; g.strokeStyle = '#c48a4a'; g.lineWidth = 2;
-      g.beginPath(); g.roundRect(x - tw / 2, ly - 10, tw, 20, 10); g.fill(); g.stroke();
-      g.fillStyle = '#5b3a1e'; g.fillText(nm, x, ly + 1);
+      g.beginPath(); g.roundRect(lx - tw / 2, ly - 10, tw, 20, 10); g.fill(); g.stroke();
+      g.fillStyle = '#5b3a1e'; g.fillText(nm, lx, ly + 1);
     }
   }
 

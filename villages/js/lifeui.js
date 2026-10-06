@@ -18,6 +18,7 @@ const left = (sim, until) => { const d = (until - sim.s.time) / DAY; return d >=
 export function lifeInit(ui, audio) {
   sfx = audio || {};
   ui.lifeRows = () => lifeRows(ui);
+  ui.welcomeBack = () => welcomeBack(ui);
   ui.lifeClick = (act, a) => { lifeClick(ui, act, a); if (ui.g.selected) ui.drawInfo(true); if (ui.modal) ui.drawModal(true); ui.dirty.res = true; };
   const st = document.createElement('style');
   st.textContent = `.ip-sec.wishcard{background:#fffbe8;border-color:#e8c860}.wishcard .wtext{font-weight:700;font-size:13.5px;color:var(--ink);margin:0 0 3px}.wishcard .desc{font-size:12px;color:var(--ink2);line-height:1.4;margin-bottom:6px}.wishcard .wbtns{display:flex;gap:6px;flex-wrap:wrap}.wishcard .wbtns .btn{flex:1}
@@ -36,7 +37,14 @@ export function lifeInit(ui, audio) {
 .chron .head{display:flex;gap:8px;align-items:flex-start;padding:5px 0;font-size:13.5px;line-height:1.45}.chron .head .when{flex:none;font-size:11px;color:#8a6a40;width:44px;padding-top:2px;font-family:Fredoka,system-ui,sans-serif}.chron .head .fc{display:flex;flex:none}.chron .head .fc svg{margin-right:-8px}
 .chron.mini{padding:8px 12px;cursor:pointer}.chron.mini h3{font-size:15px;text-align:left}.chron.mini .yr{text-align:left;margin:0}.chron.sofar{background:#fbf4e2;border-style:dashed}
 .chron .end{text-align:center;color:#8a6a40;font-size:12px;margin-top:6px;font-style:italic}
-.quest.qrank .t{display:flex;align-items:center;gap:5px}`;
+.quest.qrank .t{display:flex;align-items:center;gap:5px}
+body.welcoming #eventbar,body.welcoming #toasts{visibility:hidden}
+#welcome{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(40,30,10,.32);padding:16px;animation:fadeIn var(--t2) var(--ease)}
+#welcome .wcard{width:min(440px,100%);padding:18px 20px 16px;border-radius:8px;background:#f8ecd0;border:2px solid #b98c4f;box-shadow:inset 0 0 0 4px #f8ecd0,inset 0 0 0 5px #d8b780,0 10px 30px rgba(60,40,10,.35);font-family:Georgia,'Times New Roman',serif;color:#4a3218;animation:boxIn var(--t3) var(--pop)}
+#welcome h2{margin:0;text-align:center;font-size:22px}#welcome .wsub{text-align:center;font-style:italic;color:#7a5a30;margin:3px 0 12px;font-size:14px}
+#welcome .wnums{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;padding:8px 0;border-top:1px solid #d8b780;border-bottom:1px solid #d8b780;margin-bottom:8px;font-family:Fredoka,system-ui,sans-serif;font-size:13px}#welcome .wnums span{display:flex;align-items:center;gap:4px}
+#welcome .whead{display:flex;gap:8px;align-items:flex-start;padding:5px 0;font-size:14px;line-height:1.45}#welcome .whead .fc{display:flex;flex:none;width:46px;justify-content:center}#welcome .whead .fc svg{margin-right:-8px}
+#welcome .wbtns{display:flex;gap:8px;justify-content:center;margin-top:12px;font-family:Fredoka,system-ui,sans-serif}#welcome .wgate{border-top:1px dashed #d8b780;margin-top:6px;padding-top:7px}#welcome .wmore{text-align:center;color:#8a6a40;font-size:12.5px;font-style:italic;margin-top:4px}`;
   document.head.appendChild(st);
 }
 
@@ -140,6 +148,42 @@ export function chronicleHtml(ui) {
   if (open === 'now' || !list.length) h += chronCard(ui, sim.compileYear(s.chron.year, true), true);
   else h += `<button class="btn sm" style="width:100%" data-act="lv-chron" data-i="now">${svg('scroll', 14)} This year so far</button>`;
   return h;
+}
+
+// ── welcome back: what's been written in the Story since you last read it ──
+const HEADW = { rank: 9, wedding: 8, baby: 7, hard: 6, granted: 5, pet: 4, visitor: 4, crime: 3, rivals: 2, arrive: 1 };
+function welcomeBack(ui) {
+  const sim = ui.sim, s = sim.s, seen = s.storySeen || 0;
+  const fresh = (s.story || []).filter(e => e.n > seen);
+  if (fresh.length < 2 || document.getElementById('welcome')) return false;
+  const heads = fresh.filter(e => HEADW[e.kind] && !(e.kind === 'wedding' && /getting married/.test(e.text)) && !(e.kind === 'wish'))
+    .sort((a, b) => HEADW[b.kind] - HEADW[a.kind] || b.t - a.t).slice(0, 4).sort((a, b) => a.t - b.t);
+  if (!heads.length) heads.push(...fresh.slice(0, 3).reverse());
+  const count = k => fresh.filter(e => (Array.isArray(k) ? k : [k]).includes(e.kind)).length;
+  const weds = count('wedding') - fresh.filter(e => e.kind === 'wedding' && /getting married/.test(e.text)).length;
+  const nums = [['baby', count('baby'), 'baby born', 'babies born'], ['rings', weds, 'wedding', 'weddings'], ['wish', count('granted'), 'wish granted', 'wishes granted'],
+    ['person', count(['arrive', 'visitor']), 'newcomer', 'newcomers'], ['storm', count('hard'), 'hard time', 'hard times']].filter(([, n]) => n > 0);
+  const name = sim.sname(mainSid(sim)), season = sim.season?.()?.name || '';
+  const vc = s.visitors?.cur, gate = vc && !vc.answered && !vc.leaving ? ({ family: `A family of ${vc.members?.length || 'travellers'}`, bard: 'A bard', scholar: 'A scholar', stranger: 'A stranger' }[vc.kind] || 'A visitor') + ' is' : '';
+  const days = Math.max(1, Math.ceil((s.time - Math.min(...fresh.map(e => e.t))) / 240));
+  const el = document.createElement('div'); el.id = 'welcome';
+  el.innerHTML = `<div class="wcard" role="dialog" aria-label="Welcome back"><h2>Welcome back to ${esc(name)}</h2><div class="wsub">${esc(season)}${season ? ', ' : ''}day ${sim.dayNum() + 1} · news from the last ${days === 1 ? 'day' : `${days} days`}</div>
+    ${nums.length ? `<div class="wnums">${nums.map(([ic, n, one, many]) => `<span>${svg(ic, 16)}${n} ${n === 1 ? one : many}</span>`).join('')}</div>` : ''}
+    ${heads.map(e => `<div class="whead"><span class="fc">${e.faces?.length ? e.faces.slice(0, 2).map(f => ui.face(f, 26)).join('') : svg(e.icon, 22)}</span><span>${esc(e.text)}</span></div>`).join('')}
+    ${fresh.length > heads.length ? `<div class="wmore">…and ${fresh.length - heads.length} more in the Story</div>` : ''}
+    ${gate ? `<div class="whead wgate"><span class="fc">${svg('people', 22)}</span><span><b>${esc(gate)}</b> waiting at the gate.</span></div>` : ''}
+    <div class="wbtns"><button class="btn gold" data-w="story">${svg('book', 16)} Read the Story</button><button class="btn ghost" data-w="close">Carry on</button></div></div>`;
+  const close = () => { el.remove(); document.body.classList.remove('welcoming'); removeEventListener('keydown', key, true); };
+  const key = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-w]');
+    if (b?.dataset.w === 'story') { close(); ui.storyFilter = 'all'; ui.openModal('story'); }
+    else if (b || e.target === el) close();
+  });
+  addEventListener('keydown', key, true);
+  document.body.appendChild(el); document.body.classList.add('welcoming');
+  sfx.open?.();
+  return true;
 }
 
 // ── visitors and weddings in the banner ──

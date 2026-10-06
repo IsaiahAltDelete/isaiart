@@ -2,11 +2,12 @@
 // from primitives here so the game ships without any model files.
 import * as THREE from '../vendor/three.module.min.js';
 import { mulberry32 } from './rng.js';
-import { snowify } from './snow.js';
+import { snowify, snowPatch } from './snow.js';
 import { surfaceTexture, mapBoxSurface, stripedCloth } from './textures.js';
 import { roofMaps } from './roof-textures.js';
 import { hasModel, instanceModel, bakedGeometry, SLOT_SURFACE } from './blender.js';
 import { RACES } from './society.js';
+import { BATCHING } from './perf.js';
 
 // Materials are cached by colour + options. Everything gets a dusting of snow
 // in winter except people and animals (built inside withoutSnow).
@@ -145,16 +146,19 @@ function door(x, y, z, ry = 0, c = C.door) {
   return g;
 }
 
-const SMOKE_GEO = new THREE.IcosahedronGeometry(0.1, 0);
+export const SMOKE_GEO = new THREE.IcosahedronGeometry(0.1, 0);
+export const SMOKES = new Set();   // every chimney's smoke: batch.js draws all the puffs as one instanced mesh
 // Smoke puffs that drift up from a chimney.
 export class Smoke {
   constructor(parent, x, y, z, color = 0xeeeeee) {
     this.puffs = [];
-    // small faceted puffs that swell and fade quickly, like a toy's cotton smoke
+    // small faceted puffs that swell and fade quickly, like a toy's cotton smoke. Each puff is just a
+    // transform (and an opacity): batch.js draws them all at once. (With batching off, real meshes.)
     for (let i = 0; i < 6; i++) {
-      const m = new THREE.Mesh(SMOKE_GEO, new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x9a9a9a, flatShading: true, transparent: true, opacity: 0.8, depthWrite: false }));
+      const m = !BATCHING ? new THREE.Mesh(SMOKE_GEO, new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x9a9a9a, flatShading: true, transparent: true, opacity: 0.8, depthWrite: false })) : new THREE.Object3D();
       m.userData.t = i / 6; m.userData.spin = Math.random() * 6; parent.add(m); this.puffs.push(m);
     }
+    if (BATCHING) SMOKES.add(this);
     this.o = new THREE.Vector3(x, y, z); this.on = true;
   }
   update(dt) {
@@ -164,7 +168,8 @@ export class Smoke {
       p.position.set(this.o.x + Math.sin(t * 5 + p.id) * 0.05 + t * 0.22, this.o.y + t * 0.95, this.o.z + Math.cos(t * 4 + p.id) * 0.03);
       p.rotation.set(t * 2 + p.userData.spin, t * 3, 0);
       p.scale.setScalar(0.35 + t * 0.9);
-      p.material.opacity = this.on ? 0.85 * Math.min(1, t * 6) * (1 - t) * (1 - t) : 0;
+      const op = this.on ? 0.85 * Math.min(1, t * 6) * (1 - t) * (1 - t) : 0;
+      if (p.material) p.material.opacity = op; else p.userData.op = op;
     }
   }
 }
@@ -217,6 +222,8 @@ const SLOT_MAT = {
 // one shared material for every roof's winter snow pillow; the game shows it in deep snow
 export const SNOWCAP_MAT = new THREE.MeshLambertMaterial({ color: 0xf2f6fc, emissive: 0x1a2230 });
 SNOWCAP_MAT.visible = false;
+// the snow pillows on roofs: only where it's snowy (winter, or up in the pass all year)
+SNOWCAP_MAT.onBeforeCompile = sh => { snowPatch(sh, false, 2, 3, 0); sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'void main() {\n  if (max(uSnow, frostAt(vSnowW.xz)) < 0.42) discard;'); };
 export function slotMaterial(slot, color, smooth = false) {
   if (SLOT_MAT[slot]) return SLOT_MAT[slot]();
   if (slot === 'grass' || slot === 'tuft' || slot === 'ground') return mat(color, { snow: 'ground' });   // pens and gardens snow over like the meadow
@@ -1078,6 +1085,7 @@ const HAIR_STYLES = ['hair_short', 'hair_bob', 'hair_bun', 'hair_tails', 'hair_t
 // a hat that says what each villager does, readable from the overview
 const JOB_HAT = { farmer: 'hat_straw', woodcutter: 'hat_cap', forester: 'hat_hood', miner: 'hat_helmet', guard: 'hat_helmet', fisher: 'hat_bucket',
   baker: 'hat_toque', miller: 'hat_toque', mason: 'hat_band', sawyer: 'hat_band', shepherd: 'hat_straw', picker: 'hat_straw', forager: 'hat_hood', beekeeper: 'hat_bucket', milker: 'hat_cap' };
+const RAINCOAT = mat(0xf2c230, { smooth: true });
 const JOB_GEAR = { baker: 'apron', miller: 'apron', weaver: 'apron', brewer: 'apron', cheesemaker: 'apron', innkeeper: 'apron', mason: 'apron', teacher: 'apron', forager: 'pack', picker: 'pack', herder: 'pack' };
 const HAT_COLOR = { hat_straw: 0xe0b24a, hat_helmet: 0xb8bcc4, hat_toque: 0xfbf6ea, hat_hood: 0x5a7a3a, hat_bucket: 0x5f8fb0, hat_band: 0xc9473d };
 
@@ -1088,8 +1096,8 @@ function lively(hex) {
   c.getHSL(hsl);
   return c.setHSL(hsl.h, Math.max(hsl.s, 0.62), Math.min(0.62, Math.max(hsl.l, 0.5))).getHex();
 }
-const SHADOW_GEO = new THREE.CircleGeometry(0.2, 18).rotateX(-Math.PI / 2);
-const SHADOW_MAT = (() => {
+export const SHADOW_GEO = new THREE.CircleGeometry(0.2, 18).rotateX(-Math.PI / 2);
+export const SHADOW_MAT = (() => {
   const cv = document.createElement('canvas'); cv.width = cv.height = 64;
   const g = cv.getContext('2d'), grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
   grad.addColorStop(0, 'rgba(30,20,10,0.55)'); grad.addColorStop(0.6, 'rgba(30,20,10,0.3)'); grad.addColorStop(1, 'rgba(30,20,10,0)');
@@ -1145,6 +1153,15 @@ function villagerBlend(v) {
   const wiz = new THREE.Group(); wiz.add(cyl(0.14, 0.14, 0.015, 12, 0x4a2f8a, 0, 0.17, 0)); wiz.add(cone(0.085, 0.28, 12, 0x5b3fa0, 0, 0.175, 0)); wiz.add(ball(0.025, 0xffd54f, 0, 0.46, 0));
   wiz.rotation.x = -0.12; wiz.visible = false; N.head.add(wiz);
   const bed = box(0.34, 0.06, 0.72, 0x9a6a8a, 0, 0, 0); bed.visible = false; g.add(bed);
+  // an umbrella for rainy days, held up over the head (main.js raises the left arm to hold it)
+  const umb = new THREE.Group(), uc = UMBRELLAS[(v.id * 5 + 1) % UMBRELLAS.length];
+  // held in the raised left fist; the shaft leans in so the canopy sits centred over the head
+  umb.add(cyl(0.018, 0.018, 0.62, 5, 0x3a2414, 0, -0.06, 0));                              // the shaft, from just below the fist
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.34, 8, 3, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.4, 1), mat(uc, { smooth: false }));
+  dome.position.y = 0.5; dome.castShadow = true; umb.add(dome);                                 // eight flat panels read as ribs
+  umb.add(ball(0.028, 0x3a2414, 0, 0.64, 0));                                               // the tip
+  const crook = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.012, 4, 8, Math.PI), mat(0x3a2414)); crook.position.set(0.035, -0.06, 0); crook.rotation.z = Math.PI; umb.add(crook);
+  umb.position.set(-0.17, 0.48, 0.22); umb.visible = false; body.add(umb);
   // a soft contact shadow so small figures sit on the ground and read from the overview
   const blob = new THREE.Mesh(SHADOW_GEO, SHADOW_MAT); blob.position.y = 0.012; blob.renderOrder = 1; g.add(blob);
   const styles = v.gender === 'f' ? ['hair_bob', 'hair_bun', 'hair_tails', 'hair_long', 'hair_short', 'hair_bun']
@@ -1173,7 +1190,7 @@ function villagerBlend(v) {
   }
   // elders stoop a little: head and shoulders forward
   if (elder) { N.head.rotation.x = 0.22; N.head.position.z += 0.02; if (N.torso) N.torso.rotation.x = 0.1; }
-  const m = { group: g, body, hipL: N.hipL, hipR: N.hipR, armL: N.armL, armR: N.armR, head: N.head, tool, sack, toolKind: null, wiz, bed,
+  const m = { group: g, body, hipL: N.hipL, hipR: N.hipR, armL: N.armL, armR: N.armR, head: N.head, tool, sack, toolKind: null, wiz, bed, umb, blob,
     stage: child ? 'child' : elder ? 'elder' : 'adult', nodes: N, style, blend: true };
   dressVillager(m, v);
   return m;
@@ -1188,11 +1205,17 @@ export function propModel(name) {
 
 // Knitted winter colours, picked per villager so a crowd isn't a uniform.
 const WOOLS = [0xb8463e, 0x3f6f9a, 0x2f7f78, 0xc0843a, 0x6f5a8f, 0x4f7f3a, 0xb05878, 0x2f5a8a, 0x8a3a5a, 0x3a7a5a, 0x9a5a2a, 0x5a6a9a];   // mid-value knits
+const UMBRELLAS = [0xd9433b, 0x3f7fd0, 0xf0b429, 0x5cae4a, 0x9b6bd1, 0xe36f9c];
 const VILLAGER_DETAIL = new Set(['eye', 'white', 'cheek', 'lip', 'belt', 'gold', 'hatband', 'star', 'gem', 'tooth']);
-export function dressVillager(m, v, winter = false) {
+// the weather's wardrobe: `wx` is { winter, summer, rain } (or just `true` for winter, as before)
+export function dressVillager(m, v, wx = false) {
   if (!m.blend) return;
-  const key = `${v.job}|${v.hat}|${winter}|${v.title}|${v.race}|${!!v.sneak}`;
+  const w = typeof wx === 'object' ? wx : { winter: wx };
+  const winter = !!w.winter, summer = !!w.summer && !winter, rain = !!w.rain && !winter;
+  const coat = rain && v.id % 3 === 0 && m.stage !== 'elder';   // a third wear a yellow raincoat; the rest carry umbrellas
+  const key = `${v.job}|${v.hat}|${winter}|${summer}|${coat}|${v.title}|${v.race}|${!!v.sneak}`;
   if (m.dressed === key) return;
+  if (m.dressed && bakeLeft-- <= 0) return;   // a change of outfit for everyone (rain, a new season) ripples through a few a frame
   m.dressed = key;
   const N = m.nodes;
   let hat = JOB_HAT[v.job] || null;
@@ -1200,6 +1223,9 @@ export function dressVillager(m, v, winter = false) {
   else if (!hat && v.hat && m.stage !== 'child') hat = ['hat_straw', 'hat_bucket', 'hat_cap'][v.id % 3];
   // in winter everyone wraps up: a scarf, and a woolly hat unless the job has a helmet or toque
   if (winter && v.job !== 'wizard' && !['hat_helmet', 'hat_toque', 'hat_hood'].includes(hat)) hat = 'hat_beanie';
+  // summer sun: a straw hat for anyone without a work hat; rain: the raincoat's hood goes up
+  if (summer && !hat && v.job !== 'wizard') hat = 'hat_straw';
+  if (coat && !['hat_helmet', 'hat_toque'].includes(hat)) hat = 'hat_hood';
   if (['Archmage', 'High Archmage'].includes(v.title)) hat = 'hat_archmage';
   if (v.title === 'Monarch') hat = 'hat_crown';
   if (N.chain) N.chain.visible = ['Mayor', 'Elder', 'Consul'].includes(v.title);
@@ -1218,12 +1244,104 @@ export function dressVillager(m, v, winter = false) {
     if (k === hat && HAT_COLOR[k] === undefined) N[k].traverse(o => { if (o.isMesh && o.userData.slot === 'hat') VILLAGER_MATS.add(o.material = mat(v.hatColor ?? 0xc9a050, { smooth: true })); });
     else if (k === hat) N[k].traverse(o => { if (o.isMesh && o.userData.slot === 'hat') VILLAGER_MATS.add(o.material = mat(HAT_COLOR[k], { smooth: true })); });
   }
+  // the raincoat: shirt and hood turn sunny yellow (and back again when the rain stops)
+  m.coat = coat;
+  m.group.traverse(o => {
+    if (!o.isMesh) return;
+    const shirt = o.userData.slot === 'shirt', hood = o.userData.slot === 'hat' && o.parent?.name === 'hat_hood';
+    if (!shirt && !hood) return;
+    if (coat) { o.userData.dryMat ||= o.material; VILLAGER_MATS.add(o.material = RAINCOAT); }
+    else if (o.userData.dryMat) { o.material = o.userData.dryMat; delete o.userData.dryMat; }
+  });
   // short hair tucks under a hat; long styles and buns stay visible below the brim
   const under = hat && ['hat_helmet', 'hat_hood', 'hat_cap', 'hat_toque', 'hat_beanie'].includes(hat);
-  if (N[m.style]) N[m.style].visible = !RACES[v.race]?.noHair && (!under || m.style === 'hair_long' || m.style === 'hair_tails');
+  // and under any brimmed hat, a bun or a tuft would poke through the crown
+  const tucked = under ? !['hair_long', 'hair_tails'].includes(m.style) : !!hat && ['hair_bun', 'hair_tuft'].includes(m.style);
+  if (N[m.style]) N[m.style].visible = !RACES[v.race]?.noHair && !tucked;
   const gear = JOB_GEAR[v.job];
   if (N.apron) N.apron.visible = gear === 'apron';
   if (N.pack) N.pack.visible = gear === 'pack';
+  bakeVillager(m);
+}
+
+// Performance: a villager is ~20 little meshes (eyes, hair, belt, sleeves...), each its own draw call.
+// Each rigid part (body, head, both arms, both legs) is baked into one vertex-coloured geometry, and
+// batch.js draws every part of every villager from two BatchedMeshes, so the limbs still swing but
+// the whole crowd costs a couple of draw calls. Each part is baked twice: in full, and without the
+// tiny details (eyes, lips, belts, hat bands) for when the camera is far out. The originals stay in
+// the tree on a layer the camera never draws, so dressing can keep toggling them; it rebakes when the
+// outfit changes. Props that come and go on their own (tools, the sack, umbrella, wizard hat,
+// bedroll) and anything see-through are left as they are.
+export const BAKED_LAYER = 31;
+let bakeLeft = Infinity;
+export function bakeBudget(n) { bakeLeft = n; }   // re-dresses (and rebakes) allowed this frame
+export const BAKED = new Set();       // villager models with fresh bakes waiting for (or in) the batch
+const unlitHook = sh => {
+  sh.vertexShader = 'attribute float unlit;\nvarying float vUnlit;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vUnlit = unlit;');
+  sh.fragmentShader = 'varying float vUnlit;\n' + sh.fragmentShader.replace('#include <opaque_fragment>', 'outgoingLight = mix(outgoingLight, diffuseColor.rgb, vUnlit);\n#include <opaque_fragment>');
+};
+export const VILLAGER_BAKED = VILLAGER_MATS.add(new THREE.MeshLambertMaterial({ vertexColors: true }));
+{ const rim = VILLAGER_BAKED.onBeforeCompile; VILLAGER_BAKED.onBeforeCompile = (sh, r) => { rim(sh, r); unlitHook(sh); }; VILLAGER_BAKED.customProgramCacheKey = () => 'villager-baked'; }
+let bakeUid = 0;
+const flatCache = new WeakMap();
+const flatOf = g => { let f = flatCache.get(g); if (!f) { f = (g.index ? g.toNonIndexed() : g.clone()); f.deleteAttribute('normal'); f.computeVertexNormals(); flatCache.set(g, f); } return f; };
+export function bakeVillager(m) {
+  if (!BATCHING) return;
+  // the body's rigid parts, plus props that come and go (tool, umbrella, sack, wizard hat, bedroll): each
+  // its own part, shown or hidden by its own node
+  const rigid = [m.body, m.head, m.armL, m.armR, m.hipL, m.hipR, m.umb, m.wiz, m.bed].filter(Boolean);
+  const stop = new Set([...rigid, m.tool, m.sack].filter(Boolean));   // tools and the sack swap every work step: left as they are
+  m.group.updateMatrixWorld(true);
+  m.uid ||= ++bakeUid;
+  const M = new THREE.Matrix4(), NM = new THREE.Matrix3(), v = new THREE.Vector3();
+  const build = (R, parts) => {
+    let nv = 0, ni = 0;
+    for (const p of parts) { const g = p.material.flatShading ? flatOf(p.geometry) : p.geometry; nv += g.attributes.position.count; ni += g.index ? g.index.count : g.attributes.position.count; }
+    const pos = new Float32Array(nv * 3), nrm = new Float32Array(nv * 3), col = new Float32Array(nv * 3), unl = new Float32Array(nv), idx = new Uint32Array(ni);
+    const inv = new THREE.Matrix4().copy(R.matrixWorld).invert();
+    let vo = 0, io = 0;
+    for (const p of parts) {
+      // flat-shaded parts (the umbrella's ribbed panels) are split into faces so each keeps its own normal
+      const g = p.material.flatShading ? flatOf(p.geometry) : p.geometry, n = g.attributes.position.count, c = p.material.color, flat = p.material.isMeshBasicMaterial ? 1 : 0;
+      M.multiplyMatrices(inv, p.matrixWorld); NM.getNormalMatrix(M);
+      if (!g.attributes.normal) g.computeVertexNormals();
+      for (let i = 0; i < n; i++) {
+        const o = (vo + i) * 3;
+        v.fromBufferAttribute(g.attributes.position, i).applyMatrix4(M); pos[o] = v.x; pos[o + 1] = v.y; pos[o + 2] = v.z;
+        v.fromBufferAttribute(g.attributes.normal, i).applyMatrix3(NM).normalize(); nrm[o] = v.x; nrm[o + 1] = v.y; nrm[o + 2] = v.z;
+        col[o] = c.r; col[o + 1] = c.g; col[o + 2] = c.b; unl[vo + i] = flat;
+      }
+      if (g.index) for (let i = 0; i < g.index.count; i++) idx[io++] = g.index.getX(i) + vo;
+      else for (let i = 0; i < n; i++) idx[io++] = vo + i;
+      vo += n;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setAttribute('unlit', new THREE.BufferAttribute(unl, 1));
+    geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    return geo;
+  };
+  const out = [];
+  for (const R of rigid) {
+    const parts = [];
+    const walk = (o, shownUp) => {
+      for (const c of o.children) {
+        if (stop.has(c)) continue;
+        // the far-camera trim (main.js villagerLod) only ever hides details: bake them as if shown
+        const vis = shownUp && (c.visible || !!c.userData.detail);
+        if (c.isMesh && !Array.isArray(c.material) && !c.material.transparent) { c.layers.set(BAKED_LAYER); if (vis && !c.matrixWorld.elements.some(Number.isNaN)) parts.push(c); }   // (a NaN transform never drew anyway)
+        walk(c, vis);
+      }
+    };
+    if (R.isMesh && !R.material.transparent) { R.layers.set(BAKED_LAYER); parts.push(R); }   // a prop that is itself a mesh (the sack, the bedroll)
+    walk(R, true);
+    if (!parts.length || R.matrixWorld.elements.some(Number.isNaN)) continue;
+    const lite = parts.filter(p => !p.userData.detail);
+    out.push({ R, cast: parts.some(p => p.castShadow), full: build(R, parts), lite: lite.length && lite.length < parts.length ? build(R, lite) : null });
+  }
+  if (m.parts) for (const p of m.parts) { p.full.dispose(); p.lite?.dispose(); }
+  m.parts = out; m.bakeGen = (m.bakeGen || 0) + 1;
+  BAKED.add(m);
 }
 
 function villager_(v) {
