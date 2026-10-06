@@ -14,7 +14,7 @@ SIZE, FILL = 128, 0.9
 KEYS = {'build': 'hammer', 'town': 'crest', 'journal': 'book', 'world': 'map'}
 # glyphs that sit inside coloured buttons (the green +, the red close, the round home button) read better
 # as the plain drawn SVG: a painted badge inside a button looks doubled up
-SKIP = {'plus', 'close', 'home'}
+SKIP = {'plus', 'close', 'home', 'cross'}   # cross is the red ✗ beside an unmet requirement, not a healing cross
 
 def fit(im):
     alpha = im.getchannel('A').point(lambda v: 255 if v > 8 else 0)
