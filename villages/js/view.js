@@ -193,8 +193,24 @@ export class View {
         dirtC = mix(dirtC, vec3(0.5, 0.42, 0.33) * earthT.rgb, fringe * (1.0 - cob) * 0.35);   // the gritty margin beside the cobbles
         vec3 col = mix(base, dirtC, dirt * (1.0 - sandK * 0.6));
         col *= 1.0 - dirt * (1.0 - dirt) * 4.0 * 0.13 * (1.0 - sandK);          // a soft trodden rim
-        // cobbled bed: dark gritty grout (the stones themselves are instanced on top)
-        col = mix(col, vec3(0.43, 0.38, 0.32) * mix(cobT.rgb, earthT.rgb, 0.5), cob);
+        // cobbles: flat setts laid flush in a dark gritty bed. A staggered grid (5 a tile) of
+        // rounded stones, each its own warm grey, lit from the top-left, with the bed showing
+        // through the joints.
+        vec3 bed = vec3(0.43, 0.38, 0.32) * mix(cobT.rgb, earthT.rgb, 0.5);
+        vec2 sp = vGW * 5.0;
+        float sRow = floor(sp.y);
+        sp.x += mod(sRow, 2.0) * 0.5 + (gHash(vec2(sRow, 7.3)) - 0.5) * 0.3;
+        vec2 sCell = floor(sp), sf = fract(sp) - 0.5;
+        float sr1 = gHash(sCell + 3.1), sr2 = gHash(sCell + 11.7), sr3 = gHash(sCell + 23.9);
+        sf += (vec2(sr1, sr2) - 0.5) * 0.07;
+        vec2 sq = abs(sf) - vec2(0.37 - sr3 * 0.06, 0.34 - sr1 * 0.05) + 0.2;
+        float sd = length(max(sq, 0.0)) + min(max(sq.x, sq.y), 0.0) - 0.2;   // rounded-box distance, < 0 inside the stone
+        float aa = fwidth(sd) * 1.2 + 0.006;
+        float stone = 1.0 - smoothstep(-aa, aa, sd);
+        vec3 stoneC = mix(vec3(0.76, 0.67, 0.54), vec3(0.64, 0.6, 0.55), sr2) * (0.82 + sr1 * 0.28) * mix(vec3(1.0), cobT.rgb * 1.25, 0.3);
+        stoneC *= 0.88 + clamp(0.5 - (sf.x - sf.y) * 0.8, 0.0, 1.0) * 0.24;  // a soft dome, lighter towards the top-left
+        stoneC *= 1.0 - smoothstep(-0.12, 0.0, sd) * 0.2;                    // a worn, darker rim
+        col = mix(col, mix(bed, stoneC, stone), cob);
         float wetK = (1.0 - smoothstep(-0.26, -0.04, vGY)) * gd.a;   // only real shores, not low meadow                          // damp bank below the waterline
         col = mix(col, col * vec3(0.6, 0.64, 0.68), wetK);
         diffuseColor.rgb = col;
@@ -207,7 +223,7 @@ export class View {
         // …and cold slush on paths and roads
         'cover *= 1.0 - gPath * 0.62; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.5, 0.47, 0.45), gPath * uSnow * 0.5); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.9, 0.97), cover);');
     };
-    material.customProgramCacheKey = () => 'villages-storybook-ground-v3-roads';
+    material.customProgramCacheKey = () => 'villages-storybook-ground-v4-flat-cobbles';
     const m = this.terrain = new THREE.Mesh(g, material);
     m.receiveShadow = true;
     this.scene.add(m);
@@ -488,19 +504,10 @@ export class View {
       im.instanceMatrix.needsUpdate = true;
     }
   }
-  // cobblestones on paved tiles
+  // kerbs along the edges of paved tiles (the setts themselves are painted into the ground shader)
   updatePave(i) {
     const W = this.world;
-    if (!this.cobbles) {
-      const cap = 30000, stone = new THREE.IcosahedronGeometry(0.1, 1).scale(1, 0.42, 1);
-      const cm = new THREE.MeshLambertMaterial({ color: 0xffffff });
-      cm.onBeforeCompile = sh => snowPatch(sh, false, 0.75, 0.99, 0.4);   // a dusting in winter; the stones stay readable
-      this.cobbles = new THREE.InstancedMesh(stone, cm, cap);
-      this.cobbles.receiveShadow = true; this.cobbles.frustumCulled = false;
-      for (let k = 0; k < cap; k++) { this.cobbles.setMatrixAt(k, tmpM.makeScale(0, 0, 0)); this.cobbles.setColorAt(k, tmpC.setHex(0xd6ccb6)); }
-      this.cobbles.userData = { free: [], used: 0, cap, slots: new Map(), sig: new Map() };
-      this.cobbles.count = 0;            // only draw up to the highest slot in use
-      this.scene.add(this.cobbles);
+    if (!this.kerbs) {
       // kerb blocks: elongated, bevelled along the top edges, flat-shaded so each face catches the light
       const kg = new THREE.BoxGeometry(0.3, 0.11, 0.13, 1, 1, 1), kp = kg.attributes.position;
       for (let v = 0; v < kp.count; v++) if (kp.getY(v) > 0) { kp.setX(v, kp.getX(v) * 0.9); kp.setZ(v, kp.getZ(v) * 0.7); }
@@ -510,26 +517,21 @@ export class View {
       this.kerbs = new THREE.InstancedMesh(kg, km, 12000);
       this.kerbs.castShadow = this.kerbs.receiveShadow = true; this.kerbs.frustumCulled = false; this.kerbs.count = 0;
       for (let k = 0; k < 12000; k++) { this.kerbs.setMatrixAt(k, tmpM.makeScale(0, 0, 0)); this.kerbs.setColorAt(k, tmpC.setHex(0x6b6e72)); }
-      this.kerbs.userData = { free: [], used: 0, cap: 12000, slots: new Map() };
+      this.kerbs.userData = { free: [], used: 0, cap: 12000, slots: new Map(), sig: new Map() };
       this.scene.add(this.kerbs);
     }
-    const kb = this.kerbs, ku = kb.userData;
-    const c = this.cobbles, u = c.userData, want = W.paved[i] && W.occ[i] < 0;
+    const kb = this.kerbs, ku = kb.userData, want = W.paved[i] && W.occ[i] < 0;
     const x = tileX(i), z = tileZ(i), open = [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dx, dz]) => {
       const nx = x + dx, nz = z + dz;
       return nx >= 0 && nz >= 0 && nx < N && nz < N && !W.paved[nz * N + nx] && !W.bridge[nz * N + nx];
     });
     const sig = want ? 'p' + open.map(Number).join('') : '';
-    if ((u.sig.get(i) || '') === sig) return;
-    u.sig.set(i, sig);
-    const have = u.slots.get(i);
-    if (have) { for (const slot of have) { c.setMatrixAt(slot, tmpM.makeScale(0, 0, 0)); u.free.push(slot); } u.slots.delete(i); }
+    if ((ku.sig.get(i) || '') === sig) return;
+    ku.sig.set(i, sig);
     const kHave = ku.slots.get(i);
     if (kHave) { for (const slot of kHave) { kb.setMatrixAt(slot, tmpM.makeScale(0, 0, 0)); ku.free.push(slot); } ku.slots.delete(i); }
     if (want) {
-      const slots = [];
       const x0 = toWorld(tileX(i)), z0 = toWorld(tileZ(i));
-      const take = () => u.free.length ? u.free.pop() : (u.used < u.cap ? u.used++ : -1);
       // kerb: three rectangular blocks laid end to end (thin joints) along each edge that meets the verge,
       // a shade darker and cooler than the setts, standing proud so the outer face steps down to the dirt
       const kslots = [];
@@ -550,22 +552,8 @@ export class View {
         }
       });
       ku.slots.set(i, kslots);
-      // setts: a staggered 5×5 grid of small rounded stones, each a slightly different size, squash and warm grey
-      for (let k = 0; k < 25; k++) {
-        const slot = take(); if (slot < 0) break;
-        const r = (k / 5) | 0, q = k % 5;
-        const x = x0 + (q - 2) * 0.16 + (r % 2 ? 0.04 : -0.02) + (hash2(i, k, 3) - 0.5) * 0.03, z = z0 + (r - 2) * 0.16 + (hash2(i, k, 4) - 0.5) * 0.03;
-        const sc = 0.7 + hash2(i, k, 5) * 0.16, sq = 0.85 + hash2(i, k, 7) * 0.3;
-        tmpQ.setFromAxisAngle(UP, hash2(i, k, 6) * 6);
-        c.setMatrixAt(slot, tmpM.compose(tmpV.set(x, W.heightAt(x, z) + 0.004, z), tmpQ, tmpS.set(sc * sq, 0.75 + hash2(i, k, 9) * 0.35, sc / sq)));
-        const t = hash2(i, k, 8), w = hash2(i, k, 11);
-        c.setColorAt(slot, tmpC.setRGB(0.46 + t * 0.16 + w * 0.05, 0.42 + t * 0.14, 0.36 + t * 0.11 - w * 0.03));
-        slots.push(slot);
-      }
-      u.slots.set(i, slots);
     }
-    c.count = u.used; kb.count = ku.used;
-    c.instanceMatrix.needsUpdate = true; if (c.instanceColor) c.instanceColor.needsUpdate = true;
+    kb.count = ku.used;
     kb.instanceMatrix.needsUpdate = true; if (kb.instanceColor) kb.instanceColor.needsUpdate = true;
   }
   updateGrass(i) {
