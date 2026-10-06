@@ -1,0 +1,171 @@
+{
+ "date": "2026-10-06",
+ "updated": "2026-10-06T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Dodgers at Braves, NLDS Game 3, series tied 1–1 (6:00 PM ET, FS1)",
+  "Brewers at Padres, NLDS Game 3, Milwaukee leads 2–0 (9:30 PM ET, FS1)",
+  "Islanders at Rangers (7:30 PM ET, ESPN)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "Division Series",
+   "note": "NLDS Game 3s • ALDS resumes Wednesday"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular Season",
+   "note": "ESPN doubleheader"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-lad-atl",
+   "league": "MLB",
+   "label": "MLB • NLDS",
+   "flags": [
+    "NLDS • Game 3"
+   ],
+   "competitors": [
+    {
+     "name": "Los Angeles Dodgers",
+     "abbr": "LAD",
+     "detail": "NL No. 2 seed",
+     "logo": "mlb/lad"
+    },
+    {
+     "name": "Atlanta Braves",
+     "abbr": "ATL",
+     "detail": "NL No. 3 seed",
+     "logo": "mlb/atl"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-06T18:00:00-04:00",
+   "watch": "FS1",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Truist Park, Atlanta",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Series tied 1–1 after Atlanta won Game 2 3–2 at Dodger Stadium. Best-of-five series shifts to Atlanta.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "mlb-mil-sd",
+   "league": "MLB",
+   "label": "MLB • NLDS",
+   "flags": [
+    "NLDS • Game 3",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Milwaukee Brewers",
+     "abbr": "MIL",
+     "detail": "NL No. 1 seed • leads 2–0",
+     "logo": "mlb/mil"
+    },
+    {
+     "name": "San Diego Padres",
+     "abbr": "SD",
+     "detail": "NL No. 4 seed",
+     "logo": "mlb/sd"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-06T21:30:00-04:00",
+   "watch": "FS1",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Petco Park, San Diego",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Milwaukee goes for a sweep after Jackson Chourio's walk-off single won Game 2 4–3. San Diego faces elimination.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "nhl-nyi-nyr",
+   "league": "NHL",
+   "label": "NHL • Regular Season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New York Islanders",
+     "abbr": "NYI",
+     "detail": "",
+     "logo": "nhl/nyi"
+    },
+    {
+     "name": "New York Rangers",
+     "abbr": "NYR",
+     "detail": "",
+     "logo": "nhl/nyr"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-06T19:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN exclusive. No regional team telecast.",
+   "venue": "Madison Square Garden, New York",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Metropolitan Division rivalry. The Islanders opened at home with a 6–0 win over New Jersey.",
+   "blackout": "National ESPN exclusive in the U.S.; no RSN telecast. Out-of-market streaming packages do not carry national exclusive games."
+  },
+  {
+   "id": "nhl-fla-la",
+   "league": "NHL",
+   "label": "NHL • Regular Season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Florida Panthers",
+     "abbr": "FLA",
+     "detail": "",
+     "logo": "nhl/fla"
+    },
+    {
+     "name": "Los Angeles Kings",
+     "abbr": "LA",
+     "detail": "",
+     "logo": "nhl/la"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-06T22:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN exclusive. No regional team telecast.",
+   "venue": "Crypto.com Arena, Los Angeles",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Late ESPN window as Florida heads west.",
+   "blackout": "National ESPN exclusive in the U.S.; no RSN telecast. Out-of-market streaming packages do not carry national exclusive games."
+  }
+ ],
+ "footer_note": "Four qualifying events fall inside Tuesday's Eastern calendar day. Regional NHL games, preseason and exhibition games, and non-major individual-sport events are excluded. The WNBA semifinals resume Wednesday.",
+ "sources": [
+  {
+   "label": "CBS Sports MLB bracket",
+   "url": "https://www.cbssports.com/mlb/news/2026-mlb-playoff-bracket-schedule-scores-results-how-to-watch/"
+  },
+  {
+   "label": "Yahoo Division Series schedule",
+   "url": "https://sports.yahoo.com/mlb/article/mlb-playoffs-2026-alds-nlds-matchups-schedule-and-start-times-030600744.html"
+  },
+  {
+   "label": "NHL national TV, week of Oct. 5",
+   "url": "https://www.nhl.com/news/nhl-nationally-televised-games-for-week-of-october-5-2026"
+  },
+  {
+   "label": "ESPN NHL start times, Oct. 6",
+   "url": "https://espnpressroom.com/press-release/espn-updates-nhl-exclusive-game-start-times-on-october-6/"
+  }
+ ]
+}

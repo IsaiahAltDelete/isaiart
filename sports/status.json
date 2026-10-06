@@ -1,11 +1,11 @@
 {
-  "date": "2026-10-05",
-  "updated": "2026-10-05T07:57:00-04:00",
-  "events": 3,
+  "date": "2026-10-06",
+  "updated": "2026-10-06T07:57:00-04:00",
+  "events": 4,
   "headlines": [
-    "Yankees at Rays, ALDS Game 2 (8:00 PM ET, TBS)",
-    "Falcons at Saints, Monday Night Football (8:15 PM ET, ESPN)",
-    "White Sox at Guardians, ALDS Game 2 (5:00 PM ET, TBS)"
+    "Dodgers at Braves, NLDS Game 3, series tied 1\u20131 (6:00 PM ET, FS1)",
+    "Brewers at Padres, NLDS Game 3, Milwaukee leads 2\u20130 (9:30 PM ET, FS1)",
+    "Islanders at Rangers (7:30 PM ET, ESPN)"
   ],
   "template": "2026-09-29.1"
 }
