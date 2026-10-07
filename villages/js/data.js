@@ -46,10 +46,23 @@ export const GOODS = {
             desc: 'A padded chain shirt. +3 armour class (wizards can\'t wear it).', from: 'Forge', uses: 'Guards and adventurers' },
   staff:  { name: 'Staves',  icon: 'staff',  price: 36, reserve: 1,
             desc: 'A carved staff set with a gem — an arcane focus. +1 to spell attacks and damage.', from: 'Forge', uses: 'Wizards and Clerics' },
+  // magic (see magic.js): a rare crystal, and what the Scriptorium and the Enchanter's Forge make from it
+  crystal: { name: 'Arcane Crystals', icon: 'crystal', price: 12, reserve: 6, capped: true,
+            desc: 'Glowing violet crystals that hold magic.', from: 'Quarry miners turn some up once a Wizard Tower stands; expeditions', uses: 'Scriptorium → scrolls, Enchanter\'s Forge → magic items' },
+  scroll: { name: 'Spell Scrolls', icon: 'scroll', price: 30, reserve: 2,
+            desc: 'A spell inked in crystal ink, ready to read once. A party takes up to two: a failed check gets a second try, and a big fight opens with a Fireball.', from: 'Scriptorium (1 cloth + 1 crystal)', uses: 'Expeditions, selling' },
+  runeblade: { name: 'Runeblades', icon: 'runeblade', price: 70, reserve: 2,
+            desc: 'A sword etched with glowing runes. Weapon attacks hit more often (+1) and harder (+2).', from: 'Enchanter\'s Forge (sword + 2 crystals)', uses: 'Guards, Fighters, Rangers, Rogues, Paladins and Bards; selling' },
+  wand:   { name: 'Wands', icon: 'wand', price: 55, reserve: 2,
+            desc: 'A slim wand with a crystal tip. Spells hit more often (+1) and harder (+2).', from: 'Enchanter\'s Forge (1 plank + 2 crystals)', uses: 'Wizards, Clerics and Bards; selling' },
+  amulet: { name: 'Warding Amulets', icon: 'amulet', price: 60, reserve: 2,
+            desc: 'A crystal set in iron that turns blows aside: +1 armour class and +1 to every saving throw.', from: 'Enchanter\'s Forge (1 iron bar + 2 crystals)', uses: 'Anyone who fights; selling' },
 };
 export const TOP_GOODS = ['coins', 'wood', 'planks', 'stone', 'food', 'gems'];
 export const SELLABLE = ['wood', 'planks', 'stone', 'bricks', 'grain', 'flour', 'food', 'wool', 'cloth', 'milk', 'cheese', 'honey', 'ale',
-  'ore', 'iron', 'sword', 'bow', 'shield', 'armor', 'staff'];
+  'ore', 'iron', 'sword', 'bow', 'shield', 'armor', 'staff', 'crystal', 'scroll', 'runeblade', 'wand', 'amulet'];
+// the market sells these by default (above their reserve, which stays home for adventurers)
+export const SELL_DEFAULT = ['scroll', 'runeblade', 'wand', 'amulet'];
 
 // size = [w, d] in tiles. time = builder-seconds of work.
 // lvl = player level needed. workers/job = staffed production.
@@ -140,10 +153,14 @@ export const BUILDINGS = {
                 desc: 'Gather a party of 2–4 adventurers and send them off on expeditions for coins, gems, ore and treasure.' },
   tradepost:  { name: 'Trade Post', size: [2, 2], cost: { wood: 60, planks: 30, coins: 60 }, time: 18, lvl: 4,
                 desc: 'Keeps a cart and a driver who haul goods between your villages along the roads. Set up trade routes here.' },
+  scriptorium: { name: 'Scriptorium', size: [2, 2], cost: { planks: 60, stone: 40, coins: 120 }, time: 22, lvl: 7, workers: 2, job: 'scribe', needs: ['library'],
+                desc: 'Schooled scribes grind arcane crystals into ink and copy spells onto cloth: Spell Scrolls that sell well and help adventurers out of a tight spot.' },
+  enchanter:  { name: "Enchanter's Forge", size: [2, 2], cost: { planks: 50, bricks: 40, coins: 200, crystal: 6 }, time: 28, lvl: 8, workers: 1, job: 'enchanter', needs: ['forge', 'wizard'],
+                desc: 'An enchanter with Honours works arcane crystals into the Forge\'s goods at a glowing rune anvil: Runeblades, Wands and Warding Amulets, the most valuable goods there are.' },
 };
 export const BUILD_ORDER = ['cottage', 'lumber', 'forager', 'farm', 'coop', 'sawmill', 'quarry', 'storehouse', 'dock',
   'market', 'forester', 'orchard', 'beehive', 'windmill', 'pasture', 'weaver', 'bakery', 'mason', 'dairy', 'creamery',
-  'school', 'library', 'brewery', 'tavern', 'watchtower', 'wizard', 'forge', 'guild', 'tiled', 'tradepost', 'townhall', 'park', 'pub', 'bathhouse', 'theatre', 'university', 'watchhouse', 'chapel', 'temple', 'trainingyard', 'rowhouse', 'hostel', 'manor'];
+  'school', 'library', 'brewery', 'tavern', 'watchtower', 'wizard', 'forge', 'scriptorium', 'enchanter', 'guild', 'tiled', 'tradepost', 'townhall', 'park', 'pub', 'bathhouse', 'theatre', 'university', 'watchhouse', 'chapel', 'temple', 'trainingyard', 'rowhouse', 'hostel', 'manor'];
 
 // Buildings near each other help out: "to" works faster when a "from"
 // building is within range tiles of it.
@@ -295,6 +312,8 @@ export const JOBS = {
   wizard:     { name: 'Wizard',     tool: 'staff' },
   retired:    { name: 'Retired',    tool: null },
   smith:      { name: 'Blacksmith', tool: 'hammer' },
+  scribe:     { name: 'Scribe',     tool: null },
+  enchanter:  { name: 'Enchanter',  tool: 'staff' },
   adventurer: { name: 'Adventurer', tool: null },
 };
 

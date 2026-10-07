@@ -4,7 +4,7 @@
 // (CC-BY-4.0), retold in our own words. Kept cozy: nobody dies in a fight. They're knocked
 // out, helped home, and rest up by the fire.
 // No DOM in here. installRpg(Sim) adds the rpg* methods to the simulation.
-import { BEASTS, SPELLS, RARE, DECOR } from './data.js';
+import { BEASTS, SPELLS, RARE, DECOR, GOODS } from './data.js';
 import { toTile } from './world.js';
 import { mulberry32 } from './rng.js';
 import { stageOf, lvlOf, DAY } from './sim.js';
@@ -55,6 +55,7 @@ export const JOB_ABIL = {
   baker: ['dex', 'wis'], mason: ['str', 'int'], herder: ['wis', 'cha'], picker: ['dex', 'con'], beekeeper: ['wis', 'dex'],
   shepherd: ['wis', 'cha'], weaver: ['dex', 'int'], milker: ['con', 'wis'], cheesemaker: ['int', 'wis'], brewer: ['int', 'con'],
   innkeeper: ['cha', 'wis'], teacher: ['int', 'cha'], guard: ['str', 'dex'], wizard: ['int', 'wis'], smith: ['str', 'int'],
+  scribe: ['int', 'dex'], enchanter: ['int', 'cha'],
 };
 // work speed: +5% per point of the primary ability's modifier, +2% per point of the secondary's
 export function abilityWorkMult(v, job) {
@@ -114,20 +115,33 @@ export function armorClass(v, buffs = {}, now = 0) {
   if (g.a && !wiz) ac = 13 + Math.min(2, dm);
   else if ((buffs.magearmor || 0) > now) ac = 13 + dm;
   if (g.s && !wiz) ac += 2;
+  if (g.m === 'amulet') ac += 1;            // Warding Amulet (magic.js)
   return ac;
 }
 // a guard's swing (melee, off the tower) or shot (ranged, from the tower)
 export function guardAttack(v, mode) {
   const P = prof(v.lvl), g = v.gear || {};
   if (mode === 'melee') {
-    const m = mod(v.abil?.str);
+    const m = mod(v.abil?.str), rb = g.m === 'runeblade' ? 1 : 0;   // a Runeblade: +1 to hit, +2 damage
+    if (rb) return { name: 'runeblade', bonus: P + m + 1 + rb, dmg: { n: 1, s: 8, b: m + 1 + 2 * rb } };
     return g.w === 'sword' ? { name: 'longsword', bonus: P + m + 1, dmg: { n: 1, s: 8, b: m + 1 } } : { name: 'spear', bonus: P + m, dmg: { n: 1, s: 6, b: m } };
   }
   const m = mod(v.abil?.dex);
   return g.w === 'bow' ? { name: 'longbow', bonus: P + m + 1, dmg: { n: 1, s: 8, b: m + 1 } } : { name: 'shortbow', bonus: P + m, dmg: { n: 1, s: 6, b: m } };
 }
 // an adventurer's best move each round
+// magic items (magic.js): a Runeblade sharpens weapon attacks, a Wand sharpens spells; +1 to hit or DC, +2 damage
+const SPELLS_BY = { wizard: true, cleric: true };
 export function classAttack(v, cls = classOf(v)) {
+  const a = baseAttack(v, cls), m = v.gear?.m;
+  const spell = !!a.save || SPELLS_BY[cls];
+  if (!(m === 'runeblade' && !spell) && !(m === 'wand' && spell)) return a;
+  const out = { ...a, dmg: { ...a.dmg, b: a.dmg.b + 2 } };
+  if (a.save) out.dc = a.dc + 1; else out.bonus = a.bonus + 1;
+  if (m === 'runeblade') out.name = 'runeblade';
+  return out;
+}
+function baseAttack(v, cls) {
   const L = v.lvl || 1, P = prof(L), g = v.gear || {}, am = k => mod(v.abil?.[k]), tier = L >= 5 ? 2 : 1;
   const melee = (name, k, s, fine) => ({ name, bonus: P + am(k) + (fine ? 1 : 0), dmg: { n: 1, s, b: am(k) + (fine ? 1 : 0) } });
   switch (cls) {
@@ -187,8 +201,8 @@ export const EXPEDITIONS = [
     steps: [
       { kind: 'save', abil: 'wis', dc: 11, dmg: '1d6', text: 'Eerie whispers curl out of the dark…', pass: 'kept their nerve', fail: 'got the shivers' },
       { kind: 'fight', foe: 'skeleton', n: 2, text: 'Two skeletons climb out of their alcoves.' },
-      { kind: 'check', abil: 'int', dc: 12, text: 'Old runes circle the burial chamber.', win: 'read the runes and found a hidden niche', lose: 'couldn\'t make sense of the runes', loot: { gems: 3 } },
-    ], reward: { coins: [60, 110], gems: [2, 4], xp: 110 } },
+      { kind: 'check', abil: 'int', dc: 12, text: 'Old runes circle the burial chamber.', win: 'read the runes and found a hidden niche (and a cache of glowing crystals)', lose: 'couldn\'t make sense of the runes', loot: { gems: 3, crystal: 2 } },
+    ], reward: { coins: [60, 110], gems: [2, 4], crystal: [1, 3], xp: 110 } },
   { id: 'bridge', name: 'The Toll Bridge', icon: 'shield', lvl: 3, days: 1,
     blurb: 'Bandits are charging travellers to cross the old stone bridge on the east road.',
     steps: [
@@ -202,7 +216,7 @@ export const EXPEDITIONS = [
       { kind: 'save', abil: 'dex', dc: 13, dmg: '2d6', text: 'Rocks tumble from the tunnel roof!', pass: 'dived out of the way', fail: 'got bonked' },
       { kind: 'fight', foe: 'kobold', n: 5, text: 'A pack of kobolds yaps in the lamplight.' },
       { kind: 'check', abil: 'str', dc: 13, text: 'A seam of ore glints behind a rubble pile.', win: 'heaved the rubble aside', lose: 'couldn\'t shift the rubble', loot: { ore: 20 } },
-    ], reward: { ore: [20, 35], iron: [4, 8], gems: [2, 5], xp: 170 } },
+    ], reward: { ore: [20, 35], iron: [4, 8], gems: [2, 5], crystal: [2, 5], xp: 170 } },
   { id: 'marsh', name: 'Wisp Marsh', icon: 'lantern', lvl: 4, days: 1.5,
     blurb: 'Lights dance over the marsh at night. They say a merchant\'s caravan sank there, treasure and all.',
     steps: [
@@ -210,7 +224,7 @@ export const EXPEDITIONS = [
       { kind: 'fight', foe: 'spider', n: 1, text: 'A giant spider drops from the dead trees!' },
       { kind: 'fight', foe: 'wisp', n: 1, text: 'A will-o\'-wisp flickers out of the fog.' },
       { kind: 'check', abil: 'int', dc: 13, text: 'The caravan\'s strongbox lies half sunk in the mud.', win: 'worked out the old lock', lose: 'had to leave the strongbox to the bog', loot: { gems: 5 } },
-    ], reward: { gems: [5, 9], coins: [80, 140], rare: 0.5, xp: 230 } },
+    ], reward: { gems: [5, 9], coins: [80, 140], crystal: [3, 6], rare: 0.5, xp: 230 } },
   { id: 'owlbear', name: 'Owlbear Hollow', icon: 'leaf', lvl: 5, days: 1.5,
     blurb: 'An owlbear keeps raiding the woodcutters\' camps. Very fluffy. Very cross.',
     steps: [
@@ -224,7 +238,7 @@ export const EXPEDITIONS = [
       { kind: 'fight', foe: 'ogre', n: 2, text: 'Two ogres guard the valley pass.' },
       { kind: 'check', abil: 'dex', dc: 15, text: 'The dragon snores atop its hoard.', win: 'tiptoed in and filled every pocket', lose: 'stepped on a goblet with a terrible CLANG', loot: { gems: 15, coins: 300 },
         onFail: { kind: 'save', abil: 'con', dc: 14, dmg: '12d6', half: true, text: 'The dragon\'s eye opens, and it breathes a cloud of poison!', pass: 'held their breath', fail: 'choked on the fumes' } },
-    ], reward: { coins: [300, 500], gems: [10, 18], rare: 1, xp: 520 } },
+    ], reward: { coins: [300, 500], gems: [10, 18], crystal: [6, 10], rare: 1, xp: 520 } },
 ];
 export const SUPPLIES = 10;   // food per adventurer
 export function difficulty(q, vs) {
@@ -246,8 +260,12 @@ export function runExpedition(q, vs, r, opt = {}) {
     if (cls === 'paladin') { p.smite = true; p.heal = { name: 'Lay on Hands', s: 4, b: 2 + L * 2 }; p.heals = 1; }
     // racial traits (society.js): Lucky, Relentless Endurance, Breath Weapon
     p.lucky = v.race === 'halfling'; p.relentless = v.race === 'halforc'; p.breath = v.race === 'dragonborn';
+    p.ward = v.gear?.m === 'amulet' ? 1 : 0;   // Warding Amulet: +1 to saves
     return p;
   });
+  // spell scrolls (magic.js): read by the party's best caster; a failed check gets a second try, a big fight opens with a Fireball
+  let scrolls = opt.scrolls || 0;
+  const reader = () => up().sort((a, b) => (['wizard', 'cleric', 'bard'].includes(b.cls) - ['wizard', 'cleric', 'bard'].includes(a.cls)) || mod(b.abil?.int) - mod(a.abil?.int))[0];
   const bless = () => opt.bless ? roll(r, 1, 4) : 0;
   const names = list => list.length <= 1 ? (list[0] || '') : list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];
   const lines = [`${names(party.map(p => p.first))} set off for ${q.name}.`];
@@ -258,7 +276,7 @@ export function runExpedition(q, vs, r, opt = {}) {
   const save = st => {
     const ok = [], bad = []; let hurt = 0;
     for (const p of up()) {
-      const t = d20(r) + mod(p.abil?.[st.abil]) + (p.saves.includes(st.abil) ? p.P : 0) + bless();
+      const t = d20(r) + mod(p.abil?.[st.abil]) + (p.saves.includes(st.abil) ? p.P : 0) + p.ward + bless();
       const n = rollD(r, dice(st.dmg));
       if (t >= st.dc) { ok.push(p.first); if (st.half) { p.hp -= Math.floor(n / 2); hurt += Math.floor(n / 2); } }
       else { bad.push(p.first); p.hp -= n; hurt += n; }
@@ -275,6 +293,11 @@ export function runExpedition(q, vs, r, opt = {}) {
     const dealt = new Map(), healed = [], breaths = [], lucky = [];
     let taken = 0, critBy = null, falls = [];
     lines.push(st.text);
+    if (scrolls > 0 && st.n >= 3 && reader()) {
+      const n = roll(r, 3, 6), who = reader(); scrolls--;
+      for (const f of foes) f.hp -= n;
+      lines.push(`${who.first} read a scroll of Fireball: ${n} damage to every ${M.name}!`);
+    }
     for (let round = 0; round < 14 && up().length && alive().length; round++) {
       for (const p of party) {
         if (p.hp <= 0 || !alive().length) continue;
@@ -325,8 +348,13 @@ export function runExpedition(q, vs, r, opt = {}) {
     let best = null, bv = -99;
     for (const p of up()) { const b = mod(p.abil?.[st.abil]) + (CLASS_SKILL[p.cls]?.includes(st.abil) ? p.P : 0); if (b > bv) { bv = b; best = p; } }
     if (!best) return false;
-    const d = d20(r), t = d + bv + bless(), ok = d === 20 || t >= st.dc;
-    lines.push(`${st.text} ${best.first} ${ok ? st.win : st.lose} (${st.abil.toUpperCase()} check: rolled ${t} vs DC ${st.dc}).`);
+    let d = d20(r), t = d + bv + bless(), ok = d === 20 || t >= st.dc;
+    if (!ok && scrolls > 0 && reader()) {
+      const who = reader(); scrolls--;
+      d = d20(r); t = d + bv + bless() + roll(r, 1, 4); ok = d === 20 || t >= st.dc;
+      lines.push(`${st.text} ${best.first} fumbled it, so ${who === best ? 'they' : who.first} read a scroll of Guidance for a second try.`);
+      lines.push(`${best.first} ${ok ? st.win : st.lose} (${st.abil.toUpperCase()} check with Guidance: rolled ${t} vs DC ${st.dc}).`);
+    } else lines.push(`${st.text} ${best.first} ${ok ? st.win : st.lose} (${st.abil.toUpperCase()} check: rolled ${t} vs DC ${st.dc}).`);
     if (ok) addLoot(st.loot);
     if (ok && st.skip) skipNext = true;
     if (!ok && st.onFail) save(st.onFail);
@@ -348,6 +376,7 @@ export function runExpedition(q, vs, r, opt = {}) {
   const k = retreat ? 0.35 : 0.6 + 0.4 * (total ? wins / total : 1), rw = q.reward;
   for (const [res, v] of Object.entries(rw)) if (Array.isArray(v)) addLoot({ [res]: Math.round((v[0] + r() * (v[1] - v[0])) * k) });
   if (!retreat && rw.rare && r() < rw.rare) loot.rare = 1;
+  if (scrolls > 0) loot.scroll = (loot.scroll || 0) + scrolls;   // unread scrolls come home
   const xp = Math.round(rw.xp * (retreat ? 0.5 : 1));
   lines.push(retreat ? `They limped home from ${q.name} with what they could carry.` : `The party came home from ${q.name}, tired and triumphant!`);
   for (const p of party) if (retreat) p.hp = Math.max(1, p.hp);
@@ -873,7 +902,8 @@ const RPG = {
     const s = this.s, d = this.guildOf(b), vs = this.partyMembers(b), now = s.time;
     this.pay({ food: SUPPLIES * vs.length });
     for (const v of vs) this.equip(v, 'party', true);
-    const out = runExpedition(q, vs, mulberry32(((this.rng() * 1e9) | 0) ^ b.id), { bless: this.buffOn('bless'), buffs: s.rpg?.buffs, now });
+    const scrolls = this.takeScrolls?.() || 0;
+    const out = runExpedition(q, vs, mulberry32(((this.rng() * 1e9) | 0) ^ b.id), { bless: this.buffOn('bless'), buffs: s.rpg?.buffs, now, scrolls });
     const n = out.lines.length;
     d.exp = { q: q.id, t0: now, dur: q.days * DAY, log: out.lines.map((msg, i) => ({ f: i === 0 ? 0 : i === n - 1 ? 1 : 0.08 + 0.84 * i / (n - 1), msg })), out, members: vs.map(v => v.id) };
     for (const v of vs) {
@@ -905,7 +935,7 @@ const RPG = {
         }
         if (n <= 0) continue;
         const add = ['coins', 'gems'].includes(k) ? (s.res[k] += n, this.track(k, n), n) : this.add(k, n, false);
-        if (add) got.push(`${add} ${k === 'ore' ? 'iron ore' : k === 'iron' ? 'iron bars' : k}`);
+        if (add) got.push(`${add} ${k === 'ore' ? 'iron ore' : k === 'iron' ? 'iron bars' : GOODS[k] ? GOODS[k].name.toLowerCase() : k}`);
       }
       s.stats.expeditions = (s.stats.expeditions || 0) + (out.ok ? 1 : 0);
       s.stats.crits = (s.stats.crits || 0) + out.crits;

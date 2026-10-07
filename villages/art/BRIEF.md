@@ -131,6 +131,15 @@ will smear.
 | `chip.png` | 1536 × 1024 | A small pill tag (~60% wide, ~30% tall), cream face, thin wood border. For counters like "150 coins". |
 | `tooltip.png` | 1024 × 1024 | A rounded speech bubble with a small tail at bottom-centre, white face, ink outline. Flat centre. |
 
+### Phase 6: magic goods (one icon per image)
+
+| Filename | Subject |
+|---|---|
+| `icon_crystal.png` | A small cluster of three glowing violet crystals on a grey rock |
+| `icon_runeblade.png` | A short sword with three glowing cyan runes down the blade and a violet grip |
+| `icon_wand.png` | A slim wooden wand with a violet crystal tip and two small gold sparkles |
+| `icon_amulet.png` | An iron amulet on a chain, a violet diamond-shaped crystal set in the middle |
+
 ### 4. Before you send each image, check
 
 1. Transparent background, with no white box and no halo.

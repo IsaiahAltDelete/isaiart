@@ -2,7 +2,7 @@
 // population, quests, levels, saving. No DOM or Three.js in here — the
 // view layer listens to events emitted from this class.
 import { World, N, idx, tileX, tileZ, toWorld, toTile, inMap, CENTERS, T_WATER, WORLD_GEN, seedFromText, randomSeedText } from './world.js';
-import { BUILDINGS, DECOR, GOODS, SELLABLE, QUESTS, SETTLEMENTS, ACHIEVEMENTS, MERCHANT_OFFERS, SYNERGY, CROPS, SPELLS, BEASTS, xpForLevel,
+import { BUILDINGS, DECOR, GOODS, SELLABLE, SELL_DEFAULT, QUESTS, SETTLEMENTS, ACHIEVEMENTS, MERCHANT_OFFERS, SYNERGY, CROPS, SPELLS, BEASTS, xpForLevel,
   SEASONS, SEASON_DAYS, FESTIVALS, RARE,
   FIRST_NAMES, LAST_NAMES, SHIRTS, SKINS, HAIRS, JOBS } from './data.js';
 import { mulberry32, pick } from './rng.js';
@@ -31,6 +31,7 @@ const CONVERT = {                    // staffed converters: inputs -> outputs, s
   weaver: { in: { wool: 2 }, out: { cloth: 1 }, t: 7, anim: 'work' },
   cheesemaker: { in: { milk: 2 }, out: { cheese: 1 }, t: 7, anim: 'work' },
   brewer: { in: { grain: 2 }, out: { ale: 1 }, t: 8, anim: 'work' },
+  scribe: { in: { cloth: 1, crystal: 1 }, out: { scroll: 1 }, t: 12, anim: 'work' },
 };
 // staffed producers that need no inputs: the worker potters around the pen
 const PRODUCE = {
@@ -76,7 +77,7 @@ export class Sim {
       xp: 0, level: 1, happiness: 70,
       buildings: [], villagers: [], unlocked: {},
       quests: { claimed: [] }, stats: { built: {}, produced: {}, earned: 0, decor: 0 },
-      sell: Object.fromEntries(SELLABLE.map(k => [k, k === 'food' || k === 'grain'])),
+      sell: Object.fromEntries(SELLABLE.map(k => [k, k === 'food' || k === 'grain' || SELL_DEFAULT.includes(k)])),
       log: [], popTimer: 0, tutorial: 0, weather: { rain: false, t: 150 },
       chests: [], chestTimer: 150, tokens: {}, names: {},
     };
@@ -262,7 +263,7 @@ export class Sim {
     if (ignoreId === -1) {   // -2 = free starter props: no cost or level check
       if (def.rare && !(this.s.tokens?.[type] > 0)) return { ok: false, why: def.festive ? 'Buy one at the festival shop' : 'Found only in gift chests' };
       if (def.lvl && this.s.level < def.lvl) return { ok: false, why: `Needs level ${def.lvl}` };
-      const gate = this.schoolGate?.(type); if (gate) return { ok: false, why: gate };
+      const gate = this.gateOf(type); if (gate) return { ok: false, why: gate.why };
       if (!this.canAfford(def.cost)) return { ok: false, why: 'Not enough resources' };
     }
     if (def.needsWater) {
@@ -582,6 +583,7 @@ export class Sim {
     if (job === 'guard') return this.taskGuard(v, b);
     if (job === 'wizard') return this.taskStudy(v, b);
     if (job === 'smith') return this.taskForge(v, b);
+    if (job === 'enchanter') return this.taskEnchant(v, b);
     if (['acolyte','trainer','scout','locksmith'].includes(job)) return this.taskClassPlace(v,b);
   }
 
@@ -1386,6 +1388,19 @@ export class Sim {
   forecast(n = 3) { const d = this.dayNum(); return Array.from({ length: n }, (_, k) => this.dayWeather(d + k)); }
   stormy() { return !!this.s.weather?.storm; }
   // jobs done under a roof keep going through a storm
+  // What a building is still waiting on besides level and cost: buildings it needs ("needs" in its
+  // definition) and, for workplaces whose job needs schooling, a Library (education.js schoolGate).
+  // Returns { short, why } for the build card and the placement refusal, or null.
+  gateOf(type) {
+    const d = defOf(type); if (!d) return null;
+    const miss = (d.needs || []).filter(t => !this.s.buildings.some(b => b.type === t && b.built));
+    if (miss.length) {
+      const names = miss.map(t => defOf(t).name), a = n => /^[AEIOU]/.test(n) ? `an ${n}` : `a ${n}`;
+      return { short: miss.length > 1 ? `Needs ${miss.length} buildings` : `Needs ${names[0]}`, why: `Needs ${names.map(a).join(' and ')} first` };
+    }
+    const school = this.schoolGate?.(type);
+    return school ? { short: 'Needs a Library', why: school } : null;
+  }
   indoorJob(v) { return !!v.work && (!!CONVERT[v.job] && v.job !== 'herder' || ['innkeeper', 'teacher', 'wizard', 'smith', 'scholar', 'student', 'professor', 'barkeep', 'attendant', 'bard', 'constable', 'acolyte', 'locksmith'].includes(v.job)); }
   stepWeather() {
     const s = this.s, wx = s.weather || (s.weather = { rain: false, t: 0 });
@@ -1817,7 +1832,7 @@ export class Sim {
     for (const v of s.villagers) v.dancing = false;
     s.beasts = [];
     for (const v of s.villagers) { v.asleep = null; v.indoors = false; v.inside = null; v.onTower = false; }
-    for (const k of SELLABLE) if (s.sell[k] === undefined) s.sell[k] = false;
+    for (const k of SELLABLE) if (s.sell[k] === undefined) s.sell[k] = SELL_DEFAULT.includes(k);
     if (!world.lanes) for (const b of s.buildings) if (b.built) this.carveLane(b);
     if (s.tutorial === undefined || s.buildings.length > 4) s.tutorial = 99;
     this.rpgLoad();                   // ability scores for old saves, spell slots, parties (rpg.js)

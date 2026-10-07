@@ -10,6 +10,7 @@
 //   social.js    friendships and evening visits: think, dropTask, second, endFestival
 //   festival.js  festival quests and shop: second
 //   education.js school grades, the Library, homes that grow by themselves: assign, second
+//   magic.js     arcane crystals, the Enchanter's Forge, magic gear and scrolls: rpgOre, equip, canEquip, unequip
 import { installRoads } from './roads.js';
 import { installIsland } from './island.js';
 import { installTrade } from './trade.js';
@@ -24,6 +25,7 @@ import { installCrime } from './crime.js';
 import { installClassPlaces } from './classplaces.js';
 import { installCareers } from './careers.js';
 import { installArcane } from './arcane.js';
+import { installMagic } from './magic.js';
 import { installEvents } from './events.js';
 import { installClassDuties } from './classduties.js';
 import { installWishes } from './wishes.js';
@@ -47,6 +49,7 @@ export function installAddons(sim, save) {
   installClassPlaces(sim);
   installCareers(sim);
   installArcane(sim);
+  installMagic(sim);        // arcane crystals, scrolls, the Enchanter's Forge, magic gear
   installEvents(sim);       // droughts, fevers, fires, raiders, spirits, the fair folk, dragons
   installClassDuties(sim);  // paladins answer the alarm, rangers shoot, rogues spot thieves, bards calm tempers
   installWishes(sim);       // thought-bubble wishes and pets

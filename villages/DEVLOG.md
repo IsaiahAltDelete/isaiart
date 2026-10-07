@@ -959,6 +959,31 @@ Schoolhouse could not even hire its first teacher. Now:
   description now lists the two disciplines that exist (Research, Nature).
 Tests: `tests/progression.test.mjs`.
 
+## Magic goods: crystals, the Scriptorium and the Enchanter's Forge (2026-10-07)
+
+- **Arcane Crystals** (new raw material): quarry miners turn one up 12% of the time once a Wizard Tower
+  stands (`rpgOre` wrap); expeditions to the Barrow, the Old Dwarf Mine, Wisp Marsh and the Dragon's
+  Nap bring more.
+- **Scriptorium** (level 7, needs a Library, 2 schooled scribes): 1 cloth + 1 crystal → 1 Spell Scroll
+  (a plain converter, `CONVERT.scribe`; scribes work indoors).
+- **Enchanter's Forge** (level 8, needs a Forge and a Wizard Tower, 1 enchanter with Honours, costs 6
+  crystals): Runeblade (sword + 2 crystals), Wand (plank + 2), Warding Amulet (iron bar + 2). Auto
+  makes whatever there is least of and always leaves 2 swords and 2 iron bars for the armory. The
+  enchanter works outside at the rune anvil; the crystal above it bobs and spins (`anim_float`).
+- **Magic gear**: a fourth gear slot `gear.m`. Runeblade +1 to hit / +2 damage on weapon attacks,
+  Wand the same on spells (wizards, clerics, bard spells), Amulet +1 AC and +1 to saves. Guards and
+  martial classes reach for a runeblade, casters for a wand, then an amulet.
+- **Scrolls on expeditions**: a party takes up to 2. A failed check gets a second try (+1d4,
+  Guidance); a fight against 3+ foes opens with a Fireball (3d6 to each). Unread scrolls come home.
+- The market sells scrolls and magic items by default above a reserve of 2 (which stays home for
+  adventurers); crystals stay unsold unless you switch them on.
+- Building prerequisites: `needs: [...]` in a building's definition, checked by `Sim.gateOf` (also
+  covers the Library gate); the build card shows what's missing.
+- Models: `blender/build_works7.py` (`build_scriptorium`, `build_enchanter`), a new glowing `arcane`
+  material slot. Exported through the Blender MCP; the other 96 models came out identical.
+- Icons are drawn SVGs for now (`magicui.js`); `art/BRIEF.md` phase 6 asks for painted ones.
+Tests: `tests/magic.test.mjs`.
+
 ## Next round — pick 5–6
 
 Critic leftovers from round 15:

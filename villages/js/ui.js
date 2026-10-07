@@ -90,6 +90,7 @@ const SHOP = [
 
 // what each workplace turns into what (for the production-chain view)
 const CHAIN = {
+  scriptorium: { in: ['cloth', 'crystal'], out: ['scroll'] }, enchanter: { in: ['sword', 'planks', 'iron', 'crystal'], out: ['runeblade', 'wand', 'amulet'] },
   lumber: { out: ['wood'] }, forager: { out: ['food'] }, quarry: { out: ['stone'] }, dock: { out: ['food'] },
   sawmill: { in: ['wood'], out: ['planks'] }, windmill: { in: ['grain'], out: ['flour'] }, bakery: { in: ['flour'], out: ['food'] },
   mason: { in: ['stone'], out: ['bricks'] }, coop: { in: ['grain'], out: ['food'] }, orchard: { out: ['food'] }, beehive: { out: ['honey'] },
@@ -107,7 +108,7 @@ const CATS = {
     { id: 'all', name: 'All', icon: 'grid' },
     { id: 'homes', name: 'Homes', icon: 'house', types: ['cottage', 'tiled', 'rowhouse', 'hostel', 'manor', 'storehouse'] },
     { id: 'food', name: 'Food', icon: 'apple', types: ['forager', 'farm', 'dock', 'coop', 'orchard', 'windmill', 'bakery', 'beehive', 'dairy', 'creamery'] },
-    { id: 'industry', name: 'Industry', icon: 'axe', types: ['clear', 'lumber', 'forester', 'quarry', 'sawmill', 'mason', 'pasture', 'weaver', 'brewery', 'forge', 'road', 'pave', 'tradepost'] },
+    { id: 'industry', name: 'Industry', icon: 'axe', types: ['clear', 'lumber', 'forester', 'quarry', 'sawmill', 'mason', 'pasture', 'weaver', 'brewery', 'forge', 'enchanter', 'road', 'pave', 'tradepost'] },
     { id: 'serv', name: 'Services', icon: 'staff', types: ['market', 'townhall', 'school', 'library', 'university', 'wizard', 'guild', 'trainingyard'], rest: true },
     { id: 'leisure', name: 'Leisure & Faith', icon: 'smile', types: ['park', 'tavern', 'pub', 'bathhouse', 'theatre', 'chapel', 'temple'] },
     { id: 'def', name: 'Defense', icon: 'shield', types: ['watchtower', 'watchhouse', 'torch', 'palisade'] },
@@ -264,7 +265,7 @@ export class UI {
       const c = e.target.closest('.card');
       if (!c) return;
       const type = c.dataset.type;
-      if (c.classList.contains('locked')) { this.toast(defOf(type).festive ? `The ${defOf(type).name} is sold at the festival shop during its festival` : defOf(type).rare ? `The ${defOf(type).name} can only be found in gift chests in the woods` : this.needsLibrary(type) ? `The ${defOf(type).name}'s workers need schooling: build a Library first` : `${defOf(type).name} unlocks at level ${defOf(type).lvl}`, defOf(type).rare ? 'gift' : 'lock'); sfx.error(); return; }
+      if (c.classList.contains('locked')) { this.toast(defOf(type).festive ? `The ${defOf(type).name} is sold at the festival shop during its festival` : defOf(type).rare ? `The ${defOf(type).name} can only be found in gift chests in the woods` : this.gateFor(type) ? `${defOf(type).name}: ${this.gateFor(type).why.replace(/^Needs a Library first, to school its workers$/, 'its workers need schooling, so build a Library first')}` : `${defOf(type).name} unlocks at level ${defOf(type).lvl}`, defOf(type).rare ? 'gift' : 'lock'); sfx.error(); return; }
       this.hideTip();
       g.startPlace(type);
       this.markCard(type);
@@ -1023,9 +1024,9 @@ export class UI {
     const listed = new Set(CATS[kind].flatMap(c => c.types || []));
     return [...cat.types, ...(cat.rest ? order.filter(t => !listed.has(t)) : [])].filter(t => t === 'clear' || t === 'pave' || t === 'road' || defOf(t));
   }
-  isLocked(t) { const s = this.sim.s, d = defOf(t); return !d ? false : d.rare ? !(s.tokens?.[t] > 0) : d.lvl > s.level || !!this.sim.schoolGate?.(t); }
-  // unlocked by level but waiting on a Library (education.js schoolGate)
-  needsLibrary(t) { const d = defOf(t); return !!d && !d.rare && d.lvl <= this.sim.s.level && !!this.sim.schoolGate?.(t); }
+  isLocked(t) { const s = this.sim.s, d = defOf(t); return !d ? false : d.rare ? !(s.tokens?.[t] > 0) : d.lvl > s.level || !!this.sim.gateOf(t); }
+  // unlocked by level but waiting on other buildings or a Library (Sim.gateOf)
+  gateFor(t) { const d = defOf(t); return d && !d.rare && d.lvl <= this.sim.s.level ? this.sim.gateOf(t) : null; }
   openTray(kind, cat) {
     if (this.modal) this.closeModal();
     const t = $('#tray'), was = this.tray === kind, open = !!this.tray;
@@ -1099,11 +1100,11 @@ export class UI {
       const d = defOf(t), have = s.tokens?.[t] || 0, locked = this.isLocked(t);
       const cant = !locked && !d.rare && !this.sim.canAfford(d.cost);
       c.classList.toggle('locked', locked); c.classList.toggle('cant', cant);
-      const html = d.rare ? (have ? `<span class="txt">Free · ×${have}</span>` : (d.festive ? '<span class="txt">Festival shop</span>' : `<span class="txt">Chests only</span>`)) : locked ? `<span class="txt">${this.needsLibrary(t) ? 'Needs a Library' : `Unlocks at Lv ${d.lvl}`}</span>` : costHtml(d.cost, s.res);
+      const html = d.rare ? (have ? `<span class="txt">Free · ×${have}</span>` : (d.festive ? '<span class="txt">Festival shop</span>' : `<span class="txt">Chests only</span>`)) : locked ? `<span class="txt">${this.gateFor(t)?.short || `Unlocks at Lv ${d.lvl}`}</span>` : costHtml(d.cost, s.res);
       const ce = c.querySelector('.cost');
       if (ce.innerHTML !== html) ce.innerHTML = html;
       const lk = c.querySelector('.lock');
-      const lkTxt = this.needsLibrary(t) ? 'Library' : `Lv ${d.lvl}`;
+      const lkTxt = this.gateFor(t) ? 'Needs' : `Lv ${d.lvl}`;
       if (locked && !d.rare && (!lk || !lk.textContent.endsWith(lkTxt))) { lk?.remove(); c.insertAdjacentHTML('beforeend', `<span class="lock">${svg('lock', 12)}${lkTxt}</span>`); }
       if (!locked && lk) lk.remove();
     }
@@ -1135,7 +1136,7 @@ export class UI {
     h += r7SpecNote(type);
     if (helps.length) h += `<div class="syn">${svg('fast', 13)}<span>Boosts nearby ${esc([...new Set(helps.map(r => defOf(r.to).name))].join(', '))}</span></div>`;
     if (d.needsWater) h += `<div class="note">Must touch the shore of a lake or river.</div>`;
-    if (locked && !d.rare) h += this.needsLibrary(type) ? `<div class="note bad">${svg('lock', 13)} Its workers need schooling: build a Library first, where grown-ups study.</div>`
+    if (locked && !d.rare) h += this.gateFor(type) ? `<div class="note bad">${svg('lock', 13)} ${esc(/Library first, to school/.test(this.gateFor(type).why) ? 'Its workers need schooling: build a Library first, where grown-ups study.' : this.gateFor(type).why + '.')}</div>`
       : `<div class="note bad">${svg('lock', 13)} Unlocks at level ${d.lvl} (you're level ${s.level}).</div>`;
     else if (locked) h += `<div class="note">${d.festive ? 'Buy one with festival tokens at the festival shop.' : 'Find one in a gift chest in the woods.'}</div>`;
     else if (!d.rare && !this.sim.canAfford(d.cost)) h += `<div class="note bad">Not enough resources yet.</div>`;

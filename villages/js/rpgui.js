@@ -5,6 +5,7 @@ import { svg, addIcons } from './icons.js';
 import { GOODS, JOBS, SPELLS, BUILDINGS } from './data.js';
 import { stageOf, DAY, defOf } from './sim.js';
 import { faceSvg } from './ui.js';
+import { enchantHtml, enchantToast, magicGearTag } from './magicui.js';
 import { ABIL, ABIL_INFO, mod, fmtMod, CLASSES, classOf, aptitudeOf, maxHp, armorClass, guardAttack, classAttack, JOB_ABIL, jobFit, fitLabel, stars,
   xpToNext, RECIPES, EXPEDITIONS, difficulty, SUPPLIES, slotsFor, casterNeeds, studyCost, diceStr, MONSTERS } from './rpg.js';
 
@@ -110,6 +111,7 @@ function gearTags(v) {
   if (g.w) out.push(`<span class="rtag" ${tip({ sword: 'Sword', bow: 'Bow', staff: 'Staff' }[g.w], GOODS[g.w].desc)}>${svg(g.w, 14)}${esc({ sword: 'Sword', bow: 'Bow', staff: 'Staff' }[g.w])}</span>`);
   if (g.a) out.push(`<span class="rtag" ${tip('Armour', GOODS.armor.desc)}>${svg('armor', 14)}Armour</span>`);
   if (g.s) out.push(`<span class="rtag" ${tip('Shield', GOODS.shield.desc)}>${svg('shield', 14)}Shield</span>`);
+  out.push(magicGearTag(v));
   return out.join('');
 }
 function classTag(v) {
@@ -166,6 +168,7 @@ export function rpgBuildingHtml(ui, b) {
   if (!b.built) return '';
   const sim = ui.sim, s = sim.s, R = s.rpg || {};
   if (b.type === 'forge') return forgeHtml(sim, b);
+  if (b.type === 'enchanter') return enchantHtml(sim, b);
   if (b.type === 'guild') return guildSection(sim, b);
   if (b.type === 'watchtower') {
     const gs = b.workers.map(id => sim.vById.get(id)).filter(Boolean);
@@ -316,6 +319,7 @@ export function rpgSpellbookHtml(ui) {
 // ── clicks ──
 export function rpgInfoClick(ui, act, a, sel) {
   const sim = ui.sim, b = sel?.kind === 'b' ? sel.b : null;
+  if (act === 'rpg-recipe' && b?.type === 'enchanter') { b.data.recipe = a.dataset.k; ui.toast(enchantToast(a.dataset.k), 'wand'); return; }
   if (act === 'rpg-recipe' && b) { b.data.recipe = a.dataset.k; ui.toast(a.dataset.k === 'auto' ? 'The smith will keep the armory stocked' : `The smith will make ${GOODS[RECIPES.find(r => r.id === a.dataset.k).out].name.toLowerCase()}`, 'anvil'); return; }
   if (act === 'rpg-guild') { ui.guildBid = b?.id; ui.openModal('guild'); return; }
   if (act === 'rpg-equipguards' && b) {

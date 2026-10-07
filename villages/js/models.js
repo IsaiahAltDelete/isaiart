@@ -217,6 +217,7 @@ const SLOT_MAT = {
   win: () => mat(C.window, { emissive: 0x3a2a00 }),
   lamp: () => mat(0xffe08a),
   water: () => mat(0x6cc4ee, { emissive: 0x0a3550 }),
+  arcane: () => mat(0xc7a8ff, { emissive: 0x6a3fd0 }),   // glowing violet crystals and runes (magic.js buildings)
   snowcap: () => SNOWCAP_MAT,
 };
 // one shared material for every roof's winter snow pillow; the game shows it in deep snow
@@ -940,6 +941,7 @@ const TYPE_COLOURS = {
   windmill: { roof: C.red }, storehouse: { roof: 0x7a2e2a }, mason: { roof: 0x6b5a4a }, weaver: { roof: 0x7a5aa8, wall: 0xe9d8c4 },
   creamery: { roof: 0x4f8fd9 }, brewery: { roof: 0x6b4a2a }, tavern: { roof: 0x8a3a2a }, school: { roof: C.red, wall: 0xf6e6b4 },
   watchtower: { roof: 0x4f8a3a }, forester: {}, dock: { shutter: C.teal }, market: {},
+  scriptorium: { roof: 0x3f6fae, wall: 0xf3ead6 }, enchanter: { roof: 0x4a4a5e },
 };
 // Dynamic bits a Blender building still needs from code (bees, orbs, flames).
 const BLEND_EXTRAS = {

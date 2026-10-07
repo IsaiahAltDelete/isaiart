@@ -363,6 +363,11 @@ class Game {
     const busy = b.workers.length > 0 && !b.status;
     if (a.blades) a.blades.rotation.z += dt * (busy ? 1.6 : 0.25);
     if (a.blade && busy) a.blade.rotation[a.bladeAxis || 'y'] += dt * 12;
+    if (a.float) {   // the Enchanter's Forge: the crystal over the anvil bobs, and spins while someone works
+      a.float.userData.y0 ??= a.float.position.y;
+      a.float.position.y = a.float.userData.y0 + Math.sin(time * 2 + vis.phase) * 0.05;
+      a.float.rotation.y += dt * (busy ? 2.4 : 0.4);
+    }
     if (a.smoke) a.smoke.update(dt);
     if (a.fire) {
       const big = a.light && this.fest ? 1.9 : 1;    // a roaring festival bonfire

@@ -36,7 +36,7 @@ const STUDY = [0, 60, 140, 240];
 // the least schooling a job needs
 // jobs that need schooling. Teachers don't: a new village's first teacher is self-taught (schooled
 // teachers just teach better), or nobody could ever start the Schoolhouse.
-export const JOB_EDU = { acolyte: 1, wizard: 1, smith: 1, professor: 2, student: 2 };
+export const JOB_EDU = { acolyte: 1, wizard: 1, smith: 1, scribe: 1, enchanter: 2, professor: 2, student: 2 };
 
 addIcons({
   cap: '<path d="M2 12l14-6 14 6-14 6z" fill="#4a4a6a" stroke="#5b3a1e" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 15v6c3 3 13 3 16 0v-6" fill="#5b5b7e" stroke="#5b3a1e" stroke-width="1.6" stroke-linejoin="round"/><path d="M27 13v8" stroke="#f0b429" stroke-width="2" stroke-linecap="round"/><circle cx="27" cy="22" r="2" fill="#f0b429"/>',
