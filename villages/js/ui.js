@@ -264,7 +264,7 @@ export class UI {
       const c = e.target.closest('.card');
       if (!c) return;
       const type = c.dataset.type;
-      if (c.classList.contains('locked')) { this.toast(defOf(type).festive ? `The ${defOf(type).name} is sold at the festival shop during its festival` : defOf(type).rare ? `The ${defOf(type).name} can only be found in gift chests in the woods` : `${defOf(type).name} unlocks at level ${defOf(type).lvl}`, defOf(type).rare ? 'gift' : 'lock'); sfx.error(); return; }
+      if (c.classList.contains('locked')) { this.toast(defOf(type).festive ? `The ${defOf(type).name} is sold at the festival shop during its festival` : defOf(type).rare ? `The ${defOf(type).name} can only be found in gift chests in the woods` : this.needsLibrary(type) ? `The ${defOf(type).name}'s workers need schooling: build a Library first` : `${defOf(type).name} unlocks at level ${defOf(type).lvl}`, defOf(type).rare ? 'gift' : 'lock'); sfx.error(); return; }
       this.hideTip();
       g.startPlace(type);
       this.markCard(type);
@@ -1023,7 +1023,9 @@ export class UI {
     const listed = new Set(CATS[kind].flatMap(c => c.types || []));
     return [...cat.types, ...(cat.rest ? order.filter(t => !listed.has(t)) : [])].filter(t => t === 'clear' || t === 'pave' || t === 'road' || defOf(t));
   }
-  isLocked(t) { const s = this.sim.s, d = defOf(t); return !d ? false : d.rare ? !(s.tokens?.[t] > 0) : d.lvl > s.level; }
+  isLocked(t) { const s = this.sim.s, d = defOf(t); return !d ? false : d.rare ? !(s.tokens?.[t] > 0) : d.lvl > s.level || !!this.sim.schoolGate?.(t); }
+  // unlocked by level but waiting on a Library (education.js schoolGate)
+  needsLibrary(t) { const d = defOf(t); return !!d && !d.rare && d.lvl <= this.sim.s.level && !!this.sim.schoolGate?.(t); }
   openTray(kind, cat) {
     if (this.modal) this.closeModal();
     const t = $('#tray'), was = this.tray === kind, open = !!this.tray;
@@ -1097,11 +1099,12 @@ export class UI {
       const d = defOf(t), have = s.tokens?.[t] || 0, locked = this.isLocked(t);
       const cant = !locked && !d.rare && !this.sim.canAfford(d.cost);
       c.classList.toggle('locked', locked); c.classList.toggle('cant', cant);
-      const html = d.rare ? (have ? `<span class="txt">Free · ×${have}</span>` : (d.festive ? '<span class="txt">Festival shop</span>' : `<span class="txt">Chests only</span>`)) : locked ? `<span class="txt">Unlocks at Lv ${d.lvl}</span>` : costHtml(d.cost, s.res);
+      const html = d.rare ? (have ? `<span class="txt">Free · ×${have}</span>` : (d.festive ? '<span class="txt">Festival shop</span>' : `<span class="txt">Chests only</span>`)) : locked ? `<span class="txt">${this.needsLibrary(t) ? 'Needs a Library' : `Unlocks at Lv ${d.lvl}`}</span>` : costHtml(d.cost, s.res);
       const ce = c.querySelector('.cost');
       if (ce.innerHTML !== html) ce.innerHTML = html;
       const lk = c.querySelector('.lock');
-      if (locked && !lk && !d.rare) c.insertAdjacentHTML('beforeend', `<span class="lock">${svg('lock', 12)}Lv ${d.lvl}</span>`);
+      const lkTxt = this.needsLibrary(t) ? 'Library' : `Lv ${d.lvl}`;
+      if (locked && !d.rare && (!lk || !lk.textContent.endsWith(lkTxt))) { lk?.remove(); c.insertAdjacentHTML('beforeend', `<span class="lock">${svg('lock', 12)}${lkTxt}</span>`); }
       if (!locked && lk) lk.remove();
     }
   }
@@ -1132,7 +1135,8 @@ export class UI {
     h += r7SpecNote(type);
     if (helps.length) h += `<div class="syn">${svg('fast', 13)}<span>Boosts nearby ${esc([...new Set(helps.map(r => defOf(r.to).name))].join(', '))}</span></div>`;
     if (d.needsWater) h += `<div class="note">Must touch the shore of a lake or river.</div>`;
-    if (locked && !d.rare) h += `<div class="note bad">${svg('lock', 13)} Unlocks at level ${d.lvl} (you're level ${s.level}).</div>`;
+    if (locked && !d.rare) h += this.needsLibrary(type) ? `<div class="note bad">${svg('lock', 13)} Its workers need schooling: build a Library first, where grown-ups study.</div>`
+      : `<div class="note bad">${svg('lock', 13)} Unlocks at level ${d.lvl} (you're level ${s.level}).</div>`;
     else if (locked) h += `<div class="note">${d.festive ? 'Buy one with festival tokens at the festival shop.' : 'Find one in a gift chest in the woods.'}</div>`;
     else if (!d.rare && !this.sim.canAfford(d.cost)) h += `<div class="note bad">Not enough resources yet.</div>`;
     return h;

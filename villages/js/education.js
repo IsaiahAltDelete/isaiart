@@ -5,7 +5,7 @@
 //    school's level, and whether they've eaten. They graduate with a grade
 //    (A, B or C) that sets their education tier for life.
 //  - Adults can study at the Library (the Scholar job) and climb the tiers.
-//  - The tier speeds up work and opens skilled jobs (teacher, wizard, smith).
+//  - The tier speeds up work and opens skilled jobs (wizard, smith, acolyte).
 //  - Each home lists what it needs for its next level; when every need is met
 //    and auto-upgrade is on, builders upgrade it by themselves.
 //
@@ -24,7 +24,7 @@ const tip = (t, d) => `data-tip="${esc(t)}|${esc(d)}"`;
 export const UNIVERSITY_POINTS = 180;
 export const TIERS = [
   { name: 'Unschooled', work: 1.0, desc: 'Never had lessons. Fine for any common job.' },
-  { name: 'Schooled', work: 1.06, desc: 'Can read, write and reckon: +6% work speed, and skilled jobs (teacher, wizard, smith) are open.' },
+  { name: 'Schooled', work: 1.06, desc: 'Can read, write and reckon: +6% work speed, and skilled jobs (wizard, smith, acolyte) are open.' },
   { name: 'Honours', work: 1.12, desc: 'Top of the class: +12% work speed.' },
   { name: 'Scholar', work: 1.2, desc: 'Studied long at the Library: +20% work speed, and adds to the village\'s knowledge.' },
   { name: 'Magister', work: 1.25, desc: 'Graduated from the Arcane University: +25% work speed and trained as a level 2 wizard.' },
@@ -34,7 +34,9 @@ export const GRADES = [{ g: 'A', min: 170, tier: 2 }, { g: 'B', min: 110, tier: 
 // study points at the Library for each tier an adult can reach
 const STUDY = [0, 60, 140, 240];
 // the least schooling a job needs
-export const JOB_EDU = { acolyte: 1, teacher: 1, wizard: 1, smith: 1, professor: 2, student: 2 };
+// jobs that need schooling. Teachers don't: a new village's first teacher is self-taught (schooled
+// teachers just teach better), or nobody could ever start the Schoolhouse.
+export const JOB_EDU = { acolyte: 1, wizard: 1, smith: 1, professor: 2, student: 2 };
 
 addIcons({
   cap: '<path d="M2 12l14-6 14 6-14 6z" fill="#4a4a6a" stroke="#5b3a1e" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 15v6c3 3 13 3 16 0v-6" fill="#5b5b7e" stroke="#5b3a1e" stroke-width="1.6" stroke-linejoin="round"/><path d="M27 13v8" stroke="#f0b429" stroke-width="2" stroke-linecap="round"/><circle cx="27" cy="22" r="2" fill="#f0b429"/>',
@@ -83,6 +85,13 @@ const EDU = {
   eduTier(v) { return stageOf(v) === 'child' ? 0 : (v.tier ?? (v.educated ? 1 : 0)); },
   eduMult(v) { return TIERS[this.eduTier(v)]?.work ?? 1; },
   canDoJob(v, job) { return this.eduTier(v) >= (JOB_EDU[job] || 0); },
+  // A workplace whose job needs schooling stays locked until someone could fill it: a Library stands
+  // (where grown-ups study) or someone already has the schooling. Returns why, or null.
+  schoolGate(type) {
+    const job = type === 'university' ? 'professor' : defOf(type)?.job, need = JOB_EDU[job] || 0;
+    if (!need || this.s.buildings.some(b => b.type === 'library' && b.built) || this.s.villagers.some(v => this.eduTier(v) >= need)) return null;
+    return 'Needs a Library first, to school its workers';
+  },
 
   // how well a school teaches: its teachers' INT and CHA, their own schooling, the school's level
   teachQuality(school) {

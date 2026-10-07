@@ -947,6 +947,18 @@ anvil, loom, mason's bench) stands out front. `v.inside` records which building 
 a home's peek only shows people who are actually there, and a friend working next door doesn't drop
 work to chat. Tests: `tests/workinside.test.mjs`.
 
+## Education gates the skilled buildings (2026-10-07)
+
+Nobody starts or arrives schooled, so a workplace whose job needs schooling (Wizard Tower, Forge,
+chapels and temples, the University) used to unlock long before anyone could work there, and the
+Schoolhouse could not even hire its first teacher. Now:
+- Teachers need no schooling (a schooled teacher still teaches better), so the Schoolhouse works.
+- `schoolGate(type)` (education.js) locks those workplaces until a Library stands or someone is
+  already schooled enough. The build card shows "Needs a Library"; placing is refused with the reason.
+- The Wizard Tower moved from level 4 to 7, after the Library (6) and before the University (8). Its
+  description now lists the two disciplines that exist (Research, Nature).
+Tests: `tests/progression.test.mjs`.
+
 ## Next round — pick 5–6
 
 Critic leftovers from round 15:

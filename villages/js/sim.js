@@ -262,6 +262,7 @@ export class Sim {
     if (ignoreId === -1) {   // -2 = free starter props: no cost or level check
       if (def.rare && !(this.s.tokens?.[type] > 0)) return { ok: false, why: def.festive ? 'Buy one at the festival shop' : 'Found only in gift chests' };
       if (def.lvl && this.s.level < def.lvl) return { ok: false, why: `Needs level ${def.lvl}` };
+      const gate = this.schoolGate?.(type); if (gate) return { ok: false, why: gate };
       if (!this.canAfford(def.cost)) return { ok: false, why: 'Not enough resources' };
     }
     if (def.needsWater) {
