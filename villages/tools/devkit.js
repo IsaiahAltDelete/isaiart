@@ -103,3 +103,18 @@ export function callsBy() {
   try { steps(1); } finally { r.renderBufferDirect = orig; }
   return { multiDraw: r.extensions.has('WEBGL_multi_draw'), calls: out };
 }
+// A lived-in mid-game town for UI screenshots: buildings, staffed workplaces, a Guild Hall, stocked stores.
+export async function stageTown() {
+  for (let i = 0; i < 150 && document.getElementById('loading'); i++) await new Promise(r => setTimeout(r, 200));
+  await ready(); noSave();
+  const sim = g().sim, s = sim.s, c = CENTERS.meadow;
+  s.tutorial = 99; bigTown(16, 10); s.level = 9;
+  for (const k of Object.keys(s.res)) s.res[k] = Math.max(s.res[k], 150);
+  const place = (type, r0 = 3) => { for (let r = r0; r < 20; r++) for (let z = c.z - r; z <= c.z + r; z++) for (let x = c.x - r; x <= c.x + r; x++) {
+    if (Math.max(Math.abs(x - c.x), Math.abs(z - c.z)) !== r) continue;
+    const ok = sim.checkPlace(type, x, z, 0, -2); if (ok.ok && ok.sid === 'meadow') return sim.addBuilding(type, x, z, 0, true); } };
+  const guild = place('guild');
+  for (const b of s.buildings) if (b.built && b.workers) for (let i = 0; i < 2; i++) sim.assign(b, null);
+  setTime(0.4, 1); s.fest = null; g().ui.dirty.res = true; sim.emit('res'); sim.emit('xp');
+  return { guild: guild?.id, bakery: s.buildings.find(b => b.type === 'bakery')?.id };
+}

@@ -244,7 +244,8 @@ export class UI {
       if (e.target.closest('[data-fqtoggle]')) { this.fqOpen = !this.fqOpen; sfx.click(); this.drawQuests(); }
     });
     $('#speeds [data-s="0"]').innerHTML = svg('pause', 13);
-    $('#speeds').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { g.setSpeed(+b.dataset.s); sfx.click(); } });
+    // on a phone only the current speed shows, as one thumb-sized button: tapping it steps 1x → 2x → 3x → pause → 1x
+    $('#speeds').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const n = $('#speeds').querySelectorAll('button').length; g.setSpeed(innerWidth <= 760 && b.classList.contains('on') ? (+b.dataset.s + 1) % n : +b.dataset.s); sfx.click(); });
     // the main bar: five places, each opening its group of pages (tabs along the top of the window)
     const tabs = { build: ['hammer', 'Build', 'B'], people: ['people', 'People', 'V'], town: ['crest', 'Town', 'T'], journal: ['book', 'Journal', 'N'], world: ['map', 'World', 'M'] };
     document.querySelectorAll('#dockbar [data-tab]').forEach(b => {

@@ -658,13 +658,55 @@
     body.placing #hovertag, body.placing #seltag { display: none; }
     @media (prefers-reduced-motion: reduce) { #hovertag, #seltag { animation: none; } }
 
-    #loading { position: fixed; inset: 0; z-index: 50; background: radial-gradient(circle at 50% 40%, #9fd873, #4f9a36); display: grid; place-items: center; color: #fff; transition: opacity .6s; }
-    #loading .in { text-align: center; }
-    #loading h1 { font-size: 52px; font-weight: 700; text-shadow: 0 4px 0 #2f6a1f, 0 8px 22px rgba(0,0,0,.25); letter-spacing: .02em; }
-    #loading p { font-size: 16px; opacity: .92; margin-top: 4px; }
-    #loading .bar { width: 220px; height: 14px; border-radius: 7px; background: rgba(0,0,0,.2); margin: 18px auto 0; overflow: hidden; border: 2px solid rgba(255,255,255,.5); }
-    #loading .bar i { display: block; height: 100%; width: 10%; background: #fff; transition: width .2s; }
+    /* the loading screen: a little morning scene, a road being laid to the cottage, and silly tips */
+    #loading { position: fixed; inset: 0; z-index: 50; overflow: hidden; display: grid; place-items: center; color: #fff; transition: opacity .6s;
+      background: linear-gradient(#8fd3f4 0%, #c9ecff 46%, #bfe79b 46.2%, #8ccf63 70%, #5fa944 100%); }
+    #loading .sun { position: absolute; top: 9%; right: 14%; width: 74px; height: 74px; border-radius: 50%; background: radial-gradient(circle at 40% 40%, #fff6b0, #ffd23f 60%, #f7b52a);
+      box-shadow: 0 0 0 10px rgba(255,226,110,.28), 0 0 0 22px rgba(255,226,110,.14); animation: lsun 6s ease-in-out infinite; }
+    @keyframes lsun { 50% { transform: scale(1.06) rotate(8deg); } }
+    #loading .cloud { position: absolute; height: 26px; border-radius: 20px; background: #fff; opacity: .92; animation: lcloud linear infinite; }
+    #loading .cloud::before, #loading .cloud::after { content: ''; position: absolute; bottom: 8px; border-radius: 50%; background: #fff; }
+    #loading .cloud::before { left: 14px; width: 34px; height: 34px; } #loading .cloud::after { left: 40px; width: 26px; height: 26px; }
+    #loading .c1 { top: 12%; width: 96px; animation-duration: 38s; animation-delay: -6s; }
+    #loading .c2 { top: 22%; width: 74px; animation-duration: 52s; animation-delay: -30s; transform: scale(.8); }
+    #loading .c3 { top: 6%; width: 120px; animation-duration: 64s; animation-delay: -48s; }
+    @keyframes lcloud { from { left: -140px; } to { left: 110%; } }
+    #loading .hill { position: absolute; border-radius: 50%; }
+    #loading .h1 { left: -20%; bottom: 40%; width: 80%; height: 34%; background: #9fd873; }
+    #loading .h2 { right: -25%; bottom: 36%; width: 90%; height: 38%; background: #86c95c; }
+    #loading .trees { position: absolute; left: 0; right: 0; bottom: 47%; height: 60px; display: flex; justify-content: space-around; padding: 0 6%; }
+    #loading .trees i { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 44px solid #4f9a36; position: relative; transform-origin: 50% 100%; animation: ltree 3.2s ease-in-out infinite; animation-delay: calc(var(--i) * -0.7s); }
+    #loading .trees i::after { content: ''; position: absolute; left: -3px; top: 44px; width: 6px; height: 10px; background: #8a5a32; }
+    #loading .trees i:nth-child(odd) { transform: scale(.78); }
+    #loading .trees i:nth-child(3n) { border-bottom-color: #3f8a2c; }
+    #loading .trees i.round { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #5daa3e; box-shadow: inset -5px -5px 0 #4a8f30, inset 4px 4px 0 #78c455; top: 6px; }
+    #loading .trees i.round::after { left: 14px; top: 32px; }
+    #loading .meadow { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; }
+    #loading .fence { position: absolute; left: 0; right: 0; bottom: 78%; height: 30px;
+      background: linear-gradient(#b5834f, #b5834f) 0 8px / 100% 5px no-repeat, linear-gradient(#b5834f, #b5834f) 0 19px / 100% 5px no-repeat,
+        repeating-linear-gradient(90deg, transparent 0 26px, #9a6a3e 26px 33px); filter: drop-shadow(0 3px 0 rgba(0,0,0,.08)); }
+    #loading .bush { position: absolute; bottom: 4%; width: 70px; height: 38px; border-radius: 40px 40px 12px 12px; background: radial-gradient(circle at 40% 30%, #7ec85a, #4a9234); box-shadow: 0 4px 0 rgba(0,0,0,.08); }
+    #loading .bush::before { content: ''; position: absolute; left: 12px; top: -14px; width: 34px; height: 30px; border-radius: 50%; background: inherit; }
+    #loading .flower { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px rgba(255,255,255,.55); animation: lsway 2.6s ease-in-out infinite; animation-delay: calc(var(--i) * -0.4s); }
+    #loading .flower::after { content: ''; position: absolute; left: 4px; top: 10px; width: 2px; height: 14px; background: #3f8a2c; }
+    @keyframes lsway { 50% { transform: translateY(-2px) rotate(6deg); } }
+    @keyframes ltree { 50% { rotate: 3deg; } }
+    #loading .in { position: absolute; left: 50%; top: 61%; transform: translate(-50%, -50%); text-align: center; padding: 0 20px; width: min(420px, 100%); }
+    #loading h1 { font-size: 56px; font-weight: 700; letter-spacing: .02em; text-shadow: 0 4px 0 #2f6a1f, 0 8px 22px rgba(0,0,0,.22); }
+    #loading h1 span { display: inline-block; animation: lhop 1.8s cubic-bezier(.3,1.6,.5,1) infinite; animation-delay: calc(var(--i) * .09s); }
+    @keyframes lhop { 0%, 60%, 100% { transform: none; } 30% { transform: translateY(-12px) rotate(-4deg); } }
+    #loading p { display: inline-block; font-size: 15px; font-weight: 600; margin-top: 8px; padding: 4px 14px; border-radius: 14px; background: rgba(47,106,31,.55); text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+    #loading p.swap { animation: ltip .35s ease both; }
+    @keyframes ltip { from { opacity: 0; transform: translateY(6px); } }
+    #loading .road { position: relative; width: min(280px, 82%); margin: 26px auto 0; padding-right: 30px; }
+    #loading .bar { position: relative; height: 16px; border-radius: 8px; background: rgba(90,60,30,.28); border: 2px solid rgba(255,255,255,.6); }
+    #loading .bar i { position: relative; display: block; height: 100%; width: 10%; border-radius: 6px; transition: width .35s ease;
+      background: repeating-linear-gradient(90deg, #d9a35e 0 10px, #c98e48 10px 13px); box-shadow: inset 0 -3px 0 rgba(0,0,0,.12); }
+    #loading .walker { position: absolute; right: -14px; bottom: 6px; width: 34px; height: 34px; animation: lwalk .45s ease-in-out infinite alternate; filter: drop-shadow(0 2px 0 rgba(0,0,0,.18)); }
+    @keyframes lwalk { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(-4px) rotate(4deg); } }
+    #loading .home { position: absolute; right: -8px; bottom: -6px; width: 42px; height: 42px; filter: drop-shadow(0 2px 0 rgba(0,0,0,.18)); }
     #loading.gone { opacity: 0; pointer-events: none; }
+    @media (prefers-reduced-motion: reduce) { #loading *, #loading *::before, #loading *::after { animation: none !important; } }
 
     #season .ic { flex: none; }
     #follow { position: fixed; left: 50%; top: calc(56px + var(--sat)); transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 8px; border-radius: 14px; font-size: 13px; font-weight: 600; background: var(--cream); border: 2.5px solid var(--edge); box-shadow: var(--shadow); }
@@ -799,7 +841,8 @@
       #chestArrows .chestarrow .pt::after { border-width: 6px; border-left-width: 9px; margin-top: -6px; }
       .seg button { font-size: 13px; padding: 3px 8px 3px 4px; }
       .worldwrap { grid-template-columns: 1fr; }
-      #loading h1 { font-size: 40px; }
+      #loading h1 { font-size: 46px; }
+      #loading .sun { width: 58px; height: 58px; top: 7%; right: 10%; }
       #alert { top: auto; bottom: calc(76px + var(--sab)); font-size: 12px; }
       body.info-open #chestArrows { display: none; }
       body.info-open #topright, body.info-open #nowbar, body.info-open #alert, body.info-open #coach { display: none; }
@@ -814,6 +857,91 @@
     }
     @media (max-width: 380px) {
       #dockbar > button { width: 60px; }
+    }
+    /* ── phone comfort pass: room to breathe on a phone ── */
+    @media (max-width: 760px) {
+      /* an open quest list gets the whole width instead of a narrow column (it covers the clock while open) */
+      #left:has(#quests:not(.collapsed)) { width: calc(100vw - 20px); z-index: 7; }
+      /* modal headers: a long row of tabs scrolls sideways, and the close button never gets pushed off */
+      #modal .hd { gap: 6px; }
+      #modal .hd h2 { min-width: 0; }
+      #modal .hd .seg { flex-wrap: wrap; white-space: nowrap; }   /* a long row of tabs wraps to a second line rather than hiding one */
+      #modal .hd .x { flex: none; }
+      /* the build tray: Back becomes a small round button beside the tabs, so the cards get the full width */
+      #tray { padding: 6px; }
+      #tray .back { position: absolute; left: 6px; top: 6px; width: 34px; height: 28px; border-radius: 14px; font-size: 0; gap: 0; z-index: 2; }
+      #tray .back .ic { width: 16px; height: 16px; }
+      #trayTabs { margin-left: 40px; }
+      #trayTabs.more-r, #cards.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
+      #trayTabs.more-l.more-r, #cards.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 22px), transparent); }
+      #trayTabs.more-l:not(.more-r), #cards.more-l:not(.more-r) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px); mask-image: linear-gradient(90deg, transparent, #000 18px); }
+
+      /* tap targets: the buttons pressed most get a thumb-sized hit area (44pt or close) */
+      .pill .add { position: relative; }
+      .pill .add::after { content: ''; position: absolute; inset: -12px -8px; }
+      /* speed: one thumb-sized button showing the current speed; tapping it steps to the next (ui.js) */
+      #speeds .thumb, #speeds button:not(.on) { display: none !important; }
+      #speeds button.on { width: 46px; height: 38px; border-radius: 10px; background: var(--cream); box-shadow: 0 2px 0 rgba(90,55,20,.18); color: var(--ink); font-size: 14px; }
+      #speed:not(.open) #speeds { width: auto !important; }
+      #topright { gap: 10px; }
+      #topright .round { width: 44px; height: 44px; }
+      #topright .round .ic { width: 22px; height: 22px; }
+      #modal .x { width: 44px; height: 44px; }
+      #info .x { width: 44px; height: 44px; }
+      #info h3 { padding-right: 44px; }
+      #trayBack { width: 40px !important; height: 34px !important; border-radius: 17px !important; }
+      #trayTabs { margin-left: 46px; }
+      #trayTabs button { height: 34px; }
+      #trayTabs .kindseg button { height: 34px; }
+      #modal .hd .seg button { min-height: 36px; }
+      .storybar .tog { min-height: 38px; position: relative; }
+      .storybar .tog::after, #trayTabs button::after { content: ''; position: absolute; inset: -4px 0; }   /* a 44pt-tall hit area */
+      #trayTabs button { position: relative; }
+      /* a menu takes the whole screen: the floating bits of the HUD step aside instead of peeking round it */
+      body:has(#modal:not(.hidden)) :is(#eventbar, #nowbar, #topright, #quests, #speed, #alert, #coach) { display: none !important; }
+      /* a bottom sheet open: the quest list and the clock step aside, so more of the village shows above it */
+      body.info-open #quests, body.info-open #speed { display: none; }
+      #info .actions { box-shadow: 0 -18px 16px -4px var(--cream); }
+      /* "All buildings" becomes a round button beside the close button instead of a row of its own */
+      .ip-nav { margin-top: 4px; }
+      .ip-nav:not(:has(.ar)) { margin: 0; height: 0; }
+      .ip-nav [data-act="blist"] { position: absolute; top: 6px; right: 56px; width: 44px; height: 44px; padding: 0; border-radius: 50%; justify-content: center; font-size: 0; gap: 0; z-index: 2; }
+      .ip-nav [data-act="blist"] .ic { width: 18px; height: 18px; }
+      #info .ip-hd h3 { padding-right: 100px; }
+      /* the build tray: category chips keep their names */
+      #tray #trayTabs [data-cat]:not(.on) .lb { display: inline; }
+      #tray #trayTabs [data-cat] { padding: 0 9px 0 5px !important; }
+      .trayarrow { display: none !important; }   /* swipe instead; the arrows sat on the cards */
+      /* menus: filters stack instead of truncating, goals stack their buttons below, the quest list stays short */
+      #mBody .btool { flex-wrap: wrap; }
+      #mBody .btool select { flex: 1 1 38%; min-height: 44px; }
+      #mBody .btool select:first-child { flex-basis: 100%; }   /* the place name gets a line to itself */
+      #mBody .btool input { flex: 1 1 52%; min-height: 44px; }
+      .rtodo .rh { flex-direction: column; align-items: flex-start; gap: 6px; }
+      #quests:not(.collapsed) #qlist { max-height: 40vh; overflow-y: auto; }
+      #qhead .badge { margin-right: 6px; }
+      .nowchip { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 50%; }
+      .nowchip span.l { display: none; }
+      #nowbar { bottom: calc(150px + 3 * 44px + 2 * 10px + 12px + var(--sab)) !important; gap: 10px; }
+      body:has(#tray:not(.hidden)) #nowbar { bottom: calc(180px + 3 * 44px + 2 * 10px + 12px + var(--sab)) !important; }
+      body:has(#tray:not(.hidden)) #eventbar .evrow, body:has(#quests:not(.collapsed)) #eventbar .evrow { flex-wrap: nowrap; padding: 3px 8px; }
+      body:has(#tray:not(.hidden)) #eventbar .evrow > :is(span, .btn, .evmore, .evbar),
+      body:has(#quests:not(.collapsed)) #eventbar .evrow > :is(span, .btn, .evmore, .evbar) { display: none; }
+    }
+    /* phones on their side: the desktop layout, a size smaller, with the event cards and toasts in their own lanes */
+    @media (max-height: 500px) and (min-width: 600px) {
+      #top, #topright, #nowbar, #speed, #left, #dockbar, #tray, #placebar, #coach, #follow, #toasts, #eventbar { zoom: .86; }
+      .quest .qbar .rw, #trayTabs button .n, #qlist .qfest small { display: none; }
+      .trayarrow { display: none !important; }   /* swipe, as in portrait */
+      #quests:not(.collapsed) #qlist { max-height: 46vh; overflow-y: auto; }
+      #eventbar { top: auto !important; bottom: calc(96px + var(--sab)); width: min(620px, 72vw) !important; }
+      body:has(#tray:not(.hidden)) #eventbar { bottom: calc(210px + var(--sab)); }
+      #toasts { top: calc(70px + var(--sat)) !important; width: min(560px, 56vw); }
+      body:has(#modal:not(.hidden)) :is(#eventbar, #nowbar, #topright, #left, #speed, #alert, #coach) { display: none !important; }
+      #modal { padding-top: calc(6px + var(--sat)); padding-bottom: calc(62px + var(--sab)); }
+      #modal .box, #modal .box.tall { max-height: calc(100vh - 70px - var(--sat) - var(--sab)); height: calc(100vh - 70px - var(--sat) - var(--sab)); }
+      body:has(#modal:not(.hidden)) #top { display: none; }
+      #mBody .btool { flex-wrap: nowrap; }
     }
 
     /* ── simplify pass: one Journal button, a compact clock, villager chips and folds ── */
@@ -1009,10 +1137,23 @@
   <div id="restip" class="panel hidden"></div>
   <div id="tag" class="hidden"></div>
 
-  <div id="loading"><div class="in"><h1>Villages</h1><p>Clearing a spot in the forest…</p><div class="bar"><i id="loadbar"></i></div></div></div>
+  <div id="loading"><i class="sun"></i><i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i><i class="hill h1"></i><i class="hill h2"></i><div class="trees"><i class="" style="--i:0"></i><i class="round" style="--i:1"></i><i class="" style="--i:2"></i><i class="" style="--i:3"></i><i class="round" style="--i:4"></i><i class="" style="--i:5"></i><i class="" style="--i:6"></i></div><div class="meadow"><i class="fence"></i><i class="bush" style="left:4%"></i><i class="bush" style="right:6%;transform:scale(1.2)"></i><i class="flower" style="left:8%;bottom:32%;--c:#ff8fb1;--i:0"></i><i class="flower" style="left:17%;bottom:22%;--c:#ffd84a;--i:1"></i><i class="flower" style="left:27%;bottom:36%;--c:#ffffff;--i:2"></i><i class="flower" style="left:39%;bottom:20%;--c:#b48cff;--i:3"></i><i class="flower" style="left:53%;bottom:30%;--c:#ff8fb1;--i:4"></i><i class="flower" style="left:63%;bottom:18%;--c:#ffd84a;--i:5"></i><i class="flower" style="left:74%;bottom:34%;--c:#ffffff;--i:6"></i><i class="flower" style="left:86%;bottom:24%;--c:#ff9a5a;--i:7"></i><i class="flower" style="left:93%;bottom:38%;--c:#b48cff;--i:8"></i></div>
+    <div class="in"><h1 aria-label="Villages"><span style="--i:0">V</span><span style="--i:1">i</span><span style="--i:2">l</span><span style="--i:3">l</span><span style="--i:4">a</span><span style="--i:5">g</span><span style="--i:6">e</span><span style="--i:7">s</span></h1><p id="ltip">Clearing a spot in the forest…</p>
+      <div class="road"><div class="bar"><i id="loadbar"><img class="walker" src="art/icons/person.webp" alt=""></i></div><img class="home" src="art/icons/house.webp" alt=""></div></div></div>
+  <script>(function () {   /* a silly line every couple of seconds while the village loads */
+    var t = ['Clearing a spot in the forest…', 'Teaching the sheep to count…', 'Polishing the garden gnomes…', 'Asking the chickens nicely…', 'Hiding gift chests in the woods…',
+      'Waking the wizard (carefully)…', 'Counting the crystals twice…', 'Sweeping the campfire…', 'Untangling the maypole…', 'Arguing over whose turn it is to cook…',
+      'Fluffing the clouds…', 'Bribing the weather…', 'Brewing something frothy…', 'Naming every goose…'];
+    var el = document.getElementById('ltip'), i = Math.floor(Math.random() * t.length);
+    el.textContent = t[i];
+    var h = setInterval(function () {
+      if (!document.getElementById('loading') || t.indexOf(el.textContent) < 0) return clearInterval(h);   // loaded, or showing an error
+      i = (i + 1) % t.length; el.classList.remove('swap'); void el.offsetWidth; el.textContent = t[i]; el.classList.add('swap');
+    }, 1800);
+  })();</script>
 
   <!-- stamp:begin (generated by tools/stamp.mjs: run it after changing any js or model file) -->
-  <script type="importmap">{ "imports": { "./js/addons.js": "./js/addons.js?v=94027b87bd", "./js/arcane.js": "./js/arcane.js?v=ec2156a135", "./js/audio.js": "./js/audio.js?v=3d741bd84c", "./js/batch.js": "./js/batch.js?v=a33cc44c39", "./js/blender.js": "./js/blender.js?v=e848f3f5f2", "./js/boards.js": "./js/boards.js?v=37f0aa93ce", "./js/careers.js": "./js/careers.js?v=e79b357b42", "./js/celebrations.js": "./js/celebrations.js?v=c45acf6c04", "./js/census.js": "./js/census.js?v=95c0dd0385", "./js/classduties.js": "./js/classduties.js?v=f7a280a50a", "./js/classplaces.js": "./js/classplaces.js?v=ed60f1217f", "./js/crime.js": "./js/crime.js?v=4bdbbf955b", "./js/data.js": "./js/data.js?v=00f28ef2f2", "./js/economy.js": "./js/economy.js?v=51ed413350", "./js/education.js": "./js/education.js?v=e21891bafd", "./js/events.js": "./js/events.js?v=61b6f7eca7", "./js/eventsview.js": "./js/eventsview.js?v=ee723ef32f", "./js/expmap.js": "./js/expmap.js?v=d21ca9ce80", "./js/extras.js": "./js/extras.js?v=0f0b10e715", "./js/festival.js": "./js/festival.js?v=4be2d48c4d", "./js/frost.js": "./js/frost.js?v=f5ab5122e7", "./js/government.js": "./js/government.js?v=e259b4c336", "./js/hardship.js": "./js/hardship.js?v=5c40574d2e", "./js/icons.js": "./js/icons.js?v=09f6cd1d06", "./js/island.js": "./js/island.js?v=7149674d54", "./js/leisure.js": "./js/leisure.js?v=64b03e01a3", "./js/life.js": "./js/life.js?v=f8601fa420", "./js/lifeui.js": "./js/lifeui.js?v=a3374dc43e", "./js/lifeview.js": "./js/lifeview.js?v=3b9c79cb6b", "./js/magic.js": "./js/magic.js?v=657e28a4f9", "./js/magicui.js": "./js/magicui.js?v=e74cc03aba", "./js/main.js": "./js/main.js?v=dbc0c79144", "./js/models.js": "./js/models.js?v=6a8dc22b2d", "./js/panels.js": "./js/panels.js?v=b7861ba0ab", "./js/peek.js": "./js/peek.js?v=c99afee476", "./js/perf.js": "./js/perf.js?v=21c4112bba", "./js/placement.js": "./js/placement.js?v=36dd95ede7", "./js/progressui.js": "./js/progressui.js?v=b0498fab29", "./js/props.js": "./js/props.js?v=7ef32a2e03", "./js/rng.js": "./js/rng.js?v=c942358a63", "./js/roads.js": "./js/roads.js?v=31d75c2e39", "./js/roof-textures.js": "./js/roof-textures.js?v=fbb6cf1a6e", "./js/roomplan.js": "./js/roomplan.js?v=3958d329c4", "./js/rpg.js": "./js/rpg.js?v=f13c1f586e", "./js/rpgui.js": "./js/rpgui.js?v=7bc6fba57d", "./js/rpgview.js": "./js/rpgview.js?v=5829fa3d51", "./js/select.js": "./js/select.js?v=b7c4af575d", "./js/share.js": "./js/share.js?v=40c71ecc36", "./js/sim.js": "./js/sim.js?v=9262e0d456", "./js/snow.js": "./js/snow.js?v=998dc11498", "./js/social.js": "./js/social.js?v=b60aff4116", "./js/society.js": "./js/society.js?v=76cb07b693", "./js/textures.js": "./js/textures.js?v=8617076f6c", "./js/townui.js": "./js/townui.js?v=ccc170a755", "./js/trade.js": "./js/trade.js?v=1c5ee135d2", "./js/ui.js": "./js/ui.js?v=c7ff946d69", "./js/view.js": "./js/view.js?v=dca2a1f0fe", "./js/visitors.js": "./js/visitors.js?v=e0e65eee14", "./js/wishes.js": "./js/wishes.js?v=ebc2ac8d9b", "./js/world.js": "./js/world.js?v=7c69bfce0a", "./vendor/three.module.min.js": "./vendor/three.module.min.js?v=7dde962cf4" } }</script>
+  <script type="importmap">{ "imports": { "./js/addons.js": "./js/addons.js?v=94027b87bd", "./js/arcane.js": "./js/arcane.js?v=ec2156a135", "./js/audio.js": "./js/audio.js?v=3d741bd84c", "./js/batch.js": "./js/batch.js?v=a33cc44c39", "./js/blender.js": "./js/blender.js?v=e848f3f5f2", "./js/boards.js": "./js/boards.js?v=37f0aa93ce", "./js/careers.js": "./js/careers.js?v=e79b357b42", "./js/celebrations.js": "./js/celebrations.js?v=c45acf6c04", "./js/census.js": "./js/census.js?v=95c0dd0385", "./js/classduties.js": "./js/classduties.js?v=f7a280a50a", "./js/classplaces.js": "./js/classplaces.js?v=ed60f1217f", "./js/crime.js": "./js/crime.js?v=4bdbbf955b", "./js/data.js": "./js/data.js?v=00f28ef2f2", "./js/economy.js": "./js/economy.js?v=51ed413350", "./js/education.js": "./js/education.js?v=e21891bafd", "./js/events.js": "./js/events.js?v=50f190bc21", "./js/eventsview.js": "./js/eventsview.js?v=ee723ef32f", "./js/expmap.js": "./js/expmap.js?v=d21ca9ce80", "./js/extras.js": "./js/extras.js?v=0f0b10e715", "./js/festival.js": "./js/festival.js?v=4be2d48c4d", "./js/frost.js": "./js/frost.js?v=f5ab5122e7", "./js/government.js": "./js/government.js?v=e259b4c336", "./js/hardship.js": "./js/hardship.js?v=5c40574d2e", "./js/icons.js": "./js/icons.js?v=09f6cd1d06", "./js/island.js": "./js/island.js?v=7149674d54", "./js/leisure.js": "./js/leisure.js?v=64b03e01a3", "./js/life.js": "./js/life.js?v=f8601fa420", "./js/lifeui.js": "./js/lifeui.js?v=a3374dc43e", "./js/lifeview.js": "./js/lifeview.js?v=3b9c79cb6b", "./js/magic.js": "./js/magic.js?v=657e28a4f9", "./js/magicui.js": "./js/magicui.js?v=e74cc03aba", "./js/main.js": "./js/main.js?v=a4c6a1a188", "./js/models.js": "./js/models.js?v=6a8dc22b2d", "./js/panels.js": "./js/panels.js?v=b7861ba0ab", "./js/peek.js": "./js/peek.js?v=c99afee476", "./js/perf.js": "./js/perf.js?v=21c4112bba", "./js/placement.js": "./js/placement.js?v=36dd95ede7", "./js/progressui.js": "./js/progressui.js?v=b0498fab29", "./js/props.js": "./js/props.js?v=7ef32a2e03", "./js/rng.js": "./js/rng.js?v=c942358a63", "./js/roads.js": "./js/roads.js?v=31d75c2e39", "./js/roof-textures.js": "./js/roof-textures.js?v=fbb6cf1a6e", "./js/roomplan.js": "./js/roomplan.js?v=3958d329c4", "./js/rpg.js": "./js/rpg.js?v=f13c1f586e", "./js/rpgui.js": "./js/rpgui.js?v=7bc6fba57d", "./js/rpgview.js": "./js/rpgview.js?v=5829fa3d51", "./js/select.js": "./js/select.js?v=b7c4af575d", "./js/share.js": "./js/share.js?v=40c71ecc36", "./js/sim.js": "./js/sim.js?v=9262e0d456", "./js/snow.js": "./js/snow.js?v=998dc11498", "./js/social.js": "./js/social.js?v=b60aff4116", "./js/society.js": "./js/society.js?v=76cb07b693", "./js/textures.js": "./js/textures.js?v=8617076f6c", "./js/townui.js": "./js/townui.js?v=ccc170a755", "./js/trade.js": "./js/trade.js?v=1c5ee135d2", "./js/ui.js": "./js/ui.js?v=f80c2163b3", "./js/view.js": "./js/view.js?v=dca2a1f0fe", "./js/visitors.js": "./js/visitors.js?v=e0e65eee14", "./js/wishes.js": "./js/wishes.js?v=ebc2ac8d9b", "./js/world.js": "./js/world.js?v=7c69bfce0a", "./vendor/three.module.min.js": "./vendor/three.module.min.js?v=7dde962cf4" } }</script>
   <script>window.__villagesV = {"models/models.json":"1b6fc49662","models/models.bin":"dbfeeceb1b","art/icons/ale.webp":"2691584e56","art/icons/alert.webp":"12cccc9051","art/icons/anvil.webp":"eaa0321122","art/icons/apple.webp":"3d1a6976e1","art/icons/armor.webp":"6d8b6f8649","art/icons/axe.webp":"0a30c9344a","art/icons/baby.webp":"ed0e693d24","art/icons/bag.webp":"7cdeb79a9a","art/icons/banner.webp":"1dd4ad08eb","art/icons/basket.webp":"f3794d807e","art/icons/blizzard.webp":"914a788420","art/icons/blossom.webp":"29c375d1ae","art/icons/bolt.webp":"b5075782da","art/icons/book.webp":"237f700c5b","art/icons/bow.webp":"6e0cdb5adb","art/icons/brick.webp":"e99447ce11","art/icons/cap.webp":"e279aaa955","art/icons/check.webp":"0700655c95","art/icons/cheese.webp":"b2ff10b324","art/icons/clock.webp":"1865783c2d","art/icons/cloth.webp":"5f428f4201","art/icons/cloud.webp":"629cde0a57","art/icons/coin.webp":"1791110f74","art/icons/crest.webp":"3deb1033b5","art/icons/d20.webp":"39d531d5f5","art/icons/dragon.webp":"7235aa2172","art/icons/fast.webp":"bc7d6d32ba","art/icons/fire.webp":"8714ab1928","art/icons/fish.webp":"8cf6611d2a","art/icons/flour.webp":"8d8bcc2968","art/icons/flower.webp":"ae093351e0","art/icons/gate.webp":"efa4cc6ee5","art/icons/gear.webp":"24123a2cc5","art/icons/gem.webp":"62578a96d2","art/icons/ghost.webp":"4b750e6b31","art/icons/gift.webp":"3bf6c78749","art/icons/hammer.webp":"99fa85a350","art/icons/heart.webp":"75deb0a03c","art/icons/honey.webp":"6d31bfd17a","art/icons/hood.webp":"39754c482f","art/icons/house.webp":"fd24393ae5","art/icons/iron.webp":"444917a7b7","art/icons/lantern.webp":"97d64084fa","art/icons/leaf.webp":"8fe492e0e2","art/icons/lock.webp":"b651f72067","art/icons/lute.webp":"c6cde3420d","art/icons/mail.webp":"57fe46cc7b","art/icons/map.webp":"0cfac39002","art/icons/mask.webp":"ce2fe1ea98","art/icons/milk.webp":"67558a2f26","art/icons/moon.webp":"d7d028675e","art/icons/ore.webp":"3a282fa581","art/icons/party.webp":"f0e904be22","art/icons/pause.webp":"c3473a9747","art/icons/paw.webp":"cb46cdec85","art/icons/people.webp":"aae17153e6","art/icons/person.webp":"73ab3161bd","art/icons/pick.webp":"0cedb02c4c","art/icons/plank.webp":"40fe520f6f","art/icons/play.webp":"6c9112b88e","art/icons/quake.webp":"1d904f53f9","art/icons/rain.webp":"0e15845aa2","art/icons/rings.webp":"ea409f4025","art/icons/sapling.webp":"317d518512","art/icons/scroll.webp":"9cecc0b836","art/icons/shield.webp":"df5b2e8ea0","art/icons/shop.webp":"01dd3aa05e","art/icons/sick.webp":"1a5fffece6","art/icons/smile.webp":"1c9ac8244b","art/icons/snow.webp":"f84dbaa4c9","art/icons/snowfall.webp":"15aaa92c24","art/icons/sparkle.webp":"8820fb5a2b","art/icons/staff.webp":"a8c16ab6e8","art/icons/star.webp":"f77c9901b2","art/icons/stone.webp":"4f07bc02da","art/icons/storm.webp":"b238d472f4","art/icons/sun.webp":"41997e5d20","art/icons/suncloud.webp":"d5efafbc47","art/icons/sword.webp":"2b3c23f8f6","art/icons/target.webp":"f736b5dcae","art/icons/tent.webp":"968f67b9cd","art/icons/thorns.webp":"44403036f5","art/icons/trophy.webp":"665af9f5e8","art/icons/wheat.webp":"e0c3bc5bc5","art/icons/wish.webp":"44e89aef57","art/icons/wood.webp":"96ffc53643","art/icons/wool.webp":"4bd6ea537d","art/icons/xp.webp":"1dfb65da73","art/icons/zzz.webp":"668c17ac1e"};</script>
   <style>:root { --frame-modal: url(art/frames/modal.webp?v=bd37dd5b12); }</style>
   <!-- stamp:end -->

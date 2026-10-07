@@ -1350,6 +1350,7 @@ class Game {
     } else if (ent?.kind === 'v') {
       this.selRing.scale.setScalar(0.35);
       if (fly || innerWidth < 760) this.focus(ent.v.x, ent.v.z);
+      this.trackSel = innerWidth < 760;   // on a phone, keep them framed above their sheet as they walk
     }
     this.selRing.visible = false;          // the outline in select.js replaces the old ring
     this.hl.setSelected(this.selected);
@@ -1358,7 +1359,7 @@ class Game {
     const rig = this.view.rig, phone = innerWidth < 760;
     // nudge toward the camera so the thing lands in the upper part of the screen
     dist = Math.max(phone ? 17 : 15, dist || rig.dist);   // close enough to see it, never so close it fills the screen
-    const k = phone ? dist * 0.24 : 0;
+    const k = phone ? dist * 0.14 : 0;   // the thing sits in the band between the top bar and the panel
     this.view.flyTo(x + Math.sin(rig.yaw) * k, z + Math.cos(rig.yaw) * k, dist, 0.6);
   }
   pick(cx, cy) {
@@ -1443,7 +1444,7 @@ class Game {
       cv.setPointerCapture(e.pointerId);
       this.lastPointer = e.pointerType;
       ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() });
-      view.fly = null; this.followV = null;
+      view.fly = null; this.followV = null; this.trackSel = false;
       if (ptrs.size === 2) {
         const [a, b] = [...ptrs.values()];
         pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), ang: Math.atan2(b.y - a.y, b.x - a.x), dist: rig.dist, yaw: rig.yaw, moved: true };
@@ -1623,6 +1624,10 @@ class Game {
     if (k.has('=') || k.has('+')) rig.dist *= 1 - dt;
     if (k.has('-')) rig.dist *= 1 + dt;
     if (this.followV && !view.fly) { rig.tx = lerp(rig.tx, this.followV.x, Math.min(1, dt * 4)); rig.tz = lerp(rig.tz, this.followV.z, Math.min(1, dt * 4)); }
+    else if (this.trackSel && this.selected?.kind === 'v' && !view.fly) {
+      const v = this.selected.v, k = rig.dist * 0.14;   // the same framing as focus(): in the band above the sheet
+      rig.tx = lerp(rig.tx, v.x + Math.sin(rig.yaw) * k, Math.min(1, dt * 3)); rig.tz = lerp(rig.tz, v.z + Math.cos(rig.yaw) * k, Math.min(1, dt * 3));
+    }
 
     if ((this.seasonT = (this.seasonT || 0) + dt) > 0.5) { this.seasonT = 0; this.updateSeason(); }
     this.dayLight(sim.s.time);
