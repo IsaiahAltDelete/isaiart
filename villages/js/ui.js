@@ -245,7 +245,7 @@ export class UI {
     });
     $('#speeds [data-s="0"]').innerHTML = svg('pause', 13);
     // on a phone only the current speed shows, as one thumb-sized button: tapping it steps 1x → 2x → 3x → pause → 1x
-    $('#speeds').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const n = $('#speeds').querySelectorAll('button').length; g.setSpeed(innerWidth <= 760 && b.classList.contains('on') ? (+b.dataset.s + 1) % n : +b.dataset.s); sfx.click(); });
+    $('#speeds').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const n = $('#speeds').querySelectorAll('button').length; g.setSpeed(matchMedia('(max-width: 760px), (max-height: 500px) and (min-width: 600px)').matches && b.classList.contains('on') ? (+b.dataset.s + 1) % n : +b.dataset.s); sfx.click(); });
     // the main bar: five places, each opening its group of pages (tabs along the top of the window)
     const tabs = { build: ['hammer', 'Build', 'B'], people: ['people', 'People', 'V'], town: ['crest', 'Town', 'T'], journal: ['book', 'Journal', 'N'], world: ['map', 'World', 'M'] };
     document.querySelectorAll('#dockbar [data-tab]').forEach(b => {
@@ -1249,7 +1249,7 @@ export class UI {
       : journal ? (() => {
         const tn = n => n > 0 ? `<span class="tn">${n > 9 ? '9+' : n}</span>` : '', unread = k !== 'story' && (s.storyN || 0) > (s.storySeen || 0);
         const trophies = sim.achievements().filter(x => x.done && !x.claimed).length;
-        return seg('Journal', [['story', `Story${unread ? '<i class="tdot"></i>' : ''}`], ['chronicle', `Chronicle${tn(s.chronNew)}`], ['log', 'News'], ['stats', `Achievements${tn(trophies)}`], ...(sim.festShop?.open() || k === 'festival' ? [['festival', 'Festival']] : [])]);
+        return seg('Journal', [['story', `Story${unread ? '<i class="tdot"></i>' : ''}`], ['chronicle', `Chronicle${tn(s.chronNew)}`], ['log', 'News'], ['stats', `<span class="lg">Achievements</span><span class="sm">Awards</span>${tn(trophies)}`], ...(sim.festShop?.open() || k === 'festival' ? [['festival', 'Festival']] : [])]);
       })()
       : esc(titles[k][1]);
     if (head !== this.lastHead) { this.lastHead = head; $('#mTitle').innerHTML = head; }

@@ -72,7 +72,7 @@ const CSS = `
 .pcard{background:var(--card);border:2px solid #ead2a6;border-radius:12px;padding:7px 8px;display:flex;flex-direction:column;gap:4px;font-size:11.5px}
 .pcard .hd{display:flex;align-items:center;gap:6px}.pcard .hd .face{width:34px;height:34px;flex:none}.pcard .hd b{font-size:13px;display:block}
 .pcard .row{display:flex;gap:4px;flex-wrap:wrap;align-items:center}.pcard .btns{display:flex;gap:4px;margin-top:auto;flex-wrap:wrap}.pcard .btns .btn{flex:1 1 auto;min-width:0;padding:4px 7px;justify-content:center}
-.pcard.empty{border-style:dashed;align-items:center;justify-content:center;color:var(--ink2);min-height:92px;text-align:center}
+.pcard.empty{border-style:dashed;align-items:center;justify-content:center;color:var(--ink2);min-height:92px;text-align:center}.pcard.empty .ic{width:30px;height:30px}.pcard.empty .ic path{stroke:#c9a46a}
 .cands{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .cand{display:flex;align-items:center;gap:8px;padding:4px 7px;border-radius:10px;background:var(--card);border:2px solid #ead2a6;font-size:12px}
 .cand .face{width:30px;height:30px;flex:none}.cand .cm{flex:1;min-width:0}.cand .cm b{display:block;font-size:12.5px}.cand .cm small{color:var(--ink2)}
