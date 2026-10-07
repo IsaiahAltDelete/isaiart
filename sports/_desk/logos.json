@@ -58,5 +58,7 @@
  "nfl/no": "https://a.espncdn.com/i/teamlogos/nfl/500/no.png",
  "nhl/nyi": "https://a.espncdn.com/i/teamlogos/nhl/500/nyi.png",
  "nhl/fla": "https://a.espncdn.com/i/teamlogos/nhl/500/fla.png",
- "nhl/la": "https://a.espncdn.com/i/teamlogos/nhl/500/la.png"
+ "nhl/la": "https://a.espncdn.com/i/teamlogos/nhl/500/la.png",
+ "nhl/pit": "https://a.espncdn.com/i/teamlogos/nhl/500/pit.png",
+ "nhl/wsh": "https://a.espncdn.com/i/teamlogos/nhl/500/wsh.png"
 }

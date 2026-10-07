@@ -1,11 +1,11 @@
 {
-  "date": "2026-10-06",
-  "updated": "2026-10-06T07:57:00-04:00",
-  "events": 4,
+  "date": "2026-10-07",
+  "updated": "2026-10-07T07:57:00-04:00",
+  "events": 7,
   "headlines": [
-    "Dodgers at Braves, NLDS Game 3, series tied 1\u20131 (6:00 PM ET, FS1)",
-    "Brewers at Padres, NLDS Game 3, Milwaukee leads 2\u20130 (9:30 PM ET, FS1)",
-    "Islanders at Rangers (7:30 PM ET, ESPN)"
+    "Rays at Yankees, ALDS Game 3, Tampa Bay leads 2\u20130 (8:00 PM ET, TBS)",
+    "Dodgers at Braves, NLDS Game 4, Los Angeles leads 2\u20131 (6:00 PM ET, FOX or FS1)",
+    "Liberty at Dream, WNBA semifinal Game 2 (7:30 PM ET, ESPN)"
   ],
   "template": "2026-09-29.1"
 }

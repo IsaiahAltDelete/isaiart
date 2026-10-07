@@ -1,0 +1,283 @@
+{
+ "date": "2026-10-07",
+ "updated": "2026-10-07T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Rays at Yankees, ALDS Game 3, Tampa Bay leads 2–0 (8:00 PM ET, TBS)",
+  "Dodgers at Braves, NLDS Game 4, Los Angeles leads 2–1 (6:00 PM ET, FOX or FS1)",
+  "Liberty at Dream, WNBA semifinal Game 2 (7:30 PM ET, ESPN)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "Division Series",
+   "note": "Four potential clinchers"
+  },
+  {
+   "key": "WNBA",
+   "name": "WNBA",
+   "subtitle": "Semifinals",
+   "note": "Game 2s • both home teams lead 1–0",
+   "color": "#956f82"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular Season",
+   "note": "TNT Wednesday"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-cle-cws",
+   "league": "MLB",
+   "label": "MLB • ALDS",
+   "flags": [
+    "ALDS • Game 3",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Cleveland Guardians",
+     "abbr": "CLE",
+     "detail": "AL No. 2 seed",
+     "logo": "mlb/cle"
+    },
+    {
+     "name": "Chicago White Sox",
+     "abbr": "CWS",
+     "detail": "AL No. 6 seed • leads 2–0",
+     "logo": "mlb/chw"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-07T16:00:00-04:00",
+   "watch": "TBS • truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Rate Field, Chicago",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Chicago can clinch at home after winning 3–0 and 4–3 in Cleveland. The Guardians face elimination.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "mlb-lad-atl",
+   "league": "MLB",
+   "label": "MLB • NLDS",
+   "flags": [
+    "NLDS • Game 4",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Los Angeles Dodgers",
+     "abbr": "LAD",
+     "detail": "NL No. 2 seed • leads 2–1",
+     "logo": "mlb/lad"
+    },
+    {
+     "name": "Atlanta Braves",
+     "abbr": "ATL",
+     "detail": "NL No. 3 seed",
+     "logo": "mlb/atl"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-07T18:00:00-04:00",
+   "watch": "FOX or FS1 (sources differ)",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Truist Park, Atlanta",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Los Angeles won Game 3 3–1 and can clinch; Atlanta faces elimination at home. Schedules disagree on FOX versus FS1; FOX One carries either feed.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "mlb-tb-nyy",
+   "league": "MLB",
+   "label": "MLB • ALDS",
+   "flags": [
+    "ALDS • Game 3",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL No. 1 seed • leads 2–0",
+     "logo": "mlb/tb"
+    },
+    {
+     "name": "New York Yankees",
+     "abbr": "NYY",
+     "detail": "AL No. 4 seed",
+     "logo": "mlb/nyy"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-07T20:00:00-04:00",
+   "watch": "TBS • truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Yankee Stadium, Bronx",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Tampa Bay won 1–0 and 5–2 at home and can sweep in the Bronx. New York faces elimination.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "mlb-mil-sd",
+   "league": "MLB",
+   "label": "MLB • NLDS",
+   "flags": [
+    "NLDS • Game 4",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Milwaukee Brewers",
+     "abbr": "MIL",
+     "detail": "NL No. 1 seed • leads 2–1",
+     "logo": "mlb/mil"
+    },
+    {
+     "name": "San Diego Padres",
+     "abbr": "SD",
+     "detail": "NL No. 4 seed",
+     "logo": "mlb/sd"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-07T22:00:00-04:00",
+   "watch": "FS1 • FOX Deportes",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Petco Park, San Diego",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "San Diego stayed alive with a 4–3 Game 3 win, even with closer Mason Miller on the paternity list. Milwaukee can clinch.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "wnba-nyl-atl",
+   "league": "WNBA",
+   "label": "WNBA • Semifinals",
+   "flags": [
+    "Semifinals • Game 2"
+   ],
+   "competitors": [
+    {
+     "name": "New York Liberty",
+     "abbr": "NYL",
+     "detail": "No. 8 seed",
+     "logo": "wnba/ny"
+    },
+    {
+     "name": "Atlanta Dream",
+     "abbr": "ATL",
+     "detail": "No. 4 seed • leads 1–0",
+     "logo": "wnba/atl"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-07T19:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "State Farm Arena, Atlanta",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Atlanta won Game 1 92–82 but Allisha Gray is managing a hand injury. Best-of-five series.",
+   "blackout": "No territorial blackout is expected. WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "wnba-lva-gsv",
+   "league": "WNBA",
+   "label": "WNBA • Semifinals",
+   "flags": [
+    "Semifinals • Game 2"
+   ],
+   "competitors": [
+    {
+     "name": "Las Vegas Aces",
+     "abbr": "LVA",
+     "detail": "No. 3 seed",
+     "logo": "wnba/lv"
+    },
+    {
+     "name": "Golden State Valkyries",
+     "abbr": "GSV",
+     "detail": "No. 2 seed • leads 1–0",
+     "logo": "wnba/gs"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-07T21:30:00-04:00",
+   "watch": "NBCSN",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBCSN window.",
+   "venue": "Chase Center, San Francisco",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Golden State held Las Vegas to 60 points in a 71–60 Game 1 win; Jewell Loyd left with a left leg injury. Best-of-five series.",
+   "blackout": "No territorial blackout is expected. WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "nhl-pit-wsh",
+   "league": "NHL",
+   "label": "NHL • Regular Season",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Pittsburgh Penguins",
+     "abbr": "PIT",
+     "detail": "",
+     "logo": "nhl/pit"
+    },
+    {
+     "name": "Washington Capitals",
+     "abbr": "WSH",
+     "detail": "",
+     "logo": "nhl/wsh"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-07T19:30:00-04:00",
+   "watch": "TNT",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National TNT window. No regional team telecast.",
+   "venue": "Capital One Arena, Washington",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Metropolitan Division rivalry in TNT's Wednesday window.",
+   "blackout": "National TNT exclusive in the U.S.; no RSN telecast. Out-of-market streaming packages do not carry national exclusive games."
+  }
+ ],
+ "footer_note": "Seven qualifying events fall inside Wednesday's Eastern calendar day. Regional NHL games, preseason and exhibition games, and non-major individual-sport events are excluded.",
+ "sources": [
+  {
+   "label": "CBS Sports MLB bracket",
+   "url": "https://www.cbssports.com/mlb/news/2026-mlb-playoff-bracket-schedule-scores-results-how-to-watch/"
+  },
+  {
+   "label": "Yahoo Division Series schedule",
+   "url": "https://sports.yahoo.com/mlb/article/mlb-playoffs-2026-alds-nlds-matchups-schedule-and-start-times-030600744.html"
+  },
+  {
+   "label": "CBS Sports WNBA bracket",
+   "url": "https://www.cbssports.com/wnba/news/2026-wnba-playoffs-bracket-schedule/"
+  },
+  {
+   "label": "Yahoo WNBA semifinals schedule",
+   "url": "https://sports.yahoo.com/articles/2026-wnba-semifinals-schedule-watch-101604709.html"
+  },
+  {
+   "label": "NHL national TV, week of Oct. 5",
+   "url": "https://www.nhl.com/news/nhl-nationally-televised-games-for-week-of-october-5-2026"
+  }
+ ]
+}
