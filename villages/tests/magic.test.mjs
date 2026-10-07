@@ -3,7 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Sim, DAY, stageOf } from '../js/sim.js';
 import { CENTERS } from '../js/world.js';
-import { armorClass, classAttack, runExpedition, EXPEDITIONS } from '../js/rpg.js';
+import { armorClass, classAttack, guardAttack, runExpedition, EXPEDITIONS } from '../js/rpg.js';
+import { magicWants } from '../js/magic.js';
 import { mulberry32 } from '../js/rng.js';
 
 const fresh = (seed = 'magic-tests') => { const sim = new Sim(null, { seed }); sim.s.level = 10; sim.s.tutorial = 99; return sim; };
@@ -44,6 +45,16 @@ test('scribes work indoors and turn cloth and crystals into scrolls', () => {
   assert.equal(v.job, 'scribe');
   assert.ok(sim.s.res.scroll >= 2, `made ${sim.s.res.scroll} scrolls`);
   assert.ok(sim.s.res.crystal <= 8);
+});
+
+test('with both forges on Auto, the smith keeps the enchanter in swords and Runeblades get made', () => {
+  const sim = fresh('magic-autoauto'), forge = build(sim, 'forge'), b = build(sim, 'enchanter'); build(sim, 'wizard');
+  staff(sim, forge, 1); staff(sim, b, 2);
+  sim.rpg().know = 500;
+  Object.assign(sim.s.res, { crystal: 60, sword: 0, iron: 40, ore: 60, planks: 80, wood: 80, runeblade: 0, wand: 0, amulet: 0 });
+  run(sim, 400);
+  assert.ok(sim.s.res.runeblade >= 1, `runeblades made: ${sim.s.res.runeblade}`);
+  assert.ok(sim.s.res.wand >= 1 && sim.s.res.amulet >= 1);
 });
 
 test('an enchanter makes magic items and leaves two swords for the armory', () => {
@@ -90,9 +101,71 @@ test('items change the dice: amulet +1 AC, runeblade and wand +1 to hit and +2 d
   const sf = classAttack(c); c.gear.m = 'wand'; assert.equal(classAttack(c).dc, sf.dc + 1);
 });
 
+test('each class reaches for an item that helps it, and items only help what they should', () => {
+  const A = { str: 14, dex: 16, con: 12, int: 12, wis: 14, cha: 16 };
+  const v = (cls, w) => ({ cls, lvl: 3, abil: A, gear: { w } });
+  assert.deepEqual(magicWants(v('bard', 'sword'), 'party'), ['runeblade', 'amulet']);
+  assert.deepEqual(magicWants(v('bard'), 'party'), ['wand', 'amulet']);
+  assert.deepEqual(magicWants(v('ranger', 'bow'), 'party'), ['amulet']);
+  assert.deepEqual(magicWants(v('wizard', 'staff'), 'party'), ['wand', 'amulet']);
+  // a bard fighting with a rapier gets nothing from a wand; one casting Vicious Mockery does
+  const bs = v('bard', 'sword'), plain = classAttack(bs); bs.gear.m = 'wand'; assert.deepEqual(classAttack(bs), plain);
+  const bm = v('bard'), mock = classAttack(bm); bm.gear.m = 'wand'; assert.equal(classAttack(bm).dc, mock.dc + 1);
+  // a ranger's bow is not a runeblade
+  const rg = v('ranger', 'bow'), bow = classAttack(rg); rg.gear.m = 'runeblade'; assert.deepEqual(classAttack(rg), bow);
+  // a swordless fighter swings the runeblade with longsword dice, the same as a guard does
+  const f = { cls: 'fighter', lvl: 3, abil: { ...A, str: 16 }, gear: { m: 'runeblade' } }, fa = classAttack(f), ga = guardAttack(f, 'melee');
+  assert.equal(fa.name, 'runeblade'); assert.equal(fa.dmg.s, 8); assert.equal(fa.bonus, ga.bonus); assert.equal(fa.dmg.b, ga.dmg.b);
+});
+
+test('scribes leave the last crystals for an enchanter who could use them, and only then', () => {
+  const setup = (res, pri) => {
+    const sim = fresh('magic-share'), sc = build(sim, 'scriptorium'), en = build(sim, 'enchanter');
+    staff(sim, sc, 1); staff(sim, en, 2); if (pri) sim.s.crystalPriority = pri;
+    Object.assign(sim.s.res, { cloth: 20, scroll: 0, sword: 0, iron: 0, planks: 0, ...res });
+    return { sim, sc };
+  };
+  // the enchanter has nothing else to work with: scribes carry on
+  let { sim } = setup({ crystal: 4 });
+  run(sim, 40);
+  assert.ok(sim.s.res.scroll >= 1, 'scrolls while the enchanter has no swords, planks or iron');
+  // the enchanter has planks for a wand: scribes leave the last two crystals
+  ({ sim } = setup({ crystal: 2, planks: 5, wand: 0 }));
+  assert.equal(sim.enchanterWantsCrystals(), true);
+  run(sim, 60);
+  assert.equal(sim.s.res.scroll, 0, "no scrolls from the enchanter's last two crystals");
+  assert.equal(sim.s.res.wand, 1, 'the enchanter got them and made a wand');
+  // set to Runeblades with no spare sword, the planks don't count: nothing to save crystals for
+  sim.s.buildings.find(b => b.type === 'enchanter').data.recipe = 'runeblade'; sim.s.res.planks = 5; sim.s.res.sword = 2;
+  assert.equal(sim.enchanterWantsCrystals(), false);
+  sim.s.buildings.find(b => b.type === 'enchanter').data.recipe = 'auto';
+  // and with the priority set to Share, they don't hold back
+  sim.s.crystalPriority = 'share';
+  assert.equal(sim.enchanterWantsCrystals(), false);
+});
+
+test('guards on a tower with a bow take an amulet, not a runeblade', () => {
+  assert.deepEqual(magicWants({ cls: 'fighter', gear: { w: 'bow' } }, 'guard'), ['amulet']);
+  assert.deepEqual(magicWants({ cls: 'fighter', gear: { w: 'sword' } }, 'guard'), ['runeblade', 'amulet']);
+});
+
+test("the enchanter's crystal use follows the worker's speed", () => {
+  const sim = fresh('magic-use'), b = build(sim, 'enchanter'), v = staff(sim, b, 2);
+  const use = sim.enchantUse(b), base = 2 * 60 / ((30 + 24 + 26) / 3);
+  assert.ok(Math.abs(use - base * sim.workRate(v)) < 1e-9);
+});
+
+test("magic gear and an Enchanter's recipe survive a save and reload", () => {
+  const sim = fresh('magic-save'), b = build(sim, 'enchanter'), v = sim.s.villagers.find(o => stageOf(o) === 'adult');
+  v.cls = 'fighter'; sim.s.res.runeblade = 1; sim.equip(v, 'party', true); b.data.recipe = 'wand';
+  const back = new Sim(sim.serialize());
+  assert.equal(back.vById.get(v.id).gear.m, 'runeblade');
+  assert.equal(back.bById.get(b.id).data.recipe, 'wand');
+});
+
 test('scrolls get read on expeditions, and unread ones come home', () => {
   const party = [1, 2, 3].map(id => ({ id, name: 'A' + id, cls: id === 1 ? 'wizard' : 'fighter', lvl: 1, abil: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }, gear: {} }));
-  const q = EXPEDITIONS.find(o => o.id === 'warren');   // three goblins (a Fireball) and a CHA check (a second try)
+  const q = EXPEDITIONS.find(o => o.id === 'warren');   // three goblins (Burning Hands) and a CHA check (Guidance)
   let read = 0, back = 0;
   for (let seed = 1; seed <= 40; seed++) {
     const out = runExpedition(q, party.map(p => ({ ...p })), mulberry32(seed), { scrolls: 2 });
@@ -101,6 +174,11 @@ test('scrolls get read on expeditions, and unread ones come home', () => {
     assert.equal(used + (out.loot.scroll || 0), 2, `seed ${seed}: every scroll is read or comes home`);
   }
   assert.ok(read > 30, `scrolls were read (${read})`);
+  const tough = EXPEDITIONS.find(o => o.id === 'owlbear');   // one big foe: Bless
+  const ob = runExpedition(tough, party.map(p => ({ ...p })), mulberry32(3), { scrolls: 2 });
+  assert.ok(ob.lines.some(l => /scroll of Bless/.test(l)), 'Bless against a lone owlbear');
+  const bh = runExpedition(q, party.map(p => ({ ...p })), mulberry32(3), { scrolls: 2 });
+  assert.ok(bh.lines.some(l => /Burning Hands/.test(l)) && !bh.lines.some(l => /^Teamwork .*goblins/.test(l)), 'the reader gets the credit');
   assert.ok(runExpedition(q, party, mulberry32(7), {}).lines.every(l => !/scroll/.test(l)), 'none without scrolls');
 });
 
@@ -111,11 +189,21 @@ test('quarry miners turn up crystals only once a Wizard Tower stands', () => {
   assert.equal(sim.s.res.crystal, 0);
   build(sim, 'wizard');
   for (let i = 0; i < 200; i++) sim.rpgOre(v, q);
-  assert.ok(sim.s.res.crystal >= 8 && sim.s.res.crystal <= 45, `found ${sim.s.res.crystal}`);
+  assert.ok(sim.s.res.crystal >= 55 && sim.s.res.crystal <= 130, `found ${sim.s.res.crystal}`);   // 30% of 200 loads, 1-2 each
 });
 
 test('the market sells magic items by default, and keeps crystals', () => {
   const sim = fresh('magic-market');
   for (const k of ['scroll', 'runeblade', 'wand', 'amulet']) assert.equal(sim.s.sell[k], true, k);
   assert.equal(sim.s.sell.crystal, false);
+});
+
+test('the market sells a lone Runeblade before a bigger heap of cheap food', () => {
+  const sim = fresh('magic-sell'), m = build(sim, 'market');
+  const v = sim.s.villagers.find(o => stageOf(o) === 'adult' && o.job === 'idle'); assert.ok(sim.assign(m, v));
+  Object.assign(sim.s.res, { food: 400, runeblade: 3 }); sim.s.sell.food = true;
+  const coins = sim.s.res.coins;
+  run(sim, 30);
+  assert.equal(sim.s.res.runeblade, 2, 'the spare Runeblade went first');
+  assert.ok(sim.s.res.coins >= coins + 70);
 });

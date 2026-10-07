@@ -6,6 +6,7 @@ import { GOODS, JOBS, SPELLS, BUILDINGS } from './data.js';
 import { stageOf, DAY, defOf } from './sim.js';
 import { faceSvg } from './ui.js';
 import { enchantHtml, enchantToast, magicGearTag } from './magicui.js';
+import { SCROLLS_PER_PARTY } from './magic.js';
 import { ABIL, ABIL_INFO, mod, fmtMod, CLASSES, classOf, aptitudeOf, maxHp, armorClass, guardAttack, classAttack, JOB_ABIL, jobFit, fitLabel, stars,
   xpToNext, RECIPES, EXPEDITIONS, difficulty, SUPPLIES, slotsFor, casterNeeds, studyCost, diceStr, MONSTERS } from './rpg.js';
 
@@ -237,7 +238,7 @@ export function rpgGuildHtml(ui) {
       <div class="prog"><i style="width:${Math.round(p * 100)}%;background:linear-gradient(90deg,#9be86d,#4fae32)"></i></div>
       <div class="elog">${shown.map((l, i) => `<p class="${i === shown.length - 1 ? 'new' : ''}">${esc(l.msg)}</p>`).join('')}${e.back && e.got?.length ? `<p class="got">${svg('gift', 14)} Brought home: ${esc(e.got.join(', '))}</p>` : ''}</div></div>`;
   } else {
-    h += `<div class="callout calm">${svg('banner', 22)}<span>Pick 2–4 adventurers, then choose an expedition. Their class comes from their best abilities. They take gear from the armory, ${SUPPLIES} food each for the road, and leave their jobs until they're home.</span></div>`;
+    h += `<div class="callout calm">${svg('banner', 22)}<span>Pick 2–4 adventurers, then choose an expedition. Their class comes from their best abilities. They take gear from the armory (a magic item each, if there are any), up to ${SCROLLS_PER_PARTY} spell scrolls, ${SUPPLIES} food each for the road, and leave their jobs until they're home.</span></div>`;
   }
   // the party
   h += `<h3 style="margin:4px 0 6px;font-size:14px">The party · ${vs.length}/4</h3><div class="ptab">`;
@@ -262,7 +263,7 @@ export function rpgGuildHtml(ui) {
         <div class="meta"><span class="diff ${df.cls}" ${tip(`Difficulty: ${df.name}`, `Suggested party level ${q.lvl}. Compares your party's average level and size. Fights use d20 attack rolls against armour class; there are also saving throws and ability checks. Nobody dies: if things go badly they fall back and come home hurt.`)}>${df.name}</span><span class="rtag">Lv ${q.lvl}+</span><span class="rtag">${svg('clock', 13)}${dur(q.days)}</span></div>
         <div class="meta">${rw}${q.reward.rare ? `<span class="rtag" ${tip('Treasure', `${Math.round(q.reward.rare * 100)}% chance of a rare treasure you can't build.`)}>${svg('gift', 13)}${Math.round(q.reward.rare * 100)}%</span>` : ''}<span class="rtag" ${tip('Experience', `${q.reward.xp} xp for each adventurer.`)}>${svg('xp', 13)}${q.reward.xp}</span></div>
         <div class="blurb">Foes: ${esc(foes)}</div>
-        <button class="btn sm ${ok.ok ? 'gold' : ''}" data-act="rpg-go" data-q="${q.id}" ${ok.ok ? '' : 'disabled'}>${ok.ok ? `${svg('banner', 14)} Set off · ${svg('apple', 12)}${SUPPLIES * vs.length}` : esc(ok.why)}</button></div>`;
+        <button class="btn sm ${ok.ok ? 'gold' : ''}" data-act="rpg-go" data-q="${q.id}" ${ok.ok ? '' : 'disabled'}>${ok.ok ? `${svg('banner', 14)} Set off · ${svg('apple', 12)}${SUPPLIES * vs.length}${(s.res.scroll || 0) >= 1 ? ` · ${svg('scroll', 12)}${Math.min(SCROLLS_PER_PARTY, Math.floor(s.res.scroll))}` : ''}` : esc(ok.why)}</button></div>`;
     }
     h += `</div>`;
     // recruits
@@ -319,6 +320,7 @@ export function rpgSpellbookHtml(ui) {
 // ── clicks ──
 export function rpgInfoClick(ui, act, a, sel) {
   const sim = ui.sim, b = sel?.kind === 'b' ? sel.b : null;
+  if (act === 'rpg-crystalpri') { sim.s.crystalPriority = a.dataset.k; ui.toast(a.dataset.k === 'share' ? 'Scribes and the enchanter will share crystals' : 'Crystals go to the enchanter first', 'crystal'); return; }
   if (act === 'rpg-recipe' && b?.type === 'enchanter') { b.data.recipe = a.dataset.k; ui.toast(enchantToast(a.dataset.k), 'wand'); return; }
   if (act === 'rpg-recipe' && b) { b.data.recipe = a.dataset.k; ui.toast(a.dataset.k === 'auto' ? 'The smith will keep the armory stocked' : `The smith will make ${GOODS[RECIPES.find(r => r.id === a.dataset.k).out].name.toLowerCase()}`, 'anvil'); return; }
   if (act === 'rpg-guild') { ui.guildBid = b?.id; ui.openModal('guild'); return; }

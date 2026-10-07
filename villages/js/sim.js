@@ -31,7 +31,9 @@ const CONVERT = {                    // staffed converters: inputs -> outputs, s
   weaver: { in: { wool: 2 }, out: { cloth: 1 }, t: 7, anim: 'work' },
   cheesemaker: { in: { milk: 2 }, out: { cheese: 1 }, t: 7, anim: 'work' },
   brewer: { in: { grain: 2 }, out: { ale: 1 }, t: 8, anim: 'work' },
-  scribe: { in: { cloth: 1, crystal: 1 }, out: { scroll: 1 }, t: 12, anim: 'work' },
+  // scribes leave the last few crystals for an Enchanter's Forge that has someone working (magic.js)
+  scribe: { in: { cloth: 1, crystal: 1 }, out: { scroll: 1 }, t: 12, anim: 'work',
+            hold: sim => sim.enchanterWantsCrystals?.() ? { crystal: 2 } : null, holdWhy: 'Saving crystals for the Enchanter' },
 };
 // staffed producers that need no inputs: the worker potters around the pen
 const PRODUCE = {
@@ -1163,6 +1165,8 @@ export class Sim {
         }
         const short = Object.entries(cv.keep || {}).find(([r, n]) => res[r] - (cv.in[r] || 0) < n && this.s.buildings.some(o => this.isSite(o)));
         if (short) { b.status = `Saving ${GOODS[short[0]].name.toLowerCase()} for builders`; v.act.anim = 'rest'; v.act.idle = true; return; }
+        const hold = cv.hold?.(this);
+        if (hold && Object.entries(hold).some(([r, n]) => res[r] - (cv.in[r] || 0) < n)) { b.status = cv.holdWhy; v.act.anim = 'rest'; v.act.idle = true; return; }
         const outRes = Object.keys(cv.out)[0];
         if (res[outRes] >= this.cap() && GOODS[outRes].capped) { b.status = 'Storage full'; v.act.anim = 'rest'; v.act.idle = true; return; }
         b.status = null; this.pay(cv.in);
@@ -1185,11 +1189,15 @@ export class Sim {
     this.setTask(v, 'Trading', [
       { walk: this.goalBuilding(b) }, { to: [p.x, p.z] }, { face: [c.x, c.z] },
       { act: 5, anim: 'sell', done: () => {
-        let best = null, bestQ = 0;
+        // sell the batch worth the most (up to 8 of one good), so a single Runeblade isn't stuck
+        // behind a heap of food that happens to be more numerous
+        let best = null, bestQ = 0, bestV = 0;
         for (const g of SELLABLE) {
           if (!this.s.sell[g]) continue;
-          const spare = r[g] - GOODS[g].reserve;
-          if (spare > bestQ) { bestQ = spare; best = g; }
+          const spare = Math.floor(r[g] - GOODS[g].reserve);
+          if (spare < 1) continue;
+          const val = Math.min(8, spare) * (this.priceOf ? this.priceOf(g, b.sid) : GOODS[g].price);
+          if (val > bestV) { bestV = val; bestQ = spare; best = g; }
         }
         if (best) {
           const n = Math.min(8, Math.floor(bestQ));
@@ -1396,10 +1404,10 @@ export class Sim {
     const miss = (d.needs || []).filter(t => !this.s.buildings.some(b => b.type === t && b.built));
     if (miss.length) {
       const names = miss.map(t => defOf(t).name), a = n => /^[AEIOU]/.test(n) ? `an ${n}` : `a ${n}`;
-      return { short: miss.length > 1 ? `Needs ${miss.length} buildings` : `Needs ${names[0]}`, why: `Needs ${names.map(a).join(' and ')} first` };
+      return { short: names.join(' + '), why: `Needs ${names.map(a).join(' and ')} first` };   // the card's lock chip already says "Needs"
     }
     const school = this.schoolGate?.(type);
-    return school ? { short: 'Needs a Library', why: school } : null;
+    return school ? { short: 'A Library', why: school } : null;
   }
   indoorJob(v) { return !!v.work && (!!CONVERT[v.job] && v.job !== 'herder' || ['innkeeper', 'teacher', 'wizard', 'smith', 'scholar', 'student', 'professor', 'barkeep', 'attendant', 'bard', 'constable', 'acolyte', 'locksmith'].includes(v.job)); }
   stepWeather() {

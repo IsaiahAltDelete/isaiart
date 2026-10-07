@@ -24,8 +24,8 @@ const tip = (t, d) => `data-tip="${esc(t)}|${esc(d)}"`;
 export const UNIVERSITY_POINTS = 180;
 export const TIERS = [
   { name: 'Unschooled', work: 1.0, desc: 'Never had lessons. Fine for any common job.' },
-  { name: 'Schooled', work: 1.06, desc: 'Can read, write and reckon: +6% work speed, and skilled jobs (wizard, smith, acolyte) are open.' },
-  { name: 'Honours', work: 1.12, desc: 'Top of the class: +12% work speed.' },
+  { name: 'Schooled', work: 1.06, desc: 'Can read, write and reckon: +6% work speed, and skilled jobs (wizard, smith, acolyte, scribe) are open.' },
+  { name: 'Honours', work: 1.12, desc: "Top of the class: +12% work speed, and the Enchanter's Forge and University professorships are open." },
   { name: 'Scholar', work: 1.2, desc: 'Studied long at the Library: +20% work speed, and adds to the village\'s knowledge.' },
   { name: 'Magister', work: 1.25, desc: 'Graduated from the Arcane University: +25% work speed and trained as a level 2 wizard.' },
 ];

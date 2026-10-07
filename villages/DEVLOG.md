@@ -961,22 +961,32 @@ Tests: `tests/progression.test.mjs`.
 
 ## Magic goods: crystals, the Scriptorium and the Enchanter's Forge (2026-10-07)
 
-- **Arcane Crystals** (new raw material): quarry miners turn one up 12% of the time once a Wizard Tower
-  stands (`rpgOre` wrap); expeditions to the Barrow, the Old Dwarf Mine, Wisp Marsh and the Dragon's
-  Nap bring more.
+- **Arcane Crystals** (new raw material, teal so they don't read as gems): quarry miners find 1-2 in 30%
+  of loads once a Wizard Tower stands (`rpgOre` wrap), about 2.5 a minute from one quarry; expeditions
+  to the Barrow, the Old Dwarf Mine, Wisp Marsh and the Dragon's Nap bring more.
 - **Scriptorium** (level 7, needs a Library, 2 schooled scribes): 1 cloth + 1 crystal → 1 Spell Scroll
-  (a plain converter, `CONVERT.scribe`; scribes work indoors).
+  (a plain converter, `CONVERT.scribe`; scribes work indoors). Crystal priority is a toggle on the
+  Enchanter's panel: "Enchanter first" (default) makes scribes leave the last 2 crystals whenever the
+  enchanter has everything else for an item (`enchanterWantsCrystals`, the converter's new `hold`);
+  "Share" lets both take crystals as they come. The panel compares quarry income with what this
+  enchanter uses at their own work speed (`enchantUse`).
 - **Enchanter's Forge** (level 8, needs a Forge and a Wizard Tower, 1 enchanter with Honours, costs 6
   crystals): Runeblade (sword + 2 crystals), Wand (plank + 2), Warding Amulet (iron bar + 2). Auto
-  makes whatever there is least of and always leaves 2 swords and 2 iron bars for the armory. The
+  makes whatever there is least of and always leaves 2 swords and 2 iron bars for the armory; the
+  smith's Auto keeps 2 more swords while an enchanter works (`enchantDemand`). Items take 24-30s. The
   enchanter works outside at the rune anvil; the crystal above it bobs and spins (`anim_float`).
-- **Magic gear**: a fourth gear slot `gear.m`. Runeblade +1 to hit / +2 damage on weapon attacks,
-  Wand the same on spells (wizards, clerics, bard spells), Amulet +1 AC and +1 to saves. Guards and
-  martial classes reach for a runeblade, casters for a wand, then an amulet.
-- **Scrolls on expeditions**: a party takes up to 2. A failed check gets a second try (+1d4,
-  Guidance); a fight against 3+ foes opens with a Fireball (3d6 to each). Unread scrolls come home.
+- **Magic gear**: a fourth gear slot `gear.m`. A Runeblade is an enchanted longsword: melee only,
+  longsword dice, +1 to hit / +2 damage on top (the same in `classAttack` and `guardAttack`). A Wand
+  gives +1 to hit or DC / +2 damage on real spells only. An Amulet gives +1 AC and +1 to saves.
+  `magicWants` picks per class and weapon: archers take an amulet, a bard with a rapier a runeblade.
+- **Scrolls on expeditions**: a party takes up to 2 (shown on the Guild Hall's Set off button).
+  Burning Hands opens a fight against 3+ foes (3d6, DEX save DC 13 for half, credited to the reader),
+  Bless one against a tough foe (20+ HP: +1d4 to attacks that fight), Guidance adds +1d4 to a check
+  that missed by 4 or less. Unread scrolls come home.
 - The market sells scrolls and magic items by default above a reserve of 2 (which stays home for
-  adventurers); crystals stay unsold unless you switch them on.
+  adventurers); crystals stay unsold unless you switch them on. The Market Stall now sells the batch
+  worth the most (up to 8 of one good) rather than whichever good it has most of, so a single
+  Runeblade isn't stuck behind a heap of food. Guards with a bow take an amulet, not a runeblade.
 - Building prerequisites: `needs: [...]` in a building's definition, checked by `Sim.gateOf` (also
   covers the Library gate); the build card shows what's missing.
 - Models: `blender/build_works7.py` (`build_scriptorium`, `build_enchanter`), a new glowing `arcane`
@@ -1047,6 +1057,7 @@ Ordered easiest to hardest:
 | `js/expmap.js` | Expeditions on the World map: sites, the party's trail, camp and captions |
 | `js/peek.js`, `js/roomplan.js` | Peek inside a home: roof lift, wall cut, furniture layout, family and pet |
 | `js/frost.js` | Frostpeak Pass: the site, ridges, glade, firewood, wolves and the iron-ore specialty |
+| `js/magic.js`, `js/magicui.js` | Magic goods: crystals, the Enchanter's Forge, magic gear, scrolls; their panel and icons |
 | `js/batch.js`, `js/perf.js` | Draw batching for villagers, buildings, blob shadows and smoke; the A/B switch |
 | `tools/devkit.js` | Dev-only helpers: staging scenes, stepping frames, magnify, perf and draw-call breakdowns |
 | `blender/*.py` | Model scripts; `cli.py` builds, previews and exports them |

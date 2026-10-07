@@ -48,13 +48,13 @@ export const GOODS = {
             desc: 'A carved staff set with a gem — an arcane focus. +1 to spell attacks and damage.', from: 'Forge', uses: 'Wizards and Clerics' },
   // magic (see magic.js): a rare crystal, and what the Scriptorium and the Enchanter's Forge make from it
   crystal: { name: 'Arcane Crystals', icon: 'crystal', price: 12, reserve: 6, capped: true,
-            desc: 'Glowing violet crystals that hold magic.', from: 'Quarry miners turn some up once a Wizard Tower stands; expeditions', uses: 'Scriptorium → scrolls, Enchanter\'s Forge → magic items' },
+            desc: 'Glowing teal crystals that hold magic (not to be confused with gems).', from: 'Quarry miners find them in about 1 of every 3 loads once a Wizard Tower stands; expeditions', uses: 'Scriptorium → scrolls, Enchanter\'s Forge → magic items' },
   scroll: { name: 'Spell Scrolls', icon: 'scroll', price: 30, reserve: 2,
-            desc: 'A spell inked in crystal ink, ready to read once. A party takes up to two: a failed check gets a second try, and a big fight opens with a Fireball.', from: 'Scriptorium (1 cloth + 1 crystal)', uses: 'Expeditions, selling' },
+            desc: 'A spell inked in crystal ink, ready to read once. A party takes up to two: Burning Hands against a crowd, Bless against a tough foe, or Guidance when a check just misses.', from: 'Scriptorium (1 cloth + 1 crystal)', uses: 'Expeditions, selling' },
   runeblade: { name: 'Runeblades', icon: 'runeblade', price: 70, reserve: 2,
-            desc: 'A sword etched with glowing runes. Weapon attacks hit more often (+1) and harder (+2).', from: 'Enchanter\'s Forge (sword + 2 crystals)', uses: 'Guards, Fighters, Rangers, Rogues, Paladins and Bards; selling' },
+            desc: 'An enchanted longsword etched with glowing runes. Melee attacks with it hit more often (+1) and harder (+2) than a plain sword. No use with a bow.', from: 'Enchanter\'s Forge (sword + 2 crystals)', uses: 'Guards, Fighters, Rangers, Rogues, Paladins and Bards; selling' },
   wand:   { name: 'Wands', icon: 'wand', price: 55, reserve: 2,
-            desc: 'A slim wand with a crystal tip. Spells hit more often (+1) and harder (+2).', from: 'Enchanter\'s Forge (1 plank + 2 crystals)', uses: 'Wizards, Clerics and Bards; selling' },
+            desc: 'A slim wand with a crystal tip. Spells hit more often (+1, or +1 to the save DC) and harder (+2). Only helps someone casting.', from: 'Enchanter\'s Forge (1 plank + 2 crystals)', uses: 'Wizards, Clerics and Bards; selling' },
   amulet: { name: 'Warding Amulets', icon: 'amulet', price: 60, reserve: 2,
             desc: 'A crystal set in iron that turns blows aside: +1 armour class and +1 to every saving throw.', from: 'Enchanter\'s Forge (1 iron bar + 2 crystals)', uses: 'Anyone who fights; selling' },
 };

@@ -14,7 +14,7 @@ def wslots():
              copper=material("copper", 0xc0703a), cheese=material("cheese", 0xf2c94a), white=material("white", 0xf7f3ea),
              plank=material("plank", 0xc8955a), hay=material("hay", 0xe6c35c), purple=material("purple", 0x5b3fa0),
              glow=material("lamp", 0xffe08a), sail=material("sail", 0xf6eedd),
-             arcane=material("arcane", 0xb98af5))
+             arcane=material("arcane", 0x6fe6e2))
     return M
 
 def logs_stack(name, M, x, y, rows=3, L=0.7, r=0.09, axis="y"):

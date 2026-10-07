@@ -38,11 +38,26 @@ def build_scriptorium():
     # a big arched reading window beside the door, lit from inside
     E += window("w1", M, (0.3, cy - D / 2 - 0.01, 0.34), w=0.3, h=0.36, shutters=False, round_top=True)
     E.append(empty("pt_glow_win", (0.3, cy - D / 2 - 0.05, 0.5)))
-    # a round gable window
-    P.append(cyl("rose", 0.15, 0.15, 0.05, (0, cy - D / 2, 1.73), M["trim"], seg=14, rot=(math.pi / 2, 0, 0)))
-    P.append(cyl("roseg", 0.105, 0.105, 0.06, (0, cy - D / 2 + 0.005, 1.73), M["win"], seg=14, rot=(math.pi / 2, 0, 0)))
-    for x in (-0.36, 0.36): E += window(f"u{x}", M, (x, cy - D / 2 - 0.01, 1.08), w=0.22, h=0.28, box_flowers=False)
-    P += chimney("chim", M, (0.38, cy + 0.2, 1.2), h=1.2, rnd=rnd)
+    # the sign of the house: a big open book on the gable, pages fanned, a red ribbon down the middle
+    gy, gz = cy - D / 2 - 0.03, 1.66
+    P.append(box("bkframe", (0.5, 0.05, 0.3), (0, gy + 0.01, gz - 0.02), M["dark"], bev=0.02))
+    for sx in (-1, 1):
+        P.append(box(f"bkpage{sx}", (0.22, 0.03, 0.25), (sx * 0.115, gy - 0.02, gz), M["cloth"], bev=0.01, rot=(0, 0, sx * 0.18)))
+        for k in range(3):
+            P.append(box(f"bkline{sx}{k}", (0.13, 0.01, 0.012), (sx * 0.12, gy - 0.04, gz + 0.06 + k * 0.05), M["dark"], rot=(0, 0, sx * 0.18)))
+    P.append(box("bkspine", (0.03, 0.04, 0.3), (0, gy - 0.03, gz - 0.02), M["red"]))
+    P.append(box("bkribbon", (0.025, 0.02, 0.18), (0.02, gy - 0.05, gz - 0.16), M["red"], rot=(0, 0.15, 0)))
+    for x in (-0.36, 0.36): E += window(f"u{x}", M, (x, cy - D / 2 - 0.01, 1.08), w=0.22, h=0.28, shutters=False, round_top=True)
+    # a slim reading turret at the back corner, with a pointed slate cap
+    tx, ty = 0.5, cy + 0.42
+    P.append(cyl("turret", 0.22, 0.24, 2.05, (tx, ty, 0.0), M["stone"], seg=10, bev=0.02))
+    P.append(cyl("tband", 0.25, 0.25, 0.06, (tx, ty, 2.0), M["trim"], seg=10))
+    P.append(cyl("tcap", 0.3, 0.0, 0.7, (tx, ty, 2.05), M["roof"], seg=10))
+    P.append(sphere("tknob", 0.04, (tx, ty, 2.76), M["gold"], sub=1))
+    for k, a in enumerate((-2.2, -1.2)):
+        w = poly_extrude(f"tw{k}", arch_pts(0.1, 0.18, 6), 0.06, (tx + math.cos(a) * 0.22, ty + math.sin(a) * 0.22, 1.55), M["glow"])
+        w.rotation_euler = (0, 0, a + math.pi / 2); P.append(w)
+    P += chimney("chim", M, (-0.38, cy + 0.2, 1.2), h=1.2, rnd=rnd)
     # hero: a giant quill standing in an inkpot, up on a post by the door
     px, py = -0.7, -0.6
     P.append(box("spost", (0.1, 0.1, 0.95), (px, py, 0.04), M["dark"], bev=0.02))
@@ -50,18 +65,25 @@ def build_scriptorium():
     P.append(cyl("pot", 0.13, 0.15, 0.2, (px, py, 1.04), M["dark"], seg=10, bev=0.02))
     P.append(cyl("potrim", 0.11, 0.11, 0.03, (px, py, 1.24), M["metal"], seg=10))
     P.append(cyl("ink", 0.095, 0.095, 0.012, (px, py, 1.26), M["arcane"], seg=10))
-    q = poly_extrude("quill", [(-0.025, 0.0), (0.025, 0.0), (0.12, 0.28), (0.1, 0.62), (0.0, 0.8), (-0.07, 0.55), (-0.08, 0.24)], 0.03,
-                     (px + 0.02, py, 1.12), M["white"], rot=(0, -0.3, 0))
-    P.append(q)
-    P.append(box("qspine", (0.014, 0.014, 0.78), (px + 0.04, py - 0.02, 1.12), M["cut"], rot=(0, -0.3, 0)))
+    # the quill: a long feather, notched along both edges, a dark tip dipped in the ink
+    vane = [(-0.02, 0.12)]
+    for k in range(1, 8): vane.append((0.08 + 0.06 * math.sin(k / 8 * math.pi) + (0.045 if k % 2 else -0.02), 0.12 + k * 0.1))
+    vane.append((0.0, 0.95))
+    for k in range(7, 0, -1): vane.append((-0.06 - 0.05 * math.sin(k / 8 * math.pi) - (0.04 if k % 2 else -0.015), 0.12 + k * 0.1))
+    P.append(poly_extrude("quill", vane, 0.03, (px + 0.02, py, 1.1), M["white"], rot=(0, -0.3, 0)))
+    # the nib, stained with the same teal crystal ink as the pot, just above its rim
+    P.append(box("quillnib", (0.03, 0.05, 0.16), (px + 0.005, py, 1.2), M["arcane"], rot=(0, -0.3, 0)))
+    P.append(box("qspine", (0.016, 0.045, 0.98), (px + 0.03, py, 1.08), M["dark"], rot=(0, -0.3, 0)))
     # the scroll rack: a pigeonhole shelf of rolled scrolls by the window
     sx, sy = 0.62, -0.62
-    P.append(box("rack", (0.5, 0.2, 0.62), (sx, sy, 0), M["plank"], bev=0.015))
+    # an open shelf: back, two sides and three shelves, the scrolls lying on them
+    P.append(box("rackback", (0.5, 0.03, 0.66), (sx, sy + 0.085, 0.04), M["plank"], bev=0.01))
+    for x in (-0.235, 0.235): P.append(box(f"rackside{x}", (0.03, 0.2, 0.66), (sx + x, sy, 0.04), M["dark"], bev=0.008))
     for row in range(3):
-        P.append(box(f"shelf{row}", (0.5, 0.21, 0.02), (sx, sy, 0.2 + row * 0.2), M["dark"]))
-        for k in range(3):
-            P += scroll_roll(f"sr{row}{k}", M, (sx - 0.15 + k * 0.15, sy - 0.03, 0.07 + row * 0.2), L=0.22, r=0.03,
-                             rot_z=math.pi / 2, ribbon=["red", "gold", "purple"][(row + k) % 3])
+        P.append(box(f"shelf{row}", (0.5, 0.2, 0.02), (sx, sy, 0.04 + row * 0.2), M["dark"]))
+        for k in range(2):
+            P += scroll_roll(f"sr{row}{k}", M, (sx - 0.11 + k * 0.22, sy - 0.02, 0.095 + row * 0.2), L=0.19, r=0.035,
+                             rot_z=0.0, ribbon=["red", "gold", "purple"][(row + k) % 3])
     P += crate("cr", M, (-0.75, 0.75, 0), s=0.22)
     return finish(root, P, E)
 

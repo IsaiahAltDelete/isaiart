@@ -130,20 +130,27 @@ export function guardAttack(v, mode) {
   return g.w === 'bow' ? { name: 'longbow', bonus: P + m + 1, dmg: { n: 1, s: 8, b: m + 1 } } : { name: 'shortbow', bonus: P + m, dmg: { n: 1, s: 6, b: m } };
 }
 // an adventurer's best move each round
-// magic items (magic.js): a Runeblade sharpens weapon attacks, a Wand sharpens spells; +1 to hit or DC, +2 damage
-const SPELLS_BY = { wizard: true, cleric: true };
+// magic items (magic.js). A Wand sharpens spells: +1 to hit (or to the save DC) and +2 damage. A Runeblade
+// is an enchanted longsword: in melee it's swung with longsword dice (finesse, so DEX fighters use DEX),
+// +1 to hit and +2 damage on top. Bows and spells don't use it.
+const SPELL_CLS = { wizard: true, cleric: true };
+export const isSpell = (a, cls) => !!a.save || !!SPELL_CLS[cls];
 export function classAttack(v, cls = classOf(v)) {
   const a = baseAttack(v, cls), m = v.gear?.m;
-  const spell = !!a.save || SPELLS_BY[cls];
-  if (!(m === 'runeblade' && !spell) && !(m === 'wand' && spell)) return a;
-  const out = { ...a, dmg: { ...a.dmg, b: a.dmg.b + 2 } };
-  if (a.save) out.dc = a.dc + 1; else out.bonus = a.bonus + 1;
-  if (m === 'runeblade') out.name = 'runeblade';
-  return out;
+  if (m === 'wand' && isSpell(a, cls)) {
+    const out = { ...a, dmg: { ...a.dmg, b: a.dmg.b + 2 } };
+    if (a.save) out.dc = a.dc + 1; else out.bonus = a.bonus + 1;
+    return out;
+  }
+  if (m === 'runeblade' && !isSpell(a, cls) && !a.ranged) {
+    const am = mod(v.abil?.[a.k || 'str']), P = prof(v.lvl || 1);
+    return { name: 'runeblade', k: a.k, bonus: P + am + 2, dmg: { n: 1, s: 8, b: am + 3 } };
+  }
+  return a;
 }
 function baseAttack(v, cls) {
   const L = v.lvl || 1, P = prof(L), g = v.gear || {}, am = k => mod(v.abil?.[k]), tier = L >= 5 ? 2 : 1;
-  const melee = (name, k, s, fine) => ({ name, bonus: P + am(k) + (fine ? 1 : 0), dmg: { n: 1, s, b: am(k) + (fine ? 1 : 0) } });
+  const melee = (name, k, s, fine) => ({ name, k, ranged: /bow/.test(name), bonus: P + am(k) + (fine ? 1 : 0), dmg: { n: 1, s, b: am(k) + (fine ? 1 : 0) } });
   switch (cls) {
     case 'fighter': return g.w === 'sword' ? melee('longsword', 'str', 8, true) : melee('handaxe', 'str', 6);
     case 'ranger': return g.w === 'bow' ? melee('longbow', 'dex', 8, true) : g.w === 'sword' ? melee('shortsword', 'dex', 8, true) : melee('shortbow', 'dex', 6);
@@ -263,10 +270,13 @@ export function runExpedition(q, vs, r, opt = {}) {
     p.ward = v.gear?.m === 'amulet' ? 1 : 0;   // Warding Amulet: +1 to saves
     return p;
   });
-  // spell scrolls (magic.js): read by the party's best caster; a failed check gets a second try, a big fight opens with a Fireball
+  // spell scrolls (magic.js), read by the party's best caster: Burning Hands opens a fight against three or more
+  // foes, Bless one against a tough foe, and Guidance adds a d4 to a check that just failed
   let scrolls = opt.scrolls || 0;
+  const SCROLL_DC = 13;
   const reader = () => up().sort((a, b) => (['wizard', 'cleric', 'bard'].includes(b.cls) - ['wizard', 'cleric', 'bard'].includes(a.cls)) || mod(b.abil?.int) - mod(a.abil?.int))[0];
-  const bless = () => opt.bless ? roll(r, 1, 4) : 0;
+  let blessed = false;   // a scroll of Bless read for one fight
+  const bless = () => opt.bless || blessed ? roll(r, 1, 4) : 0;
   const names = list => list.length <= 1 ? (list[0] || '') : list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];
   const lines = [`${names(party.map(p => p.first))} set off for ${q.name}.`];
   const loot = {}, addLoot = o => { for (const [k, n] of Object.entries(o || {})) loot[k] = (loot[k] || 0) + n; };
@@ -290,13 +300,20 @@ export function runExpedition(q, vs, r, opt = {}) {
     const M = MONSTERS[st.foe], md = dice(M.dmg);
     const foes = Array.from({ length: st.n }, () => ({ hp: M.hp }));
     const alive = () => foes.filter(f => f.hp > 0);
-    const dealt = new Map(), healed = [], breaths = [], lucky = [];
+    const dealt = new Map(), healed = [], breaths = [], lucky = [];   // dealt: "Sigrun's longsword" -> damage
     let taken = 0, critBy = null, falls = [];
     lines.push(st.text);
-    if (scrolls > 0 && st.n >= 3 && reader()) {
-      const n = roll(r, 3, 6), who = reader(); scrolls--;
-      for (const f of foes) f.hp -= n;
-      lines.push(`${who.first} read a scroll of Fireball: ${n} damage to every ${M.name}!`);
+    if (scrolls > 0 && reader() && (st.n >= 3 || M.hp >= 20)) {
+      const who = reader(); scrolls--;
+      if (st.n >= 3) {
+        const n = roll(r, 3, 6); let total = 0, saved = 0;
+        for (const f of foes) { const half = d20(r) + M.sv >= SCROLL_DC; if (half) saved++; const d = half ? Math.floor(n / 2) : n; f.hp -= d; total += d; }
+        dealt.set(`${who.first}'s Burning Hands`, total);
+        lines.push(`${who.first} read a scroll of Burning Hands: a fan of flame for ${n} fire damage${saved ? ` (${saved} dodged for half)` : ''}!`);
+      } else {
+        blessed = true;
+        lines.push(`${who.first} read a scroll of Bless: everyone adds a d4 to their attacks this fight.`);
+      }
     }
     for (let round = 0; round < 14 && up().length && alive().length; round++) {
       for (const p of party) {
@@ -320,7 +337,7 @@ export function runExpedition(q, vs, r, opt = {}) {
         let n = Math.max(1, rollD(r, p.atk.dmg, crit));
         if (p.sneak && up().length > 1) n += roll(r, p.sneak * (crit ? 2 : 1), 6);
         if (p.smite) { const sm = roll(r, crit ? 4 : 2, 8); n += sm; p.smite = false; breaths.push(`${p.first} called down a Divine Smite (+${sm} radiant)`); }
-        f.hp -= n; dealt.set(p, (dealt.get(p) || 0) + n);
+        const who = `${p.first}'s ${p.atk.name}`; f.hp -= n; dealt.set(who, (dealt.get(who) || 0) + n);
         if (crit) { crits++; critBy = critBy || p; }
       }
       for (const f of alive()) {
@@ -334,7 +351,8 @@ export function runExpedition(q, vs, r, opt = {}) {
       }
     }
     const won = !alive().length;
-    const top = [...dealt.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([p]) => `${p.first}'s ${p.atk.name}`);
+    const top = [...dealt.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([who]) => who);
+    blessed = false;
     if (critBy) lines.push(`${critBy.first} rolled a natural 20!`);
     if (breaths.length) lines.push(breaths.join('; ') + '.');
     if (lucky.length) lines.push(`Halfling luck: ${names([...new Set(lucky)])} turned a fumble around.`);
@@ -348,12 +366,11 @@ export function runExpedition(q, vs, r, opt = {}) {
     let best = null, bv = -99;
     for (const p of up()) { const b = mod(p.abil?.[st.abil]) + (CLASS_SKILL[p.cls]?.includes(st.abil) ? p.P : 0); if (b > bv) { bv = b; best = p; } }
     if (!best) return false;
-    let d = d20(r), t = d + bv + bless(), ok = d === 20 || t >= st.dc;
-    if (!ok && scrolls > 0 && reader()) {
-      const who = reader(); scrolls--;
-      d = d20(r); t = d + bv + bless() + roll(r, 1, 4); ok = d === 20 || t >= st.dc;
-      lines.push(`${st.text} ${best.first} fumbled it, so ${who === best ? 'they' : who.first} read a scroll of Guidance for a second try.`);
-      lines.push(`${best.first} ${ok ? st.win : st.lose} (${st.abil.toUpperCase()} check with Guidance: rolled ${t} vs DC ${st.dc}).`);
+    const d = d20(r); let t = d + bv + bless(), ok = d === 20 || t >= st.dc, guided = 0;
+    if (!ok && d !== 1 && scrolls > 0 && reader() && t + 4 >= st.dc) {   // only worth reading if a d4 could save it
+      const who = reader(); scrolls--; guided = roll(r, 1, 4); t += guided; ok = t >= st.dc;
+      lines.push(`${st.text} ${best.first} was just short, ${who === best ? 'and read' : `so ${who.first} read`} a scroll of Guidance (+${guided}).`);
+      lines.push(`${best.first} ${ok ? st.win : st.lose} (${st.abil.toUpperCase()} check with Guidance: ${t} vs DC ${st.dc}).`);
     } else lines.push(`${st.text} ${best.first} ${ok ? st.win : st.lose} (${st.abil.toUpperCase()} check: rolled ${t} vs DC ${st.dc}).`);
     if (ok) addLoot(st.loot);
     if (ok && st.skip) skipNext = true;
@@ -709,7 +726,8 @@ const RPG = {
       if (rc.out === 'iron' && res.iron >= cap) return { why: 'Storage full' };
       return { rc };
     }
-    const want = RECIPES.filter(rc => rc.out !== 'iron' && this.recipeOpen(rc) && (res[rc.out] || 0) < AUTO_KEEP && !short(rc))
+    const keep = out => AUTO_KEEP + (this.enchantDemand?.(out) || 0);   // more swords while an enchanter needs them
+    const want = RECIPES.filter(rc => rc.out !== 'iron' && this.recipeOpen(rc) && (res[rc.out] || 0) < keep(rc.out) && !short(rc))
       .sort((a, c) => (res[a.out] || 0) - (res[c.out] || 0))[0];
     if (want) return { rc: want };
     const smelt = RECIPES[0];

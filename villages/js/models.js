@@ -217,7 +217,7 @@ const SLOT_MAT = {
   win: () => mat(C.window, { emissive: 0x3a2a00 }),
   lamp: () => mat(0xffe08a),
   water: () => mat(0x6cc4ee, { emissive: 0x0a3550 }),
-  arcane: () => mat(0xc7a8ff, { emissive: 0x6a3fd0 }),   // glowing violet crystals and runes (magic.js buildings)
+  arcane: () => mat(0x8ff0ec, { emissive: 0x137f8a }),   // glowing teal crystals and runes (magic.js buildings)
   snowcap: () => SNOWCAP_MAT,
 };
 // one shared material for every roof's winter snow pillow; the game shows it in deep snow

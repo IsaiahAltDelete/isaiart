@@ -9,21 +9,50 @@ import { GOODS } from './data.js';
 import { classOf } from './rpg.js';
 
 export const ENCHANTS = [
-  { id: 'runeblade', out: 'runeblade', in: { sword: 1, crystal: 2 },  t: 16, verb: 'Etching a runeblade', keep: { sword: 2 } },
-  { id: 'wand',      out: 'wand',      in: { planks: 1, crystal: 2 }, t: 12, verb: 'Binding a wand' },
-  { id: 'amulet',    out: 'amulet',    in: { iron: 1, crystal: 2 },   t: 14, verb: 'Warding an amulet', keep: { iron: 2 } },
+  { id: 'runeblade', out: 'runeblade', in: { sword: 1, crystal: 2 },  t: 30, verb: 'Etching a runeblade', keep: { sword: 2 } },
+  { id: 'wand',      out: 'wand',      in: { planks: 1, crystal: 2 }, t: 24, verb: 'Binding a wand' },
+  { id: 'amulet',    out: 'amulet',    in: { iron: 1, crystal: 2 },   t: 26, verb: 'Warding an amulet', keep: { iron: 2 } },
 ];
 export const MAGIC_ITEMS = ['runeblade', 'wand', 'amulet'];
-const CASTERS = new Set(['wizard', 'cleric', 'bard']);
-// what each kind of fighter reaches for first
-export const magicWants = (v, role) => role === 'guard' ? ['runeblade', 'amulet'] : CASTERS.has(classOf(v)) ? ['wand', 'amulet'] : ['runeblade', 'amulet'];
+// What each adventurer reaches for: the item that helps their attack, then an amulet. A Runeblade is a
+// melee weapon (no use to archers), a Wand only helps real spells (a bard with a rapier isn't casting).
+export function magicWants(v, role) {
+  if (role === 'guard') return v.gear?.w === 'bow' ? ['amulet'] : ['runeblade', 'amulet'];   // tower archers don't swing a blade
+  const cls = classOf(v), w = v.gear?.w;
+  if (cls === 'wizard' || cls === 'cleric') return ['wand', 'amulet'];
+  if (cls === 'bard') return w === 'sword' ? ['runeblade', 'amulet'] : ['wand', 'amulet'];
+  if (cls === 'ranger' || cls === 'rogue') return w === 'bow' ? ['amulet'] : ['runeblade', 'amulet'];
+  return ['runeblade', 'amulet'];
+}
 export const SCROLLS_PER_PARTY = 2;
-const CRYSTAL_CHANCE = 0.12;   // per load of stone a miner brings back, once a Wizard Tower stands
+const CRYSTAL_CHANCE = 0.3;    // per load of stone a miner brings back, once a Wizard Tower stands: 1 or 2 crystals
+const enchanterAt = sim => sim.s.buildings.some(b => b.type === 'enchanter' && b.built && b.workers.length);
 
 export function installMagic(sim) {
   const s = () => sim.s;
 
   // ── the Enchanter's Forge ──
+  // the smith's Auto keeps two more swords on hand while an enchanter is at work (rpg.js forgePick)
+  sim.enchantDemand = out => out === 'sword' && enchanterAt(sim) ? 2 : 0;
+  // Should the scribes leave crystals alone? Only while an enchanter is at work and has everything else
+  // for at least one item, and only if the player puts the Enchanter first (the default; see the panel).
+  sim.enchanterWantsCrystals = () => {
+    if ((s().crystalPriority || 'enchanter') !== 'enchanter') return false;
+    const res = s().res;
+    const ready = rc => Object.entries(rc.in).every(([k, n]) => k === 'crystal' || (res[k] || 0) - n >= (rc.keep?.[k] || 0));
+    // only the recipes this enchanter would actually make: all of them on Auto, else the one picked
+    return s().buildings.some(b => b.type === 'enchanter' && b.built && b.workers.length
+      && ENCHANTS.some(rc => ((b.data?.recipe || 'auto') === 'auto' || b.data.recipe === rc.id) && ready(rc)));
+  };
+  // what one enchanter gets through: crystals a minute at this worker's speed (workRate: skill, happiness, upgrades)
+  sim.enchantUse = b => {
+    const v = sim.vById.get(b.workers[0]); if (!v) return 0;
+    const t = ENCHANTS.reduce((a, rc) => a + rc.t, 0) / ENCHANTS.length;
+    return 2 * 60 * sim.workRate(v) / t;
+  };
+  // crystals coming in per minute, from what quarries reported (for the panel)
+  // (null until there's at least half a minute of history: one lucky find shouldn't read as a rate)
+  sim.crystalRate = () => sim.bflowHist.length < 3 ? null : s().buildings.filter(b => b.type === 'quarry').reduce((a, b) => a + sim.bRate(b, 'crystal'), 0);
   sim.enchantPick = b => {
     const res = s().res, mode = b.data?.recipe || 'auto';
     const short = rc => Object.entries(rc.in).some(([k, n]) => (res[k] || 0) - n < (rc.keep?.[k] || 0));
@@ -43,7 +72,7 @@ export function installMagic(sim) {
       { act: 12, anim: 'cast', start: () => {
         const pk = sim.enchantPick(b);
         b.data ||= {};
-        if (!pk.rc) { b.status = pk.why; b.data.making = null; v.act.anim = 'rest'; v.act.idle = true; return; }
+        if (!pk.rc) { b.status = pk.why; b.data.making = null; v.act.anim = 'rest'; v.act.idle = true; if (v.task) v.task.label = 'Waiting for materials'; return; }
         rc = pk.rc; b.status = null; b.data.making = rc.id; v.act.dur = rc.t;
         if (v.task) v.task.label = rc.verb;
         sim.pay(rc.in); for (const [k, n] of Object.entries(rc.in)) sim.credit(b, k, -n);
@@ -63,7 +92,7 @@ export function installMagic(sim) {
   sim.rpgOre = (v, b) => {
     ore(v, b);
     if (sim.rng() > CRYSTAL_CHANCE || !s().buildings.some(o => o.type === 'wizard' && o.built)) return;
-    const got = sim.add('crystal', 1);
+    const got = sim.add('crystal', sim.rng() < 0.5 ? 2 : 1);
     if (got) { sim.emit('float', v.x, v.z, `+${got}`, 'crystal'); sim.credit(b, 'crystal', got); }
   };
 
