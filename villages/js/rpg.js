@@ -282,6 +282,27 @@ export function runExpedition(q, vs, r, opt = {}) {
   const loot = {}, addLoot = o => { for (const [k, n] of Object.entries(o || {})) loot[k] = (loot[k] || 0) + n; };
   let wins = 0, total = 0, retreat = false, crits = 0, skipNext = false;
   const up = () => party.filter(p => p.hp > 0);
+  // Harsh (hardship.js): a fallen adventurer makes death saving throws (d20: 10+ is a success, three of
+  // either decides it; a 1 counts twice, a 20 gets them up). A healer with a heal left spends it on them.
+  const harsh = !!opt.harsh;
+  const fallDown = o => { if (harsh && o.hp <= 0 && !o.dying && !o.dead) o.dying = { s: 0, f: 0 }; };
+  const deathSave = o => {
+    const d = d20(r), D = o.dying;
+    if (d === 20) { o.hp = 1; o.dying = null; lines.push(`${o.first} rolled a 20 on a death save and got back up!`); return; }
+    if (d >= 10) D.s++; else D.f += d === 1 ? 2 : 1;
+    if (D.s >= 3) { o.dying = null; lines.push(`${o.first} is badly hurt, but stable.`); }
+    else if (D.f >= 3) { o.dying = null; o.dead = true; o.hp = 0; lines.push(`${o.first} failed their last death save. They did not come home.`); }
+  };
+  const rescue = () => {   // a healer with a heal to spare pulls the dying back first
+    for (const o of party) {
+      if (!o.dying) continue;
+      const h = party.find(p => p.hp > 0 && p.heal && p.heals > 0);
+      if (!h) continue;
+      const n = Math.max(1, roll(r, 1, h.heal.s) + h.heal.b); o.hp = n; o.dying = null; h.heals--;
+      lines.push(`${h.first} cast ${h.heal.name} on ${o.first} and pulled them back from the brink (+${n} HP).`);
+    }
+  };
+  const settle = () => { if (!harsh) return; rescue(); for (let k = 0; k < 12 && party.some(o => o.dying); k++) for (const o of party) if (o.dying) deathSave(o); };
 
   const save = st => {
     const ok = [], bad = []; let hurt = 0;
@@ -291,7 +312,7 @@ export function runExpedition(q, vs, r, opt = {}) {
       if (t >= st.dc) { ok.push(p.first); if (st.half) { p.hp -= Math.floor(n / 2); hurt += Math.floor(n / 2); } }
       else { bad.push(p.first); p.hp -= n; hurt += n; }
     }
-    for (const p of party) p.hp = Math.max(0, p.hp);
+    for (const p of party) { p.hp = Math.max(0, p.hp); if (p.hp === 0 && !p.dead) fallDown(p); }
     lines.push(`${st.text} ${ok.length ? `${names(ok)} ${st.pass}` : ''}${ok.length && bad.length ? '; ' : ''}${bad.length ? `${names(bad)} ${st.fail}` : ''} (${st.abil.toUpperCase()} save, DC ${st.dc}${hurt ? `, ${hurt} damage` : ''}).`);
     return bad.length <= ok.length;
   };
@@ -347,8 +368,9 @@ export function runExpedition(q, vs, r, opt = {}) {
         const n = Math.max(1, rollD(r, md, crit));
         t.hp = Math.max(0, t.hp - n); taken += n;
         if (t.hp === 0 && t.relentless) { t.hp = 1; t.relentless = false; breaths.push(`${t.first} refused to fall (Relentless Endurance)`); }
-        if (t.hp === 0) falls.push(t.first);
+        if (t.hp === 0) { falls.push(t.first); fallDown(t); }
       }
+      if (harsh) { rescue(); for (const o of party) if (o.dying) deathSave(o); }
     }
     const won = !alive().length;
     const top = [...dealt.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([who]) => who);
@@ -387,7 +409,8 @@ export function runExpedition(q, vs, r, opt = {}) {
     else if (st.kind === 'check') { if (check(st)) wins++; }
     if (!up().length) retreat = true;
     // a short rest between encounters: the fallen are patched up, everyone spends a hit die
-    if (!retreat && i < q.steps.length - 1) for (const p of party) p.hp = Math.min(p.max, Math.max(1, p.hp) + Math.max(1, roll(r, 1, p.hd) + p.con));
+    settle();   // nobody walks on while someone is still dying
+    if (!retreat && i < q.steps.length - 1) for (const p of party) if (!p.dead) p.hp = Math.min(p.max, Math.max(1, p.hp) + Math.max(1, roll(r, 1, p.hd) + p.con));
   }
   // the haul
   const k = retreat ? 0.35 : 0.6 + 0.4 * (total ? wins / total : 1), rw = q.reward;
@@ -396,8 +419,9 @@ export function runExpedition(q, vs, r, opt = {}) {
   if (scrolls > 0) loot.scroll = (loot.scroll || 0) + scrolls;   // unread scrolls come home
   const xp = Math.round(rw.xp * (retreat ? 0.5 : 1));
   lines.push(retreat ? `They limped home from ${q.name} with what they could carry.` : `The party came home from ${q.name}, tired and triumphant!`);
-  for (const p of party) if (retreat) p.hp = Math.max(1, p.hp);
-  return { lines, hp: Object.fromEntries(party.map(p => [p.id, Math.max(1, p.hp)])), loot, xp, ok: !retreat, crits };
+  for (const p of party) if (retreat && !p.dead) p.hp = Math.max(1, p.hp);
+  const dead = party.filter(p => p.dead).map(p => p.id);
+  return { lines, hp: Object.fromEntries(party.map(p => [p.id, Math.max(1, p.hp)])), loot, xp, ok: !retreat, crits, dead };
 }
 // classes that are trained in an ability check (they add proficiency)
 const CLASS_SKILL = { paladin: ['str', 'cha'], fighter: ['str'], ranger: ['wis', 'dex'], rogue: ['dex', 'int'], wizard: ['int'], cleric: ['wis'], bard: ['cha', 'dex'] };
@@ -921,7 +945,7 @@ const RPG = {
     this.pay({ food: SUPPLIES * vs.length });
     for (const v of vs) this.equip(v, 'party', true);
     const scrolls = this.takeScrolls?.() || 0;
-    const out = runExpedition(q, vs, mulberry32(((this.rng() * 1e9) | 0) ^ b.id), { bless: this.buffOn('bless'), buffs: s.rpg?.buffs, now, scrolls });
+    const out = runExpedition(q, vs, mulberry32(((this.rng() * 1e9) | 0) ^ b.id), { bless: this.buffOn('bless'), buffs: s.rpg?.buffs, now, scrolls, harsh: s.events?.mode === 'harsh' });
     const n = out.lines.length;
     d.exp = { q: q.id, t0: now, dur: q.days * DAY, log: out.lines.map((msg, i) => ({ f: i === 0 ? 0 : i === n - 1 ? 1 : 0.08 + 0.84 * i / (n - 1), msg })), out, members: vs.map(v => v.id) };
     for (const v of vs) {
@@ -941,6 +965,7 @@ const RPG = {
       const out = e.out, got = [];
       for (const id of e.members) {
         const v = this.vById.get(id); if (!v) continue;
+        if (out.dead?.includes(id)) { this.passAway(v, { cause: 'wounds', where: q.name }); continue; }
         v.hp = Math.min(maxHp(v), out.hp[id] ?? v.hp);
         if (v.quest) v.quest.phase = 'returning';
         this.rpgGainXp(v, out.xp);

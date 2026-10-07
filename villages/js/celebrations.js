@@ -221,7 +221,7 @@ const CEL = {
     const nums = {
       pop: [was.pop, now.pop], built: Math.max(0, now.built - was.built), births: now.births - was.births,
       weddings: now.weddings - was.weddings, wishes: now.wishes - was.wishes, festivals: now.festivals - was.festivals,
-      arrivals: count('arrive'), hard: hard.length, crimes: count('crime'), pets: count('pet'), rank: now.rank > was.rank ? RANKS[now.rank].name : null,
+      arrivals: count('arrive'), farewells: count('farewell'), left: count('leave'), hard: hard.length, crimes: count('crime'), pets: count('pet'), rank: now.rank > was.rank ? RANKS[now.rank].name : null,
     };
     // headlines: the biggest moments first, at most five (one of each kind before any repeats)
     const pool = (year === C.year && C.heads?.length ? C.heads : ents.filter(e => HEAD[e.kind] && !(e.kind === 'wedding' && /getting married/.test(e.text)))).filter(e => e.t >= t0 && e.t < t1);

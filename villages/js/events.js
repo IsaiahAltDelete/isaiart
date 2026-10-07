@@ -9,6 +9,7 @@
 //    damaged: it stops working until it is repaired from its panel.
 // Sim-side logic is installed by installEvents(sim); eventsInit/eventsFrame/eventsBar
 // at the bottom draw the banner, and main.js draws the flames, wisps and the dragon.
+import { HARD_MODES } from './hardship.js';
 import { stageOf, lvlOf, defOf, isDecor, DAY } from './sim.js';
 import { CENTERS, toWorld, inMap, idx } from './world.js';
 import { svg, addIcons } from './icons.js';
@@ -40,7 +41,7 @@ export const EVENTS = {
   dragon: { name: 'Dragon attack', icon: 'dragon', lvl: 8, seasons: ALL, days: 0.35, w: 1,
     help: 'A dragon is circling! Guards and wizards fight back. Put out the fires it starts.', todo: 'Guards and wizards fight it off' },
 };
-const MODES = { off: 0, gentle: 0.18, normal: 0.35 };
+const MODES = { off: 0, gentle: 0.18, normal: 0.35, harsh: 0.5 };
 const roll2d8 = r => 2 + ((r() * 8) | 0) + ((r() * 8) | 0);
 const first = v => v.name.split(' ')[0];
 const FIGHTERS = 6, BELL = 10;   // bucket-chain size, and with the alarm bell rung
@@ -439,13 +440,15 @@ export function eventsBuildingHtml(ui, b) {
     ${b.up?.repair ? `<div class="pbar"><i style="width:${b.up.progress * 100}%"></i></div>` : `<button class="btn gold sm" style="width:100%" data-act="ev-repair" ${ok ? '' : 'disabled'} data-tip="Repair|Costs ${Object.entries(cost).map(([k, n]) => `${n} ${k}`).join(', ')}.">${svg('hammer', 14)} ${ok ? `Repair · ${Object.entries(cost).map(([k, n]) => `${n} ${k}`).join(', ')}` : `Need ${short.join(' and ')}`}</button>`}</div>`;
 }
 export function eventsSettingsHtml(ui) {
-  const m = ui.sim.s.events.mode;
-  return `<section class="town-section"><h3>Hard times</h3><p>Droughts, fevers, fires, raiders, restless spirits and the odd dragon. Nobody dies, but they keep you on your toes.</p><div class="autorow">${[['off', 'Off'], ['gentle', 'Gentle'], ['normal', 'Normal']].map(([k, t]) => `<button class="tog ${m === k ? 'on' : ''}" data-act="ev-mode" data-k="${k}">${t}</button>`).join('')}</div></section>`;
+  const m = ui.sim.s.events.mode, cur = HARD_MODES.find(o => o[0] === m) || HARD_MODES[2];
+  return `<section class="town-section"><h3>Hard times</h3><p>Droughts, fevers, fires, raiders, restless spirits and the odd dragon, and villagers who leave if they're left hungry, cold or miserable.</p><div class="autorow">${HARD_MODES.map(([k, t, d]) => `<button class="tog ${m === k ? 'on' : ''}" data-act="ev-mode" data-k="${k}" data-tip="${t}|${d.replace(/"/g, '&quot;')}">${t}</button>`).join('')}</div><p class="sub">${cur[2]}</p></section>`;
 }
 export function eventsClick(ui, act, a, b) {
   if (!act.startsWith('ev-')) return false;
   const sim = ui.sim;
-  if (act === 'ev-mode') sim.s.events.mode = a.dataset.k;
+  if (act === 'ev-mode') { sim.s.events.mode = a.dataset.k; if (a.dataset.k === 'off') sim.calmHardship?.(); }
+  if (act === 'ev-restart') { ui.g.reset(sim.s.seedLabel ?? sim.s.seed); return true; }
+  if (act === 'ev-watch') { ui.closeModal(); return true; }
   if (act === 'ev-repair' && b && !sim.repair(b)) ui.toast('Not enough materials to repair it yet.', 'hammer');
   if (act === 'ev-bell') sim.ringBell(sim.bById.get(+a.dataset.bid));
   return true;

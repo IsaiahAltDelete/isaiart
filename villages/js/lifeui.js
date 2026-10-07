@@ -132,7 +132,7 @@ export function rankQuestRow(ui) {
 // ── the chronicle ──
 function chronCard(ui, c, full) {
   const N = c.nums, row = (icon, t) => `<span>${svg(icon, 15)}${t}</span>`;
-  const nums = [row('people', `${N.pop[0]} → ${N.pop[1]} villagers`), N.births ? row('baby', `${N.births} born`) : '', N.weddings ? row('rings', `${N.weddings} wedding${N.weddings > 1 ? 's' : ''}`) : '',
+  const nums = [row('people', `${N.pop[0]} → ${N.pop[1]} villagers`), N.births ? row('baby', `${N.births} born`) : '', N.farewells ? row('flower', `${N.farewells} laid to rest`) : '', N.left ? row('bag', `${N.left} moved away`) : '', N.weddings ? row('rings', `${N.weddings} wedding${N.weddings > 1 ? 's' : ''}`) : '',
     N.wishes ? row('wish', `${N.wishes} wish${N.wishes > 1 ? 'es' : ''} granted`) : '', N.built ? row('hammer', `${N.built} built`) : '', N.festivals ? row('party', `${N.festivals} festival${N.festivals > 1 ? 's' : ''}`) : '',
     N.hard ? row('storm', `${N.hard} hard time${N.hard > 1 ? 's' : ''}`) : '', N.rank ? row('crest', `became a ${N.rank}`) : ''].join('');
   if (!full) return `<div class="chron mini" data-act="lv-chron" data-i="${c.year}"><h3>Year ${c.year}: ${esc(c.title[0].toUpperCase() + c.title.slice(1))}</h3><div class="yr">${N.pop[1]} villagers${N.weddings ? ` · ${N.weddings} wedding${N.weddings > 1 ? 's' : ''}` : ''}${N.births ? ` · ${N.births} born` : ''} · tap to read</div></div>`;

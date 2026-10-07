@@ -164,7 +164,7 @@ const VIS = {
       return;
     }
     // a new visitor, at most one a day, from day 3, in daylight
-    if (day < 2 || V.day === day || f < 0.3 || f > 0.6 || this.stormy() || this.isNight()) return;
+    if (day < 2 || s.fallen || V.day === day || f < 0.3 || f > 0.6 || this.stormy() || this.isNight()) return;
     V.day = day;
     if (this.rng() > 0.6 || s.events?.list?.some(e => ['dragon', 'raiders'].includes(e.type))) return;
     const kinds = Object.keys(VISITORS).filter(k => k !== V.last && s.villagers.length >= (VISITORS[k].minPop || 0));

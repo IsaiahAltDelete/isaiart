@@ -44,7 +44,7 @@ export function installCensus(sim) {
   const spawn = sim.spawnVillager.bind(sim);
   sim.spawnVillager = (sid, x, z, o = {}) => { const v = spawn(sid, x, z, o); if (!(o.parents || []).length && v.age >= 14) C.arrived++; return v; };
   const pass = sim.passAway.bind(sim);
-  sim.passAway = v => { C.left++; return pass(v); };
+  sim.passAway = (v, how) => { C.left++; return pass(v, how); };
 }
 
 // ── the page ──

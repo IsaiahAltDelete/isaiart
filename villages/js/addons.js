@@ -27,6 +27,7 @@ import { installCareers } from './careers.js';
 import { installArcane } from './arcane.js';
 import { installMagic } from './magic.js';
 import { installEvents } from './events.js';
+import { installHardship } from './hardship.js';
 import { installClassDuties } from './classduties.js';
 import { installWishes } from './wishes.js';
 import { installCelebrations } from './celebrations.js';
@@ -51,6 +52,7 @@ export function installAddons(sim, save) {
   installArcane(sim);
   installMagic(sim);        // arcane crystals, scrolls, the Enchanter's Forge, magic gear
   installEvents(sim);       // droughts, fevers, fires, raiders, spirits, the fair folk, dragons
+  installHardship(sim);     // villagers who leave; in Harsh, deaths and a village that can fall
   installClassDuties(sim);  // paladins answer the alarm, rangers shoot, rogues spot thieves, bards calm tempers
   installWishes(sim);       // thought-bubble wishes and pets
   installCelebrations(sim, !save);  // weddings, the town's rank, the yearly chronicle

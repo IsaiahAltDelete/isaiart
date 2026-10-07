@@ -524,7 +524,7 @@ class Game {
     setTool(m, anim === 'fight' ? (v.gear?.w === 'sword' ? 'sword' : 'spear') : anim ? ANIM_TOOL[anim] ?? null : v.carry ? null : v.job === 'guard' && v.gear?.w ? v.gear.w : JOB_TOOL[v.job] ?? null);
     const talk = v.talk && v.talk.until > this.sim.s.time && !v.indoors && !v.asleep && this.talkShow?.has(v.id) ? v.talk.k : null;
     const now = this.sim.s.time, wanted = !(v.jail > now) && this.sim.wantedOf?.(v);
-    const mood = v.sick > now ? 'sick' : v.cold > now && !v.asleep ? 'snow' : v.hungry ? 'apple' : wanted && !v.asleep ? 'mask' : v.beamUntil > now ? 'smile' : v.wish && v.wish.until > now && !v.asleep && !v.indoors ? 'wish' : v.chat && !talk ? 'heart' : (v.asleep === 'fire' && (v.id % 3 === 0)) || this.peek?.showing(v) ? 'zzz' : null;
+    const mood = v.dying ? 'alert' : v.leaving ? 'bag' : v.sick > now ? 'sick' : v.cold > now && !v.asleep ? 'snow' : v.hungry ? 'apple' : wanted && !v.asleep ? 'mask' : v.beamUntil > now ? 'smile' : v.wish && v.wish.until > now && !v.asleep && !v.indoors ? 'wish' : v.chat && !talk ? 'heart' : (v.asleep === 'fire' && (v.id % 3 === 0)) || this.peek?.showing(v) ? 'zzz' : null;
     if (mood !== m.mood) {
       m.mood = mood;
       if (mood && !m.bubble) { m.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false })); m.bubble.userData.px = 26; m.bubble.position.y = 1.0; m.group.add(m.bubble); this.screenSprites.add(m.bubble); }
@@ -947,6 +947,7 @@ class Game {
       const vis = this.bvis.get(b.id); if (vis) vis.pop = 1;
     });
     sim.on('villagerStage', v => { this.removeVVis(v); this.addVVis(v); });
+    sim.on('fallen', () => ui.openModal('fallen'));
     sim.on('villagerGone', v => { this.removeVVis(v); if (this.selected?.v === v) this.select(null); if (this.followV === v) this.followV = null; });
     sim.on('beast', b => this.addBeast(b));
     sim.on('beastGone', b => { const m = this.beasts.get(b.id); if (m) { this.view.objects.remove(m.group); this.beasts.delete(b.id); } });

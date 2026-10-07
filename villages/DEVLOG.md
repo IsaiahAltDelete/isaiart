@@ -994,6 +994,29 @@ Tests: `tests/progression.test.mjs`.
 - Icons are drawn SVGs for now (`magicui.js`); `art/BRIEF.md` phase 6 asks for painted ones.
 Tests: `tests/magic.test.mjs`.
 
+## Survival: villagers who leave, and a Harsh mode where they can die (2026-10-07)
+
+Until now only old age removed anyone, and nothing a player did could make the village shrink.
+`js/hardship.js` adds consequences, set by the Town panel's Hard times setting:
+- **Gentle and Normal (the default):** a grown-up who is hungry, freezing, without a bed in winter
+  or in a village under 25 happiness for a whole day starts *thinking of leaving* (a bag over their
+  head, a toast, and a note in their panel saying why and how long is left). Put it right and they
+  stay; otherwise a day later they walk out of the gate. A partner who's also had enough goes too,
+  and young children go with them if no parent is staying. Leavers are counted (`stats.left`,
+  `s.leavers`) but not mourned or given a gravestone. **Off** turns it all off.
+- **Harsh (new):** more hard times (event roll 0.5), and they can kill. A day without food makes
+  people sick and a day and a half can kill (sooner for children and elders); a winter night by the
+  fire or a freezing night in the pass chills them sick; sickness can take the old and young, and
+  in time anyone. A villager knocked out makes D&D death saving throws (every 2 s; a cleric or
+  paladin within reach steadies them). On expeditions the fallen make death saves each round, a
+  healer spends a heal to pull them back, and the dead don't come home. When the last villager is
+  gone the village has fallen: no more newcomers or visitors, and an epitaph with a "start again
+  on this map" button.
+- `Sim.passAway(v, how)` now takes a cause (age, hunger, illness, cold, wounds, with a place) or
+  `left`. The chronicle counts the year's farewells and leavers; the story's Milestones list leavers.
+- A year of villager age is now 2 minutes (YEAR 180 -> 120), so a long session sees a generation.
+Tests: `tests/hardship.test.mjs`.
+
 ## Next round — pick 5–6
 
 Critic leftovers from round 15:
@@ -1057,6 +1080,7 @@ Ordered easiest to hardest:
 | `js/expmap.js` | Expeditions on the World map: sites, the party's trail, camp and captions |
 | `js/peek.js`, `js/roomplan.js` | Peek inside a home: roof lift, wall cut, furniture layout, family and pet |
 | `js/frost.js` | Frostpeak Pass: the site, ridges, glade, firewood, wolves and the iron-ore specialty |
+| `js/hardship.js` | Villagers who leave; Harsh mode: hunger, cold, sickness, death saves, a fallen village |
 | `js/magic.js`, `js/magicui.js` | Magic goods: crystals, the Enchanter's Forge, magic gear, scrolls; their panel and icons |
 | `js/batch.js`, `js/perf.js` | Draw batching for villagers, buildings, blob shadows and smoke; the A/B switch |
 | `tools/devkit.js` | Dev-only helpers: staging scenes, stepping frames, magnify, perf and draw-call breakdowns |

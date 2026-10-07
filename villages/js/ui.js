@@ -16,6 +16,7 @@ import {progressBuildingHtml,progressVillagerHtml,progressClick} from './progres
 import { RACES, GENDERS } from './society.js';
 import { CLASS_DUTY } from './classduties.js';
 import { eventsInit, eventsFrame, eventsBuildingHtml, eventsSettingsHtml, eventsClick } from './events.js';
+import { hardshipNoteHtml, fallenHtml } from './hardship.js';
 import { CLASSES, classOf, maxHp } from './rpg.js';
 import { censusHtml, CENSUS_CSS } from './census.js';
 import { expMapHtml, drawExpMap, EXPMAP_CSS } from './expmap.js';
@@ -910,7 +911,7 @@ export class UI {
       <div class="sub">${esc(sname)} · ${JOBS[v.job].name} · age ${Math.floor(v.age ?? 30)}</div></div></div>
       <div class="vchips">${chips}</div>
       ${wishVillagerHtml(this, v)}
-      <div class="ip-sec"><div class="statusline ${v.hungry ? 'bad' : v.asleep ? 'off' : 'ok'}"><span class="dot"></span><span>${esc(this.doingOf(v))}</span></div>
+      <div class="ip-sec"><div class="statusline ${v.hungry ? 'bad' : v.asleep ? 'off' : 'ok'}"><span class="dot"></span><span>${esc(this.doingOf(v))}</span></div>${hardshipNoteHtml(this.sim, v)}
       <dl class="kv" style="margin:6px 0 0">${this.family(v)}<dt>Fed</dt><dd>${fed}</dd>
       ${v.carry ? `<dt>Carrying</dt><dd>${v.carry.n} ${GOODS[v.carry.res].name.toLowerCase()}</dd>` : ''}
       ${work ? `<dt>Works at</dt><dd><a href="#" data-act="chainb" data-id="${work.id}" style="color:inherit">${esc(sim.homeName(work))} ›</a></dd>` : ''}</dl>
@@ -1237,7 +1238,7 @@ export class UI {
     const k = this.modal, sim = this.sim, s = sim.s;
     if (!k) return;
     const titles = { villagers: ['people', 'Villagers'], jobs: ['hammer','Jobs'], buildings: ['list', 'Buildings'], inventory: ['bag', 'Inventory'], worldmap: ['map', 'World'], shop: ['shop', 'Shop'],
-      settings: ['gear', 'Settings'], town: ['house', 'Town'], log: ['mail', 'Village News'], story: ['heart', 'Story'], population: ['people', 'Population'], chronicle: ['scroll', 'Chronicle'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
+      settings: ['gear', 'Settings'], fallen: ['flower', 'The village has fallen'], town: ['house', 'Town'], log: ['mail', 'Village News'], story: ['heart', 'Story'], population: ['people', 'Population'], chronicle: ['scroll', 'Chronicle'], stats: ['trophy', 'Achievements'], profile: ['star', 'Your Progress'], merchant: ['shop', 'Travelling Merchant'], magic: ['staff', 'Spell Book'], guild: ['banner', 'Guild Hall'], ...R7_MODALS };
     const seg = (label, tabs) => `<span class="seg" role="tablist" aria-label="${label}">` + tabs.map(([id, name]) => `<button data-act="mtab" data-m="${id}" class="${k === id ? 'on' : ''}" role="tab" aria-selected="${k === id}">${name}</button>`).join('') + '</span>';
     const journal = ['story', 'chronicle', 'log', 'stats', 'festival'].includes(k), boards = ['villagers', 'jobs', 'buildings', 'population'].includes(k);
     const townG = ['town', 'inventory'].includes(k), worldG = ['worldmap', 'trade'].includes(k);
@@ -1254,6 +1255,7 @@ export class UI {
     $('#mIcon').innerHTML = boards || journal || townG || (worldG && head.startsWith('<span class="seg')) ? '' : svg(titles[k][0], 26);
     let h = '';
     if (k === 'villagers') h = this.villagersHtml();
+    else if (k === 'fallen') h = fallenHtml(this);
     else if(k === 'jobs') h = jobsBoardHtml(this);
     else if (k === 'town') h = townHtml(this);
     else if (k === 'population') h = censusHtml(this);
@@ -1544,7 +1546,7 @@ export class UI {
     if (this.storyOpenSeen == null) this.storyOpenSeen = s.storySeen || 0;
     const seen = this.storyOpenSeen;
     if (s.storySeen !== s.storyN) { s.storySeen = s.storyN || 0; this.markLog(); }
-    const KINDS = { family: ['love', 'baby', 'farewell', 'breakup', 'wedding'], friends: ['friends', 'rivals', 'squabble', 'makeup'], wishes: ['wish', 'granted', 'pet'], milestones: ['arrive', 'grow', 'study', 'leader', 'archmage', 'rank', 'visitor'], trouble: ['crime', 'mischief'] };
+    const KINDS = { family: ['love', 'baby', 'farewell', 'breakup', 'wedding'], friends: ['friends', 'rivals', 'squabble', 'makeup'], wishes: ['wish', 'granted', 'pet'], milestones: ['arrive', 'leave', 'grow', 'study', 'leader', 'archmage', 'rank', 'visitor'], trouble: ['crime', 'mischief'] };
     const pinned = e => e.kind === 'wish' && this.sim.vById.get(e.faces[0]?.id)?.wish?.made === e.t;
     const shown = list.filter(e => (f === 'all' || KINDS[f]?.includes(e.kind)) && !pinned(e));
     let h = `<div class="storybar">${[['all', 'Everything'], ['family', 'Love & family'], ['friends', 'Friends & rivals'], ['wishes', 'Wishes & pets'], ['milestones', 'Milestones'], ['trouble', 'Mischief']].map(([k, t]) => `<button class="tog ${f === k ? 'on' : ''}" data-act="storyf" data-k="${k}">${t}</button>`).join('')}</div>`;

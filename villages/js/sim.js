@@ -42,7 +42,7 @@ const PRODUCE = {
   picker:    { out: { food: 6 },  t: 9,  anim: 'gather', label: 'Picking apples', stat: 'apples' },
   beekeeper: { out: { honey: 2 }, t: 12, anim: 'work',   label: 'Tending the hives' },
 };
-export const YEAR = 180;             // sim seconds per year of villager age
+export const YEAR = 120;             // sim seconds per year of villager age (2 minutes: a long session sees a generation)
 const ADULT = 14, RETIRE = 66, OLD = 72;
 export const stageOf = v => v.age < ADULT ? 'child' : v.age >= RETIRE ? 'elder' : 'adult';
 // indoor jobs whose workbench stands out front (sawmill blade, anvil, loom, mason's bench): staff stay out
@@ -1564,18 +1564,33 @@ export class Sim {
     if ((a.parents || []).includes(b.id) || (b.parents || []).includes(a.id)) return true;
     return (a.parents || []).some(p => (b.parents || []).includes(p));
   }
-  passAway(v) {
-    const s = this.s;
+  // A villager leaves the village for good: they die (how.cause: age, hunger, illness, cold, wounds),
+  // or with how.left they pack up and go (hardship.js). Leavers aren't mourned or given a gravestone.
+  passAway(v, how = {}) {
+    const s = this.s, age = Math.floor(v.age);
     this.unassign(v); this.dropTask(v);
     if (v.partner) { const p = this.vById.get(v.partner); if (p) p.partner = null; }
     s.villagers = s.villagers.filter(o => o !== v); this.vById.delete(v.id);
+    if (how.left) {
+      s.stats.left = (s.stats.left || 0) + 1;
+      (s.leavers || (s.leavers = [])).push({ name: v.name, age, t: s.time, why: how.why });
+      if (s.leavers.length > 30) s.leavers.shift();
+      const text = `${v.name} packed up and left ${this.sname(v.home)}${how.why ? `, ${how.why}` : ''}.`;
+      this.log(text); this.story('leave', text, [v], 'bag');
+      this.emit('villagerGone', v);
+      return;
+    }
     s.stats.deaths = (s.stats.deaths || 0) + 1;
-    (s.departed || (s.departed = [])).push({ name: v.name, age: Math.floor(v.age), t: s.time });
+    (s.departed || (s.departed = [])).push({ name: v.name, age, t: s.time, cause: how.cause || 'age' });
     if (s.departed.length > 30) s.departed.shift();
     s.mourn = 45;
     const mem = s.buildings.some(b => b.type === 'memorial');
-    this.log(`${v.name} passed away peacefully at ${Math.floor(v.age)}${mem ? ' and is remembered in the Memorial Garden' : ''}.`);
-    this.story('farewell', `${v.name} passed away peacefully at ${Math.floor(v.age)}${mem ? ', and is remembered in the Memorial Garden' : ''}.`, [v], 'flower');
+    const what = {
+      age: `passed away peacefully at ${age}`, hunger: `did not survive the hunger, at ${age}`, illness: `was taken by fever at ${age}`,
+      cold: `did not survive the cold, at ${age}`, wounds: `fell ${how.where ? `at ${how.where}` : 'defending the village'}, at ${age}`,
+    }[how.cause || 'age'];
+    this.log(`${v.name} ${what}${mem ? ' and is remembered in the Memorial Garden' : ''}.`);
+    this.story('farewell', `${v.name} ${what}${mem ? ', and is remembered in the Memorial Garden' : ''}.`, [v], 'flower');
     this.emit('villagerGone', v);
   }
 
