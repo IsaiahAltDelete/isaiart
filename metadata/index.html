@@ -411,6 +411,21 @@
 
     .stage-bg { display: none; }
 
+    /* random-name toggle */
+    .name-toggle { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--r-sm); background: #fff; border: 1px solid var(--line); cursor: pointer; user-select: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    .name-toggle:hover { border-color: var(--accent-line); box-shadow: var(--shadow); }
+    .name-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .name-toggle .switch { position: relative; flex-shrink: 0; width: 38px; height: 22px; border-radius: 999px; background: #d1d5db; transition: background-color 0.2s; }
+    .name-toggle .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(17,24,39,0.25); transition: transform 0.2s var(--ease); }
+    .name-toggle input:checked + .switch { background: var(--accent); }
+    .name-toggle input:checked + .switch::after { transform: translateX(16px); }
+    .name-toggle input:focus-visible + .switch { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .name-toggle .nt-text { display: flex; flex-direction: column; min-width: 0; font-size: 13.5px; line-height: 1.35; }
+    .name-toggle .nt-text b { font-weight: 600; }
+    .name-toggle .nt-sub { font-size: 12px; color: var(--dim); }
+    .name-toggle .nt-sub .mono { font-size: 11.5px; color: var(--text); }
+    .name-toggle input:not(:checked) ~ .nt-text .nt-sub { opacity: 0.75; }
+
     /* ── Paste view ─────────────────────────────────────────────── */
     .paste-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
     .paste-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
@@ -698,6 +713,11 @@
               <a id="downloadButton" class="btn btn-ok hidden" href="#" download="cleaned_image.png"><span class="material-symbols-outlined">download</span><span>Download clean</span></a>
               <button id="resetButton" class="btn btn-ghost hidden"><span class="material-symbols-outlined">restart_alt</span><span>New image</span></button>
             </div>
+            <label class="name-toggle" title="Download cleaned files as 8 random characters instead of the original name">
+              <input type="checkbox" class="rand-toggle" />
+              <span class="switch" aria-hidden="true"></span>
+              <span class="nt-text"><b>Random file names</b><span class="nt-sub">Original name hidden, e.g. <span class="mono rand-example">a7k2m9qx.png</span></span></span>
+            </label>
             <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp" class="hidden" />
           </div>
 
@@ -788,6 +808,11 @@
               <button id="downloadAllCleanedBulkButton" class="btn btn-ok"><span class="material-symbols-outlined">folder_zip</span><span>Download .zip</span></button>
               <button id="clearBulkQueueButton" class="btn btn-ghost btn-icon" style="flex:0 0 44px;min-height:44px" title="Clear queue" aria-label="Clear queue"><span class="material-symbols-outlined">delete_sweep</span></button>
             </div>
+            <label class="name-toggle" title="Download cleaned files as 8 random characters instead of the original name">
+              <input type="checkbox" class="rand-toggle" />
+              <span class="switch" aria-hidden="true"></span>
+              <span class="nt-text"><b>Random file names</b><span class="nt-sub">Original name hidden, e.g. <span class="mono rand-example">a7k2m9qx.png</span></span></span>
+            </label>
             <div class="panel info-card">
               <h4 class="sec-h">What gets removed</h4>
               <ul class="removes">
@@ -874,6 +899,9 @@
     let nextBulkResetGuard = 0;
     let currentActiveTabId = 'single';
     let findings = []; // what the inspector found, shown again after stripping
+    let singleOut = {}; // cleaned single-image output: { ext, randName }
+    const RAND_KEY = 'metadata.randomNames';
+    let randomNames = (() => { try { return localStorage.getItem(RAND_KEY) === '1'; } catch { return false; } })();
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const isPhone = () => window.matchMedia('(max-width: 759px)').matches;
 
@@ -906,6 +934,22 @@
         const stream = new Blob([bytes]).stream().pipeThrough(ds);
         const buf = await new Response(stream).arrayBuffer();
         return new Uint8Array(buf);
+    }
+    function randomName() {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        const bytes = crypto.getRandomValues(new Uint8Array(8));
+        return Array.from(bytes, b => chars[b % chars.length]).join('');
+    }
+    // Download name for a cleaned file. The random name is made once per output and kept,
+    // so the per-row link and the zip agree.
+    function cleanName(holder, originalName, ext) {
+        if (ext === 'jpeg') ext = 'jpg';
+        if (randomNames) {
+            if (!holder.randName) holder.randName = randomName();
+            return `${holder.randName}.${ext}`;
+        }
+        const base = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+        return `${base}_cleaned.${ext}`;
     }
     function icon(name, cls = '') { return `<span class="material-symbols-outlined ${cls}">${name}</span>`; }
     function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
@@ -1217,6 +1261,8 @@
         dropZone.classList.remove('has-image');
         $('stageBg').style.backgroundImage = '';
         findings = [];
+        singleOut = {};
+        if (typeof syncRandomNames === 'function' && randToggles) syncRandomNames();
         dropZone.setAttribute('aria-label', 'Choose an image to inspect');
         fileCard.classList.add('hidden');
         setSource(null);
@@ -2193,9 +2239,10 @@
                 let outputType = currentFile.type;
                 if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) outputType = 'image/png';
                 const cleanedDataUrl = canvas.toDataURL(outputType, 0.95);
-                const base = currentFile.name.substring(0, currentFile.name.lastIndexOf('.')) || currentFile.name;
+                singleOut = { ext: outputType.split('/')[1] };
                 downloadButton.href = cleanedDataUrl;
-                downloadButton.download = `${base}_cleaned.${outputType.split('/')[1]}`;
+                downloadButton.download = cleanName(singleOut, currentFile.name, singleOut.ext);
+                syncRandomNames();
 
                 runScan(dropZone, 'cleaning');
                 setTimeout(() => {
@@ -2324,7 +2371,7 @@
             <span class="status-pill ${cls}" title="${escapeHtml(item.error || '')}">${icon(ic, item.status === 'Stripping' ? 'spin' : '')}${label}</span></div>
             <div class="row-actions">
                 ${item.status === 'Stripped' && item.cleanedSrc
-                    ? `<a href="${item.cleanedSrc}" download="${escapeHtml(base)}_cleaned.${ext}" title="Download clean copy" aria-label="Download clean copy">${icon('download')}</a>`
+                    ? `<a href="${item.cleanedSrc}" download="${escapeHtml(cleanName(item, item.name, ext))}" title="Download clean copy" aria-label="Download clean copy">${icon('download')}</a>`
                     : `<span class="na">–</span>`}
                 <button class="bulk-remove-btn" title="Remove from queue" aria-label="Remove from queue">${icon('close')}</button>
             </div>`;
@@ -2346,7 +2393,7 @@
         const existing = new Map(Array.from(bulkImageList.querySelectorAll('.bulk-image-item')).map(n => [Number(n.dataset.fileId), n]));
         bulkFilesData.forEach((item, idx) => {
             let div = existing.get(item.id);
-            const key = `${item.status}|${item.cleanedSize}`;
+            const key = `${item.status}|${item.cleanedSize}|${randomNames}`;
             if (!div) {
                 div = el('div', 'bulk-image-item');
                 div.dataset.fileId = item.id;
@@ -2457,8 +2504,7 @@
                 const zip = new JSZip();
                 cleanedFiles.forEach(fileData => {
                     const base64 = fileData.cleanedSrc.split(',')[1];
-                    const base = fileData.name.substring(0, fileData.name.lastIndexOf('.')) || fileData.name;
-                    zip.file(`${base}_cleaned.${fileData.type.split('/')[1]}`, base64, { base64: true });
+                    zip.file(cleanName(fileData, fileData.name, fileData.type.split('/')[1]), base64, { base64: true });
                 });
                 const blob = await zip.generateAsync({ type: 'blob' });
                 const url = URL.createObjectURL(blob);
@@ -2478,7 +2524,7 @@
             setTimeout(() => {
                 const a = document.createElement('a');
                 a.href = fileData.cleanedSrc;
-                a.download = `${fileData.name.substring(0, fileData.name.lastIndexOf('.')) || fileData.name}_cleaned.${fileData.type.split('/')[1]}`;
+                a.download = cleanName(fileData, fileData.name, fileData.type.split('/')[1]);
                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
             }, index * 300);
         });
@@ -2516,6 +2562,26 @@
         zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
         zone.addEventListener('dragleave', (e) => { e.preventDefault(); zone.classList.remove('dragover'); });
     });
+
+    const randToggles = document.querySelectorAll('.rand-toggle');
+    function syncRandomNames() {
+        randToggles.forEach(t => { t.checked = randomNames; });
+        const ex = randomName();
+        document.querySelectorAll('.rand-example').forEach(n => { n.textContent = `${ex}.png`; });
+        const sub = singleImageTabContent.querySelector('.nt-sub');
+        if (currentFile && singleOut.ext) {
+            downloadButton.download = cleanName(singleOut, currentFile.name, singleOut.ext);
+            sub.innerHTML = `Saves as <span class="mono">${escapeHtml(downloadButton.download)}</span>`;
+        } else sub.innerHTML = `Original name hidden, e.g. <span class="mono rand-example">${ex}.png</span>`;
+        if (bulkFilesData.length) renderBulkImageList();
+    }
+    randToggles.forEach(t => t.addEventListener('change', () => {
+        randomNames = t.checked;
+        try { localStorage.setItem(RAND_KEY, randomNames ? '1' : '0'); } catch {}
+        syncRandomNames();
+        showToast(randomNames ? 'Cleaned files get random names' : 'Cleaned files keep their names', 'badge', 'info', 1800);
+    }));
+    syncRandomNames();
 
     document.addEventListener('keydown', (e) => {
         if (!e.altKey) return;
