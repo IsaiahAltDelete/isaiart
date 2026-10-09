@@ -1,0 +1,199 @@
+{
+ "date": "2026-10-09",
+ "updated": "2026-10-09T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Dream at Liberty, WNBA semifinal Game 3, Atlanta leads 2–0 (7:30 PM ET, ESPN2)",
+  "Valkyries at Aces, WNBA semifinal Game 3, Golden State leads 2–0 (9:30 PM ET, NBCSN)",
+  "Florida State at Louisville (7:00 PM ET, ESPN)"
+ ],
+ "leagues": [
+  {
+   "key": "WNBA",
+   "name": "WNBA",
+   "subtitle": "Semifinals",
+   "note": "Both leaders can sweep tonight",
+   "color": "#956f82"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 6",
+   "note": "Friday national windows"
+  }
+ ],
+ "events": [
+  {
+   "id": "wnba-atl-nyl",
+   "league": "WNBA",
+   "label": "WNBA • Semifinals",
+   "flags": [
+    "Semifinals • Game 3",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Atlanta Dream",
+     "abbr": "ATL",
+     "detail": "No. 4 seed • leads 2–0",
+     "logo": "wnba/atl"
+    },
+    {
+     "name": "New York Liberty",
+     "abbr": "NYL",
+     "detail": "No. 8 seed",
+     "logo": "wnba/ny"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-09T19:30:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Barclays Center, Brooklyn",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Atlanta can sweep after a 101–98 overtime Game 2 win with Angel Reese and Jordin Canada scoring 23 each. No WNBA team has come back from 0–2.",
+   "blackout": "No territorial blackout is expected. WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "wnba-gsv-lva",
+   "league": "WNBA",
+   "label": "WNBA • Semifinals",
+   "flags": [
+    "Semifinals • Game 3",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Golden State Valkyries",
+     "abbr": "GSV",
+     "detail": "No. 2 seed • leads 2–0",
+     "logo": "wnba/gs"
+    },
+    {
+     "name": "Las Vegas Aces",
+     "abbr": "LVA",
+     "detail": "No. 3 seed",
+     "logo": "wnba/lv"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-09T21:30:00-04:00",
+   "watch": "NBCSN",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBCSN window.",
+   "venue": "Michelob ULTRA Arena, Las Vegas",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Golden State can sweep the defending champions after an 83–81 Game 2 win led by Tiffany Hayes' 21 off the bench.",
+   "blackout": "No territorial blackout is expected. WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "ncaaf-fsu-lou",
+   "league": "NCAAF",
+   "label": "NCAAF • ACC",
+   "flags": [
+    "Conference game"
+   ],
+   "competitors": [
+    {
+     "name": "Florida State Seminoles",
+     "abbr": "FSU",
+     "detail": ""
+    },
+    {
+     "name": "Louisville Cardinals",
+     "abbr": "LOU",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-09T19:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "L&N Federal Credit Union Stadium, Louisville, Ky.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "ACC matchup in ESPN's Friday window.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-iowa-wash",
+   "league": "NCAAF",
+   "label": "NCAAF • Big Ten",
+   "flags": [
+    "Conference game"
+   ],
+   "competitors": [
+    {
+     "name": "Iowa Hawkeyes",
+     "abbr": "IOWA",
+     "detail": ""
+    },
+    {
+     "name": "Washington Huskies",
+     "abbr": "WASH",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-09T21:00:00-04:00",
+   "watch": "TBD",
+   "streaming": "TBD",
+   "coverage_type": "TBD",
+   "coverage": "Network not confirmed; listings differ between FOX, FS1 and TBD.",
+   "venue": "Husky Stadium, Seattle",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Big Ten Friday night game in Seattle.",
+   "blackout": "TBD"
+  },
+  {
+   "id": "ncaaf-isu-byu",
+   "league": "NCAAF",
+   "label": "NCAAF • Big 12",
+   "flags": [
+    "Conference game"
+   ],
+   "competitors": [
+    {
+     "name": "Iowa State Cyclones",
+     "abbr": "ISU",
+     "detail": ""
+    },
+    {
+     "name": "BYU Cougars",
+     "abbr": "BYU",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-09T22:15:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "LaVell Edwards Stadium, Provo, Utah",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "Late Big 12 window in Provo with BYU in the AP Top 25.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  }
+ ],
+ "footer_note": "Five qualifying events fall inside Friday's Eastern calendar day. MLB is off before Saturday's ALDS Game 5 in Cleveland. Regional NHL games, preseason and exhibition games, and non-major individual-sport events are excluded.",
+ "sources": [
+  {
+   "label": "CBS Sports WNBA bracket",
+   "url": "https://www.cbssports.com/wnba/news/2026-wnba-playoffs-bracket-schedule/"
+  },
+  {
+   "label": "FOX Sports Friday college schedule",
+   "url": "https://www.foxsports.com/stories/college-football/2026-college-football-friday-schedule-dates-times-tv-channels"
+  },
+  {
+   "label": "ALDS Game 4 recap",
+   "url": "https://www.cbssports.com/mlb/news/guardians-white-sox-alds-game-4-mlb-playoffs/"
+  }
+ ]
+}
