@@ -1,0 +1,558 @@
+{
+ "date": "2026-10-10",
+ "updated": "2026-10-10T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "White Sox at Guardians, ALDS Game 5, winner take all (8:00 PM ET, TBS)",
+  "No. 2 Georgia at No. 6 Alabama (7:30 PM ET, ABC)",
+  "No. 1 Texas vs. Oklahoma, Red River Rivalry (3:30 PM ET, ABC)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "Division Series",
+   "note": "Winner-take-all Game 5"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 6",
+   "note": "Saturday games with AP Top 25 teams • ranks from the Oct. 4 AP poll"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-cws-cle",
+   "league": "MLB",
+   "label": "MLB • ALDS",
+   "flags": [
+    "ALDS • Game 5",
+    "Winner take all"
+   ],
+   "competitors": [
+    {
+     "name": "Chicago White Sox",
+     "abbr": "CWS",
+     "detail": "AL No. 6 seed • series 2–2",
+     "logo": "mlb/chw"
+    },
+    {
+     "name": "Cleveland Guardians",
+     "abbr": "CLE",
+     "detail": "AL No. 2 seed • series 2–2",
+     "logo": "mlb/cle"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T20:00:00-04:00",
+   "watch": "TBS • truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast. Spanish on UniMas.",
+   "venue": "Progressive Field, Cleveland",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Winner-take-all after Cleveland rallied from 0–2 with 9–3 and 9–5 wins in Chicago. The winner opens the ALCS at Tampa Bay on Monday.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "ncaaf-tamu-mizz",
+   "league": "NCAAF",
+   "label": "NCAAF • SEC",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Texas A&M Aggies",
+     "abbr": "TAMU",
+     "detail": ""
+    },
+    {
+     "name": "Missouri Tigers",
+     "abbr": "MIZ",
+     "detail": "No. 14"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T12:00:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Faurot Field, Columbia, Mo.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Missouri jumped 11 spots after a 45–17 rout of Florida.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ind-neb",
+   "league": "NCAAF",
+   "label": "NCAAF • Big Ten",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Indiana Hoosiers",
+     "abbr": "IND",
+     "detail": "No. 7"
+    },
+    {
+     "name": "Nebraska Cornhuskers",
+     "abbr": "NEB",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T12:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Memorial Stadium, Lincoln, Neb.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Unbeaten Indiana visits Lincoln in FOX's noon window.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ucf-okst",
+   "league": "NCAAF",
+   "label": "NCAAF • Big 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "UCF Knights",
+     "abbr": "UCF",
+     "detail": ""
+    },
+    {
+     "name": "Oklahoma State Cowboys",
+     "abbr": "OKST",
+     "detail": "No. 18"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T12:00:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Boone Pickens Stadium, Stillwater, Okla.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Oklahoma State hosts UCF in Big 12 play.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-unc-pitt",
+   "league": "NCAAF",
+   "label": "NCAAF • ACC",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "North Carolina Tar Heels",
+     "abbr": "UNC",
+     "detail": ""
+    },
+    {
+     "name": "Pittsburgh Panthers",
+     "abbr": "PITT",
+     "detail": "No. 25 • 5–0"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T12:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Acrisure Stadium, Pittsburgh",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Pitt entered the poll at 5–0.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-sc-fla",
+   "league": "NCAAF",
+   "label": "NCAAF • SEC",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "South Carolina Gamecocks",
+     "abbr": "SC",
+     "detail": ""
+    },
+    {
+     "name": "Florida Gators",
+     "abbr": "FLA",
+     "detail": "No. 16"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T12:45:00-04:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "Ben Hill Griffin Stadium, Gainesville, Fla.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Florida looks to rebound after falling eight spots.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-stan-nd",
+   "league": "NCAAF",
+   "label": "NCAAF • Independent",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Stanford Cardinal",
+     "abbr": "STAN",
+     "detail": ""
+    },
+    {
+     "name": "Notre Dame Fighting Irish",
+     "abbr": "ND",
+     "detail": "No. 3"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T15:30:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Notre Dame Stadium, South Bend, Ind.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "No. 3 Notre Dame hosts Stanford.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-hou-ksu",
+   "league": "NCAAF",
+   "label": "NCAAF • Big 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Houston Cougars",
+     "abbr": "HOU",
+     "detail": "No. 22"
+    },
+    {
+     "name": "Kansas State Wildcats",
+     "abbr": "KSU",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T15:30:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Bill Snyder Family Stadium, Manhattan, Kan.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Ranked Houston on the road in Big 12 play.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ucla-ore",
+   "league": "NCAAF",
+   "label": "NCAAF • Big Ten",
+   "flags": [
+    "Top 25 matchup"
+   ],
+   "competitors": [
+    {
+     "name": "UCLA Bruins",
+     "abbr": "UCLA",
+     "detail": "No. 21"
+    },
+    {
+     "name": "Oregon Ducks",
+     "abbr": "ORE",
+     "detail": "No. 13"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T15:30:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "National",
+   "coverage": "National CBS window.",
+   "venue": "Autzen Stadium, Eugene, Ore.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Top-25 Big Ten matchup in Eugene.",
+   "blackout": "No territorial blackout is expected. Local CBS carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-miss-van",
+   "league": "NCAAF",
+   "label": "NCAAF • SEC",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Ole Miss Rebels",
+     "abbr": "MISS",
+     "detail": "No. 9"
+    },
+    {
+     "name": "Vanderbilt Commodores",
+     "abbr": "VAN",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T15:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "FirstBank Stadium, Nashville",
+   "venue_tz": "Central Daylight Time",
+   "notes": "No. 9 Ole Miss visits Nashville.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-tex-ou",
+   "league": "NCAAF",
+   "label": "NCAAF • SEC",
+   "flags": [
+    "Red River Rivalry",
+    "Neutral site"
+   ],
+   "competitors": [
+    {
+     "name": "Texas Longhorns",
+     "abbr": "TEX",
+     "detail": "No. 1"
+    },
+    {
+     "name": "Oklahoma Sooners",
+     "abbr": "OU",
+     "detail": ""
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-10-10T15:30:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Cotton Bowl, Dallas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Red River Rivalry at the State Fair of Texas with No. 1 Texas.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-md-osu",
+   "league": "NCAAF",
+   "label": "NCAAF • Big Ten",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Maryland Terrapins",
+     "abbr": "MD",
+     "detail": ""
+    },
+    {
+     "name": "Ohio State Buckeyes",
+     "abbr": "OSU",
+     "detail": "No. 5"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T16:15:00-04:00",
+   "watch": "Big Ten Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National Big Ten Network window.",
+   "venue": "Ohio Stadium, Columbus, Ohio",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "No. 5 Ohio State hosts Maryland.",
+   "blackout": "No territorial blackout is expected. TV-provider access is required."
+  },
+  {
+   "id": "ncaaf-tenn-ark",
+   "league": "NCAAF",
+   "label": "NCAAF • SEC",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tennessee Volunteers",
+     "abbr": "TENN",
+     "detail": "No. 15"
+    },
+    {
+     "name": "Arkansas Razorbacks",
+     "abbr": "ARK",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T16:15:00-04:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "Razorback Stadium, Fayetteville, Ark.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Tennessee on the road in SEC play.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-lsu-uk",
+   "league": "NCAAF",
+   "label": "NCAAF • SEC",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "LSU Tigers",
+     "abbr": "LSU",
+     "detail": "No. 10"
+    },
+    {
+     "name": "Kentucky Wildcats",
+     "abbr": "UK",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T19:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Kroger Field, Lexington, Ky.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "No. 10 LSU visits Kentucky, which dropped out of the poll.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-usc-psu",
+   "league": "NCAAF",
+   "label": "NCAAF • Big Ten",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "USC Trojans",
+     "abbr": "USC",
+     "detail": "No. 19"
+    },
+    {
+     "name": "Penn State Nittany Lions",
+     "abbr": "PSU",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T19:30:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Beaver Stadium, University Park, Pa.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Prime-time Big Ten game at Beaver Stadium.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-uga-ala",
+   "league": "NCAAF",
+   "label": "NCAAF • SEC",
+   "flags": [
+    "Top 25 matchup"
+   ],
+   "competitors": [
+    {
+     "name": "Georgia Bulldogs",
+     "abbr": "UGA",
+     "detail": "No. 2"
+    },
+    {
+     "name": "Alabama Crimson Tide",
+     "abbr": "ALA",
+     "detail": "No. 6"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T19:30:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Bryant-Denny Stadium, Tuscaloosa, Ala.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Top-10 SEC showdown in prime time.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-ku-utah",
+   "league": "NCAAF",
+   "label": "NCAAF • Big 12",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Kansas Jayhawks",
+     "abbr": "KU",
+     "detail": ""
+    },
+    {
+     "name": "Utah Utes",
+     "abbr": "UTAH",
+     "detail": "No. 12"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T22:15:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Rice-Eccles Stadium, Salt Lake City",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "Late Big 12 window in Salt Lake City.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-bsu-fres",
+   "league": "NCAAF",
+   "label": "NCAAF • Mountain West",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Boise State Broncos",
+     "abbr": "BSU",
+     "detail": "No. 23"
+    },
+    {
+     "name": "Fresno State Bulldogs",
+     "abbr": "FRES",
+     "detail": ""
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-10T22:30:00-04:00",
+   "watch": "The CW",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National The CW window.",
+   "venue": "Valley Children's Stadium, Fresno, Calif.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Ranked Boise State in a late Mountain West window.",
+   "blackout": "No territorial blackout is expected. Local CW carriage varies by affiliate and provider."
+  }
+ ],
+ "footer_note": "Eighteen qualifying events fall inside Saturday's Eastern calendar day: ALDS Game 5 and the Saturday games involving AP Top 25 teams. Regional NHL games, UFC Fight Night, preseason and exhibition games are excluded. WNBA semifinal Game 4s, if needed, are Sunday.",
+ "sources": [
+  {
+   "label": "ALDS Game 5 preview",
+   "url": "https://www.mlb.com/news/white-sox-vs-guardians-alds-game-5-starting-lineups-and-pitching-matchup"
+  },
+  {
+   "label": "College football TV selections",
+   "url": "https://fbschedules.com/college-football-schedule-tv-selections-for-october-10-2026/"
+  },
+  {
+   "label": "AP Top 25, Week 6",
+   "url": "https://www.si.com/fannation/college/cfb-hq/rankings/new-ap-top-25-rankings-for-week-6-college-football-poll"
+  }
+ ]
+}
