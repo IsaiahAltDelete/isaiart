@@ -1129,6 +1129,292 @@ table.keys tr.grp td {
     .rail-left, .rail-right { transform: none !important; }
 }
 
+/* ── 9c. CLEAN LAYER ──────────────────────────────────────────────────────────
+   A quieter coat over the console parts: a readable UI face, soft corners,
+   borderless tool keys that tint instead of invert, and eased motion. Same
+   palette and both themes; the paper is still the only bright thing here. */
+
+:root {
+    --f-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --r-s: 6px;
+    --r-m: 10px;
+    --r-l: 14px;
+    --snap: 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    --m-fast: 140ms;
+    --m-base: 200ms;
+    --m-slow: 260ms;
+    --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --hover: color-mix(in srgb, var(--ink) 7%, transparent);
+    --press: color-mix(in srgb, var(--ink) 12%, transparent);
+    --line: color-mix(in srgb, var(--ink) 11%, transparent);
+    --tint: color-mix(in srgb, var(--accent) 18%, transparent);
+    --lift: 0 1px 2px rgb(0 0 0 / 0.25), 0 12px 32px -10px rgb(0 0 0 / 0.5);
+    --label-size: 0.72rem;
+}
+:root[data-theme="light"] { --lift: 0 1px 2px rgb(40 36 28 / 0.12), 0 12px 30px -12px rgb(40 36 28 / 0.3); }
+
+body { font-family: var(--f-ui); }
+.label, .key, .menu > .menu-btn, .menu-item, .tree-item, .file-row,
+.save-state, .stat, .field, .title-field, .hint, .cmt-body, table.keys, .cmt-quote {
+    font-family: var(--f-ui);
+    letter-spacing: 0;
+    text-transform: none;
+}
+.label { font-size: var(--label-size); }
+.designation { font-family: var(--f-ui); font-weight: 600; letter-spacing: -0.01em; text-transform: none; }
+.hint { font-size: 0.78rem; line-height: 1.5; }
+
+/* ── Panels ── */
+.chassis { border-radius: var(--r-l); border-color: var(--line); }
+.page { gap: 10px; padding: 10px 12px 50px; }
+.page-head { padding: 10px 12px 6px; }
+.brand .designation { font-size: 1.05rem; }
+
+/* The name well: a plain field that shows itself on hover, not a screen. */
+.head-well { padding: 0; }
+.head-well .screen {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--r-m);
+    padding: 6px 10px !important;
+    transition: background var(--snap), border-color var(--snap);
+}
+.head-well .screen:hover { background: var(--hover); }
+.head-well .screen:focus-within { border-color: var(--line); background: var(--well); }
+.title-field { font-family: var(--f-ui); font-size: 0.95rem; font-weight: 500; letter-spacing: 0; color: var(--ink); }
+.title-field:focus { color: var(--ink); }
+.title-field::placeholder { color: var(--ink-faint); }
+.save-state { font-size: 0.75rem; color: var(--ink-faint); }
+.save-state .led { width: 7px; height: 7px; border-radius: 50%; }
+
+/* ── Keys and fields ── */
+.key {
+    border-radius: var(--r-s);
+    font-size: 0.78rem;
+    font-weight: 500;
+    transition: color var(--snap), background var(--snap), border-color var(--snap), transform 90ms var(--ease);
+}
+.key:hover { background: var(--hover); border-color: var(--line); }
+.key:active { transform: scale(0.96); }
+.key.latched, .key[aria-pressed="true"] { color: #0a0b0d; }
+.field { border-radius: var(--r-s); border-color: var(--line); font-size: 0.8rem; transition: border-color var(--snap), background var(--snap); }
+.field:hover { border-color: color-mix(in srgb, var(--ink) 22%, transparent); }
+
+/* ── Menubar ── */
+.menubar { border-top: none; margin-top: 6px; gap: 2px; }
+.menu > .menu-btn,
+.menu:first-child > .menu-btn {
+    border: none;
+    border-radius: var(--r-s);
+    padding: 6px 11px;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+}
+.menu > .menu-btn:hover { background: var(--hover); color: var(--ink); }
+.menu.open > .menu-btn { color: var(--ink); background: var(--press); }
+.menu-sheet {
+    top: calc(100% + 4px);
+    min-width: 260px;
+    padding: 5px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-m);
+    box-shadow: var(--lift);
+    transform: translateY(-4px) scale(0.98);
+    transform-origin: top left;
+}
+.menu.flip > .menu-sheet { transform-origin: top right; }
+.menu-item { padding: 7px 10px; border-radius: var(--r-s); font-size: 0.82rem; white-space: nowrap; }
+/* items without an icon line up with the ones that have one */
+.menu-item:not(:has(> .ico)) { padding-left: 34px; }
+.menu-sheet { min-width: 280px; }
+.menu-item:hover { background: var(--hover); }
+.menu-item .mk { font-size: 0.72rem; letter-spacing: 0; }
+.menu-sep { margin: 5px 6px; background: var(--line); }
+
+/* ── Ribbon: one calm toolbar, no captions ── */
+.ribbon { padding: 5px 6px; align-items: center; }
+.bay { padding: 0 6px; border-right: 1px solid var(--line); gap: 0; justify-content: center; }
+.bay-foot { display: none; }
+.ribbon .key { border-color: transparent; min-height: 28px; }
+.ribbon .key-sq { width: 28px; }
+#leadPick { min-width: 64px; }
+.ribbon .key:hover { border-color: transparent; }
+.ribbon .key[aria-pressed="true"],
+.ribbon .key.latched { color: var(--accent); background: var(--tint); border-color: transparent; }
+.ribbon .key:active { background: var(--press); }
+.ribbon .field { min-height: 28px; }
+.ribbon .dock-sep { background: var(--line); margin: 0 3px; }
+.stepper .key, .stepper .key:first-child, .stepper .key:last-child { border-radius: var(--r-s); }
+.stepper .size-in { font-family: var(--f-ui); border-radius: var(--r-s); border-color: var(--line); margin: 0 2px; min-height: 28px; }
+.swatch-key .bar { border-radius: 2px; }
+.pal { border-radius: var(--r-m); border-color: var(--line); box-shadow: var(--lift); transform: translateY(-4px) scale(0.98); }
+.pal button { border-radius: 4px; }
+
+/* ── Rails ── */
+.rail-head { border-bottom-color: var(--line); padding: 10px 14px; }
+.rail-head .bay-ix { display: none; }
+.rail-tabs {
+    position: relative;
+    flex-shrink: 0;
+    margin: 8px;
+    padding: 3px;
+    background: var(--well);
+    border-radius: var(--r-m);
+}
+/* the segmented control's thumb slides to whichever tab is latched */
+.rail-tabs::before {
+    content: '';
+    position: absolute;
+    top: 3px; bottom: 3px; left: 3px;
+    width: calc(50% - 3px);
+    background: var(--ground-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-s);
+    transition: transform var(--m-base) var(--ease);
+}
+.rail-tabs:has(.key:last-child.latched)::before { transform: translateX(100%); }
+.rail-tabs .key,
+.rail-tabs .key:last-child {
+    position: relative;
+    border: none;
+    border-radius: var(--r-s);
+    min-height: 28px;
+    color: var(--ink-faint);
+}
+.rail-tabs .key:hover,
+.rail-tabs .key.latched,
+.rail-tabs .key[aria-pressed="true"] { background: transparent; color: var(--ink); }
+.rail-body { padding: 2px 6px 8px; }
+.tree-item, .file-row {
+    position: relative;
+    border-left: none;
+    border-radius: var(--r-s);
+    font-size: 0.8rem;
+}
+.tree-ix { display: none; }
+.tree-item::before, .file-row::before {
+    content: '';
+    position: absolute;
+    left: 3px; top: 7px; bottom: 7px;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--accent);
+    transform: scaleY(0);
+    transition: transform var(--m-base) var(--ease);
+}
+.tree-item.here::before, .file-row.here::before { transform: scaleY(1); }
+.tree-item:hover, .file-row:hover,
+.tree-item.here, .file-row.here { background: var(--hover); }
+.lv1 { padding-left: 14px; }
+.lv2 { padding-left: 26px; }
+.lv3 { padding-left: 38px; }
+.lv4 { padding-left: 50px; }
+.file-meta { font-size: 0.7rem; letter-spacing: 0; }
+.cmt-card { border-radius: var(--r-m); border: 1px solid var(--line); border-left: 3px solid var(--s3); margin: 0 4px 8px; }
+.cmt-time { letter-spacing: 0; font-size: 0.7rem; }
+
+/* ── Deck and sheet ── */
+.deck { border: none; border-radius: var(--r-l); background: transparent; }
+.reg { display: none; }
+.leaf {
+    border: none;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.3), 0 18px 50px -20px rgb(0 0 0 / 0.55);
+}
+:root[data-theme="light"] .leaf { box-shadow: 0 1px 3px rgb(40 36 28 / 0.18), 0 18px 46px -22px rgb(40 36 28 / 0.4); }
+.ruler { border: none; border-radius: var(--r-s); background: transparent; }
+.ruler .marg { background: var(--hover); }
+.ruler .nm { font-family: var(--f-ui); font-size: 9px; }
+.pbreak span { font-family: var(--f-ui); letter-spacing: 0.04em; text-transform: none; }
+
+/* ── Status dock ── */
+.dock {
+    background: color-mix(in srgb, var(--panel) 86%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border-top-color: var(--line);
+}
+.stat, .stat .label { font-size: 0.75rem; }
+.dock-sep { background: var(--line); }
+.zoom-ctl .key { border-color: transparent; }
+
+/* ── Dialogs: the scrim fades, the sheet rises and settles ── */
+.panel-modal { background: rgb(5 6 8 / 0.55); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+:root[data-theme="light"] .panel-modal { background: rgb(60 55 45 / 0.28); }
+.panel-modal .sheet {
+    border: 1px solid var(--line);
+    border-radius: var(--r-l);
+    box-shadow: var(--lift);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    transition: transform var(--m-slow) var(--ease), opacity var(--m-base) linear;
+}
+.panel-modal.open .sheet { opacity: 1; transform: none; }
+.sheet-ix { display: none; }
+.sheet-head, .sheet-foot { border-color: var(--line); padding: 12px 16px; }
+.sheet-head .designation { font-size: 0.95rem !important; }
+.sheet-head .key-sq { border-color: transparent; border-radius: 50%; }
+.sheet-body { padding: 16px; }
+.doc-row { border-radius: var(--r-m); border: 1px solid var(--line); }
+.doc-row.here { box-shadow: inset 3px 0 0 var(--accent); }
+.doc-row .nm { font-size: 0.85rem; }
+.grid-pick i { border-radius: 3px; border-color: var(--line); transition: background 80ms linear, border-color 80ms linear; }
+.sym-grid button { border-radius: var(--r-s); border-color: var(--line); transition: background var(--snap), color var(--snap); }
+table.keys td { border-bottom-color: var(--line); font-size: 0.8rem; }
+table.keys td:last-child { letter-spacing: 0; font-size: 0.75rem; }
+table.keys tr.grp td { text-transform: none; letter-spacing: 0; font-size: 0.78rem; font-weight: 600; }
+
+/* ── Switches: a pill with a sliding thumb ── */
+.rocker { width: 34px; height: 20px; border-radius: 999px; border: none; background: var(--press); transition: background var(--snap); }
+.rocker .rock {
+    top: 3px; bottom: 3px; left: 3px;
+    width: 14px;
+    border-radius: 50%;
+    background: var(--ink-soft);
+    transition: transform var(--m-base) var(--ease), background var(--snap);
+}
+.rocker:has(input:checked) { background: var(--accent); }
+.rocker input:checked + .rock { transform: translateX(14px); background: #0a0b0d; }
+/* the theme switch is a choice of two, not on/off: it keeps one look both ways */
+.theme-sw .rocker:has(input:checked) { background: var(--press); }
+.theme-sw .rocker input:checked + .rock { background: var(--accent); }
+.theme-sw .rocker .rock { background: var(--accent); }
+
+/* ── Toasts ── */
+.readout-toast, .readout-toast * {
+    font-family: var(--f-ui);
+    letter-spacing: 0;
+    text-transform: none;
+}
+.readout-toast {
+    font-family: var(--f-ui);
+    letter-spacing: 0;
+    text-transform: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    box-shadow: var(--lift);
+    padding: 8px 16px;
+    bottom: 56px;
+    transition: opacity var(--m-base) linear, transform var(--m-slow) var(--ease);
+}
+
+@media (max-width: 1100px) {
+    .rail { top: 8px; bottom: 8px; border-radius: 0 var(--r-l) var(--r-l) 0; box-shadow: var(--lift); }
+    .rail-right { border-radius: var(--r-l) 0 0 var(--r-l); }
+}
+@media (max-width: 700px) {
+    .page { padding: 6px 6px 50px; }
+    .menubar { gap: 0; margin-left: -4px; }
+    .menu > .menu-btn, .menu:first-child > .menu-btn { padding: 6px 7px; font-size: 0.8rem; }
+    .deck { padding: 8px 2px 60px; }
+    .bay { padding: 0 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .key:active { transform: none; }
+    .rail-tabs::before, .tree-item::before, .file-row::before { transition: none; }
+}
+
 /* ── 10. PRINT ───────────────────────────────────────────────────────────────
    Printing is the point of a word processor, so this is not an afterthought.
    Everything that is machine disappears; the sheet loses its own padding and
@@ -1149,6 +1435,7 @@ table.keys tr.grp td {
         margin: 0;
         padding: 0;
         border: none;
+        box-shadow: none;
         background: #fff !important;
         --sheet-bg: #fff;
         --sheet-ink: #000;

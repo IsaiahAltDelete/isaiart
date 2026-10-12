@@ -33,9 +33,9 @@ var doc    = $('doc'),
 var DPI = 96;                                   /* the canonical CSS inch */
 
 var SHEETS = {
-    letter:  { w: 8.5,  h: 11,    name: 'LETTER'  },
-    legal:   { w: 8.5,  h: 14,    name: 'LEGAL'   },
-    tabloid: { w: 11,   h: 17,    name: 'TABLOID' },
+    letter:  { w: 8.5,  h: 11,    name: 'Letter'  },
+    legal:   { w: 8.5,  h: 14,    name: 'Legal'   },
+    tabloid: { w: 11,   h: 17,    name: 'Tabloid' },
     a4:      { w: 8.27, h: 11.69, name: 'A4'      },
     a5:      { w: 5.83, h: 8.27,  name: 'A5'      }
 };
@@ -62,12 +62,12 @@ var PAL = [
 ];
 
 var SYMS = {
-    'PUNCTUATION': '— – ‑ … « » “ ” ‘ ’ ‚ „ • ‣ · ¶ § † ‡ ′ ″ ‰ ¿ ¡ ‽ ⁂ ⁄',
-    'MATHS':       '× ÷ ± ∓ ≈ ≠ ≡ ≤ ≥ ∞ ∑ ∏ √ ∫ ∂ ∆ ∇ ∈ ∉ ⊂ ⊃ ∪ ∩ ∧ ∨ ¬ ∀ ∃ ∅ ° µ ‰ ½ ⅓ ¼ ¾ ⅔',
-    'CURRENCY':    '$ € £ ¥ ¢ ₹ ₽ ₩ ₪ ₺ ₴ ₦ ₱ ₫ ₡ ₲ ¤ ₿',
-    'ARROWS':      '← → ↑ ↓ ↔ ↕ ↖ ↗ ↘ ↙ ⇐ ⇒ ⇔ ↵ ⇧ ⌘ ⌥ ⌃ ⎋ ⏎ ▲ ▼ ◀ ▶ ⟶ ⟵',
-    'GREEK':       'α β γ δ ε ζ η θ ι κ λ μ ν ξ π ρ σ τ υ φ χ ψ ω Γ Δ Θ Λ Ξ Π Σ Φ Ψ Ω',
-    'MARKS':       '© ® ™ ℠ ℅ № ℮ ✓ ✔ ✗ ✘ ★ ☆ ☐ ☑ ☒ ♠ ♥ ♦ ♣ ♪ ♫ ⚠ ☰ ◆ ◇ ● ○ ■ □'
+    'Punctuation': '— – ‑ … « » “ ” ‘ ’ ‚ „ • ‣ · ¶ § † ‡ ′ ″ ‰ ¿ ¡ ‽ ⁂ ⁄',
+    'Maths':       '× ÷ ± ∓ ≈ ≠ ≡ ≤ ≥ ∞ ∑ ∏ √ ∫ ∂ ∆ ∇ ∈ ∉ ⊂ ⊃ ∪ ∩ ∧ ∨ ¬ ∀ ∃ ∅ ° µ ‰ ½ ⅓ ¼ ¾ ⅔',
+    'Currency':    '$ € £ ¥ ¢ ₹ ₽ ₩ ₪ ₺ ₴ ₦ ₱ ₫ ₡ ₲ ¤ ₿',
+    'Arrows':      '← → ↑ ↓ ↔ ↕ ↖ ↗ ↘ ↙ ⇐ ⇒ ⇔ ↵ ⇧ ⌘ ⌥ ⌃ ⎋ ⏎ ▲ ▼ ◀ ▶ ⟶ ⟵',
+    'Greek':       'α β γ δ ε ζ η θ ι κ λ μ ν ξ π ρ σ τ υ φ χ ψ ω Γ Δ Θ Λ Ξ Π Σ Φ Ψ Ω',
+    'Marks':       '© ® ™ ℠ ℅ № ℮ ✓ ✔ ✗ ✘ ★ ☆ ☐ ☑ ☒ ♠ ♥ ♦ ♣ ♪ ♫ ⚠ ☰ ◆ ◇ ● ○ ■ □'
 };
 
 /* ── STATE ───────────────────────────────────────────────────────────────── */
@@ -168,7 +168,7 @@ function save() {
         var now = Date.now();
         if (now - lastFailToast > 8000) {
             lastFailToast = now;
-            toast('STORAGE FULL — DOWNLOAD THIS DOCUMENT', true);
+            toast('Storage is full — download this document to keep it', true);
         }
         /* And back off, so a full store is not re-serialised every 700ms. */
         clearTimeout(saveTimer);
@@ -187,7 +187,7 @@ function touched() {
 function setSaved(ok, bad) {
     var led = $('saveLed'), tx = $('saveTx');
     led.className = 'led on' + (bad ? ' red' : ok ? ' green' : '');
-    tx.textContent = bad ? 'NOT SAVED' : ok ? 'SAVED' : 'SAVING';
+    tx.textContent = bad ? 'Not saved' : ok ? 'Saved' : 'Saving…';
 }
 
 /* ── PAGE GEOMETRY ───────────────────────────────────────────────────────── */
@@ -275,7 +275,7 @@ function reflow() {
         if (state.view.breaks) {
             for (var n = 1; n < pages; n++) {
                 html += '<div class="pbreak" style="top:' + (g.mt + n * contentH) + 'px">'
-                     +  '<span>PAGE ' + (n + 1) + '</span></div>';
+                     +  '<span>Page ' + (n + 1) + '</span></div>';
             }
         }
         breaks.innerHTML = html;
@@ -483,7 +483,7 @@ function togglePainter() {
         style: cs.fontStyle, deco: cs.textDecorationLine, color: cs.color
     };
     key.setAttribute('aria-pressed', 'true');
-    toast('PICK UP — NOW SELECT THE TARGET');
+    toast('Format copied — now select where it should go');
 }
 
 function stampPainter() {
@@ -559,7 +559,7 @@ function buildPal(el, kind) {
         html += '<button type="button" data-c="' + PAL[i] + '" style="background:' + PAL[i] + '" aria-label="' + PAL[i] + '"></button>';
     }
     html += '<button type="button" class="key pal-wide" data-c="none">'
-         +  (kind === 'mark' ? 'NO HIGHLIGHT' : 'AUTOMATIC') + '</button>';
+         +  (kind === 'mark' ? 'No highlight' : 'Automatic') + '</button>';
     el.innerHTML = html;
     el.addEventListener('click', function (e) {
         var b = e.target.closest('button');
@@ -630,7 +630,7 @@ function insLink() {
 
 function applyLink() {
     var url = safeURL($('lUrl').value), text = $('lText').value;
-    if (!url) { toast('THAT IS NOT A USABLE ADDRESS', true); return; }
+    if (!url) { toast('That isn’t a usable address', true); return; }
     restoreSel();
     var a = closestIn(caretNode(), 'a');
     if (a) {
@@ -714,12 +714,12 @@ function insImage() {
     if (file) {
         var fr = new FileReader();
         fr.onload = function () { place(fr.result); };
-        fr.onerror = function () { toast('COULD NOT READ THAT FILE', true); };
+        fr.onerror = function () { toast('Couldn’t read that file', true); };
         fr.readAsDataURL(file);
         return;
     }
     var u = safeURL($('imgUrl').value);
-    if (!u) { toast('CHOOSE A FILE OR GIVE AN ADDRESS', true); return; }
+    if (!u) { toast('Choose a file or give an address', true); return; }
     place(escapeHTML(u));
 }
 
@@ -762,8 +762,8 @@ function insDate() {
 
 function insTOC() {
     var hs = doc.querySelectorAll('h1:not(.s-title), h2:not(.s-sub), h3, h4');
-    if (!hs.length) { toast('NO HEADINGS TO LIST', true); return; }
-    var html = '<div class="toc" contenteditable="false"><div class="toc-h">CONTENTS</div>';
+    if (!hs.length) { toast('There are no headings to list yet', true); return; }
+    var html = '<div class="toc" contenteditable="false"><div class="toc-h">Contents</div>';
     for (var i = 0; i < hs.length; i++) {
         var h = hs[i];
         if (!h.id) h.id = 'h' + i + '-' + Math.random().toString(36).slice(2, 7);
@@ -857,7 +857,7 @@ function caretInto(node) {
 
 function tableOp(op) {
     var cell = curCell();
-    if (!cell) { toast('PUT THE CARET IN A TABLE FIRST', true); return; }
+    if (!cell) { toast('Click inside a table first', true); return; }
     var row = cell.parentNode, table = closestIn(cell, 'table'), ix = cell.cellIndex;
     var landing = null;
 
@@ -1026,8 +1026,8 @@ function focusHit() {
    search field claimed "NO MATCHES" — a result, for a search nobody ran. */
 function paintHitCount() {
     $('hitCount').textContent = hits.length
-        ? (hitIx + 1) + ' OF ' + hits.length
-        : ($('fFind').value ? 'NO MATCHES' : '');
+        ? (hitIx + 1) + ' of ' + hits.length
+        : ($('fFind').value ? 'No matches' : '');
 }
 
 function stepHit(d) {
@@ -1064,7 +1064,7 @@ function replaceAll() {
     touched();
     clearHits();
     runFind();
-    toast(n + ' REPLACED');
+    toast(n + ' replaced');
 }
 
 /* ── OUTLINE ─────────────────────────────────────────────────────────────── */
@@ -1091,7 +1091,7 @@ function buildOutline() {
 
 function addComment() {
     var quote = selText();
-    if (!quote) { toast('SELECT THE TEXT TO COMMENT ON', true); return; }
+    if (!quote) { toast('Select the text to comment on', true); return; }
     var id = 'c' + Date.now().toString(36);
     exec('insertHTML', '<span class="cmt-mark" data-c="' + id + '">' + escapeHTML(quote) + '</span>');
     /* insertHTML pads the seam with non-breaking spaces to stop the browser
@@ -1122,10 +1122,10 @@ function renderComments(focusId) {
              +  escapeHTML(c.body) + '</textarea>'
              +  '<div class="cmt-foot"><span class="cmt-time">' + when(c.time) + '</span>'
              +  '<span class="spacer"></span>'
-             +  '<button class="key" type="button" data-resolve="' + c.id + '">RESOLVE</button></div>'
+             +  '<button class="key" type="button" data-resolve="' + c.id + '">Resolve</button></div>'
              +  '</div>';
     }
-    $('cmtList').innerHTML = html || '<p class="hint rail-empty">Select some text and press the comment key in bay 05 to pin a note to it.</p>';
+    $('cmtList').innerHTML = html || '<p class="hint rail-empty">Select some text and press the comment button in the toolbar to pin a note to it.</p>';
     $('cmtCount').textContent = list.length;
     if (focusId) markComment(focusId);
 }
@@ -1200,7 +1200,7 @@ function updateStats() {
     var s = stats();
     $('stWords').textContent = s.words.toLocaleString();
     $('stChars').textContent = s.chars.toLocaleString();
-    $('stRead').textContent  = s.read + ' MIN';
+    $('stRead').textContent  = s.read + ' min';
 }
 
 function showCount() {
@@ -1302,7 +1302,7 @@ function expHTML() {
         + docCSS(d.setup) + '\n</style>\n</head>\n<body>\n<div class="page"><div class="doc">\n'
         + cleanBody() + '\n</div></div>\n</body>\n</html>';
     CAS.download(fileName('html'), html, 'text/html;charset=utf-8');
-    toast('DOWNLOADED · HTML');
+    toast('Downloaded as a web page');
 }
 
 /* Word opens an HTML file with the Office namespaces declared, and honours
@@ -1321,19 +1321,19 @@ function expDoc() {
         + '\n</style></head>\n<body><div class="WordSection1"><div class="doc">\n'
         + cleanBody() + '\n</div></div></body></html>';
     CAS.download(fileName('doc'), html, 'application/msword');
-    toast('DOWNLOADED · WORD');
+    toast('Downloaded as a Word file');
 }
 
 function expTXT() {
     CAS.download(fileName('txt'), textOf().replace(/\n{3,}/g, '\n\n'), 'text/plain;charset=utf-8');
-    toast('DOWNLOADED · TEXT');
+    toast('Downloaded as plain text');
 }
 
 function expMD() {
     clearHits();
     var out = mdOf(doc).replace(/\n{3,}/g, '\n\n').trim() + '\n';
     CAS.download(fileName('md'), out, 'text/markdown;charset=utf-8');
-    toast('DOWNLOADED · MARKDOWN');
+    toast('Downloaded as Markdown');
 }
 
 function mdInline(node) {
@@ -1484,9 +1484,9 @@ function importFile(file) {
         state.order.unshift(d.id);
         openDoc(d.id);
         save();
-        toast('IMPORTED · ' + name.toUpperCase().slice(0, 24));
+        toast('Imported ' + name.slice(0, 40));
     };
-    fr.onerror = function () { toast('COULD NOT READ THAT FILE', true); };
+    fr.onerror = function () { toast('Couldn’t read that file', true); };
     fr.readAsText(file);
 }
 
@@ -1529,7 +1529,7 @@ function renderDocList() {
         html += '<div class="doc-row' + (d.id === state.active ? ' here' : '') + '">'
              +  '<span class="grow"><span class="nm">' + escapeHTML(d.title || 'Untitled') + '</span>'
              +  '<span class="file-meta">' + when(d.updated) + '</span></span>'
-             +  '<button class="key" type="button" data-open="' + d.id + '">OPEN</button>'
+             +  '<button class="key" type="button" data-open="' + d.id + '">Open</button>'
              +  '<button class="key key-danger key-sq" type="button" data-del="' + d.id + '" aria-label="Delete">'
              +  '<svg><use href="#i-x"/></svg></button></div>';
     }
@@ -1553,7 +1553,7 @@ function copyDoc() {
     state.docs[d.id] = d;
     state.order.unshift(d.id);
     openDoc(d.id);
-    toast('COPIED');
+    toast('Copy made');
 }
 
 function deleteDoc(id) {
@@ -1568,7 +1568,7 @@ function deleteDoc(id) {
         else openDoc(state.order[0]);
     } else { renderFiles(); }
     save();
-    toast('MOVED TO TRASH');
+    toast('Moved to trash');
 }
 
 /* ── VIEW ────────────────────────────────────────────────────────────────── */
@@ -1628,7 +1628,7 @@ function setCheck(cmd, on) {
     if (!el) return;
     el.setAttribute('aria-checked', on ? 'true' : 'false');
     var mk = el.querySelector('.mk');
-    if (mk && /^(ON|OFF)$/.test(mk.textContent)) mk.textContent = on ? 'ON' : 'OFF';
+    if (mk && /^(on|off)$/i.test(mk.textContent)) mk.textContent = on ? 'On' : 'Off';
 }
 
 function zoomBy(d) {
@@ -1703,7 +1703,7 @@ function run(cmd) {
         case 'doc.new':     createDoc(); break;
         case 'doc.manage':  renderDocList(); openModal('docsModal'); break;
         case 'doc.import':  $('importFile').click(); break;
-        case 'doc.save':    save(); toast('SAVED'); break;
+        case 'doc.save':    save(); toast('Saved'); break;
         case 'doc.rename':  $('docTitle').focus(); $('docTitle').select(); break;
         case 'doc.copy':    copyDoc(); break;
         case 'doc.delete':  deleteDoc(state.active); break;
@@ -1725,14 +1725,14 @@ function run(cmd) {
             if (navigator.clipboard && navigator.clipboard.readText) {
                 navigator.clipboard.readText().then(function (t) {
                     restoreSel(); exec('insertText', t);
-                }, function () { toast('USE CTRL+V — THE BROWSER BLOCKS PASTE HERE', true); });
-            } else toast('USE CTRL+V TO PASTE', true);
+                }, function () { toast('Use Ctrl+V — the browser blocks pasting from here', true); });
+            } else toast('Use Ctrl+V to paste', true);
             break;
         case 'ed.pastePlain':
             if (navigator.clipboard && navigator.clipboard.readText) {
                 navigator.clipboard.readText().then(function (t) { restoreSel(); exec('insertText', t); },
-                    function () { toast('USE CTRL+SHIFT+V', true); });
-            } else toast('USE CTRL+SHIFT+V', true);
+                    function () { toast('Use Ctrl+Shift+V', true); });
+            } else toast('Use Ctrl+Shift+V', true);
             break;
         case 'ed.selectAll': doc.focus(); exec('selectAll'); break;
         case 'ed.find':
@@ -1887,7 +1887,7 @@ function onKey(e) {
         case 'k': e.preventDefault(); insLink(); break;
         case 'f': e.preventDefault(); run('ed.find'); break;
         case 'h': e.preventDefault(); run('ed.find'); break;
-        case 's': e.preventDefault(); save(); toast('SAVED'); break;
+        case 's': e.preventDefault(); save(); toast('Saved'); break;
         case 'o': e.preventDefault(); run('doc.manage'); break;
         case 'p': e.preventDefault(); run('doc.print'); break;
         case '\\': e.preventDefault(); clearFormat(); break;
@@ -1916,7 +1916,7 @@ function seedDoc() {
     + 'so use <strong>File &rarr; Download</strong> for anything you want to keep.</p>'
     + '<h2>What is here</h2>'
     + '<ul>'
-    + '<li><strong>Styles</strong> &mdash; title, subtitle, four heading levels, quote and code, in bay 02.</li>'
+    + '<li><strong>Styles</strong> &mdash; title, subtitle, four heading levels, quote and code, from the style menu.</li>'
     + '<li><strong>Character formatting</strong> &mdash; bold, italic, underline, strikethrough, super- and subscript, colour, highlight.</li>'
     + '<li><strong>Paragraphs</strong> &mdash; alignment, bulleted, numbered and check lists, indentation, line spacing.</li>'
     + '<li><strong>Insert</strong> &mdash; links, images, tables, rules, page breaks, special characters, footnotes and a generated table of contents.</li>'
@@ -2221,6 +2221,10 @@ function init() {
 
     document.title = active().title + ' — Docs';
     doc.focus();
+
+    /* On a phone the sheet is wider than the screen; open it fitted to the
+       width instead of cut off at the right edge. */
+    if (window.innerWidth < 700 && state.view.zoom === 1 && geo().w > deck.clientWidth - 16) zoomFit();
 
     /* Boot is over once the view state has been applied AND painted. Two frames:
        the first lets the browser commit the layout above, the second guarantees
