@@ -1,0 +1,146 @@
+{
+ "date": "2026-10-12",
+ "updated": "2026-10-12T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "Lighter Monday: NLCS Game 2 in the late afternoon, then the ALCS opener and Monday Night Football in prime time.",
+ "headlines": [
+  "Dodgers at Brewers, NLCS Game 2 (5:00 PM ET, FOX/FS1)",
+  "Guardians at Rays, ALCS Game 1 (8:00 PM ET, TBS)",
+  "Bills at Rams, Monday Night Football (8:15 PM ET, ESPN/ABC)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "League Championship Series",
+   "note": "NLCS Game 2 \u2022 ALCS opens"
+  },
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 5",
+   "note": "Monday Night Football"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-lad-mil-g2",
+   "league": "MLB",
+   "label": "MLB \u2022 NLCS",
+   "flags": [
+    "NLCS \u2022 Game 2"
+   ],
+   "competitors": [
+    {
+     "name": "Los Angeles Dodgers",
+     "abbr": "LAD",
+     "detail": "NL No. 2 seed \u2022 Yamamoto",
+     "logo": "mlb/lad"
+    },
+    {
+     "name": "Milwaukee Brewers",
+     "abbr": "MIL",
+     "detail": "NL No. 1 seed \u2022 leads 1\u20130 \u2022 Henderson",
+     "logo": "mlb/mil"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-12T17:00:00-04:00",
+   "watch": "FOX \u2022 FS1 \u2022 FOX Deportes",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "American Family Field, Milwaukee",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Milwaukee took Game 1 2\u20131 on Luis Lara's go-ahead single and 4\u2154 scoreless bullpen innings. Yoshinobu Yamamoto faces Logan Henderson.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "mlb-cle-tb-g1",
+   "league": "MLB",
+   "label": "MLB \u2022 ALCS",
+   "flags": [
+    "ALCS \u2022 Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "Cleveland Guardians",
+     "abbr": "CLE",
+     "detail": "AL No. 2 seed \u2022 Griffin",
+     "logo": "mlb/cle"
+    },
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL No. 1 seed \u2022 Rasmussen",
+     "logo": "mlb/tb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-12T20:00:00-04:00",
+   "watch": "TBS \u2022 truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast. Spanish on Univision/TUDN.",
+   "venue": "Tropicana Field, St. Petersburg, Fla.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Best-of-seven ALCS opener. Cleveland beat the White Sox 2\u20130 in Saturday's ALDS Game 5 after trailing the series 0\u20132. Foster Griffin faces Drew Rasmussen.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "nfl-buf-lar",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 5",
+   "flags": [
+    "Monday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Buffalo Bills",
+     "abbr": "BUF",
+     "detail": "",
+     "logo": "nfl/buf"
+    },
+    {
+     "name": "Los Angeles Rams",
+     "abbr": "LAR",
+     "detail": "",
+     "logo": "nfl/lar"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-12T20:15:00-04:00",
+   "watch": "ESPN \u2022 ABC",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National Monday Night Football window.",
+   "venue": "SoFi Stadium, Inglewood, Calif.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Week 5 closes in Los Angeles. Kickoff is 5:15 p.m. local.",
+   "blackout": "No territorial blackout. Local ABC carriage varies by affiliate and provider; NFL+ restrictions may apply."
+  }
+ ],
+ "footer_note": "Three qualifying events fall inside Monday's Eastern calendar day. Regional NHL games, preseason and exhibition games are excluded. The WNBA Finals open Saturday, Oct. 17.",
+ "sources": [
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-12"
+  },
+  {
+   "label": "NLCS Game 2 preview",
+   "url": "https://www.mlb.com/brewers/news/dodgers-brewers-nl-championship-series-game-2-starting-lineups-and-pitching-matchup"
+  },
+  {
+   "label": "NLCS Game 1 recap",
+   "url": "https://www.nbcnewyork.com/mlb/dodgers-brewers-nlcs-game-1/6558264/"
+  },
+  {
+   "label": "NFL Monday Night Football schedule",
+   "url": "https://www.nfl.com/schedules/2026/prime-time/monday-night-football"
+  },
+  {
+   "label": "NHL national TV, week of Oct. 12",
+   "url": "https://www.nhl.com/news/nhl-nationally-televised-games-for-week-of-october-12-2026"
+  }
+ ]
+}

@@ -1,11 +1,11 @@
 {
-  "date": "2026-10-11",
-  "updated": "2026-10-11T07:58:00-04:00",
-  "events": 15,
+  "date": "2026-10-12",
+  "updated": "2026-10-12T07:57:00-04:00",
+  "events": 3,
   "headlines": [
-    "Dodgers at Brewers, NLCS Game 1 (8:00 PM ET, FOX)",
-    "Ravens at Falcons, Sunday Night Football (8:20 PM ET, NBC/Peacock)",
-    "Eagles at Jaguars in London (9:30 AM ET, NFL Network)"
+    "Dodgers at Brewers, NLCS Game 2 (5:00 PM ET, FOX/FS1)",
+    "Guardians at Rays, ALCS Game 1 (8:00 PM ET, TBS)",
+    "Bills at Rams, Monday Night Football (8:15 PM ET, ESPN/ABC)"
   ],
   "template": "2026-09-29.1"
 }
