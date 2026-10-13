@@ -60,5 +60,9 @@
  "nhl/fla": "https://a.espncdn.com/i/teamlogos/nhl/500/fla.png",
  "nhl/la": "https://a.espncdn.com/i/teamlogos/nhl/500/la.png",
  "nhl/pit": "https://a.espncdn.com/i/teamlogos/nhl/500/pit.png",
- "nhl/wsh": "https://a.espncdn.com/i/teamlogos/nhl/500/wsh.png"
+ "nhl/wsh": "https://a.espncdn.com/i/teamlogos/nhl/500/wsh.png",
+ "nhl/nj": "https://a.espncdn.com/i/teamlogos/nhl/500/nj.png",
+ "nhl/col": "https://a.espncdn.com/i/teamlogos/nhl/500/col.png",
+ "nhl/bos": "https://a.espncdn.com/i/teamlogos/nhl/500/bos.png",
+ "nhl/sj": "https://a.espncdn.com/i/teamlogos/nhl/500/sj.png"
 }

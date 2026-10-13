@@ -1,11 +1,11 @@
 {
-  "date": "2026-10-12",
-  "updated": "2026-10-12T07:57:00-04:00",
-  "events": 3,
+  "date": "2026-10-13",
+  "updated": "2026-10-13T07:57:00-04:00",
+  "events": 4,
   "headlines": [
-    "Dodgers at Brewers, NLCS Game 2 (5:00 PM ET, FOX/FS1)",
-    "Guardians at Rays, ALCS Game 1 (8:00 PM ET, TBS)",
-    "Bills at Rams, Monday Night Football (8:15 PM ET, ESPN/ABC)"
+    "Guardians at Rays, ALCS Game 2 (8:00 PM ET, TBS)",
+    "Avalanche at Stars, NHL Frozen Frenzy (8:30 PM ET, ESPN)",
+    "Devils at Red Wings, Frozen Frenzy opener (6:00 PM ET, ESPN)"
   ],
   "template": "2026-09-29.1"
 }

@@ -1,0 +1,170 @@
+{
+ "date": "2026-10-13",
+ "updated": "2026-10-13T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Guardians at Rays, ALCS Game 2 (8:00 PM ET, TBS)",
+  "Avalanche at Stars, NHL Frozen Frenzy (8:30 PM ET, ESPN)",
+  "Devils at Red Wings, Frozen Frenzy opener (6:00 PM ET, ESPN)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "League Championship Series",
+   "note": "ALCS Game 2 \u2022 NLCS off day"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular season",
+   "note": "Frozen Frenzy \u2022 all 32 teams play \u2022 three national ESPN windows"
+  }
+ ],
+ "events": [
+  {
+   "id": "nhl-nj-det",
+   "league": "NHL",
+   "label": "NHL \u2022 Frozen Frenzy",
+   "flags": [
+    "Frozen Frenzy"
+   ],
+   "competitors": [
+    {
+     "name": "New Jersey Devils",
+     "abbr": "NJ",
+     "detail": "",
+     "logo": "nhl/nj"
+    },
+    {
+     "name": "Detroit Red Wings",
+     "abbr": "DET",
+     "detail": "",
+     "logo": "nhl/det"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-13T18:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National ESPN window in the U.S. during the league-wide Frozen Frenzy night.",
+   "venue": "Little Caesars Arena, Detroit",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Opens ESPN's Frozen Frenzy, with all 32 teams playing in staggered starts.",
+   "blackout": "Local team-network availability varies by market; check your provider. Streaming restrictions may apply."
+  },
+  {
+   "id": "mlb-cle-tb-g2",
+   "league": "MLB",
+   "label": "MLB \u2022 ALCS",
+   "flags": [
+    "ALCS \u2022 Game 2"
+   ],
+   "competitors": [
+    {
+     "name": "Cleveland Guardians",
+     "abbr": "CLE",
+     "detail": "AL No. 2 seed \u2022 leads 1\u20130 \u2022 Messick",
+     "logo": "mlb/cle"
+    },
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL No. 1 seed \u2022 Peralta",
+     "logo": "mlb/tb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-13T20:00:00-04:00",
+   "watch": "TBS \u2022 truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast. Spanish on Univision/TUDN.",
+   "venue": "Tropicana Field, St. Petersburg, Fla.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Cleveland won Game 1 7\u20133. Parker Messick faces Freddy Peralta. The NLCS is off today; Milwaukee leads Los Angeles 2\u20130 after a 7\u20134 Game 2 win.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "nhl-col-dal",
+   "league": "NHL",
+   "label": "NHL \u2022 Frozen Frenzy",
+   "flags": [
+    "Frozen Frenzy"
+   ],
+   "competitors": [
+    {
+     "name": "Colorado Avalanche",
+     "abbr": "COL",
+     "detail": "",
+     "logo": "nhl/col"
+    },
+    {
+     "name": "Dallas Stars",
+     "abbr": "DAL",
+     "detail": "",
+     "logo": "nhl/dal"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-13T20:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National ESPN window in the U.S. during the league-wide Frozen Frenzy night.",
+   "venue": "American Airlines Center, Dallas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Central Division rivals in ESPN's middle Frozen Frenzy window.",
+   "blackout": "Local team-network availability varies by market; check your provider. Streaming restrictions may apply."
+  },
+  {
+   "id": "nhl-bos-sj",
+   "league": "NHL",
+   "label": "NHL \u2022 Frozen Frenzy",
+   "flags": [
+    "Frozen Frenzy"
+   ],
+   "competitors": [
+    {
+     "name": "Boston Bruins",
+     "abbr": "BOS",
+     "detail": "",
+     "logo": "nhl/bos"
+    },
+    {
+     "name": "San Jose Sharks",
+     "abbr": "SJ",
+     "detail": "",
+     "logo": "nhl/sj"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-13T23:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National ESPN window in the U.S. during the league-wide Frozen Frenzy night. NESN also lists Boston's feed.",
+   "venue": "SAP Center, San Jose, Calif.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Late West Coast window closes Frozen Frenzy. Puck drop is 8:00 p.m. local.",
+   "blackout": "Local team-network availability varies by market; check your provider. Streaming restrictions may apply."
+  }
+ ],
+ "footer_note": "Four qualifying events fall inside Tuesday's Eastern calendar day. The other 13 Frozen Frenzy games are regional telecasts and are excluded, along with preseason and exhibition games. NLCS Game 3 is Wednesday in Los Angeles.",
+ "sources": [
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-13"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-10-13"
+  },
+  {
+   "label": "NHL national TV, week of Oct. 12",
+   "url": "https://www.nhl.com/news/nhl-nationally-televised-games-for-week-of-october-12-2026"
+  }
+ ]
+}
