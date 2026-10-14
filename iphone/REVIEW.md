@@ -1,52 +1,63 @@
-# iPhone touchscreen fixes
+# Emulator suite — independent critic review
 
-Current source revision: **iphone-touch-b1** (October 13, 2026).
+**PASS: 8.1 → 8.6/10.** Reviewed October 13, 2026. Final application identity: **suite-review-b3**.
 
-Vertical dragging works over Mail rows. Horizontal Mail swipes still reveal actions; direction and thresholds use actual screen coordinates. Screen-edge and Home indicator gestures also use the actual scaled screen dimensions. One pointer owns each gesture, with pointer cancellation and focus-loss cleanup. Browser panning no longer competes with the phone surface's custom dragging.
+Scope: the current iPhone and Mac browser recreations, minimal emulator directory, and their integration with the root homepage in `C:\Users\Dizzy\Documents\Github\isaiart`. This is a representative interface and troubleshooting review, not certification of every control or literal native OS equivalence. No deployment, commit or push was performed.
 
-New contact stops existing momentum. Paused or canceled drags do not fling. Horizontal scroll-snap is restored after animation or interruption. A drag's delayed click is blocked until the next intentional contact, while keyboard activation and editable fields retain their behavior. The circle cursor remains enabled and follows the contact.
+## Contract and reviewer
 
-Validation: JavaScript syntax check; 18 existing integration checks plus 11 new touch interaction checks pass. Real browser mouse drags verified unlock, Settings scrolling without opening rows, swipe home, Control Center pull-down, Mail vertical scrolling and horizontal actions, and reverse Mail scrolling at a 390×844 viewport. Touch pointer ownership/cancellation was exercised in the event regression harness; physical touchscreen hardware and every app-specific gesture were not tested.
+Independent critic: `/root/suite_critic`, started without the builder's conversation history and reused for both attempts. Perspective: Apple interface design and frontend engineering. Threshold **8.5/10**, maximum **three scored attempts**. The loop stopped after attempt two passed.
 
-This follow-up is not independently scored. The earlier 8.7 critic score applies to iphone-controls-review-b1, not this newer revision. Its report remains below as historical evidence. No deployment, commit or push was performed.
+Stable rubric: native/current fidelity **45%**, working behavior **35%**, visual/usability **20%**. The optional phone trigger drawer, circle cursor, charcoal page background, buildless browser implementation and minimal directory were deliberate user choices. Mac normal surfaces must exclude technician/lesson overlays. Required routes, saved-data preservation in changed flows, requested phone controls and current release identity were assessed as hard criteria. Neither attempt demonstrated a hard-criterion failure.
 
----
+| Attempt | Identity | Fidelity | Behavior | Visual | Weighted result | Verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | iPhone suite-review-a / Mac suite-review-a1 | 8.0 | 7.9 | 8.7 | 8.1 | Revise |
+| 2 | suite-review-b3 | 8.5 | 8.7 | 8.7 | **8.6** | **Pass** |
 
-## Historical critic report
+Final weighted result: 8.61, rounded to 8.6. Scores express this critic's judgment against the stated rubric; they are not proof of universal correctness. Earlier component scores came from different review contracts and are historical.
 
-# iPhone — restored-controls critic review
+## Changes reviewed
 
-Current reviewed artifact: **iphone-controls-review-b1** in `C:\Users\Dizzy\Documents\Github\isaiart\iphone`. The minimal `emulator` directory and root phone/directory routes remain in the same repository. No publication performed.
+Before the first score, fresh evidence exposed contrast defects. The builder corrected iPhone call status/Home indicators, added meaningful call button names and hid underlying controls from accessibility while a full-screen call is visible. Drawer helper text became readable. Mac native form controls now follow the represented appearance; Safari private address text and placeholders remain readable in light appearance.
 
-## Review contract and result
+The first score identified five material defects. The critic marked all five **FIXED** in the final source:
 
-The user explicitly requested a fresh critic loop after restoring the optional side popout and circle cursor. The same independent iOS interface/frontend engineering critic reviewed both attempts. Target8.5/10, maximum3 attempts; native/current fidelity45%, working behavior35%, visual/usability20%. Retaining the drawer and circle is an explicit user constraint, so their presence is not treated as a fidelity defect. Hard criteria include working requested controls/cursor, preserved saved data in changed flows, accessible phone/directory, and no false native OS claim.
+1. **iPhone network configuration affects the shared connectivity model.** Saved DNS, proxy and manual IPv4 settings now produce virtual failure reasons used by Safari, Mail, downloads and Software Update. Cellular fallback remains available when permitted. Fault and recovery tests cover unreachable resolvers, proxies, link-local addressing and mismatched routers. Displayed manual IP values agree with saved settings while preserving the device MAC.
+2. **Mac known-network auto-join is independent of Ask to join.** Enabling Wi-Fi selects the strongest available saved network with auto-join enabled. Off, Notify and Ask are covered by independent tests. Browser evidence confirms a saved network rejoined with Ask set to Off.
+3. **Mac DNS accepts IPv4 and IPv6.** DNS validation is separate from IPv4 address/router/subnet validation. Invalid input retains the saved configuration; a valid IPv6 resolver survives OK and reopening Details.
+4. **iPhone joining works by keyboard.** Network join and information actions are sibling semantic buttons. Other Network is a semantic button. Return completed a saved-network join and opened Other Network. Popped pages leave the focus tree immediately, before their departure animation finishes.
+5. **DNS and search domains use individual rows.** The phone has add/remove DNS server and search-domain rows. Mac search domains now use a list with add/remove controls. Edits remain staged until Save or OK; leaving without saving preserves existing settings. Mac domain storage remains compatible with its previous string representation. Network dropdowns have compact themed styling, and the phone summary reflects saved domains.
 
-| Attempt | Native | Behavior | Visual | Weighted score | Verdict |
-| --- | --- | --- | --- | --- | --- |
-| A — iphone-cursor-1 | 8.5 | 8.0 | 8.4 | 8.3 | Revise |
-| B — iphone-controls-review-b1 | 8.5 | 8.9 | 8.7 | **8.7** | **Pass** |
-
-Loop stopped when attempt2 passed. No material implementation changes followed the verdict. Earlier phone-building scores are historical and do not replace this current score.
-
-## Fixes confirmed by critic
-
-Silent Mode previously changed its displayed state without suppressing generated incoming-call audio. A shared setter now serves the Action button and drawer. Ring generation checks Silent, Focus/DND and zero volume; it stops an existing audio context/interval, avoids duplicate contexts, and rechecks preferences in queued callbacks.
-
-The circle previously nearly disappeared over the dark incoming-call screen while appearance was Light. It now uses a white border, dark outer outline and translucent neutral fill across themes. Accurate positioning relative to the actual scaled screen remains intact.
-
-The restored collapsible drawer retains call, mail, network, code and device triggers. It provides expanded-state labels, a close button, inaccessible hidden contents, stored open/closed preference and a mobile overlay. Circle restoration preserves existing notes/mail and honors subsequent explicit disabling.
+The phone fault model uses explicit fictional fixtures rather than real DNS/proxy connections. Reserved documentation address ranges represent unreachable resolvers. The reachable proxy fixtures are `proxy.spectrum.example:8080` and `https://proxy.spectrum.example/proxy.pac`. This does not configure the host network or establish protocol-level equivalence.
 
 ## Verification
 
-**18 integration checks passed**, independently rerun by the critic, plus syntax validation. Meaningful actual-function checks cover cursor scaling, profile migration, drawer geometry, networking forms, erase/save ordering, Safari private groups and ringtone generation. AudioContext stubs verify silent suppression, ordinary ringing, stopping, queued callbacks, duplicate requests, DND and zero volume.
+The builder and critic independently ran all five scripts: **93 checks passed**.
 
-Browser checks used an isolated localhost8770 QA origin to avoid altering the user's active8769 phone profile. Silent drawer state, incoming call, Answer/End and cursor on/tap feedback were observed. Actual speaker output was not assessed. Fresh390×844 and320×568 screenshots show drawer open/closed and current phone framing. Measured phone sizes were326×707 at390×844 and247×536 at320×568; drawer270px wide, close control accessible. Desktop dark-call and light Settings evidence establishes cursor visibility, not uninterrupted hover.
+| Script | Passing checks |
+| --- | ---: |
+| iphone/tests/smoke.cjs | 18 |
+| iphone/tests/touch.cjs | 11 |
+| iphone/tests/surfaces.cjs | 3 |
+| iphone/tests/network.cjs | 6 |
+| mac/tests/smoke.cjs | 55 |
 
-Implementation and evidence were inspected directly by the critic. Current release references and earlier phone behavior remain documented in RESEARCH.md; represented software is iOS27.0.1, checked October13,2026 against Apple documentation. No native OS equivalence is claimed.
+JavaScript syntax and local HTML asset references were checked. The critic independently verified all **112 frozen file hashes**, inspected nine revision screenshots and retained earlier evidence only for explicitly unchanged surfaces.
 
-## Remaining limitations
+Live browser checks used a separate localhost origin so the user's main saved profile was not reset by QA. They verified directory routes and homepage links, swipe unlock, Settings scrolling without activating rows, phone call/answer/end controls, keyboard joining and Other Network, DNS list persistence, and failure/recovery in Software Update with cellular disabled. Mac checks verified Wi-Fi off/on rejoining with Ask off, IPv6 DNS/search-domain persistence through OK and reopening, compact native controls, and separate private Safari windows. No console errors were captured in the assessed Mac flows.
 
-Minor nonblocking note: small drawer helper/log text has weak contrast over its translucent dark background, especially on a320px host. Primary labels and close control remain legible. This note remains unfixed in the scored artifact.
+Primary layouts: desktop 1280×720, smaller Mac 1024×768, phone/directory 390×844, and phone 320×568. Fresh DNS and fault/recovery captures support the revision. Unchanged earlier call/drawer/touch/private-window evidence is labeled as such in the evidence notes.
 
-Not assessed: actual speaker output, uninterrupted hover, exhaustive trigger/application coverage, exact native pixels/fonts/artwork, OS/kernel/hardware/Apple services, cookie/security isolation and production deployment. Secondary app placeholders, multiline DNS editing and browser embedding boundaries remain documented. This score assesses the browser recreation, not full1:1 iOS emulation.
+Evidence and manifest originals are in the chat's `work` directory: `SUITE-EVIDENCE-A.md`, `SUITE-EVIDENCE-B.md`, `suite-a-manifest.json`, `suite-b-manifest.json`, and both test transcripts. Application assets were frozen during each independent review. After the passing verdict, only review documentation and downloadable packaging were finalized; no application implementation changes followed the score.
+
+## Remaining notes and limits
+
+- **Minor native layout polish:** Mac DNS/domain remove buttons sit beside individual inputs. Apple describes selecting list items and using bottom-mounted add/remove controls. The current lists are functional and understandable, but consolidating the controls would improve correspondence. [Apple DNS settings](https://support.apple.com/guide/mac-help/change-dns-settings-on-mac-mh14127/mac)
+- **Secondary coverage remains incomplete:** Screen Time, Text Input/Dictation, several Safari services and other documented application features remain outside readiness claims. The Mac control audit and phone research document preserve those boundaries.
+
+Not assessed: exhaustive every-app/control coverage, physical touchscreen/multitouch, actual speaker output, exact native pixels/fonts/artwork, native binaries/kernel/hardware/Recovery/Apple services, host cookie/privacy isolation, long-duration scheduling and production deployment. The critic's extra interaction reprobes used isolated state harnesses; live browser evidence was captured by the builder. Still images were not treated as proof of interaction or audio.
+
+The current release reference was independently rechecked: Apple lists iOS **27.0.1** and macOS **Golden Gate 27.0.1**. [Apple security releases](https://support.apple.com/en-us/100100) [Apple Wi-Fi settings](https://support.apple.com/guide/mac-help/wi-fi-settings-on-mac-mh11935/mac)
+
+Final readiness: iPhone passes for assessed navigation, touch/call and virtual network paths; Mac passes for assessed desktop, network, session and virtual-file workflows; directory/homepage routing passes at the inspected sizes. This pass does not claim full native OS emulation.

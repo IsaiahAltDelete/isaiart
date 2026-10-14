@@ -7162,6 +7162,7 @@ networkDetailView=function(ssid){const view=baseNetworkInfo(ssid),build=view.bui
     const label=row.querySelector('.lbl')?.textContent.trim();
     const kind={'Configure DNS':'dns','Configure Proxy':'proxy','Configure IP':'ip'}[label];
     if(kind){row.onclick=()=>nav.push(networkEditor(ssid,kind));row.querySelector('.val').textContent=c[kind==='dns'?'dnsMode':kind==='proxy'?'proxyMode':'ipMode'];}
+    if(label==='Search Domains')row.querySelector('.val').textContent=(c.searchDomains||[]).join(', ')||'—';
     if(c.ipMode==='Manual' && ['IP Address','Subnet Mask','Router'].includes(label))row.querySelector('.val').textContent=c[{ 'IP Address':'ip','Subnet Mask':'subnet','Router':'router'}[label]];
   }
 };return view;};
