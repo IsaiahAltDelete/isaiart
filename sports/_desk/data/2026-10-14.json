@@ -1,0 +1,105 @@
+{
+ "date": "2026-10-14",
+ "updated": "2026-10-14T07:56:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "Light Wednesday: NLCS Game 3 and one national NHL game. The ALCS is off, tied 1\u20131 after Tampa Bay's 3\u20131 Game 2 win, and resumes Thursday in Cleveland.",
+ "headlines": [
+  "Brewers at Dodgers, NLCS Game 3 (8:00 PM ET, FS1)",
+  "Stars at Avalanche (8:30 PM ET, TNT)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "League Championship Series",
+   "note": "NLCS Game 3 \u2022 ALCS off day"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular season",
+   "note": "TNT Wednesday"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-mil-lad-g3",
+   "league": "MLB",
+   "label": "MLB \u2022 NLCS",
+   "flags": [
+    "NLCS \u2022 Game 3"
+   ],
+   "competitors": [
+    {
+     "name": "Milwaukee Brewers",
+     "abbr": "MIL",
+     "detail": "NL No. 1 seed \u2022 leads 2\u20130 \u2022 Gasser",
+     "logo": "mlb/mil"
+    },
+    {
+     "name": "Los Angeles Dodgers",
+     "abbr": "LAD",
+     "detail": "NL No. 2 seed \u2022 Snell",
+     "logo": "mlb/lad"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-14T20:00:00-04:00",
+   "watch": "FS1 \u2022 FOX Deportes",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Dodger Stadium, Los Angeles",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Series shifts to Los Angeles with Milwaukee up 2\u20130 after 2\u20131 and 7\u20134 wins. Robert Gasser faces Blake Snell. First pitch is 5:00 p.m. local.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "nhl-dal-col",
+   "league": "NHL",
+   "label": "NHL \u2022 Regular season",
+   "flags": [
+    "TNT Wednesday"
+   ],
+   "competitors": [
+    {
+     "name": "Dallas Stars",
+     "abbr": "DAL",
+     "detail": "",
+     "logo": "nhl/dal"
+    },
+    {
+     "name": "Colorado Avalanche",
+     "abbr": "COL",
+     "detail": "",
+     "logo": "nhl/col"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-14T20:30:00-04:00",
+   "watch": "TNT \u2022 truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National TNT window in the U.S.",
+   "venue": "Ball Arena, Denver",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "Second half of a home-and-home after Tuesday's Frozen Frenzy meeting in Dallas.",
+   "blackout": "Local team-network availability varies by market; check your provider. Streaming restrictions may apply."
+  }
+ ],
+ "footer_note": "Two qualifying events fall inside Wednesday's Eastern calendar day. Regional NHL games, preseason and exhibition games are excluded. The WNBA Finals open Saturday, Oct. 17.",
+ "sources": [
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-14"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-10-14"
+  },
+  {
+   "label": "NHL national TV, week of Oct. 12",
+   "url": "https://www.nhl.com/news/nhl-nationally-televised-games-for-week-of-october-12-2026"
+  }
+ ]
+}

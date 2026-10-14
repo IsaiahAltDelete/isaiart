@@ -1,11 +1,10 @@
 {
-  "date": "2026-10-13",
-  "updated": "2026-10-13T07:57:00-04:00",
-  "events": 4,
+  "date": "2026-10-14",
+  "updated": "2026-10-14T07:56:00-04:00",
+  "events": 2,
   "headlines": [
-    "Guardians at Rays, ALCS Game 2 (8:00 PM ET, TBS)",
-    "Avalanche at Stars, NHL Frozen Frenzy (8:30 PM ET, ESPN)",
-    "Devils at Red Wings, Frozen Frenzy opener (6:00 PM ET, ESPN)"
+    "Brewers at Dodgers, NLCS Game 3 (8:00 PM ET, FS1)",
+    "Stars at Avalanche (8:30 PM ET, TNT)"
   ],
   "template": "2026-09-29.1"
 }
