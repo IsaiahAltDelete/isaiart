@@ -1,0 +1,29 @@
+.window[data-app="safari"]:not(.safari-preferences) .titlebar-title,
+.window[data-app="safari"]:not(.safari-preferences) .titlebar-tools { display:none; }
+.window[data-app="safari"]:not(.safari-preferences) .titlebar-lead { flex:1; min-width:0; }
+.window[data-app="safari"]:not(.safari-preferences) .browser-bar { width:100%; border:0; padding:0; height:40px; }
+.window[data-app="safari"]:not(.safari-preferences) .titlebar { gap:12px; }
+.browser-bar .tab-strip { max-width:40%; min-width:0; border:0; padding:0; }
+.browser-bar .browser-tab.on { display:flex; background:var(--card); }
+.browser-bar .browser-tab { min-width:45px; max-width:110px; }
+.safari-empty-page { height:100%; background:var(--card); }
+.finder-options-body { padding:20px; display:flex; flex-direction:column; gap:20px; font-size:12px; }
+.finder-options-body label { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.finder-options-body input[type=range] { width:170px; }
+.finder-options-body [role=checkbox] { text-align:left; }
+.finder-options-body .btn { align-self:center; }
+.finder-view-options .window-body { background:var(--sheet); }
+.window[data-app="finder"] .file-grid { grid-template-columns:repeat(auto-fill,minmax(max(80px,var(--finder-icon-size,52px) + 32px),1fr)); gap:var(--finder-grid-gap,14px) 6px; }
+.window[data-app="finder"] .file-card { font-size:var(--finder-text-size,12px); }
+.window[data-app="finder"] .file-card .app-icon { width:var(--finder-icon-size,52px); height:var(--finder-icon-size,52px); }
+.window[data-app="finder"] .file-card small { color:var(--muted); font-size:10px; }
+.window[data-app="finder"] .file-table { font-size:var(--finder-text-size,12px); }
+@media(max-width:800px){.window[data-app="safari"]:not(.safari-preferences) .browser-bar { gap:2px; }.browser-bar .tab-strip { max-width:28%; }.browser-bar .tool-btn { min-width:23px; }.safari-native-prefs nav { overflow:auto; }.safari-pref-content { padding:18px; }}
+.spotlight-locations { min-height:180px; padding:10px; } .spotlight-locations button { display:flex; align-items:center; gap:8px; padding:8px; width:100%; text-align:left; border-radius:5px; } .spotlight-locations svg { width:20px; height:20px; } .spotlight-locations [aria-selected=true] { color:white; background:var(--accent); }
+
+.window[data-app="finder"] .finder-column-item { font-size:var(--finder-text-size,12px); }
+.window.safari-private .address-field { background:#353439; color:#fff; } .safari-private-notice { padding:24px 20px 0; text-align:center; color:var(--text); } .safari-private-notice strong { font-size:20px; } .safari-private-notice p { font-size:12px; color:var(--muted); }
+
+/* Private address fields keep readable text in light appearance. */
+.safari-private .address-field input{color:#fff;caret-color:#fff}
+.safari-private .address-field input::placeholder{color:#b9bac2;opacity:1}

@@ -1,0 +1,149 @@
+/* ---------------------------------------------------------------------------
+   Responsive behaviour. The simulator is usable from a 320px phone up to a
+   large desktop; below 820px windows become full-bleed "sheets" so the same
+   app views stay reachable, and multi-column apps collapse progressively.
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 1180px) {
+  .mail-app { grid-template-columns: 152px 268px minmax(240px, 1fr); }
+  .outlook-body { grid-template-columns: 160px 278px minmax(220px, 1fr); }
+  .launchpad-page { grid-template-columns: repeat(6, 112px); }
+}
+
+@media (max-width: 980px) {
+  .mail-app { grid-template-columns: 240px minmax(240px, 1fr); }
+  .mail-sidebar { display: none; }
+  .outlook-body { grid-template-columns: 250px minmax(220px, 1fr); }
+  .outlook-body > .sidebar { display: none; }
+  .spotlight-preview { display: none; }
+  .launchpad-page { grid-template-columns: repeat(5, 108px); }
+  .desktop-widgets { display: none; }
+}
+
+@media (max-width: 820px) {
+  :root { --dock-size: 48px; }
+
+  /* Windows behave like stacked sheets: one visible app at a time. */
+  #window-layer { inset: var(--menu-h) 0 0; }
+  .window {
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: calc(100% - 64px) !important;
+    border-radius: 14px 14px 0 0;
+    animation: sheet-up 0.24s cubic-bezier(0.25, 0.9, 0.3, 1);
+  }
+  @keyframes sheet-up { from { transform: translateY(16px); opacity: 0; } }
+  .window.zoomed, .window.fullscreen { top: 0 !important; height: 100% !important; border-radius: 0; }
+  .resize-handle { display: none; }
+  #snap-preview { display: none !important; }
+
+  .titlebar-tools .search { width: 108px; }
+  .desktop-items { top: 30px; right: 8px; }
+  .desktop-item { width: 68px; font-size: calc(10.5px * var(--text-scale)); }
+  .desktop-item .app-icon { width: 44px; height: 44px; }
+
+  .mail-app, .outlook-body { grid-template-columns: 1fr; }
+  .mail-list-pane { display: none; }
+  .mail-app.show-list .mail-list-pane { display: flex; }
+  .mail-app.show-list .mail-reading { display: none; }
+  .store-shell > .sidebar { display: none; }
+  .finder-preview { display: none; }
+  .spotlight { top: 8%; width: calc(100vw - 16px); }
+  .spotlight-head input { font-size: calc(17px * var(--text-scale)); }
+  .launchpad-page { grid-template-columns: repeat(4, 96px); gap: 16px 4px; }
+  .launchpad-app .app-icon { width: 56px; height: 56px; }
+  .exposé-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .exposé-preview { height: 112px; }
+  .panel-grid { grid-template-columns: 1fr; }
+  .dialog.wide { width: calc(100vw - 20px); }
+}
+
+@media (max-width: 620px) {
+  :root { --dock-size: 44px; --font-size: calc(12.5px * var(--text-scale)); }
+
+  .menu-bar .menu-hideable { display: none; }
+  .menu-right .status-hideable { display: none; }
+  .sidebar { width: 158px; }
+  .settings-shell > .sidebar { width: 178px; }
+  .notes-list { width: 140px; }
+  .pane-pad { padding: 16px 14px 28px; }
+  .pane-header h1 { font-size: calc(19px * var(--text-scale)); }
+  .mail-content { padding: 16px 16px 30px; }
+  .web-page { padding: 22px 16px 36px; }
+  .web-page h1 { font-size: calc(25px * var(--text-scale)); }
+  .control-center { width: calc(100vw - 14px); }
+  .notification-center { width: calc(100vw - 14px); }
+  .toast-stack { width: calc(100vw - 16px); right: 8px; }
+  .dock { gap: 3px; padding: 5px; border-radius: 16px; }
+  .dock-item:nth-last-child(n+11):not(.always-dock) { display: none; }
+  .lock-time { font-size: calc(62px * var(--text-scale)); }
+  .tile-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+  .store-cards { grid-template-columns: 1fr 1fr; }
+  .store-detail-head { flex-direction: column; }
+  .calc-key { min-height: 34px; font-size: calc(15px * var(--text-scale)); }
+  .launchpad-page { grid-template-columns: repeat(3, 92px); }
+  /* Narrow: the ribbon drops its group labels and the reading pane collapses
+     to a two-column layout, the way the real window reflows. */
+  .outlook-ribbon { padding: 5px 6px; }
+  .ol-rib-btn { min-width: 44px; font-size: calc(9px * var(--text-scale)); }
+  .ol-rib-group { padding: 0 5px; }
+  .outlook-rail { width: 54px; }
+  .ol-rail-btn { font-size: calc(9px * var(--text-scale)); }
+  .outlook-body { grid-template-columns: 168px 280px minmax(220px, 1fr); }
+  .ol-cal-body { grid-template-columns: 168px minmax(220px, 1fr); }
+  .ol-people { grid-template-columns: 260px minmax(220px, 1fr); }
+}
+
+@media (max-width: 720px) {
+  /* Below this the three-pane layout stops working, so the reading pane moves
+     under the list and the ribbon goes compact. */
+  .outlook-body,
+  .outlook-body.pane-off { grid-template-columns: 150px minmax(200px, 1fr); grid-template-rows: 1fr 1fr; }
+  .outlook-body .sidebar { grid-row: 1 / span 2; }
+  .outlook-ribbon .ol-rib-label { display: none; }
+  .outlook-ribbon .ol-rib-btn { grid-auto-flow: column; align-items: center; gap: 5px; min-width: 0; padding: 4px 7px; }
+  .outlook-ribbon .ol-rib-btn.large svg { width: 16px; height: 16px; }
+  .ol-cal-body { grid-template-columns: minmax(200px, 1fr); }
+  .ol-cal-side { display: none; }
+  .ol-people { grid-template-columns: minmax(200px, 1fr); }
+  .ol-people-card { display: none; }
+  .ol-status .ol-quota { display: none; }
+}
+
+@media (max-width: 430px) {
+  .file-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
+  .file-card .app-icon { width: 42px; height: 42px; }
+  .store-cards { grid-template-columns: 1fr; }
+  .cc-grid { grid-template-columns: 1fr 1fr; }
+  .sidebar { width: 132px; }
+  .settings-shell > .sidebar { width: 152px; }
+  .settings-list .side-item .side-label { font-size: calc(11px * var(--text-scale)); }
+  .desktop-items { display: none; }
+  .spaces-bar { display: none; }
+}
+
+/* Touch pointers get larger hit areas and no hover-only affordances. */
+@media (hover: none) {
+  .dock-magnify .dock-item:hover { transform: none; margin: 0; }
+  .traffic button::after { opacity: 1; }
+  .browser-tab .tab-x { opacity: 1; }
+  .dock-tooltip { display: none; }
+  .icon-btn, .tool-btn { min-width: 32px; height: 30px; }
+  .switch { width: 44px; height: 26px; }
+  .switch::after { width: 22px; }
+  .switch.on::after { transform: translateX(18px); }
+}
+
+/* Short viewports: reduce vertical chrome so content still fits. */
+@media (max-height: 560px) {
+  .lock-hero { top: 3%; }
+  .lock-time { font-size: calc(54px * var(--text-scale)); }
+  .auth-card { bottom: 6%; }
+  .start-page h1 { margin-top: 4vh; }
+  .launchpad-search { margin-top: calc(var(--menu-h) + 10px); }
+}
+
+@media print {
+  #desktop, .system-screen, #modal-layer { display: none !important; }
+}

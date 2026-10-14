@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+ <defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="1000" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0b1226"/><stop offset=".4" stop-color="#16264f"/><stop offset=".72" stop-color="#3a2a63"/><stop offset="1" stop-color="#0d1122"/></linearGradient>
+  <radialGradient id="glow" cx="0.5" cy="0.42" r="0.62">
+   <stop offset="0" stop-color="#ffffff" stop-opacity=".26"/>
+   <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="corner" cx="0.12" cy="0.9" r="0.6">
+   <stop offset="0" stop-color="#000000" stop-opacity=".28"/>
+   <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="soft"><feGaussianBlur stdDeviation="90"/></filter>
+ </defs>
+ <rect width="1600" height="1000" fill="url(#bg)"/>
+ <g filter="url(#soft)" opacity=".72">
+  <ellipse cx="420" cy="300" rx="440" ry="300" fill="#0b1226"/>
+  <ellipse cx="1240" cy="700" rx="480" ry="320" fill="#3a2a63"/>
+  <ellipse cx="900" cy="180" rx="360" ry="220" fill="#16264f"/>
+ </g>
+ <rect width="1600" height="1000" fill="url(#glow)"/>
+ <rect width="1600" height="1000" fill="url(#corner)"/>
+</svg>

@@ -1,0 +1,44 @@
+.native-segments { display:flex; border-radius:8px; padding:3px; background:var(--fill); margin:0 auto 20px; width:max-content; max-width:100%; }
+.native-segments button { padding:5px 16px; border-radius:6px; font-size:12px; }
+.native-segments [aria-selected=true] { background:var(--card); box-shadow:0 1px 4px #0002; }
+.tm-browser { position:fixed; inset:25px 0 0; z-index:9700; background:#101928cc; backdrop-filter:blur(14px); color:white; display:flex; align-items:center; justify-content:center; }
+.tm-date { position:absolute; top:7%; font-size:20px; font-weight:600; }
+.tm-stack { width:min(720px,calc(100vw - 180px)); height:min(420px,calc(100vh - 200px)); position:relative; }
+.tm-stack:before,.tm-stack:after { content:''; position:absolute; inset:-20px 18px 20px; border-radius:12px; background:#eee6; box-shadow:0 -18px 0 -10px #eee3; }
+.tm-stack:after { inset:-10px 10px 10px; background:#ddd9; }
+.tm-file-window { position:relative; z-index:1; height:100%; border-radius:12px; background:var(--sheet); color:var(--text); overflow:hidden; box-shadow:0 20px 80px #0008; }
+.tm-file-window header { display:flex; align-items:center; gap:8px; padding:12px 16px; background:var(--sidebar); border-bottom:1px solid var(--hair); font-weight:600; }
+.tm-file-window header .btn { margin-left:auto; display:flex; align-items:center; gap:4px; }
+.tm-file-window svg { width:18px; height:18px; flex:none; }
+.tm-files { padding:12px; overflow:auto; height:calc(100% - 50px); }
+.tm-files button { display:flex; align-items:center; gap:10px; width:100%; border-radius:6px; padding:9px; text-align:left; }
+.tm-files button small { margin-left:auto; color:var(--muted); }
+.tm-files [aria-selected=true] { background:var(--accent); color:white; }
+.tm-files [aria-selected=true] small { color:white; }
+.tm-timeline { position:absolute; right:20px; top:15%; bottom:90px; width:110px; overflow:auto; display:flex; flex-direction:column; justify-content:center; gap:12px; }
+.tm-timeline button { border-right:3px solid #ffffff55; padding:4px 10px; font-size:12px; text-align:right; }
+.tm-timeline button[aria-current=true] { color:#b6deff; border-color:#b6deff; }
+.tm-timeline small { display:block; margin-top:4px; }
+.tm-browser footer { position:absolute; left:50%; transform:translateX(-50%); bottom:25px; display:flex; align-items:center; gap:35px; white-space:nowrap; }
+.safari-preferences .window-body { background:var(--sheet); }
+.safari-native-prefs { height:100%; display:flex; flex-direction:column; }
+.safari-native-prefs nav { display:flex; justify-content:center; padding:10px 6px 8px; gap:2px; background:var(--titlebar); border-bottom:1px solid var(--hair); }
+.safari-native-prefs nav button { display:flex; flex:1; flex-direction:column; align-items:center; gap:4px; border-radius:6px; padding:6px 2px; font-size:10px; }
+.safari-native-prefs nav svg { width:25px; height:25px; color:var(--muted); }
+.safari-native-prefs nav [aria-selected=true] { background:var(--fill); }
+.safari-native-prefs nav [aria-selected=true] svg { color:var(--accent); }
+.safari-pref-content { padding:25px 30px; flex:1; overflow:auto; font-size:12px; }
+.safari-pref-row { display:flex; align-items:center; gap:12px; margin:0 0 12px; }
+.safari-pref-row > span { flex:0 0 44%; text-align:right; }
+.safari-pref-row .field { min-width:0; flex:1; width:50%; font-size:12px; }
+.safari-pref-check { display:flex; align-items:center; gap:7px; margin:12px 0 12px 45%; font-size:12px; text-align:left; }
+.safari-pref-check .checkbox { width:15px; height:15px; border:1px solid var(--hair); border-radius:4px; display:grid; place-items:center; font-size:12px; flex:none; background:var(--card); }
+.safari-pref-check .checkbox.on { color:white; background:var(--accent); border-color:var(--accent); }
+.safari-pref-actions { margin:22px 0 0 45%; }
+.safari-pref-empty { text-align:center; padding:25px; }
+.safari-pref-empty > svg { width:60px; height:60px; color:var(--muted); }
+.safari-pref-empty h2 { font-size:17px; }
+.safari-website-prefs { display:grid; grid-template-columns:135px 1fr; gap:18px; }
+.safari-website-prefs aside { font-size:11px; padding:10px; background:var(--sidebar); border:1px solid var(--hair); border-radius:6px; }
+.safari-website-prefs .safari-pref-row { display:block; margin-top:24px; }
+.safari-website-prefs .field { width:100%; margin-top:8px; }

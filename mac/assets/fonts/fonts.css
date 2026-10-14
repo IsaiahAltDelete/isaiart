@@ -1,0 +1,70 @@
+/* ---------------------------------------------------------------------------
+   Local font pack.
+
+   On a real Mac the simulator picks up the genuine system faces through
+   local() first, so the chrome is pixel-accurate there. Everywhere else it
+   falls back to the bundled Inter / JetBrains Mono web fonts that ship in this
+   folder, which keeps the layout metrics stable offline. Both bundled families
+   are SIL Open Font License 1.1 — see Inter-LICENSE.txt and
+   JetBrainsMono-LICENSE.txt.
+   --------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Mac System";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local("SF Pro Text"), local("SFProText-Regular"), local("-apple-system"),
+       local("Helvetica Neue"), url("inter-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Mac System";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: local("SF Pro Text Medium"), local("SFProText-Medium"), local("Helvetica Neue Medium"),
+       url("inter-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Mac System";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local("SF Pro Text Semibold"), local("SFProText-Semibold"),
+       url("inter-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Mac System";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local("SF Pro Text Bold"), local("SFProText-Bold"), local("Helvetica Neue Bold"),
+       url("inter-latin-700-normal.woff2") format("woff2");
+}
+
+/* Display face — used for large numerals such as the lock screen clock. */
+@font-face {
+  font-family: "Mac Display";
+  font-style: normal;
+  font-weight: 200 700;
+  font-display: swap;
+  src: local("SF Pro Display"), local("SFProDisplay-Regular"), local("Helvetica Neue"),
+       url("inter-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Mac Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local("SF Mono"), local("SFMono-Regular"), local("Menlo"),
+       url("jetbrains-mono-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Mac Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local("SF Mono Semibold"), local("SFMono-Semibold"), local("Menlo Bold"),
+       url("jetbrains-mono-latin-600-normal.woff2") format("woff2");
+}

@@ -1,0 +1,7213 @@
+
+/* =========================================================================
+   CORE — state, helpers, nav framework, home screen, gestures
+   ========================================================================= */
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+function el(tag,cls,html){const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=cls==='grp-f' && /simulat|placeholder|Tap Edit to see/i.test(String(html))?'':html;return e;}
+function h(html){const t=document.createElement('template');t.innerHTML=html.trim();return t.content.firstElementChild;}
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- persistent state ---------- */
+const SAVE_KEY='iphone-sim-v2';
+let eraseInProgress=false;
+const DEFAULTS = {
+  settings:{
+    dark:false, silent:false, glassTint:0.55, downloadUpdates:true, installUpdates:true, focusShare:true, brightness:0.9, wallpaper:0, textSize:1, bold:false,
+    airplane:false, wifi:true, wifiName:'SPECTRUM-5G', bluetooth:true, cellular:true, network:'online',
+    dnd:false, lowpower:false, rotationLock:false, autoLock:'2 Minutes', touchCursor:true, touchCursorRevision:1,
+    searchEngine:'Google', blockPopups:true, preventTracking:true, faceid:true,
+    name:"Isaiah's iPhone", appleID:'isaiah.s@icloud.com',
+    autoUpdates:true, cellDownloads:false, offloadUnused:false, hapticFeedback:true, appleIntelligence:true,
+    ringer:75, mailPreview:2, mailSignature:'Sent from my iPhone', mailThread:true
+  },
+  installed:[],
+  updatesAvailable:[],
+  mail:null,      // built by Mail module on first run
+  safari:null,    // built by Safari module
+  wf:null,        // built by the Wi-Fi module (known networks etc.)
+  accounts:null,  // Apple Accounts (sign in / out / switch)
+  wallet:null,    // cards + passes
+  clock:null,     // world clocks + alarms
+  gameBest:null,  // per-game best scores
+  phone:null,     // recents + voicemail
+  threads:null,   // Messages conversations
+  otp:null,       // live one-time passcode
+  badges:{}
+};
+let State = load();
+function load(){
+  try{
+    let raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return structuredClone(DEFAULTS);
+    const s = JSON.parse(raw);
+    const restoreCursor=s.settings?.touchCursorRevision!==1;
+    s.settings = Object.assign(structuredClone(DEFAULTS.settings), s.settings||{});
+    if(restoreCursor){s.settings.touchCursor=true;s.settings.touchCursorRevision=1;}
+    return Object.assign(structuredClone(DEFAULTS), s);
+  }catch(e){ return structuredClone(DEFAULTS); }
+}
+let saveTimer;
+function save(){ clearTimeout(saveTimer);if(eraseInProgress)return;saveTimer=setTimeout(()=>{
+  if(eraseInProgress)return;
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(State)); }catch(e){}
+},250); }
+function factoryReset(){eraseInProgress=true;clearTimeout(saveTimer);localStorage.removeItem(SAVE_KEY);location.reload();}
+
+/* ---------- Apple Accounts (sign in / out / switch) ---------- */
+function ACC(){
+  if(!State.accounts) State.accounts={
+    signedIn:1,
+    list:[{id:1,name:'Isaiah S.',email:'isaiah.s@icloud.com',initials:'IS',
+           color:'linear-gradient(135deg,#5e5ce6,#0a84ff)',storage:47.2,plan:'200 GB'}]
+  };
+  return State.accounts;
+}
+function currentAccount(){ const a=ACC(); return a.list.find(x=>x.id===a.signedIn)||null; }
+function signInSheet(nav,{switching}={}){
+  sheet((s,close)=>{
+    s.style.height='auto';
+    const wrap=el('div');
+    wrap.style.cssText='padding:26px 24px 34px;text-align:center';
+    wrap.innerHTML=`
+      <div style="width:62px;height:62px;border-radius:16px;margin:0 auto 14px;background:linear-gradient(135deg,#5e5ce6,#0a84ff);
+        display:grid;place-items:center;color:#fff">${sf('<circle cx="12" cy="8" r="3.8"/><path d="M4.6 20.4a7.4 7.4 0 0114.8 0"/>',{size:30})}</div>
+      <div style="font-size:21px;font-weight:700">${switching?'Switch Apple Account':'Apple Account Sign In'}</div>
+      <div class="muted" style="font-size:13.5px;line-height:1.45;margin-top:6px">
+        Use any address you like — this simulator never contacts Apple.</div>`;
+    const g=el('div','grp'); g.style.margin='18px 0 8px';
+    const mk=(label,ph,type)=>{ const f=el('div','compose-field');
+      f.innerHTML=`<div class="k" style="min-width:84px">${label}</div>`;
+      const i=el('input'); i.placeholder=ph; if(type)i.type=type; i.autocapitalize='off';
+      f.appendChild(i); g.appendChild(f); return i; };
+    const nameIn=mk('Name','Jane Appleseed');
+    const mailIn=mk('Email','you@icloud.com');
+    const pwIn=mk('Password','Required','password');
+    g.lastElementChild.style.borderBottom='none';
+    wrap.appendChild(g);
+    const btn=el('button','btn-primary','Sign In');
+    btn.style.marginTop='10px';
+    btn.onclick=()=>{
+      if(!nameIn.value.trim()) return toast('Enter a name');
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mailIn.value.trim())) return toast('Enter a valid email');
+      if(!pwIn.value) return toast('Enter a password');
+      btn.innerHTML='<div class="spinner" style="margin:0 auto;border-top-color:#fff"></div>';
+      setTimeout(()=>{
+        const a=ACC();
+        const email=mailIn.value.trim().toLowerCase();
+        let acct=a.list.find(x=>x.email.toLowerCase()===email);
+        if(!acct){
+          acct={id:Date.now(), name:nameIn.value.trim(), email,
+            initials:nameIn.value.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase(),
+            color:'linear-gradient(135deg,'+colorFor(email)+',#0a84ff)', storage:+(Math.random()*40+5).toFixed(1), plan:'5 GB'};
+          a.list.push(acct);
+        }
+        a.signedIn=acct.id;
+        State.settings.appleID=acct.email;
+        save(); close();
+        island('☁️','#0a84ff','Apple Account','Signed in as '+acct.email,2600);
+        nav&&nav.refresh();
+      },1200);
+    };
+    wrap.appendChild(btn);
+    if(ACC().list.length && !currentAccount()){
+      const other=el('div');
+      other.style.cssText='margin-top:18px;text-align:left';
+      other.appendChild(el('div','grp-h','Accounts on this iPhone'));
+      const gg=el('div','grp');
+      ACC().list.forEach(a2=>gg.appendChild(makeRow({
+        label:a2.name, sub:a2.email,
+        icon:`<div class="avatar" style="width:32px;height:32px;font-size:13px;background:${a2.color}">${esc(a2.initials)}</div>`,
+        iconBg:'transparent',
+        onClick:()=>{ ACC().signedIn=a2.id; State.settings.appleID=a2.email; save(); close();
+          island('☁️','#0a84ff','Apple Account','Signed in as '+a2.email,2400); nav&&nav.refresh(); }})));
+      other.appendChild(gg);
+      wrap.appendChild(other);
+    }
+    const cancel=el('button','','Cancel');
+    cancel.style.cssText='color:var(--txt2);font-size:15px;margin-top:16px;display:block;width:100%';
+    cancel.onclick=close;
+    wrap.appendChild(cancel);
+    s.appendChild(wrap);
+    setTimeout(()=>nameIn.focus(),380);
+  },{full:true});
+}
+/* Erase All Content and Settings, with the real multi-step flow */
+function eraseFlow(){
+  alertBox({title:'Erase All Content and Settings?',
+    message:'This will delete all media, data and settings in the simulator. This cannot be undone.',
+    buttons:[{text:'Cancel'},{text:'Continue',style:'bold',onClick:()=>{
+      alertBox({title:'Erase This iPhone?',
+        message:'Your apps, mail accounts, photos, games and Apple Account will be removed from this iPhone.',
+        buttons:[{text:'Cancel'},{text:'Erase iPhone',style:'red bold',onClick:runErase}]});
+    }}]});
+}
+function runErase(){
+  closeOverlay();
+  openApps.forEach((v,k)=>quitApp(k));
+  currentApp=null;
+  $('#home').classList.remove('blurred');
+  const ov=el('div');
+  ov.style.cssText=`position:absolute;inset:0;z-index:1900;background:#000;color:#fff;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;gap:20px`;
+  ov.innerHTML=`<div style="width:74px;color:#fff">
+      <svg viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg></div>
+    <div style="width:170px;height:5px;border-radius:3px;background:#2b2b2e;overflow:hidden">
+      <i id="eraseBar" style="display:block;height:100%;width:0;background:#e8e8ed;transition:width .3s"></i></div>
+    <div style="font-size:13px;opacity:.6">Erasing iPhone…</div>`;
+  $('#screen').appendChild(ov);
+  let p=0;
+  const t=setInterval(()=>{ p+=8+Math.random()*10;
+    const bar=$('#eraseBar'); if(bar) bar.style.width=Math.min(100,p)+'%';
+    if(p>=100){ clearInterval(t); setTimeout(factoryReset,600); } },240);
+}
+
+/* ---------- theme / appearance ---------- */
+function applyAppearance(){
+  const s=State.settings, sc=$('#screen');
+  sc.classList.toggle('light', !s.dark);
+  sc.style.setProperty('--tsize', s.textSize);
+  sc.style.fontWeight = s.bold?'600':'';
+  $('#wall').className = 'wp-'+s.wallpaper;
+  const lw=$('#lk-wall'); if(lw) lw.className='wp-'+s.wallpaper;
+  $('#dim').style.opacity = String(Math.max(0,(1-s.brightness)*0.72));
+  document.body.style.filter = s.lowpower? 'saturate(.9)':'';
+  renderStatus();
+}
+
+/* =========================================================================
+   SF-Symbol-style glyph set — stroked 24×24 paths, used for every settings
+   row, tab bar and status glyph in place of emoji.
+   ========================================================================= */
+function sf(inner,{fill=false,w=1.7,size=17,box=24}={}){
+  return `<svg viewBox="0 0 ${box} ${box}" width="${size}" height="${size}" fill="${fill?'currentColor':'none'}"
+    stroke="${fill?'none':'currentColor'}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"
+    style="display:block">${inner}</svg>`;
+}
+const SF={
+  get gear(){return sf('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.6l1.2 2.2 2.4-.5.5 2.4 2.2 1.2-1.3 2.1 1.3 2.1-2.2 1.2-.5 2.4-2.4-.5L12 21.4l-1.2-2.2-2.4.5-.5-2.4-2.2-1.2L7 12l-1.3-2.1 2.2-1.2.5-2.4 2.4.5z"/>')},
+  get wifi(){return sf('<path d="M2.6 8.6a14 14 0 0118.8 0"/><path d="M5.6 12a10 10 0 0112.8 0"/><path d="M8.6 15.4a6 6 0 016.8 0"/><circle cx="12" cy="19" r="1.1" fill="currentColor" stroke="none"/>')},
+  get bluetooth(){return sf('<path d="M7 7 17 17 12 21V3l5 4L7 17"/>')},
+  get antenna(){return sf('<rect x="3" y="14.5" width="2.6" height="6" rx="1" fill="currentColor" stroke="none"/><rect x="8" y="11" width="2.6" height="9.5" rx="1" fill="currentColor" stroke="none"/><rect x="13" y="7.5" width="2.6" height="13" rx="1" fill="currentColor" stroke="none"/><rect x="18" y="4" width="2.6" height="16.5" rx="1" fill="currentColor" stroke="none"/>')},
+  get link(){return sf('<path d="M10 13.8a4 4 0 005.7 0l2.6-2.6a4 4 0 00-5.7-5.7l-1.3 1.3"/><path d="M14 10.2a4 4 0 00-5.7 0l-2.6 2.6a4 4 0 005.7 5.7l1.3-1.3"/>')},
+  get globe(){return sf('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 3 2.6 15 0 18M12 3c-2.6 3-2.6 15 0 18"/>')},
+  get bell(){return sf('<path d="M18 15.5V10a6 6 0 10-12 0v5.5L4.5 18h15z"/><path d="M10 21h4"/>')},
+  get speaker(){return sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/><path d="M15.5 9.2a4 4 0 010 5.6M18.2 6.6a8 8 0 010 10.8"/>')},
+  get moon(){return sf('<path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z"/>')},
+  get hourglass(){return sf('<path d="M7 3h10M7 21h10"/><path d="M7 3c0 4 5 6 5 9s-5 5-5 9"/><path d="M17 3c0 4-5 6-5 9s5 5 5 9"/>')},
+  get accessibility(){return sf('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="7.6" r="1.3" fill="currentColor" stroke="none"/><path d="M7.5 10.4h9M12 10.8v4.2M12 15l-2.2 3.4M12 15l2.2 3.4"/>')},
+  get batteryIcon(){return sf('<rect x="2" y="8" width="17" height="9" rx="3"/><path d="M21 11.2v2.6"/><rect x="4" y="10" width="9" height="5" rx="1.5" fill="currentColor" stroke="none"/>')},
+  get camera(){return sf('<rect x="2.5" y="6.5" width="19" height="13" rx="3.4"/><path d="M8.5 6.5l1.4-2.4h4.2l1.4 2.4"/><circle cx="12" cy="13" r="3.7"/>')},
+  get sliders(){return sf('<path d="M5 4v6M5 14v6M12 4v3M12 11v9M19 4v9M19 17v3"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="9" r="2"/><circle cx="19" cy="15" r="2"/>')},
+  get sun(){return sf('<circle cx="12" cy="12" r="4"/><path d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/>')},
+  get grid(){return sf('<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>')},
+  get magnifier(){return sf('<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4L21 21"/>')},
+  get photo(){return sf('<rect x="3" y="4.5" width="18" height="15" rx="3"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="M4 17l4.8-4.6a2 2 0 012.7 0L20 20"/>')},
+  get sparkles(){return sf('<path d="M12 3l1.7 4.6L18.3 9.3 13.7 11 12 15.6 10.3 11 5.7 9.3 10.3 7.6z" fill="currentColor" stroke="none"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" fill="currentColor" stroke="none"/><path d="M5.5 14l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" fill="currentColor" stroke="none"/>')},
+  get faceid(){return sf('<path d="M4 8.5V6a2 2 0 012-2h2.5M15.5 4H18a2 2 0 012 2v2.5M20 15.5V18a2 2 0 01-2 2h-2.5M8.5 20H6a2 2 0 01-2-2v-2.5"/><path d="M9 10v1.6M15 10v1.6M12 10v3.2h-1"/><path d="M9.4 16a4 4 0 005.2 0"/>')},
+  get sos(){return sf('<circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a1.6 1.6 0 10-1.4 2.4 1.6 1.6 0 11-1.4 2.4"/><path d="M14.4 9.6h2.4M14.4 12h2.4M14.4 14.4h2.4"/>')},
+  get hand(){return sf('<path d="M9 11V5.2a1.6 1.6 0 013.2 0V11m0-1.4a1.6 1.6 0 013.2 0V12m0-1a1.6 1.6 0 013.2 0v4.6a5.4 5.4 0 01-5.4 5.4h-1.4a5 5 0 01-4-2L6 15.2a1.7 1.7 0 012.7-2L9 14"/>')},
+  get gamepad(){return sf('<rect x="2.5" y="7" width="19" height="10" rx="4.6"/><path d="M7 10.5v3M5.5 12h3"/><circle cx="15.8" cy="11.4" r="1.1" fill="currentColor" stroke="none"/><circle cx="18" cy="13.4" r="1.1" fill="currentColor" stroke="none"/>')},
+  get cloud(){return sf('<path d="M7 18.5a4.2 4.2 0 01-.4-8.4 5.4 5.4 0 0110.5-1.3A3.9 3.9 0 0117.6 18.5z"/>')},
+  get card(){return sf('<rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 9.5h19"/><path d="M6 14.5h3.5"/>')},
+  get appsIcon(){return sf('<rect x="3" y="3" width="18" height="18" rx="5"/><path d="M8.4 15.5L12 7.6l3.6 7.9M9.6 13.2h4.8"/>')},
+  get envelope(){return sf('<rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M3.5 7l7.3 5.6a2 2 0 002.4 0L20.5 7"/>')},
+  get compass(){return sf('<circle cx="12" cy="12" r="9"/><path d="M15.6 8.4l-1.9 5.3-5.3 1.9 1.9-5.3z" fill="currentColor" stroke="none"/>')},
+  get key(){return sf('<circle cx="8" cy="8" r="4"/><path d="M10.8 10.8L20 20M17 17l2-2M14 14l2-2"/>')},
+  get lock(){return sf('<rect x="5" y="10.5" width="14" height="10" rx="3"/><path d="M8.2 10.5V7.8a3.8 3.8 0 017.6 0v2.7"/>',{w:1.9,size:16})},
+  get unlock(){return sf('<rect x="5" y="10.5" width="14" height="10" rx="3"/><path d="M8.2 10.5V7.8a3.8 3.8 0 017.6-.4"/>',{w:1.9,size:16})},
+  get torch(){return sf('<path d="M9 3h6l-.6 3.4H9.6z"/><path d="M9.6 6.4h4.8l.6 2.2v11a1.4 1.4 0 01-1.4 1.4h-3.2a1.4 1.4 0 01-1.4-1.4v-11z"/><path d="M12 12v3"/>',{w:1.6,size:19})},
+  get chevD(){return sf('<path d="M6 9.5l6 6 6-6"/>',{w:2.2,size:16})},
+  get phoneGlyph(){return sf('<path d="M6.6 3.5l2.6.6 1.2 3.6-2 1.5a11.6 11.6 0 006 6l1.5-2 3.6 1.2.6 2.6a2 2 0 01-2.1 2.4C11 19 5 13 3.9 5.6A2 2 0 016.6 3.5z" fill="currentColor" stroke="none"/>',{fill:true})},
+  get msgGlyph(){return sf('<path d="M12 4.2c4.7 0 8.5 3 8.5 6.8s-3.8 6.8-8.5 6.8a10 10 0 01-2.6-.3l-4 1.7 1.2-3.1a6.6 6.6 0 01-2.6-5C4 7.2 7.8 4.2 12 4.2z" fill="currentColor" stroke="none"/>',{fill:true})},
+  get plusCircle(){return sf('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>')},
+  get flag(){return sf('<path d="M5.5 21V4.5M5.5 5.5h11l-1.6 3.4 1.6 3.4h-11"/>')},
+  get trash(){return sf('<path d="M4.5 6.5h15M9.5 6.5V4.8h5v1.7M6.5 6.5l.9 12.4a2 2 0 002 1.8h5.2a2 2 0 002-1.8l.9-12.4"/>')},
+  get folder(){return sf('<path d="M3 8.2a2.5 2.5 0 012.5-2.5h3.2l2 2.3h7.8A2.5 2.5 0 0121 10.5v6.8a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 17.3z"/>')},
+  get reply(){return sf('<path d="M9.5 6L4 11.5 9.5 17"/><path d="M4 11.5h9a6 6 0 016 6V19"/>')},
+  get compose(){return sf('<path d="M4 20h4.2L20 8.2a2.1 2.1 0 00-3-3L5.2 17z"/><path d="M14.5 6.5l3 3"/>')},
+  get share(){return sf('<path d="M12 15V4M12 4L8.4 7.6M12 4l3.6 3.6"/><path d="M5.5 12.5V19a1.6 1.6 0 001.6 1.6h9.8A1.6 1.6 0 0018.5 19v-6.5"/>')},
+  get book(){return sf('<path d="M4 5.2A2 2 0 016 3.4h5.2v17H6a2 2 0 00-2 1.8z"/><path d="M20 5.2a2 2 0 00-2-1.8h-5.2v17H18a2 2 0 012 1.8z"/>')},
+  get tabs(){return sf('<rect x="3" y="5" width="13" height="13" rx="3"/><path d="M8 21h9a4 4 0 004-4V8"/>')},
+  get clockGlyph(){return sf('<circle cx="12" cy="12" r="9"/><path d="M12 6.6V12l3.6 2.2"/>')},
+  get history(){return sf('<path d="M3.8 12a8.2 8.2 0 108.2-8.2A8.2 8.2 0 005.4 7"/><path d="M3.4 3.6v3.6H7"/><path d="M12 7.6V12l3 1.8"/>')},
+  get person(){return sf('<circle cx="12" cy="8" r="3.8"/><path d="M4.6 20.4a7.4 7.4 0 0114.8 0"/>')},
+  get star(){return sf('<path d="M12 3.6l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.8l5.9-.9z"/>')},
+  get inbox(){return sf('<path d="M3.2 13.5h4.3l1.3 2.6h6.4l1.3-2.6h4.3"/><path d="M5.4 5.2h13.2l2.2 8.3v3.9a2 2 0 01-2 2H5.2a2 2 0 01-2-2v-3.9z"/>')},
+  get archive(){return sf('<rect x="3" y="4.5" width="18" height="4.4" rx="1.6"/><path d="M4.8 8.9v9a2 2 0 002 2h10.4a2 2 0 002-2v-9"/><path d="M9.8 12.6h4.4"/>')},
+  get paperclip(){return sf('<path d="M18.4 11.2l-7 7a4.2 4.2 0 01-6-6l7.6-7.6a2.8 2.8 0 014 4l-7.5 7.5a1.4 1.4 0 01-2-2l6.9-6.9"/>')},
+  get map(){return sf('<path d="M3.5 6.4l5.5-2 6 2 5.5-2v13.2l-5.5 2-6-2-5.5 2z"/><path d="M9 4.4v13.2M15 6.4v13.2"/>')},
+  get music(){return sf('<path d="M9 18V6.4l10-2v11.2"/><ellipse cx="6.6" cy="18" rx="2.6" ry="2.2" fill="currentColor" stroke="none"/><ellipse cx="16.6" cy="15.6" rx="2.6" ry="2.2" fill="currentColor" stroke="none"/>')},
+  get calc(){return sf('<rect x="4" y="2.6" width="16" height="18.8" rx="3.4"/><rect x="7" y="5.6" width="10" height="3.4" rx="1.2"/><path d="M8.4 13h.02M12 13h.02M15.6 13h.02M8.4 17h.02M12 17h.02M15.6 17h.02" stroke-width="2.6"/>')},
+  get note(){return sf('<path d="M5 4.6h14v10.2L14.2 20H5z"/><path d="M19 14.6h-4.8V20"/><path d="M8.4 9h7.2M8.4 12.4h5"/>')},
+  get tv(){return sf('<rect x="2.6" y="4.6" width="18.8" height="13" rx="3"/><path d="M8.4 20.6h7.2"/>')},
+  get wallet(){return sf('<rect x="3" y="6" width="18" height="13" rx="3.4"/><path d="M3 10.4h18"/><circle cx="16.6" cy="14.6" r="1.2" fill="currentColor" stroke="none"/>')},
+  get cloudSlash(){return sf('<path d="M7 18.5a4.2 4.2 0 01-.4-8.4 5.4 5.4 0 0110.5-1.3A3.9 3.9 0 0117.6 18.5z"/><path d="M3.6 3.6L20.4 20.4"/>')},
+  get plane(){return sf('<path d="M21 15.6v-1.8l-7.6-4.6V3.9a1.4 1.4 0 10-2.8 0v5.3L3 13.8v1.8l7.6-2.3v4.9l-2 1.4v1.3l3.4-.9 3.4.9v-1.3l-2-1.4v-4.9z" fill="currentColor" stroke="none"/>',{fill:true,size:15})}
+};
+/* coloured rounded-square container used by settings rows */
+function icoBox(glyph,bg){ return {icon:glyph, iconBg:bg}; }
+
+/* ---------- SVG bits ---------- */
+const SVG = {
+  chev:'<svg width="8" height="13" viewBox="0 0 8 13" fill="none"><path d="M1.5 1.5L6.5 6.5L1.5 11.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  back:'<svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M10.5 1.5L2 10L10.5 18.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  wifi:'<svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><path d="M8.5 11.6l2.3-2.6a3.4 3.4 0 00-4.6 0l2.3 2.6zM8.5 5.2c1.7 0 3.3.6 4.5 1.7l1.4-1.6A9 9 0 008.5 3a9 9 0 00-5.9 2.3L4 6.9a6.7 6.7 0 014.5-1.7zM8.5.4C11.4.4 14 1.5 16 3.3l1-1.2A12.4 12.4 0 008.5-1 12.4 12.4 0 000 2.1l1 1.2C3 1.5 5.6.4 8.5.4z"/></svg>',
+  cell:'<svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="6" width="3" height="6" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>',
+  plane:'<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0011.5 2 1.5 1.5 0 0010 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z"/></svg>',
+  search:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="6.8" cy="6.8" r="5" stroke="currentColor" stroke-width="1.9"/><path d="M10.6 10.6L14.5 14.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>',
+  /* iOS 26 draws the percentage inside the battery — compact, so the right
+     cluster never runs into the Dynamic Island. */
+  battery(p, charging, low){
+    const pct=Math.round(p*100);
+    const w=Math.max(3, Math.round(23*p));
+    const col = low?'#ffd60a':(charging?'#30d158':'currentColor');
+    const dark = p>0.42;   // number sits on top of the fill
+    return `<svg width="31" height="14" viewBox="0 0 31 14" fill="none">
+      <rect x=".5" y=".5" width="26" height="13" rx="4.6" stroke="currentColor" opacity=".36"/>
+      <rect x="1.8" y="1.8" width="${w}" height="10.4" rx="3.4" fill="${col}"/>
+      <text x="14.5" y="10.4" font-size="8.6" font-weight="700" text-anchor="middle"
+        fill="${dark?'#000':'currentColor'}" font-family="-apple-system,Helvetica,Arial" letter-spacing="-.3">${pct}</text>
+      <path d="M28.2 4.6v4.8c1.1-.4 1.8-1.3 1.8-2.4s-.7-2-1.8-2.4z" fill="currentColor" opacity=".42"/></svg>`;
+  },
+  tab(name){
+    const p={
+      today:'<rect x="3" y="3.5" width="18" height="17" rx="3.4"/><path d="M6.6 8.5h7M6.6 12h10.8M6.6 15.5h6"/>',
+      apps:'<rect x="3.2" y="3.2" width="7.4" height="7.4" rx="2.2"/><rect x="13.4" y="3.2" width="7.4" height="7.4" rx="2.2"/><rect x="3.2" y="13.4" width="7.4" height="7.4" rx="2.2"/><rect x="13.4" y="13.4" width="7.4" height="7.4" rx="2.2"/>',
+      updates:'<path d="M12 3.2a8.8 8.8 0 108.8 8.8"/><path d="M20.8 3.6v4.6h-4.6"/><path d="M12 7.6v5.6l3.4 2"/>',
+      searchT:'<circle cx="10.6" cy="10.6" r="6.6"/><path d="M15.4 15.4L21 21"/>'
+    }[name]||'';
+    return sf(p,{size:25});
+  }
+};
+
+/* ---------- status bar ---------- */
+let batteryLevel = 0.86, charging=false;
+function clockStr(d=new Date()){ let hh=d.getHours()%12||12, mm=String(d.getMinutes()).padStart(2,'0'); return `${hh}:${mm}`; }
+function renderStatus(){
+  const s=State.settings;
+  $('#st-time').textContent = clockStr();
+  const right=[];
+  if(s.airplane) right.push(SVG.plane);
+  else if(s.network==='noservice') right.push('<span class="noservice">No Service</span>');
+  else{
+    if(s.cellular) right.push(SVG.cell);
+    if(s.wifi) right.push(s.network==='offline'? `<span style="opacity:.45">${SVG.wifi}</span>` : SVG.wifi);
+  }
+  right.push(SVG.battery(batteryLevel, charging, s.lowpower));
+  $('#st-right').innerHTML = right.join('');
+  renderIsland();
+  // dark icons when a light app is in the foreground
+  const privateSafari=currentApp?.id==='safari' && State.safari?.privateMode;
+  $('#screen').classList.toggle('safari-private-active',Boolean(privateSafari));
+  const light = !s.dark && (currentApp && !currentApp.darkStatus) && !privateSafari;
+  $('#status').classList.toggle('dark-ui', !!light);
+  $('#homebar').classList.toggle('dark', !!light);
+  const lk=$('#lk-clock'); if(lk){ const d=new Date();
+    lk.textContent = clockStr(d);
+    $('#lk-date').textContent = d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  }
+  $('#lk-batt').textContent = Math.round(batteryLevel*100)+'%';
+}
+setInterval(()=>{ if(!charging) batteryLevel=Math.max(.05,batteryLevel-0.00035); renderStatus(); }, 5000);
+setInterval(renderStatus, 1000);
+
+/* ---------- Dynamic Island ---------- */
+let islandTimer, islandBusy=false;
+function island(icon, color, title, sub, ms=2600){
+  const isl=$('#island');
+  islandBusy=true;
+  isl.querySelector('.il-content').innerHTML =
+    `<div class="il-badge" style="background:${color}">${icon}</div>
+     <div style="flex:1;min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(title)}</div>
+     <div style="opacity:.65;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(sub||'')}</div></div>`;
+  isl.classList.add('expanded');
+  clearTimeout(islandTimer);
+  islandTimer=setTimeout(()=>{ isl.classList.remove('expanded'); islandBusy=false; renderIsland(); }, ms);
+}
+/* The compact island doubles as the "on call" pill once a call is running. */
+function renderIsland(){
+  const isl=$('#island'); if(!isl) return;
+  const onCall = Call.state==='active';
+  isl.classList.toggle('call', onCall);
+  if(islandBusy) return;
+  if(onCall){
+    isl.querySelector('.il-content').innerHTML=
+      `<div style="width:21px;height:21px;border-radius:50%;background:#30d158;display:grid;place-items:center;flex:none">
+         ${sf('<path d="M6.6 3.5l2.6.6 1.2 3.6-2 1.5a11.6 11.6 0 006 6l1.5-2 3.6 1.2.6 2.6a2 2 0 01-2.1 2.4C11 19 5 13 3.9 5.6A2 2 0 016.6 3.5z" fill="currentColor" stroke="none"/>',{fill:true,size:11})}</div>
+       <div style="flex:1;font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;color:#30d158;text-align:center">${callDuration()}</div>
+       <div class="il-wave"><i></i><i></i><i></i><i></i><i></i></div>`;
+  } else isl.querySelector('.il-content').innerHTML='';
+}
+$('#island').addEventListener('click',()=>{ if(Call.state==='active') showCallUI(); });
+
+/* ---------- toast / alerts / sheets ---------- */
+function toast(msg, ms=1700){
+  $$('.toast').forEach(t=>t.remove());
+  const t=el('div','toast',esc(msg)); $('#screen').appendChild(t);
+  setTimeout(()=>{t.style.transition='opacity .3s';t.style.opacity='0';setTimeout(()=>t.remove(),300);},ms);
+}
+function alertBox({title,message,buttons}){
+  const ov=$('#overlay'); ov.innerHTML='';
+  const a=el('div','alert',
+    `<div class="at">${esc(title)}</div>${message?`<div class="am">${esc(message)}</div>`:''}
+     <div class="ab">${buttons.map((b,i)=>`<button data-i="${i}" class="${b.style||''}">${esc(b.text)}</button>`).join('')}</div>`);
+  ov.appendChild(a); ov.classList.add('on'); requestAnimationFrame(()=>a.classList.add('on'));
+  a.onclick=e=>{ const b=e.target.closest('button'); if(!b)return;
+    const btn=buttons[+b.dataset.i]; closeOverlay(); btn.onClick&&btn.onClick(); };
+}
+function actionSheet(title, items, cancelText='Cancel'){
+  const ov=$('#overlay'); ov.innerHTML='';
+  const a=el('div','actionsheet',
+    `<div class="as-grp">${title?`<div class="as-title">${esc(title)}</div>`:''}
+      ${items.map((it,i)=>`<button data-i="${i}" class="${it.style||''}">${esc(it.text)}</button>`).join('')}</div>
+     <div class="as-grp as-cancel"><button data-cancel="1">${esc(cancelText)}</button></div>`);
+  ov.appendChild(a); ov.classList.add('on'); requestAnimationFrame(()=>a.classList.add('on'));
+  ov.onclick=e=>{ if(e.target===ov) closeOverlay(); };
+  a.onclick=e=>{ const b=e.target.closest('button'); if(!b)return;
+    if(b.dataset.cancel){closeOverlay();return;}
+    const it=items[+b.dataset.i]; closeOverlay(); it.onClick&&it.onClick(); };
+}
+function sheet(buildFn,{full=false}={}){
+  const ov=$('#overlay'); ov.innerHTML='';
+  const s=el('div','sheet'); s.style.height = full?'94%':'auto';
+  ov.appendChild(s); ov.classList.add('on');
+  buildFn(s, closeOverlay);
+  requestAnimationFrame(()=>s.classList.add('on'));
+  ov.onclick=e=>{ if(e.target===ov) closeOverlay(); };
+  return s;
+}
+function closeOverlay(){
+  const ov=$('#overlay'); ov.classList.remove('on');
+  $$('.sheet,.alert,.actionsheet',ov).forEach(x=>x.classList.remove('on'));
+  setTimeout(()=>{ if(!ov.classList.contains('on')) ov.innerHTML=''; },320);
+}
+
+/* =========================================================================
+   Nav framework
+   ========================================================================= */
+class Nav{
+  /* Always render into an inner container: attaching .nav to an app window
+     would fight .appwin's own positioning and collapse it to zero height. */
+  constructor(host){ const inner=el('div','nav'); host.appendChild(inner); this.host=inner; this.stack=[]; }
+  get top(){ return this.stack[this.stack.length-1]; }
+  _build(view){
+    const page=el('div','navpage');
+    let bar=null;
+    if(!view.noBar){
+      bar=el('div','navbar');
+      const prev=this.stack[this.stack.length-1];
+      const backLabel = view.backLabel ?? (prev? (prev.shortTitle||prev.title||'Back') : null);
+      if(this.stack.length && backLabel!==false){
+        const b=el('button','nb-btn',`${SVG.back}<span>${esc(backLabel)}</span>`);
+        b.onclick=()=>this.pop(); bar.appendChild(b);
+      }
+      (view.left||[]).forEach(a=>{ const b=el('button','nb-btn '+(a.cls||''), a.html||esc(a.text)); b.onclick=()=>a.onClick(this); bar.appendChild(b); });
+      if(!view.largeTitle) bar.appendChild(el('div','nb-title',esc(view.title||'')));
+      const right=el('div','nb-right');
+      (view.right||[]).forEach(a=>{ const b=el('button','nb-btn '+(a.cls||''), a.html||esc(a.text)); b.onclick=()=>a.onClick(this); right.appendChild(b); });
+      bar.appendChild(right);
+      page.appendChild(bar);
+    }
+    const body=el('div','body');
+    if(view.largeTitle) body.appendChild(el('div','lg-title',esc(view.title||'')));
+    page.appendChild(body);
+    if(bar) body.addEventListener('scroll',()=>bar.classList.toggle('scrolled', body.scrollTop>6));
+    view._page=page; view._body=body; view._bar=bar; view._nav=this;
+    view.build && view.build(body,this,view);
+    if(view.tabbar) page.appendChild(view.tabbar);
+    return page;
+  }
+  push(view,animate=true){
+    const page=this._build(view);
+    const prev=this.top;
+    this.host.appendChild(page);
+    this.stack.push(view);
+    if(animate&&prev){
+      page.classList.add('in');
+      prev._page.classList.add('out');
+      setTimeout(()=>{page.classList.remove('in');},340);
+    }
+  }
+  pop(){
+    if(this.stack.length<2) return;
+    const view=this.stack.pop();
+    view._page.inert=true;view._page.setAttribute('aria-hidden','true');
+    const prev=this.top;
+    prev._page.classList.remove('out');
+    prev._page.classList.add('back-in');
+    view._page.classList.add('back-out');
+    setTimeout(()=>{ view._page.remove(); prev._page.classList.remove('back-in'); },340);
+    view.onPop && view.onPop();
+    prev.onReturn && prev.onReturn(prev._body, this, prev);
+  }
+  popToRoot(){ while(this.stack.length>1){ const v=this.stack.pop(); v._page.remove(); }
+    const r=this.top; r._page.classList.remove('out'); r.onReturn&&r.onReturn(r._body,this,r); }
+  /** unwind to the nearest view with this title, animating only the final step */
+  popTo(title){
+    while(this.stack.length>1 && this.top.title!==title){
+      const under=this.stack[this.stack.length-2];
+      if(under && under.title===title){ this.pop(); return; }
+      const v=this.stack.pop(); v._page.remove();
+    }
+    const r=this.top; r._page.classList.remove('out'); r.onReturn&&r.onReturn(r._body,this,r);
+  }
+  setRoot(view){ this.host.innerHTML=''; this.stack=[]; this.push(view,false); }
+  /** rebuild current page contents in place */
+  refresh(){ const v=this.top; if(!v)return; const sc=v._body.scrollTop;
+    v._body.innerHTML=''; if(v.largeTitle) v._body.appendChild(el('div','lg-title',esc(v.title||'')));
+    v.build&&v.build(v._body,this,v); v._body.scrollTop=sc; }
+}
+
+/* list building helpers */
+function group(parent,{header,footer,rows}={}){
+  if(header) parent.appendChild(el('div','grp-h',esc(header)));
+  const g=el('div','grp'); parent.appendChild(g);
+  (rows||[]).forEach(r=>g.appendChild(makeRow(r)));
+  if(footer) parent.appendChild(el('div','grp-f',footer));
+  return g;
+}
+/* every row icon written as an emoji is upgraded to its SF-style vector glyph */
+let EMOJI_SF;
+function rowGlyph(g){
+  if(typeof g!=='string' || g.startsWith('<')) return g;
+  if(!EMOJI_SF) EMOJI_SF={
+    '⚙️':SF.gear,'🔔':SF.bell,'🔊':SF.speaker,'🎙':SF.speaker,'🌙':SF.moon,'⏳':SF.hourglass,
+    '♿':SF.accessibility,'🔋':SF.batteryIcon,'📷':SF.camera,'🎛':SF.sliders,'🔆':SF.sun,'📱':SF.grid,
+    '🔎':SF.magnifier,'🖼':SF.photo,'🌼':SF.photo,'✨':SF.sparkles,'😀':SF.faceid,'🆘':SF.sos,
+    '✋':SF.hand,'👣':SF.person,'🎮':SF.gamepad,'☁️':SF.cloud,'💳':SF.card,'🅰️':SF.appsIcon,'🅰':SF.appsIcon,
+    'A':SF.appsIcon,'✉️':SF.envelope,'🧭':SF.compass,'🔑':SF.key,'🎵':SF.music,'📞':SF.phoneGlyph,
+    '💬':SF.msgGlyph,'🗺':SF.map,'📍':SF.map,'📝':SF.note,'🔗':SF.link,'🌐':SF.globe,'ᛒ':SF.bluetooth,
+    '📶':SF.antenna,'＋':SF.plusCircle,'📥':SF.inbox,'⭐':SF.star,'🚩':SF.flag,'🗑':SF.trash,'🚫':SF.trash,
+    '📤':SF.share,'📦':SF.archive,'👤':SF.person,'👥':SF.person,'👨‍👩‍👧':SF.person,'🔒':SF.lock,
+    '🕘':SF.history,'📖':SF.book,'🔁':SF.history,'♻️':SF.history,'💾':SF.archive,'⬆️':SF.gear,
+    'ℹ️':SF.gear,'💻':SF.tv,'📺':SF.tv,'📄':SF.note,'🧮':SF.calc,'🌤':SF.sun,'🛌':SF.moon,'💼':SF.archive,'🔄':SF.history
+  };
+  return EMOJI_SF[g]||g;
+}
+function makeRow(r){
+  if(r instanceof HTMLElement) return r;
+  const row=el('div','row '+(r.cls||''));
+  if(r.icon) row.appendChild(h(`<div class="ic" style="background:${r.iconBg||'#8e8e93'}">${rowGlyph(r.icon)}</div>`));
+  const lbl=el('div','lbl');
+  lbl.innerHTML = `<div>${r.labelHTML||esc(r.label||'')}</div>` + (r.sub?`<div class="sub">${esc(r.sub)}</div>`:'');
+  row.appendChild(lbl);
+  if(r.value!=null) row.appendChild(el('div','val',esc(r.value)));
+  if(r.rightHTML) row.appendChild(h(`<div>${r.rightHTML}</div>`));
+  if(r.toggle){row.setAttribute('aria-label',r.label);
+    const sw=el('button','sw'+(r.toggle()?' on':''));sw.setAttribute('role','switch');sw.setAttribute('aria-label',r.label);sw.setAttribute('aria-checked',String(r.toggle()));
+    sw.onclick=e=>{e.stopPropagation(); const v=!r.toggle(); r.onToggle(v); sw.classList.toggle('on',v);sw.setAttribute('aria-checked',String(r.toggle()));};
+    row.appendChild(sw); row.classList.add('static');
+    row.onclick=()=>sw.click();
+    row.classList.remove('static');
+  }
+  // centred action rows ("Forget All Networks", "Sign Out", …) never take a chevron
+  if(r.chevron!==false && r.onClick && !/\bcenter\b/.test(r.cls||''))
+    row.appendChild(h(`<div class="chev">${SVG.chev}</div>`));
+  if(r.onClick){row.onclick=()=>r.onClick(row);row.setAttribute('role','button');row.setAttribute('aria-label',r.label);row.tabIndex=0;row.onkeydown=e=>{if(e.key==='Enter' || e.key===' '){e.preventDefault();row.click();}};}
+  else if(!r.toggle) row.classList.add('static');
+  return row;
+}
+function segmented(options,current,onPick){
+  const s=el('div','seg');
+  options.forEach(o=>{ const b=el('button',o===current?'on':'',esc(o));
+    b.onclick=()=>{ $$('button',s).forEach(x=>x.classList.remove('on')); b.classList.add('on'); onPick(o); };
+    s.appendChild(b); });
+  return s;
+}
+
+/* =========================================================================
+   App registry / windows
+   ========================================================================= */
+const Apps={};
+function defineApp(def){ Apps[def.id]=def; return def; }
+let currentApp=null;
+const openApps=new Map();   // id -> {win, def, nav}
+
+function appIconHTML(def,size){
+  return `<div class="appicon" style="background:${def.bg};${size?`width:${size}px;height:${size}px;border-radius:${size*0.23}px;`:''}">${def.glyph||''}</div>`;
+}
+function openApp(id, origin){
+  const def=Apps[id]; if(!def) return;
+  closeOverlay();
+  let inst=openApps.get(id);
+  if(inst){ inst.win.style.display='flex'; }
+  else{
+    const win=el('div','appwin opening');
+    if(origin){ const r=origin.getBoundingClientRect(), s=$('#screen').getBoundingClientRect();
+      const k=(s.height/852)||1;
+      win.style.transformOrigin=`${(r.left+r.width/2-s.left)/k}px ${(r.top+r.height/2-s.top)/k}px`; }
+    $('#applayer').appendChild(win);
+    inst={win,def}; openApps.set(id,inst);
+    def.mount(win, inst);
+    setTimeout(()=>win.classList.remove('opening'),400);
+  }
+  $('#applayer').appendChild(inst.win);   // bring to front
+  currentApp=def;
+  $('#home').classList.add('blurred');
+  renderStatus();
+  def.onShow && def.onShow(inst);
+}
+function goHome(){
+  if($('#cc').classList.contains('on')){ $('#cc').classList.remove('on'); return; }
+  if($('#switcher').classList.contains('on')){ $('#switcher').classList.remove('on'); }
+  /* going home during a call shrinks it into the island pill — it never just vanishes */
+  if($('#callui').classList.contains('on')) minimizeCall();
+  closeOverlay();
+  if(currentApp){
+    const inst=openApps.get(currentApp.id);
+    if(inst){ inst.win.classList.add('closing'); const w=inst.win;
+      setTimeout(()=>{ w.classList.remove('closing'); w.style.display='none'; },320); }
+    currentApp=null;
+  }
+  $('#home').classList.remove('blurred','jiggle');
+  renderHome();
+  renderStatus();
+}
+function quitApp(id){ const inst=openApps.get(id); if(!inst)return; inst.win.remove(); openApps.delete(id); if(currentApp&&currentApp.id===id) currentApp=null; }
+
+/* =========================================================================
+   Home screen
+   ========================================================================= */
+const DOCK=['phone','safari','mail','music'];
+const PAGE1=['settings','appstore','photos','camera','weather','clock','notes','calculator','messages','maps','tv','wallet'];
+function homeApps(){ return [...PAGE1, ...State.installed]; }
+function renderHome(){
+  const pagesEl=$('#pages'); pagesEl.innerHTML='';
+  const list=homeApps().filter(id=>Apps[id]);
+  const perPage=24, pages=[];
+  for(let i=0;i<list.length;i+=perPage) pages.push(list.slice(i,i+perPage));
+  if(!pages.length) pages.push([]);
+  pages.forEach(ids=>{
+    const p=el('div','page'); const g=el('div','grid');
+    ids.forEach(id=>g.appendChild(appTile(id)));
+    p.appendChild(g); pagesEl.appendChild(p);
+  });
+  $('#dots').innerHTML = pages.map((_,i)=>`<div class="dot${i===0?' on':''}"></div>`).join('');
+  const dock=$('#dock'); dock.innerHTML='';
+  DOCK.forEach(id=>Apps[id]&&dock.appendChild(appTile(id)));
+  updateBadges();
+}
+function appTile(id){
+  const def=Apps[id];
+  const t=el('div','app'+(State.installed.includes(id)?' removable':''));
+  t.dataset.app=id;t.setAttribute('role','button');t.setAttribute('aria-label',def.name);t.tabIndex=0;t.onkeydown=e=>{if(e.key==='Enter' || e.key===' '){e.preventDefault();t.click();}};
+  t.innerHTML = `<div class="delx">✕</div><div class="iconwrap">${appIconHTML(def)}</div><div class="applabel">${esc(def.name)}</div>`;
+  t.querySelector('.delx').onclick=e=>{ e.stopPropagation(); confirmDelete(id); };
+  t.onclick=()=>{ if($('#home').classList.contains('jiggle'))return; openApp(id,t.querySelector('.appicon')); };
+  let lp;
+  t.addEventListener('pointerdown',()=>{ lp=setTimeout(()=>{ $('#home').classList.add('jiggle'); navigator.vibrate&&navigator.vibrate(8); },550); });
+  ['pointerup','pointerleave','pointermove','pointercancel'].forEach(ev=>t.addEventListener(ev,()=>clearTimeout(lp)));
+  return t;
+}
+function confirmDelete(id){
+  const def=Apps[id];
+  alertBox({title:`Delete “${def.name}”?`,message:`Deleting this app will also delete its data.`,buttons:[
+    {text:'Cancel'},
+    {text:'Delete App',style:'red bold',onClick:()=>{
+      State.installed=State.installed.filter(x=>x!==id);
+      State.updatesAvailable=(State.updatesAvailable||[]).filter(x=>x!==id);
+      quitApp(id); save(); renderHome(); toast(def.name+' deleted');
+    }}
+  ]});
+}
+$('#doneJiggle').onclick=()=>$('#home').classList.remove('jiggle');
+$('#pages').addEventListener('scroll',()=>{
+  const i=Math.round($('#pages').scrollLeft/$('#pages').clientWidth);
+  $$('#dots .dot').forEach((d,j)=>d.classList.toggle('on',j===i));
+});
+function updateBadges(){
+  $$('#home .app,#dock .app').forEach(t=>{
+    const id=t.dataset.app, n=State.badges[id]|0;
+    let b=t.querySelector('.badge');
+    const host=t.querySelector('.iconwrap')||t;
+    if(n>0){ if(!b){b=el('div','badge');host.appendChild(b);} b.textContent=n>99?'99+':n; }
+    else if(b) b.remove();
+  });
+}
+function setBadge(id,n){ State.badges[id]=n; save(); updateBadges(); }
+
+/* =========================================================================
+   Lock screen / power
+   ========================================================================= */
+let locked=true;
+function lockPhone(){
+  locked=true; goHome();
+  $('#screen').classList.add('locked');
+  $('#lock').classList.remove('hidden');
+  $('#lk-lockicon').innerHTML=SF.lock;
+  renderLockNotifs(); renderPanel&&renderPanel();
+}
+function unlock(){
+  if(!locked) return;
+  locked=false;
+  $('#lock').classList.add('hidden');
+  $('#lk-lockicon').innerHTML=SF.unlock;
+  setTimeout(()=>{ if(!locked) $('#screen').classList.remove('locked'); },260);
+  if(State.settings.faceid) island(SF.faceid,'#1c1c1e','Face ID','iPhone unlocked',1400);
+  renderPanel&&renderPanel();
+}
+$('#bPower').onclick=()=>{ locked?unlock():lockPhone(); };
+/* iOS shows volume as a tall capsule hugging the left edge, level with the
+   physical buttons — not as a banner. */
+let volTimer;
+function volumeHUD(){
+  const s=State.settings;
+  let hud=$('#volhud');
+  if(!hud){
+    hud=el('div'); hud.id='volhud';
+    hud.innerHTML=`<div class="vh-track"><div class="vh-fill"></div><div class="vh-ic"></div></div>`;
+    $('#screen').appendChild(hud);
+  }
+  const muted = s.ringer===0;
+  hud.querySelector('.vh-fill').style.height=s.ringer+'%';
+  hud.querySelector('.vh-ic').innerHTML = muted
+    ? sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor" stroke="none"/><path d="M16 9.6l5 5M21 9.6l-5 5"/>',{size:15})
+    : sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor" stroke="none"/><path d="M15.5 9.2a4 4 0 010 5.6"/>',{size:15});
+  hud.classList.add('on');
+  clearTimeout(volTimer);
+  volTimer=setTimeout(()=>hud.classList.remove('on'),1400);
+}
+function ringerHUD(){
+  const s=State.settings;
+  let hud=$('#ringhud');
+  if(!hud){ hud=el('div'); hud.id='ringhud'; $('#screen').appendChild(hud); }
+  hud.innerHTML=`<div class="rh-ic">${s.silent
+    ? sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor" stroke="none"/><path d="M16 9.6l5 5M21 9.6l-5 5"/>',{size:26})
+    : sf('<path d="M18 15.5V10a6 6 0 10-12 0v5.5L4.5 18h15z"/><path d="M10 21h4"/>',{size:26})}</div>
+    <div class="rh-lbl">${s.silent?'Silent Mode On':'Silent Mode Off'}</div>`;
+  hud.classList.add('on');
+  clearTimeout(hud._t);
+  hud._t=setTimeout(()=>hud.classList.remove('on'),1400);
+}
+$('#bUp').onclick=()=>{ State.settings.ringer=Math.min(100,State.settings.ringer+10); save(); volumeHUD(); renderCC(); };
+$('#bDown').onclick=()=>{ State.settings.ringer=Math.max(0,State.settings.ringer-10); save(); volumeHUD(); renderCC(); };
+$('#bMute').onclick=()=>{setSilentMode(!State.settings.silent);
+  if(navigator.vibrate) navigator.vibrate(12); };
+
+let LOCK_NOTIFS=[
+  {app:'mail',   title:'Spectrum',  body:'Your July statement is ready — $189.98 due August 12', when:'2m ago'},
+  {app:'appstore',title:'App Store',body:'2 apps have updates available', when:'18m ago'},
+  {app:'messages',title:'Karma',    body:'Call me when you get a chance 💙', when:'1h ago'}
+];
+function pushNotification(app,title,body,{thread=null}={}){
+  LOCK_NOTIFS.unshift({app,title,body,when:'now',thread});
+  LOCK_NOTIFS=LOCK_NOTIFS.slice(0,8);
+  renderLockNotifs();
+  const def=Apps[app]||{bg:'#3a3a3c',glyph:''};
+  island(`<div style="width:100%;height:100%;border-radius:8px;overflow:hidden">${def.glyph||''}</div>`, def.bg, title, body, 3000);
+  return open;
+}
+function renderLockNotifs(){
+  const c=$('#lk-notifs'); if(!c) return; c.innerHTML='';
+  LOCK_NOTIFS.forEach(n=>{
+    const def=Apps[n.app]||{bg:'#3a3a3c',glyph:''};
+    const d=el('div','lk-n',
+      `<div class="ic" style="background:${def.bg};display:grid;place-items:center;font-size:15px">${def.glyph||''}</div>
+       <div style="flex:1;min-width:0"><div class="tt">${esc(n.title)}</div><div class="bb">${esc(n.body)}</div></div>
+       <div class="tm">${esc(n.when||'now')}</div>`);
+    d.onclick=()=>{ unlock(); setTimeout(()=>{
+      openApp(n.app);
+      if(n.thread){ const inst=openApps.get('messages'), t=MSG().find(x=>x.n===n.thread);
+        if(inst&&t){ t.msgs.forEach(m=>m[2]=0); save();
+          setBadge('messages',MSG().reduce((a,x)=>a+x.msgs.filter(m=>m[2]).length,0));
+          inst.nav.popToRoot(); inst.nav.push(threadView(t)); } }
+    },260); };
+    c.appendChild(d);
+  });
+}
+if($('#lkTorch')){
+  $('#lkTorch').innerHTML=SF.torch;
+  $('#lkCam').innerHTML=SF.camera;
+  $('#lkTorch').onclick=()=>{State.settings.torch=!State.settings.torch;$('#lkTorch').classList.toggle('on',State.settings.torch);save();renderCC();};
+  $('#lkCam').onclick=()=>{ unlock(); setTimeout(()=>openApp('camera'),260); };
+}
+
+/* =========================================================================
+   NETWORK STATE
+   ========================================================================= */
+function wifiConfigFault(){
+  const s=State.settings,w=WF();
+  if(!s.wifi || s.wifiDisconnected || !w.connected)return 'wifi';
+  const c=knownNet(w.connected)?.config;
+  if(!c)return null;
+  if(c.ipMode==='Manual'){
+    if(![c.ip,c.subnet,c.router].every(v=>validIPv4(v||'')) || /^(?:0\.|127\.|169\.254\.)/.test(c.ip))return 'address';
+    const bytes=v=>v.split('.').map(Number),ip=bytes(c.ip),router=bytes(c.router),mask=bytes(c.subnet);
+    if(ip.some((v,i)=>(v&mask[i])!==(router[i]&mask[i])))return 'address';
+  }
+  // Reserved documentation addresses are the virtual unreachable DNS fixtures.
+  const unavailable=v=>!validAddress(v) || /^(?:0\.|127\.|169\.254\.|192\.0\.2\.|198\.51\.100\.|203\.0\.113\.)/.test(v) || /^(?:::|::1|2001:db8(?::.*)?)$/i.test(v);
+  if(c.dnsMode==='Manual' && (!c.dns?.length || c.dns.every(unavailable)))return 'dns';
+  // The virtual network has one reachable proxy fixture; no real proxy is contacted.
+  if(c.proxyMode==='Manual' && !(c.server==='proxy.spectrum.example' && String(c.port)==='8080'))return 'proxy';
+  if(c.proxyMode==='Automatic' && c.url!=='https://proxy.spectrum.example/proxy.pac')return 'proxy';
+  return null;
+}
+function phoneNetworkState(){
+  const s=State.settings;
+  if(s.network==='offline')return {online:false,route:null,reason:'internet'};
+  const reason=wifiConfigFault();
+  if(!reason)return {online:true,route:'wifi',reason:null};
+  if(!s.airplane && s.cellular && s.network!=='noservice')return {online:true,route:'cellular',reason:null};
+  return {online:false,route:null,reason};
+}
+function isOnline(){return phoneNetworkState().online;}
+function netReason(){
+  const reason=phoneNetworkState().reason;
+  if(reason==='dns')return 'The DNS servers for this Wi-Fi network are not responding.';
+  if(reason==='proxy')return 'The proxy server for this Wi-Fi network could not be reached.';
+  if(reason==='address')return 'This Wi-Fi network does not have a usable IP address or router.';
+  if(reason==='internet')return 'The Wi-Fi network “'+State.settings.wifiName+'” is connected but has no internet connection.';
+  if(State.settings.airplane)return 'Airplane Mode is on and Wi-Fi is unavailable.';
+  if(State.settings.network==='noservice')return 'There is no cellular service and Wi-Fi is unavailable.';
+  return 'Turn on Wi-Fi or Cellular Data in Settings.';
+}
+function setNetwork(mode){
+  const s=State.settings;
+  s.network=mode;
+  if(mode==='airplane'){ s.airplane=true; s.wifi=false; }
+  else { s.airplane=false; if(mode==='online'){ s.wifi=true; s.cellular=true; } }
+  save(); applyAppearance(); renderCC();
+  const label={online:'Connected',offline:'No Internet Connection',noservice:'No Service',airplane:'Airplane Mode'}[mode];
+  island(mode==='online'?SVG.wifi:'⚠', mode==='online'?'#0a84ff':'#ff9f0a', 'Network', label, 2400);
+}
+
+/* =========================================================================
+   CALLS
+   ========================================================================= */
+const Call={state:'idle',name:'',number:'',started:0,mute:false,speaker:false,hold:false};
+let ringTimer, ringCtx;
+function callDuration(){
+  if(!Call.started) return '00:00';
+  const s=Math.floor((Date.now()-Call.started)/1000);
+  const m=Math.floor(s/60), ss=String(s%60).padStart(2,'0');
+  return (m>=60? String(Math.floor(m/60))+':'+String(m%60).padStart(2,'0')+':' : String(m).padStart(2,'0')+':')+ss;
+}
+function setSilentMode(enabled){State.settings.silent=enabled;save();ringerHUD();ringTone(Call.state==='incoming');renderCC();}
+function ringTone(on){
+  try{
+    if(!on || State.settings.silent || State.settings.dnd || State.settings.ringer===0){if(ringCtx){ringCtx.close();ringCtx=null;}clearInterval(ringTimer);ringTimer=null;return;}
+    if(ringCtx)return;
+    ringCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const beep=()=>{
+      if(State.settings.silent || State.settings.dnd || State.settings.ringer===0){ringTone(false);return;}
+      if(!ringCtx)return;
+      [880,1046].forEach((f,i)=>{
+        const o=ringCtx.createOscillator(), g=ringCtx.createGain();
+        o.frequency.value=f; o.type='sine'; o.connect(g); g.connect(ringCtx.destination);
+        const t=ringCtx.currentTime+i*0.42;
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.exponentialRampToValueAtTime(0.035*(State.settings.ringer/100),t+0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+0.38);
+        o.start(t); o.stop(t+0.4);
+      });
+    };
+    beep(); ringTimer=setInterval(beep,2600);
+  }catch(e){}
+}
+function incomingCall(name='Karma S',number='mobile'){
+  if(Call.state!=='idle') return toast('A call is already in progress');
+  Object.assign(Call,{state:'incoming',name,number,started:0,mute:false,speaker:false,hold:false});
+  showCallUI(); ringTone(true);
+  navigator.vibrate&&navigator.vibrate([400,200,400]);
+}
+function answerCall(){
+  if(Call.state!=='incoming') return;
+  Call.state='active'; Call.started=Date.now(); ringTone(false);
+  renderCallUI(); renderStatus();
+}
+/* dialling out from Favourites / Recents / Contacts / Keypad / Voicemail */
+function startOutgoingCall(name,number){
+  if(Call.state!=='idle') return toast('A call is already in progress');
+  if(!isOnline() && State.settings.network==='noservice')
+    return alertBox({title:'Call Failed',message:'There is no cellular service. Try again when you have signal.',buttons:[{text:'OK'}]});
+  Object.assign(Call,{state:'dialing',name:name||number,number:number||'',started:0,mute:false,speaker:false});
+  showCallUI();
+  setTimeout(()=>{
+    if(Call.state!=='dialing') return;
+    Call.state='active'; Call.started=Date.now();
+    renderCallUI(); renderStatus();
+    PH().recents.unshift({who:name||number,type:'outgoing',label:'mobile',at:Date.now(),dur:'0:00'});
+    PH().recents=PH().recents.slice(0,40); save();
+  },2600);
+  renderStatus();
+}
+function declineCall(){ ringTone(false); Object.assign(Call,{state:'idle',started:0}); hideCallUI();
+  pushNotification('phone','Missed Call','Missed call from '+Call.name); renderStatus(); }
+function endCall(){
+  if(Call.state==='idle') return;
+  const dur=callDuration();
+  ringTone(false);
+  Object.assign(Call,{state:'idle',started:0});
+  hideCallUI(); renderStatus();
+  island('📞','#3a3a3c','Call Ended',dur,2000);
+}
+function showCallUI(){ $('#callui').classList.add('on'); renderCallUI(); }
+function hideCallUI(){ const c=$('#callui'); c.classList.remove('on'); }
+function minimizeCall(){ hideCallUI(); renderStatus(); }
+function renderCallUI(){
+  const c=$('#callui'); if(!c.classList.contains('on')) return;
+  const incoming=Call.state==='incoming', dialing=Call.state==='dialing';
+  const sub = incoming? 'iPhone · '+esc(Call.number)
+            : dialing? 'calling '+esc(Call.number||'')+'…'
+            : callDuration();
+  c.innerHTML=`
+    ${Call.state!=='incoming'?`<div class="call-min" id="callMin">${SF.chevD}</div>`:''}
+    <div class="call-head">
+      <div class="call-name">${esc(Call.name)}</div>
+      <div class="call-sub" id="callSub">${sub}</div>
+      <div class="call-av ${incoming||dialing?'ring':''}">${esc(initials(Call.name))}</div>
+    </div>
+    ${incoming||dialing?'':`<div class="call-grid">
+      <div class="call-key ${Call.mute?'on':''}" data-k="mute"><div class="kc">${sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/><path d="M16 9.6l5 5M21 9.6l-5 5"/>',{size:24})}</div>mute</div>
+      <div class="call-key" data-k="keypad"><div class="kc">${sf('<path d="M9.2 3.5L7.4 20.5M16.6 3.5l-1.8 17M3.8 8.6h17M3 15.4h17"/>',{size:23})}</div>keypad</div>
+      <div class="call-key ${Call.speaker?'on':''}" data-k="speaker"><div class="kc">${sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/><path d="M15.5 9.2a4 4 0 010 5.6M18.2 6.6a8 8 0 010 10.8"/>',{size:24})}</div>speaker</div>
+      <div class="call-key" data-k="add"><div class="kc">${sf('<circle cx="9" cy="8" r="3.6"/><path d="M2.6 19.4a6.6 6.6 0 0112.8 0"/><path d="M18.5 7.5v7M15 11h7"/>',{size:24})}</div>add call</div>
+      <div class="call-key" data-k="face"><div class="kc">${sf('<rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M15.5 11l6-3.4v8.8l-6-3.4z"/>',{size:24})}</div>FaceTime</div>
+      <div class="call-key" data-k="contacts"><div class="kc">${sf('<circle cx="12" cy="8" r="3.8"/><path d="M4.6 20.4a7.4 7.4 0 0114.8 0"/>',{size:24})}</div>contacts</div>
+    </div>`}
+    <div class="call-actions">
+      ${incoming
+        ? `<div style="text-align:center"><button class="call-btn dec" id="callDecline">
+             ${sf('<path d="M6 6l12 12M18 6L6 18"/>',{w:2.4,size:30})}</button>
+             <div style="font-size:13px;opacity:.8;margin-top:9px">Decline</div></div>
+           <div style="text-align:center"><button class="call-btn acc" id="callAccept">
+             ${sf('<path d="M6.6 3.5l2.6.6 1.2 3.6-2 1.5a11.6 11.6 0 006 6l1.5-2 3.6 1.2.6 2.6a2 2 0 01-2.1 2.4C11 19 5 13 3.9 5.6A2 2 0 016.6 3.5z" fill="currentColor" stroke="none"/>',{fill:true,size:30})}</button>
+             <div style="font-size:13px;opacity:.8;margin-top:9px">Accept</div></div>`
+        : `<div style="text-align:center;margin:0 auto"><button class="call-btn end" id="callEnd">
+             ${sf('<path d="M6.6 3.5l2.6.6 1.2 3.6-2 1.5a11.6 11.6 0 006 6l1.5-2 3.6 1.2.6 2.6a2 2 0 01-2.1 2.4C11 19 5 13 3.9 5.6A2 2 0 016.6 3.5z" fill="currentColor" stroke="none"/>',{fill:true,size:30})}</button>
+             <div style="font-size:13px;opacity:.8;margin-top:9px">End</div></div>`}
+    </div>`;
+  const q=id=>$('#'+id,c);
+  for(const [id,label] of [['callAccept','Accept call'],['callDecline','Decline call'],['callEnd','End call']]) q(id)?.setAttribute('aria-label',label);
+  q('callAccept')&&(q('callAccept').onclick=answerCall);
+  q('callDecline')&&(q('callDecline').onclick=declineCall);
+  q('callEnd')&&(q('callEnd').onclick=endCall);
+  q('callMin')&&(q('callMin').onclick=minimizeCall);
+  $$('.call-key',c).forEach(k=>k.onclick=()=>{
+    const t=k.dataset.k;
+    if(t==='mute'){ Call.mute=!Call.mute; renderCallUI(); toast(Call.mute?'Muted':'Unmuted'); }
+    else if(t==='speaker'){ Call.speaker=!Call.speaker; renderCallUI(); toast(Call.speaker?'Speaker on':'Speaker off'); }
+    else if(t==='contacts'){ minimizeCall(); openApp('phone'); }
+    else toast(t.charAt(0).toUpperCase()+t.slice(1)+' is simulated');
+  });
+}
+setInterval(()=>{
+  if(Call.state==='active'){
+    const sub=$('#callSub'); if(sub) sub.textContent=callDuration();
+    renderIsland();
+  }
+},1000);
+
+/* =========================================================================
+   ONE-TIME PASSCODES — arrives by SMS, offers AutoFill, fills a 2FA sheet
+   ========================================================================= */
+const OTP_SENDERS=[
+  {id:'spectrum', name:'Spectrum',  short:'Spectrum', from:'89663',
+   body:c=>`${c} is your Spectrum verification code. Do not share it with anyone. It expires in 10 minutes.`},
+  {id:'apple',    name:'Apple',     short:'Apple ID', from:'Apple',
+   body:c=>`Your Apple Account code is: ${c}. Do not share it with anyone.`},
+  {id:'netflix',  name:'Netflix',   short:'Netflix',  from:'62913',
+   body:c=>`${c} is your Netflix sign-in code. It expires in 15 minutes.`},
+  {id:'bank',     name:'Bank',      short:'Your bank',from:'73592',
+   body:c=>`Your one-time passcode is ${c}. We will never call and ask for this code.`}
+];
+/* A code simply arrives as a text message. Nothing is demanded of you:
+   read it in Messages, copy it, or ignore it. */
+function sendOTP(senderId){
+  const s=OTP_SENDERS.find(x=>x.id===senderId)||OTP_SENDERS[0];
+  const code=String(Math.floor(100000+Math.random()*900000));
+  State.otp={code, sender:s.name, from:s.from, at:Date.now(), used:false};
+  const text=s.body(code);
+  let thread=MSG().find(t=>t.n===s.from);
+  if(!thread){ thread={n:s.from,msgs:[]}; MSG().push(thread); }
+  thread.msgs.push(['in',text,1]);
+  thread.at=Date.now();
+  MSG().sort((a,b)=>(b.at||0)-(a.at||0));   // newest conversation first
+  save();
+  setBadge('messages',MSG().reduce((a,t)=>a+t.msgs.filter(m=>m[2]).length,0));
+  pushNotification('messages',s.from,text,{thread:s.from});
+  const mi=openApps.get('messages'); if(mi) mi.nav.refresh();
+  return code;
+}
+const codeIn = txt => (String(txt).match(/\b(\d{6})\b/)||[])[1] || null;
+/* the 2FA screen the code is meant for */
+function verificationSheet({sender='Spectrum', onDone}={}){
+  sheet((s,close)=>{
+    s.style.height='auto';
+    let entered='';
+    const wrap=el('div');
+    wrap.style.cssText='padding:26px 24px 96px;text-align:center';  // room for the AutoFill chip
+    wrap.innerHTML=`
+      <div style="width:56px;height:56px;border-radius:14px;margin:0 auto 14px;background:var(--sysblue);
+        display:grid;place-items:center;color:#fff">${SF.lock}</div>
+      <div style="font-size:21px;font-weight:700;letter-spacing:-.3px">Two-Factor Authentication</div>
+      <div class="muted" style="font-size:14px;line-height:1.45;margin-top:6px">
+        A verification code was sent to your phone by <b>${esc(sender)}</b>. Enter it below to continue.</div>`;
+    const boxes=el('div');
+    boxes.style.cssText='display:flex;justify-content:center;gap:9px;margin:22px 0 6px';
+    const inputs=[];
+    for(let i=0;i<6;i++){
+      const inp=el('input','otp-box');
+      inp.maxLength=1; inp.inputMode='numeric'; inp.autocomplete='one-time-code';
+      inp.oninput=()=>{
+        inp.value=inp.value.replace(/\D/g,'').slice(0,1);
+        if(inp.value && inputs[i+1]) inputs[i+1].focus();
+        entered=inputs.map(x=>x.value).join('');
+        verify.disabled=entered.length<6;
+        verify.style.opacity=entered.length<6?'.4':'1';
+        if(entered.length===6) setTimeout(check,150);
+      };
+      inp.onkeydown=e=>{ if(e.key==='Backspace' && !inp.value && inputs[i-1]) inputs[i-1].focus(); };
+      inputs.push(inp); boxes.appendChild(inp);
+    }
+    wrap.appendChild(boxes);
+    const err=el('div'); err.style.cssText='color:var(--sysred);font-size:13px;height:18px;margin-top:4px';
+    wrap.appendChild(err);
+    const verify=el('button','btn-primary','Verify');
+    verify.disabled=true; verify.style.cssText+='margin-top:14px;opacity:.4';
+    verify.onclick=()=>check();
+    wrap.appendChild(verify);
+    const resend=el('button','','Didn’t get a code? Resend');
+    resend.style.cssText='color:var(--sysblue);font-size:14px;margin-top:14px;display:block;width:100%';
+    resend.onclick=()=>{ sendOTP('spectrum'); toast('New code sent'); };
+    wrap.appendChild(resend);
+    const cancel=el('button','','Cancel');
+    cancel.style.cssText='color:var(--txt2);font-size:15px;margin-top:12px;display:block;width:100%';
+    cancel.onclick=close;
+    wrap.appendChild(cancel);
+    s.appendChild(wrap);
+
+    function check(){
+      const otp=State.otp;
+      if(otp && entered===otp.code){
+        otp.used=true; save();
+        boxes.style.opacity='.5';
+        island(sf('<path d="M4.5 12.5l5 5 10-11"/>',{w:2.4,size:18}),'#30d158','Verified','Signed in successfully',2400);
+        setTimeout(()=>{ close(); toast('Verification successful'); onDone&&onDone(true); },500);
+      }else{
+        err.textContent='That code is incorrect. Try again.';
+        boxes.animate([{transform:'translateX(0)'},{transform:'translateX(-8px)'},{transform:'translateX(8px)'},{transform:'translateX(0)'}],
+          {duration:280});
+        inputs.forEach(x=>x.value=''); entered=''; inputs[0].focus();
+        verify.disabled=true; verify.style.opacity='.4';
+      }
+    }
+    setTimeout(()=>inputs[0].focus(),380);
+  });
+}
+
+/* =========================================================================
+   Gestures: home bar, control center, app switcher
+   ========================================================================= */
+function screenPoint(e){
+  const scr=$('#screen'), r=scr.getBoundingClientRect();
+  return {x:(e.clientX-r.left)*scr.clientWidth/r.width,
+          y:(e.clientY-r.top)*scr.clientHeight/r.height};
+}
+let lastTap=0;
+/* The home indicator: tap to go home, double-tap for the switcher, swipe up to
+   go home. All of it lives on #homezone — a full-width strip, not the 5px pill. */
+(function homeIndicator(){
+  const zone=$('#homezone'), bar=$('#homebar');
+  let downY=0, downX=0, downT=0, moved=false, pointerId=null;
+  const dev=screenPoint;
+  const fire=()=>{
+    const now=Date.now();
+    if(now-lastTap<300){ lastTap=0; if(!locked) openSwitcher(); return; }
+    lastTap=now;
+    setTimeout(()=>{ if(lastTap && Date.now()-lastTap>=290){ locked?unlock():goHome(); lastTap=0; } },305);
+  };
+  zone.addEventListener('pointerdown',e=>{
+    if(e.button!==0 || e.isPrimary===false || pointerId!==null) return;
+    pointerId=e.pointerId;
+    const p=dev(e); downX=p.x; downY=p.y; downT=Date.now(); moved=false;
+    bar.style.opacity='1'; bar.style.transform='translateX(-50%) scaleY(1.6)';
+    zone.setPointerCapture&&zone.setPointerCapture(e.pointerId);
+  });
+  zone.addEventListener('pointermove',e=>{
+    if(!downT || e.pointerId!==pointerId) return;
+    const p=dev(e);
+    if(Math.hypot(p.x-downX,p.y-downY)>7) moved=true;
+  });
+  zone.addEventListener('pointerup',e=>{
+    if(e.pointerId!==pointerId) return;
+    pointerId=null;
+    bar.style.opacity=''; bar.style.transform='translateX(-50%)';
+    if(!downT) return;
+    const p=dev(e), dy=p.y-downY, dx=p.x-downX;
+    downT=0;
+    if(dy < -34){                       // swipe up
+      lastTap=0;
+      if(locked) return unlock();
+      if(Math.abs(dx) < 120 && currentApp) return goHome();
+      return goHome();
+    }
+    if(!moved) fire();                  // plain tap
+  });
+  const resetIndicator=()=>{downT=0;pointerId=null;bar.style.opacity='';bar.style.transform='translateX(-50%)';};
+  zone.addEventListener('pointercancel',e=>{if(e.pointerId===pointerId) resetIndicator();});
+  window.addEventListener('blur',resetIndicator);
+})();
+(function gestures(){
+  const scr=$('#screen'); let start=null;
+  scr.addEventListener('pointerdown',e=>{
+    if(e.button!==0 || e.isPrimary===false || start || e.target.closest('#homezone')) return;
+    const p=screenPoint(e);
+    const kind=p.y>scr.clientHeight-40 ? 'bottom' : p.y<44 && p.x>scr.clientWidth*.58 ? 'cc' : null;
+    if(!kind) return;
+    start={...p,kind,id:e.pointerId};
+    e.target.setPointerCapture?.(e.pointerId);
+  });
+  scr.addEventListener('pointerup',e=>{
+    if(!start || e.pointerId!==start.id) return;
+    const p=screenPoint(e), dx=p.x-start.x, dy=p.y-start.y, kind=start.kind;
+    start=null;
+    if(Math.abs(dy)<=Math.abs(dx)) return;
+    if(kind==='bottom' && dy<-45) locked?unlock():goHome();
+    if(kind==='cc' && dy>40) $('#cc').classList.add('on');
+  });
+  scr.addEventListener('pointercancel',e=>{if(start?.id===e.pointerId) start=null;});
+  window.addEventListener('blur',()=>{start=null;});
+  $('#cc').addEventListener('pointerdown',e=>{ if(e.target.id==='cc') $('#cc').classList.remove('on'); });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){ if($('#cc').classList.contains('on'))$('#cc').classList.remove('on');
+      else if($('#overlay').classList.contains('on')) closeOverlay();
+      else if($('#switcher').classList.contains('on'))$('#switcher').classList.remove('on');
+      else locked?unlock():goHome(); }
+  });
+})();
+
+/* =========================================================================
+   TOUCH SIMULATION — a fingertip cursor plus drag-to-scroll with momentum,
+   so the phone is driven the way a phone is: by dragging, not scroll wheels.
+   A tap (drag under the slop threshold) still clicks normally.
+   ========================================================================= */
+(function touchSim(){
+  const scr=$('#screen');
+  const finger=el('div'); finger.id='finger';
+  finger.innerHTML='<div class="rip"></div>';
+  scr.appendChild(finger);
+
+  const k=()=>{const r=scr.getBoundingClientRect();return (r.height/scr.clientHeight)||1;};
+  const devPt=e=>{const r=scr.getBoundingClientRect();
+    return {x:(e.clientX-r.left)*scr.clientWidth/r.width,y:(e.clientY-r.top)*scr.clientHeight/r.height};};
+  function placeFinger(e){
+    if(!State.settings.touchCursor) return;
+    const p=devPt(e);
+    finger.style.left=Math.max(-30,Math.min(scr.clientWidth+30,p.x))+'px';
+    finger.style.top=Math.max(-30,Math.min(scr.clientHeight+30,p.y))+'px';
+    finger.classList.add('on');
+  }
+  scr.addEventListener('pointermove',placeFinger);
+  scr.addEventListener('pointerenter',placeFinger);
+  scr.addEventListener('pointerleave',()=>finger.classList.remove('on'));
+
+  /* iphone-touch-b1: one pointer owns a gesture; controls retain their own drags. */
+  const NO_DRAG='input,textarea,select,canvas,iframe,.cc-slider,.slider,#homezone,'+
+                '.gm-stage,.sf-frame,.otp-box,[contenteditable]';
+  const scrollable=(n,axis)=>{
+    for(;n&&n!==scr;n=n.parentElement){
+      if(!(n instanceof HTMLElement)) continue;
+      const st=getComputedStyle(n), vertical=axis==='y';
+      if(['auto','scroll'].includes(vertical?st.overflowY:st.overflowX) &&
+         (vertical?n.scrollHeight-n.clientHeight:n.scrollWidth-n.clientWidth)>2) return n;
+    }
+    return null;
+  };
+  let drag=null, pointerId=null, suppressClick=false, momentum=null;
+  const SLOP=7;
+  function stopMomentum(){
+    if(!momentum) return;
+    cancelAnimationFrame(momentum.frame);
+    momentum.restore(); momentum=null;
+  }
+  scr.addEventListener('pointerdown',e=>{
+    if(e.button!==0 || e.isPrimary===false || pointerId!==null) return;
+    stopMomentum(); suppressClick=false; pointerId=e.pointerId;
+    placeFinger(e);
+    if(!e.target.closest('input,textarea,[contenteditable]')){
+      const sel=window.getSelection?.();
+      if(sel&&!sel.isCollapsed) sel.removeAllRanges();
+    }
+    finger.classList.add('press');
+    if(State.settings.touchCursor){
+      finger.classList.remove('tap'); void finger.offsetWidth; finger.classList.add('tap');
+    }
+    const p=devPt(e);
+    if(e.target.closest(NO_DRAG) || p.y<44 || p.y>scr.clientHeight-40) return;
+    drag={...p,sx:p.x,sy:p.y,moved:false,axis:null,v:0,t:performance.now(),
+          target:e.target,ey:scrollable(e.target,'y'),ex:scrollable(e.target,'x')};
+  },true);
+  window.addEventListener('pointermove',e=>{
+    if(e.pointerId!==pointerId) return;
+    placeFinger(e);
+    if(!drag) return;
+    const p=devPt(e), dx=p.x-drag.x, dy=p.y-drag.y;
+    if(!drag.moved){
+      if(Math.hypot(p.x-drag.sx,p.y-drag.sy)<SLOP) return;
+      drag.moved=true;
+      drag.axis=Math.abs(p.y-drag.sy)>=Math.abs(p.x-drag.sx)?'y':'x';
+      drag.node=drag.axis==='y'?drag.ey:drag.ex;
+      drag.target.setPointerCapture?.(e.pointerId);
+      if(drag.node && getComputedStyle(drag.node).scrollSnapType!=='none'){
+        drag.snapNode=drag.node; drag.snapPrev=drag.node.style.scrollSnapType||'';
+        drag.node.style.scrollSnapType='none';
+      }
+      scr.classList.add('dragging');
+    }
+    if(drag.node){
+      e.preventDefault();
+      const now=performance.now(), dt=Math.max(1,now-drag.t), delta=drag.axis==='y'?dy:dx;
+      const key=drag.axis==='y'?'scrollTop':'scrollLeft';
+      drag.node[key]-=delta;
+      drag.v=Math.max(-2,Math.min(2,delta/dt));
+      drag.t=now;
+    }
+    drag.x=p.x; drag.y=p.y;
+  },{capture:true,passive:false});
+  function fling(node,v,axis,restore){
+    const key=axis==='y'?'scrollTop':'scrollLeft';
+    let last=performance.now();
+    momentum={frame:0,restore};
+    const step=now=>{
+      const dt=Math.min(32,Math.max(1,now-last)); last=now;
+      const before=node[key]; node[key]-=v*dt;
+      v*=Math.pow(.93,dt/16);
+      if(Math.abs(v)<.02 || !node.isConnected || node[key]===before){stopMomentum();return;}
+      momentum.frame=requestAnimationFrame(step);
+    };
+    momentum.frame=requestAnimationFrame(step);
+  }
+  function endDrag(e){
+    if(e && e.pointerId!==pointerId) return;
+    pointerId=null; finger.classList.remove('press'); scr.classList.remove('dragging');
+    if(e?.type==='pointercancel' || !e) finger.classList.remove('on');
+    if(!drag) return;
+    const finished=drag; drag=null;
+    if(finished.moved) suppressClick=true;
+    const restore=()=>{if(finished.snapNode) finished.snapNode.style.scrollSnapType=finished.snapPrev;};
+    if(e?.type==='pointerup' && finished.moved && finished.node && performance.now()-finished.t<90)
+      fling(finished.node,finished.v,finished.axis,restore);
+    else restore();
+  }
+  window.addEventListener('pointerup',endDrag,true);
+  window.addEventListener('pointercancel',endDrag,true);
+  window.addEventListener('blur',()=>{stopMomentum();endDrag();});
+  /* Suppress a drag's delayed click until the next pointerdown; keyboard clicks remain usable. */
+  scr.addEventListener('click',e=>{
+    if(suppressClick && e.detail!==0){e.stopImmediatePropagation();e.preventDefault();}
+  },true);
+
+  window.setTouchCursor=v=>{
+    State.settings.touchCursor=v;State.settings.touchCursorRevision=1;save();
+    finger.style.display=v?'':'none';
+    if(!v) finger.classList.remove('on');
+  };
+  if(!State.settings.touchCursor) finger.style.display='none';
+})();
+
+/* ---------- Control Center ---------- */
+function renderCC(){
+  const s=State.settings;
+  const cc=$('#cc');
+  const on=(k)=>k?'on':'';
+  cc.innerHTML=`
+   <div class="cc-grid">
+     <div class="cc-tile span2 row2" style="align-content:center">
+       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;place-items:center">
+         <div class="cc-circ ${on(s.airplane)}" data-t="airplane">${sf('<path d="M21 15.6v-1.8l-7.6-4.6V3.9a1.4 1.4 0 10-2.8 0v5.3L3 13.8v1.8l7.6-2.3v4.9l-2 1.4v1.3l3.4-.9 3.4.9v-1.3l-2-1.4v-4.9z" fill="currentColor" stroke="none"/>',{fill:true,size:20})}</div>
+         <div class="cc-circ ${s.cellular&&!s.airplane?'on green':''}" data-t="cellular">${sf('<rect x="3" y="14.5" width="2.6" height="6" rx="1" fill="currentColor" stroke="none"/><rect x="8" y="11" width="2.6" height="9.5" rx="1" fill="currentColor" stroke="none"/><rect x="13" y="7.5" width="2.6" height="13" rx="1" fill="currentColor" stroke="none"/><rect x="18" y="4" width="2.6" height="16.5" rx="1" fill="currentColor" stroke="none"/>',{fill:true,size:20})}</div>
+         <div class="cc-circ ${s.wifi&&!s.airplane?'on':''}" data-t="wifi">${sf('<path d="M2.6 8.6a14 14 0 0118.8 0"/><path d="M5.6 12a10 10 0 0112.8 0"/><path d="M8.6 15.4a6 6 0 016.8 0"/><circle cx="12" cy="19" r="1.1" fill="currentColor" stroke="none"/>',{size:20,w:1.9})}</div>
+         <div class="cc-circ ${on(s.bluetooth && !s.bluetoothDisconnected)}" data-t="bluetooth">${sf('<path d="M7 7 17 17 12 21V3l5 4L7 17"/>',{size:20,w:1.9})}</div>
+       </div>
+     </div>
+     <div class="cc-tile" data-t="lock" style="${s.rotationLock?'background:#ff3b30':''}">
+       <div class="cc-ic">${sf('<rect x="5" y="10.5" width="14" height="10" rx="3"/><path d="M8.2 10.5V7.8a3.8 3.8 0 017.6 0v2.7"/>',{size:22,w:1.9})}</div>
+       <div class="cc-label">Rotation<br>${s.rotationLock?'Locked':'Unlocked'}</div></div>
+     <div class="cc-tile" data-t="dnd" style="${s.dnd?'background:#5e5ce6':''}">
+       <div class="cc-ic">${sf('<path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z" fill="${s.dnd?"currentColor":"none"}"/>',{size:22,w:1.9})}</div>
+       <div class="cc-label">Focus</div></div>
+     <div class="cc-tile span2" style="padding:11px 13px" data-t="music">
+       <div style="width:100%;display:flex;align-items:center;gap:11px">
+         <div style="width:38px;height:38px;border-radius:8px;background:linear-gradient(135deg,#ff2d55,#ff9500);flex:none"></div>
+         <div style="flex:1;min-width:0;text-align:left"><div style="font-size:13px;font-weight:600">Not Playing</div>
+           <div style="font-size:11px;opacity:.6">Music</div></div>
+         <div style="display:flex;gap:14px;opacity:.9">
+           ${sf('<path d="M18 6v12M16 12L7 5.5v13z" fill="currentColor" stroke="none"/>',{fill:true,size:17})}
+           ${sf('<path d="M7 5.5l11 6.5-11 6.5z" fill="currentColor" stroke="none"/>',{fill:true,size:19})}
+           ${sf('<path d="M6 6v12M8 12l9 6.5v-13z" fill="currentColor" stroke="none"/>',{fill:true,size:17})}
+         </div></div>
+     </div>
+     <div class="cc-tile" data-t="low" style="${s.lowpower?'background:#ffd60a;color:#000':''}">
+       <div class="cc-ic">${sf('<rect x="2" y="8" width="17" height="9" rx="3"/><path d="M21 11.2v2.6"/><path d="M11 9.5l-2.6 3.4h3l-.8 2.6 3-3.6h-2.8z" fill="currentColor" stroke="none"/>',{size:22,w:1.8})}</div>
+       <div class="cc-label">Low Power</div></div>
+     <div class="cc-tile" data-t="flash" style="${s.torch?'background:#fff;color:#000':''}">
+       <div class="cc-ic">${sf('<path d="M9 3h6l-.6 3.4H9.6z"/><path d="M9.6 6.4h4.8l.6 2.2v11a1.4 1.4 0 01-1.4 1.4h-3.2a1.4 1.4 0 01-1.4-1.4v-11z"/><path d="M12 12v3"/>',{size:22,w:1.7})}</div>
+       <div class="cc-label">Torch</div></div>
+     <div class="cc-slider" id="ccBright"><div class="cc-fill" style="height:${s.brightness*100}%"></div>
+       <i>${sf('<circle cx="12" cy="12" r="4.4" fill="currentColor" stroke="none"/><path d="M12 2.4v2.6M12 19v2.6M2.4 12h2.6M19 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" stroke-width="2.1"/>',{size:22})}</i></div>
+     <div class="cc-slider" id="ccVol"><div class="cc-fill" style="height:${s.ringer}%"></div>
+       <i>${sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor" stroke="none"/><path d="M15.5 9.2a4 4 0 010 5.6M18.2 6.6a8 8 0 010 10.8"/>',{size:22})}</i></div>
+     <div class="cc-tile" data-t="calc">
+       <div class="cc-ic">${sf('<rect x="4" y="2.6" width="16" height="18.8" rx="3.4"/><rect x="7" y="5.6" width="10" height="3.4" rx="1.2"/><path d="M8.4 13h.02M12 13h.02M15.6 13h.02M8.4 17h.02M12 17h.02M15.6 17h.02" stroke-width="2.6"/>',{size:22,w:1.7})}</div>
+       <div class="cc-label">Calculator</div></div>
+     <div class="cc-tile" data-t="camera">
+       <div class="cc-ic">${sf('<rect x="2.5" y="6.5" width="19" height="13" rx="3.4"/><path d="M8.5 6.5l1.4-2.4h4.2l1.4 2.4"/><circle cx="12" cy="13" r="3.7"/>',{size:22,w:1.7})}</div>
+       <div class="cc-label">Camera</div></div>
+   </div>`;
+  cc.querySelectorAll('[data-t]').forEach(n=>n.onclick=e=>{
+    e.stopPropagation(); const t=n.dataset.t;
+    if(t==='airplane'){setAirplane(!s.airplane);}
+    else if(t==='wifi'){if(!s.wifi){s.wifi=true;s.wifiDisconnected=false;}else s.wifiDisconnected=!s.wifiDisconnected;}
+    else if(t==='cellular'){ s.cellular=!s.cellular; }
+    else if(t==='bluetooth'){if(!s.bluetooth){s.bluetooth=true;s.bluetoothDisconnected=false;}else s.bluetoothDisconnected=!s.bluetoothDisconnected;BT().devices.forEach(d=>{if(s.bluetoothDisconnected)d.conn=false;});}
+    else if(t==='dnd'){ s.dnd=!s.dnd; toast(s.dnd?'Do Not Disturb On':'Do Not Disturb Off'); }
+    else if(t==='low'){ s.lowpower=!s.lowpower; }
+    else if(t==='lock'){ s.rotationLock=!s.rotationLock; toast(s.rotationLock?'Rotation Lock On':'Rotation Lock Off'); }
+    else if(t==='flash'){ s.torch=!s.torch; toast(s.torch?'Torch On':'Torch Off'); }
+    else if(t==='music'){ cc.classList.remove('on'); openApp('music'); return; }
+    else if(t==='calc'){ cc.classList.remove('on'); openApp('calculator'); return; }
+    else if(t==='camera'){ cc.classList.remove('on'); openApp('camera'); return; }
+    save(); applyAppearance(); renderCC();
+  });
+  const drag=(node,get,set)=>{
+    const move=e=>{ const r=node.getBoundingClientRect();
+      const v=Math.min(1,Math.max(0,1-(e.clientY-r.top)/r.height)); set(v);
+      node.querySelector('.cc-fill').style.height=(v*100)+'%'; };
+    node.addEventListener('pointerdown',e=>{ node.setPointerCapture(e.pointerId); move(e);
+      node.onpointermove=ev=>{ if(ev.buttons) move(ev); };
+      node.onpointerup=()=>{ node.onpointermove=null; save(); applyAppearance(); }; });
+  };
+  drag($('#ccBright'),null,v=>{ s.brightness=Math.max(.15,v); applyAppearance(); });
+  drag($('#ccVol'),null,v=>{ s.ringer=Math.round(v*100); });
+}
+
+/* ---------- App switcher ---------- */
+function openSwitcher(){
+  const sw=$('#switcher'); sw.innerHTML='';
+  if(!openApps.size){ toast('No recent apps'); return; }
+  const bg=el('div','sw-bg'); bg.className='sw-bg wp-'+State.settings.wallpaper;
+  sw.appendChild(bg);
+  const rail=el('div','sw-rail'); sw.appendChild(rail);
+  [...openApps.entries()].reverse().forEach(([id,inst])=>{
+    const def=inst.def;
+    const wrap=el('div','sw-wrap');
+    wrap.innerHTML=`<div class="sw-label">${appIconHTML(def,24)}<span>${esc(def.name)}</span></div>`;
+    const card=el('div','sw-card');
+    const shot=el('div','sw-shot');
+    const clone=inst.win.cloneNode(true);
+    clone.classList.remove('closing','opening');   // a mid-animation clone would stay at opacity 0
+    clone.style.display='flex'; clone.style.position='relative'; clone.style.inset='auto';
+    clone.style.width='393px'; clone.style.height='852px'; clone.style.opacity='1'; clone.style.transform='none';
+    shot.appendChild(clone); card.appendChild(shot);
+    const x=el('button','sw-x',sf('<path d="M6 6l12 12M18 6L6 18"/>',{w:2.2,size:13}));
+    x.onclick=e=>{ e.stopPropagation(); quitApp(id);
+      if(!openApps.size) sw.classList.remove('on'); else openSwitcher(); };
+    card.appendChild(x);
+    card.onclick=e=>{ if(e.target.closest('.sw-x'))return; sw.classList.remove('on'); openApp(id); };
+    wrap.appendChild(card);
+    rail.appendChild(wrap);
+  });
+  sw.appendChild(h('<div class="sw-hint"></div>'));
+  sw.classList.add('on');
+  rail.scrollLeft=rail.scrollWidth;   // most recent app front and centre
+  sw.onclick=e=>{ if(e.target===sw||e.target.classList.contains('sw-rail')||e.target.classList.contains('sw-bg')) sw.classList.remove('on'); };
+}
+
+/* =========================================================================
+   SETTINGS
+   ========================================================================= */
+const WALLPAPERS=[
+  {n:'Aurora',c:'linear-gradient(160deg,#1b2b5e,#3b1d6e 38%,#8a2b6b 70%,#f0794a)'},
+  {n:'Deep Ocean',c:'radial-gradient(120% 90% at 20% 10%,#00b4d8,#0077b6 35%,#03045e 75%,#000)'},
+  {n:'Slate',c:'linear-gradient(200deg,#0f2027,#203a43 45%,#2c5364)'},
+  {n:'Ember',c:'radial-gradient(100% 80% at 80% 0%,#ff9a44,#ff2e63 45%,#5d0e41)'},
+  {n:'Graphite',c:'linear-gradient(180deg,#101418,#171b21 60%,#0a0c0f)'},
+  {n:'Sunrise',c:'linear-gradient(160deg,#f6d365,#fda085 50%,#f76b8a)'},
+  {n:'Mint',c:'radial-gradient(90% 70% at 30% 20%,#43e97b,#38f9d7 40%,#0b3d3b)'},
+  {n:'Orchid',c:'linear-gradient(140deg,#c471f5,#fa71cd 60%,#3b0a58)'}
+];
+
+function settingsIcon(bg,glyph){ return {icon:glyph, iconBg:bg}; }
+
+defineApp({
+  id:'settings', name:'Settings', bg:'linear-gradient(180deg,#c8c9cd,#7c7f86)',
+  glyph:'<div style="font-size:40px;line-height:1">⚙️</div>',
+  mount(win,inst){
+    const nav=new Nav(win); inst.nav=nav;
+    nav.setRoot(settingsRoot());
+  },
+  onShow(inst){ inst.nav.refresh(); }
+});
+
+function settingsRoot(){
+  return {title:'Settings', largeTitle:true, shortTitle:'Settings', build(b,nav){
+    const s=State.settings;
+    const sfield=el('div','searchfield',`${SVG.search}<input placeholder="Search" id="setSearch">`);
+    b.appendChild(sfield);
+    const results=el('div'); b.appendChild(results);
+    const content=el('div'); b.appendChild(content);
+    sfield.querySelector('input').oninput=e=>{
+      const q=e.target.value.trim().toLowerCase();
+      results.innerHTML=''; content.style.display=q?'none':'';
+      if(!q) return;
+      const hits=SETTINGS_INDEX.filter(x=>x.k.toLowerCase().includes(q));
+      group(results,{header:hits.length?'Results':'No Results',rows:hits.slice(0,12).map(x=>({
+        label:x.k, sub:x.p, icon:x.i, iconBg:x.c, onClick:()=>x.go(nav)
+      }))});
+    };
+
+    // Apple Account card (renamed from "Apple ID" in iOS 18, kept in iOS 26)
+    const acct=currentAccount();
+    const idRow=el('div','row');
+    if(acct){
+      idRow.innerHTML=`<div class="avatar" style="width:60px;height:60px;font-size:24px;background:${acct.color}">${esc(acct.initials)}</div>
+        <div class="lbl"><div style="font-size:22px">${esc(acct.name)}</div><div class="sub">Apple Account, iCloud and more</div></div>
+        <div class="chev">${SVG.chev}</div>`;
+      idRow.onclick=()=>nav.push(appleIDView());
+    }else{
+      idRow.innerHTML=`<div class="avatar" style="width:60px;height:60px;background:var(--bg3);color:var(--txt2)">
+          ${sf('<circle cx="12" cy="8" r="3.8"/><path d="M4.6 20.4a7.4 7.4 0 0114.8 0"/>',{size:28})}</div>
+        <div class="lbl"><div style="font-size:19px">Sign in to your iPhone</div>
+          <div class="sub">Set up iCloud, the App Store and more</div></div>
+        <div class="chev">${SVG.chev}</div>`;
+      idRow.onclick=()=>signInSheet(nav);
+    }
+    idRow.style.padding='14px';
+    const g0=el('div','grp'); g0.appendChild(idRow); content.appendChild(g0);
+
+
+    group(content,{rows:[
+      {label:'Airplane Mode', icon:SVG.plane, iconBg:'#ff9f0a', toggle:()=>s.airplane,
+       onToggle:v=>{setAirplane(v);nav.refresh();}},
+      {label:'Wi-Fi', icon:SVG.wifi, iconBg:'#0a84ff',
+       value: !s.wifi?'Off' : s.wifiDisconnected?'Not Connected'
+            : s.network==='offline'?'No Internet'
+            : (WF().connected||'Not Connected'),
+       onClick:()=>nav.push(wifiView())},
+      {label:'Bluetooth', icon:'ᛒ', iconBg:'#0a84ff', value:s.bluetooth?'On':'Off', onClick:()=>nav.push(bluetoothView())},
+      {label:'Cellular', icon:'📶', iconBg:'#30d158', value:s.network==='noservice'?'No Service':(s.cellular?'':'Off'), onClick:()=>nav.push(cellularView())},
+      {label:'Personal Hotspot', icon:'🔗', iconBg:'#30d158', value:s.hotspot?'On':'Off', onClick:()=>nav.push(hotspotView())},
+      {label:'VPN', icon:'🌐', iconBg:'#0a84ff', value:s.vpnOn?'Connected':(s.vpnConfigured?'Not Connected':''), onClick:()=>nav.push(vpnView())}
+    ]});
+
+    group(content,{rows:[
+      {label:'Notifications', icon:'🔔', iconBg:'#ff3b30', onClick:()=>nav.push(notificationsView())},
+      {label:'Sounds & Haptics', icon:'🔊', iconBg:'#ff2d55', onClick:()=>nav.push(soundsView())},
+      {label:'Focus', icon:'🌙', iconBg:'#5e5ce6', value:s.dnd?'On':'', onClick:()=>nav.push(focusView())},
+      {label:'Screen Time', icon:'⏳', iconBg:'#5e5ce6', onClick:()=>nav.push(screenTimeView())}
+    ]});
+
+    // iOS 18/26 pin General first, then sort the rest alphabetically
+    group(content,{rows:[
+      {label:'General', icon:'⚙️', iconBg:'#8e8e93', onClick:()=>nav.push(generalView())},
+      {label:'Accessibility', icon:'♿', iconBg:'#0a84ff', onClick:()=>nav.push(accessibilityView())},
+      {label:'Battery', icon:'🔋', iconBg:'#30d158', value:Math.round(batteryLevel*100)+'%', onClick:()=>nav.push(batteryView())},
+      {label:'Camera', icon:'📷', iconBg:'#8e8e93', onClick:()=>nav.push(cameraSettingsView())},
+      {label:'Control Center', icon:'🎛', iconBg:'#8e8e93', onClick:()=>nav.push(infoListView('Control Center','Included Controls',
+        ['Flashlight','Timer','Calculator','Camera','Screen Recording','Low Power Mode','Home','Accessibility Shortcuts'],'Add and organize controls that appear in Control Center.'))},
+      {label:'Display & Brightness', icon:'🔆', iconBg:'#0a84ff', onClick:()=>nav.push(displayView())},
+      {label:'Home Screen & App Library', icon:'📱', iconBg:'#5e5ce6', onClick:()=>nav.push(homeScreenView())},
+      {label:'Search', icon:'🔎', iconBg:'#8e8e93', onClick:()=>nav.push(infoListView('Search','',
+        ['Show in Look Up','Show in Spotlight','Show Suggestions','Show Recents'],'Choose what Spotlight can surface.'))},
+      {label:'Wallpaper', icon:'🖼', iconBg:'#40c8e0', onClick:()=>nav.push(wallpaperView())}
+    ]});
+
+    group(content,{rows:[
+      {label:'Apple Intelligence & Siri', icon:'✨', iconBg:'linear-gradient(135deg,#ff375f,#5e5ce6,#40c8e0)',
+       value:s.appleIntelligence?'On':'Off', onClick:()=>nav.push(appleIntelligenceView())}
+    ]});
+
+    group(content,{rows:[
+      {label:'Face ID & Passcode', icon:'😀', iconBg:'#30d158', onClick:()=>nav.push(faceIDView())},
+      {label:'Emergency SOS', icon:'🆘', iconBg:'#ff3b30', onClick:()=>nav.push(infoListView('Emergency SOS','',
+        ['Call with Hold and Release','Call with 5 Presses','Call Quietly'],'Emergency features are not available in the simulator.'))},
+      {label:'Privacy & Security', icon:'✋', iconBg:'#0a84ff', onClick:()=>nav.push(privacyView())}
+    ]});
+
+    group(content,{rows:[
+      {label:'Game Center', icon:'🎮', iconBg:'#5e5ce6', onClick:()=>nav.push(infoListView('Game Center','',
+        ['Apple Account — isaiah.s@icloud.com','Nickname — isaiah_s','Friends — 12','Nearby Players'],''))},
+      {label:'iCloud', icon:'☁️', iconBg:'#0a84ff', value:'47.2 GB of 200 GB', onClick:()=>nav.push(icloudView())},
+      {label:'Wallet & Apple Pay', icon:'💳', iconBg:'#1c1c1e', onClick:()=>nav.push(infoListView('Wallet & Apple Pay','Payment Cards',
+        ['Add Card','Express Transit Card','Double-Click Side Button','Allow Payments on Mac'],'Payment features are disabled in the simulator.'))}
+    ]});
+
+    // iOS 18+ folds every per-app setting into a single "Apps" entry
+    group(content,{rows:[
+      {label:'Apps', icon:'🅰️', iconBg:'#0a84ff', onClick:()=>nav.push(appsListView())}
+    ]});
+  }};
+}
+/* iOS 18/26 "Apps" screen — every app's settings in one alphabetised list */
+function appsListView(){
+  const builtin=[
+    {name:'App Store', icon:'🅰', bg:'#0a84ff', go:n=>n.push(appStoreSettingsView())},
+    {name:'Camera', icon:'📷', bg:'#8e8e93', go:n=>n.push(cameraSettingsView())},
+    {name:'Mail', icon:'✉️', bg:'#0a84ff', go:n=>n.push(mailSettingsView())},
+    {name:'Maps', icon:'🗺', bg:'#30d158', go:n=>n.push(infoListView('Maps','',['Preferred Transportation','Driving & Navigation','Distances — In Miles'],''))},
+    {name:'Messages', icon:'💬', bg:'#30d158', go:n=>n.push(infoListView('Messages','',['iMessage','Send Read Receipts','Send as SMS','Filter Unknown Senders'],''))},
+    {name:'Music', icon:'🎵', bg:'#ff2d55', go:n=>n.push(infoListView('Music','',['Cellular Data','Downloaded Music','Sync Library','Dolby Atmos','EQ'],''))},
+    {name:'Notes', icon:'📝', bg:'#ffd60a', go:n=>n.push(infoListView('Notes','',['Default Account','Sort Notes By — Date Edited','New Notes Start With — Title'],''))},
+    {name:'Passwords', icon:'🔑', bg:'#8e8e93', go:n=>n.push(passwordsView())},
+    {name:'Phone', icon:'📞', bg:'#30d158', go:n=>n.push(phoneSettingsView())},
+    {name:'Photos', icon:'🌼', bg:'#ff9f0a', go:n=>n.push(infoListView('Photos','',['iCloud Photos','Shared Albums','Optimize iPhone Storage','Auto-Play Videos'],''))},
+    {name:'Safari', icon:'🧭', bg:'#0a84ff', go:n=>n.push(safariSettingsView())},
+    {name:'Weather', icon:'🌤', bg:'#0a84ff', go:n=>n.push(infoListView('Weather','',['Location — Always','Temperature — Fahrenheit','Notifications'],''))}
+  ];
+  return {title:'Apps', largeTitle:true, build(b,nav){
+    b.appendChild(el('div','searchfield',`${SVG.search}<input placeholder="Search">`));
+    const holder=el('div'); b.appendChild(holder);
+    const draw=q=>{
+      holder.innerHTML='';
+      const inst=State.installed.map(id=>({name:Apps[id].name, id,
+        iconHTML:`<div style="width:29px;height:29px;border-radius:7px;background:${Apps[id].bg};display:grid;place-items:center;font-size:11px;overflow:hidden">${Apps[id].tiny||''}</div>`}));
+      const rows=[...inst.map(a=>({name:a.name, icon:a.iconHTML, go:n=>n.push(thirdPartyAppSettings(a.id))})),
+                  ...builtin.map(a=>({name:a.name, icon:`<div style="width:29px;height:29px;border-radius:7px;background:${a.bg};display:grid;place-items:center;font-size:14px">${a.icon}</div>`, go:a.go}))]
+        .filter(r=>!q||r.name.toLowerCase().includes(q.toLowerCase()))
+        .sort((a,b2)=>a.name.localeCompare(b2.name));
+      if(!rows.length){ holder.appendChild(h('<div class="empty"><h3>No Apps</h3></div>')); return; }
+      group(holder,{rows:rows.map(r=>({labelHTML:esc(r.name), icon:r.icon, iconBg:'transparent', onClick:()=>r.go(nav)}))});
+    };
+    b.querySelector('input').oninput=e=>draw(e.target.value);
+    draw('');
+  }};
+}
+function appleIntelligenceView(){
+  return {title:'Apple Intelligence & Siri', shortTitle:'Siri', build(b,nav){
+    const s=State.settings;
+    const head=el('div','pad'); head.style.textAlign='center';
+    head.innerHTML=`<div style="width:76px;height:76px;border-radius:50%;margin:6px auto 10px;
+        background:conic-gradient(from 210deg,#ff375f,#ff9f0a,#ffd60a,#30d158,#40c8e0,#5e5ce6,#bf5af2,#ff375f);
+        filter:blur(.3px);box-shadow:0 0 26px rgba(191,90,242,.45)"></div>
+      <div style="font-size:19px;font-weight:600">Apple Intelligence</div>
+      <div class="muted" style="font-size:13px;line-height:1.4;padding:6px 20px 0">Writing Tools, Image Playground, and a more capable Siri — processed on device.</div>`;
+    b.appendChild(head);
+    group(b,{rows:[{label:'Apple Intelligence',toggle:()=>s.appleIntelligence,onToggle:v=>{s.appleIntelligence=v;save();nav.refresh();
+      island('✨','#bf5af2','Apple Intelligence',v?'Turning on…':'Off',2200);}}]});
+    if(s.appleIntelligence){
+      group(b,{header:'Siri',rows:[
+        {label:'Talk & Type to Siri',value:'On',onClick:()=>toast('Simulated')},
+        {label:'Listen for',value:'“Siri” or “Hey Siri”',onClick:()=>toast('Simulated')},
+        {label:'Siri Responses',onClick:()=>toast('Simulated')},
+        {label:'Announce Notifications',value:'On',onClick:()=>toast('Simulated')}]});
+      group(b,{header:'Apple Intelligence Features',rows:[
+        {label:'Writing Tools',toggle:()=>true,onToggle:()=>{}},
+        {label:'Image Playground',toggle:()=>true,onToggle:()=>{}},
+        {label:'Priority Notifications',toggle:()=>true,onToggle:()=>{}},
+        {label:'Mail Summaries',toggle:()=>true,onToggle:()=>{}}]});
+      group(b,{rows:[{label:'ChatGPT',value:'Off',onClick:()=>toast('Extensions are simulated')}]});
+    }
+    b.appendChild(el('div','grp-f','Apple Intelligence is simulated here — the toggles persist but no model runs.'));
+  }};
+}
+function cameraSettingsView(){
+  return {title:'Camera', build(b,nav){
+    group(b,{rows:[
+      {label:'Formats',value:'High Efficiency',onClick:()=>toast('Simulated')},
+      {label:'Record Video',value:'4K at 60 fps',onClick:()=>nav.push(pickerView('Record Video',['1080p at 30 fps','1080p at 60 fps','4K at 30 fps','4K at 60 fps'],'4K at 60 fps',()=>{}))},
+      {label:'Record Slo-mo',value:'1080p at 240 fps',onClick:()=>toast('Simulated')},
+      {label:'Preserve Settings',onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Grid',toggle:()=>false,onToggle:()=>{}},
+      {label:'Level',toggle:()=>true,onToggle:()=>{}},
+      {label:'Mirror Front Camera',toggle:()=>true,onToggle:()=>{}},
+      {label:'View Outside the Frame',toggle:()=>false,onToggle:()=>{}}]});
+    group(b,{header:'Photo Capture',rows:[
+      {label:'Prioritize Faster Shooting',toggle:()=>true,onToggle:()=>{}},
+      {label:'Lens Correction',toggle:()=>true,onToggle:()=>{}},
+      {label:'Macro Control',toggle:()=>true,onToggle:()=>{}}]});
+  }};
+}
+function phoneSettingsView(){
+  return {title:'Phone', build(b,nav){
+    group(b,{rows:[
+      {label:'My Number',value:'(407) 555-0142'},
+      {label:'Wi-Fi Calling',value:'On',onClick:()=>toast('Simulated')},
+      {label:'Calls on Other Devices',value:'When Nearby',onClick:()=>toast('Simulated')}]});
+    group(b,{header:'Calls',rows:[
+      {label:'Announce Calls',value:'Never',onClick:()=>toast('Simulated')},
+      {label:'Silence Unknown Callers',toggle:()=>false,onToggle:()=>{}},
+      {label:'Live Voicemail',toggle:()=>true,onToggle:()=>{}},
+      {label:'Call Blocking & Identification',onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[{label:'Simulate an Incoming Call',cls:'blue center',onClick:()=>{
+      goHome(); setTimeout(()=>incomingCall('Karma S','mobile'),400); }}]});
+  }};
+}
+
+const SETTINGS_INDEX=[
+  {k:'Wi-Fi',p:'Settings',i:SVG.wifi,c:'#0a84ff',go:n=>n.push(wifiView())},
+  {k:'Bluetooth',p:'Settings',i:'ᛒ',c:'#0a84ff',go:n=>n.push(bluetoothView())},
+  {k:'Dark Mode',p:'Display & Brightness',i:'🔆',c:'#0a84ff',go:n=>n.push(displayView())},
+  {k:'Brightness',p:'Display & Brightness',i:'🔆',c:'#0a84ff',go:n=>n.push(displayView())},
+  {k:'Text Size',p:'Display & Brightness',i:'🅰',c:'#0a84ff',go:n=>n.push(textSizeView())},
+  {k:'Wallpaper',p:'Settings',i:'🖼',c:'#40c8e0',go:n=>n.push(wallpaperView())},
+  {k:'Storage',p:'General',i:'💾',c:'#8e8e93',go:n=>n.push(storageView())},
+  {k:'Software Update',p:'General',i:'⬆️',c:'#8e8e93',go:n=>n.push(softwareUpdateView())},
+  {k:'About',p:'General',i:'ℹ️',c:'#8e8e93',go:n=>n.push(aboutView())},
+  {k:'Mail Accounts',p:'Mail',i:'✉️',c:'#0a84ff',go:n=>n.push(mailAccountsView())},
+  {k:'Search Engine',p:'Safari',i:'🧭',c:'#0a84ff',go:n=>n.push(safariSettingsView())},
+  {k:'Battery',p:'Settings',i:'🔋',c:'#30d158',go:n=>n.push(batteryView())},
+  {k:'Reset',p:'General',i:'♻️',c:'#8e8e93',go:n=>n.push(resetView())},
+  {k:'Face ID & Passcode',p:'Settings',i:'😀',c:'#30d158',go:n=>n.push(faceIDView())},
+  {k:'Airplane Mode',p:'Settings',i:SVG.plane,c:'#ff9f0a',go:n=>n.popToRoot()},
+  {k:'Apps',p:'Settings',i:'🅰️',c:'#0a84ff',go:n=>n.push(appsListView())},
+  {k:'Apple Intelligence & Siri',p:'Settings',i:'✨',c:'#bf5af2',go:n=>n.push(appleIntelligenceView())},
+  {k:'Add Mail Account',p:'Apps › Mail',i:'✉️',c:'#0a84ff',go:n=>n.push(addAccountView(n))},
+  {k:'Camera',p:'Apps',i:'📷',c:'#8e8e93',go:n=>n.push(cameraSettingsView())},
+  {k:'Phone',p:'Apps',i:'📞',c:'#30d158',go:n=>n.push(phoneSettingsView())}
+];
+
+/* --- sub views --- */
+function appleIDView(){
+  return {title:'Apple Account', shortTitle:'Account', build(b,nav){
+    const acct=currentAccount();
+    if(!acct){ b.appendChild(h('<div class="empty"><h3>Not Signed In</h3><p>Sign in to use iCloud and the App Store.</p></div>'));
+      group(b,{rows:[{label:'Sign In',cls:'blue center',onClick:()=>signInSheet(nav)}]}); return; }
+    const head=el('div','pad');
+    head.style.textAlign='center';
+    head.innerHTML=`<div class="avatar" style="width:88px;height:88px;font-size:34px;margin:6px auto 10px;background:${acct.color}">${esc(acct.initials)}</div>
+      <div style="font-size:24px;font-weight:600">${esc(acct.name)}</div>
+      <div class="muted" style="font-size:15px">${esc(acct.email)}</div>`;
+    b.appendChild(head);
+    group(b,{rows:[
+      {label:'Personal Information', icon:'👤', iconBg:'#8e8e93', onClick:()=>nav.push(personalInfoView())},
+      {label:'Sign-In & Security', icon:'🔒', iconBg:'#8e8e93', onClick:()=>nav.push(signInSecurityView())},
+      {label:'Payment & Shipping', icon:'💳', iconBg:'#8e8e93', value:'Visa', onClick:()=>nav.push(paymentView())},
+      {label:'Subscriptions', icon:'🔁', iconBg:'#8e8e93', onClick:()=>nav.push(subscriptionsView())}
+    ]});
+    group(b,{rows:[
+      {label:'iCloud', icon:'☁️', iconBg:'#0a84ff', value:'47.2 GB of 200 GB', onClick:()=>nav.push(icloudView())},
+      {label:'Media & Purchases', icon:'A', iconBg:'#0a84ff', onClick:()=>nav.push(mediaPurchasesView())},
+      {label:'Find My', icon:'📍', iconBg:'#30d158', value:'On', onClick:()=>nav.push(findMyView())},
+      {label:'Family Sharing', icon:'👨‍👩‍👧', iconBg:'#5e5ce6', value:'4 Members', onClick:()=>nav.push(familyView())}
+    ]});
+    group(b,{header:'Devices',rows:[
+      {label:State.settings.name, sub:'This iPhone 15 Pro', icon:'📱', iconBg:'#8e8e93',
+       onClick:()=>nav.push(deviceDetailView(State.settings.name,'iPhone 15 Pro','This device',true))},
+      {label:'MacBook Pro', sub:'MacBook Pro 14″', icon:'💻', iconBg:'#8e8e93',
+       onClick:()=>nav.push(deviceDetailView('MacBook Pro','MacBook Pro 14″, 2023','Orlando, FL'))},
+      {label:'Apple TV 4K', sub:'Living Room', icon:'📺', iconBg:'#8e8e93',
+       onClick:()=>nav.push(deviceDetailView('Apple TV 4K','Apple TV 4K (3rd gen)','Living Room'))},
+      {label:'Isaiah’s Apple Watch', sub:'Apple Watch Series 9', icon:'⌚', iconBg:'#8e8e93',
+       onClick:()=>nav.push(deviceDetailView('Isaiah’s Apple Watch','Apple Watch Series 9','Paired with this iPhone'))}
+    ]});
+    group(b,{rows:[
+      {label:'Switch or Add Account…', cls:'blue center', onClick:()=>signInSheet(nav,{switching:true})},
+      {label:'Remove This Account from iPhone', cls:'destructive center', onClick:()=>alertBox({
+        title:'Remove “'+acct.email+'”?',
+        message:'This account will be removed from this iPhone entirely, including its saved settings.',
+        buttons:[{text:'Cancel'},{text:'Remove Account',style:'red bold',onClick:()=>{
+          const a=ACC(); a.list=a.list.filter(x=>x.id!==acct.id);
+          a.signedIn=a.list[0]?a.list[0].id:null;
+          State.settings.appleID=a.list[0]?a.list[0].email:'';
+          save(); nav.popToRoot(); nav.refresh(); toast('Account removed');
+        }}]})},
+      {label:'Sign Out', cls:'destructive center', onClick:()=>alertBox({title:'Sign Out?',
+        message:'iCloud data will be removed from this iPhone. The account stays available to sign back in.',
+        buttons:[{text:'Cancel'},{text:'Sign Out',style:'red bold',onClick:()=>{
+          ACC().signedIn=null; save(); nav.popToRoot(); nav.refresh();
+          island('☁️','#8e8e93','Apple Account','Signed out',2000);
+        }}]})}]});
+  }};
+}
+function personalInfoView(){
+  return {title:'Personal Information', shortTitle:'Personal', build(b,nav){
+    group(b,{rows:[
+      {label:'Name',value:'Isaiah S.',onClick:()=>toast('Name changes are simulated')},
+      {label:'Date of Birth',value:'••/••/••••',onClick:()=>toast('Hidden in the simulator')}]});
+    group(b,{header:'Reachable At',rows:[
+      {label:State.settings.appleID,sub:'Apple Account & contact email',chevron:false},
+      {label:'(407) 555-0142',sub:'Phone',chevron:false},
+      {label:'Add Email or Phone Number…',cls:'blue',onClick:()=>toast('Simulated')}]});
+    group(b,{header:'Announcements',rows:[
+      {label:'Apple News & Announcements',toggle:()=>false,onToggle:()=>{}},
+      {label:'Apps, Music, TV and More',toggle:()=>true,onToggle:()=>{}}]});
+  }};
+}
+function signInSecurityView(){
+  return {title:'Sign-In & Security', shortTitle:'Security', build(b,nav){
+    group(b,{rows:[
+      {label:'Email & Phone Numbers',value:'2',onClick:()=>nav.push(personalInfoView())},
+      {label:'Change Password…',cls:'blue',onClick:()=>toast('Password changes are simulated')}]});
+    group(b,{rows:[{label:'Two-Factor Authentication',value:'On',chevron:false}],
+      footer:'Your account is protected with two-factor authentication. Codes are delivered to your trusted devices and phone numbers.'});
+    group(b,{header:'Trusted Phone Numbers',rows:[
+      {label:'(407) 555-0142',sub:'SMS · verified',chevron:false},
+      {label:'Add a Trusted Phone Number…',cls:'blue',onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Account Recovery',value:'1 contact',onClick:()=>toast('Simulated')},
+      {label:'Legacy Contact',value:'None',onClick:()=>toast('Simulated')},
+      {label:'Sign in with Apple',value:'3 apps',onClick:()=>nav.push(infoListView('Sign in with Apple','Apps Using Your Apple Account',
+        ['Netflix','Max','Wordfall'],'Stop using Sign in with Apple at any time.'))}]});
+  }};
+}
+function paymentView(){
+  return {title:'Payment & Shipping', shortTitle:'Payment', build(b,nav){
+    group(b,{header:'Payment Methods',rows:[
+      {label:'Visa •••• 0092',sub:'Default · Apple Pay',icon:'💳',iconBg:'#1a3a8f',onClick:()=>toast('Card details are simulated')},
+      {label:'Apple Card •••• 4417',sub:'Daily Cash 2%',icon:'💳',iconBg:'#5e5ce6',onClick:()=>toast('Card details are simulated')},
+      {label:'Add Payment Method…',cls:'blue',onClick:()=>toast('The simulator can’t take payment details')}]});
+    group(b,{header:'Shipping Address',rows:[
+      {labelHTML:'Isaiah S.<br><span class="muted" style="font-size:14px">1200 Lakefront Ave<br>Orlando, FL 32801</span>',chevron:false}]});
+  }};
+}
+function mediaPurchasesView(){
+  return {title:'Media & Purchases', shortTitle:'Media', build(b,nav){
+    group(b,{rows:[
+      {label:'Purchase History',onClick:()=>nav.push(infoListView('Purchase History','July',
+        ['iCloud+ 200 GB — $2.99','Spectrum TV Premium — $12.99','Wordfall Pro — $3.99'],'Purchases are billed to Visa •••• 0092.'))},
+      {label:'Personalised Recommendations',toggle:()=>true,onToggle:()=>{}}]});
+    group(b,{rows:[
+      {label:'Subscriptions',onClick:()=>nav.push(subscriptionsView())},
+      {label:'Pre-Orders',value:'None',chevron:false},
+      {label:'Rating & Review Settings',onClick:()=>toast('Simulated')}]});
+  }};
+}
+function findMyView(){
+  return {title:'Find My', build(b,nav){
+    group(b,{rows:[
+      {label:'Find My iPhone',toggle:()=>true,onToggle:()=>toast('Always on in the simulator')},
+      {label:'Find My network',toggle:()=>true,onToggle:()=>{}},
+      {label:'Send Last Location',toggle:()=>true,onToggle:()=>{}}],
+      footer:'Find My iPhone helps you locate, lock or erase this iPhone if it’s lost — even when it’s offline.'});
+    group(b,{header:'My Location',rows:[
+      {label:'Share My Location',toggle:()=>false,onToggle:()=>{}},
+      {label:'This Device',value:'Orlando, FL',chevron:false}]});
+  }};
+}
+function familyView(){
+  const members=[['Isaiah S.','Organiser','IS','#0a84ff'],['Karma S','Parent/Guardian','KS','#bf5af2'],
+    ['Dad','Adult','D','#30d158'],['Jordan Reyes','Adult','JR','#ff9f0a']];
+  return {title:'Family', build(b,nav){
+    group(b,{rows:members.map(([n,role,init,color])=>({
+      labelHTML:`${esc(n)}<div class="sub">${esc(role)}</div>`,
+      icon:`<div class="avatar" style="width:34px;height:34px;font-size:14px;background:${color}">${init}</div>`,
+      iconBg:'transparent', onClick:()=>toast('Member management is simulated')}))});
+    group(b,{header:'Shared with Your Family',rows:[
+      {label:'Subscriptions',value:'iCloud+, TV+',onClick:()=>nav.push(subscriptionsView())},
+      {label:'Purchase Sharing',value:'On',onClick:()=>toast('Simulated')},
+      {label:'Location Sharing',value:'Off',onClick:()=>toast('Simulated')},
+      {label:'Screen Time',onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[{label:'Add Member…',cls:'blue',onClick:()=>toast('Invites are simulated')}]});
+  }};
+}
+function deviceDetailView(name,model,where,isThis){
+  return {title:name, shortTitle:'Device', build(b,nav){
+    const head=el('div','pad'); head.style.textAlign='center';
+    head.innerHTML=`<div style="font-size:44px;margin:2px 0 8px">${model.includes('Watch')?'⌚':model.includes('TV')?'📺':model.includes('Mac')?'💻':'📱'}</div>
+      <div style="font-size:19px;font-weight:600">${esc(name)}</div>
+      <div class="muted" style="font-size:13px">${esc(model)} · ${esc(where)}</div>`;
+    b.appendChild(head);
+    group(b,{rows:[
+      {label:'Model',value:model},
+      {label:'Serial Number',value:isThis?'F2LX9K3QW1PZ':'••••••••••'},
+      ...(isThis?[{label:'iOS Version',value:'27.0.1'}]:[])]});
+    if(isThis) group(b,{rows:[{label:'iCloud Backup',value:'Today, 3:14 AM',onClick:()=>toast('Backups are simulated')}]});
+    group(b,{rows:[
+      {label:'Find My',value:'On',chevron:false},
+      ...(isThis?[]:[{label:'Remove from Account',cls:'destructive',onClick:()=>toast('Removal is simulated')}])]});
+  }};
+}
+function subscriptionsView(){
+  const subs=[
+    {n:'Spectrum TV Premium',p:'$12.99/mo',r:'Renews Aug 12'},
+    {n:'Netflix Standard',p:'$15.49/mo',r:'Renews Aug 3'},
+    {n:'Disney Bundle Duo',p:'$10.99/mo',r:'Renews Aug 19'},
+    {n:'iCloud+ 200GB',p:'$2.99/mo',r:'Renews Aug 1'}
+  ];
+  return {title:'Subscriptions', build(b,nav){
+    group(b,{header:'Active',rows:subs.map(s=>({label:s.n,sub:s.r,value:s.p,onClick:()=>toast('Manage in the simulator is disabled')}))});
+    group(b,{header:'Expired',rows:[{label:'Peacock Premium',sub:'Expired Jun 2',value:'$5.99/mo',onClick:()=>toast('Simulated')}]});
+  }};
+}
+function icloudView(){
+  const PLANS=[['5 GB','Free'],['50 GB','$0.99/mo'],['200 GB','$2.99/mo'],['2 TB','$9.99/mo'],['6 TB','$29.99/mo'],['12 TB','$59.99/mo']];
+  return {title:'iCloud', build(b,nav){
+    const acct=currentAccount();
+    if(!acct){ b.appendChild(h('<div class="empty"><h3>Not Signed In</h3></div>')); return; }
+    const cap=parseFloat(acct.plan)||5;
+    const capGB=acct.plan.includes('TB')? cap*1000 : cap;
+    const used=Math.min(acct.storage,capGB);
+    const parts=[['Photos',used*0.62,'#ffd60a'],['Backups',used*0.21,'#0a84ff'],
+      ['Mail',used*0.09,'#30d158'],['Docs',used*0.08,'#bf5af2']];
+    const bar=el('div','grp'); bar.style.padding='16px';
+    bar.innerHTML=`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--txt2)">
+        <span>${used.toFixed(1)} GB of ${esc(acct.plan)} Used</span><span>${(capGB-used).toFixed(1)} GB free</span></div>
+      <div style="height:11px;border-radius:6px;overflow:hidden;display:flex;background:var(--bg3);margin:10px 0 9px">
+        ${parts.map(p=>`<i style="width:${p[1]/capGB*100}%;background:${p[2]}"></i>`).join('')}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--txt2)">
+        ${parts.map(p=>`<span style="display:flex;align-items:center;gap:5px">
+          <i style="width:8px;height:8px;border-radius:2px;background:${p[2]};display:inline-block"></i>${p[0]}</span>`).join('')}</div>`;
+    b.appendChild(bar);
+    group(b,{rows:[
+      {label:'Manage Account Storage',onClick:()=>nav.push(storagePlanView(acct,PLANS))},
+      {label:'Change Storage Plan',value:acct.plan,onClick:()=>nav.push(storagePlanView(acct,PLANS))}]});
+    group(b,{header:'Saved to iCloud',rows:[
+      {label:'Photos',value:'On',icon:'🌼',iconBg:'#ff9f0a',onClick:()=>toast('Simulated')},
+      {label:'iCloud Drive',value:'On',icon:'☁️',iconBg:'#0a84ff',onClick:()=>toast('Simulated')},
+      {label:'iCloud Mail',value:'On',icon:'✉️',iconBg:'#0a84ff',onClick:()=>toast('Simulated')},
+      {label:'Passwords & Keychain',value:'On',icon:'🔑',iconBg:'#8e8e93',onClick:()=>toast('Simulated')},
+      {label:'Show All',cls:'blue',onClick:()=>nav.push(infoListView('Apps Using iCloud','',
+        ['Notes','Safari','Messages','Wallet','Health','Home','Siri','Freeform','News','Stocks'],''))}]});
+    group(b,{header:'Device Backups',rows:[
+      {label:'iCloud Backup',value:'On',onClick:()=>nav.push(backupView())},
+      {label:'Last Backup',value:'Today, 3:14 AM',chevron:false}]});
+    group(b,{rows:[{label:'iCloud+ Features',onClick:()=>nav.push(infoListView('iCloud+','Included with your plan',
+      ['Private Relay — On','Hide My Email — 3 addresses','Custom Email Domain','HomeKit Secure Video — 1 camera'],''))}]});
+  }};
+}
+function storagePlanView(acct,PLANS){
+  return {title:'Change Storage Plan', shortTitle:'Storage', build(b,nav){
+    b.appendChild(h(`<div class="grp-f" style="margin-top:14px">Current plan: <b>${esc(acct.plan)}</b> · ${acct.storage.toFixed(1)} GB used</div>`));
+    group(b,{header:'Upgrade or Downgrade',rows:PLANS.map(([size,price])=>({
+      label:size, value:price, chevron:false,
+      rightHTML:size===acct.plan?`<div style="color:var(--sysblue)">${sf('<path d="M4.5 12.5l5 5 10-11"/>',{w:2.4,size:17})}</div>`:'',
+      onClick:()=>{
+        if(size===acct.plan) return;
+        alertBox({title:'Change to '+size+'?',message:price==='Free'
+            ? 'Downgrading may exceed your available storage.'
+            : 'Your card ending 0092 will be billed '+price+'.',
+          buttons:[{text:'Cancel'},{text:'Confirm',style:'bold',onClick:()=>{
+            acct.plan=size; save(); nav.refresh();
+            island('☁️','#0a84ff','iCloud','Now on the '+size+' plan',2400);
+          }}]});
+      }}))});
+    group(b,{rows:[{label:'Manage Account Storage',cls:'blue',onClick:()=>nav.push(infoListView('Account Storage','Largest Items',
+      ['Photos — 29.3 GB','Backups — 9.9 GB','Mail — 4.2 GB','Messages — 2.1 GB','Other — 1.7 GB'],
+      'Delete backups or media to free up space.'))}]});
+  }};
+}
+function backupView(){
+  return {title:'iCloud Backup', shortTitle:'Backup', build(b,nav){
+    group(b,{rows:[
+      {label:'Back Up This iPhone',toggle:()=>true,onToggle:()=>{}},
+      {label:'Back Up Over Cellular',toggle:()=>false,onToggle:()=>{}}],
+      footer:'Automatically back up data when this iPhone is locked, plugged in and on Wi-Fi.'});
+    group(b,{rows:[{label:'Back Up Now',cls:'blue center',onClick:()=>{
+      island('☁️','#0a84ff','iCloud Backup','Backing up…',3000); toast('Backup started'); }}]});
+    group(b,{header:'Backups',rows:[
+      {label:State.settings.name,sub:'Today, 3:14 AM · 4.9 GB',onClick:()=>toast('Backup details are simulated')},
+      {label:'MacBook Pro',sub:'Jul 22 · 12.4 GB',onClick:()=>toast('Backup details are simulated')}]});
+  }};
+}
+
+/* =========================================================================
+   WI-FI — networks in range, known ("previous") networks, join + forget
+   ========================================================================= */
+/* what the radio can see right now */
+const AIRWAVES=[
+  {ssid:'SPECTRUM-5G',              sec:'WPA3', bars:3},
+  {ssid:'SPECTRUM-2.4G',            sec:'WPA2', bars:3},
+  {ssid:'Spectrum WiFi',            sec:'open', bars:2},
+  {ssid:'SpectrumSetup-A4',         sec:'WPA2', bars:2},
+  {ssid:'ATT-WIFI-8821',            sec:'WPA2', bars:2},
+  {ssid:'Apt 4B Guest',             sec:'WPA2', bars:2},
+  {ssid:'NETGEAR74',                sec:'WPA2', bars:1},
+  {ssid:'xfinitywifi',              sec:'open', bars:1},
+  {ssid:'DIRECT-3F-HP OfficeJet',   sec:'WPA2', bars:1}
+];
+const SECURITIES=['None','WEP','WPA','WPA2','WPA3','WPA2/WPA3','WPA2 Enterprise','WPA3 Enterprise'];
+const DAY=864e5;
+function defaultWifi(){
+  const now=Date.now();
+  return {
+    connected:'SPECTRUM-5G',
+    askToJoin:'Notify',
+    autoJoinHotspot:'Ask to Join',
+    /* “previous networks” — what the Edit button lists */
+    known:[
+      {ssid:'SPECTRUM-5G',   sec:'WPA3', autoJoin:true,  lowData:false, priv:'Rotating', last:now},
+      {ssid:'SPECTRUM-2.4G', sec:'WPA2', autoJoin:true,  lowData:false, priv:'Rotating', last:now-2*DAY},
+      {ssid:'ATT-WIFI-8821', sec:'WPA2', autoJoin:true,  lowData:false, priv:'Fixed',    last:now-9*DAY},
+      {ssid:'Mom & Dad',     sec:'WPA2', autoJoin:true,  lowData:false, priv:'Rotating', last:now-16*DAY},
+      {ssid:'MCO Airport Free WiFi', sec:'None', autoJoin:false, lowData:true, priv:'Rotating', last:now-34*DAY},
+      {ssid:'Starbucks WiFi',sec:'None', autoJoin:false, lowData:true,  priv:'Rotating', last:now-47*DAY},
+      {ssid:'Hampton_Guest', sec:'WPA2', autoJoin:false, lowData:false, priv:'Rotating', last:now-88*DAY},
+      {ssid:'Jordan’s iPhone',sec:'WPA3',autoJoin:false, lowData:false, priv:'Rotating', last:now-120*DAY}
+    ]
+  };
+}
+function WF(){ if(!State.wf){ State.wf=defaultWifi(); save(); } return State.wf; }
+function knownNet(ssid){ return WF().known.find(n=>n.ssid===ssid); }
+function inRange(ssid){ return AIRWAVES.find(a=>a.ssid===ssid); }
+function isSecured(sec){ return sec && sec!=='open' && sec!=='None'; }
+function wifiOn(){ return State.settings.wifi; }
+function netIP(ssid){ const config=knownNet(ssid)?.config; let n=0; for(const c of ssid) n+=c.charCodeAt(0);
+  return {ip:config?.ipMode==='Manual'?config.ip:'192.168.'+(n%4===0?1:n%4)+'.'+(20+n%200), router:config?.ipMode==='Manual'?config.router:'192.168.'+(n%4===0?1:n%4)+'.1',
+    mac:Array.from({length:6},(_,i)=>((n*(i+7))%256).toString(16).padStart(2,'0').toUpperCase()).join(':')}; }
+function wifiSignal(bars,dim){
+  const o=i=>i<=bars?(dim?.55:1):.25;
+  return `<svg width="17" height="13" viewBox="0 0 17 13" fill="none" stroke="currentColor"
+    stroke-width="1.9" stroke-linecap="round" style="display:block">
+    <path d="M1.7 4.6a11 11 0 0113.6 0" opacity="${o(3)}"/>
+    <path d="M4.4 7.6a7 7 0 018.2 0" opacity="${o(2)}"/>
+    <path d="M7 10.5a3.1 3.1 0 013 0" opacity="${o(1)}"/>
+    <circle cx="8.5" cy="12.2" r=".9" fill="currentColor" stroke="none" opacity="${o(1)}"/></svg>`;
+}
+const wifiLock=`<svg width="12" height="14" viewBox="0 0 14 16" fill="none" stroke="currentColor" stroke-width="1.7" style="display:block">
+  <rect x="1.4" y="6.6" width="11.2" height="8.2" rx="2.4"/><path d="M3.8 6.6V4.6a3.2 3.2 0 016.4 0v2"/></svg>`;
+function lastSeenText(ts){
+  const d=Math.floor((Date.now()-ts)/DAY);
+  if(d<=0) return 'Joined today';
+  if(d===1) return 'Joined yesterday';
+  if(d<30) return `Joined ${d} days ago`;
+  if(d<60) return 'Joined last month';
+  return 'Joined '+new Date(ts).toLocaleDateString(undefined,{month:'long',year:'numeric'});
+}
+/* one row in the Wi-Fi list */
+function wifiRow(net,{connected,connecting,known,nav}={}){
+  const row=el('div','wf-row'),secured=isSecured(net.sec);
+  const sub=connected?'Connected':connecting?'Connecting…':known?'Saved'+(net.autoJoin===false?' · Auto-Join off':''):'';
+  row.innerHTML=`<button class="wf-join" aria-label="${esc(connected?net.ssid+', connected':'Join '+net.ssid)}">
+    <span class="wf-check">${connected?sf('<path d="M4.5 12.5l5 5 10-11"/>',{w:2.4,size:16}):''}</span>
+    <span class="wf-name">${esc(net.ssid)}${sub&&!connected?`<span class="sub">${esc(sub)}</span>`:''}</span>
+    <span class="wf-meta">${connecting?'<span class="spinner"></span>':''}${secured?wifiLock:''}${wifiSignal(inRange(net.ssid)?inRange(net.ssid).bars:1)}</span>
+    </button><button class="wf-info" aria-label="More info for ${esc(net.ssid)}">i</button>`;
+  row.querySelector('.wf-info').onclick=()=>nav.push(networkDetailView(net.ssid));
+  if(connected)row.querySelector('.wf-join').onclick=()=>nav.push(networkDetailView(net.ssid));
+  return row;
+}
+function wifiView(){
+  return {title:'Wi-Fi', shortTitle:'Wi-Fi',
+    right:[{text:'Edit',cls:'wf-edit',onClick:n=>n.push(knownNetworksView())}],
+    build(b,nav,view){
+      const s=State.settings, w=WF();
+      const on=wifiOn();
+      const editBtn=view._bar&&view._bar.querySelector('.wf-edit');
+      if(editBtn) editBtn.classList.toggle('dis',!w.known.length);
+
+      group(b,{rows:[{label:'Wi-Fi',toggle:()=>State.settings.wifi,onToggle:v=>{
+        s.wifi=v;s.wifiDisconnected=false;
+        save(); applyAppearance(); renderCC(); nav.refresh();
+      }}]});
+
+      if(!on){
+        b.appendChild(el('div','grp-f', s.airplane
+          ? 'Airplane Mode is on. Turn off Airplane Mode or turn on Wi-Fi to see available networks.'
+          : 'Turn on Wi-Fi to see available networks and join one.'));
+        group(b,{rows:[{label:'Known Networks',value:String(w.known.length),onClick:()=>nav.push(knownNetworksView())}]});
+        return;
+      }
+
+      /* connected + other saved networks that are in range */
+      const kn=w.connected?knownNet(w.connected):null;
+      const conn=w.connected? (inRange(w.connected)||{ssid:w.connected,sec:(kn&&kn.sec)||'WPA2',bars:3}) : null;
+      const mine=AIRWAVES.filter(a=>knownNet(a.ssid) && a.ssid!==w.connected);
+      const g1=el('div','grp');
+      if(conn) g1.appendChild(wifiRow(conn,{connected:true,known:true,nav}));
+      mine.forEach(a=>{
+        const r=wifiRow(a,{known:true,connecting:connectingTo===a.ssid,nav});
+        r.querySelector('.wf-join').onclick=()=>connectTo(a.ssid,nav);
+        g1.appendChild(r);
+      });
+      b.appendChild(el('div','grp-h',conn?'My Networks':'Saved Networks'));
+      b.appendChild(g1);
+      if(!conn && !mine.length) g1.appendChild(h('<div class="wf-row" style="cursor:default"><div class="wf-name muted" style="font-size:15px">Not connected</div></div>'));
+      if(conn){
+        const f=el('div','grp-f');
+        f.innerHTML=`Connected to <b>${esc(conn.ssid)}</b> · ${isSecured(conn.sec)?esc(conn.sec)+' security':'Open network'} · IP ${netIP(conn.ssid).ip}`;
+        b.appendChild(f);
+      }
+
+      /* everything else the radio can hear */
+      const others=AIRWAVES.filter(a=>!knownNet(a.ssid) && a.ssid!==w.connected);
+      b.appendChild(el('div','grp-h','Other Networks'));
+      const g2=el('div','grp');
+      others.forEach(a=>{
+        const r=wifiRow(a,{nav,connecting:connectingTo===a.ssid});
+        r.querySelector('.wf-join').onclick=()=>connectTo(a.ssid,nav);
+        g2.appendChild(r);
+      });
+      const otherRow=el('button','wf-row');otherRow.setAttribute('aria-label','Join Other Network');
+      otherRow.innerHTML=`<div class="wf-check"></div><div class="wf-name">Other…</div>
+        <div class="wf-meta"><div class="chev">${SVG.chev}</div></div>`;
+      otherRow.onclick=()=>nav.push(joinOtherView(nav));
+      g2.appendChild(otherRow);
+      const scan=el('div','wf-row');
+      scan.style.cursor='default';
+      scan.innerHTML=`<div class="wf-check"></div><div class="wf-name muted" style="font-size:15px">Looking for networks…</div>
+        <div class="wf-meta"><div class="spinner"></div></div>`;
+      g2.appendChild(scan);
+      b.appendChild(g2);
+
+      group(b,{rows:[
+        {label:'Ask to Join Networks', value:w.askToJoin, onClick:()=>nav.push(wifiPicker('Ask to Join Networks',
+          ['Off','Notify','Ask'], w.askToJoin, v=>{ w.askToJoin=v; save(); },
+          'Known networks will be joined automatically. If no known networks are available, you will be notified of available networks.'))},
+        {label:'Auto-Join Hotspot', value:w.autoJoinHotspot, onClick:()=>nav.push(wifiPicker('Auto-Join Hotspot',
+          ['Never','Ask to Join','Automatic'], w.autoJoinHotspot, v=>{ w.autoJoinHotspot=v; save(); },
+          'Allow this device to automatically discover nearby Personal Hotspots when no Wi-Fi network is available.'))}
+      ],footer:'Tap <b>Edit</b> to see every network this iPhone has joined before and remove the ones you don’t want it to re-join.'});
+    }};
+}
+function wifiPicker(title,options,current,onPick,footer){
+  let sel=current;
+  return {title, build(b,nav){
+    group(b,{rows:options.map(o=>({
+      label:o, chevron:false,
+      rightHTML:o===sel?`<div style="color:var(--sysblue)">${sf('<path d="M4.5 12.5l5 5 10-11"/>',{w:2.4,size:17})}</div>`:'',
+      onClick:()=>{ sel=o; onPick(o); nav.refresh(); }
+    })),footer});
+  }};
+}
+/* ---- joining ---- */
+let connectingTo=null;
+function connectTo(ssid,nav){
+  const w=WF(), air=inRange(ssid)||{ssid,sec:'WPA2'}, saved=knownNet(ssid);
+  if(w.connected===ssid) return;
+  if(isSecured(air.sec) && !saved) return askForPassword(air,nav);
+  finishConnect(ssid,nav);
+}
+function finishConnect(ssid,nav,pw){
+  const w=WF(), air=inRange(ssid)||{ssid,sec:'WPA2'};
+  connectingTo=ssid;
+  nav&&nav.refresh();
+  setTimeout(()=>{
+    connectingTo=null;
+    w.connected=ssid;
+    let k=knownNet(ssid);
+    if(!k){ k={ssid,sec:air.sec,autoJoin:true,lowData:false,priv:'Rotating',last:Date.now()}; w.known.unshift(k); }
+    k.last=Date.now();
+    if(pw) k.pw=pw;
+    State.settings.wifiName=ssid;State.settings.wifiDisconnected=false;
+    if(State.settings.network==='offline') State.settings.network='online';
+    save(); applyAppearance();
+    island(SVG.wifi,'#0a84ff','Wi-Fi','Connected to '+ssid,2000);
+    nav&&nav.refresh();
+  },1400);
+}
+function askForPassword(air,nav){
+  sheet((s,close)=>{
+    let pw='',show=false;
+    const bar=el('div');
+    bar.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:.5px solid var(--sep)';
+    const cancel=el('button','','Cancel'); cancel.style.color='var(--sysblue)';
+    const title=el('b','','Enter Password'); title.style.fontSize='17px';
+    const join=el('button','','Join'); join.style.cssText='color:var(--sysblue);font-weight:600;opacity:.4;pointer-events:none';
+    bar.append(cancel,title,join); s.appendChild(bar);
+
+    const head=el('div','pad');
+    head.style.cssText='padding:16px 18px 4px;font-size:14px;color:var(--txt2);line-height:1.4';
+    head.innerHTML=`Enter the password for “<b style="color:var(--txt)">${esc(air.ssid)}</b>”`;
+    s.appendChild(head);
+
+    const g=el('div','grp'); g.style.margin='12px 16px';
+    const row=el('div','compose-field'); row.style.borderBottom='none';
+    row.innerHTML='<div class="k" style="min-width:82px">Password</div>';
+    const input=el('input'); input.type='password'; input.placeholder='Required';
+    const eye=el('button','',sf('<path d="M2 12s3.6-6.4 10-6.4S22 12 22 12s-3.6 6.4-10 6.4S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/>',{size:18}));
+    eye.style.color='var(--txt2)';
+    eye.onclick=()=>{ show=!show; input.type=show?'text':'password'; };
+    input.oninput=()=>{ pw=input.value;
+      const ok=pw.length>0;
+      join.style.opacity=ok?'1':'.4'; join.style.pointerEvents=ok?'auto':'none'; };
+    row.append(input,eye); g.appendChild(row); s.appendChild(g);
+    s.appendChild(h(`<div class="grp-f" style="margin:0 16px 18px">You can also access this Wi-Fi network by bringing your iPhone near any device that is already connected.</div>`));
+
+    cancel.onclick=close;
+    join.onclick=()=>{
+      if(isSecured(air.sec) && pw.length<8){
+        close();
+        setTimeout(()=>alertBox({title:'Unable to Join the Network “'+air.ssid+'”',
+          message:'The password you entered is incorrect. WPA2/WPA3 passwords are at least 8 characters.',
+          buttons:[{text:'Cancel'},{text:'Try Again',style:'bold',onClick:()=>askForPassword(air,nav)}]}),320);
+        return;
+      }
+      close();
+      finishConnect(air.ssid,nav,pw);
+    };
+    setTimeout(()=>input.focus(),380);
+  });
+}
+function joinOtherView(parentNav){
+  const d={ssid:'',sec:'WPA2',pw:''};
+  let view;
+  function join(nav){
+    if(!d.ssid.trim()) return alertBox({title:'Cannot Join Network',message:'Enter a network name.',buttons:[{text:'OK'}]});
+    if(isSecured(d.sec) && d.pw.length<8)
+      return alertBox({title:'Unable to Join the Network “'+d.ssid+'”',
+        message:'The password you entered is incorrect. Passwords for '+d.sec+' networks are at least 8 characters.',buttons:[{text:'OK'}]});
+    const done=navBusy(view,'Joining');
+    setTimeout(()=>{
+      done();
+      if(!AIRWAVES.some(a=>a.ssid===d.ssid.trim()))
+        AIRWAVES.push({ssid:d.ssid.trim(),sec:d.sec,bars:2});
+      nav.pop();
+      finishConnect(d.ssid.trim(),nav,d.pw);
+    },1500);
+  }
+  return {title:'Other Network', shortTitle:'Other', backLabel:'Wi-Fi',
+    right:[{text:'Join',cls:'nb-next',onClick:join}],
+    build(b,nav,vw){
+      view=vw;
+      formGroup(b,{fields:[{label:'Name',placeholder:'Network Name',get:()=>d.ssid,set:v=>d.ssid=v}]});
+      group(b,{rows:[{label:'Security',value:d.sec,onClick:()=>nav.push({title:'Security',build(bb){
+        group(bb,{rows:SECURITIES.map(o=>({label:o,chevron:false,
+          rightHTML:o===d.sec?`<div style="color:var(--sysblue)">${sf('<path d="M4.5 12.5l5 5 10-11"/>',{w:2.4,size:17})}</div>`:'',
+          onClick:()=>{ d.sec=o; nav.refresh(); nav.pop(); nav.refresh(); }}))});
+      }})}]});
+      if(isSecured(d.sec))
+        formGroup(b,{fields:[{label:'Password',placeholder:'Required',type:'password',get:()=>d.pw,set:v=>d.pw=v}]});
+      b.appendChild(el('div','grp-f','Enter the exact name of a hidden network to join it manually.'));
+      setTimeout(()=>b.querySelector('input').focus(),340);
+    }};
+}
+/* ---- Edit → Known ("previous") Networks ---- */
+function knownNetworksView(){
+  return {title:'Known Networks', shortTitle:'Known', backLabel:'Wi-Fi',
+    build(b,nav){
+      const w=WF();
+      if(!w.known.length){
+        b.appendChild(h(`<div class="empty"><h3>No Known Networks</h3>
+          <p>Networks you join are remembered here so this iPhone can re-join them automatically.</p></div>`));
+        return;
+      }
+      const sorted=[...w.known].sort((a,c)=>c.last-a.last);
+      const current=sorted.filter(n=>n.ssid===w.connected);
+      const rest=sorted.filter(n=>n.ssid!==w.connected);
+
+      const build=(list,header,footer)=>{
+        if(!list.length) return;
+        b.appendChild(el('div','grp-h',header));
+        const g=el('div','grp');
+        list.forEach(n=>g.appendChild(knownRow(n,nav)));
+        b.appendChild(g);
+        if(footer) b.appendChild(el('div','grp-f',footer));
+      };
+      build(current,'Current Network');
+      build(rest,'Previously Joined',
+        'Removing a network makes this iPhone forget its password and stop joining it automatically.');
+
+      group(b,{rows:[{label:'Forget All Networks',cls:'destructive center',onClick:()=>{
+        alertBox({title:'Forget All Networks?',
+          message:`This iPhone will forget ${w.known.length} saved network${w.known.length===1?'':'s'} and their passwords.`,
+          buttons:[{text:'Cancel'},{text:'Forget All',style:'red bold',onClick:()=>{
+            w.known=[]; w.connected=null; State.settings.wifiName='Not Connected';
+            save(); applyAppearance(); nav.refresh();
+            const wv=nav.stack[nav.stack.length-2]; if(wv) setTimeout(()=>nav.pop(),200);
+            toast('All networks forgotten');
+          }}]});
+      }}]});
+    }};
+}
+function knownRow(n,nav){
+  const w=WF(), connected=w.connected===n.ssid, here=!!inRange(n.ssid);
+  const row=el('div','kn-row');
+  const inner=el('div','kn-inner');
+  inner.innerHTML=`
+    <div class="kn-minus">−</div>
+    <div class="wf-name" style="font-size:16px">${esc(n.ssid)}
+      <div class="sub">${connected?'Connected':(here?'In range':'Not in range')} · ${esc(lastSeenText(n.last))}${n.autoJoin?'':' · Auto-Join off'}</div>
+    </div>
+    <div class="wf-meta">${isSecured(n.sec)?wifiLock:''}${here?wifiSignal(inRange(n.ssid).bars,!connected):''}
+      <div class="chev">${SVG.chev}</div></div>`;
+  const del=el('button','kn-del','Delete');
+  row.append(inner,del);
+  inner.querySelector('.kn-minus').onclick=e=>{
+    e.stopPropagation();
+    $$('.kn-row.open').forEach(r=>{ if(r!==row) r.classList.remove('open'); });
+    row.classList.toggle('open');
+  };
+  inner.onclick=e=>{
+    if(e.target.closest('.kn-minus')) return;
+    if(row.classList.contains('open')){ row.classList.remove('open'); return; }
+    nav.push(networkDetailView(n.ssid));
+  };
+  del.onclick=()=>{
+    const doForget=()=>{
+      row.style.height=row.offsetHeight+'px';
+      requestAnimationFrame(()=>row.classList.add('removing'));
+      forgetNetwork(n.ssid);
+      setTimeout(()=>{ nav.refresh(); },320);
+      toast('“'+n.ssid+'” forgotten');
+    };
+    if(connected){
+      alertBox({title:'Forget Wi-Fi Network “'+n.ssid+'”?',
+        message:'Your iPhone and other devices using iCloud Keychain will no longer join this network. You will be disconnected.',
+        buttons:[{text:'Cancel',onClick:()=>row.classList.remove('open')},{text:'Forget',style:'red bold',onClick:doForget}]});
+    } else doForget();
+  };
+  return row;
+}
+function forgetNetwork(ssid){
+  const w=WF();
+  w.known=w.known.filter(n=>n.ssid!==ssid);
+  if(w.connected===ssid){
+    w.connected=null;
+    State.settings.wifiName='Not Connected';
+    /* iOS falls back to another saved network in range if there is one */
+    const fallback=AIRWAVES.find(a=>knownNet(a.ssid));
+    if(fallback){ w.connected=fallback.ssid; State.settings.wifiName=fallback.ssid; knownNet(fallback.ssid).last=Date.now(); }
+  }
+  save(); applyAppearance();
+}
+/* ---- per-network detail ---- */
+function networkDetailView(ssid){
+  return {title:ssid, shortTitle:'Network', build(b,nav){
+    const w=WF(), k=knownNet(ssid), air=inRange(ssid);
+    const connected=w.connected===ssid;
+    const net=netIP(ssid);
+
+    if(k){
+      group(b,{rows:[{label:'Forget This Network',cls:'blue center',onClick:()=>{
+        alertBox({title:'Forget Wi-Fi Network “'+ssid+'”?',
+          message:'Your iPhone and other devices using iCloud Keychain will no longer join this network.',
+          buttons:[{text:'Cancel'},{text:'Forget',style:'red bold',onClick:()=>{
+            forgetNetwork(ssid); toast('“'+ssid+'” forgotten'); nav.pop(); nav.refresh();
+          }}]});
+      }}]});
+    } else if(air){
+      group(b,{rows:[{label:'Join This Network',cls:'blue center',onClick:()=>{ nav.pop(); connectTo(ssid,nav); }}]});
+    }
+
+    group(b,{rows:[
+      {label:'Auto-Join',toggle:()=>k?k.autoJoin!==false:false,onToggle:v=>{ if(k){k.autoJoin=v;save();} else toast('Join the network first'); }},
+      {label:'Low Data Mode',toggle:()=>k?!!k.lowData:false,onToggle:v=>{ if(k){k.lowData=v;save();} }}
+    ],footer:'Low Data Mode helps reduce data usage over this network.'});
+
+    group(b,{header:'Private Wi-Fi Address',rows:[
+      {label:'Private Wi-Fi Address',value:k?k.priv:'Rotating',onClick:()=>{ if(!k) return toast('Join the network first');
+        nav.push(wifiPicker('Private Wi-Fi Address',['Off','Fixed','Rotating'],k.priv,v=>{k.priv=v;save();},
+          'Using a private address helps reduce tracking of your iPhone across different Wi-Fi networks.'));}},
+      {label:'Wi-Fi Address',value:k&&k.priv!=='Off'?net.mac:'8A:2C:19:F0:41:DE'},
+      {label:'Limit IP Address Tracking',toggle:()=>true,onToggle:()=>{}}
+    ],footer:'Limit IP address tracking by hiding your IP address from known trackers in Mail and Safari.'});
+
+    if(connected){
+      group(b,{header:'IPv4 Address',rows:[
+        {label:'Configure IP',value:'Automatic',onClick:()=>nav.push(wifiPicker('Configure IPv4',['Automatic','Manual','BootP'],'Automatic',()=>{},''))},
+        {label:'IP Address',value:net.ip},
+        {label:'Subnet Mask',value:'255.255.255.0'},
+        {label:'Router',value:net.router},
+        {label:'Renew Lease',cls:'blue',onClick:()=>{
+          island(SVG.wifi,'#0a84ff','Wi-Fi','Renewing DHCP lease…',2000); toast('Lease renewed'); }}
+      ]});
+      group(b,{header:'DNS',rows:[
+        {label:'Configure DNS',value:'Automatic',onClick:()=>nav.push(wifiPicker('Configure DNS',['Automatic','Manual'],'Automatic',()=>{},''))},
+        {label:'Search Domains',value:'—'}
+      ]});
+      group(b,{header:'HTTP Proxy',rows:[
+        {label:'Configure Proxy',value:'Off',onClick:()=>nav.push(wifiPicker('Configure Proxy',['Off','Manual','Automatic'],'Off',()=>{},''))}
+      ]});
+    }
+
+    const info=el('div','grp'); info.style.padding='14px';
+    info.innerHTML=`<div style="font-size:13px;color:var(--txt2);line-height:1.65">
+      <b style="color:var(--txt)">${esc(ssid)}</b><br>
+      Security · ${isSecured(k?k.sec:(air&&air.sec))? esc((k?k.sec:air.sec)) : 'None (open network)'}<br>
+      Signal · ${air? ['Poor','Fair','Good','Excellent'][air.bars] || 'Good' : 'Not in range'}<br>
+      ${k? 'Saved · '+esc(lastSeenText(k.last)) : 'Not a saved network'}<br>
+      ${connected? 'Status · Connected' : 'Status · Not connected'}</div>`;
+    b.appendChild(info);
+  }};
+}
+
+/* =========================================================================
+   CONNECTIVITY — Bluetooth, Cellular, Hotspot, VPN as real subsystems
+   ========================================================================= */
+function BT(){
+  if(!State.bt) State.bt={devices:[
+    {n:'AirPods Pro',       type:'audio', batt:82, conn:true},
+    {n:'Isaiah’s Apple Watch',type:'watch',batt:64, conn:true},
+    {n:'Spectrum Voice Remote',type:'remote',batt:null,conn:false},
+    {n:'Honda HR-V',        type:'car',   batt:null,conn:false},
+    {n:'JBL Flip 6',        type:'audio', batt:35, conn:false}
+  ]};
+  return State.bt;
+}
+function bluetoothView(){
+  return {title:'Bluetooth', build(b,nav){
+    const s=State.settings, bt=BT();
+    group(b,{rows:[{label:'Bluetooth', toggle:()=>s.bluetooth, onToggle:v=>{s.bluetooth=v;s.bluetoothDisconnected=false;
+      if(!v) bt.devices.forEach(d=>d.conn=false); save();nav.refresh();}}],
+      footer:s.bluetooth?`This iPhone is discoverable as “${esc(s.name)}”.`:'AirDrop, AirPlay, Find My and Location Services use Bluetooth.'});
+    if(!s.bluetooth) return;
+    group(b,{header:'My Devices',rows:bt.devices.map(d=>({
+      label:d.n, value:d.conn?'Connected':'Not Connected',
+      onClick:()=>nav.push(btDeviceView(d))}))});
+    const sp=el('div','grp'); b.appendChild(el('div','grp-h','Other Devices'));
+    sp.innerHTML=`<div class="row static"><div class="spinner"></div><div class="lbl muted">Searching…</div></div>`;
+    b.appendChild(sp);
+    b.appendChild(el('div','grp-f','To pair an Apple Watch with your iPhone, go to the Watch app.'));
+  }};
+}
+function btDeviceView(d){
+  return {title:d.n, shortTitle:'Device', build(b,nav){
+    const icon={audio:'🎧',watch:'⌚',remote:'📺',car:'🚗'}[d.type]||'📶';
+    const head=el('div','pad'); head.style.textAlign='center';
+    head.innerHTML=`<div style="font-size:44px;margin:4px 0 6px">${icon}</div>
+      <div style="font-size:19px;font-weight:600">${esc(d.n)}</div>
+      <div class="muted" style="font-size:13px">${d.conn?'Connected':'Not Connected'}${d.batt!=null?` · ${d.batt}% battery`:''}</div>`;
+    b.appendChild(head);
+    if(d.batt!=null){
+      const bar=el('div','grp'); bar.style.padding='14px';
+      bar.innerHTML=`<div style="font-size:12px;color:var(--txt2);margin-bottom:7px">BATTERY</div>
+        <div style="height:8px;border-radius:4px;background:var(--bg3);overflow:hidden">
+          <div style="width:${d.batt}%;height:100%;background:${d.batt>20?'var(--sysgreen)':'var(--sysred)'}"></div></div>`;
+      b.appendChild(bar);
+    }
+    group(b,{rows:[{label:d.conn?'Disconnect':'Connect',cls:'blue center',onClick:()=>{
+      d.conn=!d.conn; save(); nav.refresh();
+      island(d.conn?'🎧':'📶','#0a84ff',d.n,d.conn?'Connected':'Disconnected',1800);
+    }}]});
+    if(d.type==='audio') group(b,{rows:[
+      {label:'Noise Control',value:'Noise Cancellation',onClick:()=>nav.push(wifiPicker('Noise Control',
+        ['Off','Transparency','Adaptive','Noise Cancellation'],'Noise Cancellation',()=>{},''))},
+      {label:'Ear Detection',toggle:()=>true,onToggle:()=>{}},
+      {label:'Connect to This iPhone',value:'Automatically',onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Device Type',value:{audio:'Headphone',watch:'Watch',remote:'Remote',car:'Car Stereo'}[d.type]||'Other',
+       onClick:()=>toast('Simulated')},
+      {label:'Forget This Device',cls:'destructive',onClick:()=>alertBox({
+        title:'Forget “'+d.n+'”?',message:'Your iPhone will no longer automatically connect to this device.',
+        buttons:[{text:'Cancel'},{text:'Forget Device',style:'red bold',onClick:()=>{
+          BT().devices=BT().devices.filter(x=>x!==d); save(); nav.pop(); nav.refresh(); toast('Device forgotten');
+        }}]})}]});
+  }};
+}
+function CELL(){
+  if(!State.cell) State.cell={
+    roaming:0, dataMode:'Standard', wifiCalling:true,
+    apps:[['Safari',1.9,true],['Netflix',4.2,true],['Spectrum TV',3.1,true],['YouTube TV',2.4,true],
+          ['Mail',0.14,true],['App Store',1.1,true],['Maps',0.31,true],['Messages',0.08,true],['Photos',0.62,false]]
+  };
+  return State.cell;
+}
+function cellularView(){
+  return {title:'Cellular', build(b,nav){
+    const s=State.settings, c=CELL();
+    const noService=s.network==='noservice';
+    group(b,{rows:[
+      {label:'Cellular Data', toggle:()=>s.cellular, onToggle:v=>{s.cellular=v;save();applyAppearance();renderCC();}},
+      {label:'Cellular Data Options', value:c.dataMode, onClick:()=>nav.push(cellOptionsView())},
+      {label:'Personal Hotspot', value:State.settings.hotspot?'On':'Off', onClick:()=>nav.push(hotspotView())}]});
+    group(b,{header:'SIMs',rows:[
+      {label:'Primary', sub:'Spectrum Mobile · '+(noService?'No Service':'(407) 555-0142'),
+       rightHTML:noService?'<span class="muted" style="font-size:13px">SOS</span>':'',
+       onClick:()=>nav.push(simDetailView())},
+      {label:'Add eSIM', cls:'blue', onClick:()=>alertBox({title:'Set Up Cellular',
+        message:'Transfer a number from another iPhone, scan a QR code from your carrier, or use a carrier app.',
+        buttons:[{text:'Cancel'},{text:'Use QR Code',style:'bold',onClick:()=>toast('eSIM setup is simulated')}]})}]});
+    const total=c.apps.reduce((a2,x)=>a2+x[1],0);
+    const usage=el('div','grp'); usage.style.padding='14px';
+    usage.innerHTML=`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--txt2)">
+        <span>CURRENT PERIOD</span><span>${total.toFixed(1)} GB</span></div>
+      <div style="height:9px;border-radius:5px;overflow:hidden;display:flex;background:var(--bg3);margin:9px 0 4px">
+        ${c.apps.slice(0,5).map((x,i)=>`<i style="width:${x[1]/total*100}%;background:hsl(${200+i*32} 70% 55%)"></i>`).join('')}</div>
+      <div style="font-size:12px;color:var(--txt2)">Roaming: ${c.roaming} bytes · Resets in 9 days</div>`;
+    b.appendChild(usage);
+    group(b,{header:'Cellular Data Usage',rows:c.apps.map(x=>({
+      label:x[0], value:x[1]>=1? x[1].toFixed(1)+' GB' : Math.round(x[1]*1000)+' MB',
+      toggle:()=>x[2], onToggle:v=>{x[2]=v;save();}}))});
+    group(b,{rows:[{label:'Reset Statistics',cls:'blue center',onClick:()=>{
+      c.apps.forEach(x=>x[1]=+(x[1]*0.1).toFixed(2)); save(); nav.refresh(); toast('Statistics reset'); }}]});
+  }};
+}
+function cellOptionsView(){
+  return {title:'Cellular Data Options', shortTitle:'Options', build(b,nav){
+    const c=CELL();
+    group(b,{rows:[
+      {label:'Voice & Data',value:'5G Auto',onClick:()=>nav.push(wifiPicker('Voice & Data',['5G On','5G Auto','LTE'],'5G Auto',()=>{},
+        '5G Auto uses 5G only when it won’t significantly reduce battery life.'))},
+      {label:'Data Mode',value:c.dataMode,onClick:()=>nav.push(wifiPicker('Data Mode',
+        ['Allow More Data on 5G','Standard','Low Data Mode'],c.dataMode,v=>{c.dataMode=v;save();},''))},
+      {label:'Data Roaming',toggle:()=>false,onToggle:()=>toast('Roaming is simulated')}]});
+    group(b,{rows:[{label:'Limit IP Address Tracking',toggle:()=>true,onToggle:()=>{}}],
+      footer:'Limit IP address tracking by hiding your IP address from known trackers in Mail and Safari.'});
+  }};
+}
+function simDetailView(){
+  return {title:'Primary', build(b,nav){
+    group(b,{rows:[
+      {label:'Turn On This Line',toggle:()=>true,onToggle:()=>toast('Line toggling is simulated')},
+      {label:'Cellular Plan Label',value:'Primary',onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Wi-Fi Calling',value:CELL().wifiCalling?'On':'Off',onClick:()=>nav.push(wifiCallingView())},
+      {label:'Calls on Other Devices',value:'When Nearby',onClick:()=>toast('Simulated')},
+      {label:'Network Selection',value:'Spectrum Mobile',onClick:()=>nav.push(networkSelectView())},
+      {label:'My Number',value:'(407) 555-0142'}]});
+    group(b,{rows:[
+      {label:'Carrier',value:'Spectrum Mobile 54.1'},
+      {label:'Carrier Services',onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[{label:'Remove Cellular Plan',cls:'destructive center',onClick:()=>toast('Plan removal is simulated')}]});
+  }};
+}
+function wifiCallingView(){
+  return {title:'Wi-Fi Calling', build(b,nav){
+    const c=CELL();
+    group(b,{rows:[{label:'Wi-Fi Calling on This iPhone',toggle:()=>c.wifiCalling,onToggle:v=>{c.wifiCalling=v;save();
+      if(v) island(SVG.wifi,'#30d158','Wi-Fi Calling','Enabled',1800);}}],
+      footer:'When Wi-Fi calling is available, you’ll see “Spectrum Wi-Fi” in the status bar. Emergency calls will use your emergency address.'});
+    group(b,{rows:[{label:'Update Emergency Address',onClick:()=>toast('Simulated')}]});
+  }};
+}
+function networkSelectView(){
+  let auto=true;
+  return {title:'Network Selection', build(b,nav){
+    group(b,{rows:[{label:'Automatic',toggle:()=>auto,onToggle:v=>{auto=v;nav.refresh();}}]});
+    if(!auto) group(b,{rows:['Spectrum Mobile','Verizon','T-Mobile','AT&T'].map((n,i)=>({
+      label:n, chevron:false,
+      rightHTML:i===0?`<div style="color:var(--sysblue)">${sf('<path d="M4.5 12.5l5 5 10-11"/>',{w:2.4,size:17})}</div>`:'',
+      onClick:()=>toast(i===0?'Already connected':'Only Spectrum Mobile works in this simulator')}))});
+  }};
+}
+function hotspotView(){
+  return {title:'Personal Hotspot', shortTitle:'Hotspot', build(b,nav){
+    const s=State.settings;
+    s.hotspot=s.hotspot??false;
+    s.hotspotPw=s.hotspotPw||'bluesky2249';
+    group(b,{rows:[{label:'Allow Others to Join', toggle:()=>s.hotspot, onToggle:v=>{
+      s.hotspot=v; save(); nav.refresh();
+      island('🔗',v?'#30d158':'#8e8e93','Personal Hotspot',v?'Discoverable as “'+s.name+'”':'Off',2000);
+    }}],footer:s.hotspot
+      ? `Other users can look for your shared network using Wi-Fi and Bluetooth under the name “<b>${esc(s.name)}</b>”.`
+      : 'Allow other users or devices signed in to iCloud to join this network without entering the password.'});
+    group(b,{rows:[{label:'Wi-Fi Password', value:s.hotspotPw, onClick:()=>{
+      sheet((sh,close)=>{
+        sh.innerHTML='<div style="padding:16px;text-align:center;font-weight:600;border-bottom:.5px solid var(--sep)">Wi-Fi Password</div>';
+        const f=el('div','compose-field',`<div class="k">Password</div>`);
+        const i=el('input'); i.value=s.hotspotPw; f.appendChild(i); sh.appendChild(f);
+        sh.appendChild(h('<div class="grp-f" style="margin:8px 16px">Must be at least 8 characters.</div>'));
+        const w=el('div','pad'); const btn=el('button','btn-primary','Done');
+        btn.onclick=()=>{ if(i.value.length<8) return toast('Password too short');
+          s.hotspotPw=i.value; save(); close(); nav.refresh(); };
+        w.appendChild(btn); sh.appendChild(w);
+      });
+    }}]});
+    if(s.hotspot){
+      group(b,{header:'Connections',rows:[
+        {label:'MacBook Pro',sub:'Connected · 2.1 GB used',icon:'💻',iconBg:'#8e8e93',chevron:false},
+        {label:'Maximise Compatibility',toggle:()=>false,onToggle:()=>toast('Simulated')}],
+        footer:'Maximise Compatibility switches the hotspot to 2.4 GHz, which may reduce performance.'});
+    }
+    group(b,{rows:[{label:'Family Sharing',value:'Off',onClick:()=>toast('Simulated')}]});
+  }};
+}
+function vpnView(){
+  return {title:'VPN', build(b,nav){
+    const s=State.settings;
+    s.vpnOn=s.vpnOn??false; s.vpnConfigured=s.vpnConfigured??false;
+    if(!s.vpnConfigured){
+      b.appendChild(h(`<div class="empty" style="padding-top:44px"><div style="font-size:40px;margin-bottom:10px">🔒</div>
+        <h3>No VPN Configurations</h3><p style="line-height:1.45">Add a VPN configuration to route this iPhone’s traffic through a private server.</p></div>`));
+      group(b,{rows:[{label:'Add VPN Configuration…',cls:'blue',onClick:()=>{
+        sheet((sh,close)=>{
+          const d={type:'IKEv2',desc:'',server:'',remote:''};
+          sh.innerHTML=`<div style="display:flex;justify-content:space-between;padding:14px 16px;border-bottom:.5px solid var(--sep)">
+            <button class="vc" style="color:var(--sysblue)">Cancel</button><b style="font-size:17px">Add Configuration</b>
+            <button class="vd" style="color:var(--sysblue);font-weight:600">Done</button></div>`;
+          const g=el('div','grp'); g.style.margin='14px 16px';
+          [['Type','type','IKEv2'],['Description','desc','My VPN'],['Server','server','vpn.example.com'],['Remote ID','remote','Optional']]
+            .forEach(([l,k,ph])=>{ const f=el('div','compose-field',`<div class="k" style="min-width:96px">${l}</div>`);
+              const i2=el('input'); i2.placeholder=ph; i2.oninput=()=>d[k]=i2.value; f.appendChild(i2); g.appendChild(f); });
+          sh.appendChild(g);
+          sh.querySelector('.vc').onclick=close;
+          sh.querySelector('.vd').onclick=()=>{
+            if(!d.server.trim()) return toast('Enter a server');
+            s.vpnConfigured=true; s.vpnDesc=d.desc||'My VPN'; s.vpnServer=d.server; save(); close(); nav.refresh();
+          };
+        });
+      }}]});
+      return;
+    }
+    group(b,{rows:[{label:'Status', toggle:()=>s.vpnOn, onToggle:v=>{ s.vpnOn=v; save(); nav.refresh();
+      island('🔒',v?'#30d158':'#8e8e93','VPN',v?'Connected to '+(s.vpnDesc||'VPN'):'Disconnected',2000); }}],
+      footer:s.vpnOn?'Connected · your traffic appears to originate from the VPN server.':''});
+    group(b,{header:'Configurations',rows:[
+      {label:s.vpnDesc||'My VPN', sub:'IKEv2 · '+(s.vpnServer||''), value:s.vpnOn?'Connected':'',
+       onClick:()=>toast('Configuration details are simulated')}]});
+    group(b,{rows:[{label:'Delete VPN',cls:'destructive center',onClick:()=>{
+      s.vpnConfigured=false; s.vpnOn=false; save(); nav.refresh(); toast('Configuration removed'); }}]});
+  }};
+}
+function notificationsView(){
+  const list=['Mail','Messages','App Store','Spectrum TV','Netflix','Calendar','Phone','Reminders','Weather'];
+  return {title:'Notifications', build(b,nav){
+    group(b,{rows:[
+      {label:'Show Previews', value:'Always', onClick:()=>nav.push(pickerView('Show Previews',['Always','When Unlocked','Never'],'Always',()=>{}))},
+      {label:'Screen Sharing', value:'Notifications On', onClick:()=>toast('Simulated')},
+      {label:'Scheduled Summary', value:'Off', onClick:()=>toast('Simulated')}]});
+    group(b,{header:'Notification Style',rows:list.map(n=>({
+      label:n, sub:'Banners, Sounds, Badges',
+      onClick:()=>nav.push(appNotifView(n))}))});
+  }};
+}
+function appNotifView(name){
+  const st={alerts:true,lock:true,center:true,banner:true,sounds:true,badges:true};
+  return {title:name, build(b,nav){
+    group(b,{rows:[{label:'Allow Notifications', toggle:()=>st.alerts, onToggle:v=>{st.alerts=v;nav.refresh();}}]});
+    if(!st.alerts) return;
+    group(b,{header:'Alerts',rows:[
+      {label:'Lock Screen', toggle:()=>st.lock, onToggle:v=>st.lock=v},
+      {label:'Notification Center', toggle:()=>st.center, onToggle:v=>st.center=v},
+      {label:'Banners', toggle:()=>st.banner, onToggle:v=>st.banner=v}]});
+    group(b,{rows:[
+      {label:'Banner Style', value:'Temporary', onClick:()=>toast('Simulated')},
+      {label:'Sounds', toggle:()=>st.sounds, onToggle:v=>st.sounds=v},
+      {label:'Badges', toggle:()=>st.badges, onToggle:v=>st.badges=v}]});
+  }};
+}
+function soundsView(){
+  return {title:'Sounds & Haptics', build(b,nav){
+    const s=State.settings;
+    const g=el('div','grp'); g.style.padding='14px';
+    const sl=el('input','slider'); sl.type='range'; sl.min=0; sl.max=100; sl.value=s.ringer;
+    sl.oninput=e=>{s.ringer=+e.target.value; save();};
+    g.innerHTML='<div style="font-size:13px;color:var(--txt2);margin-bottom:8px">RINGER AND ALERTS</div>';
+    g.appendChild(sl); b.appendChild(g);
+    group(b,{rows:[{label:'Change with Buttons', toggle:()=>true, onToggle:()=>{}}]});
+    group(b,{header:'Sounds and Haptic Patterns',rows:[
+      {label:'Ringtone', value:'Reflection', onClick:()=>nav.push(pickerView('Ringtone',['Reflection','Opening','Radiate','Signal','Rejoice','Chimes','Bulletin'],'Reflection',()=>{}))},
+      {label:'Text Tone', value:'Note', onClick:()=>nav.push(pickerView('Text Tone',['Note','Aurora','Bamboo','Chord','Circles','Complete'],'Note',()=>{}))},
+      {label:'New Mail', value:'Ding', onClick:()=>nav.push(pickerView('New Mail',['None','Ding','Bloom','Calypso','Chime'],'Ding',()=>{}))},
+      {label:'Sent Mail', value:'Swoosh', onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Keyboard Feedback', value:'Sound', onClick:()=>toast('Simulated')},
+      {label:'Lock Sound', toggle:()=>true, onToggle:()=>{}},
+      {label:'System Haptics', toggle:()=>State.settings.hapticFeedback, onToggle:v=>{State.settings.hapticFeedback=v;save();}}]});
+  }};
+}
+function focusView(){
+  return {title:'Focus', build(b,nav){
+    const s=State.settings;
+    group(b,{rows:[
+      {label:'Do Not Disturb', icon:'🌙', iconBg:'#5e5ce6', value:s.dnd?'On':'', onClick:()=>{s.dnd=!s.dnd;save();nav.refresh();toast(s.dnd?'Do Not Disturb On':'Do Not Disturb Off');}},
+      {label:'Personal', icon:'👤', iconBg:'#bf5af2', onClick:()=>toast('Simulated')},
+      {label:'Sleep', icon:'🛌', iconBg:'#40c8e0', onClick:()=>toast('Simulated')},
+      {label:'Work', icon:'💼', iconBg:'#5e5ce6', onClick:()=>toast('Simulated')}],
+      footer:'Focus filters what notifications you receive. Tap Do Not Disturb to toggle it here.'});
+    group(b,{rows:[
+      {label:'Share Across Devices', toggle:()=>State.settings.focusShare, onToggle:v=>{State.settings.focusShare=v;save();}},
+      {label:'Focus Status', value:'On', onClick:()=>toast('Simulated')}]});
+  }};
+}
+function screenTimeView(){
+  const data=[['Spectrum TV',132],['Safari',96],['Netflix',74],['Mail',41],['App Store',28],['Messages',22]];
+  const max=Math.max(...data.map(d=>d[1]));
+  return {title:'Screen Time', build(b,nav){
+    const card=el('div','grp'); card.style.padding='16px';
+    card.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline">
+      <div><div style="font-size:13px;color:var(--txt2)">DAILY AVERAGE</div>
+      <div style="font-size:30px;font-weight:700">6h 33m</div></div>
+      <div style="color:var(--sysgreen);font-size:13px">↓ 12% from last week</div></div>
+      <div style="display:flex;align-items:flex-end;gap:8px;height:110px;margin-top:16px">
+      ${[4,6,3,7,5,8,6].map(v=>`<div style="flex:1;background:var(--sysblue);border-radius:3px;height:${v*12}%"></div>`).join('')}</div>
+      <div style="display:flex;gap:8px;font-size:11px;color:var(--txt2);margin-top:6px">
+      ${['S','M','T','W','T','F','S'].map(d=>`<div style="flex:1;text-align:center">${d}</div>`).join('')}</div>`;
+    b.appendChild(card);
+    group(b,{header:'Most Used',rows:data.map(([n,m])=>({
+      label:n, value:(m>=60?Math.floor(m/60)+'h ':'')+(m%60)+'m',
+      rightHTML:`<div style="width:70px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-left:8px"><div style="width:${m/max*100}%;height:100%;background:var(--sysblue)"></div></div>`
+    }))});
+    group(b,{rows:[
+      {label:'Downtime',value:'Off',onClick:()=>toast('Simulated')},
+      {label:'App Limits',onClick:()=>toast('Simulated')},
+      {label:'Communication Limits',onClick:()=>toast('Simulated')},
+      {label:'Content & Privacy Restrictions',value:'Off',onClick:()=>toast('Simulated')}]});
+  }};
+}
+function generalView(){
+  return {title:'General', build(b,nav){
+    group(b,{rows:[
+      {label:'About', onClick:()=>nav.push(aboutView())},
+      {label:'Software Update', onClick:()=>nav.push(softwareUpdateView())}]});
+    group(b,{rows:[
+      {label:'AirDrop', value:'Contacts Only', onClick:()=>nav.push(pickerView('AirDrop',['Receiving Off','Contacts Only','Everyone for 10 Minutes'],'Contacts Only',()=>{}))},
+      {label:'AirPlay & Handoff', onClick:()=>toast('Simulated')},
+      {label:'CarPlay', onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'iPhone Storage', onClick:()=>nav.push(storageView())},
+      {label:'Background App Refresh', value:'On', onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Date & Time', onClick:()=>nav.push(dateTimeView())},
+      {label:'Keyboard', onClick:()=>nav.push(keyboardView())},
+      {label:'Fonts', value:'0', onClick:()=>toast('No fonts installed')},
+      {label:'Language & Region', onClick:()=>nav.push(languageView())},
+      {label:'Dictionary', onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'VPN & Device Management', value:'Not Connected', onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Legal & Regulatory', onClick:()=>toast('Simulated')},
+      {label:'Transfer or Reset iPhone', onClick:()=>nav.push(resetView())}]});
+    group(b,{rows:[{label:'Shut Down', cls:'blue center', onClick:()=>{
+      alertBox({title:'Shut Down',message:'This will return the simulator to the boot screen.',buttons:[
+        {text:'Cancel'},{text:'Shut Down',style:'red bold',onClick:()=>reboot()}]});
+    }}]});
+  }};
+}
+function aboutView(){
+  const rows=[['Name',State.settings.name],['iOS Version','27.0.1'],['Model Name','iPhone 15 Pro'],
+    ['Model Number','MTQ83LL/A'],['Serial Number','F2LX9K3QW1PZ'],['Wi-Fi Address','8A:2C:19:F0:41:DE'],
+    ['Bluetooth','8A:2C:19:F0:41:DF'],['Carrier','Spectrum Mobile 54.1'],['EID','89049032004008882600'],
+    ['Songs','1,204'],['Videos','88'],['Photos','7,431'],['Applications',String(homeApps().length+DOCK.length)],
+    ['Capacity','256 GB'],['Available','182.4 GB']];
+  return {title:'About', build(b,nav){
+    group(b,{rows:[{label:'Name',value:State.settings.name,onClick:()=>nav.push(renameView())}]});
+    group(b,{rows:rows.slice(1,9).map(([k,v])=>({label:k,value:v}))});
+    group(b,{rows:rows.slice(9).map(([k,v])=>({label:k,value:v}))});
+    group(b,{rows:[
+      {label:'Certificate Trust Settings',onClick:()=>toast('Simulated')},
+      {label:'Legal Notices',onClick:()=>toast('Simulated')}]});
+  }};
+}
+function renameView(){
+  return {title:'Name', build(b,nav){
+    const g=el('div','grp');
+    const row=el('div','row static');
+    const inp=el('input'); inp.value=State.settings.name; inp.style.cssText='flex:1;font-size:17px';
+    row.appendChild(inp);
+    const x=el('div','',"✕"); x.className='muted'; x.style.cursor='pointer'; x.onclick=()=>{inp.value='';inp.focus();};
+    row.appendChild(x); g.appendChild(row); b.appendChild(g);
+    inp.oninput=()=>{ State.settings.name=inp.value||"iPhone"; save(); };
+    setTimeout(()=>inp.focus(),340);
+    b.appendChild(el('div','grp-f','This name is used by AirDrop, Personal Hotspot and your computer.'));
+  }};
+}
+function softwareUpdateView(){
+  return {title:'Software Update',build(b,nav){
+    group(b,{rows:[{label:'Automatic Updates',value:State.settings.installUpdates?'On':'Off',onClick:()=>nav.push(automaticUpdatesView())}]});
+    const status=el('div','update-status');
+    status.innerHTML=isOnline()?'<strong>iOS 27.0.1</strong><p>iOS is up to date</p>':'<strong>Unable to Check for Update</strong><p>'+esc(netReason())+'</p>';
+    b.appendChild(status);
+  }};
+}
+function automaticUpdatesView(){return {title:'Automatic Updates',build(b){group(b,{header:'Automatically Install',rows:[{label:'iOS Updates',toggle:()=>State.settings.installUpdates,onToggle:v=>{State.settings.installUpdates=v;save();}}]});group(b,{header:'Automatically Download',rows:[{label:'iOS Updates',toggle:()=>State.settings.downloadUpdates,onToggle:v=>{State.settings.downloadUpdates=v;save();}}]});}};}
+function storageView(){
+  const base=[['iOS','11.4 GB','#8e8e93'],['Photos','23.8 GB','#ff9f0a'],['Media','8.9 GB','#ff2d55'],['Mail','1.2 GB','#0a84ff'],['System Data','5.9 GB','#5e5ce6']];
+  return {title:'iPhone Storage', build(b,nav){
+    const used=73.6, cap=256;
+    const card=el('div','grp'); card.style.padding='16px';
+    card.innerHTML=`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--txt2)">
+      <span>iPhone</span><span>${used} GB of ${cap} GB Used</span></div>
+      <div style="height:14px;border-radius:7px;overflow:hidden;display:flex;background:var(--bg3);margin:10px 0">
+      ${base.map(x=>`<i style="width:${parseFloat(x[1])/cap*100}%;background:${x[2]}"></i>`).join('')}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--txt2)">
+      ${base.map(x=>`<span style="display:flex;align-items:center;gap:4px"><i style="width:8px;height:8px;border-radius:2px;background:${x[2]};display:inline-block"></i>${x[0]}</span>`).join('')}</div>`;
+    b.appendChild(card);
+    group(b,{header:'Recommendations',rows:[
+      {label:'Offload Unused Apps', sub:'Save 2.1 GB', toggle:()=>State.settings.offloadUnused, onToggle:v=>{State.settings.offloadUnused=v;save();}},
+      {label:'Review Downloaded Videos', sub:'8.9 GB', onClick:()=>toast('Simulated')}]});
+    const rows=[...State.installed.map(id=>({
+      label:Apps[id].name, sub:'Last used: Today', value:Apps[id].size||'184 MB',
+      icon:`<div style="width:29px;height:29px;border-radius:7px;background:${Apps[id].bg};display:grid;place-items:center;font-size:11px;overflow:hidden">${Apps[id].tiny||''}</div>`,
+      iconBg:'transparent',
+      onClick:()=>nav.push(appStorageView(id))
+    })),
+    ...['Safari|318 MB','Mail|1.2 GB','Photos|23.8 GB','Messages|642 MB','Music|3.4 GB'].map(x=>{const[n,v]=x.split('|');
+      return {label:n,sub:'Last used: Today',value:v,onClick:()=>toast('System app — cannot be deleted')};})];
+    group(b,{header:'Apps', rows});
+  }};
+}
+function appStorageView(id){
+  const def=Apps[id];
+  return {title:def.name, build(b,nav){
+    const head=el('div','pad'); head.style.textAlign='center';
+    head.innerHTML=`<div style="margin:0 auto 10px;width:74px">${appIconHTML(def,74)}</div>
+      <div style="font-size:20px;font-weight:600">${esc(def.name)}</div>
+      <div class="muted" style="font-size:13px">Version ${def.version||'4.2.1'} · ${def.size||'184 MB'}</div>`;
+    b.appendChild(head);
+    group(b,{rows:[
+      {label:'App Size',value:def.size||'184 MB'},
+      {label:'Documents & Data',value:'42.7 MB'},
+      {label:'Last Used',value:'Today'}]});
+    group(b,{rows:[
+      {label:'Offload App', cls:'blue', onClick:()=>toast('Offloading is simulated')},
+      {label:'Delete App', cls:'destructive', onClick:()=>{ confirmDelete(id); nav.pop(); }}],
+      footer:'Offloading the app will free up storage used by the app, but keep its documents and data.'});
+  }};
+}
+function dateTimeView(){
+  return {title:'Date & Time', build(b,nav){
+    group(b,{rows:[
+      {label:'24-Hour Time', toggle:()=>false, onToggle:()=>toast('Simulated')},
+      {label:'Set Automatically', toggle:()=>true, onToggle:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Time Zone', value:'New York'},
+      {label:'Date & Time', value:new Date().toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}]});
+  }};
+}
+function keyboardView(){
+  return {title:'Keyboards', build(b,nav){
+    group(b,{rows:[{label:'Keyboards',value:'2',onClick:()=>nav.push(infoListView('Keyboards','',['English (US)','Emoji','Add New Keyboard…'],''))}]});
+    group(b,{header:'All Keyboards',rows:[
+      {label:'Auto-Capitalization',toggle:()=>true,onToggle:()=>{}},
+      {label:'Auto-Correction',toggle:()=>true,onToggle:()=>{}},
+      {label:'Check Spelling',toggle:()=>true,onToggle:()=>{}},
+      {label:'Enable Caps Lock',toggle:()=>true,onToggle:()=>{}},
+      {label:'Predictive',toggle:()=>true,onToggle:()=>{}},
+      {label:'Smart Punctuation',toggle:()=>true,onToggle:()=>{}},
+      {label:'Slide to Type',toggle:()=>true,onToggle:()=>{}}]});
+  }};
+}
+function languageView(){
+  return {title:'Language & Region', build(b,nav){
+    group(b,{rows:[
+      {label:'iPhone Language',value:'English',onClick:()=>nav.push(pickerView('iPhone Language',['English','Español','Français','Deutsch','日本語','Português'],'English',()=>toast('Simulated')))},
+      {label:'Preferred Languages',value:'English',onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Region',value:'United States',onClick:()=>toast('Simulated')},
+      {label:'Calendar',value:'Gregorian'},
+      {label:'Temperature',value:'°F'},
+      {label:'Measurement System',value:'US'},
+      {label:'First Day of Week',value:'Sunday'}]});
+  }};
+}
+function resetView(){
+  return {title:'Transfer or Reset iPhone', build(b,nav){
+    group(b,{rows:[
+      {label:'Prepare for New iPhone',sub:'Temporary iCloud storage available',onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Reset',onClick:()=>nav.push(resetOptionsView())},
+      {label:'Erase All Content and Settings',cls:'blue',onClick:()=>eraseConfirm()}]});
+  }};
+}
+function resetOptionsView(){
+  return {title:'Reset', build(b,nav){
+    group(b,{rows:[
+      {label:'Reset All Settings',cls:'blue',onClick:()=>alertBox({title:'Reset All Settings',message:'All settings including Wi-Fi, wallpaper and appearance will be restored to defaults. Your apps and mail stay.',
+        buttons:[{text:'Cancel'},{text:'Reset',style:'red bold',onClick:()=>{State.settings=structuredClone(DEFAULTS.settings);save();applyAppearance();nav.popToRoot();toast('All settings reset');}}]})},
+      {label:'Reset Network Settings',cls:'blue',onClick:()=>{State.settings.wifiName='SPECTRUM-5G';State.settings.wifi=true;save();toast('Network settings reset');}},
+      {label:'Reset Keyboard Dictionary',cls:'blue',onClick:()=>toast('Keyboard dictionary reset')},
+      {label:'Reset Home Screen Layout',cls:'blue',onClick:()=>{renderHome();toast('Home Screen layout reset');}},
+      {label:'Reset Location & Privacy',cls:'blue',onClick:()=>toast('Location & Privacy reset')}]});
+  }};
+}
+function eraseConfirm(){ eraseFlow(); }
+
+function displayView(){
+  return {title:'Display & Brightness', shortTitle:'Display', build(b,nav){
+    const s=State.settings;
+    const g=el('div','grp'); g.style.padding='14px';
+    g.innerHTML='<div class="grp-h" style="margin:0 0 10px;padding:0">Appearance</div>';
+    const seg=el('div');
+    seg.style.cssText='display:flex;gap:16px;justify-content:center';
+    [['Light',false],['Dark',true]].forEach(([n,dark])=>{
+      const c=el('div'); c.style.cssText='flex:1;text-align:center;cursor:pointer';
+      c.innerHTML=`<div style="height:110px;border-radius:12px;margin-bottom:8px;border:3px solid ${s.dark===dark?'var(--sysblue)':'transparent'};
+        background:${dark?'linear-gradient(160deg,#1c1c1e,#000)':'linear-gradient(160deg,#fff,#e5e5ea)'};
+        display:grid;place-items:center;font-size:34px;color:${dark?'#fff':'#000'}">Aa</div>
+        <div style="font-size:14px">${n}</div>`;
+      c.onclick=()=>{ s.dark=dark; save(); applyAppearance(); nav.refresh(); };
+      seg.appendChild(c);
+    });
+    g.appendChild(seg); b.appendChild(g);
+    group(b,{rows:[{label:'Automatic',toggle:()=>false,onToggle:()=>toast('Simulated')}]});
+
+    const bg=el('div','grp'); bg.style.padding='14px';
+    bg.innerHTML='<div class="grp-h" style="margin:0 0 10px;padding:0">Brightness</div>';
+    const sl=el('input','slider'); sl.type='range'; sl.min=15; sl.max=100; sl.value=s.brightness*100;
+    sl.oninput=e=>{ s.brightness=+e.target.value/100; applyAppearance(); save(); };
+    bg.appendChild(sl); b.appendChild(bg);
+
+    group(b,{rows:[
+      {label:'True Tone',toggle:()=>true,onToggle:()=>{}},
+      {label:'Night Shift',value:'Off',onClick:()=>toast('Simulated')},
+      {label:'Auto-Lock',value:s.autoLock,onClick:()=>nav.push(pickerView('Auto-Lock',['30 Seconds','1 Minute','2 Minutes','3 Minutes','4 Minutes','5 Minutes','Never'],s.autoLock,v=>{s.autoLock=v;save();nav.pop();nav.refresh();}))},
+      {label:'Raise to Wake',toggle:()=>true,onToggle:()=>{}}]});
+    group(b,{header:'Text Size',rows:[
+      {label:'Text Size',value:Math.round(s.textSize*100)+'%',onClick:()=>nav.push(textSizeView())},
+      {label:'Bold Text',toggle:()=>s.bold,onToggle:v=>{s.bold=v;save();applyAppearance();}}]});
+    group(b,{header:'Display Zoom',rows:[{label:'View',value:'Default',onClick:()=>toast('Simulated')}]});
+  }};
+}
+function textSizeView(){
+  return {title:'Text Size', build(b,nav){
+    const s=State.settings;
+    const prev=el('div','grp'); prev.style.padding='16px';
+    prev.innerHTML=`<div id="tsPrev" style="font-size:${17*s.textSize}px;line-height:1.4">The quick brown fox jumps over the lazy dog. Streaming tonight at 8pm.</div>`;
+    b.appendChild(prev);
+    const g=el('div','grp'); g.style.padding='20px 14px';
+    const sl=el('input','slider'); sl.type='range'; sl.min=80; sl.max=140; sl.step=5; sl.value=s.textSize*100;
+    sl.oninput=e=>{ s.textSize=+e.target.value/100; applyAppearance(); save();
+      $('#tsPrev').style.fontSize=(17*s.textSize)+'px'; };
+    g.appendChild(sl);
+    g.appendChild(h(`<div style="display:flex;justify-content:space-between;margin-top:8px;color:var(--txt2)"><span style="font-size:12px">A</span><span style="font-size:22px">A</span></div>`));
+    b.appendChild(g);
+    b.appendChild(el('div','grp-f','Apps that support Dynamic Type will adjust to your preferred reading size.'));
+  }};
+}
+function homeScreenView(){
+  return {title:'Home Screen', build(b,nav){
+    group(b,{header:'Newly Downloaded Apps',rows:[
+      {label:'Add to Home Screen',rightHTML:'<div style="color:var(--sysblue)">✓</div>'},
+      {label:'App Library Only'}]});
+    group(b,{rows:[
+      {label:'Show in App Library',toggle:()=>true,onToggle:()=>{}},
+      {label:'Show Notification Badges',toggle:()=>true,onToggle:v=>{ if(!v){$$('.badge').forEach(x=>x.remove());} else updateBadges(); }}]});
+    group(b,{rows:[{label:'Large App Icons',toggle:()=>false,onToggle:()=>toast('Simulated')}]});
+  }};
+}
+function accessibilityView(){
+  return {title:'Accessibility', build(b,nav){
+    group(b,{header:'Vision',rows:[
+      {label:'VoiceOver',value:'Off',onClick:()=>toast('Simulated')},
+      {label:'Zoom',value:'Off',onClick:()=>toast('Simulated')},
+      {label:'Display & Text Size',onClick:()=>nav.push(textSizeView())},
+      {label:'Motion',onClick:()=>toast('Simulated')},
+      {label:'Spoken Content',onClick:()=>toast('Simulated')}]});
+    group(b,{header:'Physical and Motor',rows:[
+      {label:'Touch',onClick:()=>toast('Simulated')},
+      {label:'Face ID & Attention',onClick:()=>nav.push(faceIDView())},
+      {label:'Voice Control',value:'Off',onClick:()=>toast('Simulated')}]});
+    group(b,{header:'Hearing',rows:[
+      {label:'Hearing Devices',onClick:()=>toast('Simulated')},
+      {label:'Sound Recognition',value:'Off',onClick:()=>toast('Simulated')},
+      {label:'Subtitles & Captioning',onClick:()=>toast('Simulated')}]});
+  }};
+}
+function wallpaperView(){
+  return {title:'Wallpaper', build(b,nav){
+    const g=el('div','grp'); g.style.padding='14px';
+    const grid=el('div'); grid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:12px';
+    WALLPAPERS.forEach((w,i)=>{
+      const c=el('div');
+      c.style.cssText='cursor:pointer;text-align:center';
+      c.innerHTML=`<div style="height:104px;border-radius:12px;background:${w.c};border:3px solid ${State.settings.wallpaper===i?'var(--sysblue)':'transparent'}"></div>
+        <div style="font-size:11px;margin-top:5px;color:var(--txt2)">${w.n}</div>`;
+      c.onclick=()=>{ State.settings.wallpaper=i; save(); applyAppearance(); nav.refresh(); toast('Wallpaper set'); };
+      grid.appendChild(c);
+    });
+    g.appendChild(grid); b.appendChild(g);
+    group(b,{rows:[
+      {label:'Dark Appearance Dims Wallpaper',toggle:()=>true,onToggle:()=>{}},
+      {label:'Perspective Zoom',toggle:()=>false,onToggle:()=>{}}]});
+  }};
+}
+function faceIDView(){
+  return {title:'Face ID & Passcode', shortTitle:'Face ID', build(b,nav){
+    const s=State.settings;
+    group(b,{header:'Use Face ID For',rows:[
+      {label:'iPhone Unlock',toggle:()=>s.faceid,onToggle:v=>{s.faceid=v;save();}},
+      {label:'iTunes & App Store',toggle:()=>true,onToggle:()=>{}},
+      {label:'Wallet & Apple Pay',toggle:()=>true,onToggle:()=>{}},
+      {label:'Password AutoFill',toggle:()=>true,onToggle:()=>{}}]});
+    group(b,{rows:[
+      {label:'Set Up an Alternate Appearance',cls:'blue',onClick:()=>{island('😀','#30d158','Face ID','Move your head in a circle',2600);toast('Simulated scan');}},
+      {label:'Reset Face ID',cls:'blue',onClick:()=>toast('Face ID reset')}]});
+    group(b,{rows:[
+      {label:'Turn Passcode Off',cls:'blue',onClick:()=>toast('Simulated')},
+      {label:'Change Passcode',cls:'blue',onClick:()=>toast('Simulated')}]});
+    group(b,{header:'Allow Access When Locked',rows:[
+      {label:'Today View and Search',toggle:()=>true,onToggle:()=>{}},
+      {label:'Notification Center',toggle:()=>true,onToggle:()=>{}},
+      {label:'Control Center',toggle:()=>true,onToggle:()=>{}},
+      {label:'Reply with Message',toggle:()=>true,onToggle:()=>{}},
+      {label:'Accessories',toggle:()=>false,onToggle:()=>{}}]});
+    group(b,{rows:[{label:'Erase Data',toggle:()=>false,onToggle:()=>{}}],
+      footer:'Erase all data on this iPhone after 10 failed passcode attempts.'});
+  }};
+}
+function batteryView(){
+  return {title:'Battery', build(b,nav){
+    const s=State.settings;
+    group(b,{rows:[{label:'Low Power Mode',toggle:()=>s.lowpower,onToggle:v=>{s.lowpower=v;save();applyAppearance();}}],
+      footer:'Low Power Mode temporarily reduces background activity until iPhone can be fully charged.'});
+    group(b,{rows:[{label:'Battery Health & Charging',value:'93%',onClick:()=>nav.push(infoListView('Battery Health','',
+      ['Maximum Capacity — 93%','Peak Performance Capability — Normal','Optimized Battery Charging — On','Charging Limit — 100%'],
+      'Battery health data is simulated.'))}]});
+    const card=el('div','grp'); card.style.padding='16px';
+    card.innerHTML=`<div class="grp-h" style="margin:0 0 8px;padding:0">Last 24 Hours</div>
+      <div style="font-size:30px;font-weight:700">${Math.round(batteryLevel*100)}%</div>
+      <div class="muted" style="font-size:13px;margin-bottom:14px">Battery Level · ${State.settings.lowpower?'Low Power Mode on':'Normal usage'}</div>
+      <div style="display:flex;align-items:flex-end;gap:3px;height:90px">
+      ${Array.from({length:24},(_,i)=>`<div style="flex:1;border-radius:2px;background:${i>18?'var(--sysgreen)':'var(--txt2)'};height:${20+Math.abs(Math.sin(i))*70}%"></div>`).join('')}</div>`;
+    b.appendChild(card);
+    const apps=[['Spectrum TV',34],['Safari',22],['Netflix',16],['Mail',9],['App Store',7],['Home & Lock Screen',6],['Messages',6]];
+    group(b,{header:'Battery Usage by App',rows:apps.map(([n,p])=>({
+      label:n,value:p+'%',
+      rightHTML:`<div style="width:64px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-left:8px"><div style="width:${p*2.5}%;max-width:100%;height:100%;background:var(--sysgreen)"></div></div>`}))});
+  }};
+}
+function privacyView(){
+  return {title:'Privacy & Security', shortTitle:'Privacy', build(b,nav){
+    group(b,{rows:[
+      {label:'Location Services',icon:'📍',iconBg:'#0a84ff',value:'On',onClick:()=>nav.push(infoListView('Location Services','Apps',
+        ['Safari Websites — While Using','Weather — Always','Maps — While Using','Spectrum TV — While Using','Camera — Never'],'Location data is simulated.'))},
+      {label:'Tracking',icon:'👣',iconBg:'#0a84ff',onClick:()=>nav.push(simpleToggleView('Tracking','Allow Apps to Request to Track','tracking','Apps blocked from tracking cannot access your advertising identifier.'))},
+      {label:'Contacts',icon:'👥',iconBg:'#ff9f0a',onClick:()=>toast('Simulated')},
+      {label:'Photos',icon:'🌼',iconBg:'#ff9f0a',onClick:()=>toast('Simulated')},
+      {label:'Microphone',icon:'🎙',iconBg:'#ff9f0a',onClick:()=>toast('Simulated')},
+      {label:'Camera',icon:'📷',iconBg:'#8e8e93',onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Analytics & Improvements',onClick:()=>toast('Simulated')},
+      {label:'Apple Advertising',onClick:()=>toast('Simulated')},
+      {label:'App Privacy Report',onClick:()=>nav.push(infoListView('App Privacy Report','Most Contacted Domains',
+        ['app-measurement.com — 41','doubleclick.net — 27','spectrum.net — 19','nflxvideo.net — 14','googleapis.com — 12'],''))}]});
+    group(b,{rows:[
+      {label:'Lockdown Mode',value:'Off',onClick:()=>toast('Simulated')},
+      {label:'Safety Check',onClick:()=>toast('Simulated')}]});
+  }};
+}
+function appStoreSettingsView(){
+  return {title:'App Store', build(b,nav){
+    const s=State.settings;
+    group(b,{header:'Automatic Downloads',rows:[
+      {label:'Apps',toggle:()=>true,onToggle:()=>{}},
+      {label:'App Updates',toggle:()=>s.autoUpdates,onToggle:v=>{s.autoUpdates=v;save();}},
+      {label:'In-App Content',toggle:()=>true,onToggle:()=>{}}]});
+    group(b,{header:'Cellular Data',rows:[
+      {label:'Automatic Downloads',toggle:()=>s.cellDownloads,onToggle:v=>{s.cellDownloads=v;save();}},
+      {label:'App Downloads',value:'Ask If Over 200 MB',onClick:()=>nav.push(pickerView('App Downloads',['Always Allow','Ask If Over 200 MB','Always Ask'],'Ask If Over 200 MB',()=>{}))}]});
+    group(b,{rows:[
+      {label:'Video Autoplay',value:'On',onClick:()=>nav.push(pickerView('Video Autoplay',['On','Wi-Fi Only','Off'],'On',()=>{}))},
+      {label:'In-App Ratings & Reviews',toggle:()=>true,onToggle:()=>{}},
+      {label:'Offload Unused Apps',toggle:()=>s.offloadUnused,onToggle:v=>{s.offloadUnused=v;save();}}]});
+    group(b,{rows:[{label:'Open App Store',cls:'blue center',onClick:()=>openApp('appstore')}]});
+  }};
+}
+function passwordsView(){
+  const items=[['spectrum.net','isaiah.s@icloud.com'],['netflix.com','isaiah.s@icloud.com'],
+    ['disneyplus.com','isaiah.s'],['max.com','isaiah.s@icloud.com'],['peacocktv.com','isaiah.s'],
+    ['paramountplus.com','isaiah.s@icloud.com']];
+  return {title:'Passwords', build(b,nav){
+    b.appendChild(el('div','searchfield',`${SVG.search}<input placeholder="Search">`));
+    group(b,{rows:items.map(([site,user])=>({
+      label:site, sub:user,
+      icon:site[0].toUpperCase(), iconBg:'#'+((site.charCodeAt(0)*9973)%0xffffff).toString(16).padStart(6,'0'),
+      onClick:()=>nav.push({title:site,build(bb){
+        group(bb,{rows:[
+          {label:'Website',value:site},
+          {label:'User Name',value:user},
+          {label:'Password',value:'••••••••••',onClick:()=>toast('Face ID required — simulated')}]});
+        group(bb,{rows:[{label:'Delete Password',cls:'destructive center',onClick:()=>toast('Simulated')}]});
+      }})
+    }))});
+    b.appendChild(el('div','grp-f','Passwords are fictional sample data for this simulator.'));
+  }};
+}
+function thirdPartyAppSettings(id){
+  const def=Apps[id];
+  return {title:def.name, build(b,nav){
+    group(b,{header:`Allow ${def.name} to Access`,rows:[
+      {label:'Location',value:'While Using',onClick:()=>toast('Simulated')},
+      {label:'Cellular Data',toggle:()=>true,onToggle:()=>{}},
+      {label:'Notifications',value:'Banners, Sounds',onClick:()=>nav.push(appNotifView(def.name))},
+      {label:'Background App Refresh',toggle:()=>true,onToggle:()=>{}},
+      {label:'Siri & Search',onClick:()=>toast('Simulated')}]});
+    group(b,{header:'Playback',rows:[
+      {label:'Cellular Data Usage',value:'Automatic',onClick:()=>toast('Simulated')},
+      {label:'Downloads',value:'Standard',onClick:()=>toast('Simulated')},
+      {label:'Autoplay Next Episode',toggle:()=>true,onToggle:()=>{}}]});
+    group(b,{rows:[{label:'Delete App',cls:'destructive center',onClick:()=>{confirmDelete(id);nav.pop();}}]});
+  }};
+}
+/* generic helpers for settings */
+function pickerView(title,options,current,onPick){
+  let sel=current;
+  return {title, build(b,nav){
+    group(b,{rows:options.map(o=>({
+      label:o, chevron:false,
+      rightHTML:o===sel?`<div style="color:var(--sysblue);font-size:17px">✓</div>`:'',
+      onClick:()=>{ sel=o; onPick(o); nav.refresh(); }
+    }))});
+  }};
+}
+function infoListView(title,header,items,footer){
+  return {title, build(b){
+    group(b,{header,rows:items.map(i=>{
+      const [l,v]=i.split(' — ');
+      return {label:l, value:v, onClick:v?undefined:()=>toast('Simulated')};
+    }), footer});
+  }};
+}
+function simpleToggleView(title,label,key,footer){
+  return {title, build(b,nav){
+    State.settings[key]=State.settings[key]??false;
+    group(b,{rows:[{label,toggle:()=>State.settings[key],onToggle:v=>{State.settings[key]=v;save();}}],footer});
+  }};
+}
+function reboot(){
+  const boot=$('#boot'); boot.classList.remove('gone');
+  boot.querySelector('#bootbar i').style.animation='none';
+  void boot.offsetWidth;
+  boot.querySelector('#bootbar i').style.animation='bfill 2.2s ease-out forwards';
+  openApps.forEach((v,k)=>quitApp(k));
+  currentApp=null; $('#home').classList.remove('blurred');
+  setTimeout(()=>{ boot.classList.add('gone'); lockPhone(); },2400);
+}
+
+/* =========================================================================
+   APP STORE
+   ========================================================================= */
+const BI = {  /* brand-ish icon art (stylized, drawn with CSS/SVG) */
+  spectrum:`<svg viewBox="0 0 100 100" style="width:100%;height:100%;display:block">
+      <defs><linearGradient id="spg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0069c8"/><stop offset="1" stop-color="#00274d"/></linearGradient></defs>
+      <rect width="100" height="100" fill="url(#spg)"/>
+      <path d="M-4 72C22 40 60 30 106 36" stroke="#fff" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <path d="M-4 88C26 50 66 40 106 48" stroke="#3fb4ff" stroke-width="7" fill="none" stroke-linecap="round" opacity=".85"/>
+      <text x="50" y="34" text-anchor="middle" fill="#fff" font-size="15" font-weight="700"
+        font-family="-apple-system,Inter,Segoe UI,Arial" letter-spacing="-.6">Spectrum</text></svg>`,
+  myspectrum:`<svg viewBox="0 0 100 100" style="width:100%;height:100%;display:block">
+      <defs><linearGradient id="msg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f8bff"/><stop offset="1" stop-color="#003057"/></linearGradient></defs>
+      <rect width="100" height="100" fill="url(#msg)"/>
+      <text x="50" y="42" text-anchor="middle" fill="#fff" font-size="17" font-weight="600"
+        font-family="-apple-system,Inter,Segoe UI,Arial" opacity=".92">My</text>
+      <text x="50" y="60" text-anchor="middle" fill="#fff" font-size="14" font-weight="800"
+        font-family="-apple-system,Inter,Segoe UI,Arial" letter-spacing="-.5">Spectrum</text>
+      <path d="M18 74C36 64 66 62 84 70" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round"/></svg>`,
+  netflix:`<div style="width:100%;height:100%;background:#000;display:grid;place-items:center">
+      <svg viewBox="0 0 40 60" style="height:74%"><defs><linearGradient id="nfg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e50914"/><stop offset="1" stop-color="#8b0000"/></linearGradient></defs>
+      <path d="M6 2h9l10 30V2h9v56h-9L15 26v32H6z" fill="url(#nfg)"/></svg></div>`,
+  disney:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#0c1b3a,#040a17);display:grid;place-items:center;color:#fff;overflow:hidden">
+      <div style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:15px;font-weight:700;letter-spacing:-.3px;white-space:nowrap">Disney<span style="font-style:normal;font-size:11px;vertical-align:top;margin-left:1px">+</span></div></div>`,
+  max:`<div style="width:100%;height:100%;background:linear-gradient(150deg,#0d1a4a,#3b1f9e 60%,#0b0f2b);display:grid;place-items:center;color:#fff">
+      <div style="font-size:22px;font-weight:800;letter-spacing:-1.5px">max</div></div>`,
+  paramount:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#0064ff,#001c58);display:grid;place-items:center;color:#fff;position:relative">
+      <svg viewBox="0 0 100 100" style="position:absolute;width:100%;height:100%;opacity:.35"><path d="M50 24 L78 76 H22 Z" fill="#fff"/></svg>
+      <div style="position:relative;font-size:13px;font-weight:800;letter-spacing:-.4px">Paramount<span style="font-size:15px">+</span></div></div>`,
+  peacock:`<div style="width:100%;height:100%;background:#000;display:grid;place-items:center;position:relative">
+      <svg viewBox="0 0 100 100" style="width:66%">${['#ffc900','#ff7c00','#ff3c14','#c724b1','#0089ff','#00b0e4'].map((c,i)=>
+        `<circle cx="${50+Math.cos((i-2.5)*0.42-Math.PI/2)*30}" cy="${72+Math.sin((i-2.5)*0.42-Math.PI/2)*30}" r="8.5" fill="${c}"/>`).join('')}
+        <circle cx="50" cy="70" r="12" fill="#000"/></svg></div>`,
+  hulu:`<div style="width:100%;height:100%;background:#1ce783;display:grid;place-items:center">
+      <div style="color:#000;font-size:19px;font-weight:800;letter-spacing:-1px">hulu</div></div>`,
+  prime:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#0f3c5c,#00a8e1);display:grid;place-items:center;color:#fff;text-align:center">
+      <div><div style="font-size:11px;font-weight:600;letter-spacing:.5px">prime</div><div style="font-size:12px;font-weight:800;margin-top:-2px">video</div>
+      <svg viewBox="0 0 60 14" style="width:36px"><path d="M2 4c14 10 42 10 56 0" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round"/></svg></div></div>`,
+  appletv:`<div style="width:100%;height:100%;background:#000;display:grid;place-items:center;color:#fff">
+      <div style="font-size:14px;font-weight:600;letter-spacing:-.5px"> tv<span style="font-size:11px">+</span></div></div>`,
+  youtubetv:`<div style="width:100%;height:100%;background:#fff;display:grid;place-items:center">
+      <div style="text-align:center"><svg viewBox="0 0 60 42" style="width:38px"><rect width="60" height="42" rx="11" fill="#ff0000"/><path d="M24 12l16 9-16 9z" fill="#fff"/></svg>
+      <div style="font-size:11px;font-weight:700;color:#111;margin-top:1px">TV</div></div></div>`,
+  espn:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#d00,#8a0000);display:grid;place-items:center">
+      <div style="color:#fff;font-size:17px;font-style:italic;font-weight:800;letter-spacing:-1px">ESPN</div></div>`,
+  discovery:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#1f3d7a,#0b1733);display:grid;place-items:center;color:#fff;text-align:center">
+      <div style="font-size:11px;font-weight:700;letter-spacing:-.2px">discovery<span style="color:#4aa8ff">+</span></div></div>`
+};
+const STORE=[
+  {id:'spectrumtv',name:'Spectrum TV',dev:'Charter Communications',sub:'Live TV, On Demand & DVR',cat:'Entertainment',
+   icon:BI.spectrum,bg:'linear-gradient(160deg,#0053a0,#00285a)',rating:4.4,ratings:'1.2M',age:'12+',size:'214.7 MB',version:'9.4.0',
+   rank:1,editorial:'Your whole channel lineup, wherever you are.',
+   colors:['#003057','#0072ce'],
+   desc:`Watch live TV and thousands of On Demand shows and movies included with your Spectrum TV subscription — at home or on the go.\n\n• Stream up to 300 live channels at home\n• Browse a full channel guide and set DVR recordings remotely\n• Pick up where you left off across devices\n• Manage parental controls and favorites\n\nA Spectrum TV subscription is required. Channel availability varies by plan and location.`,
+   whatsnew:`• Faster guide loading and smoother channel surfing\n• Improved DVR conflict handling\n• Bug fixes and performance improvements`,
+   shots:['Live Guide','On Demand','My Library','DVR']},
+  {id:'myspectrum',name:'My Spectrum',dev:'Charter Communications',sub:'Account, billing & support',cat:'Utilities',
+   icon:BI.myspectrum,bg:'linear-gradient(160deg,#003057,#0072ce)',rating:4.7,ratings:'2.4M',age:'4+',size:'132.1 MB',version:'12.1.3',
+   rank:2,editorial:'Pay the bill, fix the Wi-Fi, skip the phone call.',
+   colors:['#0072ce','#003057'],
+   desc:`Manage every part of your Spectrum account from one place.\n\n• View and pay your bill, set up Auto Pay and paperless billing\n• Troubleshoot your Internet, TV and Voice services\n• Restart your equipment and check for outages in your area\n• Manage your WiFi network name, password and connected devices\n• Chat with support 24/7`,
+   whatsnew:`• Redesigned billing summary\n• Faster equipment restarts\n• Accessibility improvements throughout`,
+   shots:['Billing','Services','WiFi','Support']},
+  {id:'netflix',name:'Netflix',dev:'Netflix, Inc.',sub:'Series, films and games',cat:'Entertainment',
+   icon:BI.netflix,bg:'#000',rating:3.9,ratings:'4.1M',age:'12+',size:'186.3 MB',version:'17.2.1',
+   rank:3,editorial:'The new season everyone is arguing about.',
+   colors:['#e50914','#111'],
+   desc:`Netflix is the world's leading subscription service for watching TV episodes and movies.\n\n• Unlimited streaming, no commercials\n• Download titles to watch offline\n• Up to five profiles per account, plus Kids profiles\n• New series, films and mobile games added every week\n\nMembership required.`,
+   whatsnew:`• Improved download management\n• New "My Netflix" tab enhancements\n• Stability fixes`,
+   shots:['Home','My List','Downloads','Games']},
+  {id:'disney',name:'Disney+',dev:'Disney',sub:'Disney, Pixar, Marvel & more',cat:'Entertainment',
+   icon:BI.disney,bg:'linear-gradient(160deg,#0c1b3a,#040a17)',rating:4.6,ratings:'3.3M',age:'9+',size:'171.8 MB',version:'3.9.0',
+   rank:4,editorial:'Every galaxy, kingdom and universe in one place.',
+   colors:['#113ccf','#0c1b3a'],
+   desc:`Disney+ is the streaming home of Disney, Pixar, Marvel, Star Wars, National Geographic and more.\n\n• Thousands of movies and series\n• Up to 4 concurrent streams and unlimited downloads on up to 10 devices\n• GroupWatch with friends and family\n• Kid-friendly profiles with parental controls`,
+   whatsnew:`• Continue Watching improvements\n• New profile artwork\n• Playback bug fixes`,
+   shots:['Home','Brands','Watchlist','Kids']},
+  {id:'max',name:'Max',dev:'WarnerMedia',sub:'Stream HBO, movies & more',cat:'Entertainment',
+   icon:BI.max,bg:'linear-gradient(150deg,#0d1a4a,#3b1f9e 60%,#0b0f2b)',rating:4.1,ratings:'1.8M',age:'17+',size:'158.2 MB',version:'6.4.2',
+   rank:5,editorial:'Prestige TV, blockbusters and the entire HBO library.',
+   colors:['#3b1f9e','#0d1a4a'],
+   desc:`Max is the streaming home of HBO, plus hit movies, new originals, reality, documentaries and family favorites.\n\n• Every episode of every season of HBO's biggest series\n• New Warner Bros. films\n• Up to 4K UHD on eligible plans\n• Download and watch offline`,
+   whatsnew:`• 4K playback improvements\n• Faster search\n• Fixed an issue where downloads could stall`,
+   shots:['Home','HBO','Series','Movies']},
+  {id:'paramount',name:'Paramount+',dev:'Paramount',sub:'Live sports, news & shows',cat:'Entertainment',
+   icon:BI.paramount,bg:'linear-gradient(160deg,#0064ff,#001c58)',rating:4.3,ratings:'2.2M',age:'12+',size:'149.4 MB',version:'15.0.1',
+   rank:6,editorial:'A mountain of movies and every NFL on CBS game.',
+   colors:['#0064ff','#001c58'],
+   desc:`Stream thousands of episodes and movies, exclusive originals, live sports and breaking news.\n\n• Live NFL on CBS, UEFA Champions League and Masters coverage\n• CBS shows the day after they air\n• Kids' favorites from Nickelodeon\n• 24/7 live news with CBS News`,
+   whatsnew:`• Live event reliability improvements\n• New home experience\n• Bug fixes`,
+   shots:['Home','Live TV','Sports','Movies']},
+  {id:'peacock',name:'Peacock TV',dev:'NBCUniversal',sub:'Stream TV and films',cat:'Entertainment',
+   icon:BI.peacock,bg:'#000',rating:4.5,ratings:'1.6M',age:'12+',size:'141.0 MB',version:'8.2.0',
+   rank:7,editorial:'Sunday Night Football, Bravo and every Office rerun.',
+   colors:['#c724b1','#0089ff'],
+   desc:`Get current NBC and Bravo hits, blockbuster movies, live sports and Peacock Originals.\n\n• Next-day NBC and Bravo episodes\n• Premier League and Sunday Night Football\n• Thousands of hours of movies and classic TV\n• Live channels that never stop`,
+   whatsnew:`• Live sports experience refresh\n• Improved channel switching\n• Various fixes`,
+   shots:['Home','Channels','Sports','Browse']},
+  {id:'hulu',name:'Hulu',dev:'Hulu, LLC',sub:'Watch TV shows & movies',cat:'Entertainment',
+   icon:BI.hulu,bg:'#1ce783',rating:4.6,ratings:'2.9M',age:'17+',size:'166.5 MB',version:'7.51',
+   rank:8,editorial:'Next-day TV and originals worth the wait.',
+   colors:['#1ce783','#0b3b28'],
+   desc:`Stream thousands of shows and movies, with plans starting at $9.99/month.\n\n• Current episodes the day after they air\n• Hulu Originals\n• Add live TV, Disney+ and ESPN+ to your plan\n• Watch on two screens at once`,
+   whatsnew:`• Improved playback startup time\n• Bug fixes and stability improvements`,
+   shots:['Home','My Stuff','Live','Hubs']},
+  {id:'prime',name:'Prime Video',dev:'AMZN Mobile LLC',sub:'Movies, TV and live sports',cat:'Entertainment',
+   icon:BI.prime,bg:'linear-gradient(160deg,#0f3c5c,#00a8e1)',rating:4.3,ratings:'3.7M',age:'12+',size:'178.9 MB',version:'10.6.1',
+   rank:9,editorial:'Thursday Night Football and a deep movie bench.',
+   colors:['#00a8e1','#0f3c5c'],
+   desc:`Watch movies, TV and live events included with Prime, plus rent or buy new releases.\n\n• Amazon Originals and exclusives\n• Thursday Night Football and NBA coverage\n• Add channels like Max and Paramount+ to your subscription\n• Download to watch offline`,
+   whatsnew:`• X-Ray improvements\n• Faster browsing on cellular\n• Fixes for subtitle timing`,
+   shots:['Home','Store','Live','Downloads']},
+  {id:'appletv',name:'Apple TV',dev:'Apple',sub:'Originals, sports & channels',cat:'Entertainment',
+   icon:BI.appletv,bg:'#000',rating:4.4,ratings:'980K',age:'12+',size:'96.2 MB',version:'2.9.0',
+   rank:10,editorial:'Award-winning Originals, plus everything you already watch.',
+   colors:['#1c1c1e','#000'],
+   desc:`Apple TV+ Originals, MLS Season Pass, Friday Night Baseball and the channels you subscribe to — all in one app.\n\n• New Originals every month\n• Up to 4K HDR with Dolby Atmos\n• Family Sharing for up to six people`,
+   whatsnew:`• Sports scores now update in the app\n• Improved Up Next syncing`,
+   shots:['Watch Now','Originals','Sports','Library']},
+  {id:'youtubetv',name:'YouTube TV',dev:'Google LLC',sub:'Live TV with unlimited DVR',cat:'Entertainment',
+   icon:BI.youtubetv,bg:'#fff',rating:4.5,ratings:'1.4M',age:'12+',size:'152.3 MB',version:'8.11',
+   rank:11,editorial:'Cable channels without the cable box.',
+   colors:['#ff0000','#111'],
+   desc:`Live TV from 100+ channels with unlimited cloud DVR storage.\n\n• No contracts, no equipment\n• 6 accounts per household\n• Stream on 3 devices at once\n• Add-ons for sports and premium networks`,
+   whatsnew:`• Multiview improvements\n• Faster DVR search`,
+   shots:['Live','Library','Home','Multiview']},
+  {id:'espn',name:'ESPN',dev:'ESPN Inc.',sub:'Scores, news & live sports',cat:'Sports',
+   icon:BI.espn,bg:'linear-gradient(160deg,#d00,#8a0000)',rating:4.6,ratings:'2.1M',age:'4+',size:'128.6 MB',version:'7.18',
+   rank:12,editorial:'Every score, every league, every night.',
+   colors:['#d00','#8a0000'],
+   desc:`Personalized scores, news, highlights and live streaming.\n\n• Follow your teams for instant alerts\n• Watch live games with ESPN+ or your TV provider\n• Full studio show replays\n• Fantasy integration`,
+   whatsnew:`• New scoreboard design\n• Alert reliability improvements`,
+   shots:['Scores','Watch','Teams','ESPN+']},
+  {id:'discovery',name:'discovery+',dev:'Discovery, Inc.',sub:'Real-life entertainment',cat:'Entertainment',
+   icon:BI.discovery,bg:'linear-gradient(160deg,#1f3d7a,#0b1733)',rating:4.4,ratings:'760K',age:'12+',size:'118.9 MB',version:'18.3.0',
+   rank:13,editorial:'The biggest home for real-life TV.',
+   colors:['#1f3d7a','#0b1733'],
+   desc:`Stream shows from HGTV, Food Network, TLC, ID, Discovery Channel and more, plus discovery+ Originals.\n\n• Thousands of hours of nonfiction TV\n• New episodes the day after they air\n• Kids-safe profiles`,
+   whatsnew:`• Improved recommendations\n• Playback fixes`,
+   shots:['Home','Brands','Originals','My List']},
+  /* ---- games: each one is a different, genuinely playable engine ---- */
+  {id:'serpent',name:'Serpent Rush',dev:'Halcyon Games',sub:'Classic snake, modern speed',cat:'Games',engine:'snake',
+   icon:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#0f3d2e,#052018);display:grid;place-items:center">
+     <svg viewBox="0 0 60 60" style="width:74%"><path d="M10 44c0-9 9-9 18-9s18 0 18-9-9-9-18-9" stroke="#30d158" stroke-width="8" fill="none" stroke-linecap="round"/><circle cx="12" cy="16" r="4.6" fill="#ffd60a"/></svg></div>`,
+   bg:'linear-gradient(160deg,#0f3d2e,#052018)',rating:4.7,ratings:'214K',age:'4+',size:'48.2 MB',version:'2.4.1',
+   rank:1,editorial:'One more run. Every time.',colors:['#30d158','#0b2b1f'],
+   desc:`The timeless snake, rebuilt for quick sessions.\n\n• Swipe or use arrow keys\n• Speed ramps as you grow\n• No ads in this simulator build`,
+   whatsnew:`• New neon theme\n• Fixed a crash on game over`,shots:['Play','Scores','Themes','Daily'],game:true},
+  {id:'blockdrop',name:'Block Drop',dev:'Halcyon Games',sub:'Stack, clear, repeat',cat:'Games',engine:'tetris',
+   icon:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#1a1f4d,#0a0c22);display:grid;place-items:center">
+     <svg viewBox="0 0 60 60" style="width:70%"><g stroke="#0a0c22" stroke-width="1.4"><rect x="8" y="36" width="12" height="12" fill="#ff9f0a"/><rect x="20" y="36" width="12" height="12" fill="#ff9f0a"/><rect x="32" y="36" width="12" height="12" fill="#ff9f0a"/><rect x="20" y="24" width="12" height="12" fill="#ff9f0a"/><rect x="36" y="10" width="12" height="12" fill="#40c8e0"/><rect x="36" y="22" width="12" height="12" fill="#40c8e0"/></g></svg></div>`,
+   bg:'linear-gradient(160deg,#1a1f4d,#0a0c22)',rating:4.5,ratings:'188K',age:'4+',size:'61.7 MB',version:'1.9.0',
+   rank:2,editorial:'Seven shapes. Infinite regret.',colors:['#40c8e0','#11133a'],
+   desc:`Real falling-block puzzle action.\n\n• Rotate, shift, hard-drop\n• Line clears with combo scoring\n• Levels speed up every 10 lines`,
+   whatsnew:`• Added hard drop\n• Smoother rotation near walls`,shots:['Play','Ranks','Skins','Events'],game:true},
+  {id:'wordfall',name:'Wordfall',dev:'Pencase',sub:'A daily five-letter puzzle',cat:'Games',engine:'wordle',
+   icon:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#f4f1e8,#d9d2bd);display:grid;place-items:center">
+     <svg viewBox="0 0 60 60" style="width:72%"><g font-family="Georgia,serif" font-weight="700" text-anchor="middle"><rect x="8" y="8" width="20" height="20" rx="4" fill="#1c1c1e"/><text x="18" y="23" font-size="14" fill="#fff">W</text><rect x="32" y="8" width="20" height="20" rx="4" fill="#30d158"/><text x="42" y="23" font-size="14" fill="#fff">F</text><rect x="8" y="32" width="20" height="20" rx="4" fill="#ffd60a"/><text x="18" y="47" font-size="14" fill="#1c1c1e">A</text><rect x="32" y="32" width="20" height="20" rx="4" fill="#8e8e93"/><text x="42" y="47" font-size="14" fill="#fff">L</text></g></svg></div>`,
+   bg:'linear-gradient(160deg,#f4f1e8,#d9d2bd)',rating:4.8,ratings:'402K',age:'4+',size:'22.4 MB',version:'5.0.3',
+   rank:3,editorial:'Five letters. One coffee.',colors:['#30d158','#3d3a2e'],
+   desc:`Guess the hidden five-letter word in six tries.\n\n• Green means right letter, right spot\n• Yellow means right letter, wrong spot\n• The keyboard tracks what you've ruled out`,
+   whatsnew:`• Bigger word list\n• Keyboard colouring fixes`,shots:['Daily','Stats','Archive','Friends'],game:true},
+  {id:'fourrow',name:'Four in a Row',dev:'Nightjar Studio',sub:'Beat the computer',cat:'Games',engine:'connect4',
+   icon:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#1d4ed8,#0b1f5c);display:grid;place-items:center">
+     <svg viewBox="0 0 60 60" style="width:78%"><rect x="6" y="10" width="48" height="40" rx="6" fill="#1741b6"/>
+     <circle cx="13" cy="19" r="4.4" fill="#ff453a"/><circle cx="24.4" cy="19" r="4.4" fill="#ffd60a"/><circle cx="35.8" cy="19" r="4.4" fill="#0b1f5c"/><circle cx="47.2" cy="19" r="4.4" fill="#ff453a"/>
+     <circle cx="13" cy="30.4" r="4.4" fill="#ffd60a"/><circle cx="24.4" cy="30.4" r="4.4" fill="#0b1f5c"/><circle cx="35.8" cy="30.4" r="4.4" fill="#ff453a"/><circle cx="47.2" cy="30.4" r="4.4" fill="#ffd60a"/>
+     <circle cx="13" cy="41.8" r="4.4" fill="#0b1f5c"/><circle cx="24.4" cy="41.8" r="4.4" fill="#ff453a"/><circle cx="35.8" cy="41.8" r="4.4" fill="#ffd60a"/><circle cx="47.2" cy="41.8" r="4.4" fill="#0b1f5c"/></svg></div>`,
+   bg:'linear-gradient(160deg,#1d4ed8,#0b1f5c)',rating:4.4,ratings:'71K',age:'4+',size:'18.9 MB',version:'1.4.0',
+   rank:4,editorial:'Simple rules, sneaky computer.',colors:['#ffd60a','#0b1f5c'],
+   desc:`Drop discs, connect four, block the computer doing the same.\n\n• Looks two moves ahead\n• Diagonal wins count\n• Instant rematch`,
+   whatsnew:`• Smarter blocking AI\n• Win animation`,shots:['Play','Versus','Stats','Themes'],game:true},
+  {id:'twenty48',name:'2048 Tiles',dev:'Pencase',sub:'Merge to the big number',cat:'Games',engine:'2048',
+   icon:`<div style="width:100%;height:100%;background:linear-gradient(160deg,#f2b179,#b9846b);display:grid;place-items:center">
+     <svg viewBox="0 0 60 60" style="width:78%"><rect x="6" y="6" width="48" height="48" rx="7" fill="#bbada0"/>
+     <rect x="10" y="10" width="19" height="19" rx="3" fill="#eee4da"/><rect x="31" y="10" width="19" height="19" rx="3" fill="#f2b179"/>
+     <rect x="10" y="31" width="19" height="19" rx="3" fill="#f59563"/><rect x="31" y="31" width="19" height="19" rx="3" fill="#edc850"/>
+     <text x="40.5" y="45" font-size="10" font-weight="800" text-anchor="middle" fill="#fff" font-family="Inter,Arial">2048</text></svg></div>`,
+   bg:'linear-gradient(160deg,#f2b179,#b9846b)',rating:4.6,ratings:'330K',age:'4+',size:'14.2 MB',version:'4.2.0',
+   rank:5,editorial:'Deceptively simple. Genuinely hard.',colors:['#edc850','#7a6a5d'],
+   desc:`Swipe to slide every tile, matching numbers merge.\n\n• Reach 2048 to win, keep going for more\n• Undo the last move\n• Best score is saved`,
+   whatsnew:`• Added undo\n• Smoother tile animation`,shots:['Play','Best','Undo','Themes'],game:true},
+  {id:'brickblitz',name:'Brick Blitz',dev:'Nightjar Studio',sub:'Paddle, ball, bricks',cat:'Games',engine:'breakout',
+   icon:`<div style="width:100%;height:100%;background:radial-gradient(80% 80% at 30% 25%,#3b1f9e,#0b0f2b);display:grid;place-items:center">
+     <svg viewBox="0 0 60 60" style="width:78%">
+     <rect x="7" y="9" width="10" height="4" rx="1.4" fill="#ff453a"/><rect x="19" y="9" width="10" height="4" rx="1.4" fill="#ff453a"/><rect x="31" y="9" width="10" height="4" rx="1.4" fill="#ff453a"/><rect x="43" y="9" width="10" height="4" rx="1.4" fill="#ff453a"/>
+     <rect x="7" y="15" width="10" height="4" rx="1.4" fill="#ff9f0a"/><rect x="19" y="15" width="10" height="4" rx="1.4" fill="#ff9f0a"/><rect x="31" y="15" width="10" height="4" rx="1.4" fill="#ff9f0a"/><rect x="43" y="15" width="10" height="4" rx="1.4" fill="#ff9f0a"/>
+     <rect x="7" y="21" width="10" height="4" rx="1.4" fill="#ffd60a"/><rect x="19" y="21" width="10" height="4" rx="1.4" fill="#ffd60a"/><rect x="31" y="21" width="10" height="4" rx="1.4" fill="#ffd60a"/><rect x="43" y="21" width="10" height="4" rx="1.4" fill="#ffd60a"/>
+     <circle cx="30" cy="42" r="3.4" fill="#fff"/><rect x="20" y="49" width="20" height="4.4" rx="2.2" fill="#bf5af2"/></svg></div>`,
+   bg:'radial-gradient(80% 80% at 30% 25%,#3b1f9e,#0b0f2b)',rating:4.3,ratings:'96K',age:'9+',size:'26.0 MB',version:'3.1.2',
+   rank:6,editorial:'The one your dad was good at.',colors:['#bf5af2','#12081f'],
+   desc:`Clear every brick without dropping the ball.\n\n• Drag or use arrow keys to move the paddle\n• Ball angle depends where it hits\n• Three lives, rising speed`,
+   whatsnew:`• New level layouts\n• Paddle physics tuned`,shots:['Play','Levels','Scores','Skins'],game:true}
+];
+const byId = id => STORE.find(a=>a.id===id);
+const installing = new Set();
+
+function shotArt(app,label,i){
+  const [c1,c2]=app.colors;
+  return `<div style="position:absolute;inset:0;background:linear-gradient(170deg,${c1},${c2});color:#fff;padding:14px;display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:10px;opacity:.7;letter-spacing:1px;text-transform:uppercase">${esc(app.name)}</div>
+    <div style="font-size:17px;font-weight:800;letter-spacing:-.4px">${esc(label)}</div>
+    <div style="height:78px;border-radius:8px;background:rgba(255,255,255,.22)"></div>
+    <div style="display:flex;gap:6px">${[0,1,2].map(()=>'<div style="flex:1;height:52px;border-radius:6px;background:rgba(255,255,255,.16)"></div>').join('')}</div>
+    <div style="display:flex;gap:6px">${[0,1,2].map(()=>'<div style="flex:1;height:52px;border-radius:6px;background:rgba(255,255,255,.13)"></div>').join('')}</div>
+    <div style="margin-top:auto;display:flex;gap:6px">${[0,1,2,3].map(k=>`<div style="flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,${k===i%4?'.8':'.25'})"></div>`).join('')}</div>
+  </div>`;
+}
+function storeIconEl(app,cls='storeicon'){ return `<div class="${cls}">${app.icon}</div>`; }
+function getButton(app,{onOpen}={}){
+  const b=el('div','getbtn');
+  const paint=()=>{
+    if(installing.has(app.id)){ b.className='getbtn installing';
+      b.innerHTML=`<svg width="20" height="20" viewBox="0 0 36 36" style="display:block"><circle cx="18" cy="18" r="15" fill="none" stroke="rgba(120,120,128,.4)" stroke-width="3"/>
+        <circle class="pr" cx="18" cy="18" r="15" fill="none" stroke="var(--sysblue)" stroke-width="3" stroke-linecap="round"
+        stroke-dasharray="94" stroke-dashoffset="94" transform="rotate(-90 18 18)"/>
+        <rect x="15" y="15" width="6" height="6" fill="var(--sysblue)"/></svg>`;
+    }
+    else if(State.installed.includes(app.id)){ b.className='getbtn'; b.textContent='OPEN'; }
+    else { b.className='getbtn'; b.textContent='GET'; }
+  };
+  paint();
+  b.onclick=e=>{
+    e.stopPropagation();
+    if(installing.has(app.id)) return;
+    if(State.installed.includes(app.id)){ onOpen? onOpen() : openApp(app.id); return; }
+    if(!isOnline()){ alertBox({title:'Unable to Download App',
+      message:`“${app.name}” could not be downloaded at this time. ${netReason()}`,buttons:[{text:'OK'}]}); return; }
+    startInstall(app,b,paint);
+  };
+  b._paint=paint;
+  return b;
+}
+function startInstall(app,btn,paint){
+  installing.add(app.id); paint();
+  island('⬇️','#0a84ff',app.name,'Installing…',2200);
+  const ring=btn.querySelector('.pr');
+  let p=0;
+  const t=setInterval(()=>{
+    p+=Math.random()*0.16+0.05;
+    if(ring) ring.setAttribute('stroke-dashoffset', String(Math.max(0,94*(1-Math.min(p,1)))));
+    if(p>=1){
+      clearInterval(t); installing.delete(app.id);
+      if(!State.installed.includes(app.id)) State.installed.push(app.id);
+      save(); renderHome(); paint();
+      island('✓','#30d158',app.name,'Installed',1800);
+      refreshStoreButtons();
+    }
+  },240);
+}
+function refreshStoreButtons(){ $$('.getbtn').forEach(b=>b._paint&&b._paint()); }
+function stars(r){
+  const full=Math.floor(r), half=r-full>=.5;
+  return '★'.repeat(full)+(half?'☆':'')+'·'.repeat(Math.max(0,5-full-(half?1:0)));
+}
+
+defineApp({
+  id:'appstore', name:'App Store',
+  bg:'linear-gradient(180deg,#1f8fff,#0a5fd6)',
+  glyph:`<svg viewBox="0 0 100 100" style="width:62%"><g stroke="#fff" stroke-width="8" stroke-linecap="round">
+      <path d="M22 70 L45 30"/><path d="M55 30 L78 70"/><path d="M18 58 H62"/></g></svg>`,
+  mount(win,inst){
+    const wrap=el('div'); wrap.style.cssText='flex:1;position:relative;overflow:hidden';
+    win.appendChild(wrap);
+    const tabs=[
+      {id:'today',label:'Today',icon:SVG.tab('today'),root:()=>storeTodayView()},
+      {id:'games',label:'Games',icon:sf('<rect x="2.5" y="7" width="19" height="10" rx="4.6"/><path d="M7 10.5v3M5.5 12h3"/><circle cx="15.8" cy="11.4" r="1.1" fill="currentColor" stroke="none"/><circle cx="18" cy="13.4" r="1.1" fill="currentColor" stroke="none"/>',{size:25}),root:()=>storeGamesView()},
+      {id:'apps', label:'Apps', icon:SVG.tab('apps'), root:()=>storeAppsView()},
+      {id:'updates',label:'Updates',icon:SVG.tab('updates'),root:()=>storeUpdatesView()},
+      {id:'search',label:'Search',icon:SVG.tab('searchT'),root:()=>storeSearchView()}
+    ];
+    const navs={};
+    tabs.forEach(t=>{
+      const host=el('div'); host.style.cssText='position:absolute;inset:0;display:none';
+      wrap.appendChild(host);
+      const n=new Nav(host); navs[t.id]={host,nav:n,built:false,def:t};
+    });
+    const bar=el('div','tabbar');
+    tabs.forEach(t=>{
+      const b=el('button','',`${t.icon}<span>${t.label}</span>`);
+      b.onclick=()=>{ if(inst.tab===t.id) navs[t.id].nav.popToRoot(); setTab(t.id); };
+      bar.appendChild(b);
+    });
+    win.appendChild(bar);
+    function setTab(id){
+      inst.tab=id;
+      tabs.forEach((t,i)=>{
+        navs[t.id].host.style.display = t.id===id?'block':'none';
+        bar.children[i].classList.toggle('on',t.id===id);
+      });
+      const n=navs[id];
+      const root = isOnline()? n.def.root() : storeOfflineView(()=>setTab(id));
+      if(!n.built || n.offline!==!isOnline()){ n.nav.setRoot(root); n.built=true; n.offline=!isOnline(); }
+      else n.nav.refresh();
+    }
+    inst.setTab=setTab; inst.navs=navs;
+    setTab('today');
+  },
+  onShow(inst){ inst.navs[inst.tab].nav.refresh(); refreshStoreButtons(); }
+});
+
+function storeOfflineView(retry){
+  return {title:'', build(b){
+    const e=el('div','empty');
+    e.innerHTML=`<div style="font-size:44px;margin-bottom:10px">☁️</div>
+      <h3>Cannot Connect to App Store</h3>
+      <p style="line-height:1.45;margin-top:6px">${esc(netReason())}</p>`;
+    const btn=el('button','btn-primary','Retry'); btn.style.cssText+='max-width:200px;margin:22px auto 0';
+    btn.onclick=()=>{ if(isOnline()) retry(); else toast('Still offline'); };
+    e.appendChild(btn); b.appendChild(e);
+  }};
+}
+function storeTodayView(){
+  return {title:'', shortTitle:'Today',
+    left:[], right:[{html:`<div class="avatar" style="width:32px;height:32px;font-size:13px;background:linear-gradient(135deg,#5e5ce6,#0a84ff)">IS</div>`,
+      onClick:n=>n.push(storeAccountView())}],
+    build(b,nav){
+      const d=new Date();
+      b.appendChild(el('div','as-date',d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'}).toUpperCase()));
+      b.appendChild(el('div','as-day','Today'));
+
+      const feature=byId('spectrumtv');
+      b.appendChild(heroCard({kicker:'OUR PICK',title:'Your whole lineup,\nin your pocket',app:feature,
+        art:`linear-gradient(150deg,#0072ce,#00285a)`,nav}));
+
+      const story=el('div','as-hero');
+      story.innerHTML=`<div class="art" style="background:linear-gradient(160deg,#3b1f9e,#0d1a4a)">
+        <div class="kicker">STREAMING GUIDE</div><div class="ttl">Cut the cord without\nlosing the good stuff</div></div>
+        <div style="padding:12px 14px;font-size:14px;color:var(--txt2);line-height:1.4">Six services, one weekend. We tested what actually replaces cable — and what you can skip.</div>`;
+      story.onclick=()=>nav.push(storeStoryView());
+      b.appendChild(story);
+
+      b.appendChild(heroCard({kicker:'NOW TRENDING',title:'Everything on Peacock\nthis month',app:byId('peacock'),
+        art:'linear-gradient(150deg,#c724b1,#0089ff)',nav}));
+
+      const g=el('div');
+      g.appendChild(sectionHeader('Essential Streaming',()=>nav.push(storeListView('Essential Streaming',STORE.slice(0,8)))));
+      const col=el('div','chart-col'); col.style.minWidth='100%';
+      STORE.slice(2,6).forEach(a=>col.appendChild(storeRow(a,nav)));
+      g.appendChild(col);
+      b.appendChild(g);
+
+      b.appendChild(heroCard({kicker:'FROM THE EDITORS',title:'Manage your account\nin two taps',app:byId('myspectrum'),
+        art:'linear-gradient(150deg,#0072ce,#001c3a)',nav}));
+
+      const foot=el('div','pad');
+      foot.style.cssText='text-align:center;color:var(--txt2);font-size:12px;padding:30px 30px 10px';
+      foot.innerHTML='This is a simulated App Store. No real downloads occur.';
+      b.appendChild(foot);
+    }};
+}
+function heroCard({kicker,title,app,art,nav}){
+  const c=el('div','as-hero');
+  c.innerHTML=`<div class="art" style="background:${art}">
+      <div class="kicker">${esc(kicker)}</div><div class="ttl">${esc(title).replace(/\n/g,'<br>')}</div></div>
+    <div class="foot">${storeIconEl(app,'storeicon sm')}
+      <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">${esc(app.name)}</div>
+      <div style="font-size:13px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(app.sub)}</div></div>
+      <span class="slot"></span></div>`;
+  c.querySelector('.slot').replaceWith(getButton(app));
+  c.querySelector('.art').onclick=()=>nav.push(appDetailView(app));
+  c.querySelector('.foot').onclick=e=>{ if(!e.target.closest('.getbtn')) nav.push(appDetailView(app)); };
+  return c;
+}
+function sectionHeader(title,onSeeAll){
+  const s=el('div','as-sec-h',`<h3>${esc(title)}</h3>`);
+  if(onSeeAll){ const b=el('button','','See All'); b.onclick=onSeeAll; s.appendChild(b); }
+  return s;
+}
+function storeRow(app,nav,{rank}={}){
+  const r=el('div','as-row');
+  r.innerHTML=`${rank?`<div style="width:16px;text-align:center;color:var(--txt2);font-size:15px">${rank}</div>`:''}
+    ${storeIconEl(app)}
+    <div class="meta"><div class="nm">${esc(app.name)}</div><div class="sb">${esc(app.sub)}</div>
+    <div class="sb" style="font-size:11px">${esc(app.cat)}</div></div><span class="slot"></span>`;
+  r.querySelector('.slot').replaceWith(getButton(app));
+  r.onclick=e=>{ if(!e.target.closest('.getbtn')) nav.push(appDetailView(app)); };
+  return r;
+}
+function storeGamesView(){
+  const games=()=>STORE.filter(a=>a.game);
+  return {title:'Games', largeTitle:true, shortTitle:'Games',
+    right:[{html:`<div class="avatar" style="width:32px;height:32px;font-size:13px;background:linear-gradient(135deg,#5e5ce6,#0a84ff)">IS</div>`,
+      onClick:n=>n.push(storeAccountView())}],
+    build(b,nav){
+      const feat=games()[0];
+      b.appendChild(heroCard({kicker:'NOW PLAYABLE',title:'Actually play it,\nright on this phone',app:feat,
+        art:`linear-gradient(150deg,${feat.colors[0]},${feat.colors[1]})`,nav}));
+      b.appendChild(sectionHeader('Top Free Games',()=>nav.push(storeListView('Top Free Games',games()))));
+      games().forEach((a,i)=>b.appendChild(storeRow(a,nav,{rank:i+1})));
+      b.appendChild(sectionHeader('Quick Sessions'));
+      const hs=el('div','hscroll');
+      games().slice(0,4).forEach(a=>{
+        const c=el('div','hcard'); c.style.minWidth='210px';
+        c.innerHTML=`<div class="shot" style="height:120px">${shotArt(a,a.shots[0],0)}</div>
+          <div style="display:flex;gap:10px;align-items:center">${storeIconEl(a,'storeicon sm')}
+          <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${esc(a.name)}</div>
+          <div style="font-size:12px;color:var(--txt2)">${esc(a.editorial)}</div></div><span class="slot"></span></div>`;
+        c.querySelector('.slot').replaceWith(getButton(a));
+        c.onclick=e=>{ if(!e.target.closest('.getbtn')) nav.push(appDetailView(a)); };
+        hs.appendChild(c);
+      });
+      b.appendChild(hs);
+      b.appendChild(el('div','grp-f','Installed games are genuinely playable — swipe or use the arrow keys.'));
+    }};
+}
+function storeAppsView(){
+  return {title:'Apps', largeTitle:true, shortTitle:'Apps',
+    right:[{html:`<div class="avatar" style="width:32px;height:32px;font-size:13px;background:linear-gradient(135deg,#5e5ce6,#0a84ff)">IS</div>`,
+      onClick:n=>n.push(storeAccountView())}],
+    build(b,nav){
+      const hs=el('div','hscroll');
+      STORE.slice(0,6).forEach(a=>{
+        const c=el('div','hcard');
+        c.innerHTML=`<div class="shot">${shotArt(a,a.shots[0],0)}</div>
+          <div style="display:flex;gap:10px;align-items:center">${storeIconEl(a,'storeicon sm')}
+          <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${esc(a.name)}</div>
+          <div style="font-size:12px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.editorial)}</div></div>
+          <span class="slot"></span></div>`;
+        c.querySelector('.slot').replaceWith(getButton(a));
+        c.onclick=e=>{ if(!e.target.closest('.getbtn')) nav.push(appDetailView(a)); };
+        hs.appendChild(c);
+      });
+      b.appendChild(sectionHeader('New & Noteworthy'));
+      b.appendChild(hs);
+
+      b.appendChild(sectionHeader('Top Free Apps',()=>nav.push(storeListView('Top Free Apps',STORE.filter(a=>!a.game)))));
+      const chart=el('div','chart');
+      for(let i=0;i<STORE.length;i+=3){
+        const col=el('div','chart-col');
+        STORE.slice(i,i+3).forEach((a,j)=>col.appendChild(storeRow(a,nav,{rank:i+j+1})));
+        chart.appendChild(col);
+      }
+      b.appendChild(chart);
+
+      b.appendChild(sectionHeader('Because You Watch a Lot of TV'));
+      const hs2=el('div','hscroll');
+      [byId('espn'),byId('youtubetv'),byId('discovery'),byId('appletv')].forEach(a=>{
+        const c=el('div','hcard'); c.style.minWidth='210px';
+        c.innerHTML=`<div class="shot" style="height:120px">${shotArt(a,a.shots[1],1)}</div>
+          <div style="display:flex;gap:10px;align-items:center">${storeIconEl(a,'storeicon sm')}
+          <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">${esc(a.name)}</div>
+          <div style="font-size:12px;color:var(--txt2)">${esc(a.cat)}</div></div><span class="slot"></span></div>`;
+        c.querySelector('.slot').replaceWith(getButton(a));
+        c.onclick=e=>{ if(!e.target.closest('.getbtn')) nav.push(appDetailView(a)); };
+        hs2.appendChild(c);
+      });
+      b.appendChild(hs2);
+
+      b.appendChild(sectionHeader('Top Categories'));
+      const cats=el('div'); cats.style.padding='0 6px';
+      group(cats,{rows:['Entertainment','Games','Sports','Utilities','News','Kids'].map(c=>({
+        label:c, onClick:()=>nav.push(storeListView(c,STORE.filter(a=>a.cat===c||c==='News'||c==='Kids')))
+      }))});
+      b.appendChild(cats);
+    }};
+}
+function storeListView(title,list){
+  return {title, build(b,nav){ list.forEach((a,i)=>b.appendChild(storeRow(a,nav,{rank:i+1}))); }};
+}
+function storeStoryView(){
+  return {title:'', backLabel:'Today', build(b,nav){
+    const hero=el('div');
+    hero.innerHTML=`<div style="height:230px;background:linear-gradient(160deg,#3b1f9e,#0d1a4a);color:#fff;padding:20px;display:flex;flex-direction:column;justify-content:flex-end">
+      <div class="kicker" style="font-size:12px;font-weight:800;letter-spacing:1px;opacity:.8">STREAMING GUIDE</div>
+      <div style="font-size:28px;font-weight:800;line-height:1.1;margin-top:6px">Cut the cord without losing the good stuff</div></div>`;
+    b.appendChild(hero);
+    const p=el('div','pad');
+    p.style.cssText='font-size:16px;line-height:1.6;padding:18px 20px;color:var(--txt)';
+    p.innerHTML=`Cable used to mean one bill and 300 channels you never watched. Now the lineup is yours to assemble — and the apps below are the ones worth a home-screen slot.<br><br>
+      Start with <b>Spectrum TV</b> if you already have service: your channel guide, DVR and On Demand library come along for free.
+      Then layer on the originals. <b>Max</b> and <b>Netflix</b> cover prestige drama, <b>Disney+</b> handles the family, and <b>Peacock</b> and <b>Paramount+</b> carry live sports on the weekends.<br><br>
+      Our advice: install two, rotate quarterly, and cancel without guilt.`;
+    b.appendChild(p);
+    b.appendChild(sectionHeader('The Lineup'));
+    ['spectrumtv','max','netflix','disney','peacock','paramount'].map(byId).forEach(a=>b.appendChild(storeRow(a,nav)));
+  }};
+}
+function storeSearchView(){
+  const TRENDING=['spectrum tv','netflix','free movies','live sports','hbo max','peacock','disney plus','paramount plus'];
+  return {title:'Search', largeTitle:true, shortTitle:'Search', build(b,nav,view){
+    const sfield=el('div','searchfield',`${SVG.search}<input placeholder="Games, Apps, Stories and More" id="storeSearch">`);
+    b.appendChild(sfield);
+    const res=el('div'); b.appendChild(res);
+    const input=sfield.querySelector('input');
+    const render=q=>{
+      res.innerHTML='';
+      q=q.trim().toLowerCase();
+      if(!q){
+        res.appendChild(sectionHeader('Discover'));
+        const g=el('div');
+        group(g,{rows:TRENDING.map(t=>({labelHTML:`<span style="color:var(--txt)">${esc(t)}</span>`,
+          icon:SVG.search, iconBg:'transparent', chevron:false,
+          onClick:()=>{ input.value=t; render(t); }}))});
+        $$('.ic',g).forEach(i=>{i.style.background='none';i.style.color='var(--txt2)';});
+        res.appendChild(g);
+        res.appendChild(sectionHeader('Suggested'));
+        STORE.slice(0,4).forEach(a=>res.appendChild(storeRow(a,nav)));
+        return;
+      }
+      const hits=STORE.filter(a=>(a.name+' '+a.dev+' '+a.sub+' '+a.cat).toLowerCase().includes(q));
+      if(!hits.length){
+        res.appendChild(h(`<div class="empty"><h3>No Results for “${esc(q)}”</h3><p>This simulator only carries Spectrum and the major streaming apps.</p></div>`));
+        return;
+      }
+      hits.forEach(a=>{
+        const card=el('div');
+        card.appendChild(storeRow(a,nav));
+        const sh=el('div','shots'); sh.style.padding='0 20px 14px';
+        a.shots.slice(0,3).forEach((s,i)=>{ const d=el('div','shot-card'); d.style.cssText='min-width:150px;height:280px';
+          d.innerHTML=shotArt(a,s,i); d.onclick=()=>nav.push(appDetailView(a)); sh.appendChild(d); });
+        card.appendChild(sh);
+        res.appendChild(card);
+      });
+    };
+    input.oninput=e=>render(e.target.value);
+    render('');
+    if(view._focus){ setTimeout(()=>input.focus(),350); }
+  }};
+}
+function storeUpdatesView(){
+  return {title:'Updates', largeTitle:true, shortTitle:'Updates',
+    right:[{html:`<div class="avatar" style="width:32px;height:32px;font-size:13px;background:linear-gradient(135deg,#5e5ce6,#0a84ff)">IS</div>`,
+      onClick:n=>n.push(storeAccountView())}],
+    build(b,nav){
+      const pending=(State.updatesAvailable||[]).filter(id=>State.installed.includes(id));
+      if(pending.length){
+        const head=el('div'); head.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:14px 20px 6px';
+        head.innerHTML=`<div style="font-size:20px;font-weight:700">Available Updates</div>`;
+        const all=el('button','',"Update All"); all.style.cssText='color:var(--sysblue);font-size:15px;font-weight:600';
+        all.onclick=()=>{ State.updatesAvailable=[]; save(); setBadge('appstore',0); nav.refresh(); island('✓','#30d158','App Store','All apps updated',1800); };
+        head.appendChild(all); b.appendChild(head);
+        pending.map(byId).forEach(a=>{
+          const r=el('div','as-row'); r.style.alignItems='flex-start';
+          r.innerHTML=`${storeIconEl(a)}
+            <div class="meta"><div class="nm">${esc(a.name)}</div>
+            <div class="sb" style="white-space:normal">Version ${a.version} · ${a.size}</div>
+            <div style="font-size:13px;color:var(--txt2);white-space:pre-wrap;margin-top:4px">${esc(a.whatsnew)}</div></div>`;
+          const btn=el('div','getbtn','UPDATE');
+          btn.onclick=e=>{ e.stopPropagation();
+            btn.textContent='…';
+            setTimeout(()=>{ State.updatesAvailable=State.updatesAvailable.filter(x=>x!==a.id); save();
+              setBadge('appstore',State.updatesAvailable.length); nav.refresh(); toast(a.name+' updated'); },900);
+          };
+          const wrap=el('div'); wrap.style.cssText='display:flex;flex-direction:column;align-items:flex-end;gap:6px';
+          wrap.appendChild(btn); r.appendChild(wrap);
+          r.onclick=e=>{ if(!e.target.closest('.getbtn')) nav.push(appDetailView(a)); };
+          b.appendChild(r);
+        });
+      }
+      const upToDate=State.installed.filter(id=>!(State.updatesAvailable||[]).includes(id));
+      if(upToDate.length){
+        b.appendChild(sectionHeader('Updated Recently'));
+        upToDate.map(byId).filter(Boolean).forEach(a=>{
+          const r=el('div','as-row');
+          r.innerHTML=`${storeIconEl(a)}<div class="meta"><div class="nm">${esc(a.name)}</div>
+            <div class="sb">Updated today · Version ${a.version}</div></div>`;
+          const btn=el('div','getbtn','OPEN'); btn.onclick=e=>{e.stopPropagation();openApp(a.id);};
+          r.appendChild(btn);
+          r.onclick=e=>{ if(!e.target.closest('.getbtn')) nav.push(appDetailView(a)); };
+          b.appendChild(r);
+        });
+      }
+      if(!pending.length && !upToDate.length)
+        b.appendChild(h(`<div class="empty"><h3>No Updates</h3><p>Install an app from the Apps tab and it will show up here.</p></div>`));
+    }};
+}
+function storeAccountView(){
+  return {title:'Account', backLabel:'Done', build(b,nav){
+    const head=el('div','pad'); head.style.textAlign='center';
+    head.innerHTML=`<div class="avatar" style="width:80px;height:80px;font-size:30px;margin:4px auto 10px;background:linear-gradient(135deg,#5e5ce6,#0a84ff)">IS</div>
+      <div style="font-size:20px;font-weight:600">Isaiah S.</div>
+      <div class="muted" style="font-size:14px">${esc(State.settings.appleID)}</div>`;
+    b.appendChild(head);
+    group(b,{rows:[
+      {label:'Purchased', value:State.installed.length+' apps', onClick:()=>nav.push(storeListView('Purchased',State.installed.map(byId).filter(Boolean)))},
+      {label:'Subscriptions', onClick:()=>nav.push(subscriptionsView())},
+      {label:'Redeem Gift Card or Code', onClick:()=>toast('Simulated')},
+      {label:'Add Funds to Apple ID', value:'$25.00', onClick:()=>toast('Simulated')}]});
+    group(b,{rows:[
+      {label:'Personalized Recommendations', toggle:()=>true, onToggle:()=>{}},
+      {label:'App Store Settings', onClick:()=>{ goHome(); setTimeout(()=>openApp('settings'),320); }}]});
+    group(b,{rows:[{label:'Sign Out', cls:'blue center', onClick:()=>toast('Simulated')}]});
+  }};
+}
+function appDetailView(app){
+  return {title:app.name, shortTitle:'Back', backLabel:'Back',
+    right:[{html:'􀈂 <span style="font-size:19px">⇪</span>',onClick:()=>toast('Share sheet is simulated')}],
+    build(b,nav){
+      const head=el('div','appdetail-head');
+      head.innerHTML=`${storeIconEl(app,'storeicon lg')}
+        <div style="flex:1;min-width:0;padding-bottom:4px">
+          <div style="font-size:22px;font-weight:700;line-height:1.15">${esc(app.name)}</div>
+          <div style="font-size:14px;color:var(--txt2);margin:2px 0 12px">${esc(app.sub)}</div>
+          <div style="display:flex;align-items:center;gap:14px"><span class="slot"></span>
+          <span style="font-size:19px;color:var(--txt2)">⇪</span></div>
+        </div>`;
+      head.querySelector('.slot').replaceWith(getButton(app));
+      b.appendChild(head);
+
+      const stat=el('div','ad-stats');
+      stat.innerHTML=`
+        <div class="ad-stat"><b>${app.ratings} Ratings</b><s>${app.rating.toFixed(1)}</s><div class="stars">${stars(app.rating)}</div></div>
+        <div class="ad-stat"><b>Age</b><s>${app.age}</s><div style="font-size:11px;color:var(--txt2)">Years Old</div></div>
+        <div class="ad-stat"><b>Chart</b><s>#${app.rank}</s><div style="font-size:11px;color:var(--txt2)">${esc(app.cat)}</div></div>
+        <div class="ad-stat"><b>Developer</b><s>👤</s><div style="font-size:11px;color:var(--txt2)">${esc(app.dev.split(',')[0])}</div></div>
+        <div class="ad-stat"><b>Language</b><s>EN</s><div style="font-size:11px;color:var(--txt2)">+ 5 More</div></div>`;
+      b.appendChild(stat);
+
+      b.appendChild(el('div','as-sec-h','<h3 style="font-size:19px">Preview</h3>'));
+      const shots=el('div','shots');
+      app.shots.forEach((s,i)=>{ const d=el('div','shot-card'); d.innerHTML=shotArt(app,s,i); shots.appendChild(d); });
+      b.appendChild(shots);
+
+      const desc=el('div'); desc.style.cssText='padding:6px 20px 14px;font-size:15px;line-height:1.5;white-space:pre-wrap';
+      const full=app.desc, isLong=full.length>200;
+      desc.innerHTML = isLong? esc(full.slice(0,190))+'…' : esc(full);
+      b.appendChild(desc);
+      if(isLong){
+        const more=el('button','','more'); more.style.cssText='color:var(--sysblue);font-size:15px;padding:0 20px 12px;display:block;margin-left:auto';
+        more.onclick=()=>{ desc.innerHTML=esc(full); more.remove(); };
+        b.appendChild(more);
+      }
+      const devrow=el('div'); devrow.style.cssText='padding:0 20px 16px;border-bottom:.5px solid var(--sep);margin-bottom:8px';
+      devrow.innerHTML=`<div style="font-size:12px;color:var(--txt2)">Developer</div>
+        <div style="color:var(--sysblue);font-size:15px;margin-top:2px">${esc(app.dev)} ›</div>`;
+      devrow.onclick=()=>nav.push(storeListView(app.dev,STORE.filter(a=>a.dev===app.dev)));
+      b.appendChild(devrow);
+
+      const wn=el('div'); wn.style.padding='2px 20px 16px';
+      wn.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline">
+        <h3 style="font-size:19px;font-weight:700">What's New</h3><span style="color:var(--sysblue);font-size:15px">Version History</span></div>
+        <div style="display:flex;justify-content:space-between;color:var(--txt2);font-size:13px;margin:6px 0 10px">
+          <span>Version ${app.version}</span><span>2d ago</span></div>
+        <div style="font-size:15px;line-height:1.5;white-space:pre-wrap">${esc(app.whatsnew)}</div>`;
+      b.appendChild(wn);
+
+      b.appendChild(el('div','as-sec-h',`<h3 style="font-size:19px">Ratings & Reviews</h3><button>See All</button>`));
+      const rb=el('div','rating-big');
+      rb.innerHTML=`<div><div style="font-size:52px;font-weight:800;line-height:1">${app.rating.toFixed(1)}</div>
+        <div style="font-size:12px;color:var(--txt2)">out of 5</div></div>
+        <div class="bars">${[5,4,3,2,1].map(n=>{
+          const w=[62,22,8,4,4][5-n]*(n===Math.round(app.rating)?1.3:1);
+          return `<div class="bar"><span>${'★'.repeat(n)}</span><div class="tr"><div class="fl" style="width:${Math.min(w,100)}%"></div></div></div>`;}).join('')}
+        <div style="text-align:right;font-size:12px;color:var(--txt2);margin-top:4px">${app.ratings} Ratings</div></div>`;
+      b.appendChild(rb);
+      REVIEWS(app).forEach(r=>{
+        const d=el('div','review');
+        d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div style="font-weight:600;font-size:15px">${esc(r.t)}</div><div style="font-size:12px;color:var(--txt2)">${esc(r.d)}</div></div>
+          <div class="stars" style="margin:3px 0 6px">${stars(r.s)} <span style="color:var(--txt2)">· ${esc(r.u)}</span></div>
+          <div style="font-size:14px;line-height:1.45;color:var(--txt)">${esc(r.b)}</div>`;
+        b.appendChild(d);
+      });
+      const info=el('div');
+      info.appendChild(el('div','as-sec-h','<h3 style="font-size:19px">Information</h3>'));
+      group(info,{rows:[
+        {label:'Provider',value:app.dev},
+        {label:'Size',value:app.size},
+        {label:'Category',value:app.cat},
+        {label:'Compatibility',value:'iPhone',onClick:()=>toast('Requires iOS 16.0 or later')},
+        {label:'Languages',value:'EN + 5 More',onClick:()=>toast('English, Spanish, French, Portuguese, German, Japanese')},
+        {label:'Age Rating',value:app.age},
+        {label:'In-App Purchases',value:'Yes',onClick:()=>nav.push(infoListView('In-App Purchases','',
+          ['Monthly Subscription — $9.99','Annual Subscription — $99.99','Premium Add-On — $4.99'],'Prices are illustrative.'))},
+        {label:'Copyright',value:'© '+app.dev},
+        {label:'Developer Website',cls:'blue',onClick:()=>{ goHome(); setTimeout(()=>{openApp('safari'); setTimeout(()=>safariGo(app.id+'.com'),400);},340); }},
+        {label:'Privacy Policy',cls:'blue',onClick:()=>toast('Opens the developer’s privacy policy')}]});
+      b.appendChild(info);
+      const tags=el('div'); tags.style.padding='6px 20px 30px';
+      ['Streaming','Live TV','On Demand','Sports','Family','Offline Downloads'].forEach(t=>tags.appendChild(h(`<span class="pill">${t}</span>`)));
+      b.appendChild(tags);
+    }};
+}
+function REVIEWS(app){
+  const pool=[
+    {t:'Exactly what I needed',s:5,u:'streamgeek_84',d:'2d ago',b:`Finally an app that just works. ${app.name} loads fast and picks up right where I left off on the TV.`},
+    {t:'Good, with one gripe',s:4,u:'Marisol_R',d:'1w ago',b:'Interface is clean and search is quick. Wish the downloads expired less aggressively, but I use it every single day.'},
+    {t:'Crashes fixed in this build',s:5,u:'DannyOnTheGo',d:'2w ago',b:'The last update fixed the freezing I was seeing on my 15 Pro. Playback is smooth again, even on cellular.'},
+    {t:'Please add profiles',s:3,u:'kj_watches',d:'3w ago',b:'Content is great but my household keeps wrecking my continue-watching row. Otherwise no complaints.'}
+  ];
+  return pool;
+}
+
+/* =========================================================================
+   SAFARI
+   ========================================================================= */
+const ENGINES={
+  Google:{q:'https://www.google.com/search?q=',home:'https://www.google.com'},
+  Bing:{q:'https://www.bing.com/search?q=',home:'https://www.bing.com'},
+  Yahoo:{q:'https://search.yahoo.com/search?p=',home:'https://www.yahoo.com'},
+  DuckDuckGo:{q:'https://duckduckgo.com/?q=',home:'https://duckduckgo.com'},
+  Ecosia:{q:'https://www.ecosia.org/search?q=',home:'https://www.ecosia.org'}
+};
+const FAVORITES=[
+  {n:'Google',u:'https://www.google.com',c:'#fff',t:'<span style="color:#4285f4;font-weight:800">G</span>'},
+  {n:'Spectrum',u:'https://www.spectrum.net',c:'#003057',t:'<span style="color:#fff;font-size:11px;font-weight:700">Spectrum</span>'},
+  {n:'YouTube',u:'https://www.youtube.com',c:'#ff0000',t:'<span style="color:#fff">▶</span>'},
+  {n:'Netflix',u:'https://www.netflix.com',c:'#000',t:'<span style="color:#e50914;font-weight:800">N</span>'},
+  {n:'Wikipedia',u:'https://en.wikipedia.org',c:'#fff',t:'<span style="color:#000;font-family:Georgia,serif">W</span>'},
+  {n:'Apple',u:'https://www.apple.com',c:'#1c1c1e',t:'<span style="color:#fff"><svg width="24" height="28" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg></span>'},
+  {n:'Reddit',u:'https://www.reddit.com',c:'#ff4500',t:'<span style="color:#fff">👽</span>'},
+  {n:'Weather',u:'https://weather.com',c:'#0a84ff',t:'<span style="color:#fff">☀</span>'}
+];
+function defaultSafari(){ return {tabs:[{id:1,url:'',title:'Start Page',history:[],idx:-1}],active:1,seq:2,
+  bookmarks:FAVORITES.map(f=>({n:f.n,u:f.u})), history:[], privateMode:false}; }
+function SafariState(){
+  const base=State.safari ||= defaultSafari();
+  if(!base.privateMode)return base;
+  const group=base.privateGroup ||= {tabs:[{id:1,url:'',title:'Start Page',history:[],idx:-1}],active:1,seq:2};
+  for(const key of ['bookmarks','history'])Object.defineProperty(group,key,{configurable:true,get:()=>base[key],set:value=>base[key]=value});
+  Object.defineProperty(group,'privateMode',{configurable:true,get:()=>base.privateMode,set:value=>base.privateMode=value});
+  return group;
+}
+function setSafariPrivate(enabled){State.safari ||= defaultSafari();State.safari.privateMode=enabled;SafariState();save();}
+function activeTab(){ const s=SafariState(); return s.tabs.find(t=>t.id===s.active)||s.tabs[0]; }
+function normalizeURL(input){
+  const raw=input.trim();
+  if(!raw) return '';
+  if(/^(https?|about):/i.test(raw)) return raw;
+  const looksURL = /^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(raw) && !/\s/.test(raw);
+  if(looksURL) return 'https://'+raw;
+  const eng=ENGINES[State.settings.searchEngine]||ENGINES.Google;
+  return eng.q+encodeURIComponent(raw);
+}
+function prettyHost(u){ try{ return new URL(u).hostname.replace(/^www\./,''); }catch(e){ return u; } }
+
+defineApp({
+  id:'safari', name:'Safari', darkStatus:false,
+  bg:'linear-gradient(180deg,#f7f9fc,#dfe7f3)',
+  glyph:`<svg viewBox="0 0 100 100" style="width:86%"><circle cx="50" cy="50" r="44" fill="url(#sfg)"/>
+    <defs><linearGradient id="sfg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1fb6ff"/><stop offset="1" stop-color="#0a63e8"/></linearGradient></defs>
+    <circle cx="50" cy="50" r="38" fill="none" stroke="#fff" stroke-width="2" opacity=".55"/>
+    <path d="M68 32 L44 44 L32 68 L56 56 Z" fill="#fff"/><path d="M68 32 L56 56 L44 44 Z" fill="#ff3b30"/></svg>`,
+  mount(win,inst){
+    const wrap=el('div','sf-wrap'); win.appendChild(wrap);
+    wrap.innerHTML=`
+      <div class="sf-top"></div>
+      <div class="sf-frame" id="sfFrame"></div>
+      <div class="sf-bar">
+        <div class="sf-url">
+          <span id="sfLockIcon" style="font-size:12px;color:var(--txt2)">🔒</span>
+          <input id="sfInput" placeholder="Search or enter website name" spellcheck="false" autocapitalize="off">
+          <span id="sfReload" style="color:var(--txt2);font-size:14px">↻</span>
+        </div>
+        <div class="sf-tools">
+          <button id="sfBack" aria-label="Back">${sf('<path d="M15 4.5L7.5 12l7.5 7.5"/>',{w:2.1,size:22})}</button>
+          <button id="sfFwd" aria-label="Forward">${sf('<path d="M9 4.5L16.5 12 9 19.5"/>',{w:2.1,size:22})}</button>
+          <button id="sfShare" aria-label="Share">${SF.share}</button>
+          <button id="sfExt" title="Open in a real browser window">${sf('<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4.5A1.5 1.5 0 0116.5 20h-11A1.5 1.5 0 014 18.5v-11A1.5 1.5 0 015.5 6H10"/>',{size:19})}</button>
+          <button id="sfBooks" aria-label="Bookmarks">${SF.book}</button>
+          <button id="sfTabs" aria-label="Tabs">${SF.tabs}</button>
+        </div>
+      </div>`;
+    inst.frame=$('#sfFrame',wrap);
+    inst.input=$('#sfInput',wrap);
+    inst.el=wrap;
+    $('#sfBack',wrap).onclick=()=>safariBack();
+    $('#sfFwd',wrap).onclick=()=>safariFwd();
+    $('#sfReload',wrap).onclick=()=>{ const t=activeTab(); if(t.url) safariRender(true); };
+    $('#sfShare',wrap).onclick=()=>safariShare();
+    $('#sfExt',wrap).onclick=()=>{ const t=activeTab();
+      if(!t.url) return toast('Open a page first');
+      window.open(t.url,'_blank','noopener'); };
+    $('#sfBooks',wrap).onclick=()=>safariBookmarks();
+    $('#sfTabs',wrap).onclick=()=>safariTabsView();
+    inst.input.addEventListener('focus',()=>safariSuggest(true));
+    inst.input.addEventListener('input',()=>safariSuggest(true));
+    inst.input.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); safariGo(inst.input.value); inst.input.blur(); }});
+    safariRender();
+  },
+  onShow(){ safariRender(); }
+});
+function sfInst(){ return openApps.get('safari'); }
+
+function safariGo(input){
+  const url=normalizeURL(input);
+  const t=activeTab();
+  if(!url){ t.url=''; t.title='Start Page'; }
+  else{
+    t.history=t.history.slice(0,t.idx+1);
+    t.history.push(url); t.idx=t.history.length-1;
+    t.url=url; t.title=prettyHost(url);
+    if(!SafariState().privateMode){
+      SafariState().history.unshift({u:url,t:t.title,when:Date.now()});
+      SafariState().history=SafariState().history.slice(0,80);
+    }
+  }
+  save(); safariRender(true);
+}
+function safariBack(){ const t=activeTab(); if(t.idx>0){ t.idx--; t.url=t.history[t.idx]; t.title=prettyHost(t.url); }
+  else if(t.idx===0){ t.idx=-1; t.url=''; t.title='Start Page'; } save(); safariRender(true); }
+function safariFwd(){ const t=activeTab(); if(t.idx<t.history.length-1){ t.idx++; t.url=t.history[t.idx]; t.title=prettyHost(t.url); save(); safariRender(true);} }
+
+function safariRender(reload){
+  const inst=sfInst(); if(!inst) return;
+  const t=activeTab(), frame=inst.frame, s=SafariState();
+  inst.el.classList.toggle('private-safari',s.privateMode);
+  inst.el.style.setProperty('--page', s.privateMode?'#1c1c1e':'');
+  inst.input.value = t.url ? prettyHost(t.url) : '';
+  $('#sfLockIcon',inst.el).textContent = t.url? (t.url.startsWith('https')?'🔒':'⚠') : '🔍';
+  $('#sfBack',inst.el).classList.toggle('dis', t.idx<0);
+  $('#sfFwd',inst.el).classList.toggle('dis', t.idx>=t.history.length-1);
+  $('#sfTabs',inst.el).innerHTML = s.tabs.length>1? `<span style="font-size:13px;border:1.6px solid currentColor;border-radius:5px;padding:0 5px">${s.tabs.length}</span>`:'❐';
+
+  if(!reload && frame.dataset.url===t.url) return;
+  frame.dataset.url=t.url||'';
+  frame.innerHTML='';
+  if(!t.url){ frame.appendChild(safariStartPage()); return; }
+  if(!isOnline()){
+    frame.appendChild(safariError('You Are Not Connected to the Internet',netReason(),t.url));
+    return;
+  }
+  const iframe=el('iframe');
+  iframe.setAttribute('sandbox','allow-scripts allow-same-origin allow-forms'+(State.settings.blockPopups?'':' allow-popups allow-popups-to-escape-sandbox'));
+  iframe.setAttribute('referrerpolicy','no-referrer');
+  iframe.src=t.url;
+  frame.appendChild(iframe);
+  const loader=el('div');
+  loader.style.cssText='position:absolute;top:0;left:0;height:3px;width:12%;background:var(--sysblue);transition:width 1.6s ease-out;z-index:3';
+  frame.appendChild(loader);
+  requestAnimationFrame(()=>loader.style.width='92%');
+  let done=false;
+  iframe.onload=()=>{ done=true; loader.style.width='100%'; setTimeout(()=>loader.remove(),300);
+    let blocked=false;
+    try{
+      const d=iframe.contentDocument;
+      // A same-origin, empty document means the browser refused the frame (X-Frame-Options / CSP).
+      // A genuine cross-origin load returns null or throws — that means the page really rendered.
+      if(d && (!d.body || d.body.innerHTML.trim()==='')) blocked=true;
+    }catch(err){ blocked=false; }
+    if(blocked) showBlocked(frame,t.url);
+    else{ const tab=activeTab(); if(tab.url===t.url){ tab.title=prettyHost(t.url); save(); }
+      escapeHatch(frame,t.url); }
+  };
+  setTimeout(()=>{ if(!done){ loader.remove(); showBlocked(frame,t.url,true); } },7000);
+}
+/* Some sites answer the request but refuse to paint inside a frame in a way the
+   parent page cannot detect, so always offer a one-tap way out to a real window. */
+function escapeHatch(frame,url){
+  $$('.sf-hatch',frame).forEach(x=>x.remove());
+  const p=el('div','sf-hatch');
+  p.style.cssText=`position:absolute;left:12px;right:12px;bottom:12px;z-index:5;display:flex;align-items:center;gap:10px;
+    background:rgba(28,28,30,.92);backdrop-filter:blur(14px);color:#fff;border-radius:14px;padding:10px 12px;font-size:12px;
+    box-shadow:0 6px 20px rgba(0,0,0,.4);transition:opacity .4s`;
+  p.innerHTML=`<div style="flex:1;line-height:1.35">Page blank? <b>${esc(prettyHost(url))}</b> may block embedding.</div>`;
+  const b=el('button','','Open ↗');
+  b.style.cssText='color:#0a84ff;font-weight:600;font-size:13px;padding:4px 6px';
+  b.onclick=()=>window.open(url,'_blank','noopener');
+  const x=el('button','','✕'); x.style.cssText='color:#8e8e93;padding:4px';
+  x.onclick=()=>p.remove();
+  p.append(b,x); frame.appendChild(p);
+  setTimeout(()=>{ p.style.opacity='0'; setTimeout(()=>p.remove(),450); },7000);
+}
+function showBlocked(frame,url,slow){
+  if($('.sf-blocked',frame)) return;
+  const host=prettyHost(url);
+  const b=el('div','sf-blocked');
+  b.innerHTML=`<div style="font-size:44px">🌐</div>
+    <div style="font-size:19px;font-weight:600">${esc(host)} won't load in a frame</div>
+    <div style="font-size:14px;color:var(--txt2);line-height:1.45">
+      ${slow?'The page is taking a long time to respond.':'Most large sites send <b>X-Frame-Options</b> / CSP headers that forbid being embedded, so the simulator can\'t display them inline.'}
+      Open it in a real browser tab instead — everything else in Safari (tabs, history, bookmarks, search) keeps working here.</div>`;
+  const open=el('button','btn-primary','Open '+host+' in a New Window');
+  open.style.maxWidth='280px';
+  open.onclick=()=>window.open(url,'_blank','noopener');
+  b.appendChild(open);
+  const retry=el('button','','Try Again');
+  retry.style.cssText='color:var(--sysblue);font-size:15px';
+  retry.onclick=()=>safariRender(true);
+  b.appendChild(retry);
+  frame.appendChild(b);
+}
+function safariError(title,msg,url){
+  const b=el('div','sf-blocked');
+  b.innerHTML=`<div style="font-size:40px">📡</div><div style="font-size:19px;font-weight:600">${esc(title)}</div>
+    <div style="font-size:14px;color:var(--txt2);line-height:1.45">${esc(msg)}</div>`;
+  return b;
+}
+function safariStartPage(){
+  const p=el('div','sf-start');
+  const s=SafariState();
+  p.style.background=s.privateMode?'#1c1c1e':'var(--page)';
+  p.innerHTML=`<div style="font-size:15px;font-weight:600;margin-bottom:12px;color:var(--txt)">Favorites</div>`;
+  const fav=el('div','sf-fav');
+  FAVORITES.forEach(f=>{
+    const d=el('div','f',`<div class="fi" style="background:${f.c}">${f.t}</div><div>${esc(f.n)}</div>`);
+    d.onclick=()=>safariGo(f.u);
+    fav.appendChild(d);
+  });
+  p.appendChild(fav);
+  if(s.privateMode){const notice=el('div','private-notice','<strong>Private Browsing</strong><p>Safari won’t remember the pages you visit or your search history.</p>');p.insertBefore(notice,p.firstChild);}
+  if(s.history.length && !s.privateMode){
+    p.appendChild(h(`<div style="font-size:15px;font-weight:600;margin:6px 0 10px;color:var(--txt)">Recently Visited</div>`));
+    const g=el('div');
+    group(g,{rows:s.history.slice(0,6).map(x=>({label:x.t,sub:x.u.slice(0,44),onClick:()=>safariGo(x.u)}))});
+    g.firstElementChild.style.margin='0 0 20px';
+    p.appendChild(g);
+  }
+  const priv=el('div');
+  priv.style.cssText='margin-top:10px;padding:14px;border-radius:12px;background:var(--group)';
+  priv.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:15px;font-weight:600">Privacy Report</div>
+      <div style="font-size:13px;color:var(--txt2)">No trackers reported</div></div>
+      <div style="font-size:24px">🛡</div></div>`;
+  p.appendChild(priv);
+
+  return p;
+}
+function safariSuggest(show){
+  const inst=sfInst(); if(!inst) return;
+  let sug=$('.sf-sugg',inst.frame);
+  const q=inst.input.value.trim();
+  if(!show){ sug&&sug.remove(); return; }
+  if(!sug){ sug=el('div','sf-sugg'); inst.frame.appendChild(sug);
+    sug.addEventListener('pointerdown',e=>e.preventDefault()); }
+  sug.innerHTML='';
+  const rows=[];
+  if(q){
+    rows.push({label:q, sub:(/^[\w.-]+\.[a-z]{2,}/i.test(q)?'Website':(State.settings.searchEngine+' Search')),
+      icon:SVG.search, go:()=>safariGo(q)});
+    ['tv guide','free streaming',''+q+' app','how to '+q].slice(0,3).forEach(x=>
+      rows.push({label:q+' '+x.replace(q,'').trim(), sub:State.settings.searchEngine+' Search', icon:SVG.search, go:()=>safariGo(q+' '+x)}));
+  }
+  SafariState().history.filter(x=>!q||(x.t+x.u).toLowerCase().includes(q.toLowerCase())).slice(0,4)
+    .forEach(x=>rows.push({label:x.t, sub:x.u, icon:'🕘', go:()=>safariGo(x.u)}));
+  SafariState().bookmarks.filter(x=>!q||x.n.toLowerCase().includes(q.toLowerCase())).slice(0,4)
+    .forEach(x=>rows.push({label:x.n, sub:x.u, icon:'📖', go:()=>safariGo(x.u)}));
+  if(!rows.length){ sug.appendChild(h('<div class="empty">Start typing to search the web</div>')); }
+  const wrap=el('div');
+  group(wrap,{rows:rows.map(r=>({label:r.label,sub:r.sub,icon:r.icon,iconBg:'transparent',chevron:false,
+    onClick:()=>{ sug.remove(); r.go(); }}))});
+  $$('.ic',wrap).forEach(i=>{i.style.background='none';i.style.color='var(--txt2)';});
+  sug.appendChild(wrap);
+  const cancel=el('div','pad');
+  const c=el('button','',"Cancel"); c.style.cssText='color:var(--sysblue);display:block;margin:0 auto';
+  c.onclick=()=>{ sug.remove(); inst.input.blur(); safariRender(); };
+  cancel.appendChild(c); sug.appendChild(cancel);
+}
+function safariShare(){
+  const t=activeTab();
+  actionSheet(t.url? prettyHost(t.url):'Start Page',[
+    {text:'Add to Bookmarks',onClick:()=>{ if(!t.url) return toast('Nothing to bookmark');
+      SafariState().bookmarks.push({n:t.title,u:t.url}); save(); toast('Bookmark added'); }},
+    {text:'Add to Favorites',onClick:()=>{ if(t.url){SafariState().bookmarks.unshift({n:t.title,u:t.url});save();toast('Added to Favorites');} }},
+    {text:'Open in New Window',onClick:()=>{ if(t.url) window.open(t.url,'_blank','noopener'); }},
+    {text:'Copy Link',onClick:()=>{ if(t.url&&navigator.clipboard) navigator.clipboard.writeText(t.url).then(()=>toast('Copied'),()=>toast(t.url)); }},
+    {text:'Mail this Page',onClick:()=>{ if(!t.url) return toast('Nothing to send');
+      goHome(); setTimeout(()=>{ openApp('mail'); setTimeout(()=>composeMail({subject:'Check out '+t.title, body:t.url+'\n\n'}),420); },340); }},
+    {text:SafariState().privateMode?'Turn Off Private Browsing':'Turn On Private Browsing',onClick:()=>{
+      setSafariPrivate(!SafariState().privateMode); save(); safariRender(true); toast(SafariState().privateMode?'Private Browsing on':'Private Browsing off'); }}
+  ]);
+}
+function safariBookmarks(){
+  sheet((s,close)=>{
+    s.style.height='72%';
+    const nav=new Nav(el('div'));
+    s.innerHTML=`<div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:.5px solid var(--sep)">
+      <b style="font-size:17px">Bookmarks</b><button id="bmDone" style="color:var(--sysblue)">Done</button></div>`;
+    const seg=segmented(['Bookmarks','History'],'Bookmarks',v=>render(v));
+    seg.style.margin='10px 16px'; s.appendChild(seg);
+    const body=el('div'); body.style.cssText='flex:1;overflow-y:auto;padding-bottom:20px'; s.appendChild(body);
+    $('#bmDone',s).onclick=close;
+    function render(which){
+      body.innerHTML='';
+      if(which==='Bookmarks'){
+        if(!SafariState().bookmarks.length) body.appendChild(h('<div class="empty"><h3>No Bookmarks</h3></div>'));
+        group(body,{rows:SafariState().bookmarks.map((bm,i)=>({label:bm.n,sub:bm.u,icon:'📖',iconBg:'transparent',
+          onClick:()=>{ close(); safariGo(bm.u); },
+          rightHTML:`<button class="rm" data-i="${i}" style="color:var(--sysred);padding:6px">✕</button>`}))});
+        $$('.rm',body).forEach(btn=>btn.onclick=e=>{e.stopPropagation();
+          SafariState().bookmarks.splice(+btn.dataset.i,1); save(); render('Bookmarks');});
+      }else{
+        if(!SafariState().history.length) body.appendChild(h('<div class="empty"><h3>No History</h3></div>'));
+        else{
+          group(body,{rows:SafariState().history.map(x=>({label:x.t,sub:x.u,icon:'🕘',iconBg:'transparent',
+            onClick:()=>{ close(); safariGo(x.u); }}))});
+          group(body,{rows:[{label:'Clear History',cls:'destructive center',onClick:()=>{
+            SafariState().history=[]; save(); render('History'); toast('History cleared'); }}]});
+        }
+      }
+      $$('.ic',body).forEach(i=>{i.style.background='none';i.style.color='var(--txt2)';});
+    }
+    render('Bookmarks');
+  },{full:true});
+}
+function safariTabsView(){
+  const inst=sfInst(); if(!inst) return;
+  const v=el('div','sf-tabsview');
+  const s=SafariState();
+  const grid=el('div','sf-tabgrid');
+  s.tabs.forEach(t=>{
+    const c=el('div','sf-tabcard'+(t.id===s.active?' active':''));c.setAttribute('role','button');c.setAttribute('aria-label',t.title || 'Start Page');c.tabIndex=0;
+    c.innerHTML=`<div class="th" style="${t.url?'':'background:linear-gradient(160deg,#0a84ff,#0a4ba8)'}">${t.url?'🌐':'⌂'}</div>
+      <div class="tl">${esc(t.title||'Start Page')}</div><button class="x" aria-label="Close tab">✕</button>`;
+    c.onclick=e=>{ if(e.target.classList.contains('x')){
+        s.tabs=s.tabs.filter(x=>x.id!==t.id);
+        if(!s.tabs.length) s.tabs=[{id:s.seq++,url:'',title:'Start Page',history:[],idx:-1}];
+        if(s.active===t.id) s.active=s.tabs[0].id;
+        save(); v.remove(); safariTabsView(); safariRender(true); return; }
+      s.active=t.id; save(); v.remove(); safariRender(true); };
+    grid.appendChild(c);
+  });
+  v.appendChild(grid);
+  const bar=el('div');
+  bar.style.cssText='position:absolute;bottom:0;left:0;right:0;padding:14px 20px 30px;display:flex;justify-content:space-between;align-items:center;background:color-mix(in srgb,var(--page) 90%,transparent);backdrop-filter:var(--blur)';
+  const plus=el('button','','＋');plus.setAttribute('aria-label','New Tab'); plus.style.cssText='font-size:26px;color:var(--sysblue)';
+  plus.onclick=()=>{ const t={id:s.seq++,url:'',title:'Start Page',history:[],idx:-1}; s.tabs.push(t); s.active=t.id; save(); v.remove(); safariRender(true); };
+  const priv=el('button','',s.privateMode?'Private':'Tabs');priv.setAttribute('aria-label','Tab Groups');
+  priv.style.cssText='color:'+(s.privateMode?'var(--sysblue)':'var(--txt2)')+';font-size:15px';
+  priv.onclick=()=>actionSheet('Tab Groups',[{text:'Tabs',onClick:()=>{setSafariPrivate(false);v.remove();safariTabsView();safariRender(true);}},{text:'Private',onClick:()=>{setSafariPrivate(true);v.remove();safariTabsView();safariRender(true);}}]);
+  const done=el('button','','Done'); done.style.cssText='color:var(--sysblue);font-size:17px;font-weight:600';
+  done.onclick=()=>v.remove();
+  bar.append(plus,priv,done);
+  v.appendChild(bar);
+  inst.el.appendChild(v);
+}
+function safariSettingsView(){
+  return {title:'Safari', build(b,nav){
+    const s=State.settings;
+    group(b,{header:'Search',rows:[
+      {label:'Search Engine',value:s.searchEngine,onClick:()=>nav.push({title:'Search Engine',build(bb){
+        group(bb,{rows:Object.keys(ENGINES).map(e=>({label:e,chevron:false,
+          rightHTML:e===s.searchEngine?'<div style="color:var(--sysblue)">✓</div>':'',
+          onClick:()=>{ s.searchEngine=e; save(); nav.refresh(); toast('Search engine: '+e); }}))});
+      }})},
+      {label:'Search Engine Suggestions',toggle:()=>true,onToggle:()=>{}},
+      {label:'Safari Suggestions',toggle:()=>true,onToggle:()=>{}},
+      {label:'Quick Website Search',value:'On',onClick:()=>toast('Simulated')}]});
+    group(b,{header:'General',rows:[
+      {label:'AutoFill',onClick:()=>toast('Simulated')},
+      {label:'Favorites',value:SafariState().bookmarks.length+' items',onClick:()=>{ goHome(); setTimeout(()=>{openApp('safari');setTimeout(safariBookmarks,400);},320); }},
+      {label:'Block Pop-ups',toggle:()=>s.blockPopups,onToggle:v=>{s.blockPopups=v;save();}},
+      {label:'Private Browsing',toggle:()=>SafariState().privateMode,onToggle:v=>{setSafariPrivate(v);}}]});
+    group(b,{header:'Privacy & Security',rows:[
+      {label:'Prevent Cross-Site Tracking',toggle:()=>s.preventTracking,onToggle:v=>{s.preventTracking=v;save();}},
+      {label:'Hide IP Address',value:'From Trackers',onClick:()=>toast('Simulated')},
+      {label:'Fraudulent Website Warning',toggle:()=>true,onToggle:()=>{}}]});
+    group(b,{rows:[{label:'Clear History and Website Data',cls:'blue',onClick:()=>alertBox({
+      title:'Clear History and Data',message:'Clearing will remove history, cookies and other browsing data from this simulator.',
+      buttons:[{text:'Cancel'},{text:'Clear History and Data',style:'red bold',onClick:()=>{
+        SafariState().history=[]; save(); toast('History and data cleared'); }}]})}]});
+    group(b,{header:'Settings for Websites',rows:[
+      {label:'Page Zoom',value:'100%',onClick:()=>toast('Simulated')},
+      {label:'Request Desktop Website',value:'Off',onClick:()=>toast('Simulated')},
+      {label:'Reader',value:'Off',onClick:()=>toast('Simulated')},
+      {label:'Camera',value:'Ask',onClick:()=>toast('Simulated')},
+      {label:'Microphone',value:'Ask',onClick:()=>toast('Simulated')},
+      {label:'Location',value:'Ask',onClick:()=>toast('Simulated')}]});
+    b.appendChild(el('div','grp-f','Websites that forbid embedding (most major sites) open in a separate browser window from Safari.'));
+  }};
+}
+
+/* =========================================================================
+   MAIL
+   ========================================================================= */
+const BOXES=[
+  {id:'inbox',   name:'Inbox',   icon:'📥'},
+  {id:'vip',     name:'VIP',     icon:'⭐'},
+  {id:'flagged', name:'Flagged', icon:'🚩'},
+  {id:'drafts',  name:'Drafts',  icon:'📝'},
+  {id:'sent',    name:'Sent',    icon:'📤'},
+  {id:'junk',    name:'Junk',    icon:'🗑'},
+  {id:'trash',   name:'Trash',   icon:'🗑'},
+  {id:'archive', name:'Archive', icon:'📦'}
+];
+let MSG_SEQ=1000;
+function mkMsg(o){ return Object.assign({
+  id:++MSG_SEQ, box:'inbox', read:false, flagged:false, attachments:[],
+  date:Date.now(), to:'', cc:''
+},o); }
+const HOURS=h=>h*3600e3, DAYS=d=>d*864e5;
+
+function seedInbox(acct){
+  const me=acct.address, now=Date.now();
+  const base=[
+    {from:{n:'Spectrum',e:'no-reply@spectrum.net'},subject:'Your July statement is ready',date:now-HOURS(2),
+     body:`Hi Isaiah,\n\nYour Spectrum statement for July is now available.\n\nAccount ending: 4417\nAmount due: $189.98\nDue date: August 12\n\nYour bill includes Spectrum Internet Ultra, Spectrum TV Select and Spectrum Mobile (2 lines). You are enrolled in Auto Pay — no action is needed.\n\nView your full statement in the My Spectrum app.\n\nThank you,\nSpectrum Billing`,
+     attachments:[{n:'July_Statement.pdf',s:'214 KB'}]},
+    {from:{n:'Netflix',e:'info@mailer.netflix.com'},subject:'New device signed in to your account',date:now-HOURS(6),
+     body:`We noticed a new sign-in to your Netflix account.\n\nDevice: iPhone 15 Pro\nLocation: Orlando, FL, US\nTime: Today at 3:14 PM\n\nIf this was you, no action is needed. If you don't recognize this activity, change your password immediately.\n\n— The Netflix Team`},
+    {from:{n:'Disney+',e:'disneyplus@mail.disneyplus.com'},subject:'New this week on Disney+',date:now-HOURS(19),
+     body:`Here's what just landed:\n\n• A new Marvel series premiere — first two episodes streaming now\n• The full Pixar shorts collection in 4K\n• Season 3 of your watchlist favorite\n\nOpen Disney+ to start watching.`},
+    {from:{n:'Max',e:'news@mail.max.com'},subject:'Your weekly picks are here',date:now-DAYS(1)-HOURS(3),
+     body:`Because you watched documentaries, we think you'll like:\n\n1. A four-part investigative series\n2. Sunday night's finale — no spoilers\n3. Two classic films just added\n\nStream them all in the Max app.`},
+    {from:{n:'Apple',e:'no_reply@email.apple.com'},subject:'Your receipt from Apple',date:now-DAYS(2),
+     body:`APPLE RECEIPT\n\nORDER ID: MTQ8L2K9\nDOCUMENT NO.: 1620394857\n\niCloud+ with 200 GB Storage (Monthly)\nRenews Aug 1 — $2.99\n\nSpectrum TV Premium (In-App)\nMonthly — $12.99\n\nTOTAL: $15.98\n\nReport a problem in the App Store.`,
+     attachments:[{n:'Receipt.pdf',s:'88 KB'}]},
+    {from:{n:'Peacock',e:'hello@mail.peacocktv.com'},subject:'Sunday Night Football starts this week',date:now-DAYS(2)-HOURS(5),
+     body:`Kickoff is back. Stream every Sunday Night Football game live, plus Premier League Saturday mornings and the full Peacock library.\n\nYour plan renews on the 19th.`},
+    {from:{n:'Charter Support',e:'support@spectrum.net'},subject:'Scheduled maintenance in your area',date:now-DAYS(3),
+     body:`We're performing network maintenance near your service address on Thursday between 1:00 AM and 5:00 AM.\n\nYou may experience brief interruptions to Internet, TV and Voice service during this window. No action is required.\n\nWe appreciate your patience.`},
+    {from:{n:'Paramount+',e:'no-reply@paramountplus.com'},subject:'Your subscription renews soon',date:now-DAYS(4),
+     body:`Your Paramount+ with SHOWTIME plan renews on the 19th for $12.99/month.\n\nManage or cancel anytime from Settings > Subscriptions.`},
+    {from:{n:'Karma S',e:'karma.s@gmail.com'},subject:'Sunday dinner?',date:now-DAYS(5),
+     body:`Hey,\n\nAre you coming by Sunday? I'm making the short ribs you like. Bring the projector if you still have it — everyone wants to watch the game outside.\n\n— Karma`},
+    {from:{n:'Hulu',e:'hulu@mail.hulu.com'},subject:'We saved your spot',date:now-DAYS(6),
+     body:`You're 12 minutes into an episode. Pick up where you left off, or check out three new arrivals we think you'll like.`}
+  ];
+  const msgs = base.map((b,i)=>mkMsg({...b, to:me, read:i>2, box:'inbox'}));
+  msgs.push(mkMsg({from:{n:acct.name,e:me},to:'karma.s@gmail.com',subject:'Re: Sunday dinner?',box:'sent',read:true,
+    date:now-DAYS(5)+HOURS(2),body:`I'll be there around 4. I'll bring the projector and some drinks.\n\n${State.settings.mailSignature}`}));
+  msgs.push(mkMsg({from:{n:acct.name,e:me},to:'',subject:'Cancel cable box',box:'drafts',read:true,date:now-DAYS(1),
+    body:`Reminder to myself: call Spectrum about returning the second cable box now that everything is on the app.`}));
+  msgs.push(mkMsg({from:{n:'Deals Weekly',e:'promo@shopnotify.biz'},to:me,subject:'You have been selected!!',box:'junk',read:false,
+    date:now-DAYS(2),body:`CONGRATULATIONS! Claim your reward now. This is obviously junk mail.`}));
+  return msgs;
+}
+function defaultMail(){
+  const a={id:1,name:'Isaiah S.',address:State.settings.appleID,provider:'gmail',color:'#ea4335',
+    desc:'Gmail',imap:'imap.gmail.com',smtp:'smtp.gmail.com',type:'IMAP',
+    enabled:{mail:true,contacts:true,calendars:true,notes:false}};
+  a.messages=seedInbox(a);
+  return {accounts:[a], seq:2, vip:['karma.s@gmail.com']};
+}
+function ML(){ if(!State.mail) { State.mail=defaultMail(); save(); } return State.mail; }
+function allMessages(){ return ML().accounts.flatMap(a=>a.messages.map(m=>({...m,_acct:a.id}))); }
+function acctById(id){ return ML().accounts.find(a=>a.id===id); }
+function boxMessages(acctId,box){
+  const accts = acctId==='all'? ML().accounts : [acctById(acctId)].filter(Boolean);
+  let msgs=[];
+  accts.forEach(a=>a.messages.forEach(m=>{
+    if(box==='flagged'){ if(m.flagged && m.box!=='trash') msgs.push({m,a}); }
+    else if(box==='vip'){ if(ML().vip.includes(m.from.e) && m.box==='inbox') msgs.push({m,a}); }
+    else if(m.box===box) msgs.push({m,a});
+  }));
+  return msgs.sort((x,y)=>y.m.date-x.m.date);
+}
+function unreadCount(acctId,box='inbox'){ return boxMessages(acctId,box).filter(x=>!x.m.read).length; }
+function totalUnread(){ return unreadCount('all','inbox'); }
+function syncMailBadge(){ setBadge('mail', totalUnread()); }
+function fmtDate(ts){
+  const d=new Date(ts), now=new Date();
+  const sameDay=d.toDateString()===now.toDateString();
+  if(sameDay) return d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  const diff=(now-d)/864e5;
+  if(diff<6) return d.toLocaleDateString(undefined,{weekday:'long'});
+  return d.toLocaleDateString(undefined,{month:'numeric',day:'numeric',year:'2-digit'});
+}
+function initials(n){ return (n||'?').split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function colorFor(str){ const c=['#0a84ff','#30d158','#ff9f0a','#bf5af2','#ff375f','#40c8e0','#ff453a','#5e5ce6'];
+  let s=0; for(const ch of String(str)) s+=ch.charCodeAt(0); return c[s%c.length]; }
+
+defineApp({
+  id:'mail', name:'Mail',
+  bg:'linear-gradient(180deg,#22b6ff,#0a63e8)',
+  glyph:`<svg viewBox="0 0 100 76" style="width:64%"><rect x="2" y="2" width="96" height="72" rx="12" fill="#fff"/>
+    <path d="M6 12 L50 46 L94 12" stroke="#1e88e5" stroke-width="7" fill="none" stroke-linejoin="round"/></svg>`,
+  mount(win,inst){
+    const nav=new Nav(win); inst.nav=nav;
+    nav.setRoot(mailboxesView());
+    syncMailBadge();
+  },
+  onShow(inst){ inst.nav.refresh(); syncMailBadge();
+    if(!isOnline()) setTimeout(()=>alertBox({title:'Cannot Get Mail',
+      message:'The connection to the server failed. '+netReason(),
+      buttons:[{text:'OK'},{text:'Settings',style:'bold',onClick:()=>{goHome();setTimeout(()=>openApp('settings'),300);}}]}),450);
+  }
+});
+
+function mailToolbar(nav,{label='Updated Just Now'}={}){
+  if(!isOnline()) label='Unable to Fetch Mail';
+  const t=el('div','msg-toolbar');
+  t.style.justifyContent='space-between'; t.style.padding='0 18px 20px';
+  const filter=el('button','',sf('<circle cx="12" cy="12" r="9"/><path d="M7.5 9.5h9M9 12.5h6M10.5 15.5h3"/>',{size:21}));
+  filter.onclick=()=>toast('Filtering is simulated');
+  const status=el('div','',`<div style="font-size:12px;color:var(--txt2);text-align:center">${esc(label)}</div>`);
+  const compose=el('button','',sf('<path d="M4 20h4.2L20 8.2a2.1 2.1 0 00-3-3L5.2 17z"/><path d="M14.5 6.5l3 3"/>',{size:21}));
+  compose.onclick=()=>composeMail({});
+  t.append(filter,status,compose);
+  return t;
+}
+function mailboxesView(){
+  return {title:'Mailboxes', largeTitle:true, shortTitle:'Mailboxes',
+    right:[{text:'Edit',onClick:n=>n.push(mailAccountsView())}],
+    build(b,nav,view){
+      const m=ML();
+      const rows=[];
+      if(m.accounts.length>1)
+        rows.push({label:'All Inboxes',icon:'📥',iconBg:'#0a84ff',value:String(unreadCount('all')||''),
+          onClick:()=>nav.push(messageListView('all','inbox','All Inboxes'))});
+      m.accounts.forEach(a=>rows.push({
+        label:a.desc||a.address.split('@')[1], sub:a.address, icon:'📥', iconBg:a.color,
+        value:String(unreadCount(a.id)||''),
+        onClick:()=>nav.push(messageListView(a.id,'inbox',a.desc||'Inbox'))}));
+      rows.push({label:'VIP',icon:'⭐',iconBg:'#8e8e93',value:String(boxMessages('all','vip').filter(x=>!x.m.read).length||''),
+        onClick:()=>nav.push(messageListView('all','vip','VIP'))});
+      rows.push({label:'Flagged',icon:'🚩',iconBg:'#ff9f0a',value:String(boxMessages('all','flagged').length||''),
+        onClick:()=>nav.push(messageListView('all','flagged','Flagged'))});
+      group(b,{rows});
+
+      m.accounts.forEach(a=>{
+        group(b,{header:a.desc||a.address,rows:[
+          {label:'Inbox',icon:'📥',iconBg:a.color,value:String(unreadCount(a.id)||''),onClick:()=>nav.push(messageListView(a.id,'inbox','Inbox'))},
+          {label:'Drafts',icon:'📝',iconBg:'#8e8e93',value:String(boxMessages(a.id,'drafts').length||''),onClick:()=>nav.push(messageListView(a.id,'drafts','Drafts'))},
+          {label:'Sent',icon:'📤',iconBg:'#8e8e93',value:String(boxMessages(a.id,'sent').length||''),onClick:()=>nav.push(messageListView(a.id,'sent','Sent'))},
+          {label:'Junk',icon:'🚫',iconBg:'#8e8e93',value:String(boxMessages(a.id,'junk').length||''),onClick:()=>nav.push(messageListView(a.id,'junk','Junk'))},
+          {label:'Trash',icon:'🗑',iconBg:'#8e8e93',value:String(boxMessages(a.id,'trash').length||''),onClick:()=>nav.push(messageListView(a.id,'trash','Trash'))},
+          {label:'Archive',icon:'📦',iconBg:'#8e8e93',value:String(boxMessages(a.id,'archive').length||''),onClick:()=>nav.push(messageListView(a.id,'archive','Archive'))}
+        ]});
+      });
+      group(b,{rows:[{label:'Add Mail Account…',cls:'blue',icon:'＋',iconBg:'#0a84ff',onClick:()=>nav.push(addAccountView(nav))}]});
+      if(!view.tabbar){ view.tabbar=mailToolbar(nav); view._page.appendChild(view.tabbar); }
+      syncMailBadge();
+    }};
+}
+function messageListView(acctId,box,title){
+  return {title, shortTitle:title.length>10?'Mail':title,
+    right:[{text:'Edit',onClick:n=>toast('Select messages — simulated')}],
+    build(b,nav,view){
+      const list=boxMessages(acctId,box);
+      const sfield=el('div','searchfield',`${SVG.search}<input placeholder="Search">`);
+      b.appendChild(sfield);
+      const holder=el('div'); b.appendChild(holder);
+      const draw=q=>{
+        holder.innerHTML='';
+        const items=q? list.filter(({m})=>(m.subject+m.body+m.from.n+m.from.e).toLowerCase().includes(q.toLowerCase())) : list;
+        if(!items.length){ holder.appendChild(h(`<div class="empty"><h3>${q?'No Results':'No Mail'}</h3><p>${q?'Try a different search.':'This mailbox is empty.'}</p></div>`)); return; }
+        items.forEach(({m,a})=>holder.appendChild(mailRow(m,a,nav,box,()=>{ nav.refresh(); })));
+      };
+      sfield.querySelector('input').oninput=e=>draw(e.target.value);
+      draw('');
+      if(!view.tabbar){
+        view.tabbar=mailToolbar(nav,{label:`${list.length} Message${list.length===1?'':'s'}`});
+        view._page.appendChild(view.tabbar);
+      }
+      syncMailBadge();
+    },
+    onReturn(){ syncMailBadge(); }};
+}
+function mailRow(m,a,nav,box,refresh){
+  const row=el('div','ml-row'+(m.read?'':' unread'));
+  const who = (box==='sent'||box==='drafts')? (m.to||'No Recipients') : m.from.n;
+  row.innerHTML=`<div class="ml-dot"></div>
+    <div class="ml-main">
+      <div class="ml-from"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(who)}</span>
+        <span>${m.flagged?'<span class="ml-flag">🚩</span>':''}${esc(fmtDate(m.date))} ${SVG.chev}</span></div>
+      <div class="ml-subj">${esc(m.subject||'(No Subject)')}</div>
+      <div class="ml-prev">${esc((m.body||'').replace(/\n+/g,' ').slice(0,110))}</div>
+      ${m.attachments.length?`<div style="font-size:12px;color:var(--txt2);margin-top:3px">📎 ${esc(m.attachments[0].n)}</div>`:''}
+    </div>
+    <div class="ml-actions">
+      <button style="background:#8e8e93" data-act="more">${sf('<circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/>',{size:20})}More</button>
+      <button style="background:#ff9f0a" data-act="flag">${sf('<path d="M5.5 21V4.5M5.5 5.5h11l-1.6 3.4 1.6 3.4h-11z" fill="currentColor"/>',{size:19})}${m.flagged?'Unflag':'Flag'}</button>
+      <button style="background:#ff3b30" data-act="trash">${sf('<path d="M4.5 6.5h15M9.5 6.5V4.8h5v1.7M6.5 6.5l.9 12.4a2 2 0 002 1.8h5.2a2 2 0 002-1.8l.9-12.4"/>',{size:19})}${box==='trash'?'Delete':'Trash'}</button>
+    </div>`;
+  let swipe=null,moved=false;
+  row.addEventListener('pointerdown',e=>{
+    if(e.button!==0 || e.isPrimary===false) return;
+    swipe={...screenPoint(e),id:e.pointerId}; moved=false;
+  });
+  row.addEventListener('pointercancel',()=>{swipe=null;moved=false;});
+  row.addEventListener('pointerup',e=>{
+    if(!swipe || swipe.id!==e.pointerId) return;
+    const p=screenPoint(e), dx=p.x-swipe.x, dy=p.y-swipe.y; swipe=null;
+    if(Math.abs(dy)>=Math.abs(dx)) return;
+    if(dx<-40){ $$('.ml-row.swiped').forEach(r=>r.classList.remove('swiped')); row.classList.add('swiped'); moved=true; }
+    else if(dx>40 && row.classList.contains('swiped')){ row.classList.remove('swiped'); moved=true; }
+    else if(dx>40){ m.read=!m.read; save(); refresh(); moved=true; }
+  });
+  row.onclick=e=>{
+    const act=e.target.closest('[data-act]');
+    if(act){
+      const k=act.dataset.act;
+      if(k==='trash'){ if(box==='trash'){ a.messages=a.messages.filter(x=>x.id!==m.id); } else m.box='trash';
+        save(); toast(box==='trash'?'Deleted':'Moved to Trash'); refresh(); }
+      if(k==='flag'){ m.flagged=!m.flagged; save(); refresh(); }
+      if(k==='more'){ mailMoreSheet(m,a,refresh); }
+      return;
+    }
+    if(moved) return;
+    if($$('.ml-row.swiped').length){ $$('.ml-row.swiped').forEach(r=>r.classList.remove('swiped')); return; }
+    if(box==='drafts'){ composeMail({draft:m,account:a,onSent:refresh}); return; }
+    m.read=true; save(); syncMailBadge();
+    nav.push(messageView(m,a,box));
+  };
+  return row;
+}
+function mailMoreSheet(m,a,refresh){
+  actionSheet(m.subject||'Message',[
+    {text:'Reply',onClick:()=>composeMail({reply:m,account:a})},
+    {text:'Forward',onClick:()=>composeMail({forward:m,account:a})},
+    {text:m.read?'Mark as Unread':'Mark as Read',onClick:()=>{m.read=!m.read;save();refresh();syncMailBadge();}},
+    {text:'Move to Archive',onClick:()=>{m.box='archive';save();refresh();toast('Archived');}},
+    {text:'Move to Junk',onClick:()=>{m.box='junk';save();refresh();toast('Moved to Junk');}},
+    {text:ML().vip.includes(m.from.e)?'Remove from VIP':'Add to VIP',onClick:()=>{
+      const v=ML().vip; const i=v.indexOf(m.from.e);
+      if(i>=0) v.splice(i,1); else v.push(m.from.e);
+      save(); refresh(); toast(i>=0?'Removed from VIP':'Added to VIP');}}
+  ]);
+}
+function messageView(m,a,box){
+  return {title:'', backLabel:box==='inbox'?'Inbox':(box.charAt(0).toUpperCase()+box.slice(1)),
+    right:[{html:'<span style="font-size:16px">⌃</span>',onClick:()=>toast('Previous message')},
+           {html:'<span style="font-size:16px">⌄</span>',onClick:()=>toast('Next message')}],
+    build(b,nav,view){
+      const head=el('div','msg-head');
+      head.innerHTML=`<div class="msg-subject">${esc(m.subject||'(No Subject)')}</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="avatar" style="background:${colorFor(m.from.e)}">${esc(initials(m.from.n))}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:16px;font-weight:600">${esc(m.from.n)}
+              ${ML().vip.includes(m.from.e)?'<span style="color:var(--sysblue)">★</span>':''}</div>
+            <div style="font-size:14px;color:var(--txt2)">To: ${esc(m.to||a.address)} ${SVG.chev}</div>
+          </div>
+          <div style="text-align:right;font-size:13px;color:var(--txt2)">${new Date(m.date).toLocaleDateString(undefined,{month:'short',day:'numeric'})}<br>
+            ${new Date(m.date).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}</div>
+        </div>
+        <div style="font-size:12px;color:var(--txt2);margin-top:8px">From ${esc(m.from.e)} · ${esc(a.desc||a.address)}</div>`;
+      b.appendChild(head);
+      const body=el('div','msg-body');
+      body.innerHTML=esc(m.body).replace(/(https?:\/\/[^\s]+)/g,'<a href="#" data-url="$1">$1</a>');
+      body.querySelectorAll('a[data-url]').forEach(x=>x.onclick=e=>{e.preventDefault();
+        const u=x.dataset.url; goHome(); setTimeout(()=>{openApp('safari');setTimeout(()=>safariGo(u),400);},320);});
+      b.appendChild(body);
+      if(m.attachments.length){
+        const at=el('div'); at.style.padding='0 0 20px';
+        m.attachments.forEach(f=>{
+          const d=el('div','attach',`<div style="font-size:22px">📄</div><div><div style="font-weight:600">${esc(f.n)}</div>
+            <div style="font-size:12px;color:var(--txt2)">${esc(f.s)}</div></div>`);
+          d.onclick=()=>toast('Attachment preview is simulated');
+          at.appendChild(d);
+        });
+        b.appendChild(at);
+      }
+      if(!view.tabbar){
+        const t=el('div','msg-toolbar');
+        const mk=(icon,fn)=>{ const btn=el('button','',icon); btn.onclick=fn; return btn; };
+        t.append(
+          mk(m.flagged?sf('<path d="M5.5 21V4.5M5.5 5.5h11l-1.6 3.4 1.6 3.4h-11z" fill="currentColor"/>',{size:21})
+                     :sf('<path d="M5.5 21V4.5M5.5 5.5h11l-1.6 3.4 1.6 3.4h-11"/>',{size:21}),
+            ()=>{ m.flagged=!m.flagged; save(); toast(m.flagged?'Flagged':'Unflagged'); nav.pop(); }),
+          mk(sf('<path d="M3 8.2a2.5 2.5 0 012.5-2.5h3.2l2 2.3h7.8A2.5 2.5 0 0121 10.5v6.8a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 17.3z"/>',{size:21}),
+            ()=>actionSheet('Move to…',BOXES.filter(x=>['inbox','archive','junk','trash'].includes(x.id)).map(x=>({
+            text:x.name,onClick:()=>{ m.box=x.id; save(); toast('Moved to '+x.name); nav.pop(); }})))),
+          mk(sf('<path d="M4.5 6.5h15M9.5 6.5V4.8h5v1.7M6.5 6.5l.9 12.4a2 2 0 002 1.8h5.2a2 2 0 002-1.8l.9-12.4"/>',{size:21}),
+            ()=>{ m.box='trash'; save(); toast('Moved to Trash'); nav.pop(); }),
+          mk(sf('<path d="M9.5 6L4 11.5 9.5 17"/><path d="M4 11.5h9a6 6 0 016 6V19"/>',{size:21}),()=>actionSheet('',[
+            {text:'Reply',onClick:()=>composeMail({reply:m,account:a})},
+            {text:'Reply All',onClick:()=>composeMail({reply:m,account:a,all:true})},
+            {text:'Forward',onClick:()=>composeMail({forward:m,account:a})},
+            {text:'Mark as Unread',onClick:()=>{m.read=false;save();syncMailBadge();nav.pop();}},
+            {text:'Print',onClick:()=>toast('No printers found')}
+          ])),
+          mk(sf('<path d="M4 20h4.2L20 8.2a2.1 2.1 0 00-3-3L5.2 17z"/><path d="M14.5 6.5l3 3"/>',{size:21}),()=>composeMail({account:a}))
+        );
+        view.tabbar=t; view._page.appendChild(t);
+      }
+    }};
+}
+function composeMail({reply,forward,draft,account,all,subject,body,to,onSent}={}){
+  const acct = account || ML().accounts[0];
+  if(!acct){ toast('Add a mail account first'); return; }
+  let f={
+    to: to || (reply? reply.from.e : (draft? draft.to : '')),
+    cc: all&&reply? reply.cc||'' : '',
+    subject: subject || (reply? 'Re: '+reply.subject : forward? 'Fwd: '+forward.subject : (draft? draft.subject : '')),
+    body: body || (draft? draft.body :
+          reply? `\n\n\nOn ${new Date(reply.date).toLocaleString()}, ${reply.from.n} <${reply.from.e}> wrote:\n> ${reply.body.split('\n').join('\n> ')}` :
+          forward? `\n\n---------- Forwarded message ----------\nFrom: ${forward.from.n} <${forward.from.e}>\nSubject: ${forward.subject}\n\n${forward.body}` :
+          '\n\n'+State.settings.mailSignature)
+  };
+  sheet((s,close)=>{
+    s.style.height='94%';
+    const bar=el('div');
+    bar.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:.5px solid var(--sep)';
+    const cancel=el('button','','Cancel'); cancel.style.color='var(--sysblue)';
+    const title=el('b','',reply?'Re: '+esc(reply.subject.slice(0,20)):'New Message'); title.style.fontSize='17px';
+    const send=el('button','','Send'); send.style.cssText='color:var(--sysblue);font-weight:600';
+    bar.append(cancel,title,send); s.appendChild(bar);
+
+    const fields=el('div');
+    const mkField=(k,key,ph)=>{
+      const d=el('div','compose-field',`<div class="k">${k}</div>`);
+      const i=el('input'); i.value=f[key]||''; i.placeholder=ph||'';
+      i.oninput=()=>f[key]=i.value;
+      d.appendChild(i);
+      if(key==='to'){ const p=el('button','','＋'); p.style.color='var(--sysblue)';
+        p.onclick=()=>actionSheet('Suggested Contacts',
+          ['karma.s@gmail.com','support@spectrum.net','isaiah.work@outlook.com','billing@charter.net'].map(e=>({
+            text:e,onClick:()=>{ i.value=i.value? i.value+', '+e : e; f.to=i.value; }})));
+        d.appendChild(p); }
+      fields.appendChild(d); return i;
+    };
+    mkField('To:','to','');
+    mkField('Cc/Bcc:','cc','');
+    mkField('Subject:','subject','');
+    const fromRow=el('div','compose-field',`<div class="k">From:</div><div style="flex:1;font-size:16px">${esc(acct.address)}</div>`);
+    fromRow.onclick=()=>actionSheet('Send From',ML().accounts.map(a=>({text:a.address,onClick:()=>{
+      fromRow.querySelector('div:last-child').textContent=a.address; f._from=a.id; }})));
+    fields.appendChild(fromRow);
+    s.appendChild(fields);
+    const ta=el('textarea','note-editor'); ta.value=f.body; ta.style.cssText+='flex:1;min-height:200px';
+    ta.oninput=()=>f.body=ta.value;
+    s.appendChild(ta);
+    const tools=el('div');
+    tools.style.cssText='display:flex;gap:18px;padding:12px 16px 26px;border-top:.5px solid var(--sep);font-size:20px;color:var(--sysblue)';
+    ['📎','📷','✏️'].forEach(t=>{const bb=el('button','',t);bb.onclick=()=>toast('Attachments are simulated');tools.appendChild(bb);});
+    s.appendChild(tools);
+    setTimeout(()=>{ (f.to?ta:fields.querySelector('input')).focus(); },380);
+
+    cancel.onclick=()=>{
+      if(!f.to && !f.subject && f.body.trim()===State.settings.mailSignature){ close(); return; }
+      actionSheet('',[
+        {text:'Delete Draft',style:'red',onClick:()=>{ if(draft){ acct.messages=acct.messages.filter(x=>x.id!==draft.id); save(); onSent&&onSent(); } close(); }},
+        {text:'Save Draft',onClick:()=>{
+          const target=f._from? acctById(f._from):acct;
+          if(draft){ Object.assign(draft,{to:f.to,subject:f.subject,body:f.body,date:Date.now()}); }
+          else target.messages.push(mkMsg({from:{n:target.name,e:target.address},to:f.to,subject:f.subject,body:f.body,box:'drafts',read:true}));
+          save(); onSent&&onSent(); toast('Draft saved'); close(); }}
+      ]);
+    };
+    send.onclick=()=>{
+      if(!f.to.trim()){ alertBox({title:'Cannot Send Mail',message:'This message has no recipients. Add a recipient in the To field.',buttons:[{text:'OK'}]}); return; }
+      const target=f._from? acctById(f._from):acct;
+      if(draft) target.messages=target.messages.filter(x=>x.id!==draft.id);
+      target.messages.push(mkMsg({from:{n:target.name,e:target.address},to:f.to,cc:f.cc,subject:f.subject||'(No Subject)',
+        body:f.body,box:'sent',read:true}));
+      save(); close(); island('✉️','#0a84ff','Mail','Message sent',1800); toast('Sent');
+      onSent&&onSent();
+      const inst=openApps.get('mail'); if(inst) inst.nav.refresh();
+      // a plausible auto-reply after a moment
+      setTimeout(()=>{
+        if(!ML().accounts.includes(target)) return;
+        target.messages.push(mkMsg({from:{n:f.to.split('@')[0],e:f.to.split(',')[0].trim()},to:target.address,
+          subject:'Re: '+(f.subject||'(No Subject)'),
+          body:`Got your message — thanks!\n\n(This automatic reply is generated by the simulator so you can see new mail arrive.)`,
+          box:'inbox',read:false}));
+        save(); syncMailBadge();
+        const i2=openApps.get('mail'); if(i2) i2.nav.refresh();
+        if(currentApp&&currentApp.id!=='mail') island('✉️','#0a84ff','Mail','New message from '+f.to.split('@')[0],2600);
+      },9000);
+    };
+  },{full:true});
+}
+/* ---- accounts ---- */
+function mailAccountsView(){
+  return {title:'Accounts', shortTitle:'Accounts', build(b,nav){
+    const m=ML();
+    group(b,{rows:m.accounts.map(a=>({
+      label:a.desc||a.address, sub:'Mail, Contacts'+(a.enabled.calendars?', Calendars':''),
+      icon:'✉️', iconBg:a.color,
+      onClick:()=>nav.push(accountDetailView(a,nav))
+    }))});
+    group(b,{rows:[{label:'Add Account',cls:'blue',onClick:()=>nav.push(addAccountView(nav))}]});
+    group(b,{header:'Fetch New Data',rows:[
+      {label:'Push',value:'On',onClick:()=>toast('Simulated')},
+      {label:'Fetch',value:'Every 15 Minutes',onClick:()=>toast('Simulated')}]});
+    b.appendChild(el('div','grp-f','Removing an account deletes its messages from this iPhone.'));
+  }};
+}
+function accountDetailView(a,parentNav){
+  return {title:a.desc||'Account', build(b,nav){
+    const head=el('div','pad'); head.style.textAlign='center';
+    head.innerHTML=`<div class="avatar" style="width:64px;height:64px;font-size:24px;margin:4px auto 8px;background:${a.color}">✉️</div>
+      <div style="font-size:18px;font-weight:600">${esc(a.name)}</div><div class="muted" style="font-size:14px">${esc(a.address)}</div>`;
+    b.appendChild(head);
+    group(b,{header:'IMAP Account Information',rows:[
+      {label:'Name',value:a.name},
+      {label:'Email',value:a.address},
+      {label:'Description',value:a.desc,onClick:()=>{
+        sheet((s,close)=>{
+          s.innerHTML='<div style="padding:16px;text-align:center;font-weight:600">Description</div>';
+          const f=el('div','compose-field','<div class="k">Name</div>');
+          const i=el('input'); i.value=a.desc; f.appendChild(i); s.appendChild(f);
+          const p=el('div','pad'); const btn=el('button','btn-primary','Save');
+          btn.onclick=()=>{ a.desc=i.value||a.address; save(); close(); nav.refresh();
+            const inst=openApps.get('mail'); if(inst) inst.nav.refresh(); };
+          p.appendChild(btn); s.appendChild(p);
+        });
+      }},
+      {label:'Incoming Mail Server',value:a.imap||'imap.'+a.address.split('@')[1]},
+      {label:'Outgoing Mail Server',value:'smtp.'+a.address.split('@')[1]}]});
+    group(b,{header:'Use this account for',rows:[
+      {label:'Mail',toggle:()=>a.enabled.mail,onToggle:v=>{a.enabled.mail=v;save();}},
+      {label:'Contacts',toggle:()=>a.enabled.contacts,onToggle:v=>{a.enabled.contacts=v;save();}},
+      {label:'Calendars',toggle:()=>a.enabled.calendars,onToggle:v=>{a.enabled.calendars=v;save();}},
+      {label:'Notes',toggle:()=>a.enabled.notes,onToggle:v=>{a.enabled.notes=v;save();}}]});
+    group(b,{rows:[{label:'Advanced',onClick:()=>nav.push(infoListView('Advanced','Mailbox Behaviors',
+      ['Drafts Mailbox — Drafts','Sent Mailbox — Sent','Deleted Mailbox — Trash','Archive Mailbox — Archive',
+       'Remove — After one week','Use SSL — Yes','Server Port — 993'],''))}]});
+    group(b,{rows:[{label:'Delete Account',cls:'destructive center',onClick:()=>{
+      alertBox({title:'Delete Account',message:`All messages in “${a.desc||a.address}” will be removed from this iPhone.`,
+        buttons:[{text:'Cancel'},{text:'Delete Account',style:'red bold',onClick:()=>{
+          const m=ML(); m.accounts=m.accounts.filter(x=>x.id!==a.id); save();
+          syncMailBadge(); toast('Account removed');
+          nav.pop();
+          const inst=openApps.get('mail'); if(inst){ inst.nav.popToRoot(); inst.nav.refresh(); }
+        }}]});
+    }}]});
+  }};
+}
+/* ---------------------------------------------------------------------------
+   Add Account — matches the iOS 26 flow:
+   Add Account → [branded provider | Other] → Add Mail Account → New Account
+   → server configuration (IMAP/POP) → verification → mailbox toggles → Save
+   --------------------------------------------------------------------------- */
+const BRANDS=[
+  {id:'icloud', name:'iCloud',            domain:'icloud.com',  color:'#3ea6ff', imap:'imap.mail.me.com',       smtp:'smtp.mail.me.com',      mark:'☁️'},
+  {id:'exchange',name:'Microsoft Exchange',domain:'outlook.com', color:'#0f6cbd', imap:'outlook.office365.com',  smtp:'smtp.office365.com',    mark:'E'},
+  {id:'gmail',  name:'Google',            domain:'gmail.com',   color:'#ea4335', imap:'imap.gmail.com',         smtp:'smtp.gmail.com',        mark:'G'},
+  {id:'yahoo',  name:'yahoo!',            domain:'yahoo.com',   color:'#6001d2', imap:'imap.mail.yahoo.com',    smtp:'smtp.mail.yahoo.com',   mark:'Y!'},
+  {id:'aol',    name:'Aol.',              domain:'aol.com',     color:'#1d1d1b', imap:'imap.aol.com',           smtp:'smtp.aol.com',          mark:'Aol.'},
+  {id:'outlook',name:'Outlook.com',       domain:'outlook.com', color:'#0078d4', imap:'outlook.office365.com',  smtp:'smtp-mail.outlook.com', mark:'O'}
+];
+/* domains the simulator can auto-configure, like Apple's provider database */
+const KNOWN_HOSTS={
+  'gmail.com':{i:'imap.gmail.com',s:'smtp.gmail.com'},
+  'googlemail.com':{i:'imap.gmail.com',s:'smtp.gmail.com'},
+  'icloud.com':{i:'imap.mail.me.com',s:'smtp.mail.me.com'},
+  'me.com':{i:'imap.mail.me.com',s:'smtp.mail.me.com'},
+  'yahoo.com':{i:'imap.mail.yahoo.com',s:'smtp.mail.yahoo.com'},
+  'aol.com':{i:'imap.aol.com',s:'smtp.aol.com'},
+  'outlook.com':{i:'outlook.office365.com',s:'smtp-mail.outlook.com'},
+  'hotmail.com':{i:'outlook.office365.com',s:'smtp-mail.outlook.com'},
+  'charter.net':{i:'mobile.charter.net',s:'mobile.charter.net'},
+  'spectrum.net':{i:'mobile.charter.net',s:'mobile.charter.net'},
+  'twc.com':{i:'mail.twc.com',s:'mail.twc.com'},
+  'roadrunner.com':{i:'mail.twc.com',s:'mail.twc.com'}
+};
+function brandTile(p){
+  return `<div style="width:29px;height:29px;border-radius:7px;background:${p.color};display:grid;place-items:center;
+    color:#fff;font-size:${p.mark.length>2?'9':'13'}px;font-weight:700">${esc(p.mark)}</div>`;
+}
+function addAccountView(parentNav){
+  return {title:'Add Account', build(b,nav){
+    group(b,{rows:BRANDS.map(p=>({
+      labelHTML:`<span style="font-weight:600">${esc(p.name)}</span>`,
+      icon:brandTile(p), iconBg:'transparent',
+      onClick:()=>nav.push(brandedSignInView(p))
+    }))});
+    group(b,{rows:[{labelHTML:'<span style="font-weight:600">Other</span>',
+      icon:`<div style="width:29px;height:29px;border-radius:7px;background:#8e8e93;display:grid;place-items:center;font-size:15px">✉️</div>`,
+      iconBg:'transparent', onClick:()=>nav.push(otherAccountView())}]});
+    b.appendChild(el('div','grp-f','Pick a provider for a quick sign-in, or choose <b>Other</b> to configure an IMAP or POP mail server by hand.'));
+  }};
+}
+function otherAccountView(){
+  return {title:'Add Account', shortTitle:'Other', build(b,nav){
+    group(b,{header:'Mail',rows:[
+      {label:'Add Mail Account',onClick:()=>nav.push(newMailAccountView())}]});
+    group(b,{header:'Contacts',rows:[
+      {label:'Add LDAP Account',onClick:()=>nav.push(genericServerView('LDAP','ldap.example.com'))},
+      {label:'Add CardDAV Account',onClick:()=>nav.push(genericServerView('CardDAV','contacts.example.com'))}]});
+    group(b,{header:'Calendars',rows:[
+      {label:'Add CalDAV Account',onClick:()=>nav.push(genericServerView('CalDAV','calendar.example.com'))},
+      {label:'Add Subscribed Calendar',onClick:()=>nav.push(genericServerView('Subscribed Calendar','webcal.example.com/cal.ics'))}]});
+  }};
+}
+/* shared field builder for the account forms */
+function formGroup(parent,{header,footer,fields,onChange}){
+  if(header) parent.appendChild(el('div','grp-h',esc(header)));
+  const g=el('div','grp'); parent.appendChild(g);
+  fields.forEach((f,i)=>{
+    const row=el('div','compose-field');
+    if(i===fields.length-1) row.style.borderBottom='none';
+    row.innerHTML=`<div class="k" style="min-width:96px;color:var(--txt)">${esc(f.label)}</div>`;
+    const input=el('input');
+    input.placeholder=f.placeholder||'';
+    input.value=f.get()||'';
+    if(f.type) input.type=f.type;
+    input.autocapitalize='off'; input.spellcheck=false;
+    input.oninput=()=>{ f.set(input.value); onChange&&onChange(); };
+    row.appendChild(input);
+    f.el=input;
+    g.appendChild(row);
+  });
+  if(footer) parent.appendChild(el('div','grp-f',footer));
+  return g;
+}
+function navBusy(view,label){
+  const bar=view._bar; if(!bar) return ()=>{};
+  const btn=bar.querySelector('.nb-next'); if(!btn) return ()=>{};
+  const old=btn.innerHTML;
+  btn.innerHTML=`<span style="display:flex;align-items:center;gap:6px;color:var(--txt2)"><span class="spinner"></span>${esc(label||'Verifying')}</span>`;
+  btn.style.pointerEvents='none';
+  return ()=>{ btn.innerHTML=old; btn.style.pointerEvents=''; };
+}
+/* Step 1 — New Account */
+function newMailAccountView(){
+  const d={name:'',email:'',password:'',desc:'',type:'IMAP',
+    in:{host:'',user:'',pass:''}, out:{host:'',user:'',pass:''}, notes:false};
+  let view;
+  const valid=()=>d.name.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim()) && d.password.length>0;
+  const refreshNext=()=>{
+    const btn=view&&view._bar&&view._bar.querySelector('.nb-next');
+    if(btn) btn.classList.toggle('dis',!valid());
+  };
+  function step1(nav){
+    if(!valid()) return;
+    const done=navBusy(view,'Verifying');
+    setTimeout(()=>{
+      done();
+      if(!isOnline())
+        return alertBox({title:'Cannot Get Mail',message:'The connection to the server failed. '+netReason(),buttons:[{text:'OK'}]});
+      const domain=(d.email.split('@')[1]||'').toLowerCase();
+      const known=KNOWN_HOSTS[domain];
+      d.in.host = known? known.i : 'imap.'+domain;
+      d.out.host= known? known.s : 'smtp.'+domain;
+      d.in.user = d.email; d.in.pass=d.password;
+      d.out.user= d.email; d.out.pass=d.password;
+      d._known=!!known;
+      if(!d.desc) d.desc=domain;
+      nav.push(imapServerView(d));
+    },1400);
+  }
+  return {title:'New Account', shortTitle:'New Account',
+    right:[{text:'Next',cls:'nb-next dis',onClick:step1}],
+    build(b,nav,vw){
+      view=vw; vw._draft=d;
+      formGroup(b,{fields:[
+        {label:'Name',placeholder:'John Appleseed',get:()=>d.name,set:v=>d.name=v},
+        {label:'Email',placeholder:'user@example.com',get:()=>d.email,set:v=>{d.email=v;
+          if(!d.desc || d.desc===d._autoDesc){ d._autoDesc=(v.split('@')[1]||''); d.desc=d._autoDesc;
+            const inputs=b.querySelectorAll('input'); if(inputs[3]) inputs[3].value=d.desc; }}},
+        {label:'Password',placeholder:'Required',type:'password',get:()=>d.password,set:v=>d.password=v},
+        {label:'Description',placeholder:'My Email Account',get:()=>d.desc,set:v=>d.desc=v}
+      ],onChange:refreshNext,
+        footer:'The simulator never contacts a real server — any address and password will do.'});
+      setTimeout(()=>{ b.querySelector('input').focus(); refreshNext(); },340);
+    }};
+}
+/* Step 2 — server configuration */
+function imapServerView(d){
+  let view;
+  function verify(nav){
+    if(!d.in.host.trim())
+      return alertBox({title:'Cannot Save Account',message:'Enter a host name for the incoming mail server.',buttons:[{text:'OK'}]});
+    if(!d.in.user.trim())
+      return alertBox({title:'Cannot Save Account',message:'Enter a user name for the incoming mail server.',buttons:[{text:'OK'}]});
+    const done=navBusy(view,'Verifying');
+    setTimeout(()=>{
+      done();
+      if(!isOnline())
+        return alertBox({title:'Cannot Get Mail',message:'The connection to the server failed. '+netReason(),buttons:[{text:'OK'}]});
+      if(!d.out.host.trim())
+        return alertBox({title:'Outgoing Server Not Set',
+          message:'You can save this account without an outgoing server, but you won’t be able to send mail.',
+          buttons:[{text:'Edit'},{text:'Save Anyway',style:'bold',onClick:()=>nav.push(imapMailboxesView(d))}]});
+      if(!d._known && !d._certOK){
+        // classic self-signed-certificate prompt for unknown hosts
+        return alertBox({title:'Cannot Verify Server Identity',
+          message:`The identity of “${d.in.host}” cannot be verified. Would you like to continue anyway?`,
+          buttons:[
+            {text:'Cancel'},
+            {text:'Details',onClick:()=>nav.push(certDetailsView(d,nav))},
+            {text:'Continue',style:'bold',onClick:()=>{ d._certOK=true; nav.push(imapMailboxesView(d)); }}
+          ]});
+      }
+      nav.push(imapMailboxesView(d));
+    },1600);
+  }
+  return {title:'New Account', shortTitle:'Servers', backLabel:'Back',
+    right:[{text:'Next',cls:'nb-next',onClick:verify}],
+    build(b,nav,vw){
+      view=vw;
+      const seg=segmented(['IMAP','POP'],d.type,v=>{ d.type=v;
+        d.in.host = d.in.host.replace(/^(imap|pop)\./, v==='IMAP'?'imap.':'pop.'); nav.refresh(); });
+      seg.style.margin='14px 16px';
+      b.appendChild(seg);
+      formGroup(b,{fields:[
+        {label:'Name',get:()=>d.name,set:v=>d.name=v},
+        {label:'Email',get:()=>d.email,set:v=>d.email=v},
+        {label:'Description',get:()=>d.desc,set:v=>d.desc=v}
+      ]});
+      formGroup(b,{header:'Incoming Mail Server',fields:[
+        {label:'Host Name',placeholder:d.type==='IMAP'?'imap.example.com':'pop.example.com',get:()=>d.in.host,set:v=>d.in.host=v},
+        {label:'User Name',placeholder:'Required',get:()=>d.in.user,set:v=>d.in.user=v},
+        {label:'Password',placeholder:'Required',type:'password',get:()=>d.in.pass,set:v=>d.in.pass=v}
+      ]});
+      formGroup(b,{header:'Outgoing Mail Server',fields:[
+        {label:'Host Name',placeholder:'smtp.example.com',get:()=>d.out.host,set:v=>d.out.host=v},
+        {label:'User Name',placeholder:'Optional',get:()=>d.out.user,set:v=>d.out.user=v},
+        {label:'Password',placeholder:'Optional',type:'password',get:()=>d.out.pass,set:v=>d.out.pass=v}
+      ],footer:d._known
+        ? `Settings for <b>${esc((d.email.split('@')[1]||'').toLowerCase())}</b> were filled in automatically. Port 993 (SSL) in, 587 (TLS) out.`
+        : 'This domain isn’t in the provider database, so the servers were guessed from the address. Edit them if your host differs.'});
+    }};
+}
+function certDetailsView(d,parentNav){
+  return {title:'Certificate', build(b,nav){
+    const head=el('div','pad'); head.style.textAlign='center';
+    head.innerHTML=`<div style="font-size:40px">🔓</div>
+      <div style="font-size:17px;font-weight:600;margin-top:6px">${esc(d.in.host)}</div>
+      <div style="color:var(--sysred);font-size:13px;margin-top:4px">Not Trusted</div>`;
+    b.appendChild(head);
+    group(b,{header:'Subject Name',rows:[
+      {label:'Common Name',value:d.in.host},
+      {label:'Organisation',value:'Self-signed'},
+      {label:'Country',value:'US'}]});
+    group(b,{header:'Issuer Name',rows:[
+      {label:'Common Name',value:d.in.host},
+      {label:'Organisation',value:'Self-signed'}]});
+    group(b,{header:'Validity',rows:[
+      {label:'Not Valid Before',value:new Date(Date.now()-86400e3*30).toLocaleDateString()},
+      {label:'Not Valid After',value:new Date(Date.now()+86400e3*335).toLocaleDateString()}]});
+    group(b,{rows:[
+      {label:'Trust This Certificate',cls:'blue center',onClick:()=>{ d._certOK=true; nav.pop(); nav.push(imapMailboxesView(d)); }},
+      {label:'Cancel',cls:'destructive center',onClick:()=>nav.pop()}]});
+  }};
+}
+/* Step 3 — which services to sync, then Save */
+function imapMailboxesView(d){
+  let view;
+  function saveAccount(nav){
+    const m=ML();
+    if(m.accounts.some(a=>a.address.toLowerCase()===d.email.trim().toLowerCase()))
+      return alertBox({title:'Account Already Exists',message:'An account with that address is already set up on this iPhone.',buttons:[{text:'OK'}]});
+    const done=navBusy(view,'Saving');
+    setTimeout(()=>{
+      done();
+      const a={id:m.seq++, name:d.name.trim(), address:d.email.trim(), provider:'other',
+        color:colorFor(d.email), desc:d.desc.trim()||d.email.split('@')[1], imap:d.in.host, smtp:d.out.host,
+        type:d.type, enabled:{mail:true,contacts:false,calendars:false,notes:d.notes}};
+      a.messages=seedInbox(a);
+      m.accounts.push(a); save(); syncMailBadge();
+      island('✉️','#0a84ff','Mail',a.address+' added',2600);
+      toast('Account added');
+      nav.popTo('Accounts');
+      nav.refresh();
+      // only rewind Mail's own stack when the flow ran from somewhere else (e.g. Settings)
+      const inst=openApps.get('mail'); if(inst && inst.nav!==nav){ inst.nav.popToRoot(); inst.nav.refresh(); }
+      const si=openApps.get('settings'); if(si && si.nav!==nav) si.nav.refresh();
+    },1500);
+  }
+  return {title:d.type, shortTitle:'Sync', backLabel:'Back',
+    right:[{text:'Save',cls:'nb-next',onClick:saveAccount}],
+    build(b,nav,vw){
+      view=vw;
+      group(b,{rows:[
+        {label:'Mail',icon:'✉️',iconBg:'#0a84ff',toggle:()=>true,onToggle:()=>{}},
+        {label:'Notes',icon:'📝',iconBg:'#ffd60a',toggle:()=>d.notes,onToggle:v=>d.notes=v}
+      ],footer:'Choose which services to use with this account.'});
+      const sum=el('div','grp'); sum.style.padding='14px';
+      sum.innerHTML=`<div style="font-size:13px;color:var(--txt2);line-height:1.6">
+        <b style="color:var(--txt)">${esc(d.email)}</b><br>
+        ${esc(d.type)} · ${esc(d.in.host)} : 993 (SSL)<br>
+        SMTP · ${esc(d.out.host||'—')} : 587 (TLS)<br>
+        ${d._certOK?'<span style="color:var(--sysorange)">Certificate manually trusted</span>':'Certificate verified'}</div>`;
+      b.appendChild(sum);
+    }};
+}
+/* branded quick sign-in (iCloud / Google / Yahoo / …) */
+function brandedSignInView(p){
+  const d={name:'',email:'',password:'',desc:p.name};
+  let view;
+  const valid=()=>d.name.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim()) && d.password.length>0;
+  const refreshNext=()=>{ const btn=view&&view._bar&&view._bar.querySelector('.nb-next'); if(btn) btn.classList.toggle('dis',!valid()); };
+  function go(nav){
+    if(!valid()) return;
+    const done=navBusy(view,'Verifying');
+    setTimeout(()=>{
+      done();
+      if(!isOnline())
+        return alertBox({title:'Cannot Get Mail',message:'The connection to the server failed. '+netReason(),buttons:[{text:'OK'}]});
+      const m=ML();
+      if(m.accounts.some(a=>a.address.toLowerCase()===d.email.trim().toLowerCase()))
+        return alertBox({title:'Account Already Exists',message:'An account with that address is already set up on this iPhone.',buttons:[{text:'OK'}]});
+      const a={id:m.seq++,name:d.name.trim(),address:d.email.trim(),provider:p.id,color:p.color,
+        desc:d.desc.trim()||p.name,imap:p.imap,smtp:p.smtp,type:'IMAP',
+        enabled:{mail:true,contacts:true,calendars:true,notes:false}};
+      a.messages=seedInbox(a);
+      m.accounts.push(a); save(); syncMailBadge();
+      island('✉️','#0a84ff','Mail',a.address+' added',2600); toast('Account added');
+      nav.popTo('Accounts'); nav.refresh();
+      // only rewind Mail's own stack when the flow ran from somewhere else (e.g. Settings)
+      const inst=openApps.get('mail'); if(inst && inst.nav!==nav){ inst.nav.popToRoot(); inst.nav.refresh(); }
+      const si=openApps.get('settings'); if(si && si.nav!==nav) si.nav.refresh();
+    },1400);
+  }
+  return {title:p.name, shortTitle:p.name,
+    right:[{text:'Next',cls:'nb-next dis',onClick:go}],
+    build(b,nav,vw){
+      view=vw;
+      const head=el('div','pad'); head.style.textAlign='center';
+      head.innerHTML=`<div style="margin:6px auto 8px;width:56px;height:56px;border-radius:14px;background:${p.color};
+          display:grid;place-items:center;color:#fff;font-size:${p.mark.length>2?'15':'24'}px;font-weight:700">${esc(p.mark)}</div>
+        <div style="font-size:19px;font-weight:600">Sign in to ${esc(p.name)}</div>
+        <div class="muted" style="font-size:13px;padding:4px 24px 0;line-height:1.4">${esc(p.name)} will be configured automatically using ${esc(p.imap)}.</div>`;
+      b.appendChild(head);
+      formGroup(b,{fields:[
+        {label:'Name',placeholder:'John Appleseed',get:()=>d.name,set:v=>d.name=v},
+        {label:'Email',placeholder:'user@'+p.domain,get:()=>d.email,set:v=>d.email=v},
+        {label:'Password',placeholder:'Required',type:'password',get:()=>d.password,set:v=>d.password=v},
+        {label:'Description',get:()=>d.desc,set:v=>d.desc=v}
+      ],onChange:refreshNext});
+      setTimeout(()=>{ b.querySelector('input').focus(); refreshNext(); },340);
+    }};
+}
+function genericServerView(kind,host){
+  const d={server:'',user:'',pass:'',desc:kind};
+  return {title:kind, right:[{text:'Next',cls:'nb-next',onClick:(nav)=>{
+      const v=nav.top;
+      const done=navBusy(v,'Verifying');
+      setTimeout(()=>{ done();
+        alertBox({title:'Cannot Connect Using SSL',
+          message:`${kind} accounts are not implemented in this simulator — only Mail accounts can be created.`,
+          buttons:[{text:'OK',onClick:()=>nav.pop()}]});
+      },1300);
+    }}],
+    build(b){
+      formGroup(b,{fields:[
+        {label:'Server',placeholder:host,get:()=>d.server,set:v=>d.server=v},
+        {label:'User Name',placeholder:'Required',get:()=>d.user,set:v=>d.user=v},
+        {label:'Password',placeholder:'Required',type:'password',get:()=>d.pass,set:v=>d.pass=v},
+        {label:'Description',get:()=>d.desc,set:v=>d.desc=v}
+      ],footer:`${esc(kind)} setup is included to mirror the real Settings layout, but only Mail accounts are functional here.`});
+    }};
+}
+function mailSettingsView(){
+  return {title:'Mail', build(b,nav){
+    const s=State.settings;
+    group(b,{header:'Allow Mail to Access',rows:[
+      {label:'Siri & Search',onClick:()=>toast('Simulated')},
+      {label:'Notifications',sub:'Badges, Sounds, Banners',onClick:()=>nav.push(appNotifView('Mail'))},
+      {label:'Cellular Data',toggle:()=>true,onToggle:()=>{}}]});
+    group(b,{rows:[{label:'Accounts',value:ML().accounts.length+' accounts',onClick:()=>nav.push(mailAccountsView())}]});
+    group(b,{header:'Message List',rows:[
+      {label:'Preview',value:s.mailPreview+' Lines',onClick:()=>nav.push({title:'Preview',build(bb){
+        group(bb,{rows:[0,1,2,3,4,5].map(n=>({label:n===0?'None':n+' Line'+(n>1?'s':''),chevron:false,
+          rightHTML:n===s.mailPreview?'<div style="color:var(--sysblue)">✓</div>':'',
+          onClick:()=>{ s.mailPreview=n; save(); nav.refresh();
+            document.documentElement.style.setProperty('--mlprev',n);
+            $$('.ml-prev').forEach(p=>p.style.display=n?'':'none'); }}))});
+      }})},
+      {label:'Show To/Cc Labels',toggle:()=>s.mailToCc??false,onToggle:v=>{s.mailToCc=v;save();}},
+      {label:'Swipe Options',sub:`Left: ${s.swipeLeft||'Trash'} · Right: ${s.swipeRight||'Mark as Read'}`,
+       onClick:()=>nav.push(mailSwipeView())}]});
+    group(b,{header:'Threading',rows:[
+      {label:'Organise by Thread',toggle:()=>s.mailThread,onToggle:v=>{s.mailThread=v;save();}},
+      {label:'Collapse Read Messages',toggle:()=>true,onToggle:()=>{}},
+      {label:'Most Recent Message on Top',toggle:()=>true,onToggle:()=>{}},
+      {label:'Complete Threads',toggle:()=>false,onToggle:()=>{}},
+      {label:'Muted Thread Action',value:s.mutedAction||'Mark as Read',
+       onClick:()=>nav.push(wifiPicker('Muted Thread Action',['Mark as Read','Archive or Delete'],
+         s.mutedAction||'Mark as Read',v=>{s.mutedAction=v;save();},''))}]});
+    group(b,{header:'Messages',rows:[
+      {label:'Ask Before Deleting',toggle:()=>s.askDelete??false,onToggle:v=>{s.askDelete=v;save();}},
+      {label:'Privacy Protection',value:s.mailPrivacy===false?'Off':'On',onClick:()=>nav.push(mailPrivacyView())},
+      {label:'Blocked',value:String((s.blockedSenders||[]).length||'None'),onClick:()=>nav.push(blockedSendersView())},
+      {label:'Blocked Sender Options',value:'Leave in Inbox',onClick:()=>nav.push(wifiPicker('Blocked Sender Options',
+        ['None','Mark as Blocked, Leave in Inbox','Move to Trash'],'Mark as Blocked, Leave in Inbox',()=>{},''))},
+      {label:'Follow Up Suggestions',toggle:()=>true,onToggle:()=>{}}]});
+    group(b,{header:'Composing',rows:[
+      {label:'Signature',value:s.mailSignature,onClick:()=>nav.push({title:'Signature',build(bb){
+        const g=el('div','grp'); const ta=el('textarea','note-editor'); ta.style.minHeight='120px'; ta.value=s.mailSignature;
+        ta.oninput=()=>{ s.mailSignature=ta.value; save(); };
+        g.appendChild(ta); bb.appendChild(g);
+        bb.appendChild(el('div','grp-f','This signature is added to the bottom of new messages you compose. Set per-account signatures from Accounts.'));
+      }})},
+      {label:'Default Account',value:(acctById(s.defaultAcct)||ML().accounts[0]||{}).desc||'None',
+       onClick:()=>nav.push({title:'Default Account',build(bb,n2){
+         group(bb,{rows:ML().accounts.map(a=>({label:a.desc||a.address,sub:a.address,chevron:false,
+           rightHTML:(s.defaultAcct??ML().accounts[0].id)===a.id?`<div style="color:var(--sysblue)">${sf('<path d="M4.5 12.5l5 5 10-11"/>',{w:2.4,size:17})}</div>`:'',
+           onClick:()=>{ s.defaultAcct=a.id; save(); n2.refresh(); }}))},
+          );
+         bb.appendChild(el('div','grp-f','Messages created outside of Mail will be sent from this account.'));
+       }})},
+      {label:'Always Bcc Myself',toggle:()=>false,onToggle:()=>{}},
+      {label:'Mark Addresses',value:'Off',onClick:()=>toast('Simulated')},
+      {label:'Increase Quote Level',value:'On',onClick:()=>toast('Simulated')},
+      {label:'Include Attachments with Replies',value:'Never',onClick:()=>nav.push(wifiPicker('Include Attachments',
+        ['Never','When Adding Recipients','Ask','Always'],'Never',()=>{},''))}]});
+  }};
+}
+function mailSwipeView(){
+  const s=State.settings;
+  const opts=['None','Mark as Read','Flag','Archive','Trash'];
+  return {title:'Swipe Options', build(b,nav){
+    group(b,{rows:[{label:'Swipe Left',value:s.swipeLeft||'Trash',
+      onClick:()=>nav.push(wifiPicker('Swipe Left',opts,s.swipeLeft||'Trash',v=>{s.swipeLeft=v;save();},''))}]});
+    group(b,{rows:[{label:'Swipe Right',value:s.swipeRight||'Mark as Read',
+      onClick:()=>nav.push(wifiPicker('Swipe Right',opts,s.swipeRight||'Mark as Read',v=>{s.swipeRight=v;save();},''))}]});
+    b.appendChild(el('div','grp-f','Swipe a message in any mailbox to use these actions.'));
+  }};
+}
+function mailPrivacyView(){
+  const s=State.settings;
+  return {title:'Privacy Protection', build(b,nav){
+    group(b,{rows:[{label:'Protect Mail Activity',toggle:()=>s.mailPrivacy!==false,
+      onToggle:v=>{s.mailPrivacy=v;save();nav.refresh();}}],
+      footer:'Protect Mail Activity hides your IP address and loads remote content privately in the background, even when you don’t open the message.'});
+    if(s.mailPrivacy===false)
+      group(b,{rows:[
+        {label:'Hide IP Address',toggle:()=>false,onToggle:()=>{}},
+        {label:'Block All Remote Content',toggle:()=>false,onToggle:()=>{}}]});
+  }};
+}
+function blockedSendersView(){
+  const s=State.settings;
+  s.blockedSenders=s.blockedSenders||['promo@shopnotify.biz'];
+  return {title:'Blocked', build(b,nav){
+    if(!s.blockedSenders.length) b.appendChild(h('<div class="empty"><h3>No Blocked Senders</h3></div>'));
+    else group(b,{rows:s.blockedSenders.map(e2=>({label:e2,chevron:false,
+      rightHTML:`<button class="bl-x" style="color:var(--sysred);padding:6px">Unblock</button>`}))});
+    $$('.bl-x',b).forEach((btn,i)=>btn.onclick=()=>{ s.blockedSenders.splice(i,1); save(); nav.refresh(); });
+    group(b,{rows:[{label:'Add New…',cls:'blue',onClick:()=>{
+      sheet((sh,close)=>{
+        sh.innerHTML='<div style="padding:16px;text-align:center;font-weight:600;border-bottom:.5px solid var(--sep)">Block Sender</div>';
+        const f=el('div','compose-field','<div class="k">Email</div>');
+        const i2=el('input'); i2.placeholder='name@example.com'; f.appendChild(i2); sh.appendChild(f);
+        const w=el('div','pad'); const btn=el('button','btn-primary','Block');
+        btn.onclick=()=>{ if(!/\S+@\S+/.test(i2.value)) return toast('Enter an email address');
+          s.blockedSenders.push(i2.value.trim()); save(); close(); nav.refresh(); };
+        w.appendChild(btn); sh.appendChild(w);
+      });
+    }}]});
+    b.appendChild(el('div','grp-f','Blocked senders are marked in Mail and handled per your Blocked Sender Options.'));
+  }};
+}
+
+/* =========================================================================
+   INSTALLED STREAMING APPS (shells)
+   ========================================================================= */
+const TILE_WORDS=['Midnight','The Last','Harbor','Signal','Golden','Crossfire','Undertow','Northbound','Static','Wildfire',
+  'Cold Open','Riverbend','Afterglow','Homestead','Nightshift','Fourth Down','Deep Field','Paper Moon'];
+function tileTitle(seed,i){ let s=0; for(const c of seed) s+=c.charCodeAt(0);
+  return TILE_WORDS[(s+i*7)%TILE_WORDS.length]+(i%4===0?' II':''); }
+function tiles(app,row,count=8){
+  return Array.from({length:count},(_,i)=>{
+    const [c1,c2]=app.colors, hue=(i*37)%360;
+    return `<div class="st-tile" style="background:linear-gradient(${140+i*11}deg,${c1},${c2});box-shadow:inset 0 -50px 40px -30px #000">
+      <span>${esc(tileTitle(app.name+row,i))}</span></div>`;
+  }).join('');
+}
+function streamShell(app,win){
+  const v=el('div','st-app');
+  v.style.background='#0b0b0d';
+  const rows=[['Continue Watching',8],['Trending Now',8],['New Releases',8],['Because You Watched',8],['My List',6]];
+  v.innerHTML=`
+    <div class="st-nav">${['Home','Series','Movies','Live','My Stuff'].map((t,i)=>
+      `<span style="opacity:${i?'.7':'1'};font-weight:${i?400:700}">${t}</span>`).join('')}</div>
+    <div class="st-hero" style="background:linear-gradient(160deg,${app.colors[0]},${app.colors[1]});margin-top:-160px">
+      <div style="font-size:11px;letter-spacing:2px;opacity:.8;text-transform:uppercase">${esc(app.name)} Original</div>
+      <div style="font-size:34px;font-weight:800;line-height:1;letter-spacing:-1px">${esc(tileTitle(app.name,3))}</div>
+      <div style="font-size:13px;opacity:.85">New season · 8 episodes · TV-MA</div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button style="background:#fff;color:#000;font-weight:700;border-radius:6px;padding:10px 26px">▶ Play</button>
+        <button style="background:rgba(255,255,255,.25);color:#fff;font-weight:600;border-radius:6px;padding:10px 20px">＋ My List</button>
+      </div></div>
+    ${rows.map(([r,n])=>`<div class="st-row"><h4>${r}</h4><div class="st-tiles">${tiles(app,r,n)}</div></div>`).join('')}
+    <div style="padding:30px 20px 90px;text-align:center;color:#6b6b70;font-size:12px">
+      Simulated ${esc(app.name)} client · content is placeholder art</div>
+    <div class="st-tabbar">${[['⌂','Home'],['🔍','Search'],['⬇','Downloads'],['☰','More']].map((t,i)=>
+      `<button class="${i?'':'on'}"><span style="font-size:17px">${t[0]}</span>${t[1]}</button>`).join('')}</div>`;
+  v.querySelectorAll('.st-tile,.st-hero button').forEach(t=>t.onclick=()=>island('▶','#'+(app.colors[0].replace('#','')),app.name,'Playing preview…',2600));
+  v.querySelectorAll('.st-tabbar button').forEach(b=>b.onclick=()=>{
+    v.querySelectorAll('.st-tabbar button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  win.appendChild(v);
+}
+const CHANNELS=[['2','WESH','News at 6'],['4','WKMG','Local News'],['5','WFTV','Wheel of Fortune'],
+  ['11','ESPN','SportsCenter'],['12','ESPN2','College Football'],['24','TNT','NBA Tonight'],
+  ['31','AMC','Movie: Undertow'],['33','FX','Series Marathon'],['44','HGTV','Home Reno'],
+  ['48','Food','Chopped'],['52','Discovery','Deadliest Catch'],['61','CNN','The Lead'],
+  ['70','Nick','SpongeBob'],['88','HBO','Sunday Premiere'],['91','Paramount','NFL on CBS']];
+function spectrumShell(app,win){
+  const v=el('div','st-app'); v.style.background='#00142b';
+  const hours=['7:00 PM','7:30 PM','8:00 PM','8:30 PM'];
+  v.innerHTML=`
+    <div class="st-nav" style="background:linear-gradient(to bottom,#003057,rgba(0,20,43,0))">
+      ${['Guide','On Demand','My Library','Search','Account'].map((t,i)=>
+      `<span style="opacity:${i?'.75':'1'};font-weight:${i?400:700}">${t}</span>`).join('')}</div>
+    <div style="padding:0 14px 8px;display:flex;gap:8px;overflow-x:auto">
+      ${['All Channels','Favorites','Sports','Movies','Kids','News'].map((c,i)=>
+      `<span style="flex:none;background:${i?'rgba(255,255,255,.12)':'#0072ce'};color:#fff;padding:7px 14px;border-radius:16px;font-size:12px">${c}</span>`).join('')}</div>
+    <div style="display:flex;padding:6px 14px 4px;color:#9fb6cc;font-size:11px">
+      <div style="width:70px;flex:none">CHANNEL</div>${hours.map(x=>`<div style="flex:1">${x}</div>`).join('')}</div>
+    <div id="guide"></div>
+    <div class="st-row"><h4 style="color:#fff">Recommended On Demand</h4><div class="st-tiles">${tiles(app,'ondemand',8)}</div></div>
+    <div class="st-row"><h4 style="color:#fff">Your DVR — 3 recordings</h4><div class="st-tiles">${tiles(app,'dvr',5)}</div></div>
+    <div style="padding:24px 20px 90px;text-align:center;color:#6b87a4;font-size:12px">
+      Simulated Spectrum TV client · guide data is placeholder</div>
+    <div class="st-tabbar">${[['📺','Guide'],['▶','On Demand'],['📚','Library'],['🔍','Search']].map((t,i)=>
+      `<button class="${i?'':'on'}"><span style="font-size:17px">${t[0]}</span>${t[1]}</button>`).join('')}</div>`;
+  const g=$('#guide',v);
+  CHANNELS.forEach((c,i)=>{
+    const row=el('div');
+    row.style.cssText='display:flex;gap:4px;padding:0 14px 4px;align-items:stretch';
+    row.innerHTML=`<div style="width:70px;flex:none;color:#fff;font-size:11px;display:flex;flex-direction:column;justify-content:center">
+        <b>${c[0]}</b><span style="opacity:.7">${c[1]}</span></div>
+      <div style="flex:2;background:rgba(255,255,255,.12);border-radius:5px;padding:8px;color:#fff;font-size:12px;
+        ${i===0?'outline:2px solid #0ea5ff':''}">${esc(c[2])}</div>
+      <div style="flex:1;background:rgba(255,255,255,.07);border-radius:5px;padding:8px;color:#cfe2f5;font-size:12px">${esc(tileTitle(c[1],1))}</div>
+      <div style="flex:1;background:rgba(255,255,255,.07);border-radius:5px;padding:8px;color:#cfe2f5;font-size:12px">${esc(tileTitle(c[1],2))}</div>`;
+    row.onclick=()=>island('📺','#0072ce','Spectrum TV','Tuning to '+c[1]+'…',2400);
+    g.appendChild(row);
+  });
+  v.querySelectorAll('.st-tile').forEach(t=>t.onclick=()=>island('▶','#0072ce','Spectrum TV','Starting playback…',2200));
+  win.appendChild(v);
+}
+function mySpectrumShell(app,win){
+  const v=el('div','st-app'); v.style.background='#f2f4f7'; v.style.color='#111';
+  v.innerHTML=`
+    <div style="background:linear-gradient(160deg,#003057,#0072ce);padding:64px 18px 22px;color:#fff">
+      <div style="font-size:13px;opacity:.85">Welcome back,</div>
+      <div style="font-size:24px;font-weight:700">Isaiah</div>
+      <div style="margin-top:16px;background:rgba(255,255,255,.14);border-radius:14px;padding:14px">
+        <div style="font-size:12px;opacity:.85">Account ending 4417 · Auto Pay on</div>
+        <div style="font-size:30px;font-weight:800;margin:4px 0">$189.98</div>
+        <div style="font-size:12px;opacity:.85">Due August 12</div>
+        <button style="margin-top:12px;background:#fff;color:#003057;font-weight:700;border-radius:22px;padding:11px 0;width:100%">Pay Now</button>
+      </div></div>
+    <div style="padding:16px">
+      <div style="font-weight:700;margin-bottom:8px">Your Services</div>
+      <div id="svc"></div>
+      <div style="font-weight:700;margin:18px 0 8px">Quick Actions</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="qa"></div>
+      <div style="text-align:center;color:#7d8794;font-size:12px;padding:28px 10px 90px">
+        Simulated My Spectrum client · account data is fictional</div>
+    </div>
+    <div class="st-tabbar" style="background:#fff;border-top:1px solid #dfe3e8">
+      ${[['🏠','Home'],['💳','Billing'],['📶','Services'],['💬','Support']].map((t,i)=>
+      `<button class="${i?'':'on'}" style="color:${i?'#8b95a1':'#0072ce'}"><span style="font-size:17px">${t[0]}</span>${t[1]}</button>`).join('')}</div>`;
+  const svc=$('#svc',v);
+  [['Internet Ultra','Connected · 512 Mbps','#30d158'],['Spectrum TV Select','215 channels','#0072ce'],
+   ['Mobile — 2 lines','Unlimited data','#5e5ce6'],['Voice','Active','#8e8e93']].forEach(s=>{
+    const d=el('div');
+    d.style.cssText='background:#fff;border-radius:12px;padding:14px;margin-bottom:8px;display:flex;gap:12px;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.08)';
+    d.innerHTML=`<div style="width:10px;height:10px;border-radius:50%;background:${s[2]}"></div>
+      <div style="flex:1"><div style="font-weight:600;font-size:15px">${s[0]}</div>
+      <div style="font-size:13px;color:#6b7684">${s[1]}</div></div><div style="color:#9aa4b0">›</div>`;
+    d.onclick=()=>island('📶','#0072ce','My Spectrum',s[0],2000);
+    svc.appendChild(d);
+  });
+  const qa=$('#qa',v);
+  [['🔄','Restart Equipment'],['📶','WiFi Settings'],['📄','View Bill'],['💬','Chat with Support']].forEach(a=>{
+    const d=el('div');
+    d.style.cssText='background:#fff;border-radius:12px;padding:16px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.08)';
+    d.innerHTML=`<div style="font-size:22px">${a[0]}</div><div style="font-size:13px;margin-top:6px;font-weight:500">${a[1]}</div>`;
+    d.onclick=()=>{
+      if(a[1]==='Restart Equipment') island('🔄','#0072ce','My Spectrum','Restarting router… ~5 min',3000);
+      else if(a[1]==='View Bill'){ goHome(); setTimeout(()=>openApp('mail'),300); }
+      else island('💬','#0072ce','My Spectrum',a[1],2000);
+    };
+    qa.appendChild(d);
+  });
+  win.appendChild(v);
+}
+function registerStoreApps(){
+  STORE.forEach(a=>defineApp({
+    id:a.id, name:a.name, bg:a.bg, glyph:a.icon, tiny:a.icon,
+    version:a.version, size:a.size, darkStatus:true,
+    mount(win){
+      win.style.background='#000';
+      if(a.id==='spectrumtv') spectrumShell(a,win);
+      else if(a.id==='myspectrum') mySpectrumShell(a,win);
+      else if(a.game) gameShell(a,win);
+      else streamShell(a,win);
+    }
+  }));
+}
+/* =========================================================================
+   GAMES — one real engine per title. Shared chrome, distinct gameplay.
+   ========================================================================= */
+function gameChrome(app,win,{sub,statLabel='Score'}={}){
+  const [accent,bgDeep]=app.colors;
+  const v=el('div','gm-root');
+  v.style.cssText=`position:absolute;inset:0;display:flex;flex-direction:column;background:${bgDeep};color:#fff`;
+  v.innerHTML=`
+    <div class="gm-head" style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:62px 18px 8px">
+      <div><div style="font-size:19px;font-weight:800;letter-spacing:-.4px">${esc(app.name)}</div>
+        <div style="font-size:11.5px;opacity:.55">${esc(sub||'')}</div></div>
+      <div style="text-align:right"><div style="font-size:10px;opacity:.55;text-transform:uppercase;letter-spacing:1.1px">${esc(statLabel)}</div>
+        <div class="gm-score" style="font-size:25px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1">0</div></div>
+    </div>
+    <div class="gm-stage" style="flex:1;position:relative;margin:2px 14px 8px;min-height:0"></div>
+    <div class="gm-controls" style="flex:none;padding:0 14px 32px"></div>`;
+  win.appendChild(v);
+  return {v, stage:v.querySelector('.gm-stage'), controls:v.querySelector('.gm-controls'),
+          scoreEl:v.querySelector('.gm-score'), accent, bgDeep};
+}
+function gmOverlay(stage,{title,body,btn='Play',onGo}){
+  let o=stage.querySelector('.gm-ov');
+  if(o) o.remove();
+  o=el('div','gm-ov');
+  o.style.cssText=`position:absolute;inset:0;display:grid;place-items:center;border-radius:18px;z-index:6;
+    background:rgba(0,0,0,.6);backdrop-filter:blur(7px);text-align:center;padding:20px`;
+  o.innerHTML=`<div><div style="font-size:19px;font-weight:800;margin-bottom:6px">${esc(title)}</div>
+    <div style="font-size:13px;opacity:.7;line-height:1.4;margin-bottom:16px">${body||''}</div></div>`;
+  const b=el('button','',btn);
+  b.style.cssText='background:#fff;color:#000;font-weight:800;border-radius:22px;padding:11px 32px;font-size:15px';
+  b.onclick=()=>{ o.remove(); onGo(); };
+  o.firstChild.appendChild(b);
+  stage.appendChild(o);
+  return o;
+}
+function gmPad(controls,keys){
+  controls.innerHTML='';
+  const row=el('div');
+  row.style.cssText=`display:grid;grid-template-columns:repeat(${keys.length},1fr);gap:9px`;
+  keys.forEach(([label,fn,big])=>{
+    const b=el('button','',label);
+    b.style.cssText=`background:rgba(255,255,255,.13);color:#fff;border-radius:14px;padding:${big?'16px':'13px'} 0;
+      font-size:${big?'19px':'16px'};font-weight:600;backdrop-filter:blur(8px);border:.5px solid rgba(255,255,255,.12)`;
+    b.onpointerdown=e=>{e.preventDefault(); b.style.background='rgba(255,255,255,.28)'; fn();};
+    b.onpointerup=b.onpointerleave=()=>b.style.background='rgba(255,255,255,.13)';
+    row.appendChild(b);
+  });
+  controls.appendChild(row);
+}
+function gmKeys(win,map){
+  win.tabIndex=0;
+  win.addEventListener('keydown',e=>{ const f=map[e.key]; if(f){ e.preventDefault(); f(); } });
+  setTimeout(()=>win.focus(),100);
+}
+function gmSwipe(node,onDir){
+  let sx=0,sy=0,t=0;
+  node.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;t=Date.now();});
+  node.addEventListener('pointerup',e=>{
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(Math.abs(dx)<16&&Math.abs(dy)<16) return;
+    onDir(Math.abs(dx)>Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'down':'up'));
+  });
+}
+/* best-score persistence per game */
+function gmBest(id,val){
+  State.gameBest=State.gameBest||{};
+  if(val!=null && val>(State.gameBest[id]|0)){ State.gameBest[id]=val; save(); }
+  return State.gameBest[id]|0;
+}
+
+/* ---------------------------------------------------------------- SNAKE -- */
+function snakeGame(app,win){
+  const {stage,controls,scoreEl,accent}=gameChrome(app,win,{sub:'Swipe or arrow keys'});
+  const cv=el('canvas'); cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;border-radius:18px';
+  stage.appendChild(cv);
+  const CW=15,CH=22;
+  let snake,dir,pending,food,score,timer,speed;
+  function reset(){ snake=[{x:7,y:11},{x:7,y:12},{x:7,y:13}]; dir={x:0,y:-1}; pending=null;
+    food=spawn(); score=0; speed=170; scoreEl.textContent='0'; }
+  function spawn(){ for(;;){ const f={x:(Math.random()*CW)|0,y:(Math.random()*CH)|0};
+    if(!snake.some(s=>s.x===f.x&&s.y===f.y)) return f; } }
+  function draw(){
+    const r=stage.getBoundingClientRect(); if(!r.width) return;
+    cv.width=r.width*2; cv.height=r.height*2;
+    const c=cv.getContext('2d'); c.scale(2,2);
+    const cw=r.width/CW, ch=r.height/CH;
+    c.fillStyle='rgba(0,0,0,.32)'; c.fillRect(0,0,r.width,r.height);
+    c.strokeStyle='rgba(255,255,255,.04)';
+    for(let x=1;x<CW;x++){c.beginPath();c.moveTo(x*cw,0);c.lineTo(x*cw,r.height);c.stroke();}
+    for(let y=1;y<CH;y++){c.beginPath();c.moveTo(0,y*ch);c.lineTo(r.width,y*ch);c.stroke();}
+    c.fillStyle='#ffd60a';
+    c.beginPath(); c.arc((food.x+.5)*cw,(food.y+.5)*ch,Math.min(cw,ch)*.33,0,7); c.fill();
+    snake.forEach((s,i)=>{ c.fillStyle=i===0?'#fff':accent; c.globalAlpha=i===0?1:Math.max(.4,1-i*.022);
+      c.beginPath(); c.roundRect(s.x*cw+1.5,s.y*ch+1.5,cw-3,ch-3,4); c.fill(); });
+    c.globalAlpha=1;
+  }
+  function over(){ clearInterval(timer); timer=null;
+    gmOverlay(stage,{title:'Game Over',body:`Score ${score} · Best ${gmBest(app.id,score)}`,btn:'Play Again',onGo:start}); }
+  function tick(){
+    if(!stage.getBoundingClientRect().width) return;
+    if(pending){ dir=pending; pending=null; }
+    const hd={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+    if(hd.x<0||hd.y<0||hd.x>=CW||hd.y>=CH||snake.some(s=>s.x===hd.x&&s.y===hd.y)) return over();
+    snake.unshift(hd);
+    if(hd.x===food.x&&hd.y===food.y){ score+=10; scoreEl.textContent=score; food=spawn();
+      if(speed>75){ speed-=4; clearInterval(timer); timer=setInterval(tick,speed); } }
+    else snake.pop();
+    draw();
+  }
+  function start(){ reset(); draw(); clearInterval(timer); timer=setInterval(tick,speed); }
+  const steer=(x,y)=>{ if(timer&&(x!==-dir.x||y!==-dir.y)) pending={x,y}; };
+  gmSwipe(stage,d=>steer(d==='left'?-1:d==='right'?1:0, d==='up'?-1:d==='down'?1:0));
+  gmKeys(win,{ArrowUp:()=>steer(0,-1),ArrowDown:()=>steer(0,1),ArrowLeft:()=>steer(-1,0),ArrowRight:()=>steer(1,0)});
+  gmPad(controls,[['←',()=>steer(-1,0)],['↑',()=>steer(0,-1)],['↓',()=>steer(0,1)],['→',()=>steer(1,0)]]);
+  reset(); setTimeout(draw,60);
+  gmOverlay(stage,{title:'Serpent Rush',body:`Best ${gmBest(app.id)}`,onGo:start});
+}
+
+/* --------------------------------------------------------------- TETRIS -- */
+const TETRO={
+  I:{c:'#40c8e0',r:[[[0,1],[1,1],[2,1],[3,1]],[[2,0],[2,1],[2,2],[2,3]]]},
+  O:{c:'#ffd60a',r:[[[1,0],[2,0],[1,1],[2,1]]]},
+  T:{c:'#bf5af2',r:[[[1,0],[0,1],[1,1],[2,1]],[[1,0],[1,1],[2,1],[1,2]],[[0,1],[1,1],[2,1],[1,2]],[[1,0],[0,1],[1,1],[1,2]]]},
+  S:{c:'#30d158',r:[[[1,0],[2,0],[0,1],[1,1]],[[1,0],[1,1],[2,1],[2,2]]]},
+  Z:{c:'#ff453a',r:[[[0,0],[1,0],[1,1],[2,1]],[[2,0],[1,1],[2,1],[1,2]]]},
+  J:{c:'#0a84ff',r:[[[0,0],[0,1],[1,1],[2,1]],[[1,0],[2,0],[1,1],[1,2]],[[0,1],[1,1],[2,1],[2,2]],[[1,0],[1,1],[0,2],[1,2]]]},
+  L:{c:'#ff9f0a',r:[[[2,0],[0,1],[1,1],[2,1]],[[1,0],[1,1],[1,2],[2,2]],[[0,1],[1,1],[2,1],[0,2]],[[0,0],[1,0],[1,1],[1,2]]]}
+};
+function tetrisGame(app,win){
+  const {stage,controls,scoreEl}=gameChrome(app,win,{sub:'Arrow keys or the pad below'});
+  const cv=el('canvas'); cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;border-radius:18px';
+  stage.appendChild(cv);
+  const CW=10,CH=20;
+  let grid,piece,score,lines,level,timer,dropMs;
+  const names=Object.keys(TETRO);
+  function newPiece(){
+    const k=names[(Math.random()*names.length)|0];
+    return {k,rot:0,x:3,y:-1};
+  }
+  function cells(p){ const rs=TETRO[p.k].r; return rs[p.rot%rs.length].map(([x,y])=>[p.x+x,p.y+y]); }
+  function fits(p){ return cells(p).every(([x,y])=>x>=0&&x<CW&&y<CH&&(y<0||!grid[y][x])); }
+  function lock(){
+    cells(piece).forEach(([x,y])=>{ if(y>=0) grid[y][x]=TETRO[piece.k].c; });
+    let cleared=0;
+    for(let y=CH-1;y>=0;y--){ if(grid[y].every(Boolean)){ grid.splice(y,1); grid.unshift(Array(CW).fill(null)); cleared++; y++; } }
+    if(cleared){ score+=[0,100,300,500,800][cleared]*level; lines+=cleared;
+      const nl=Math.floor(lines/10)+1;
+      if(nl!==level){ level=nl; dropMs=Math.max(110,700-(level-1)*60); clearInterval(timer); timer=setInterval(step,dropMs); }
+      scoreEl.textContent=score; }
+    piece=newPiece();
+    if(!fits(piece)) over();
+  }
+  function step(){ if(!stage.getBoundingClientRect().width) return;
+    const n={...piece,y:piece.y+1}; if(fits(n)) piece=n; else lock(); draw(); }
+  function over(){ clearInterval(timer); timer=null;
+    gmOverlay(stage,{title:'Game Over',body:`Score ${score} · Lines ${lines} · Best ${gmBest(app.id,score)}`,btn:'Play Again',onGo:start}); }
+  function draw(){
+    const r=stage.getBoundingClientRect(); if(!r.width) return;
+    cv.width=r.width*2; cv.height=r.height*2;
+    const c=cv.getContext('2d'); c.scale(2,2);
+    const cell=Math.min(r.width/CW,r.height/CH);
+    const ox=(r.width-cell*CW)/2, oy=(r.height-cell*CH)/2;
+    c.fillStyle='rgba(0,0,0,.34)'; c.fillRect(0,0,r.width,r.height);
+    c.strokeStyle='rgba(255,255,255,.05)';
+    for(let x=0;x<=CW;x++){c.beginPath();c.moveTo(ox+x*cell,oy);c.lineTo(ox+x*cell,oy+CH*cell);c.stroke();}
+    for(let y=0;y<=CH;y++){c.beginPath();c.moveTo(ox,oy+y*cell);c.lineTo(ox+CW*cell,oy+y*cell);c.stroke();}
+    const blk=(x,y,col,alpha)=>{ c.globalAlpha=alpha||1; c.fillStyle=col;
+      c.beginPath(); c.roundRect(ox+x*cell+1,oy+y*cell+1,cell-2,cell-2,3); c.fill(); c.globalAlpha=1; };
+    grid.forEach((row,y)=>row.forEach((col,x)=>col&&blk(x,y,col)));
+    if(piece){
+      // ghost
+      let g={...piece}; while(fits({...g,y:g.y+1})) g.y++;
+      cells(g).forEach(([x,y])=>y>=0&&blk(x,y,TETRO[piece.k].c,.22));
+      cells(piece).forEach(([x,y])=>y>=0&&blk(x,y,TETRO[piece.k].c));
+    }
+  }
+  function move(dx){ const n={...piece,x:piece.x+dx}; if(fits(n)){piece=n;draw();} }
+  function rotate(){ const n={...piece,rot:piece.rot+1};
+    if(fits(n)) piece=n;
+    else { for(const k of [-1,1,-2,2]){ const t={...n,x:n.x+k}; if(fits(t)){ piece=t; break; } } }
+    draw(); }
+  function soft(){ const n={...piece,y:piece.y+1}; if(fits(n)){piece=n;draw();} else {lock();draw();} }
+  function hard(){ while(fits({...piece,y:piece.y+1})) piece.y++; lock(); draw(); }
+  function start(){
+    grid=Array.from({length:CH},()=>Array(CW).fill(null));
+    score=0; lines=0; level=1; dropMs=700; scoreEl.textContent='0';
+    piece=newPiece(); draw();
+    clearInterval(timer); timer=setInterval(step,dropMs);
+  }
+  gmKeys(win,{ArrowLeft:()=>move(-1),ArrowRight:()=>move(1),ArrowUp:rotate,ArrowDown:soft,' ':hard});
+  gmSwipe(stage,d=>d==='left'?move(-1):d==='right'?move(1):d==='down'?hard():rotate());
+  gmPad(controls,[['←',()=>move(-1)],['⟳',rotate],['↓',soft],['⤓',hard],['→',()=>move(1)]]);
+  grid=Array.from({length:CH},()=>Array(CW).fill(null)); setTimeout(draw,60);
+  gmOverlay(stage,{title:'Block Drop',body:`Best ${gmBest(app.id)}`,onGo:start});
+}
+
+/* --------------------------------------------------------------- WORDLE -- */
+const WORDS=('crane slate audio house plant mount brick trace shine grape stone flame crown ghost pride '+
+'blend charm dwell eager fable giant haste ivory jolly knelt lemon merry noble ocean pearl quilt raven '+
+'sugar tiger urban vivid wharf yield zebra amber blaze cider dodge elbow flint grasp hedge inlet joker '+
+'kneel latch mirth nudge onset prism quart rider swirl thorn ultra vapor wager yeast abide badge cabin '+
+'daisy eagle fjord glide honey islet jewel kayak lodge motel niche olive punch quest rapid siren tulip '+
+'usher vault waltz alloy bloom coral drift ember frost gauge hover input japan karma lunar month night').split(' ');
+function wordleGame(app,win){
+  const {stage,controls,scoreEl}=gameChrome(app,win,{sub:'Six tries',statLabel:'Streak'});
+  scoreEl.textContent=gmBest(app.id);
+  stage.style.overflow='auto';
+  const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;padding-top:6px';
+  stage.appendChild(wrap);
+  let answer,rows,cur,done;
+  const gridEl=el('div'); gridEl.style.cssText='display:grid;grid-template-rows:repeat(6,1fr);gap:5px;margin-bottom:4px';
+  wrap.appendChild(gridEl);
+  const msg=el('div'); msg.style.cssText='font-size:12.5px;height:18px;opacity:.75;margin-top:2px'; wrap.appendChild(msg);
+  const kbState={};
+  function drawGrid(){
+    gridEl.innerHTML='';
+    for(let r=0;r<6;r++){
+      const row=el('div'); row.style.cssText='display:grid;grid-template-columns:repeat(5,40px);gap:5px';
+      for(let i=0;i<5;i++){
+        const g=rows[r]||'';
+        const ch=(r===cur? (rows[r]||'') : g)[i]||'';
+        const st=r<cur? score(g)[i] : null;
+        const d=el('div','',esc(ch.toUpperCase()));
+        d.style.cssText=`width:40px;height:44px;border-radius:6px;display:grid;place-items:center;font-size:21px;font-weight:800;
+          border:2px solid ${st?'transparent':(ch?'rgba(255,255,255,.45)':'rgba(255,255,255,.18)')};
+          background:${st==='g'?'#30d158':st==='y'?'#e0b83a':st==='b'?'rgba(255,255,255,.13)':'transparent'};
+          color:#fff`;
+        row.appendChild(d);
+      }
+      gridEl.appendChild(row);
+    }
+  }
+  function score(guess){
+    const res=Array(5).fill('b'), a=answer.split(''), taken=Array(5).fill(false);
+    for(let i=0;i<5;i++) if(guess[i]===a[i]){res[i]='g';taken[i]=true;}
+    for(let i=0;i<5;i++){ if(res[i]==='g') continue;
+      const j=a.findIndex((c,k)=>c===guess[i]&&!taken[k]);
+      if(j>=0){res[i]='y';taken[j]=true;} }
+    return res;
+  }
+  function drawKb(){
+    controls.innerHTML='';
+    const layout=['qwertyuiop','asdfghjkl','⏎zxcvbnm⌫'];
+    layout.forEach(rowStr=>{
+      const row=el('div'); row.style.cssText='display:flex;gap:4px;justify-content:center;margin-bottom:5px';
+      [...rowStr].forEach(ch=>{
+        const wide=ch==='⏎'||ch==='⌫';
+        const st=kbState[ch];
+        const b=el('button','',ch==='⏎'?'ENTER':ch==='⌫'?'⌫':ch.toUpperCase());
+        b.style.cssText=`flex:${wide?'1.6':'1'};min-width:0;padding:11px 0;border-radius:5px;font-size:${wide?'10.5':'14'}px;font-weight:700;
+          color:#fff;background:${st==='g'?'#30d158':st==='y'?'#e0b83a':st==='b'?'rgba(255,255,255,.08)':'rgba(255,255,255,.22)'}`;
+        b.onclick=()=>key(ch);
+        row.appendChild(b);
+      });
+      controls.appendChild(row);
+    });
+  }
+  function key(ch){
+    if(done) return;
+    if(ch==='⌫'){ rows[cur]=(rows[cur]||'').slice(0,-1); drawGrid(); return; }
+    if(ch==='⏎'){
+      const g=rows[cur]||'';
+      if(g.length<5){ msg.textContent='Not enough letters'; return; }
+      const res=score(g);
+      [...g].forEach((c,i)=>{ const prev=kbState[c];
+        if(res[i]==='g'||prev!=='g') kbState[c]= res[i]==='g'?'g':(res[i]==='y'&&prev!=='g')?'y':(prev||'b'); });
+      cur++; msg.textContent='';
+      drawGrid(); drawKb();
+      if(g===answer){ done=true;
+        const streak=gmBest(app.id,(State.gameBest?.[app.id]|0)+1); scoreEl.textContent=streak;
+        gmOverlay(stage,{title:'Got it!',body:`${answer.toUpperCase()} in ${cur} ${cur===1?'try':'tries'}`,btn:'New Word',onGo:start}); }
+      else if(cur>=6){ done=true; State.gameBest=State.gameBest||{}; State.gameBest[app.id]=0; save(); scoreEl.textContent='0';
+        gmOverlay(stage,{title:'Out of tries',body:`The word was ${answer.toUpperCase()}`,btn:'New Word',onGo:start}); }
+      return;
+    }
+    if(!/^[a-z]$/.test(ch)) return;
+    if((rows[cur]||'').length>=5) return;
+    rows[cur]=(rows[cur]||'')+ch; drawGrid();
+  }
+  function start(){
+    answer=WORDS[(Math.random()*WORDS.length)|0];
+    rows=Array(6).fill(''); cur=0; done=false; msg.textContent='';
+    Object.keys(kbState).forEach(k=>delete kbState[k]);
+    drawGrid(); drawKb();
+  }
+  gmKeys(win,Object.fromEntries([...'abcdefghijklmnopqrstuvwxyz'].map(c=>[c,()=>key(c)])
+    .concat([['Enter',()=>key('⏎')],['Backspace',()=>key('⌫')]])));
+  start();
+  gmOverlay(stage,{title:'Wordfall',body:'Guess the five-letter word in six tries',onGo:()=>{}});
+}
+
+/* ------------------------------------------------------------- CONNECT 4 -- */
+function connect4Game(app,win){
+  const {stage,controls,scoreEl}=gameChrome(app,win,{sub:'You are yellow',statLabel:'Wins'});
+  scoreEl.textContent=gmBest(app.id);
+  const CW=7,CH=6;
+  let grid,turn,over_,hoverCol=null;
+  const cv=el('canvas'); cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;border-radius:18px';
+  stage.appendChild(cv);
+  const geom=()=>{ const r=stage.getBoundingClientRect();
+    const cell=Math.min(r.width/CW,(r.height-10)/CH);
+    return {r,cell,ox:(r.width-cell*CW)/2,oy:(r.height-cell*CH)/2}; };
+  function draw(){
+    const {r,cell,ox,oy}=geom(); if(!r.width) return;
+    cv.width=r.width*2; cv.height=r.height*2;
+    const c=cv.getContext('2d'); c.scale(2,2);
+    c.clearRect(0,0,r.width,r.height);
+    c.fillStyle='#1741b6';
+    c.beginPath(); c.roundRect(ox,oy,cell*CW,cell*CH,12); c.fill();
+    for(let y=0;y<CH;y++)for(let x=0;x<CW;x++){
+      const v=grid[y][x];
+      c.fillStyle = v===1?'#ffd60a' : v===2?'#ff453a' : '#0b1f5c';
+      c.beginPath(); c.arc(ox+(x+.5)*cell, oy+(y+.5)*cell, cell*.38, 0, 7); c.fill();
+    }
+    if(hoverCol!=null && !over_){
+      c.globalAlpha=.35; c.fillStyle='#ffd60a';
+      c.beginPath(); c.arc(ox+(hoverCol+.5)*cell, oy-cell*.1, cell*.3, 0, 7); c.fill(); c.globalAlpha=1;
+    }
+  }
+  const drop=(g,col,who)=>{ for(let y=CH-1;y>=0;y--) if(!g[y][col]){ g[y][col]=who; return y; } return -1; };
+  function wins(g,who){
+    for(let y=0;y<CH;y++)for(let x=0;x<CW;x++){
+      for(const [dx,dy] of [[1,0],[0,1],[1,1],[1,-1]]){
+        let n=0; for(let k=0;k<4;k++){ const nx=x+dx*k, ny=y+dy*k;
+          if(nx<0||ny<0||nx>=CW||ny>=CH||g[ny][nx]!==who) break; n++; }
+        if(n===4) return true;
+      }
+    }
+    return false;
+  }
+  const openCols=g=>[...Array(CW).keys()].filter(x=>!g[0][x]);
+  function aiMove(){
+    const cols=openCols(grid);
+    // win now, else block, else prefer centre
+    for(const who of [2,1]) for(const col of cols){
+      const g=grid.map(r=>r.slice()); drop(g,col,who);
+      if(wins(g,who)) return col;
+    }
+    const safe=cols.filter(col=>{
+      const g=grid.map(r=>r.slice()); drop(g,col,2);
+      return !openCols(g).some(c2=>{ const g2=g.map(r=>r.slice()); drop(g2,c2,1); return wins(g2,1); });
+    });
+    const pool=safe.length?safe:cols;
+    return pool.sort((a,b)=>Math.abs(3-a)-Math.abs(3-b))[0];
+  }
+  function play(col){
+    if(over_||turn!==1) return;
+    if(grid[0][col]) return;
+    drop(grid,col,1); draw();
+    if(wins(grid,1)){ over_=true; const w=gmBest(app.id,(State.gameBest?.[app.id]|0)+1); scoreEl.textContent=w;
+      return gmOverlay(stage,{title:'You win',body:'Four in a row',btn:'Rematch',onGo:start}); }
+    if(!openCols(grid).length){ over_=true; return gmOverlay(stage,{title:'Draw',body:'Board full',btn:'Rematch',onGo:start}); }
+    turn=2;
+    setTimeout(()=>{
+      drop(grid,aiMove(),2); draw(); turn=1;
+      if(wins(grid,2)){ over_=true; gmOverlay(stage,{title:'Computer wins',body:'Try blocking the diagonals',btn:'Rematch',onGo:start}); }
+      else if(!openCols(grid).length){ over_=true; gmOverlay(stage,{title:'Draw',body:'Board full',btn:'Rematch',onGo:start}); }
+    },420);
+  }
+  const colAt=e=>{ const {r,cell,ox}=geom();
+    return Math.max(0,Math.min(CW-1,Math.floor((e.clientX-r.left-ox)/cell))); };
+  cv.addEventListener('pointermove',e=>{ hoverCol=colAt(e); draw(); });
+  cv.addEventListener('pointerleave',()=>{ hoverCol=null; draw(); });
+  cv.addEventListener('click',e=>play(colAt(e)));
+  function start(){ grid=Array.from({length:CH},()=>Array(CW).fill(0)); turn=1; over_=false; draw(); }
+  gmPad(controls,[...Array(7).keys()].map(i=>[String(i+1),()=>play(i)]));
+  start();
+  gmOverlay(stage,{title:'Four in a Row',body:'Tap a column to drop a disc',onGo:()=>{}});
+}
+
+/* ----------------------------------------------------------------- 2048 -- */
+function game2048(app,win){
+  const {stage,controls,scoreEl}=gameChrome(app,win,{sub:'Swipe or arrow keys'});
+  const N=4;
+  let g,score,prev;
+  const host=el('div'); host.style.cssText='position:absolute;inset:0;display:grid;place-items:center';
+  stage.appendChild(host);
+  const board=el('div');
+  board.style.cssText='background:#bbada0;border-radius:10px;padding:7px;display:grid;grid-template-columns:repeat(4,1fr);gap:7px';
+  host.appendChild(board);
+  const COLORS={2:['#eee4da','#776e65'],4:['#ede0c8','#776e65'],8:['#f2b179','#fff'],16:['#f59563','#fff'],
+    32:['#f67c5f','#fff'],64:['#f65e3b','#fff'],128:['#edcf72','#fff'],256:['#edcc61','#fff'],
+    512:['#edc850','#fff'],1024:['#edc53f','#fff'],2048:['#edc22e','#fff']};
+  function draw(){
+    const size=Math.min(stage.getBoundingClientRect().width, stage.getBoundingClientRect().height)-16;
+    const cell=Math.floor((size-7*5)/4);
+    board.innerHTML='';
+    g.flat().forEach(v=>{
+      const [bg,fg]=COLORS[v]||['#3c3a32','#fff'];
+      const d=el('div','',v?String(v):'');
+      d.style.cssText=`width:${cell}px;height:${cell}px;border-radius:6px;display:grid;place-items:center;
+        background:${v?bg:'rgba(238,228,218,.35)'};color:${fg};
+        font-size:${v>=1024?cell*0.3:v>=128?cell*0.36:cell*0.44}px;font-weight:800`;
+      board.appendChild(d);
+    });
+    scoreEl.textContent=score;
+  }
+  function spawn(){
+    const free=[]; g.forEach((row,y)=>row.forEach((v,x)=>!v&&free.push([x,y])));
+    if(!free.length) return;
+    const [x,y]=free[(Math.random()*free.length)|0];
+    g[y][x]=Math.random()<0.9?2:4;
+  }
+  const rot=m=>m[0].map((_,i)=>m.map(r=>r[i]).reverse());
+  function slide(row){
+    const a=row.filter(Boolean); let gained=0;
+    for(let i=0;i<a.length-1;i++) if(a[i]===a[i+1]){ a[i]*=2; gained+=a[i]; a.splice(i+1,1); }
+    while(a.length<N) a.push(0);
+    return {row:a,gained};
+  }
+  function move(dir){
+    prev={g:g.map(r=>r.slice()),score};
+    let m=g.map(r=>r.slice());
+    const turns={left:0,up:1,right:2,down:3}[dir];
+    for(let i=0;i<turns;i++) m=rot(m);
+    let gained=0;
+    m=m.map(r=>{ const s=slide(r); gained+=s.gained; return s.row; });
+    for(let i=0;i<(4-turns)%4;i++) m=rot(m);
+    if(JSON.stringify(m)===JSON.stringify(g)) return;
+    g=m; score+=gained; spawn(); draw();
+    if(g.flat().includes(2048) && !win._won){ win._won=true;
+      gmOverlay(stage,{title:'2048!',body:`Score ${score}`,btn:'Keep Going',onGo:()=>{}}); }
+    if(!canMove()){ gmBest(app.id,score);
+      gmOverlay(stage,{title:'No moves left',body:`Score ${score} · Best ${gmBest(app.id,score)}`,btn:'New Game',onGo:start}); }
+  }
+  function canMove(){
+    if(g.flat().some(v=>!v)) return true;
+    for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+      if(x<N-1&&g[y][x]===g[y][x+1]) return true;
+      if(y<N-1&&g[y][x]===g[y+1][x]) return true;
+    }
+    return false;
+  }
+  function start(){ g=Array.from({length:N},()=>Array(N).fill(0)); score=0; win._won=false; spawn(); spawn(); draw(); }
+  gmSwipe(stage,move);
+  gmKeys(win,{ArrowLeft:()=>move('left'),ArrowRight:()=>move('right'),ArrowUp:()=>move('up'),ArrowDown:()=>move('down')});
+  gmPad(controls,[['←',()=>move('left')],['↑',()=>move('up')],['↓',()=>move('down')],['→',()=>move('right')],
+    ['↺',()=>{ if(prev){ g=prev.g; score=prev.score; prev=null; draw(); } }]]);
+  start();
+  gmOverlay(stage,{title:'2048 Tiles',body:`Best ${gmBest(app.id)}`,onGo:()=>{}});
+}
+
+/* ------------------------------------------------------------- BREAKOUT -- */
+function breakoutGame(app,win){
+  const {stage,controls,scoreEl,accent}=gameChrome(app,win,{sub:'Drag or arrow keys'});
+  const cv=el('canvas'); cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;border-radius:18px';
+  stage.appendChild(cv);
+  const COLS=7,ROWS=5,ROWC=['#ff453a','#ff9f0a','#ffd60a','#30d158','#40c8e0'];
+  let W=0,H=0,bricks,ball,paddle,score,lives,raf,running;
+  function layout(){
+    const r=stage.getBoundingClientRect(); W=r.width; H=r.height;
+    cv.width=W*2; cv.height=H*2;
+  }
+  function reset(full){
+    layout();
+    if(full){ bricks=[]; score=0; lives=3; scoreEl.textContent='0';
+      const bw=(W-20)/COLS, bh=16;
+      for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+        bricks.push({x:10+x*bw,y:40+y*(bh+6),w:bw-5,h:bh,c:ROWC[y],alive:true});
+    }
+    paddle={w:Math.max(58,W*0.24),h:11,x:W/2};
+    ball={x:W/2,y:H-70,vx:(Math.random()<.5?-1:1)*3.1,vy:-3.6,r:6};
+  }
+  function draw(){
+    const c=cv.getContext('2d'); c.setTransform(2,0,0,2,0,0);
+    c.clearRect(0,0,W,H);
+    c.fillStyle='rgba(0,0,0,.34)'; c.fillRect(0,0,W,H);
+    bricks.forEach(b=>{ if(!b.alive) return; c.fillStyle=b.c;
+      c.beginPath(); c.roundRect(b.x,b.y,b.w,b.h,3); c.fill(); });
+    c.fillStyle=accent;
+    c.beginPath(); c.roundRect(paddle.x-paddle.w/2,H-26,paddle.w,paddle.h,6); c.fill();
+    c.fillStyle='#fff'; c.beginPath(); c.arc(ball.x,ball.y,ball.r,0,7); c.fill();
+    c.fillStyle='rgba(255,255,255,.5)'; c.font='11px Inter,system-ui'; c.textAlign='right';
+    c.fillText('Lives '+lives, W-8, 18);
+  }
+  function loop(){
+    if(!running) return;
+    const r=stage.getBoundingClientRect();
+    if(!r.width){ raf=requestAnimationFrame(loop); return; }
+    if(Math.abs(r.width-W)>1||Math.abs(r.height-H)>1) layout();
+    ball.x+=ball.vx; ball.y+=ball.vy;
+    if(ball.x<ball.r||ball.x>W-ball.r){ ball.vx*=-1; ball.x=Math.max(ball.r,Math.min(W-ball.r,ball.x)); }
+    if(ball.y<ball.r) ball.vy*=-1;
+    // paddle
+    if(ball.vy>0 && ball.y+ball.r>=H-26 && ball.y<H-10 &&
+       ball.x>paddle.x-paddle.w/2-4 && ball.x<paddle.x+paddle.w/2+4){
+      const hit=(ball.x-paddle.x)/(paddle.w/2);
+      const sp=Math.min(7.5,Math.hypot(ball.vx,ball.vy)*1.02);
+      const ang=hit*1.05;
+      ball.vx=Math.sin(ang)*sp; ball.vy=-Math.abs(Math.cos(ang)*sp);
+    }
+    // bricks
+    for(const b of bricks){
+      if(!b.alive) continue;
+      if(ball.x>b.x-ball.r&&ball.x<b.x+b.w+ball.r&&ball.y>b.y-ball.r&&ball.y<b.y+b.h+ball.r){
+        b.alive=false; score+=10; scoreEl.textContent=score;
+        const fromSide = ball.x<b.x||ball.x>b.x+b.w;
+        if(fromSide) ball.vx*=-1; else ball.vy*=-1;
+        break;
+      }
+    }
+    if(!bricks.some(b=>b.alive)){ running=false; gmBest(app.id,score);
+      return gmOverlay(stage,{title:'Cleared!',body:`Score ${score}`,btn:'Play Again',onGo:()=>start(true)}); }
+    if(ball.y>H+20){
+      lives--;
+      if(lives<=0){ running=false; gmBest(app.id,score);
+        return gmOverlay(stage,{title:'Game Over',body:`Score ${score} · Best ${gmBest(app.id,score)}`,btn:'Play Again',onGo:()=>start(true)}); }
+      reset(false);
+    }
+    draw();
+    raf=requestAnimationFrame(loop);
+  }
+  const movePaddle=x=>{ paddle.x=Math.max(paddle.w/2,Math.min(W-paddle.w/2,x)); };
+  stage.addEventListener('pointermove',e=>{ if(!e.buttons&&e.pointerType==='mouse') return;
+    const r=stage.getBoundingClientRect(); movePaddle(e.clientX-r.left); });
+  stage.addEventListener('pointerdown',e=>{ const r=stage.getBoundingClientRect(); movePaddle(e.clientX-r.left); });
+  gmKeys(win,{ArrowLeft:()=>movePaddle(paddle.x-26),ArrowRight:()=>movePaddle(paddle.x+26)});
+  gmPad(controls,[['←',()=>movePaddle(paddle.x-30),true],['→',()=>movePaddle(paddle.x+30),true]]);
+  function start(full){ reset(full!==false); running=true; cancelAnimationFrame(raf); loop(); }
+  reset(true); setTimeout(()=>{layout();draw();},60);
+  gmOverlay(stage,{title:'Brick Blitz',body:`Best ${gmBest(app.id)}`,onGo:()=>start(true)});
+}
+
+const GAME_ENGINES={snake:snakeGame,tetris:tetrisGame,wordle:wordleGame,
+  connect4:connect4Game,'2048':game2048,breakout:breakoutGame};
+function gameShell(app,win){
+  const fn=GAME_ENGINES[app.engine]||snakeGame;
+  fn(app,win);
+}
+
+
+/* =========================================================================
+   STOCK APPS
+   ========================================================================= */
+/* =========================================================================
+   PHONE — Favourites / Recents / Contacts / Keypad / Voicemail
+   ========================================================================= */
+const CONTACTS=[
+  {first:'Karma',last:'S',fav:true,phones:[['mobile','(407) 555-0118'],['home','(407) 555-0192']],email:'karma.s@gmail.com',note:'Sunday dinner at 4'},
+  {first:'Jordan',last:'Reyes',fav:true,phones:[['iPhone','(407) 555-0143']],email:'jordan@example.com'},
+  {first:'Spectrum',last:'Support',org:'Charter Communications',fav:true,phones:[['main','(855) 707-7328'],['billing','(833) 267-6094']]},
+  {first:'Dad',last:'',nick:'Dad',fav:true,phones:[['mobile','(407) 555-0177']],email:'m.s@example.com'},
+  {first:'Alicia',last:'Nunez',phones:[['mobile','(321) 555-0164']],email:'alicia.n@example.com'},
+  {first:'Ben',last:'Carter',phones:[['work','(407) 555-0136']]},
+  {first:'Dr.',last:'Whitfield',org:'Orlando Family Medicine',phones:[['work','(407) 555-0110']]},
+  {first:'Elena',last:'Marsh',phones:[['iPhone','(786) 555-0155']],email:'elena@example.com'},
+  {first:'Greg',last:'Patterson',phones:[['mobile','(407) 555-0129']]},
+  {first:'Hannah',last:'Kim',phones:[['iPhone','(407) 555-0188']],email:'hannah.kim@example.com'},
+  {first:'Marcus',last:'Bell',phones:[['mobile','(407) 555-0102']]},
+  {first:'Nina',last:'Okafor',phones:[['iPhone','(407) 555-0173']],email:'nina.o@example.com'},
+  {first:'Pizza',last:'Roma',org:'Pizza Roma',phones:[['main','(407) 555-0199']]},
+  {first:'Tasha',last:'Green',phones:[['mobile','(407) 555-0147']]},
+  {first:'Victor',last:'Alvarez',phones:[['work','(407) 555-0121']],email:'valvarez@example.com'}
+];
+const contactName=c=>((c.first+' '+(c.last||'')).trim());
+const contactBy=n=>CONTACTS.find(c=>contactName(c)===n||c.nick===n);
+function defaultRecents(){
+  const now=Date.now(), M=60000;
+  return [
+    {who:'Karma S',        type:'missed',   label:'mobile', at:now-14*M},
+    {who:'Jordan Reyes',   type:'outgoing', label:'iPhone', at:now-92*M, dur:'4:12'},
+    {who:'Spectrum Support',type:'incoming',label:'main',   at:now-5*60*M, dur:'11:38'},
+    {who:'(407) 555-0164', type:'outgoing', label:'mobile', at:now-8*60*M, dur:'0:44'},
+    {who:'Karma S',        type:'incoming', label:'mobile', at:now-26*60*M, dur:'19:02'},
+    {who:'Unknown',        type:'missed',   label:'',       at:now-31*60*M},
+    {who:'Dad',            type:'outgoing', label:'mobile', at:now-2*1440*M, dur:'2:35'},
+    {who:'Pizza Roma',     type:'outgoing', label:'main',   at:now-3*1440*M, dur:'1:07'},
+    {who:'Hannah Kim',     type:'incoming', label:'iPhone', at:now-4*1440*M, dur:'8:20'},
+    {who:'(855) 707-7328', type:'missed',   label:'',       at:now-6*1440*M}
+  ];
+}
+function defaultVoicemails(){
+  const now=Date.now(), M=60000;
+  return [
+    {who:'Karma S',at:now-14*M,dur:'0:24',unheard:true,
+     text:'Hey, it’s Karma. Just checking that you’re still coming Sunday — call me back when you get a minute.'},
+    {who:'Spectrum Support',at:now-2*1440*M,dur:'0:41',unheard:true,
+     text:'This is a courtesy call from Spectrum regarding scheduled maintenance in your area on Thursday between 1 and 5 AM. No action is needed.'},
+    {who:'Dr. Whitfield',at:now-9*1440*M,dur:'0:18',unheard:false,
+     text:'Hello, this is Orlando Family Medicine confirming your appointment next Tuesday at 10:15. Please call if you need to reschedule.'}
+  ];
+}
+function PH(){ if(!State.phone){ State.phone={recents:defaultRecents(),voicemails:defaultVoicemails(),favorites:null}; save(); } return State.phone; }
+function relTime(ts){
+  const d=new Date(ts), now=new Date();
+  if(d.toDateString()===now.toDateString()) return d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  const y=new Date(now-864e5); if(d.toDateString()===y.toDateString()) return 'Yesterday';
+  if(now-ts<6*864e5) return d.toLocaleDateString(undefined,{weekday:'long'});
+  return d.toLocaleDateString(undefined,{month:'numeric',day:'numeric',year:'2-digit'});
+}
+function numberFor(who){
+  const c=contactBy(who);
+  if(c) return c.phones[0][1];
+  return /\d/.test(who)? who : '';
+}
+const PHIC={
+  fav:'<path d="M12 3.6l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.8l5.9-.9z"/>',
+  recents:'<circle cx="12" cy="12" r="9"/><path d="M12 6.6V12l3.6 2.2"/>',
+  contacts:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="9.6" r="2.9"/><path d="M6.4 19a6.4 6.4 0 0111.2 0"/>',
+  keypad:'<circle cx="6" cy="6" r="1.7"/><circle cx="12" cy="6" r="1.7"/><circle cx="18" cy="6" r="1.7"/><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/><circle cx="6" cy="18" r="1.7"/><circle cx="12" cy="18" r="1.7"/><circle cx="18" cy="18" r="1.7"/>',
+  vm:'<rect x="2.5" y="9" width="19" height="9" rx="4.5"/><circle cx="7" cy="13.5" r="2"/><circle cx="17" cy="13.5" r="2"/><path d="M7 18h10"/>'
+};
+const callArrow={
+  incoming:'<path d="M17 7L7.6 16.4M8.4 8.6v8h8" stroke-linecap="round"/>',
+  outgoing:'<path d="M7 17l9.4-9.4M15.6 15.4v-8h-8" stroke-linecap="round"/>',
+  missed:'<path d="M17 7L7.6 16.4M8.4 8.6v8h8" stroke-linecap="round"/>'
+};
+function avatarFor(name,size=40){
+  const c=contactBy(name);
+  const init = c? ((c.first[0]||'')+((c.last||' ')[0]||'')).toUpperCase().trim() : (/\d/.test(name)?'#':initials(name));
+  return `<div class="avatar" style="width:${size}px;height:${size}px;font-size:${size*0.4}px;background:${colorFor(name)}">${esc(init||'?')}</div>`;
+}
+defineApp({
+  id:'phone', name:'Phone', bg:'linear-gradient(180deg,#6ce67d,#12b83a)',
+  glyph:'',   // real artwork is attached by applyAppArt() at boot
+  mount(win,inst){
+    PH();
+    const wrap=el('div'); wrap.style.cssText='flex:1;position:relative;overflow:hidden';
+    win.appendChild(wrap);
+    const tabs=[
+      {id:'fav',   label:'Favourites', icon:sf(PHIC.fav,{size:25}),      root:()=>favoritesView()},
+      {id:'rec',   label:'Recents',    icon:sf(PHIC.recents,{size:25}),  root:()=>recentsView()},
+      {id:'con',   label:'Contacts',   icon:sf(PHIC.contacts,{size:25}), root:()=>contactsView()},
+      {id:'key',   label:'Keypad',     icon:sf(PHIC.keypad,{size:25}),   root:()=>keypadView()},
+      {id:'vm',    label:'Voicemail',  icon:sf(PHIC.vm,{size:25}),       root:()=>voicemailView()}
+    ];
+    const navs={};
+    tabs.forEach(t=>{ const host=el('div'); host.style.cssText='position:absolute;inset:0;display:none';
+      wrap.appendChild(host); navs[t.id]={host,nav:new Nav(host),built:false,def:t}; });
+    const bar=el('div','tabbar');
+    tabs.forEach(t=>{ const b=el('button','',`${t.icon}<span>${t.label}</span>`);
+      b.onclick=()=>{ if(inst.tab===t.id) navs[t.id].nav.popToRoot(); setTab(t.id); }; bar.appendChild(b); });
+    win.appendChild(bar);
+    function setTab(id){
+      inst.tab=id;
+      tabs.forEach((t,i)=>{ navs[t.id].host.style.display=t.id===id?'block':'none';
+        bar.children[i].classList.toggle('on',t.id===id); });
+      const n=navs[id];
+      if(!n.built){ n.nav.setRoot(n.def.root()); n.built=true; } else n.nav.refresh();
+    }
+    inst.setTab=setTab; inst.navs=navs;
+    setTab('key');
+    updateVMBadge();
+  },
+  onShow(inst){ inst.navs[inst.tab].nav.refresh(); }
+});
+function updateVMBadge(){ setBadge('phone', PH().voicemails.filter(v=>v.unheard).length); }
+
+function callRow(name,{sub,tint,nav,right}={}){
+  const r=el('div','wf-row');
+  r.innerHTML=`${avatarFor(name)}
+    <div class="wf-name" style="${tint?'color:'+tint:''}">${esc(name)}${sub?`<div class="sub">${sub}</div>`:''}</div>
+    ${right||''}<button class="wf-info" aria-label="More info">i</button>`;
+  r.querySelector('.wf-info').onclick=e=>{ e.stopPropagation(); nav.push(contactDetailView(name)); };
+  r.onclick=e=>{ if(!e.target.closest('.wf-info')) startOutgoingCall(name,numberFor(name)); };
+  return r;
+}
+function favoritesView(){
+  return {title:'Favourites', largeTitle:true, shortTitle:'Favourites',
+    left:[{text:'Edit',onClick:()=>toast('Reordering favourites is simulated')}],
+    right:[{html:sf('<path d="M12 5v14M5 12h14"/>',{w:2.2,size:20}),onClick:n=>n.push(contactsView(true))}],
+    build(b,nav){
+      const favs=CONTACTS.filter(c=>c.fav);
+      const g=el('div','grp');
+      favs.forEach(c=>{
+        const nm=c.nick||contactName(c);
+        g.appendChild(callRow(nm,{sub:c.phones[0][0],nav}));
+      });
+      b.appendChild(g);
+      b.appendChild(el('div','grp-f','Tap a favourite to call. Tap ⓘ for the contact card.'));
+    }};
+}
+function recentsView(){
+  let filter='All';
+  return {title:'Recents', largeTitle:true, shortTitle:'Recents',
+    left:[{text:'Edit',onClick:()=>toast('Editing recents is simulated')}],
+    build(b,nav){
+      const seg=segmented(['All','Missed'],filter,v=>{ filter=v; nav.refresh(); });
+      seg.style.margin='4px 16px 12px'; b.appendChild(seg);
+      const list=PH().recents.filter(r=>filter==='All'||r.type==='missed');
+      if(!list.length){ b.appendChild(h('<div class="empty"><h3>No Missed Calls</h3></div>')); return; }
+      const g=el('div','grp');
+      list.forEach(r=>{
+        const missed=r.type==='missed';
+        const row=callRow(r.who,{
+          sub:`<span style="display:inline-flex;align-items:center;gap:4px">
+                 <span style="display:inline-block;transform:${r.type==='missed'?'none':'none'}">
+                 ${sf(callArrow[r.type],{w:1.9,size:13})}</span>
+                 ${esc(r.type.charAt(0).toUpperCase()+r.type.slice(1))}${r.label?' · '+esc(r.label):''}${r.dur?' · '+r.dur:''}</span>`,
+          tint:missed?'var(--sysred)':'', nav,
+          right:`<div class="muted" style="font-size:15px;margin-right:2px">${esc(relTime(r.at))}</div>`});
+        g.appendChild(row);
+      });
+      b.appendChild(g);
+    }};
+}
+function contactsView(picking){
+  return {title:'Contacts', largeTitle:true, shortTitle:'Contacts',
+    left: picking?[{text:'Cancel',onClick:n=>n.pop()}]:[],
+    right: picking?[]:[{html:sf('<path d="M12 5v14M5 12h14"/>',{w:2.2,size:20}),onClick:()=>toast('New contact is simulated')}],
+    build(b,nav){
+      const sf2=el('div','searchfield',`${SVG.search}<input placeholder="Search">`);
+      b.appendChild(sf2);
+      const me=el('div','grp');
+      const meRow=el('div','wf-row');
+      meRow.innerHTML=`${avatarFor('Isaiah S.')}
+        <div class="wf-name">Isaiah S.<div class="sub">My Card</div></div>
+        <div class="chev">${SVG.chev}</div>`;
+      meRow.onclick=()=>nav.push(contactDetailView('Isaiah S.'));
+      me.appendChild(meRow);
+      b.appendChild(me);
+      const holder=el('div'); b.appendChild(holder);
+      const draw=q=>{
+        holder.innerHTML='';
+        const list=CONTACTS.filter(c=>!q||(contactName(c)+' '+(c.org||'')+' '+(c.nick||'')).toLowerCase().includes(q.toLowerCase()))
+          .sort((a,c)=>(a.last||a.first).localeCompare(c.last||c.first));
+        if(!list.length){ holder.appendChild(h('<div class="empty"><h3>No Contacts Found</h3></div>')); return; }
+        const groups={};
+        list.forEach(c=>{ const k=(c.last||c.first)[0].toUpperCase(); (groups[k]=groups[k]||[]).push(c); });
+        Object.keys(groups).sort().forEach(k=>{
+          holder.appendChild(el('div','grp-h',k));
+          const g=el('div','grp');
+          groups[k].forEach(c=>{
+            const row=el('div','row');
+            row.innerHTML=`<div class="lbl"><span style="font-weight:400">${esc(c.first)}</span>
+              <b>${esc(c.last||'')}</b>${c.org?`<div class="sub">${esc(c.org)}</div>`:''}</div>`;
+            row.onclick=()=>{ if(picking){ nav.pop(); toast(contactName(c)+' added to Favourites'); c.fav=true; }
+              else nav.push(contactDetailView(contactName(c))); };
+            g.appendChild(row);
+          });
+          holder.appendChild(g);
+        });
+      };
+      sf2.querySelector('input').oninput=e=>draw(e.target.value);
+      draw('');
+    }};
+}
+function contactDetailView(name){
+  return {title:'', backLabel:'Back', shortTitle:'Contact',
+    right:[{text:'Edit',onClick:()=>toast('Editing contacts is simulated')}],
+    build(b,nav){
+      const me = name==='Isaiah S.';
+      const c = contactBy(name);
+      const phones = c? c.phones : (me? [['mobile','(407) 555-0142']] : [['mobile',numberFor(name)||name]]);
+      const head=el('div'); head.style.cssText='text-align:center;padding:4px 20px 18px';
+      head.innerHTML=`<div style="display:flex;justify-content:center;margin-bottom:10px">${avatarFor(name,96)}</div>
+        <div style="font-size:25px;font-weight:600;letter-spacing:-.4px">${esc(c?contactName(c):name)}</div>
+        ${c&&c.org?`<div class="muted" style="font-size:15px;margin-top:2px">${esc(c.org)}</div>`:''}`;
+      b.appendChild(head);
+
+      const acts=el('div');
+      acts.style.cssText='display:flex;justify-content:center;gap:22px;padding:0 20px 20px';
+      [['message',sf('<path d="M12 4.2c4.7 0 8.5 3 8.5 6.8s-3.8 6.8-8.5 6.8a10 10 0 01-2.6-.3l-4 1.7 1.2-3.1a6.6 6.6 0 01-2.6-5C4 7.2 7.8 4.2 12 4.2z"/>',{size:21}),
+        ()=>{ goHome(); setTimeout(()=>openApp('messages'),300); }],
+       ['call',sf('<path d="M6.6 3.5l2.6.6 1.2 3.6-2 1.5a11.6 11.6 0 006 6l1.5-2 3.6 1.2.6 2.6a2 2 0 01-2.1 2.4C11 19 5 13 3.9 5.6A2 2 0 016.6 3.5z" fill="currentColor" stroke="none"/>',{fill:true,size:21}),
+        ()=>startOutgoingCall(name,phones[0][1])],
+       ['video',sf('<rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M15.5 11l6-3.4v8.8l-6-3.4z"/>',{size:21}),
+        ()=>toast('FaceTime is simulated')],
+       ['mail',sf('<rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M3.5 7l7.3 5.6a2 2 0 002.4 0L20.5 7"/>',{size:21}),
+        ()=>{ const e=c&&c.email; if(!e) return toast('No email address');
+          goHome(); setTimeout(()=>{ openApp('mail'); setTimeout(()=>composeMail({to:e}),420); },320); }]
+      ].forEach(([lbl,ic,fn])=>{
+        const d=el('div');
+        d.style.cssText='display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;color:var(--sysblue);cursor:pointer';
+        d.innerHTML=`<div style="width:56px;height:44px;border-radius:11px;background:var(--group);display:grid;place-items:center">${ic}</div>${lbl}`;
+        d.onclick=fn; acts.appendChild(d);
+      });
+      b.appendChild(acts);
+
+      group(b,{rows:phones.map(([l,n])=>({
+        labelHTML:`<div class="sub" style="margin:0 0 1px">${esc(l)}</div><div style="color:var(--sysblue)">${esc(n)}</div>`,
+        chevron:false, onClick:()=>startOutgoingCall(name,n)}))});
+      if(c&&c.email) group(b,{rows:[{labelHTML:`<div class="sub" style="margin:0 0 1px">email</div>
+        <div style="color:var(--sysblue)">${esc(c.email)}</div>`,chevron:false,
+        onClick:()=>{ goHome(); setTimeout(()=>{ openApp('mail'); setTimeout(()=>composeMail({to:c.email}),420); },320); }}]});
+      if(c&&c.note) group(b,{header:'Notes',rows:[{labelHTML:esc(c.note),chevron:false}]});
+
+      const hist=PH().recents.filter(r=>r.who===name).slice(0,4);
+      if(hist.length) group(b,{header:'Call History',rows:hist.map(r=>({
+        labelHTML:`${esc(r.type.charAt(0).toUpperCase()+r.type.slice(1))}${r.dur?' · '+r.dur:''}`,
+        value:relTime(r.at), chevron:false}))});
+
+      if(!me) group(b,{rows:[
+        {label:c&&c.fav?'Remove from Favourites':'Add to Favourites',cls:'blue',onClick:()=>{
+          if(c){ c.fav=!c.fav; toast(c.fav?'Added to Favourites':'Removed from Favourites'); nav.refresh(); } }},
+        {label:'Share Contact',cls:'blue',onClick:()=>toast('Share sheet is simulated')},
+        {label:'Block this Caller',cls:'destructive',onClick:()=>alertBox({title:'Block this Caller?',
+          message:'You will not receive phone calls, messages, or FaceTime from this person.',
+          buttons:[{text:'Cancel'},{text:'Block Contact',style:'red bold',onClick:()=>toast('Contact blocked')}]})}
+      ]});
+    }};
+}
+function keypadView(){
+  let digits='';
+  return {title:'', noBar:true, build(b,nav,view){
+    b.style.overflow='hidden';
+    const d=el('div');
+    d.style.cssText='display:flex;flex-direction:column;height:100%;padding-top:70px;text-align:center';
+
+    /* number readout — grows from empty like iOS, with Add Number underneath */
+    const dispWrap=el('div'); dispWrap.style.cssText='flex:none;height:96px;display:flex;flex-direction:column;justify-content:flex-end';
+    const disp=el('div');
+    disp.style.cssText='font-size:34px;font-weight:400;letter-spacing:.6px;padding:0 44px;overflow:hidden;white-space:nowrap;font-variant-numeric:tabular-nums;min-height:44px;display:flex;align-items:center;justify-content:center';
+    const hint=el('div'); hint.style.cssText='font-size:14px;height:24px;color:var(--sysblue)';
+    dispWrap.append(disp,hint); d.appendChild(dispWrap);
+
+    const fmt=v=>{
+      const n=v.replace(/\D/g,'');
+      if(v!==n) return v;
+      if(n.length<=3) return n;
+      if(n.length<=7) return `${n.slice(0,3)}-${n.slice(3)}`;
+      if(n.length<=10) return `(${n.slice(0,3)}) ${n.slice(3,6)}-${n.slice(6)}`;
+      return `+${n.slice(0,n.length-10)} (${n.slice(-10,-7)}) ${n.slice(-7,-4)}-${n.slice(-4)}`;
+    };
+    const paint=()=>{
+      disp.textContent=fmt(digits);
+      disp.style.fontSize = digits.length>13? '26px' : '34px';
+      const c=CONTACTS.find(x=>x.phones.some(p=>p[1].replace(/\D/g,'')===digits.replace(/\D/g,'')));
+      hint.textContent = c? contactName(c) : (digits.replace(/\D/g,'').length>=7?'Add Number':'');
+      hint.style.color = c? 'var(--txt2)':'var(--sysblue)';
+      del.style.visibility = digits? 'visible':'hidden';
+    };
+
+    /* the pad — 3×4 grid of true circles, digit dead-centre, letters tucked under */
+    const pad=el('div');
+    pad.style.cssText='flex:none;display:grid;grid-template-columns:repeat(3,78px);gap:16px 24px;justify-content:center;padding:6px 0 0';
+    const keys=[['1',' '],['2','A B C'],['3','D E F'],['4','G H I'],['5','J K L'],['6','M N O'],
+                ['7','P Q R S'],['8','T U V'],['9','W X Y Z'],['*',' '],['0','+'],['#',' ']];
+    keys.forEach(([n,sub])=>{
+      const k=el('button');
+      k.style.cssText=`width:78px;height:78px;border-radius:50%;background:var(--bg3);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;transition:background .12s`;
+      const big=el('div','', n==='*'?'✻':esc(n));
+      big.style.cssText=`font-size:${/[0-9]/.test(n)?'34px':'30px'};font-weight:400;line-height:1;font-variant-numeric:tabular-nums`;
+      const small=el('div','',sub);
+      small.style.cssText='font-size:9px;font-weight:600;letter-spacing:1.6px;color:var(--txt2);margin-top:3px;height:11px';
+      if(n==='1') small.innerHTML='&nbsp;';
+      k.append(big,small);
+      k.onpointerdown=()=>k.style.background='color-mix(in srgb,var(--bg3) 55%,#98989d)';
+      k.onpointerup=k.onpointerleave=()=>k.style.background='var(--bg3)';
+      k.onclick=()=>{ digits+=n; paint(); if(State.settings.hapticFeedback&&navigator.vibrate)navigator.vibrate(3); };
+      let lp;
+      if(n==='0'){ k.addEventListener('pointerdown',()=>{lp=setTimeout(()=>{digits=digits.slice(0,-1)+'+';paint();},550);});
+        ['pointerup','pointerleave'].forEach(ev=>k.addEventListener(ev,()=>clearTimeout(lp))); }
+      pad.appendChild(k);
+    });
+    d.appendChild(pad);
+
+    /* call row: green call under the centre column, delete under the right column */
+    const row=el('div');
+    row.style.cssText='flex:none;display:grid;grid-template-columns:repeat(3,78px);gap:16px 24px;justify-content:center;padding:16px 0 0;align-items:center';
+    const call=el('button');
+    call.style.cssText='width:78px;height:78px;border-radius:50%;background:#30d158;color:#fff;display:grid;place-items:center;grid-column:2';
+    call.innerHTML=sf('<path d="M6.6 3.5l2.6.6 1.2 3.6-2 1.5a11.6 11.6 0 006 6l1.5-2 3.6 1.2.6 2.6a2 2 0 01-2.1 2.4C11 19 5 13 3.9 5.6A2 2 0 016.6 3.5z" fill="currentColor" stroke="none"/>',{fill:true,size:32});
+    call.onclick=()=>{
+      if(!digits){ const last=PH().recents.find(r=>numberFor(r.who)); if(last){ digits=numberFor(last.who).replace(/\D/g,''); paint(); } return; }
+      const c=CONTACTS.find(x=>x.phones.some(p=>p[1].replace(/\D/g,'')===digits.replace(/\D/g,'')));
+      startOutgoingCall(c?(c.nick||contactName(c)):fmt(digits), fmt(digits));
+      digits=''; paint();
+    };
+    const del=el('button');
+    del.style.cssText='grid-column:3;justify-self:center;color:var(--txt2);padding:12px';
+    del.innerHTML=sf('<path d="M9 5h10a2 2 0 012 2v10a2 2 0 01-2 2H9L2.5 12z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/>',{size:26});
+    del.onclick=()=>{ digits=digits.slice(0,-1); paint(); };
+    let lpDel; del.addEventListener('pointerdown',()=>{lpDel=setTimeout(()=>{digits='';paint();},600);});
+    ['pointerup','pointerleave'].forEach(ev=>del.addEventListener(ev,()=>clearTimeout(lpDel)));
+    row.appendChild(call); row.appendChild(del);
+    d.appendChild(row);
+
+    b.appendChild(d);
+    paint();
+  }};
+}
+function voicemailView(){
+  return {title:'Voicemail', largeTitle:true, shortTitle:'Voicemail',
+    left:[{text:'Greeting',onClick:()=>toast('Custom greeting is simulated')}],
+    right:[{text:'Edit',onClick:()=>toast('Editing voicemail is simulated')}],
+    build(b,nav){
+      const vms=PH().voicemails;
+      if(!vms.length){ b.appendChild(h('<div class="empty"><h3>No Voicemail</h3></div>')); return; }
+      const g=el('div','grp');
+      vms.forEach((v,i)=>{
+        const row=el('div');
+        row.style.cssText='padding:11px 14px;position:relative;background:var(--group);cursor:pointer';
+        if(i) row.style.borderTop='.5px solid var(--sep)';
+        row.innerHTML=`
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:10px;height:10px;border-radius:50%;background:var(--sysblue);visibility:${v.unheard?'visible':'hidden'}"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:17px;font-weight:${v.unheard?600:400}">${esc(v.who)}</div>
+              <div class="sub" style="color:var(--txt2);font-size:13px">${esc(numberFor(v.who)||'Unknown')}</div>
+            </div>
+            <div style="text-align:right"><div class="muted" style="font-size:14px">${esc(relTime(v.at))}</div>
+              <div class="muted" style="font-size:13px">${v.dur}</div></div>
+          </div>
+          <div class="vm-body" style="display:none;padding:12px 0 4px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <button class="vm-play" style="color:var(--sysblue)">${sf('<path d="M8 5.5l11 6.5-11 6.5z" fill="currentColor" stroke="none"/>',{fill:true,size:24})}</button>
+              <div style="flex:1;height:4px;border-radius:2px;background:var(--bg3);overflow:hidden">
+                <div class="vm-fill" style="width:0;height:100%;background:var(--sysblue);transition:width .3s linear"></div></div>
+              <div class="muted" style="font-size:12px">${v.dur}</div>
+              <button class="vm-spk" style="color:var(--sysblue)">${sf('<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/><path d="M15.5 9.2a4 4 0 010 5.6"/>',{size:20})}</button>
+            </div>
+            <div style="font-size:14px;line-height:1.45;color:var(--txt);margin-top:10px">
+              <b style="font-size:12px;color:var(--txt2);text-transform:uppercase;letter-spacing:.4px">Transcription</b><br>${esc(v.text)}</div>
+            <div style="display:flex;gap:18px;margin-top:12px;color:var(--sysblue);font-size:15px">
+              <button class="vm-call">Call Back</button><button class="vm-del" style="color:var(--sysred)">Delete</button></div>
+          </div>`;
+        row.onclick=e=>{
+          if(e.target.closest('button')) return;
+          const body=row.querySelector('.vm-body');
+          const open=body.style.display!=='none';
+          $$('.vm-body',g).forEach(x=>x.style.display='none');
+          body.style.display=open?'none':'block';
+          if(!open && v.unheard){ v.unheard=false; save(); updateVMBadge(); }
+        };
+        row.querySelector('.vm-play').onclick=()=>{
+          const f=row.querySelector('.vm-fill');
+          f.style.width='0'; requestAnimationFrame(()=>{ f.style.transition='width 2.4s linear'; f.style.width='100%'; });
+          if(v.unheard){ v.unheard=false; save(); updateVMBadge(); nav.refresh(); }
+          toast('Playing voicemail');
+        };
+        row.querySelector('.vm-spk').onclick=()=>toast('Speaker on');
+        row.querySelector('.vm-call').onclick=()=>startOutgoingCall(v.who,numberFor(v.who));
+        row.querySelector('.vm-del').onclick=()=>{
+          PH().voicemails=PH().voicemails.filter(x=>x!==v); save(); updateVMBadge(); nav.refresh(); toast('Voicemail deleted');
+        };
+        g.appendChild(row);
+      });
+      b.appendChild(g);
+      b.appendChild(el('div','grp-f','Deleted messages remain available for 30 days.'));
+    }};
+}
+
+
+function defaultThreads(){ return [
+  {n:'Karma',msgs:[['in','Call me when you get a chance 💙',1],['out','Just got out of work — calling now',0]]},
+  {n:'Spectrum',msgs:[['in','Your appointment is confirmed for Thu 8–10 AM. Reply C to cancel.',1]]},
+  {n:'Jordan',msgs:[['in','you get Max working on the tv?',1],['out','yeah installed it on my phone too',0],['in','clutch. game night sunday?',1]]},
+  {n:'Delivery',msgs:[['in','Your package was delivered to the front door.',1]]}
+];}
+function MSG(){ if(!State.threads){ State.threads=defaultThreads(); save(); } return State.threads; }
+defineApp({id:'messages',name:'Messages',bg:'linear-gradient(180deg,#6ce67d,#17b02f)',
+  glyph:'<div style="font-size:34px">💬</div>',
+  mount(win,inst){
+    const nav=new Nav(win); inst.nav=nav;
+    nav.setRoot({title:'Messages',largeTitle:true,
+      right:[{html:sf('<path d="M4 20h4.2L20 8.2a2.1 2.1 0 00-3-3L5.2 17z"/><path d="M14.5 6.5l3 3"/>',{size:20}),
+        onClick:()=>toast('New message')}],build(b,n){
+      b.appendChild(el('div','searchfield',`${SVG.search}<input placeholder="Search">`));
+      MSG().forEach(t=>{
+        const last=t.msgs[t.msgs.length-1];
+        /* a thread is unread if ANY message is — not just the last one, which
+           is often your own reply */
+        const unread=t.msgs.some(m=>m[2]);
+        const r=el('div','ml-row'+(unread?' unread':''));
+        r.innerHTML=`<div class="ml-dot"></div>
+          <div style="display:flex;gap:10px;flex:1;min-width:0">
+          <div class="avatar" style="background:${colorFor(t.n)}">${esc(initials(t.n))}</div>
+          <div class="ml-main"><div class="ml-from">${esc(t.n)}<span>${fmtDate(t.at||Date.now()-3600e3)} ${SVG.chev}</span></div>
+          <div class="ml-prev">${esc(last[1])}</div></div></div>`;
+        r.onclick=()=>{
+          t.msgs.forEach(m=>m[2]=0); save();
+          r.classList.remove('unread');          // clear it straight away
+          syncMsgBadge();
+          n.push(threadView(t));
+        };
+        b.appendChild(r);
+      });
+    },
+    onReturn(body,nav){ nav.refresh(); }});      // and again when you come back
+  },
+  onShow(inst){ inst.nav.refresh(); syncMsgBadge(); }});
+function syncMsgBadge(){
+  setBadge('messages', MSG().reduce((a,t)=>a+t.msgs.filter(m=>m[2]).length,0));
+}
+function threadView(t){
+  const shortcode=/^\d{5,6}$/.test(t.n);
+  return {title:t.n, build(b,nav,view){
+    const wrap=el('div'); wrap.style.padding='14px';
+    if(shortcode) wrap.appendChild(h(`<div style="text-align:center;color:var(--txt2);font-size:12px;padding:4px 20px 12px;line-height:1.4">
+      Text Message · ${esc(t.n)}<br>This sender is not in your contacts.</div>`));
+    t.msgs.forEach(m=>{
+      const line=el('div');
+      const bub=el('div','',esc(m[1]));
+      bub.style.cssText=`max-width:78%;padding:9px 14px;border-radius:19px;margin:6px 0;font-size:16px;line-height:1.32;
+        white-space:pre-wrap;${m[0]==='in'?'background:var(--bg3);':'background:#0a84ff;color:#fff;margin-left:auto;'}`;
+      line.appendChild(bub);
+      // iOS highlights a verification code and offers Copy Code — no prompt, no pressure
+      const code = m[0]==='in' ? codeIn(m[1]) : null;
+      if(code){
+        bub.innerHTML = esc(m[1]).replace(code,
+          `<b style="letter-spacing:1px;text-decoration:underline;text-underline-offset:3px">${code}</b>`);
+        const act=el('button','',`${sf('<rect x="8" y="8" width="12" height="12" rx="2.6"/><path d="M16 8V5.6A1.6 1.6 0 0014.4 4H5.6A1.6 1.6 0 004 5.6v8.8A1.6 1.6 0 005.6 16H8"/>',{size:14})}<span>Copy Code</span>`);
+        act.style.cssText='display:flex;align-items:center;gap:6px;color:var(--sysblue);font-size:13px;font-weight:600;margin:2px 0 8px 6px';
+        act.onclick=()=>{
+          if(navigator.clipboard) navigator.clipboard.writeText(code).then(()=>toast('Copied '+code),()=>toast('Code: '+code));
+          else toast('Code: '+code);
+        };
+        line.appendChild(act);
+      }
+      wrap.appendChild(line);
+    });
+    b.appendChild(wrap);
+    const bar=el('div');
+    bar.style.cssText='flex:none;display:flex;gap:8px;padding:10px 12px 28px;border-top:.5px solid var(--sep);align-items:center';
+    const i=el('input'); i.placeholder='iMessage';
+    i.style.cssText='flex:1;background:var(--bg3);border-radius:18px;padding:9px 14px';
+    const s=el('button','','⬆'); s.style.cssText='width:32px;height:32px;border-radius:50%;background:#0a84ff;color:#fff';
+    s.onclick=()=>{ if(!i.value.trim())return; t.msgs.push(['out',i.value,0]); i.value=''; nav.pop(); nav.push(threadView(t)); };
+    i.onkeydown=e=>{ if(e.key==='Enter') s.click(); };
+    bar.append(i,s); view.tabbar=bar; view._page.appendChild(bar);
+  }};
+}
+/* =========================================================================
+   PHOTOS — real photography via picsum.photos (seeded, stable URLs) with a
+   graceful gradient fallback when offline. Albums for Nature and Animals use
+   loremflickr keyword feeds.
+   ========================================================================= */
+const PHOTO_SEEDS=['forest','mountain','lake','coast','desert','meadow','canyon','falls','glacier','reef',
+  'aurora','dunes','valley','ridge','grove','marsh','cliff','fjord','prairie','tundra',
+  'oak','pine','fern','moss','river','creek','summit','shore','trail','bloom',
+  'mist','dawn','dusk','storm','snow','rain'];
+function photoURL(i,size=400){ return `https://picsum.photos/seed/${PHOTO_SEEDS[i%PHOTO_SEEDS.length]}${Math.floor(i/PHOTO_SEEDS.length)||''}/${size}/${size}`; }
+function animalURL(i,size=400){ return `https://loremflickr.com/${size}/${size}/animal,wildlife?lock=${i+7}`; }
+function photoCell(src,i,fallbackHue){
+  const c=el('div','ph-cell');
+  c.style.background=`linear-gradient(${i*29}deg,hsl(${(fallbackHue+i*31)%360} 45% 40%),hsl(${(fallbackHue+i*31+60)%360} 45% 25%))`;
+  const img=el('img');
+  img.loading='lazy'; img.src=src;
+  img.style.cssText='width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .4s';
+  img.onload=()=>img.style.opacity='1';
+  img.onerror=()=>img.remove();     // offline → tasteful gradient stays
+  c.appendChild(img);
+  return c;
+}
+defineApp({id:'photos',name:'Photos',bg:'linear-gradient(135deg,#fff,#f2f2f2)',
+  glyph:`<svg viewBox="0 0 100 100" style="width:82%">
+    ${['#f9c22e','#f68b1f','#ee3b3b','#c2379b','#7b3fd4','#2f7ee0','#22b5c8','#4cc35a'].map((c,i)=>
+      `<ellipse cx="50" cy="50" rx="7.4" ry="19" transform="rotate(${i*45} 50 32)" fill="${c}" opacity=".82"/>`).join('')}</svg>`,
+  mount(win,inst){
+    const nav=new Nav(win); inst.nav=nav;
+    nav.setRoot(photosLibraryView());
+  },
+  onShow(inst){ inst.nav.refresh(); }
+});
+function photosLibraryView(){
+  let mode='Years'; // display only
+  return {title:'Library', largeTitle:true, shortTitle:'Library',
+    right:[{text:'Select',onClick:()=>toast('Selection is simulated')}],
+    build(b,nav){
+      /* albums rail */
+      b.appendChild(sectionHeader('Albums',()=>{}));
+      const rail=el('div','hscroll'); rail.style.padding='0 20px 12px';
+      [['Recents',photoURL(3,300),()=>nav.push(photoGridView('Recents',36,photoURL))],
+       ['Nature',photoURL(0,300),()=>nav.push(photoGridView('Nature',24,photoURL))],
+       ['Animals',animalURL(1,300),()=>nav.push(photoGridView('Animals',18,animalURL))],
+       ['Favourites',photoURL(11,300),()=>nav.push(photoGridView('Favourites',9,photoURL))]]
+      .forEach(([name,src,go],i)=>{
+        const c=el('div','hcard'); c.style.minWidth='128px';
+        const cell=photoCell(src,i+2,120);
+        cell.style.cssText+='height:128px;border-radius:14px;overflow:hidden;aspect-ratio:auto';
+        c.appendChild(cell);
+        c.appendChild(h(`<div style="font-size:14px;font-weight:500;margin-top:6px">${name}</div>
+          <div class="muted" style="font-size:12px">${[36,24,18,9][i]} items</div>`));
+        c.onclick=go;
+        rail.appendChild(c);
+      });
+      b.appendChild(rail);
+      /* main grid */
+      b.appendChild(sectionHeader('Days'));
+      const g=el('div','ph-grid');
+      for(let i=0;i<36;i++){
+        const c=photoCell(photoURL(i),i,80);
+        c.onclick=()=>nav.push(photoDetailView(photoURL(i,900),i,'Recents'));
+        g.appendChild(c);
+      }
+      b.appendChild(g);
+      b.appendChild(el('div','grp-f','Photography via picsum.photos / loremflickr — offline you’ll see placeholder tiles.'));
+    }};
+}
+function photoGridView(title,count,urlFn){
+  return {title, shortTitle:title, build(b,nav){
+    const g=el('div','ph-grid');
+    for(let i=0;i<count;i++){
+      const c=photoCell(urlFn(i),i,title==='Animals'?30:200);
+      c.onclick=()=>nav.push(photoDetailView(urlFn(i,900),i,title));
+      g.appendChild(c);
+    }
+    b.appendChild(g);
+  }};
+}
+function photoDetailView(src,i,from){
+  return {title:'', backLabel:from,
+    right:[{html:SF.share,onClick:()=>toast('Share sheet is simulated')}],
+    build(b,nav){
+      const stage=el('div');
+      stage.style.cssText='height:470px;background:#000;display:grid;place-items:center;overflow:hidden';
+      const img=el('img'); img.src=src;
+      img.style.cssText='max-width:100%;max-height:100%;object-fit:contain';
+      img.onerror=()=>{ stage.innerHTML='<div class="muted" style="font-size:13px">Photo unavailable offline</div>'; };
+      stage.appendChild(img); b.appendChild(stage);
+      const d=new Date(Date.now()-i*864e5);
+      group(b,{rows:[
+        {label:d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'}),
+         sub:d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}), chevron:false},
+        {label:'Camera',value:'iPhone 15 Pro · f/1.8'},
+        {label:'Resolution',value:'4032 × 3024'}]});
+      const bar=el('div');
+      bar.style.cssText='display:flex;justify-content:space-around;padding:14px 20px;color:var(--sysblue)';
+      [['Favourite',SF.star],['Adjust',SF.sliders],['Delete',SF.trash]].forEach(([l,ic])=>{
+        const x=el('button','',`${ic}`); x.title=l;
+        x.onclick=()=>toast(l==='Delete'?'Moved to Recently Deleted':'Simulated');
+        bar.appendChild(x);
+      });
+      b.appendChild(bar);
+    }};
+}
+defineApp({id:'camera',name:'Camera',bg:'linear-gradient(160deg,#4a4a4c,#1c1c1e)',
+  glyph:'<div style="font-size:32px">📷</div>', darkStatus:true,
+  mount(win){
+    win.style.background='#000';
+    const v=el('div');
+    v.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;color:#fff';
+    v.innerHTML=`<div style="flex:1;background:radial-gradient(120% 80% at 50% 30%,#2a2f3a,#0a0a0c);display:grid;place-items:center;margin:60px 0 0">
+        <div style="text-align:center;opacity:.5"><div style="font-size:52px">📷</div>
+        <div style="font-size:13px;margin-top:8px">Camera preview unavailable<br>in the simulator</div></div></div>
+      <div style="padding:16px 0 40px;text-align:center">
+        <div style="display:flex;gap:20px;justify-content:center;font-size:12px;color:#ffd60a;margin-bottom:14px">
+          <span>VIDEO</span><span style="color:#ffd60a;font-weight:700">PHOTO</span><span style="color:#fff;opacity:.7">PORTRAIT</span></div>
+        <div style="width:70px;height:70px;border-radius:50%;border:4px solid #fff;margin:0 auto;background:#fff" id="shutter"></div></div>`;
+    win.appendChild(v);
+    $('#shutter',v).onclick=()=>{ const f=el('div'); f.style.cssText='position:absolute;inset:0;background:#fff;z-index:9';
+      win.appendChild(f); setTimeout(()=>f.remove(),120); toast('Photo saved to Library'); };
+  }});
+defineApp({id:'weather',name:'Weather',bg:'linear-gradient(180deg,#5ac8fa,#0a63e8)',
+  glyph:'<div style="font-size:32px">🌤</div>', darkStatus:true,
+  mount(win){
+    win.style.background='linear-gradient(180deg,#3a7bd5,#0d1b3e)';
+    const v=el('div','wx');
+    const hrs=Array.from({length:9},(_,i)=>{const h=(new Date().getHours()+i)%24;
+      return `<div><div>${i?((h%12||12)+(h<12?'AM':'PM')):'Now'}</div><div style="font-size:20px;margin:6px 0">${['☀','⛅','☁','🌤','⛅','☀','🌙','🌙','🌙'][i]}</div><div><b>${78-i}°</b></div></div>`;}).join('');
+    v.innerHTML=`<div style="font-size:32px;font-weight:500">Orlando</div>
+      <div style="font-size:88px;font-weight:200;line-height:1">78°</div>
+      <div style="font-size:19px;opacity:.9">Partly Cloudy</div>
+      <div style="opacity:.85">H:91° L:74°</div>
+      <div class="wx-card"><div style="font-size:12px;opacity:.75;margin-bottom:10px">HOURLY FORECAST</div>
+        <div class="wx-hours">${hrs}</div></div>
+      <div class="wx-card"><div style="font-size:12px;opacity:.75;margin-bottom:10px">10-DAY FORECAST</div>
+        ${['Today','Wed','Thu','Fri','Sat','Sun','Mon'].map((d,i)=>
+        `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:${i<6?'.5px solid rgba(255,255,255,.2)':'none'}">
+          <div style="width:50px">${d}</div><div style="font-size:18px">${['⛅','🌧','⛈','☀','☀','🌤','🌧'][i]}</div>
+          <div style="opacity:.7;width:34px;text-align:right">${72+i}°</div>
+          <div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(90deg,#ffd60a,#ff9f0a)"></div>
+          <div style="width:34px;text-align:right">${88+i}°</div></div>`).join('')}</div>
+      <div style="display:flex;gap:12px"><div class="wx-card" style="flex:1"><div style="font-size:12px;opacity:.75">UV INDEX</div>
+        <div style="font-size:28px;font-weight:600">7</div><div style="font-size:13px">High</div></div>
+        <div class="wx-card" style="flex:1"><div style="font-size:12px;opacity:.75">HUMIDITY</div>
+        <div style="font-size:28px;font-weight:600">64%</div><div style="font-size:13px">Dew point 68°</div></div></div>
+      <div style="height:40px"></div>`;
+    win.appendChild(v);
+  }});
+/* =========================================================================
+   CLOCK — World Clock / Alarms / Stopwatch / Timer, all live
+   ========================================================================= */
+const WORLD_CITIES=[
+  ['Cupertino',-3,'US'],['New York',0,'US'],['Chicago',-1,'US'],['Denver',-2,'US'],
+  ['London',5,'UK'],['Paris',6,'FR'],['Berlin',6,'DE'],['Moscow',8,'RU'],
+  ['Dubai',9,'AE'],['Mumbai',9.5,'IN'],['Singapore',13,'SG'],['Hong Kong',13,'HK'],
+  ['Tokyo',14,'JP'],['Sydney',15,'AU'],['Auckland',17,'NZ'],['Honolulu',-5,'US'],
+  ['Mexico City',-1,'MX'],['São Paulo',1,'BR'],['Cairo',7,'EG'],['Lagos',6,'NG']
+];
+function CK(){
+  if(!State.clock) State.clock={
+    cities:[['Cupertino',-3],['New York',0],['London',5],['Tokyo',14]],
+    alarms:[{h:7,m:0,on:true,label:'Wake up',days:'Weekdays'},{h:8,m:30,on:false,label:'Alarm',days:'Weekends'}]
+  };
+  return State.clock;
+}
+function cityTime(off){ return new Date(Date.now()+off*3600e3); }
+defineApp({id:'clock',name:'Clock',bg:'#0a0a0c',
+  glyph:`<svg viewBox="0 0 100 100" style="width:78%"><circle cx="50" cy="50" r="44" fill="#111" stroke="#fff" stroke-width="3"/>
+    ${Array.from({length:12},(_,i)=>{const a=i*Math.PI/6,r1=i%3===0?33:36;
+      return `<line x1="${50+Math.sin(a)*r1}" y1="${50-Math.cos(a)*r1}" x2="${50+Math.sin(a)*40}" y2="${50-Math.cos(a)*40}" stroke="#fff" stroke-width="${i%3===0?3:1.6}"/>`}).join('')}
+    <line x1="50" y1="50" x2="50" y2="26" stroke="#fff" stroke-width="4.6" stroke-linecap="round"/>
+    <line x1="50" y1="50" x2="67" y2="57" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/>
+    <line x1="50" y1="52" x2="41" y2="30" stroke="#ff9f0a" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="3" fill="#ff9f0a"/></svg>`,
+  darkStatus:true,
+  mount(win,inst){
+    CK();
+    const wrap=el('div'); wrap.style.cssText='flex:1;position:relative;overflow:hidden';
+    win.appendChild(wrap);
+    const tabs=[
+      {id:'world',label:'World Clock',icon:sf('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 3 2.6 15 0 18M12 3c-2.6 3-2.6 15 0 18"/>',{size:24}),root:()=>worldClockView()},
+      {id:'alarm',label:'Alarms',icon:sf('<circle cx="12" cy="13" r="8"/><path d="M12 8.6V13l3 1.8M4.5 3.5L2.5 5.5M19.5 3.5l2 2"/>',{size:24}),root:()=>alarmsView()},
+      {id:'stop', label:'Stopwatch',icon:sf('<circle cx="12" cy="13.5" r="8"/><path d="M12 9v4.5l2.6 1.5M10 2.5h4M12 2.5v3"/>',{size:24}),root:()=>stopwatchView()},
+      {id:'timer',label:'Timers',icon:sf('<circle cx="12" cy="12" r="9"/><path d="M12 12L16.5 7.5"/>',{size:24}),root:()=>timerView()}
+    ];
+    const navs={};
+    tabs.forEach(t=>{ const host=el('div'); host.style.cssText='position:absolute;inset:0;display:none';
+      wrap.appendChild(host); navs[t.id]={host,nav:new Nav(host),built:false,def:t}; });
+    const bar=el('div','tabbar');
+    tabs.forEach(t=>{ const b=el('button','',`${t.icon}<span>${t.label}</span>`);
+      b.onclick=()=>setTab(t.id); bar.appendChild(b); });
+    win.appendChild(bar);
+    function setTab(id){
+      inst.tab=id;
+      tabs.forEach((t,i)=>{ navs[t.id].host.style.display=t.id===id?'block':'none';
+        bar.children[i].classList.toggle('on',t.id===id); });
+      const n=navs[id];
+      if(!n.built){ n.nav.setRoot(n.def.root()); n.built=true; } else n.nav.refresh();
+    }
+    inst.setTab=setTab; inst.navs=navs;
+    setTab('world');
+  },
+  onShow(inst){ const n=inst.navs[inst.tab]; if(n&&n.built) n.nav.refresh(); }
+});
+function worldClockView(){
+  let tick;
+  return {title:'World Clock', largeTitle:true, shortTitle:'World Clock',
+    left:[{text:'Edit',onClick:n=>n.refresh() && false || toast('Tap − to remove a city')}],
+    right:[{html:sf('<path d="M12 5v14M5 12h14"/>',{w:2.2,size:20}),onClick:n=>n.push(addCityView())}],
+    build(b,nav,view){
+      const ck=CK();
+      if(!ck.cities.length){ b.appendChild(h('<div class="empty"><h3>No World Clocks</h3><p>Tap + to add a city.</p></div>')); return; }
+      const g=el('div','grp');
+      ck.cities.forEach(([name,off],i)=>{
+        const row=el('div','wf-row'); row.style.padding='8px 14px';
+        const d=cityTime(off), hrs=d.getHours();
+        const rel = off===0? 'Today, +0HRS' : `Today, ${off>0?'+':''}${off}HRS`;
+        row.innerHTML=`
+          <div style="width:22px;flex:none"><button class="ck-del" style="width:20px;height:20px;border-radius:50%;background:var(--sysred);color:#fff;font-size:15px;line-height:0;display:grid;place-items:center;padding-bottom:2px">−</button></div>
+          <div class="wf-name"><div class="sub" style="margin:0">${esc(rel)}</div>
+            <div style="font-size:22px;font-weight:400">${esc(name)}</div></div>
+          <div class="ck-time" style="font-size:44px;font-weight:200;font-variant-numeric:tabular-nums;letter-spacing:-1px;
+            color:${hrs>=6&&hrs<18?'var(--txt)':'var(--txt2)'}">${d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}</div>`;
+        row.querySelector('.ck-del').onclick=e=>{ e.stopPropagation(); ck.cities.splice(i,1); save(); nav.refresh(); };
+        row.dataset.off=off;
+        g.appendChild(row);
+      });
+      b.appendChild(g);
+      clearInterval(view._tick);
+      view._tick=setInterval(()=>{ $$('.ck-time',b).forEach((t,i)=>{
+        const off=ck.cities[i]?ck.cities[i][1]:0;
+        t.textContent=cityTime(off).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); });},2000);
+    },
+    onPop(){ }};
+}
+function addCityView(){
+  return {title:'Choose a City', build(b,nav){
+    b.appendChild(el('div','searchfield',`${SVG.search}<input placeholder="Search">`));
+    const holder=el('div'); b.appendChild(holder);
+    const draw=q=>{
+      holder.innerHTML='';
+      const ck=CK();
+      const list=WORLD_CITIES.filter(c=>!q||c[0].toLowerCase().includes(q.toLowerCase()));
+      group(holder,{rows:list.map(([name,off,cc])=>({
+        label:`${name}, ${cc}`, value:cityTime(off).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}),
+        chevron:false,
+        onClick:()=>{ if(!ck.cities.some(c=>c[0]===name)) ck.cities.push([name,off]); save(); nav.pop(); nav.refresh(); }
+      }))});
+    };
+    b.querySelector('input').oninput=e=>draw(e.target.value);
+    draw('');
+  }};
+}
+function alarmsView(){
+  return {title:'Alarms', largeTitle:true, shortTitle:'Alarms',
+    right:[{html:sf('<path d="M12 5v14M5 12h14"/>',{w:2.2,size:20}),onClick:n=>addAlarmSheet(n)}],
+    build(b,nav){
+      const ck=CK();
+      b.appendChild(el('div','grp-h','Other'));
+      if(!ck.alarms.length){ b.appendChild(h('<div class="empty"><h3>No Alarms</h3><p>Tap + to add one.</p></div>')); return; }
+      const g=el('div','grp');
+      ck.alarms.forEach((a,i)=>{
+        const row=el('div','wf-row'); row.style.padding='6px 14px';
+        const hh=a.h%12||12, ap=a.h<12?'AM':'PM';
+        row.innerHTML=`
+          <div class="wf-name" style="opacity:${a.on?1:.45}">
+            <div style="font-size:44px;font-weight:200;font-variant-numeric:tabular-nums;letter-spacing:-1px;line-height:1.1">
+              ${hh}:${String(a.m).padStart(2,'0')}<span style="font-size:19px;font-weight:400"> ${ap}</span></div>
+            <div class="sub" style="margin:0">${esc(a.label)}${a.days?', '+esc(a.days):''}</div>
+          </div>`;
+        const sw=el('div','sw'+(a.on?' on':''));
+        sw.onclick=e=>{ e.stopPropagation(); a.on=!a.on; save(); nav.refresh();
+          if(a.on) island('⏰','#ff9f0a','Alarm',`Set for ${hh}:${String(a.m).padStart(2,'0')} ${ap}`,1800); };
+        row.appendChild(sw);
+        row.onclick=e=>{ if(e.target.closest('.sw'))return; addAlarmSheet(nav,a); };
+        g.appendChild(row);
+      });
+      b.appendChild(g);
+      b.appendChild(el('div','grp-f','Tap an alarm to edit it. Alarms are simulated and won’t actually ring.'));
+    }};
+}
+function addAlarmSheet(nav,existing){
+  sheet((s,close)=>{
+    const a = existing || {h:8,m:0,on:true,label:'Alarm',days:''};
+    const bar=el('div');
+    bar.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:.5px solid var(--sep)';
+    const cancel=el('button','','Cancel'); cancel.style.color='var(--sysblue)'; cancel.onclick=close;
+    const title=el('b','',existing?'Edit Alarm':'Add Alarm'); title.style.fontSize='17px';
+    const saveB=el('button','','Save'); saveB.style.cssText='color:var(--sysblue);font-weight:600';
+    bar.append(cancel,title,saveB); s.appendChild(bar);
+    /* wheel-ish pickers built from selects for reliability */
+    const pick=el('div');
+    pick.style.cssText='display:flex;justify-content:center;gap:8px;padding:22px 0;font-size:22px';
+    const selH=el('select'); for(let h=1;h<=12;h++){const o=el('option','',String(h));o.value=h;selH.appendChild(o);}
+    const selM=el('select'); for(let m=0;m<60;m+=5){const o=el('option','',String(m).padStart(2,'0'));o.value=m;selM.appendChild(o);}
+    const selAP=el('select'); ['AM','PM'].forEach(x=>{const o=el('option','',x);selAP.appendChild(o);});
+    [selH,selM,selAP].forEach(x=>x.style.cssText='background:var(--bg3);color:var(--txt);border:none;border-radius:10px;padding:10px 14px;font-size:22px');
+    selH.value=String(a.h%12||12); selM.value=String(a.m-(a.m%5)); selAP.value=a.h<12?'AM':'PM';
+    pick.append(selH,selM,selAP); s.appendChild(pick);
+    const g=el('div','grp'); g.style.margin='0 16px 14px';
+    const lab=el('div','compose-field',`<div class="k">Label</div>`);
+    const labIn=el('input'); labIn.value=a.label; lab.appendChild(labIn); g.appendChild(lab);
+    const rep=el('div','compose-field',`<div class="k">Repeat</div>`); rep.style.borderBottom='none';
+    const repIn=el('input'); repIn.value=a.days||''; repIn.placeholder='Never'; rep.appendChild(repIn); g.appendChild(rep);
+    s.appendChild(g);
+    if(existing){
+      const delW=el('div','pad'); const del=el('button','btn-primary','Delete Alarm');
+      del.style.background='var(--sysred)';
+      del.onclick=()=>{ CK().alarms=CK().alarms.filter(x=>x!==existing); save(); close(); nav.refresh(); };
+      delW.appendChild(del); s.appendChild(delW);
+    }
+    saveB.onclick=()=>{
+      let h=+selH.value%12; if(selAP.value==='PM') h+=12;
+      Object.assign(a,{h,m:+selM.value,label:labIn.value||'Alarm',days:repIn.value});
+      if(!existing) CK().alarms.push(a);
+      save(); close(); nav.refresh();
+    };
+  });
+}
+function stopwatchView(){
+  return {title:'Stopwatch', largeTitle:true, shortTitle:'Stopwatch',
+    build(b,nav,view){
+      const st = view._st = view._st || {run:false,base:0,acc:0,laps:[]};
+      b.style.textAlign='center';
+      const big=el('div');
+      big.style.cssText='font-size:76px;font-weight:100;font-variant-numeric:tabular-nums;letter-spacing:-1px;padding:34px 0 22px';
+      const fmtSW=ms=>{ const cs=Math.floor(ms/10)%100, ss=Math.floor(ms/1000)%60, mm=Math.floor(ms/60000);
+        return `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}<span style="font-size:44px">.${String(cs).padStart(2,'0')}</span>`; };
+      const now=()=> st.acc + (st.run? Date.now()-st.base : 0);
+      big.innerHTML=fmtSW(now()); b.appendChild(big);
+      const btns=el('div');
+      btns.style.cssText='display:flex;justify-content:space-between;padding:0 34px 10px';
+      const mk=(txt,color,bg)=>{ const x=el('button','',txt);
+        x.style.cssText=`width:82px;height:82px;border-radius:50%;font-size:16px;color:${color};background:${bg};
+          border:2px solid color-mix(in srgb,${bg} 60%,#fff3)`; return x; };
+      const lap=mk('Lap','var(--txt)','var(--bg3)');
+      const go =mk(st.run?'Stop':'Start', st.run?'#ff453a':'#30d158', st.run?'rgba(255,69,58,.18)':'rgba(48,209,88,.18)');
+      btns.append(lap,go); b.appendChild(btns);
+      const lapsG=el('div','grp'); lapsG.style.textAlign='left'; b.appendChild(lapsG);
+      const paintLaps=()=>{ lapsG.innerHTML='';
+        st.laps.forEach((L,i)=>lapsG.appendChild(h(`<div class="row static"><div class="lbl">Lap ${st.laps.length-i}</div>
+          <div class="val" style="font-variant-numeric:tabular-nums">${L}</div></div>`)));
+        lapsG.style.display=st.laps.length?'block':'none'; };
+      paintLaps();
+      clearInterval(view._tick);
+      view._tick=setInterval(()=>{ if(st.run) big.innerHTML=fmtSW(now()); },33);
+      go.onclick=()=>{ if(st.run){ st.acc=now(); st.run=false; } else { st.base=Date.now(); st.run=true; } nav.refresh(); };
+      lap.onclick=()=>{ if(st.run){ const t=now(),cs=Math.floor(t/10)%100,ss=Math.floor(t/1000)%60,mm=Math.floor(t/60000);
+          st.laps.unshift(`${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}.${String(cs).padStart(2,'0')}`); paintLaps(); }
+        else { st.acc=0; st.laps=[]; big.innerHTML=fmtSW(0); paintLaps(); nav.refresh(); } };
+      if(!st.run) lap.textContent = st.acc? 'Reset':'Lap';
+    }};
+}
+function timerView(){
+  return {title:'Timers', largeTitle:true, shortTitle:'Timers',
+    build(b,nav,view){
+      const t = view._t = view._t || {run:false,end:0,left:0,total:300};
+      b.style.textAlign='center';
+      const remain=()=> t.run? Math.max(0,t.end-Date.now()) : t.left||t.total*1000;
+      const ring=el('div');
+      ring.style.cssText='position:relative;width:250px;height:250px;margin:26px auto 10px';
+      const paint=()=>{
+        const ms=remain(), frac=t.total? ms/(t.total*1000):0;
+        const mm=Math.floor(ms/60000), ss=Math.floor(ms/1000)%60;
+        ring.innerHTML=`<svg viewBox="0 0 250 250" style="position:absolute;inset:0">
+            <circle cx="125" cy="125" r="115" fill="none" stroke="var(--bg3)" stroke-width="7"/>
+            <circle cx="125" cy="125" r="115" fill="none" stroke="#ff9f0a" stroke-width="7" stroke-linecap="round"
+              stroke-dasharray="${2*Math.PI*115}" stroke-dashoffset="${2*Math.PI*115*(1-frac)}"
+              transform="rotate(-90 125 125)"/></svg>
+          <div style="position:absolute;inset:0;display:grid;place-items:center">
+            <div><div style="font-size:64px;font-weight:100;font-variant-numeric:tabular-nums">${mm}:${String(ss).padStart(2,'0')}</div>
+            <div class="muted" style="font-size:14px">${t.run?'Remaining':'Timer'}</div></div></div>`;
+      };
+      paint(); b.appendChild(ring);
+      if(!t.run){
+        const quick=el('div');
+        quick.style.cssText='display:flex;justify-content:center;gap:9px;padding:6px 0 14px;flex-wrap:wrap';
+        [[60,'1 min'],[180,'3 min'],[300,'5 min'],[600,'10 min'],[1800,'30 min'],[3600,'1 hr']].forEach(([s2,l])=>{
+          const c=el('button','',l);
+          c.style.cssText=`padding:8px 14px;border-radius:16px;font-size:13px;
+            background:${t.total===s2?'var(--sysorange)':'var(--bg3)'};color:${t.total===s2?'#000':'var(--txt)'}`;
+          c.onclick=()=>{ t.total=s2; t.left=0; nav.refresh(); };
+          quick.appendChild(c);
+        });
+        b.appendChild(quick);
+      }
+      const btns=el('div');
+      btns.style.cssText='display:flex;justify-content:space-between;padding:6px 34px 20px';
+      const mk=(txt,color,bg)=>{ const x=el('button','',txt);
+        x.style.cssText=`width:82px;height:82px;border-radius:50%;font-size:16px;color:${color};background:${bg}`; return x; };
+      const cancel=mk('Cancel','var(--txt)','var(--bg3)');
+      const go=mk(t.run?'Pause':'Start', t.run?'#ff9f0a':'#30d158', t.run?'rgba(255,159,10,.18)':'rgba(48,209,88,.18)');
+      btns.append(cancel,go); b.appendChild(btns);
+      clearInterval(view._tick);
+      view._tick=setInterval(()=>{ if(!t.run) return; paint();
+        if(remain()<=0){ t.run=false; t.left=0; clearInterval(view._tick);
+          island('⏱','#ff9f0a','Timer Done','Tap to dismiss',4000); toast('Timer done'); nav.refresh(); } },250);
+      go.onclick=()=>{ if(t.run){ t.left=remain(); t.run=false; } else { t.end=Date.now()+remain(); t.run=true; } nav.refresh(); };
+      cancel.onclick=()=>{ t.run=false; t.left=0; nav.refresh(); };
+      group(b,{rows:[{label:'When Timer Ends',value:'Radial',onClick:()=>toast('Timer sounds are simulated')}]});
+    }};
+}
+defineApp({id:'notes',name:'Notes',bg:'linear-gradient(180deg,#fff2b8,#ffd60a)',
+  glyph:'<div style="font-size:32px">📝</div>',
+  mount(win,inst){
+    if(!State.notes) State.notes=[{id:1,t:'Streaming plan',b:'Streaming plan\n\nKeep: Spectrum TV (free with service), Max, Netflix\nRotate: Peacock during football, Paramount+ for CBS\nCancel after the season ends.',d:Date.now()-864e5}];
+    const nav=new Nav(win); inst.nav=nav;
+    nav.setRoot(notesListView(nav));
+  }});
+function notesListView(nav){
+  return {title:'Notes',largeTitle:true,
+    right:[{html:'✎',onClick:n=>{ const note={id:Date.now(),t:'New Note',b:'',d:Date.now()};
+      State.notes.unshift(note); save(); n.push(noteEditor(note,n)); }}],
+    build(b,n){
+      b.appendChild(el('div','searchfield',`${SVG.search}<input placeholder="Search">`));
+      if(!State.notes.length) b.appendChild(h('<div class="empty"><h3>No Notes</h3><p>Tap ✎ to write one.</p></div>'));
+      group(b,{rows:State.notes.map(note=>({
+        label:note.b.split('\n')[0]||'New Note',
+        sub:new Date(note.d).toLocaleDateString()+'  '+(note.b.split('\n')[1]||'No additional text'),
+        onClick:()=>n.push(noteEditor(note,n))
+      }))});
+    }};
+}
+function noteEditor(note,parent){
+  return {title:'', backLabel:'Notes',
+    right:[{html:'🗑',onClick:n=>{ State.notes=State.notes.filter(x=>x.id!==note.id); save(); n.pop(); n.refresh(); }},
+           {html:'✓',onClick:n=>{ n.pop(); n.refresh(); }}],
+    build(b){
+      const ta=el('textarea','note-editor'); ta.value=note.b; ta.placeholder='Start typing…';
+      ta.style.minHeight='100%';
+      ta.oninput=()=>{ note.b=ta.value; note.d=Date.now(); save(); };
+      b.appendChild(ta); setTimeout(()=>ta.focus(),350);
+    },
+    onPop(){ save(); }};
+}
+defineApp({id:'calculator',name:'Calculator',bg:'linear-gradient(180deg,#3a3a3c,#1c1c1e)',
+  glyph:'<div style="font-size:30px">🧮</div>', darkStatus:true,
+  mount(win){
+    const c=el('div','calc');
+    const out=el('div','out','0'); c.appendChild(out);
+    const keys=el('div','keys'); c.appendChild(keys);
+    let cur='0', prev=null, op=null, fresh=true;
+    const show=()=>out.textContent = cur.length>9? Number(cur).toPrecision(7): cur;
+    const calc=()=>{ const a=parseFloat(prev), b=parseFloat(cur);
+      return String(op==='+'?a+b:op==='−'?a-b:op==='×'?a*b:op==='÷'?(b?a/b:'Error'):b); };
+    [['AC','fn'],['+/−','fn'],['%','fn'],['÷','op'],
+     ['7'],['8'],['9'],['×','op'],['4'],['5'],['6'],['−','op'],
+     ['1'],['2'],['3'],['+','op'],['0','zero'],['.'],['=','op']].forEach(([k,cls])=>{
+      const b=el('button',cls||'',k);
+      b.onclick=()=>{
+        if(/[0-9]/.test(k)){ cur = (fresh||cur==='0')? k : cur+k; fresh=false; }
+        else if(k==='.'){ if(!cur.includes('.')) cur+='.'; fresh=false; }
+        else if(k==='AC'){ cur='0'; prev=null; op=null; fresh=true; }
+        else if(k==='+/−'){ cur=String(parseFloat(cur)*-1); }
+        else if(k==='%'){ cur=String(parseFloat(cur)/100); }
+        else if(k==='='){ if(op){ cur=calc(); op=null; prev=null; fresh=true; } }
+        else { if(op&&!fresh) cur=calc(); prev=cur; op=k; fresh=true; }
+        show();
+      };
+      keys.appendChild(b);
+    });
+    win.appendChild(c);
+  }});
+defineApp({id:'music',name:'Music',bg:'linear-gradient(180deg,#fa5f6d,#e8305f)',
+  glyph:'<div style="font-size:32px">🎵</div>',
+  mount(win,inst){
+    const nav=new Nav(win); inst.nav=nav;
+    nav.setRoot({title:'Listen Now',largeTitle:true,build(b){
+      const hs=el('div','hscroll');
+      ['Chill Mix','Get Up!','New Music','Favorites','Late Night'].forEach((n,i)=>{
+        const c=el('div','hcard'); c.style.minWidth='190px';
+        c.innerHTML=`<div style="height:190px;border-radius:12px;background:linear-gradient(${i*60}deg,hsl(${i*57} 80% 55%),hsl(${i*57+50} 70% 35%));
+          display:flex;align-items:flex-end;padding:12px;color:#fff;font-weight:700">${n}</div>`;
+        c.onclick=()=>island('🎵','#e8305f','Music','Playing '+n,2400);
+        hs.appendChild(c);
+      });
+      b.appendChild(sectionHeader('Made for You'));
+      b.appendChild(hs);
+      group(b,{header:'Recently Played',rows:['Weekend Playlist','Focus Sounds','Road Trip','Throwbacks'].map(t=>({
+        label:t,sub:'Playlist',icon:'♪',iconBg:'#e8305f',onClick:()=>island('🎵','#e8305f','Music','Playing '+t,2200)}))});
+    }});
+  }});
+/* =========================================================================
+   MAPS — a real map: OpenStreetMap embed + Nominatim search
+   ========================================================================= */
+const MAP_PLACES=[
+  {n:'Orlando',   lat:28.5384, lon:-81.3789},
+  {n:'New York',  lat:40.7128, lon:-74.0060},
+  {n:'Miami',     lat:25.7617, lon:-80.1918},
+  {n:'Los Angeles',lat:34.0522,lon:-118.2437},
+  {n:'London',    lat:51.5074, lon:-0.1278},
+  {n:'Paris',     lat:48.8566, lon:2.3522},
+  {n:'Tokyo',     lat:35.6762, lon:139.6503}
+];
+defineApp({id:'maps',name:'Maps',bg:'linear-gradient(160deg,#8fd88f,#3a8f5f)',
+  mount(win,inst){
+    const v=el('div');
+    v.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;background:var(--page)';
+    v.innerHTML=`
+      <div style="flex:1;position:relative" id="mapHost"></div>
+      <div style="flex:none;background:color-mix(in srgb,var(--page) 88%,transparent);backdrop-filter:var(--blur);
+          border-top:.5px solid var(--sep);padding:10px 12px 26px">
+        <div class="searchfield" style="margin:0 0 8px">${SVG.search}<input id="mapSearch" placeholder="Search Maps" autocapitalize="off"></div>
+        <div id="mapChips" style="display:flex;gap:7px;overflow-x:auto;scrollbar-width:none"></div>
+      </div>`;
+    win.appendChild(v);
+    const host=$('#mapHost',v), input=$('#mapSearch',v), chips=$('#mapChips',v);
+    let zoomSpan=0.05;
+    function show(lat,lon,label){
+      host.innerHTML='';
+      if(!isOnline()){
+        host.appendChild(h(`<div class="sf-blocked"><div style="font-size:40px">🗺</div>
+          <div style="font-size:19px;font-weight:600">Maps Unavailable</div>
+          <div style="font-size:14px;color:var(--txt2);line-height:1.45">${esc(netReason())}</div></div>`));
+        return;
+      }
+      const d=zoomSpan;
+      const bbox=`${lon-d}%2C${lat-d*0.62}%2C${lon+d}%2C${lat+d*0.62}`;
+      const f=el('iframe');
+      f.style.cssText='width:100%;height:100%;border:none';
+      f.src=`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lon}`;
+      host.appendChild(f);
+      if(label){
+        const tag=el('div');
+        tag.style.cssText=`position:absolute;top:64px;left:50%;transform:translateX(-50%);z-index:3;
+          background:color-mix(in srgb,var(--page) 90%,transparent);backdrop-filter:var(--blur);color:var(--txt);
+          padding:7px 16px;border-radius:18px;font-size:14px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.3);
+          max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`;
+        tag.textContent=label;
+        host.appendChild(tag);
+      }
+      /* zoom controls layered over the embed */
+      const z=el('div');
+      z.style.cssText='position:absolute;right:10px;top:70px;z-index:3;display:flex;flex-direction:column;border-radius:10px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.3)';
+      [['+',()=>{zoomSpan=Math.max(0.004,zoomSpan/2);show(lat,lon,label);}],
+       ['−',()=>{zoomSpan=Math.min(20,zoomSpan*2);show(lat,lon,label);}]].forEach(([t2,fn],i)=>{
+        const bb=el('button','',t2);
+        bb.style.cssText=`width:38px;height:38px;background:color-mix(in srgb,var(--page) 92%,transparent);
+          backdrop-filter:var(--blur);color:var(--txt);font-size:21px;${i?'border-top:.5px solid var(--sep)':''}`;
+        bb.onclick=fn; z.appendChild(bb);
+      });
+      host.appendChild(z);
+      inst.at={lat,lon,label};
+    }
+    async function search(q){
+      if(!q.trim()) return;
+      if(!isOnline()){ toast('You are offline'); return; }
+      input.blur();
+      const tag=el('div','toast','Searching…'); $('#screen').appendChild(tag);
+      try{
+        const res=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q),
+          {headers:{'Accept':'application/json'}});
+        const js=await res.json();
+        tag.remove();
+        if(!js.length){ toast('No results for “'+q+'”'); return; }
+        zoomSpan=0.05;
+        show(+js[0].lat,+js[0].lon, js[0].display_name.split(',').slice(0,2).join(','));
+      }catch(e){ tag.remove();
+        toast('Search unavailable — try a city chip below'); }
+    }
+    input.onkeydown=e=>{ if(e.key==='Enter') search(input.value); };
+    MAP_PLACES.forEach(p=>{
+      const c=el('button','',p.n);
+      c.style.cssText='flex:none;background:var(--bg3);color:var(--txt);border-radius:16px;padding:7px 14px;font-size:13px';
+      c.onclick=()=>{ zoomSpan=0.05; show(p.lat,p.lon,p.n); };
+      chips.appendChild(c);
+    });
+    show(MAP_PLACES[0].lat,MAP_PLACES[0].lon,'Orlando');
+    inst.show=show;
+  },
+  onShow(inst){ if(inst.at && !$('#mapHost iframe') && isOnline()) inst.show(inst.at.lat,inst.at.lon,inst.at.label); }
+});
+defineApp({id:'tv',name:'TV',bg:'#0a0a0c', darkStatus:true,
+  glyph:'<div style="color:#fff;font-size:20px;font-weight:600">tv</div>',
+  mount(win){ streamShell({name:'Apple TV',colors:['#1c1c1e','#000']},win); }});
+/* =========================================================================
+   WALLET — payment cards, passes, transactions
+   ========================================================================= */
+function WAL(){
+  if(!State.wallet) State.wallet={
+    cards:[
+      {id:'applecard',kind:'card',name:'Apple Card',last:'4417',bg:'linear-gradient(150deg,#f6f6f8,#d9d9de)',fg:'#111',
+       balance:284.19,limit:2500,daily:12.47,
+       tx:[['Spectrum','Jul 29',189.98,2],['Pizza Roma','Jul 28',24.60,3],['App Store','Jul 27',12.99,3],
+           ['Shell Fuel','Jul 26',48.12,2],['Payment — Thank You','Jul 22',-150.00,0]]},
+      {id:'visa',kind:'card',name:'Visa',last:'0092',bg:'linear-gradient(150deg,#1b3fa0,#0b2263)',fg:'#fff',
+       balance:null,
+       tx:[['Netflix','Jul 30',15.49],['Grocery Co','Jul 28',86.31],['Transit','Jul 27',2.75]]},
+      {id:'transit',kind:'transit',name:'Transit Card',last:'',bg:'linear-gradient(150deg,#0b6e4f,#04382a)',fg:'#fff',
+       balance:18.50, tx:[['Bus fare','Jul 30',2.75],['Rail fare','Jul 29',3.25]]}
+    ],
+    passes:[
+      {id:'boarding',kind:'boarding',name:'Boarding Pass',bg:'linear-gradient(150deg,#0a63e8,#062a63)',fg:'#fff',
+       from:'MCO',to:'JFK',gate:'C14',seat:'12A',flight:'AA 1284',boards:'6:40 PM',date:'Aug 3'},
+      {id:'ticket',kind:'event',name:'Concert Ticket',bg:'linear-gradient(150deg,#bf5af2,#4a1063)',fg:'#fff',
+       event:'Midnight Static',venue:'Amway Center',section:'104',row:'F',seat:'12',date:'Aug 14 · 8:00 PM'},
+      {id:'loyalty',kind:'loyalty',name:'Spectrum Rewards',bg:'linear-gradient(150deg,#0072ce,#003057)',fg:'#fff',
+       points:2480,member:'•••• 4417'}
+    ]
+  };
+  return State.wallet;
+}
+function walletCardFace(c,{compact}={}){
+  const d=el('div','wal-card');
+  d.style.cssText=`background:${c.bg};color:${c.fg};border-radius:15px;padding:15px 16px;height:${compact?126:150}px;
+    box-shadow:0 8px 22px rgba(0,0,0,.45);display:flex;flex-direction:column;justify-content:space-between;
+    position:relative;overflow:hidden;cursor:pointer`;
+  let body='';
+  if(c.kind==='card'){
+    body=`<div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="font-weight:700;font-size:16px">${esc(c.name)}</div>
+        ${c.id==='applecard'?'<div style="font-size:19px"></div>':`<div style="font-size:11px;opacity:.7;letter-spacing:1.5px">${c.id==='visa'?'VISA':''}</div>`}</div>
+      <div>
+        ${c.balance!=null?`<div style="font-size:11px;opacity:.6">Card Balance</div>
+          <div style="font-size:24px;font-weight:700;font-variant-numeric:tabular-nums">$${c.balance.toFixed(2)}</div>`:''}
+        <div style="font-size:13px;letter-spacing:2px;opacity:.75;margin-top:4px">•••• ${esc(c.last)}</div></div>`;
+  } else if(c.kind==='transit'){
+    body=`<div style="font-weight:700;font-size:16px">${esc(c.name)}</div>
+      <div><div style="font-size:11px;opacity:.6">Balance</div>
+      <div style="font-size:24px;font-weight:700">$${c.balance.toFixed(2)}</div></div>`;
+  } else if(c.kind==='boarding'){
+    body=`<div style="display:flex;justify-content:space-between;font-size:11px;opacity:.75">
+        <span>${esc(c.flight)}</span><span>${esc(c.date)}</span></div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:30px;font-weight:800">${esc(c.from)}</div>
+        <div style="flex:1;border-top:1.5px dashed rgba(255,255,255,.5);position:relative">
+          <div style="position:absolute;right:-4px;top:-9px">✈</div></div>
+        <div style="font-size:30px;font-weight:800">${esc(c.to)}</div></div>
+      <div style="display:flex;gap:18px;font-size:11px;opacity:.8">
+        <span>GATE ${esc(c.gate)}</span><span>SEAT ${esc(c.seat)}</span><span>BOARDS ${esc(c.boards)}</span></div>`;
+  } else if(c.kind==='event'){
+    body=`<div style="font-size:11px;opacity:.7;letter-spacing:1px">EVENT TICKET</div>
+      <div><div style="font-size:19px;font-weight:800">${esc(c.event)}</div>
+      <div style="font-size:12px;opacity:.8">${esc(c.venue)} · ${esc(c.date)}</div></div>
+      <div style="display:flex;gap:16px;font-size:11px;opacity:.85">
+        <span>SEC ${esc(c.section)}</span><span>ROW ${esc(c.row)}</span><span>SEAT ${esc(c.seat)}</span></div>`;
+  } else {
+    body=`<div style="font-weight:700;font-size:16px">${esc(c.name)}</div>
+      <div><div style="font-size:11px;opacity:.6">Points</div>
+      <div style="font-size:24px;font-weight:700">${c.points.toLocaleString()}</div>
+      <div style="font-size:11px;opacity:.7;margin-top:2px">${esc(c.member)}</div></div>`;
+  }
+  d.innerHTML=body;
+  return d;
+}
+function barcode(){
+  const bars=Array.from({length:52},()=>Math.random()<.5?2:4).map((w,i)=>
+    `<i style="display:inline-block;width:${w}px;height:100%;background:#111;margin-right:${Math.random()<.5?2:3}px"></i>`).join('');
+  return `<div style="background:#fff;border-radius:10px;padding:14px;text-align:center">
+    <div style="height:64px;white-space:nowrap;overflow:hidden">${bars}</div>
+    <div style="font-size:11px;color:#555;margin-top:8px;letter-spacing:2px">SIMULATED PASS</div></div>`;
+}
+defineApp({id:'wallet',name:'Wallet',bg:'linear-gradient(160deg,#3a3a3e,#0d0d0f)', darkStatus:true,
+  mount(win,inst){
+    WAL();
+    const nav=new Nav(win); inst.nav=nav;
+    nav.setRoot(walletHomeView());
+  },
+  onShow(inst){ inst.nav.refresh(); }
+});
+function walletHomeView(){
+  return {title:'Wallet', largeTitle:true, shortTitle:'Wallet',
+    right:[{html:sf('<path d="M12 5v14M5 12h14"/>',{w:2.2,size:20}),onClick:n=>addCardSheet(n)}],
+    build(b,nav){
+      const w=WAL();
+      /* payment cards, overlapped like the real stack */
+      const stack=el('div'); stack.style.cssText='padding:2px 16px 0';
+      w.cards.forEach((c,i)=>{
+        const face=walletCardFace(c);
+        face.style.marginTop = i? '-96px':'0';
+        face.style.zIndex=i+1;
+        face.onclick=()=>nav.push(cardDetailView(c));
+        stack.appendChild(face);
+      });
+      b.appendChild(stack);
+      if(w.passes.length){
+        b.appendChild(el('div','grp-h','Passes'));
+        const ps=el('div'); ps.style.cssText='padding:0 16px;display:flex;flex-direction:column;gap:11px';
+        w.passes.forEach(p=>{
+          const face=walletCardFace(p,{compact:true});
+          face.onclick=()=>nav.push(passDetailView(p));
+          ps.appendChild(face);
+        });
+        b.appendChild(ps);
+      }
+      group(b,{rows:[
+        {label:'Add Card',cls:'blue',icon:'＋',iconBg:'#0a84ff',onClick:()=>addCardSheet(nav)},
+        {label:'Card Details & Transactions',onClick:()=>nav.push(cardDetailView(WAL().cards[0]))},
+        {label:'Express Transit Card',value:'Transit Card',onClick:()=>toast('Express Transit is simulated')}]});
+      b.appendChild(el('div','grp-f','Double-click the side button to pay. All cards and passes here are fictional.'));
+    }};
+}
+function cardDetailView(c){
+  return {title:c.name, shortTitle:'Card', build(b,nav){
+    const wrap=el('div'); wrap.style.padding='4px 16px 0';
+    wrap.appendChild(walletCardFace(c));
+    b.appendChild(wrap);
+    if(c.id==='applecard'){
+      const ring=el('div','grp'); ring.style.padding='16px';
+      const pct=Math.min(1,c.balance/c.limit);
+      ring.innerHTML=`<div style="display:flex;gap:16px;align-items:center">
+        <svg viewBox="0 0 80 80" style="width:78px;flex:none">
+          <circle cx="40" cy="40" r="33" fill="none" stroke="var(--bg3)" stroke-width="9"/>
+          <circle cx="40" cy="40" r="33" fill="none" stroke="#30d158" stroke-width="9" stroke-linecap="round"
+            stroke-dasharray="${2*Math.PI*33}" stroke-dashoffset="${2*Math.PI*33*(1-pct)}" transform="rotate(-90 40 40)"/>
+        </svg>
+        <div><div style="font-size:12px;color:var(--txt2)">Card Balance</div>
+          <div style="font-size:26px;font-weight:700">$${c.balance.toFixed(2)}</div>
+          <div style="font-size:12px;color:var(--txt2);margin-top:2px">$${(c.limit-c.balance).toFixed(2)} available of $${c.limit.toLocaleString()}</div></div></div>`;
+      b.appendChild(ring);
+      group(b,{rows:[
+        {label:'Daily Cash earned this month',value:'$'+c.daily.toFixed(2),chevron:false},
+        {label:'Make a Payment',cls:'blue',onClick:()=>alertBox({title:'Make a Payment',
+          message:'Payments are disabled in the simulator — no real card is connected.',buttons:[{text:'OK'}]})}]});
+    }
+    group(b,{header:'Latest Transactions',rows:(c.tx||[]).map(t=>({
+      label:t[0], sub:t[1]+(t[3]?` · ${t[3]}% Daily Cash`:''),
+      value:(t[2]<0?'-':'')+'$'+Math.abs(t[2]).toFixed(2),
+      onClick:()=>toast(t[0]+' — '+t[1])}))});
+    group(b,{rows:[
+      {label:'Card Number',value:'•••• '+(c.last||'——'),chevron:false},
+      {label:'Notifications',value:'On',onClick:()=>toast('Simulated')},
+      {label:'Remove Card',cls:'destructive',onClick:()=>alertBox({title:'Remove “'+c.name+'”?',
+        message:'You can add this card back to Wallet at any time.',
+        buttons:[{text:'Cancel'},{text:'Remove',style:'red bold',onClick:()=>{
+          WAL().cards=WAL().cards.filter(x=>x.id!==c.id); save(); nav.pop(); nav.refresh(); toast('Card removed');
+        }}]})}]});
+  }};
+}
+function passDetailView(p){
+  return {title:p.name, shortTitle:'Pass', build(b,nav){
+    const wrap=el('div'); wrap.style.padding='4px 16px 14px';
+    wrap.appendChild(walletCardFace(p));
+    b.appendChild(wrap);
+    const code=el('div'); code.style.padding='0 16px 14px'; code.innerHTML=barcode();
+    b.appendChild(code);
+    if(p.kind==='boarding') group(b,{header:'Flight',rows:[
+      {label:'Flight',value:p.flight},{label:'From',value:p.from},{label:'To',value:p.to},
+      {label:'Gate',value:p.gate},{label:'Seat',value:p.seat},{label:'Boards',value:p.boards},{label:'Date',value:p.date}]});
+    if(p.kind==='event') group(b,{header:'Event',rows:[
+      {label:'Event',value:p.event},{label:'Venue',value:p.venue},{label:'When',value:p.date},
+      {label:'Section',value:p.section},{label:'Row',value:p.row},{label:'Seat',value:p.seat}]});
+    if(p.kind==='loyalty') group(b,{header:'Rewards',rows:[
+      {label:'Points',value:p.points.toLocaleString()},{label:'Member',value:p.member},
+      {label:'Redeem Points',cls:'blue',onClick:()=>toast('Redemption is simulated')}]});
+    group(b,{rows:[
+      {label:'Automatic Updates',toggle:()=>true,onToggle:()=>{}},
+      {label:'Suggest on Lock Screen',toggle:()=>true,onToggle:()=>{}},
+      {label:'Remove Pass',cls:'destructive',onClick:()=>alertBox({title:'Remove “'+p.name+'”?',
+        message:'This pass will be deleted from Wallet.',
+        buttons:[{text:'Cancel'},{text:'Remove',style:'red bold',onClick:()=>{
+          WAL().passes=WAL().passes.filter(x=>x.id!==p.id); save(); nav.pop(); nav.refresh(); toast('Pass removed');
+        }}]})}]});
+  }};
+}
+function addCardSheet(nav){
+  const TYPES=[
+    ['Debit or Credit Card','card',()=>({id:'c'+Date.now(),kind:'card',name:'New Card',last:String(1000+((Math.random()*9000)|0)),
+      bg:'linear-gradient(150deg,#4a4a52,#1c1c1e)',fg:'#fff',balance:null,
+      tx:[['Opening balance','Today',0]]})],
+    ['Transit Card','transit',()=>({id:'t'+Date.now(),kind:'transit',name:'Transit Card',last:'',
+      bg:'linear-gradient(150deg,#0b6e4f,#04382a)',fg:'#fff',balance:10,tx:[]})],
+    ['Boarding Pass','boarding',()=>({id:'b'+Date.now(),kind:'boarding',name:'Boarding Pass',
+      bg:'linear-gradient(150deg,#0a63e8,#062a63)',fg:'#fff',from:'MCO',to:'LAX',gate:'B7',seat:'21C',
+      flight:'AA 902',boards:'7:15 AM',date:'Aug 9'})],
+    ['Event Ticket','event',()=>({id:'e'+Date.now(),kind:'event',name:'Event Ticket',
+      bg:'linear-gradient(150deg,#bf5af2,#4a1063)',fg:'#fff',event:'Night Market',venue:'City Hall',
+      section:'GA',row:'—',seat:'—',date:'Aug 20 · 6:00 PM'})],
+    ['Rewards Card','loyalty',()=>({id:'l'+Date.now(),kind:'loyalty',name:'Rewards Card',
+      bg:'linear-gradient(150deg,#ff9f0a,#8a4b00)',fg:'#fff',points:500,member:'•••• '+((Math.random()*9000+1000)|0)})]
+  ];
+  actionSheet('Add to Wallet', TYPES.map(([label,kind,make])=>({
+    text:label, onClick:()=>{
+      const item=make();
+      const w=WAL();
+      (kind==='card'||kind==='transit'? w.cards : w.passes).push(item);
+      save(); nav.refresh();
+      island('💳','#0a84ff','Wallet',label+' added',2200);
+      toast(label+' added to Wallet');
+    }})));
+}
+
+/* =========================================================================
+   HOME SCREEN APP ARTWORK — drawn, not emoji
+   ========================================================================= */
+const ART={
+  /* machined cog: 12 teeth ringed around a hub, like the real Settings tile */
+  settings:{bg:'linear-gradient(165deg,#d8d8de,#8e8e96)',art:(()=>{
+    const teeth=Array.from({length:12},(_,i)=>{
+      const a=i*30*Math.PI/180;
+      const x=32+Math.sin(a)*22.4, y=32-Math.cos(a)*22.4;
+      return `<rect x="${(x-3.5).toFixed(2)}" y="${(y-5.2).toFixed(2)}" width="7" height="10.4" rx="2.2"
+        transform="rotate(${i*30} ${x.toFixed(2)} ${y.toFixed(2)})" fill="#f7f7fa"/>`;
+    }).join('');
+    return `<svg viewBox="0 0 64 64" style="width:84%">
+      <defs><linearGradient id="cog" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fdfdfe"/><stop offset="1" stop-color="#dcdce2"/></linearGradient></defs>
+      ${teeth}
+      <circle cx="32" cy="32" r="21.5" fill="url(#cog)"/>
+      <circle cx="32" cy="32" r="14.6" fill="#a9a9b2"/>
+      <circle cx="32" cy="32" r="11.4" fill="url(#cog)"/>
+      <circle cx="32" cy="32" r="6.2" fill="#9a9aa3"/>
+      <circle cx="32" cy="32" r="4.4" fill="#ececf1"/></svg>`;
+  })()},
+  camera:{bg:'linear-gradient(180deg,#63636a,#2c2c30)',art:`<svg viewBox="0 0 64 64" style="width:74%">
+    <rect x="6" y="17" width="52" height="34" rx="9" fill="#fff"/>
+    <path d="M23 17l3.4-5.6h11.2L41 17z" fill="#fff"/>
+    <circle cx="32" cy="34" r="11.4" fill="#4a4a50"/><circle cx="32" cy="34" r="8" fill="#1e1e22"/>
+    <circle cx="28.4" cy="30.4" r="2.6" fill="#8b8b95"/><circle cx="49" cy="24" r="2.2" fill="#c8c8d0"/></svg>`},
+  weather:{bg:'linear-gradient(180deg,#3aa0f5,#0a5fd6)',art:`<svg viewBox="0 0 64 64" style="width:80%">
+    <circle cx="24" cy="24" r="9.4" fill="#ffd60a"/>
+    <g stroke="#ffd60a" stroke-width="2.6" stroke-linecap="round">
+      <path d="M24 8.6v3.4M24 36v3.4M8.6 24H12M36 24h3.4M13.4 13.4l2.4 2.4M32.2 32.2l2.4 2.4M34.6 13.4l-2.4 2.4M15.8 32.2l-2.4 2.4"/></g>
+    <path d="M22 50a8.6 8.6 0 01.9-17.1 11.6 11.6 0 0121.6-2.6A8 8 0 0143.4 50z" fill="#fff"/></svg>`},
+  clock:{bg:'#0b0b0d',art:`<svg viewBox="0 0 64 64" style="width:88%">
+    <circle cx="32" cy="32" r="27" fill="#111114" stroke="#fff" stroke-width="2.4"/>
+    ${Array.from({length:12},(_,i)=>{const a=i*Math.PI/6,r1=i%3===0?19:21.5;
+      return `<line x1="${32+Math.sin(a)*r1}" y1="${32-Math.cos(a)*r1}" x2="${32+Math.sin(a)*24}" y2="${32-Math.cos(a)*24}" stroke="#fff" stroke-width="${i%3===0?2:1.2}" opacity="${i%3===0?1:.6}"/>`}).join('')}
+    <line x1="32" y1="32" x2="32" y2="17" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    <line x1="32" y1="32" x2="43" y2="37" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+    <line x1="32" y1="32" x2="26" y2="42" stroke="#ff9f0a" stroke-width="1.6" stroke-linecap="round"/>
+    <circle cx="32" cy="32" r="2.2" fill="#ff9f0a"/></svg>`},
+  notes:{bg:'linear-gradient(180deg,#fff3c4,#ffcf3f)',art:`<svg viewBox="0 0 64 64" style="width:100%">
+    <rect x="0" y="0" width="64" height="15" fill="#fdfdf6"/>
+    <rect x="0" y="15" width="64" height="49" fill="#fffdf2"/>
+    <g stroke="#d9c98b" stroke-width="2" stroke-linecap="round">
+      <path d="M11 27h42M11 36h42M11 45h30"/></g>
+    <path d="M0 15h64" stroke="#e7d9a2" stroke-width="1.6"/></svg>`},
+  calculator:{bg:'#1c1c1e',art:`<svg viewBox="0 0 64 64" style="width:100%">
+    <rect x="0" y="0" width="64" height="64" fill="#1c1c1e"/>
+    <rect x="8" y="7" width="48" height="12" rx="3" fill="#2f2f33"/>
+    <g fill="#5a5a60">
+      <rect x="8" y="24" width="10" height="8.4" rx="3"/><rect x="21" y="24" width="10" height="8.4" rx="3"/><rect x="34" y="24" width="10" height="8.4" rx="3"/>
+      <rect x="8" y="36" width="10" height="8.4" rx="3"/><rect x="21" y="36" width="10" height="8.4" rx="3"/><rect x="34" y="36" width="10" height="8.4" rx="3"/>
+      <rect x="8" y="48" width="23" height="8.4" rx="3"/><rect x="34" y="48" width="10" height="8.4" rx="3"/></g>
+    <g fill="#ff9f0a"><rect x="47" y="24" width="9" height="8.4" rx="3"/><rect x="47" y="36" width="9" height="20.4" rx="3"/></g></svg>`},
+  messages:{bg:'linear-gradient(180deg,#6ce67d,#0dbb35)',art:`<svg viewBox="0 0 64 64" style="width:74%">
+    <path d="M32 10c12.7 0 23 7.9 23 17.7S44.7 45.4 32 45.4a27 27 0 01-6.6-.8l-11.2 5.4 3.2-8.9C12.2 38 9 33.2 9 27.7 9 17.9 19.3 10 32 10z" fill="#fff"/></svg>`},
+  maps:{bg:'linear-gradient(180deg,#8fe08f,#3aa86a)',art:`<svg viewBox="0 0 64 64" style="width:100%">
+    <rect width="64" height="64" fill="#dff0dc"/>
+    <path d="M0 40h64" stroke="#a8d8ef" stroke-width="9"/>
+    <path d="M14 0v64M0 22h64" stroke="#fff" stroke-width="6"/>
+    <path d="M40 0l10 64" stroke="#fff" stroke-width="5"/>
+    <path d="M32 20a7 7 0 017 7c0 5.4-7 13-7 13s-7-7.6-7-13a7 7 0 017-7z" fill="#ff3b30"/>
+    <circle cx="32" cy="27" r="2.6" fill="#fff"/></svg>`},
+  tv:{bg:'#0a0a0c',art:`<div style="color:#fff;font-size:26px;font-weight:600;letter-spacing:-1.6px;font-family:var(--sf)">tv</div>`},
+  wallet:{bg:'linear-gradient(180deg,#3a3a3e,#0d0d0f)',art:`<svg viewBox="0 0 64 64" style="width:80%">
+    <rect x="10" y="15" width="44" height="11" rx="3.6" fill="#ff6b5e"/>
+    <rect x="8" y="23" width="48" height="12" rx="4" fill="#ffb340"/>
+    <rect x="6" y="31" width="52" height="13" rx="4.4" fill="#5ac8fa"/>
+    <rect x="5" y="39" width="54" height="13" rx="4.6" fill="#f2f2f7"/></svg>`},
+  phone:{bg:'linear-gradient(180deg,#6ce67d,#12b83a)',art:`<svg viewBox="0 0 64 64" style="width:62%">
+    <path d="M17 8.5l6.8 1.6 3.2 9.4-5.2 3.9a30 30 0 0015.6 15.6l3.9-5.2 9.4 3.2 1.6 6.8a5.2 5.2 0 01-5.5 6.3C28.6 48 15.8 35.2 10.7 14.1A5.2 5.2 0 0117 8.5z" fill="#fff"/></svg>`},
+  music:{bg:'linear-gradient(180deg,#fb5c74,#e0295c)',art:`<svg viewBox="0 0 64 64" style="width:64%">
+    <path d="M24 44V18.6l22-4.4v25.4" fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <ellipse cx="18.4" cy="44.4" rx="6.6" ry="5.6" fill="#fff"/><ellipse cx="40.4" cy="39.6" rx="6.6" ry="5.6" fill="#fff"/></svg>`},
+  mail:{bg:'linear-gradient(180deg,#2ec2ff,#0a63e8)',art:`<svg viewBox="0 0 64 64" style="width:74%">
+    <rect x="5" y="14" width="54" height="36" rx="7" fill="#fff"/>
+    <path d="M8.5 19.5L29.2 36a4.4 4.4 0 005.6 0l20.7-16.5" fill="none" stroke="#2a8fe0" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`},
+  safari:{bg:'linear-gradient(180deg,#f4f7fb,#dbe6f3)',art:`<svg viewBox="0 0 64 64" style="width:96%">
+    <defs><linearGradient id="sfb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2ecbff"/><stop offset="1" stop-color="#0a63e8"/></linearGradient></defs>
+    <circle cx="32" cy="32" r="28" fill="url(#sfb)"/>
+    <circle cx="32" cy="32" r="24.4" fill="none" stroke="#fff" stroke-width="1.6" opacity=".55"/>
+    ${Array.from({length:36},(_,i)=>{const a=i*Math.PI/18;const l=i%3===0?4:2.2;
+      return `<line x1="${32+Math.sin(a)*24.4}" y1="${32-Math.cos(a)*24.4}" x2="${32+Math.sin(a)*(24.4-l)}" y2="${32-Math.cos(a)*(24.4-l)}" stroke="#fff" stroke-width="1.2" opacity=".8"/>`}).join('')}
+    <path d="M45 19L28.6 28.6 19 45l16.4-9.6z" fill="#fff"/>
+    <path d="M45 19L35.4 35.4 28.6 28.6z" fill="#ff3b30"/>
+    <circle cx="32" cy="32" r="1.8" fill="#fff"/></svg>`},
+  /* the "A" built from three crossed strokes, ends overshooting like the real mark */
+  appstore:{bg:'linear-gradient(170deg,#33a9ff,#0a5fd6)',art:`<svg viewBox="0 0 64 64" style="width:72%">
+    <g stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none">
+      <path d="M19.5 45.5L31 25.5"/>
+      <path d="M33 25.5L44.5 45.5"/>
+      <path d="M25 25.5L21.5 19.4"/>
+      <path d="M17.5 37.2h29"/>
+    </g></svg>`},
+  photos:{bg:'linear-gradient(180deg,#fff,#f0f0f4)',art:`<svg viewBox="0 0 64 64" style="width:82%">
+    ${['#f9c22e','#f68b1f','#ee3b3b','#c2379b','#7b3fd4','#2f7ee0','#22b5c8','#4cc35a'].map((c,i)=>
+      `<ellipse cx="32" cy="32" rx="7.4" ry="19" transform="rotate(${i*45} 32 32)" fill="${c}" opacity=".82"/>`).join('')}
+    <circle cx="32" cy="32" r="6.6" fill="#fff" opacity=".92"/></svg>`}
+};
+function applyAppArt(){
+  Object.entries(ART).forEach(([id,a])=>{ if(Apps[id]){ Apps[id].glyph=a.art; if(a.bg) Apps[id].bg=a.bg; } });
+}
+
+/* =========================================================================
+   SIMULATOR CONTROL PANEL (outside the device)
+   ========================================================================= */
+const Sim={
+  entries:[],
+  log(msg){
+    const t=new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',second:'2-digit'});
+    this.entries.unshift(`<div><b>${t}</b> — ${esc(msg)}</div>`);
+    this.entries=this.entries.slice(0,26);
+    const l=$('#simlog'); if(l) l.innerHTML=this.entries.join('');
+  },
+  ring(name){
+    if(locked) { /* incoming calls also wake a locked phone */ }
+    incomingCall(name||'Karma S','mobile'); this.log('Incoming call from '+(name||'Karma S'));
+  },
+  answer(){ answerCall(); this.log('Call answered'); },
+  end(){ if(Call.state==='idle') return this.log('No active call'); endCall(); this.log('Call ended'); },
+  reboot(){ this.log('Rebooting…'); reboot(); },
+  lock(){ locked?unlock():lockPhone(); this.log(locked?'Locked':'Unlocked'); },
+  network(mode){ setNetwork(mode); this.log('Network → '+mode); renderPanel(); },
+  cantConnect(){
+    setNetwork('offline');
+    this.log('Scenario: no internet connection');
+    goHome();
+    setTimeout(()=>{ openApp('safari'); setTimeout(()=>safariGo('spectrum.net'),450); },350);
+    renderPanel();
+  },
+  newMail(){
+    const m=ML(), a=m.accounts[0];
+    if(!a) return this.log('No mail account — add one first');
+    const samples=[
+      {n:'Spectrum',e:'no-reply@spectrum.net',s:'Your payment was received',b:'Thanks! We received your payment of $189.98. Your next statement will be available on the 12th.'},
+      {n:'Max',e:'news@mail.max.com',s:'Your show is back tonight',b:'The new season starts streaming at 9/8c. Get caught up with the recap in the app.'},
+      {n:'Jordan Reyes',e:'jordan@example.com',s:'Game night Sunday?',b:'Bringing the projector again. Want me to grab food on the way over?'},
+      {n:'Apple',e:'no_reply@email.apple.com',s:'Your subscription renews tomorrow',b:'iCloud+ with 200 GB Storage renews tomorrow for $2.99.'}
+    ];
+    const p=samples[(a.messages.length+Math.floor(batteryLevel*100))%samples.length];
+    a.messages.push(mkMsg({from:{n:p.n,e:p.e},to:a.address,subject:p.s,body:p.b,box:'inbox',read:false}));
+    save(); syncMailBadge();
+    pushNotification('mail','Mail',p.n+' — '+p.s);
+    const inst=openApps.get('mail'); if(inst) inst.nav.refresh();
+    this.log('New mail from '+p.n);
+  },
+  addEmail(){
+    this.log('Opening Add Mail Account…');
+    openApp('mail');
+    const nav=openApps.get('mail').nav;
+    setTimeout(()=>{ nav.popToRoot(); nav.push(mailAccountsView()); nav.push(addAccountView(nav)); },420);
+  },
+  otp(which){
+    const s=OTP_SENDERS.find(x=>x.id===which)||OTP_SENDERS[0];
+    const code=sendOTP(which);
+    this.log('Text from '+s.from+' — code '+code);
+    renderPanel();
+  },
+  openMessages(){ openApp('messages'); this.log('Opened Messages'); },
+  verify(){
+    const sender=(State.otp&&State.otp.sender)||'Spectrum';
+    this.log('Opened optional verify form');
+    verificationSheet({sender});
+  },
+  addEmailOther(){
+    this.log('Opening Other → Add Mail Account…');
+    openApp('mail');
+    const nav=openApps.get('mail').nav;
+    setTimeout(()=>{ nav.popToRoot(); nav.push(mailAccountsView()); nav.push(addAccountView(nav));
+      setTimeout(()=>{ nav.push(otherAccountView()); setTimeout(()=>nav.push(newMailAccountView()),260); },260); },420);
+  },
+  battery(v){ batteryLevel=v; charging=false; renderStatus();
+    if(v<=0.2) island('🔋','#ff453a','Low Battery',Math.round(v*100)+'% remaining',2600);
+    this.log('Battery → '+Math.round(v*100)+'%'); renderPanel(); },
+  charge(){ charging=!charging; renderStatus();
+    if(charging) island('⚡','#30d158','Charging',Math.round(batteryLevel*100)+'%',2200);
+    this.log(charging?'Charger connected':'Charger removed'); renderPanel(); },
+  silent(){setSilentMode(!State.settings.silent);this.log('Silent mode '+(State.settings.silent?'on':'off'));renderPanel();},
+  theme(){ State.settings.dark=!State.settings.dark; save(); applyAppearance();
+    openApps.forEach(i=>i.nav&&i.nav.refresh());
+    this.log('Appearance → '+(State.settings.dark?'Dark':'Light')); renderPanel(); },
+  touch(){ setTouchCursor(!State.settings.touchCursor);
+    this.log('Touch mode '+(State.settings.touchCursor?'on — drag to scroll':'off'));
+    renderPanel(); },
+  wallpaper(){ State.settings.wallpaper=(State.settings.wallpaper+1)%WALLPAPERS.length; save(); applyAppearance();
+    this.log('Wallpaper → '+WALLPAPERS[State.settings.wallpaper].n); },
+  erase(){ eraseConfirm(); }
+};
+function renderPanel(){
+  const p=$('.deck-inner'); if(!p) return;
+  const s=State.settings;
+  const net=s.airplane?'airplane':(s.network||'online');
+  p.innerHTML=`
+    <div class="deck-heading"><h3>Simulator Controls</h3><button class="deck-close" aria-label="Close simulator controls">✕</button></div>
+    <div class="pnote">Drive the phone from outside — these trigger real states inside the UI.</div>
+
+    <h4>Device</h4>
+    <div class="pbtns">
+      <button class="pbtn" data-a="lock">${locked?'Unlock':'Lock'}</button>
+      <button class="pbtn" data-a="home">Home</button>
+      <button class="pbtn wide" data-a="reboot">⟳ Reboot iPhone</button>
+    </div>
+
+    <h4>Calls</h4>
+    <div class="pbtns">
+      <button class="pbtn green wide" data-a="ring">📞 Incoming call — Karma</button>
+      <button class="pbtn" data-a="ringspectrum">Call: Spectrum</button>
+      <button class="pbtn" data-a="answer">Answer</button>
+      <button class="pbtn red wide" data-a="end">End call${Call.state==='active'?' · '+callDuration():''}</button>
+    </div>
+    <div class="pnote" style="margin:6px 0 0">${Call.state==='idle'?'No call in progress.':(Call.state==='incoming'?'Ringing…':'On call — the green pill sits in the Dynamic Island; tap it to reopen.')}</div>
+
+    <h4>Network</h4>
+    <div class="pseg" id="netseg">
+      ${[['online','Online'],['offline','No Internet'],['noservice','No Service'],['airplane','Airplane']]
+        .map(([k,l])=>`<button data-net="${k}" class="${net===k?'on':''}">${l}</button>`).join('')}
+    </div>
+    <div class="pbtns" style="margin-top:6px">
+      <button class="pbtn blue wide" data-a="cantconnect">⚠ Scenario: “can’t connect”</button>
+    </div>
+
+    <h4>Mail</h4>
+    <div class="pbtns">
+      <button class="pbtn wide" data-a="newmail">✉️ New mail arrives</button>
+      <button class="pbtn blue wide" data-a="addemail">＋ Add email account…</button>
+      <button class="pbtn blue wide" data-a="addother">⚙ Add “Other” IMAP account</button>
+    </div>
+    <div class="pnote" style="margin:6px 0 0">${ML().accounts.length} account${ML().accounts.length===1?'':'s'} · ${totalUnread()} unread</div>
+
+    <h4>Text a Login Code</h4>
+    <div class="pbtns">
+      ${OTP_SENDERS.map(s=>`<button class="pbtn" data-otp="${s.id}">${s.short}</button>`).join('')}
+    </div>
+    <div class="pnote" style="margin:7px 0 0">${
+      State.otp? `Last code <b style="color:#7fd18f;letter-spacing:1px">${esc(State.otp.code)}</b> from ${esc(State.otp.sender)} · sent ${esc(relTime(State.otp.at))}`
+      : 'Arrives as a normal text in Messages — notification, badge, Copy Code. Nothing to fill in.'}</div>
+    <div class="pbtns" style="margin-top:7px">
+      <button class="pbtn wide" data-a="openmsgs">Open Messages</button>
+      <button class="pbtn blue wide" data-a="verify">Optional: try a verify form</button>
+    </div>
+
+    <h4>System</h4>
+    <div class="pbtns">
+      <button class="pbtn" data-a="low">Battery 15%</button>
+      <button class="pbtn" data-a="full">Battery 100%</button>
+      <button class="pbtn ${charging?'on':''}" data-a="charge">${charging?'Charging':'Charge'}</button>
+      <button class="pbtn ${s.silent?'on':''}" data-a="silent">Silent</button>
+      <button class="pbtn" data-a="theme">${s.dark?'Light mode':'Dark mode'}</button>
+      <button class="pbtn" data-a="wallpaper">Wallpaper</button>
+      <button class="pbtn wide ${s.touchCursor?'on':''}" data-a="touch">${s.touchCursor?'👆 Touch mode: on':'Touch mode: off'}</button>
+      <button class="pbtn red wide" data-a="erase">Erase all content</button>
+    </div>
+
+    <h4>Gestures</h4>
+    <div class="pnote" style="margin:0">
+      Tap the <b>home bar</b> to unlock / go home · double-tap for the app switcher.<br>
+      Drag down from the top-right for Control Center.<br>
+      Long-press the Home Screen to delete apps. <b>Esc</b> = home.
+    </div>
+    <div class="plog" id="simlog">${Sim.entries.join('')}</div>`;
+  p.querySelector('.deck-close').onclick=()=>setDeck(false);
+  p.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{
+    const a=b.dataset.a;
+    ({lock:()=>Sim.lock(), home:()=>{goHome();Sim.log('Home');}, reboot:()=>Sim.reboot(),
+      ring:()=>Sim.ring('Karma S'), ringspectrum:()=>Sim.ring('Spectrum Support'), answer:()=>Sim.answer(), end:()=>Sim.end(),
+      cantconnect:()=>Sim.cantConnect(), newmail:()=>Sim.newMail(), addemail:()=>Sim.addEmail(), addother:()=>Sim.addEmailOther(),
+      verify:()=>Sim.verify(), openmsgs:()=>Sim.openMessages(),
+      low:()=>Sim.battery(.15), full:()=>Sim.battery(1), charge:()=>Sim.charge(), silent:()=>Sim.silent(),
+      theme:()=>Sim.theme(), wallpaper:()=>Sim.wallpaper(), erase:()=>Sim.erase(),
+      touch:()=>Sim.touch()})[a]();
+    if(['lock','ring','answer','end','charge','touch'].includes(a)) setTimeout(renderPanel,60);
+  });
+  p.querySelectorAll('[data-net]').forEach(b=>b.onclick=()=>Sim.network(b.dataset.net));
+  p.querySelectorAll('[data-otp]').forEach(b=>b.onclick=()=>Sim.otp(b.dataset.otp));
+}
+/* ---- slide-out drawer ---- */
+const DECK_KEY='iphone-sim-deck';
+let deckOpen=false;try{deckOpen=localStorage.getItem(DECK_KEY)==='open';}catch{}
+function setDeck(open,{animate=true}={}){
+  deckOpen=Boolean(open);open=deckOpen;
+  const p=$('#panel'), tab=$('#deckTab');
+  if(!animate) p.style.transition='none';
+  p.classList.toggle('closed',!open);p.inert=!open;p.setAttribute('aria-hidden',String(!open));
+  tab.setAttribute('aria-expanded',String(open));tab.setAttribute('aria-label',open?'Hide simulator controls':'Show simulator controls');
+  tab.classList.toggle('closed',!open);
+  tab.title = open? 'Hide simulator controls' : 'Show simulator controls';
+  try{ localStorage.setItem(DECK_KEY, open?'open':'closed'); }catch(e){}
+  if(!animate) requestAnimationFrame(()=>p.style.transition='');
+  fitStage();
+  // the phone re-centres while the drawer slides, so keep scaling in step
+  let n=0; const id=setInterval(()=>{ fitStage(); if(++n>26) clearInterval(id); },16);
+}
+$('#deckTab').innerHTML =
+  sf('<path d="M15 4.5L7.5 12l7.5 7.5"/>',{w:2.2,size:17}) + '<span class="lbl">Simulator controls</span>';
+$('#deckTab').onclick=()=>setDeck(!deckOpen);
+document.addEventListener('keydown',e=>{
+  if((e.key==='\\'||e.key==='`') && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){
+    e.preventDefault(); setDeck(!deckOpen);
+  }
+});
+/* keep the panel's live bits fresh */
+setInterval(()=>{ const b=$('#panel [data-a="end"]'); if(b && Call.state==='active') b.textContent='End call · '+callDuration(); },1000);
+
+/* =========================================================================
+   BOOT
+   ========================================================================= */
+function fitStage(){
+  const s=$('#stage'),device=s.querySelector('.device');
+  const panelWidth=window.innerWidth>760 && deckOpen ? $('#panel').getBoundingClientRect().width+48 : 0;
+  const margin=window.innerWidth<=760 ? 64 : 80;
+  const scale=Math.max(.1,Math.min(1,(window.innerHeight-32)/852,(window.innerWidth-panelWidth-margin)/393));
+  s.style.height=852*scale+'px';s.style.width=393*scale+'px';s.style.transform='none';
+  device.style.transformOrigin='top left';device.style.transform='scale('+scale+')';
+}
+window.addEventListener('resize',fitStage);
+
+/* Native reference behavior — represented device data stays in the browser. */
+function setAirplane(enabled){
+  const s=State.settings;
+  if(enabled && !s.airplane){s.radioBeforeAirplane={wifi:s.wifi,bluetooth:s.bluetooth};s.wifi=false;}
+  if(!enabled && s.airplane && s.radioBeforeAirplane){s.wifi=s.radioBeforeAirplane.wifi;s.bluetooth=s.radioBeforeAirplane.bluetooth;}
+  s.airplane=enabled;save();applyAppearance();renderCC();
+}
+function glassView(){return {title:'Liquid Glass',build(b,nav){
+  group(b,{rows:[{label:'Clear',value:State.settings.glassTint<.35?'✓':'',onClick:()=>{State.settings.glassTint=.15;save();applyAppearance();nav.refresh();}},{label:'Tinted',value:State.settings.glassTint>=.35?'✓':'',onClick:()=>{State.settings.glassTint=.7;save();applyAppearance();nav.refresh();}}]});
+  const g=el('div','grp glass-control'),slider=el('input','slider');slider.type='range';slider.min=0;slider.max=100;slider.value=State.settings.glassTint*100;slider.setAttribute('aria-label','Liquid Glass tint');slider.oninput=()=>{State.settings.glassTint=Number(slider.value)/100;save();applyAppearance();};g.appendChild(slider);b.appendChild(g);
+}};}
+const baseDisplay=displayView;
+displayView=function(){const view=baseDisplay(),build=view.build;view.build=(b,nav)=>{build(b,nav);group(b,{rows:[{label:'Liquid Glass',value:State.settings.glassTint<.35?'Clear':'Tinted',onClick:()=>nav.push(glassView())}]});};return view;};
+const baseAppearance=applyAppearance;
+applyAppearance=function(){baseAppearance();$('#screen').style.setProperty('--glass-alpha',String(.32+State.settings.glassTint*.55));};
+// Flush pending saves on navigation, including the directory link.
+function flushProfile(){clearTimeout(saveTimer);if(eraseInProgress)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(State));}catch(error){console.warn('Could not save iPhone profile',error);}}
+addEventListener('pagehide',flushProfile);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)flushProfile();});
+
+function networkConfig(ssid){const k=knownNet(ssid);if(!k)return null;return k.config ||= {dnsMode:'Automatic',dns:[],proxyMode:'Off',server:'',port:'',url:'',ipMode:'Automatic',ip:'',subnet:'',router:''};}
+function networkEditor(ssid,kind){
+  const current=networkConfig(ssid),draft=structuredClone(current),title={dns:'Configure DNS',proxy:'Configure Proxy',ip:'Configure IPv4'}[kind];
+  return {title,right:[{text:'Save',onClick:nav=>{
+    const errors=[];
+    if(kind==='dns'){draft.dns=draft.dns.map(v=>v.trim()).filter(Boolean);draft.searchDomains=(draft.searchDomains||[]).map(v=>v.trim()).filter(Boolean);}
+    if(kind==='dns' && draft.dnsMode==='Manual' && (!draft.dns.length || draft.dns.some(v=>!validAddress(v))))errors.push('Enter a valid DNS server address.');
+    if(kind==='ip' && draft.ipMode==='Manual' && [draft.ip,draft.subnet,draft.router].some(v=>!validIPv4(v)))errors.push('Enter valid IPv4 addresses.');
+    if(kind==='proxy' && draft.proxyMode==='Manual' && (!draft.server.trim() || !/^\d+$/.test(draft.port) || +draft.port<1 || +draft.port>65535))errors.push('Enter a server and a port from 1 to 65535.');
+    if(kind==='proxy' && draft.proxyMode==='Automatic'){try{const u=new URL(draft.url);if(!['http:','https:'].includes(u.protocol))throw Error();}catch{errors.push('Enter a valid proxy configuration URL.');}}
+    if(errors.length)return alertBox({title:'Invalid Configuration',message:errors.join(' '),buttons:[{text:'OK'}]});
+    Object.assign(current,draft);save();renderStatus();nav.pop();nav.refresh();
+  }}],build(b,nav){
+    const key=kind==='dns'?'dnsMode':kind==='proxy'?'proxyMode':'ipMode',choices=kind==='dns'?['Automatic','Manual']:kind==='proxy'?['Off','Manual','Automatic']:['Automatic','Manual'];
+    group(b,{rows:choices.map(choice=>({label:choice,chevron:false,value:draft[key]===choice?'✓':'',onClick:()=>{draft[key]=choice;if(kind==='dns' && choice==='Manual' && !draft.dns.length)draft.dns.push('');nav.refresh();}}))});
+    const field=(label,key)=>{const g=el('div','grp'),r=el('label','row static'),i=el('input');r.appendChild(el('span','lbl',esc(label)));i.value=draft[key];i.setAttribute('aria-label',label);i.oninput=()=>draft[key]=i.value.trim();r.appendChild(i);g.appendChild(r);b.appendChild(g);};
+    if(kind==='dns' && draft.dnsMode==='Manual'){
+      const list=(title,key,singular,placeholder)=>{
+        b.appendChild(el('div','grp-h',title));const g=el('div','grp dns-servers');
+        (draft[key]||=[]).forEach((value,index)=>{
+          const row=el('div','row static'),remove=el('button','dns-remove','−'),input=el('input','dns-address');
+          remove.setAttribute('aria-label','Remove '+singular.toLowerCase()+' '+(index+1));
+          remove.onclick=()=>{draft[key].splice(index,1);nav.refresh();};
+          input.setAttribute('aria-label',(key==='dns'?'DNS server':singular)+' '+(index+1));input.setAttribute('data-editor-list',key);input.value=value;input.placeholder=placeholder;
+          input.autocapitalize='none';input.autocomplete='off';input.spellcheck=false;
+          input.oninput=()=>draft[key][index]=input.value.trim();
+          row.appendChild(remove);row.appendChild(input);g.appendChild(row);
+        });
+        const add=el('button','row dns-add','<span class="dns-plus">+</span><span>Add '+singular+'</span>');
+        add.setAttribute('aria-label','Add '+singular.toLowerCase());
+        add.onclick=()=>{draft[key].push('');nav.refresh();nav.top?._body?.querySelectorAll('[data-editor-list="'+key+'"]').item?.(draft[key].length-1)?.focus();};
+        g.appendChild(add);b.appendChild(g);
+      };
+      list('DNS Servers','dns','Server','DNS server');
+      list('Search Domains','searchDomains','Search Domain','Search domain');
+    }
+    if(kind==='ip' && draft.ipMode==='Manual'){field('IP Address','ip');field('Subnet Mask','subnet');field('Router','router');}
+    if(kind==='proxy' && draft.proxyMode==='Manual'){field('Server','server');field('Port','port');}
+    if(kind==='proxy' && draft.proxyMode==='Automatic')field('URL','url');
+  }};
+}
+function validIPv4(value){const p=value.split('.');return p.length===4 && p.every(v=>/^\d{1,3}$/.test(v) && +v<=255);}
+function validAddress(value){if(validIPv4(value))return true;if(!value.includes(':'))return false;try{return Boolean(new URL('http://['+value+']/').hostname);}catch{return false;}}
+const baseNetworkInfo=networkDetailView;
+networkDetailView=function(ssid){const view=baseNetworkInfo(ssid),build=view.build;view.build=(b,nav)=>{
+  build(b,nav);const c=networkConfig(ssid);if(!c)return;
+  for(const row of b.querySelectorAll('.row')){
+    const label=row.querySelector('.lbl')?.textContent.trim();
+    const kind={'Configure DNS':'dns','Configure Proxy':'proxy','Configure IP':'ip'}[label];
+    if(kind){row.onclick=()=>nav.push(networkEditor(ssid,kind));row.querySelector('.val').textContent=c[kind==='dns'?'dnsMode':kind==='proxy'?'proxyMode':'ipMode'];}
+    if(c.ipMode==='Manual' && ['IP Address','Subnet Mask','Router'].includes(label))row.querySelector('.val').textContent=c[{ 'IP Address':'ip','Subnet Mask':'subnet','Router':'router'}[label]];
+  }
+};return view;};
+
+/* Keep background pages outside the accessibility and keyboard focus trees. */
+Nav.prototype.syncAccessible=function(){for(const view of this.stack){view._page.inert=view!==this.top;view._page.setAttribute('aria-hidden',String(view!==this.top));}};
+for(const name of ['push','pop','popToRoot','popTo','setRoot']){const base=Nav.prototype[name];Nav.prototype[name]=function(...args){const result=base.apply(this,args);this.syncAccessible();return result;};}
+function syncPhoneSurfaces(){
+  const expose=(element,hidden)=>{element.inert=hidden;element.setAttribute('aria-hidden',String(hidden));};
+  const control=$('#cc').classList.contains('on'),switcher=$('#switcher').classList.contains('on'),overlay=$('#overlay').classList.contains('on');
+  const call=$('#callui').classList.contains('on') && !control && !switcher && !overlay;
+  $('#screen').classList.toggle('call-active',call);
+  expose($('#callui'),!call);
+  expose($('#lock'),!locked || call || control || switcher || overlay);expose($('#cc'),!control);expose($('#switcher'),!switcher);expose($('#overlay'),!overlay);
+  expose($('#home'),locked || Boolean(currentApp) || control || switcher || overlay || call);
+  expose($('#applayer'),locked || control || switcher || overlay || call);
+  for(const [id,inst] of openApps)expose(inst.win,id!==currentApp?.id);
+}
+new MutationObserver(syncPhoneSurfaces).observe($('#screen'),{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+
+(function boot(){
+  registerStoreApps();
+  applyAppArt();
+  ML(); SafariState(); WF(); PH(); MSG(); ACC(); WAL(); CK();
+  if(State.settings.wifi && WF().connected) State.settings.wifiName=WF().connected;
+  // a couple of pending updates for apps the user has installed
+  State.updatesAvailable=(State.updatesAvailable||[]).filter(id=>State.installed.includes(id));
+  State.installed.slice(0,2).forEach(id=>{ if(!State.updatesAvailable.includes(id)) State.updatesAvailable.push(id); });
+  save();
+
+  applyAppearance();
+  renderHome();
+  renderCC();
+  renderLockNotifs();
+  renderPanel();
+  renderStatus();
+  setBadge('appstore', State.updatesAvailable.length);
+  syncMailBadge();
+  setDeck(deckOpen, {animate:false});
+  fitStage();
+
+  locked=true;
+  $('#screen').classList.add('locked');
+  $('#lock').classList.remove('hidden');
+  $('#lk-lockicon').innerHTML=SF.lock;
+  setTimeout(()=>$('#boot').classList.add('gone'), 2300);
+  
+})();
+

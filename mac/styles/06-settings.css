@@ -1,0 +1,121 @@
+/* ---------------------------------------------------------------------------
+   System Settings: sidebar icon language, Apple Account header, wallpaper
+   pickers, appearance choosers and device rows.
+   --------------------------------------------------------------------------- */
+
+.settings-shell > .sidebar { width: 224px; padding: 10px 10px 14px; }
+.settings-list { display: grid; gap: 2px; padding-bottom: 8px; }
+.settings-list .side-item { min-height: 30px; padding: 4px 8px; gap: 9px; border-radius: 7px; }
+.settings-list .side-item.on { background: rgba(var(--accent-rgb), 0.24); color: var(--text); }
+[data-theme="dark"] .settings-list .side-item.on { background: rgba(var(--accent-rgb), 0.34); color: #fff; }
+.settings-group-gap { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--hair); }
+
+/* Apple Account header in the sidebar. */
+.account-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 7px 10px;
+  text-align: left;
+  border-radius: 8px;
+}
+.account-chip:hover { background: var(--fill); }
+.account-chip .avatar { margin: 0; }
+.account-chip div { min-width: 0; flex: 1; }
+.account-chip strong { display: block; font-size: calc(12.5px * var(--text-scale)); }
+.account-chip small { display: block; margin-top: 1px; color: var(--muted); font-size: calc(10.5px * var(--text-scale)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-chip.signed-out strong { color: var(--accent); }
+
+/* The rounded-square settings glyph, tinted per pane. */
+.settings-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 22px; height: 22px;
+  flex: none;
+  border-radius: 6px;
+  overflow: hidden;
+  background: linear-gradient(150deg, var(--si-a, #62c8ff), var(--si-b, #1678df));
+  color: #fff;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.45), 0 0.5px 1.5px rgba(0, 0, 0, 0.22);
+}
+.settings-icon::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 52%;
+  background: linear-gradient(rgba(255, 255, 255, 0.22), transparent);
+}
+.settings-icon svg {
+  position: relative;
+  width: 15px; height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+}
+.settings-icon svg .fill { fill: currentColor; stroke: none; }
+.settings-icon.rainbow { background: conic-gradient(from 210deg, #36d5ed, #4c75ed, #a25bd7, #ed5c99, #f99b3e, #4dd5a6, #36d5ed); }
+.settings-icon.size-28 { width: 28px; height: 28px; border-radius: 7px; }
+.settings-icon.size-28 svg { width: 18px; height: 18px; }
+.settings-icon.size-44 { width: 44px; height: 44px; border-radius: 11px; }
+.settings-icon.size-44 svg { width: 27px; height: 27px; }
+
+/* Appearance and wallpaper choosers. */
+.choice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.choice {
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: 0 0 0 0.5px var(--hair);
+  text-align: center;
+}
+.choice.on { box-shadow: 0 0 0 2.5px var(--accent); }
+.choice strong { display: block; margin-top: 7px; font-size: calc(11.5px * var(--text-scale)); font-weight: 500; }
+.choice-art { height: 62px; border-radius: 7px; background-size: cover; background-position: center; box-shadow: inset 0 0 0 0.5px var(--hair); }
+.appearance-art { display: grid; place-items: center; height: 58px; border-radius: 7px; font-size: calc(20px * var(--text-scale)); box-shadow: inset 0 0 0 0.5px var(--hair-strong); }
+.appearance-art.light { background: linear-gradient(160deg, #fdfdfe, #e2e4ea); color: #3a3a3f; }
+.appearance-art.dark { background: linear-gradient(160deg, #3a3b42, #1b1c21); color: #e8e8ee; }
+.appearance-art.auto { background: linear-gradient(100deg, #fdfdfe 48%, #23242a 52%); color: #7a7a80; }
+
+.swatch-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.swatch { width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14); }
+.swatch.on { box-shadow: 0 0 0 2px var(--window-solid), 0 0 0 3.5px var(--text); }
+
+/* iCloud storage bar. */
+.storage-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--fill); margin: 4px 0 8px; }
+.storage-bar i { height: 100%; }
+
+/* Wi-Fi network rows. */
+.signal { display: flex; align-items: flex-end; gap: 2px; width: 20px; height: 15px; flex: none; color: var(--text); }
+.signal i { width: 3px; border-radius: 1.5px; background: currentColor; }
+.signal i:nth-child(1) { height: 4px; }
+.signal i:nth-child(2) { height: 7px; }
+.signal i:nth-child(3) { height: 11px; }
+.signal i:nth-child(4) { height: 15px; }
+.signal[data-bars="1"] i:nth-child(n+2),
+.signal[data-bars="2"] i:nth-child(n+3),
+.signal[data-bars="3"] i:nth-child(n+4) { opacity: 0.22; }
+
+.network-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; width: 100%; text-align: left; }
+.network-row:hover { background: var(--fill); }
+.network-copy { flex: 1; min-width: 0; }
+.network-copy strong { display: block; font-size: calc(12.5px * var(--text-scale)); }
+.network-copy small { color: var(--muted); font-size: calc(10.5px * var(--text-scale)); }
+
+/* Device list used by Apple Account and Bluetooth. */
+.device-row { display: flex; align-items: center; gap: 10px; }
+.device-row .settings-icon { flex: none; }
+
+/* Screen Time / battery usage charts. */
+.usage-chart { display: flex; align-items: flex-end; gap: 5px; height: 96px; padding: 10px 4px 0; }
+.usage-bar { flex: 1; display: grid; align-content: end; gap: 3px; text-align: center; }
+.usage-bar i { display: block; border-radius: 3px 3px 0 0; background: var(--accent); }
+.usage-bar span { color: var(--muted); font-size: calc(9.5px * var(--text-scale)); }
+
+/* Keyboard shortcut table. */
+.shortcut-table { width: 100%; font-size: calc(12px * var(--text-scale)); }
+.shortcut-table td { padding: 5px 8px; border-bottom: 0.5px solid var(--hair); }
+.shortcut-table td:last-child { text-align: right; color: var(--muted); font-family: var(--font-mono); font-size: calc(11px * var(--text-scale)); white-space: nowrap; }

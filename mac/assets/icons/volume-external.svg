@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="volume-external"><defs><linearGradient id="veg" x1="64" y1="30" x2="64" y2="100" gradientUnits="userSpaceOnUse">
+ <stop offset="0" stop-color="#fdfdfe"/><stop offset="1" stop-color="#b8c0cb"/></linearGradient></defs>
+ <rect x="12" y="34" width="104" height="60" rx="9" fill="url(#veg)" stroke="#8d97a5" stroke-width="2"/>
+ <rect x="24" y="48" width="80" height="8" rx="4" fill="#f2a33c"/>
+ <circle cx="96" cy="76" r="7" fill="#5f6773"/></svg>

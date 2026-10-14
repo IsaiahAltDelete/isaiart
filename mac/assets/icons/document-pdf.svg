@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="document-pdf"><defs><linearGradient id="pg" x1="64" y1="8" x2="64" y2="120" gradientUnits="userSpaceOnUse">
+ <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eceff4"/></linearGradient></defs>
+ <path d="M26 10h54l22 22v86a4 4 0 0 1-4 4H30a4 4 0 0 1-4-4V14a4 4 0 0 1 4-4z" fill="url(#pg)" stroke="#c9d0da" stroke-width="2"/>
+ <path d="M80 10l22 22H84a4 4 0 0 1-4-4z" fill="#d6dce5"/>
+ <rect x="26" y="72" width="76" height="26" fill="#e0453a"/>
+ <text x="64" y="91" font-family="Inter, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">PDF</text></svg>

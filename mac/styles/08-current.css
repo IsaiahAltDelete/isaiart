@@ -1,0 +1,76 @@
+/* Current macOS system materials. */
+.settings-list .side-item.on { background:var(--accent); color:#fff; }
+.settings-shell > .sidebar { width:220px; background:rgba(245,245,247,.52); }
+[data-theme="dark"] .settings-shell > .sidebar { background:rgba(32,32,34,.60); }
+.settings-shell .pane-pad { padding:24px; }
+.settings-shell .pane-header h1 { font-size:23px; letter-spacing:-.5px; }
+.settings-shell .group { border-radius:12px; }
+.network-details { width:740px!important; max-width:calc(100vw - 32px)!important; padding:0!important; overflow:hidden; }
+.network-details > h2 { text-align:left; padding:18px 24px; margin:0!important; font-size:15px; border-bottom:1px solid var(--hair); }
+.network-details .dialog-content { padding:0; max-height:none; overflow:visible; }
+.network-details .dialog-actions { padding:16px 24px; border-top:1px solid var(--hair); margin:0; }
+.net-layout { display:flex; height:440px; }
+.net-layout > nav { width:165px; flex:none; padding:12px; border-right:1px solid var(--hair); background:var(--sidebar); }
+.net-layout > nav button { display:block; width:100%; text-align:left; margin:2px 0; }
+.net-layout > nav .on { color:#fff; background:var(--accent); }
+.net-content { flex:1; min-width:0; padding:24px; overflow:auto; }
+.net-field { display:flex; align-items:center; gap:12px; padding:9px 0; font-size:12px; }
+.net-field > span { width:145px; flex:none; text-align:right; }
+.net-field input,.net-field select { min-width:0; width:100%; }
+.net-check { justify-content:space-between; }
+.net-check input { accent-color:var(--accent); }
+.dns-list { min-height:95px; border:1px solid var(--hair); border-radius:7px; background:var(--card); padding:5px; margin-bottom:6px; }
+.dns-list > div { display:flex; gap:6px; padding:3px; }
+.dns-list .field { flex:1; }
+.spotlight-apps { width:770px; max-height:75vh; overflow:auto; }
+.apps-categories { display:flex; gap:7px; padding:12px 20px; flex-wrap:wrap; border-bottom:1px solid var(--hair); }
+.apps-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:24px 10px; padding:25px; }
+.apps-grid button { display:flex; flex-direction:column; align-items:center; gap:8px; padding:8px 4px; border-radius:12px; font-size:11px; }
+.apps-grid button:hover { background:var(--fill); }
+.apps-grid .app-icon { width:55px; height:55px; }
+[data-icon-style="Clear"] .dock .app-icon { opacity:calc(.60 + var(--glass-tint,.35)*.4); filter:grayscale(.65); }
+[data-icon-style="Dark"] .dock .app-icon { filter:brightness(.68) saturate(.85); }
+[data-icon-style="Tinted"] .dock .app-icon { filter:grayscale(1) sepia(.8) hue-rotate(175deg) saturate(2.5); }
+
+.spotlight-apps { width:650px; height:450px; border-radius:25px; background:rgba(245,244,243,.58); backdrop-filter:blur(50px) saturate(1.5); }
+.spotlight-apps .spotlight-head { padding:12px 18px; margin:0 14px; border-bottom:1px solid var(--hair); }
+.spotlight-apps .spotlight-head input { font-size:21px; }
+.apps-grid { grid-template-columns:repeat(7,minmax(0,1fr)); gap:17px 8px; padding:18px 22px; }
+.apps-grid .app-icon { width:48px; height:48px; }
+.apps-grid button { font-size:10px; gap:6px; padding:3px; }
+.apps-grid button:focus-visible { outline:2px solid var(--accent); background:var(--fill); }
+.apps-more { margin-left:auto; border-radius:20px; padding:5px; }
+.apps-options { display:flex; flex-wrap:wrap; gap:6px; padding:12px 20px; border-bottom:1px solid var(--hair); }
+.apps-grid.list-view { display:flex; flex-direction:column; gap:3px; }
+.apps-grid.list-view button { flex-direction:row; gap:12px; font-size:13px; justify-content:flex-start; padding:5px 12px; }
+.apps-grid.list-view .app-icon { width:28px; height:28px; }
+@media(max-width:700px) { .network-details { max-width:calc(100vw - 12px)!important; } .net-layout > nav { width:108px; padding:7px; } .net-content { padding:15px; } .net-field { display:block; } .net-field > span { display:block; width:auto; text-align:left; margin-bottom:4px; } .apps-grid { grid-template-columns:repeat(5,minmax(0,1fr)); } }
+
+.os-update-status { display:flex; flex-direction:column; align-items:center; padding:55px 15px; text-align:center; gap:12px; }
+.os-update-status > .app-icon { width:68px; height:68px; margin-bottom:8px; }
+.os-update-status > strong { font-size:18px; }.os-update-status > p { font-size:13px; color:var(--muted); margin:0; }
+
+.login-chooser { max-height:400px; overflow:auto; }.size-28 { width:28px!important; height:28px!important; }
+
+.spotlight-head > .app-icon.size-24 { width:24px!important; height:24px!important; flex:none; }
+
+.spotlight { z-index:9600; }.spotlight-backdrop { background:transparent; backdrop-filter:none; }.spotlight-head > .app-icon.size-24 { width:24px!important; height:24px!important; flex:none; }
+
+.dock { background:rgba(230,231,233,calc(.18 + var(--glass-tint,.35)*.50)); } [data-theme="dark"] .dock { background:rgba(45,45,48,calc(.25 + var(--glass-tint,.35)*.50)); }
+
+.native-start-page { max-width:680px; padding:48px; margin:auto; }.native-start-page h2 { font-size:22px; margin:0 0 20px; }.native-start-page .favorites-grid { justify-content:start; grid-template-columns:repeat(5,1fr); }.privacy-report { margin-top:40px; }.privacy-report .web-card { display:flex; align-items:center; gap:18px; }.privacy-report .web-card strong { font-size:30px; }.privacy-report svg { width:28px; height:28px; }
+
+/* Apps has its own centered placement, independent of the Spotlight search. */
+.spotlight.spotlight-apps { top:50%; transform:translate(-50%,-50%); width:min(650px,calc(100vw - 24px)); height:min(450px,calc(100vh - 125px)); max-height:calc(100vh - 125px); animation:none; }
+.file-open-layout { display:flex; height:300px; margin:0; }
+.file-open-layout nav { width:150px; flex:none; padding:12px 8px; background:var(--sidebar); border-right:1px solid var(--hair); }
+.file-open-layout nav .side-item { width:100%; gap:8px; }
+.file-open-layout nav svg,.file-open-item svg { width:18px;height:18px;flex:none; }
+.file-open-layout > section { flex:1; min-width:0; overflow:auto; padding:10px; }
+.file-open-location { text-align:center; font-weight:600; padding:8px; margin-bottom:8px; border-bottom:1px solid var(--hair); }
+.file-open-item { width:100%; display:flex; gap:8px; padding:7px; text-align:left; border-radius:5px; }
+.file-open-item small { margin-left:auto; color:var(--muted); }
+.file-open-item[aria-selected=true] { background:var(--accent); color:white; }
+.file-open-item[aria-selected=true] small { color:white; }
+
+.net-field select{width:auto;max-width:100%;padding:3px 24px 3px 8px;border:1px solid var(--hair);border-radius:5px;background-color:var(--card);color:var(--text);font-size:12px}.net-field:has(select){justify-content:flex-start}

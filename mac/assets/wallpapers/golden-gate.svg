@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1200" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9c7753"/><stop offset=".38" stop-color="#554339"/><stop offset=".72" stop-color="#a6a4a4"/><stop offset="1" stop-color="#4d6073"/></linearGradient>
+    <linearGradient id="first" x1=".1" y1="0" x2=".82" y2=".9"><stop stop-color="#72533a"/><stop offset=".3" stop-color="#cab899"/><stop offset=".5" stop-color="#f3e5c9"/><stop offset=".64" stop-color="#97836f"/><stop offset="1" stop-color="#4e4b4b"/></linearGradient>
+    <linearGradient id="second" x1=".15" y1=".1" x2=".9" y2="1"><stop stop-color="#d5c5ad"/><stop offset=".27" stop-color="#f2e8d7"/><stop offset=".52" stop-color="#afa59b"/><stop offset=".69" stop-color="#b4bbc4"/><stop offset="1" stop-color="#798c9e"/></linearGradient>
+    <linearGradient id="edge"><stop stop-color="#ddd2bd"/><stop offset=".45" stop-color="#fff8e8"/><stop offset="1" stop-color="#e1e5e9"/></linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="30"/></filter>
+    <filter id="shine"><feGaussianBlur stdDeviation="4"/></filter>
+  </defs>
+  <rect width="1920" height="1200" fill="url(#sky)"/>
+  <path d="M-90-150H460C700 44 920 169 623 449 421 639 89 691-54 998Z" fill="url(#first)"/>
+  <path d="M605-160H1188C1487 24 1558 194 1240 472 1023 659 722 950 672 1250H-35C42 781 407 652 671 424 903 223 811 73 605-160Z" fill="url(#first)"/>
+  <path d="M1332-145H2010V1280H656C745 763 1052 629 1395 382 1707 158 1487 49 1332-145Z" fill="url(#second)"/>
+  <path d="M1860-90C1803 299 1581 454 1394 627 1186 819 1102 1017 1100 1280H2020V-90Z" fill="url(#second)"/>
+  <path d="M460-95C782 144 845 276 623 449 421 639 89 691-54 998M1188-80C1487 24 1558 194 1240 472 1023 659 722 950 672 1250M1860-90C1803 299 1581 454 1394 627 1186 819 1102 1017 1100 1280" fill="none" stroke="url(#edge)" stroke-width="11" opacity=".56" filter="url(#shine)"/>
+  <path d="M460-95C782 144 845 276 623 449 421 639 89 691-54 998M1188-80C1487 24 1558 194 1240 472 1023 659 722 950 672 1250M1860-90C1803 299 1581 454 1394 627 1186 819 1102 1017 1100 1280" fill="none" stroke="url(#edge)" stroke-width="2.8" opacity=".91"/>
+  <ellipse cx="590" cy="575" rx="395" ry="130" transform="rotate(-31 590 575)" fill="#eed39e" opacity=".13" filter="url(#soft)"/>
+</svg>

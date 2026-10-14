@@ -1,0 +1,242 @@
+/* ---------------------------------------------------------------------------
+   Design tokens, reset and shared materials.
+   Values track the macOS Tahoe (26) control metrics: 25px menu bar, 12px
+   window radius, 6px sidebar selection, translucent "Liquid Glass" materials.
+   --------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  /* Typography */
+  --font-ui: "Mac System", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+             "Helvetica Neue", Inter, system-ui, sans-serif;
+  --font-display: "Mac Display", -apple-system, "SF Pro Display", var(--font-ui);
+  --font-mono: "Mac Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --text-scale: 1;
+  --font-size: calc(13px * var(--text-scale));
+
+  /* Accent (overwritten at runtime from System Settings) */
+  --accent: #0a7cff;
+  --accent-rgb: 10, 124, 255;
+  --accent-text: #fff;
+  --danger: #ff3b30;
+  --warn: #ff9f0a;
+  --ok: #30c952;
+
+  /* Content colours */
+  --text: #1c1c1e;
+  --text-2: #3c3c43;
+  --muted: #6e6e73;
+  --faint: #8e8e93;
+  --hair: rgba(20, 22, 28, 0.11);
+  --hair-strong: rgba(20, 22, 28, 0.2);
+
+  /* Materials */
+  --window: rgba(246, 246, 248, 0.86);
+  --window-solid: #f6f6f8;
+  --sheet: #f4f4f6;
+  --sidebar: rgba(232, 234, 240, 0.7);
+  --content: rgba(255, 255, 255, 0.58);
+  --card: rgba(255, 255, 255, 0.72);
+  --card-2: rgba(120, 124, 132, 0.1);
+  --fill: rgba(120, 124, 132, 0.12);
+  --fill-hover: rgba(120, 124, 132, 0.2);
+  --glass: rgba(240, 243, 248, 0.42);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --popover: rgba(243, 245, 249, 0.76);
+  --menu-fg: #fff;
+
+  /* Elevation */
+  --shadow-window: 0 32px 74px rgba(10, 16, 34, 0.3), 0 2px 8px rgba(10, 16, 34, 0.18),
+                   0 0 0 0.5px rgba(20, 22, 30, 0.16);
+  --shadow-window-idle: 0 16px 40px rgba(10, 16, 34, 0.18), 0 0 0 0.5px rgba(20, 22, 30, 0.12);
+  --shadow-pop: 0 18px 48px rgba(8, 12, 26, 0.26), 0 0 0 0.5px rgba(20, 22, 30, 0.14);
+  --shadow-dock: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 10px 28px rgba(0, 0, 0, 0.26);
+
+  /* Metrics */
+  --menu-h: 25px;
+  --radius-window: 12px;
+  --radius-pop: 12px;
+  --radius-card: 10px;
+  --radius-control: 7px;
+  --dock-size: 56px;
+  --blur: 48px;
+}
+
+[data-theme="dark"] {
+  --text: #f2f2f5;
+  --text-2: #d8d8de;
+  --muted: #a0a0a8;
+  --faint: #8a8a92;
+  --hair: rgba(255, 255, 255, 0.11);
+  --hair-strong: rgba(255, 255, 255, 0.2);
+
+  --window: rgba(38, 39, 44, 0.84);
+  --window-solid: #26272c;
+  --sheet: #2c2d33;
+  --sidebar: rgba(30, 31, 36, 0.7);
+  --content: rgba(255, 255, 255, 0.04);
+  --card: rgba(255, 255, 255, 0.075);
+  --card-2: rgba(255, 255, 255, 0.06);
+  --fill: rgba(255, 255, 255, 0.1);
+  --fill-hover: rgba(255, 255, 255, 0.17);
+  --glass: rgba(26, 27, 32, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.13);
+  --popover: rgba(42, 43, 49, 0.8);
+
+  --shadow-window: 0 34px 80px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  --shadow-window-idle: 0 18px 44px rgba(0, 0, 0, 0.42), 0 0 0 0.5px rgba(255, 255, 255, 0.07);
+  --shadow-pop: 0 20px 52px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+}
+
+/* Reduced-transparency accessibility mode collapses every vibrancy layer. */
+.opaque-materials {
+  --window: var(--window-solid);
+  --sidebar: #e6e8ee;
+  --content: #fbfbfd;
+  --popover: #f3f4f7;
+  --glass: #e9ecf1;
+  --blur: 0px;
+}
+[data-theme="dark"].opaque-materials {
+  --sidebar: #22232a;
+  --content: #1f2026;
+  --popover: #2c2d34;
+  --glass: #1c1d23;
+}
+
+/* Increase contrast.
+   It used to raise the hairline colour and the muted text colour and stop
+   there, which is invisible on most of the interface — the translucent
+   materials, the barely-there fills and the low-contrast secondary text
+   were all untouched. macOS's own setting does three things: it darkens
+   text, it makes every border a real border, and it drops the transparency
+   that puts wallpaper behind the text. All three, here. */
+.high-contrast {
+  --text: #000;
+  --text-2: #1a1a1e;
+  --muted: #3a3a40;
+  --faint: #4a4a52;
+  --hair: rgba(20, 22, 28, 0.55);
+  --hair-strong: rgba(20, 22, 28, 0.75);
+  --fill: rgba(120, 124, 132, 0.24);
+  --fill-hover: rgba(120, 124, 132, 0.38);
+  --card-2: rgba(120, 124, 132, 0.2);
+  --glass-border: rgba(20, 22, 28, 0.45);
+  /* Opaque surfaces: wallpaper showing through text is the single biggest
+     contrast problem in the whole interface. */
+  --window: #f4f4f6;
+  --sidebar: #e6e8ee;
+  --content: #fff;
+  --card: #fff;
+  --glass: #eef1f6;
+  --popover: #f2f4f8;
+}
+[data-theme="dark"].high-contrast {
+  --text: #fff;
+  --text-2: #f2f2f7;
+  --muted: #d4d4dc;
+  --faint: #b8b8c2;
+  --hair: rgba(255, 255, 255, 0.5);
+  --hair-strong: rgba(255, 255, 255, 0.72);
+  --fill: rgba(150, 154, 165, 0.3);
+  --fill-hover: rgba(150, 154, 165, 0.45);
+  --card-2: rgba(150, 154, 165, 0.26);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --window: #1c1d23;
+  --sidebar: #17181d;
+  --content: #202127;
+  --card: #262730;
+  --glass: #1a1b21;
+  --popover: #2a2b33;
+}
+/* Focus has to be unmissable when contrast is turned up, and the outline is
+   the one indicator that is guaranteed not to be a translucent material. */
+.high-contrast :focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------- reset */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #05070d;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size);
+  line-height: 1.35;
+  letter-spacing: -0.004em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { border: 0; background: none; cursor: default; padding: 0; }
+input, textarea, select { accent-color: var(--accent); }
+a { color: var(--accent); }
+
+:where(button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2.5px solid rgba(var(--accent-rgb), 0.6);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 124, 132, 0.38);
+  border: 3px solid transparent;
+  border-radius: 8px;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: rgba(120, 124, 132, 0.6); background-clip: content-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* ------------------------------------------------------------------ helpers */
+
+.hidden { display: none !important; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.muted { color: var(--muted); }
+.danger-text { color: var(--danger) !important; }
+.ok-text { color: var(--ok) !important; }
+.mono { font-family: var(--font-mono); }
+.spacer { flex: 1; min-width: 0; }
+.stack { display: grid; gap: 8px; }
+.row-flex { display: flex; align-items: center; gap: 8px; }
+
+/* Shared vibrancy material used by the dock, popovers and HUDs. */
+.material {
+  background: var(--glass);
+  border: 0.5px solid var(--glass-border);
+  backdrop-filter: blur(var(--blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(180%);
+}
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* Native form controls follow the represented Mac appearance. */
+[data-theme="dark"]{color-scheme:dark}
