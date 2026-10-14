@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upscale | ISAIART</title>
+<meta name="description" content="AI image upscaler that runs on your GPU in the browser. Up to 8x, side-by-side compare, batch export. Nothing is uploaded.">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f4f5; --panel:#ffffff; --field:#f4f4f5; --ink:#18181b; --muted:#71717a;
+    --line:#e4e4e7; --accent:#2563eb; --accent-ink:#fff; --stage:#e9e9ec; --err:#dc2626;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f0f11; --panel:#17171a; --field:#222226; --ink:#f4f4f5; --muted:#8b8b94;
+      --line:#2a2a2f; --accent:#3b82f6; --stage:#0a0a0b;
+    }
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font:14px/1.4 Inter,system-ui,sans-serif;
+    display:grid;grid-template-rows:52px 1fr;overflow:hidden}
+  button,input,select{font:inherit;color:inherit}
+  button{cursor:pointer}
+
+  header{display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+  header .brand{font-weight:600;letter-spacing:-.01em}
+  header .brand a{color:var(--muted);text-decoration:none;font-weight:400}
+  header .file{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+  .chip{font-size:12px;padding:3px 8px;border-radius:99px;background:var(--field);color:var(--muted);white-space:nowrap}
+
+  main{display:grid;grid-template-columns:96px 1fr 300px;min-height:0}
+
+  /* queue */
+  #queue{border-right:1px solid var(--line);background:var(--panel);overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+  #queue .thumb{position:relative;width:100%;aspect-ratio:1;border-radius:8px;overflow:hidden;border:2px solid transparent;background:var(--field);padding:0}
+  #queue .thumb.on{border-color:var(--accent)}
+  #queue .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  #queue .thumb .tick{position:absolute;right:4px;bottom:4px;width:16px;height:16px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;line-height:16px;text-align:center}
+  #queue .thumb .x{position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:12px;line-height:18px;padding:0;display:none}
+  #queue .thumb:hover .x{display:block}
+  #add{width:100%;aspect-ratio:1;border-radius:8px;border:1.5px dashed var(--line);background:none;color:var(--muted);font-size:22px}
+  #add:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* stage */
+  #stage{position:relative;background:var(--stage);min-width:0;min-height:0;overflow:hidden;touch-action:none}
+  #view{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #progress{position:absolute;left:0;top:0;height:2px;background:var(--accent);width:0;transition:width .15s linear}
+  #empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--muted);padding:16px}
+  #empty b{display:block;color:var(--ink);font-size:16px;font-weight:600;margin-bottom:4px}
+  #empty button{margin-top:14px}
+  #stage.drag::after{content:"";position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:12px;pointer-events:none}
+  .labels{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none}
+  .labels span{font-size:12px;padding:3px 8px;border-radius:6px;background:rgba(0,0,0,.55);color:#fff}
+  .zoombar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:3px}
+  .zoombar button{border:0;background:none;padding:5px 10px;border-radius:5px;min-width:34px}
+  .zoombar button:hover{background:var(--field)}
+  .zoombar .z{color:var(--muted);font-variant-numeric:tabular-nums;padding:5px 6px;min-width:52px;text-align:center}
+  #status{position:absolute;bottom:56px;left:50%;transform:translateX(-50%);font-size:12px;padding:4px 10px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;white-space:nowrap}
+  #status:empty{display:none}
+
+  /* panel */
+  aside{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;display:flex;flex-direction:column}
+  section{padding:16px;border-bottom:1px solid var(--line)}
+  h2{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 10px}
+  .models{display:flex;flex-direction:column;gap:4px}
+  .model{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:1px;padding:8px 10px;border-radius:8px;border:1px solid transparent;background:none}
+  .model:hover{background:var(--field)}
+  .model.on{border-color:var(--accent);background:var(--field)}
+  .model b{font-weight:500}
+  .model small{color:var(--muted);font-size:12px}
+  .seg{display:grid;grid-template-columns:repeat(6,1fr);background:var(--field);border-radius:8px;padding:3px;gap:2px}
+  .seg button{border:0;background:none;padding:6px 0;border-radius:6px;font-variant-numeric:tabular-nums}
+  .seg button.on{background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.15);font-weight:500}
+  .row{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:8px;margin-top:12px}
+  label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+  input[type=number],select{width:100%;padding:7px 9px;border-radius:7px;border:1px solid var(--line);background:var(--field);color:var(--ink);font-variant-numeric:tabular-nums}
+  .lock{border:0;background:none;color:var(--muted);padding:7px 2px}
+  .est{margin-top:12px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .est.warn{color:var(--err)}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .actions{margin-top:auto;padding:16px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);border-bottom:0}
+  .btn{padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-weight:500}
+  .btn:hover{background:var(--field)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.45;cursor:default;filter:none}
+  .note{font-size:12px;color:var(--muted);margin:0}
+
+  @media (max-width:820px){
+    body{overflow:auto;grid-template-rows:52px auto}
+    main{grid-template-columns:1fr;grid-template-rows:auto 60vh auto}
+    #queue{flex-direction:row;border-right:0;border-bottom:1px solid var(--line);overflow-x:auto;padding:8px 16px}
+    #queue .thumb,#add{width:56px;flex:none}
+    aside{border-left:0}
+    section,.actions{padding:16px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><a href="../">ISAIART /</a> Upscale</div>
+  <div class="file" id="fileName"></div>
+  <span class="chip" id="backend">GPU check…</span>
+</header>
+<main>
+  <nav id="queue"><button id="add" title="Add images">+</button></nav>
+
+  <div id="stage">
+    <canvas id="view"></canvas>
+    <div id="progress"></div>
+    <div class="labels" id="labels" hidden><span>Original</span><span>Upscaled</span></div>
+    <div id="empty"><div><b>Drop images here</b>JPEG, PNG or WebP. Everything stays on this device.<br><button class="btn primary" id="open">Choose images</button></div></div>
+    <div id="status"></div>
+    <div class="zoombar" id="zoombar" hidden>
+      <button id="zOut" title="Zoom out">−</button>
+      <span class="z" id="zLabel">100%</span>
+      <button id="zIn" title="Zoom in">+</button>
+      <button id="zFit" title="Fit">Fit</button>
+      <button id="z1" title="Actual pixels">1:1</button>
+    </div>
+  </div>
+
+  <aside>
+    <section>
+      <h2>Model</h2>
+      <div class="models" id="models"></div>
+    </section>
+    <section>
+      <h2>Size</h2>
+      <div class="seg" id="scales"></div>
+      <div class="row">
+        <label>Width<input type="number" id="outW" min="1"></label>
+        <button class="lock" title="Aspect ratio locked">×</button>
+        <label>Height<input type="number" id="outH" min="1"></label>
+      </div>
+      <div class="est" id="est"></div>
+    </section>
+    <section>
+      <h2>Export</h2>
+      <div class="row" style="margin-top:0;grid-template-columns:1fr 1fr">
+        <label>Format<select id="fmt"><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option></select></label>
+        <label id="qWrap">Quality <span id="qVal">92</span><input type="range" id="quality" min="50" max="100" value="92"></label>
+      </div>
+    </section>
+    <div class="actions">
+      <button class="btn primary" id="run" disabled>Upscale</button>
+      <button class="btn" id="save" disabled>Export image</button>
+      <button class="btn" id="saveAll" disabled>Upscale &amp; export all</button>
+      <p class="note">Models download once (6–55 MB) and are cached.</p>
+    </div>
+  </aside>
+</main>
+<input type="file" id="picker" accept="image/*" multiple hidden>
+
+<script>
+const HF = 'https://huggingface.co/Xenova/';
+const MODELS = [
+  { id:'photo',  name:'Photo',        desc:'Real-world photos, balanced detail', scale:4, url:HF+'swin2SR-realworld-sr-x4-64-bsrgan-psnr/resolve/main/onnx/model.onnx' },
+  { id:'jpeg',   name:'Compressed',   desc:'Low quality JPEGs and screenshots',  scale:4, url:HF+'swin2SR-compressed-sr-x4-48/resolve/main/onnx/model.onnx' },
+  { id:'clean',  name:'High fidelity',desc:'Clean sources, keeps texture as-is', scale:2, url:HF+'swin2SR-classical-sr-x2-64/resolve/main/onnx/model.onnx' },
+  { id:'art',    name:'Art & anime',  desc:'Illustration, line art, CG',         scale:4, url:HF+'4x_APISR_GRL_GAN_generator-onnx/resolve/main/onnx/model.onnx' },
+  { id:'art2',   name:'Art & anime 2×',desc:'Faster, for larger drawings',       scale:2, url:HF+'2x_APISR_RRDB_GAN_generator-onnx/resolve/main/onnx/model.onnx' },
+];
+const SCALES = [1, 2, 3, 4, 6, 8];
+const MAX_PX = 200e6;               // canvas memory ceiling for model output
+const TILE = navigator.gpu ? 192 : 128, OVERLAP = 16;
+
+const $ = id => document.getElementById(id);
+const state = {
+  items: [], cur: null, model: MODELS[0], scale: 4,
+  zoom: 1, panX: 0, panY: 0, split: .5, running: false,
+};
+try { const m = MODELS.find(m => m.id === localStorage.getItem('upscale.model')); if (m) state.model = m; } catch {}
+
+/* ---------- worker ---------- */
+const worker = new Worker('worker.js');
+let job = null; // { item, resolve, reject }
+worker.onmessage = ({ data: m }) => {
+  if (m.type === 'download') {
+    const pct = m.total ? Math.round(m.got / m.total * 100) + '%' : (m.got / 1e6).toFixed(1) + ' MB';
+    setStatus('Downloading model · ' + pct);
+    setProgress(m.total ? m.got / m.total : 0);
+  } else if (m.type === 'status') setStatus(m.text);
+  else if (m.type === 'backend') $('backend').textContent = m.backend === 'webgpu' ? 'GPU · WebGPU' : 'CPU · WASM';
+  else if (m.type === 'tile') {
+    const it = job.item;
+    it.outCtx.putImageData(new ImageData(m.rgba, m.w, m.h), m.x, m.y);
+    setProgress(m.done / m.total);
+    setStatus('Upscaling · ' + m.done + ' / ' + m.total);
+    if (it === state.cur) draw();
+  } else if (m.type === 'done') { const j = job; job = null; j.resolve(); }
+  else if (m.type === 'cancelled') { const j = job; job = null; j.reject(new Error('cancelled')); }
+  else if (m.type === 'error') { const j = job; job = null; j?.reject(new Error(m.text)); }
+};
+$('backend').textContent = navigator.gpu ? 'GPU · WebGPU' : 'CPU · WASM';
+
+function upscale(item) {
+  const model = state.model, { w, h } = item;
+  // Pad tiny images up to one tile with edge pixels so the tile shape never changes.
+  const pw = Math.max(w, TILE), ph = Math.max(h, TILE);
+  const c = new OffscreenCanvas(pw, ph), g = c.getContext('2d');
+  g.drawImage(item.bmp, 0, 0);
+  if (pw > w) g.drawImage(c, w - 1, 0, 1, ph, w, 0, pw - w, ph);
+  if (ph > h) g.drawImage(c, 0, h - 1, pw, 1, 0, h, pw, ph - h);
+  const pixels = g.getImageData(0, 0, pw, ph).data;
+
+  const out = document.createElement('canvas');
+  out.width = w * model.scale; out.height = h * model.scale;
+  item.out = out; item.outCtx = out.getContext('2d'); item.outModel = model; item.done = false;
+  return new Promise((resolve, reject) => {
+    job = { item, resolve, reject };
+    worker.postMessage({ type: 'run', url: model.url, pixels, w: pw, h: ph, tile: TILE, overlap: OVERLAP }, [pixels.buffer]);
+  }).then(() => { item.done = true; renderQueue(); });
+}
+
+/* ---------- queue ---------- */
+async function addFiles(files) {
+  for (const f of files) {
+    if (!f.type.startsWith('image/')) continue;
+    try {
+      const bmp = await createImageBitmap(f);
+      const item = { file: f, bmp, w: bmp.width, h: bmp.height, url: URL.createObjectURL(f), out: null, done: false };
+      state.items.push(item);
+      if (!state.cur) select(item);
+    } catch { setStatus('Could not read ' + f.name); }
+  }
+  renderQueue(); refresh();
+}
+function renderQueue() {
+  const q = $('queue');
+  q.querySelectorAll('.thumb').forEach(n => n.remove());
+  for (const it of state.items) {
+    const b = document.createElement('button');
+    b.className = 'thumb' + (it === state.cur ? ' on' : '');
+    b.title = it.file.name;
+    b.innerHTML = `<img src="${it.url}" alt="">${it.done ? '<span class="tick">✓</span>' : ''}<span class="x" title="Remove">×</span>`;
+    b.onclick = e => {
+      if (e.target.classList.contains('x')) return remove(it);
+      select(it);
+    };
+    q.insertBefore(b, $('add'));
+  }
+}
+function remove(it) {
+  if (state.running) return;
+  state.items = state.items.filter(x => x !== it);
+  URL.revokeObjectURL(it.url); it.bmp.close();
+  if (state.cur === it) select(state.items[0] || null);
+  renderQueue(); refresh();
+}
+function select(it) {
+  state.cur = it;
+  $('fileName').textContent = it ? `${it.file.name} · ${it.w} × ${it.h}` : '';
+  fit(); renderQueue(); refresh();
+}
+
+/* ---------- settings ---------- */
+function renderModels() {
+  $('models').innerHTML = '';
+  for (const m of MODELS) {
+    const b = document.createElement('button');
+    b.className = 'model' + (m === state.model ? ' on' : '');
+    b.innerHTML = `<b>${m.name}</b><small>${m.desc} · ${m.scale}×</small>`;
+    b.onclick = () => {
+      if (state.running) return;
+      state.model = m; try { localStorage.setItem('upscale.model', m.id); } catch {}
+      renderModels(); refresh();
+    };
+    $('models').append(b);
+  }
+}
+function renderScales() {
+  $('scales').innerHTML = '';
+  for (const s of SCALES) {
+    const b = document.createElement('button');
+    b.textContent = s + '×';
+    b.className = s === state.scale ? 'on' : '';
+    b.onclick = () => { state.scale = s; renderScales(); refresh(); };
+    $('scales').append(b);
+  }
+}
+$('outW').oninput = () => { const it = state.cur; if (it && +$('outW').value > 0) { state.scale = +$('outW').value / it.w; renderScales(); refresh(true); } };
+$('outH').oninput = () => { const it = state.cur; if (it && +$('outH').value > 0) { state.scale = +$('outH').value / it.h; renderScales(); refresh(true); } };
+$('fmt').onchange = () => { $('qWrap').style.visibility = $('fmt').value === 'image/png' ? 'hidden' : ''; };
+$('quality').oninput = () => { $('qVal').textContent = $('quality').value; };
+$('fmt').onchange();
+
+function target(it) { return { w: Math.max(1, Math.round(it.w * state.scale)), h: Math.max(1, Math.round(it.h * state.scale)) }; }
+function refresh(typing) {
+  const it = state.cur, has = !!it;
+  $('empty').hidden = has; $('zoombar').hidden = !has;
+  $('labels').hidden = !(it && it.out);
+  $('run').disabled = !has || state.running;
+  $('save').disabled = !(it && it.done) || state.running;
+  $('saveAll').disabled = !state.items.length || state.running;
+  $('run').textContent = state.running ? 'Cancel' : (it && it.done && it.outModel === state.model ? 'Upscale again' : 'Upscale');
+  if (state.running) $('run').disabled = false;
+  if (!it) { $('est').textContent = ''; return draw(); }
+  const t = target(it);
+  if (!typing) { $('outW').value = t.w; $('outH').value = t.h; }
+  const ms = state.model.scale, modelPx = it.w * ms * it.h * ms;
+  const est = $('est');
+  est.classList.toggle('warn', modelPx > MAX_PX || t.w > 32767 || t.h > 32767);
+  est.textContent = modelPx > MAX_PX
+    ? `Too large for a ${ms}× pass in the browser. Try a 2× model or a smaller image.`
+    : `${t.w} × ${t.h} · ${(t.w * t.h / 1e6).toFixed(1)} MP` +
+      (state.scale > ms ? ` · ${ms}× AI, then resampled` : state.scale < ms ? ` · ${ms}× AI, then downsampled` : '');
+  draw();
+}
+
+/* ---------- viewer ---------- */
+const view = $('view'), vctx = view.getContext('2d');
+let raf = 0;
+function draw() { if (!raf) raf = requestAnimationFrame(paint); }
+function sizeView() {
+  const r = $('stage').getBoundingClientRect(), d = devicePixelRatio || 1;
+  view.width = Math.round(r.width * d); view.height = Math.round(r.height * d);
+  if (state.autoFit) fit(); else draw();
+}
+// Viewer space is the upscaled image's pixel grid; the original is stretched onto it.
+function frameSize(it) { const s = it.out ? it.outModel.scale : 1; return { w: it.w * s, h: it.h * s }; }
+function fit() {
+  const it = state.cur; if (!it) return;
+  const f = frameSize(it), r = $('stage').getBoundingClientRect();
+  const pad = Math.min(48, r.width / 8), padY = Math.min(96, r.height / 5);
+  state.zoom = Math.max(0.01, Math.min((r.width - pad) / f.w, (r.height - padY) / f.h, 1));
+  state.panX = state.panY = 0; state.autoFit = true; draw();
+}
+function paint() {
+  raf = 0;
+  const it = state.cur, d = devicePixelRatio || 1;
+  vctx.setTransform(1, 0, 0, 1, 0, 0);
+  vctx.clearRect(0, 0, view.width, view.height);
+  if (!it) return;
+  const f = frameSize(it), z = state.zoom * d;
+  const ox = view.width / 2 + state.panX * d - f.w * z / 2, oy = view.height / 2 + state.panY * d - f.h * z / 2;
+  vctx.imageSmoothingEnabled = state.zoom < 2; vctx.imageSmoothingQuality = 'high';
+  vctx.setTransform(z, 0, 0, z, ox, oy);
+  vctx.drawImage(it.bmp, 0, 0, f.w, f.h);
+  $('zLabel').textContent = Math.round(state.zoom * 100) + '%';
+  if (!it.out) return;
+  const sx = view.width * state.split;          // split line in device px
+  vctx.save();
+  vctx.setTransform(1, 0, 0, 1, 0, 0);
+  vctx.beginPath(); vctx.rect(sx, 0, view.width - sx, view.height); vctx.clip();
+  vctx.setTransform(z, 0, 0, z, ox, oy);
+  vctx.drawImage(it.out, 0, 0);
+  vctx.restore();
+  vctx.fillStyle = '#fff'; vctx.fillRect(Math.round(sx) - d, 0, 2 * d, view.height);
+  vctx.beginPath(); vctx.arc(sx, view.height / 2, 14 * d, 0, 7); vctx.fill();
+  vctx.fillStyle = '#18181b'; vctx.font = `${12 * d}px Inter,sans-serif`; vctx.textAlign = 'center'; vctx.textBaseline = 'middle';
+  vctx.fillText('↔', sx, view.height / 2 + d);
+}
+function zoomAt(factor, cx, cy) {
+  const r = $('stage').getBoundingClientRect();
+  const nz = Math.min(32, Math.max(0.02, state.zoom * factor)), k = nz / state.zoom;
+  const px = cx - r.width / 2, py = cy - r.height / 2;
+  state.panX = px - (px - state.panX) * k; state.panY = py - (py - state.panY) * k;
+  state.zoom = nz; state.autoFit = false; draw();
+}
+$('stage').addEventListener('wheel', e => {
+  if (!state.cur) return; e.preventDefault();
+  const r = $('stage').getBoundingClientRect();
+  zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX - r.left, e.clientY - r.top);
+}, { passive: false });
+let drag = null;
+$('stage').addEventListener('pointerdown', e => {
+  if (!state.cur || e.target.closest('.zoombar,#empty')) return;
+  const r = $('stage').getBoundingClientRect(), x = e.clientX - r.left;
+  const onSplit = state.cur.out && Math.abs(x - r.width * state.split) < 18;
+  drag = { split: onSplit, x: e.clientX, y: e.clientY, px: state.panX, py: state.panY };
+  $('stage').setPointerCapture(e.pointerId);
+});
+$('stage').addEventListener('pointermove', e => {
+  const r = $('stage').getBoundingClientRect();
+  if (!drag) {
+    const near = state.cur?.out && Math.abs(e.clientX - r.left - r.width * state.split) < 18;
+    $('stage').style.cursor = near ? 'ew-resize' : state.cur ? 'grab' : '';
+    return;
+  }
+  if (drag.split) state.split = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+  else { state.panX = drag.px + e.clientX - drag.x; state.panY = drag.py + e.clientY - drag.y; state.autoFit = false; }
+  draw();
+});
+$('stage').addEventListener('pointerup', () => { drag = null; });
+$('zIn').onclick = () => { const r = $('stage').getBoundingClientRect(); zoomAt(1.5, r.width / 2, r.height / 2); };
+$('zOut').onclick = () => { const r = $('stage').getBoundingClientRect(); zoomAt(1 / 1.5, r.width / 2, r.height / 2); };
+$('zFit').onclick = fit;
+$('z1').onclick = () => { const r = $('stage').getBoundingClientRect(); zoomAt(1 / state.zoom, r.width / 2, r.height / 2); };
+new ResizeObserver(sizeView).observe($('stage'));
+
+/* ---------- actions ---------- */
+function setStatus(t) { $('status').textContent = t || ''; }
+function setProgress(p) { $('progress').style.width = (p * 100) + '%'; $('progress').style.opacity = p > 0 && p < 1 ? 1 : 0; }
+
+async function runOne(it) {
+  const ms = state.model.scale;
+  if (it.w * ms * it.h * ms > MAX_PX) throw new Error('Image too large for this model');
+  const hadOut = !!it.out;
+  const p = upscale(it);
+  if (it === state.cur && !hadOut) fit();
+  refresh();
+  await p;
+}
+$('run').onclick = async () => {
+  if (state.running) { worker.postMessage({ type: 'cancel' }); return; }
+  const it = state.cur;
+  state.running = true; refresh();
+  const t0 = performance.now();
+  try { await runOne(it); setStatus(`Done in ${((performance.now() - t0) / 1000).toFixed(1)} s`); }
+  catch (e) { setStatus(e.message === 'cancelled' ? 'Cancelled' : 'Error: ' + e.message); if (e.message === 'cancelled') { it.out = null; it.done = false; } }
+  state.running = false; setProgress(0); refresh();
+};
+
+async function exportBlob(it) {
+  const t = target(it);
+  let src = it.out;
+  // Large reductions look better stepped down by halves.
+  while (src.width / 2 >= t.w && src.height / 2 >= t.h) {
+    const h = document.createElement('canvas'); h.width = src.width / 2 | 0; h.height = src.height / 2 | 0;
+    const g = h.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, 0, 0, h.width, h.height); src = h;
+  }
+  const c = document.createElement('canvas'); c.width = t.w; c.height = t.h;
+  const g = c.getContext('2d'); g.imageSmoothingQuality = 'high';
+  g.drawImage(src, 0, 0, t.w, t.h);
+  const type = $('fmt').value;
+  return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('Export failed — image may be too large')), type, +$('quality').value / 100));
+}
+async function save(it) {
+  const blob = await exportBlob(it);
+  const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[$('fmt').value];
+  const t = target(it);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = it.file.name.replace(/\.[^.]+$/, '') + `-${t.w}x${t.h}.${ext}`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+$('save').onclick = async () => {
+  try { setStatus('Exporting'); await save(state.cur); setStatus('Exported'); } catch (e) { setStatus('Error: ' + e.message); }
+};
+$('saveAll').onclick = async () => {
+  state.running = true; refresh();
+  let n = 0;
+  try {
+    for (const it of state.items) {
+      select(it); state.running = true; refresh();
+      if (!(it.done && it.outModel === state.model)) await runOne(it);
+      await save(it); n++;
+    }
+    setStatus(`Exported ${n} image${n === 1 ? '' : 's'}`);
+  } catch (e) { setStatus(e.message === 'cancelled' ? `Stopped after ${n}` : 'Error: ' + e.message); }
+  state.running = false; setProgress(0); refresh();
+};
+
+/* ---------- input ---------- */
+$('add').onclick = $('open').onclick = () => $('picker').click();
+$('picker').onchange = e => { addFiles([...e.target.files]); e.target.value = ''; };
+const stage = $('stage');
+['dragenter', 'dragover'].forEach(t => stage.addEventListener(t, e => { e.preventDefault(); stage.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(t => stage.addEventListener(t, e => { e.preventDefault(); stage.classList.remove('drag'); }));
+stage.addEventListener('drop', e => addFiles([...e.dataTransfer.files]));
+addEventListener('paste', e => addFiles([...e.clipboardData.files]));
+addEventListener('keydown', e => {
+  if (e.target.matches('input,select')) return;
+  if (e.key === 'f') fit();
+  else if (e.key === '1') $('z1').click();
+  else if (e.key === '+' || e.key === '=') $('zIn').click();
+  else if (e.key === '-') $('zOut').click();
+});
+
+renderModels(); renderScales(); refresh();
+</script>
+</body>
+</html>

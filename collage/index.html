@@ -114,6 +114,44 @@
   }
   .top-btn:hover{background:var(--white);border-color:var(--white);color:var(--black)}
   .menu-btn{display:none}
+  .mobile-only{display:none!important}
+  .top-sep{width:1px;height:22px;background:#333;margin:0 4px}
+  .text-btn{
+    height:36px;display:inline-flex;align-items:center;gap:7px;padding:0 11px;
+    border:1px solid #333;background:transparent;color:var(--white);cursor:pointer;
+    font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+    transition:background var(--t) var(--ease),color var(--t) var(--ease),border-color var(--t) var(--ease),transform var(--t-fast) var(--ease);
+  }
+  .text-btn:hover{background:var(--white);color:var(--black);border-color:var(--white);transform:translateY(-1px)}
+  .link-btn{
+    display:block;width:100%;margin-top:12px;padding:6px 0;border:0;background:none;cursor:pointer;text-align:left;
+    color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+    text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;
+    transition:color var(--t-fast),text-decoration-color var(--t-fast);
+  }
+  .link-btn:hover{color:var(--red);text-decoration-color:var(--red)}
+  .empty .empty-add{height:46px;margin-top:16px;pointer-events:auto}
+  .empty .mini-btn{width:100%}
+  .empty.gone .empty-add{pointer-events:none}
+  .has-images #sampleBtn{display:none}
+  /* 1. the empty canvas card owns the first action; the sidebar pair returns once there are images */
+  body:not(.has-images) .sidebar label.upload-btn[for=fileInput],body:not(.has-images) #sampleBtn,body:not(.has-images) #shuffleBtn,body:not(.has-images) #bin{display:none}
+  body:not(.has-images) .bin-meta{margin-top:0}
+  .sec-index .sq,.drawer-head .sq{display:inline-block;width:8px;height:8px;background:var(--red);vertical-align:1px}
+  .span-row{align-items:flex-end;gap:6px}
+  .span-row .field{margin-top:0}
+  .span-row .times{padding-bottom:9px;font-weight:800;color:var(--muted)}
+  .start-over{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .start-over .so-lbl{flex-basis:100%;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+  .start-over{row-gap:6px}
+  .start-over .link-btn{width:auto;margin:0;color:var(--black);text-decoration-color:var(--line)}
+  .start-over .link-btn:hover{color:var(--red);text-decoration-color:var(--red)}
+  .drawer-head,.drawer-foot{display:none}
+  .top-btn:disabled{background:transparent;border-color:#333;color:#5a5a56;opacity:1;cursor:not-allowed;transform:none;box-shadow:none}
+  .upload-btn:disabled{background:var(--soft);border-color:var(--line);color:var(--muted);cursor:not-allowed;transform:none;box-shadow:none}
+  .upload-btn:disabled:after{display:none}
+  body.nav-open .toolbar,body.nav-open #tilebar{visibility:hidden}
+  body:not(.has-sel) #tileSection{display:none}
 
   .layout{display:flex;height:calc(100% - var(--top));min-height:0}
   .sidebar{
@@ -313,7 +351,7 @@
     display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;
     color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
   }
-  .hint{margin:9px 0 0;color:var(--muted);font-size:9px;line-height:1.45;letter-spacing:.03em}
+  .hint{margin:10px 0 0;color:var(--muted);font-size:11px;line-height:1.5;letter-spacing:.01em}
 
   .stage{flex:1;min-width:0;min-height:0;position:relative;overflow:hidden;background:var(--paper)}
   .wrapper{
@@ -341,10 +379,10 @@
   .empty span{display:block;margin-top:7px;color:var(--muted);font-size:10px;line-height:1.45}
 
   .tilebar{
-    position:absolute;left:50%;top:10px;z-index:25;transform:translate(-50%,-6px);
+    position:absolute;left:var(--tb-x,50%);top:var(--tb-y,10px);z-index:25;transform:translate(-50%,-6px);
     display:flex;align-items:center;gap:3px;padding:4px;border:1px solid var(--black);background:var(--white);
     box-shadow:6px 6px 0 rgba(0,0,0,.12);opacity:0;visibility:hidden;
-    transition:opacity var(--t) var(--ease),transform var(--t) var(--ease-back),visibility var(--t);
+    transition:opacity var(--t) var(--ease),transform var(--t) var(--ease-back),visibility var(--t),left .18s var(--ease),top .18s var(--ease);
   }
   .tilebar.on{opacity:1;visibility:visible;transform:translate(-50%,0)}
   .tilebar .tb-name{
@@ -358,6 +396,8 @@
   .tilebar .icon-btn{width:30px;height:30px;border-color:transparent;background:transparent}
   .tilebar .icon-btn:hover:not(:disabled){background:var(--black);color:var(--white)}
   .tilebar .icon-btn.danger{color:var(--red)}
+  .tilebar .icon-btn.active{background:var(--red);color:var(--white)}
+  .action-btn.on{background:var(--red);border-color:var(--red);color:var(--white)}
   .tilebar .icon-btn.danger:hover{background:var(--red);color:var(--white)}
   .toolbar{
     position:absolute;left:50%;bottom:12px;z-index:25;transform:translateX(-50%);
@@ -372,16 +412,28 @@
 
   .backdrop{position:fixed;inset:var(--top) 0 0;background:rgba(0,0,0,.48);z-index:35;opacity:0;visibility:hidden;transition:.18s}
   #toast{
-    position:fixed;left:50%;bottom:66px;z-index:80;transform:translate(-50%,8px);
+    position:fixed;left:calc(50% + var(--side) / 2);top:calc(var(--top) + 14px);bottom:auto;z-index:80;transform:translate(-50%,8px);
     max-width:min(420px,calc(100vw - 30px));padding:10px 13px;border:1px solid var(--black);
     background:var(--black);color:var(--white);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
     opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;
   }
   #toast.show{opacity:1;transform:translate(-50%,0)}
+  .tilebar.on ~ #toast, body.has-sel #toast{top:auto;bottom:66px}
   #toast:before{content:"";display:inline-block;width:7px;height:7px;margin-right:8px;background:var(--red)}
 
   @media(max-width:880px){
     .menu-btn{display:grid}
+    .sidebar{display:flex;flex-direction:column}
+    .drawer-head{display:flex;position:sticky;top:0;z-index:3;align-items:center;justify-content:space-between;height:52px;padding:0 6px 0 13px;background:var(--black);color:var(--white);flex:0 0 auto;
+      font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+    .drawer-head span{display:flex;align-items:center;gap:9px}
+    .drawer-head .icon-btn{width:44px;height:44px;background:transparent;color:var(--white);border-color:#333}
+    .drawer-foot{display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;position:sticky;bottom:0;z-index:3;margin-top:auto;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));background:var(--white);border-top:1px solid var(--black)}
+    .drawer-foot .upload-btn{height:46px;margin:0}
+    .drawer-foot .action-btn{min-height:46px}
+    .export-side{display:none!important}
+    #toast{left:50%}
+    .mobile-only{display:grid!important}
     .sidebar{position:fixed;left:0;top:var(--top);bottom:0;z-index:40;width:min(var(--side),88vw);transform:translateX(-102%);transition:transform .2s}
     body.nav-open .sidebar{transform:translateX(0)}
     body.nav-open .backdrop{opacity:1;visibility:visible}
@@ -389,14 +441,20 @@
   }
   @media(max-width:560px){
     .top-status span:last-child,.top-status i:last-of-type{display:none}
-    .tilebar{top:8px;padding:3px}
-    .tilebar .span-btn{min-width:32px;padding:0 4px}
-    .tilebar .tb-name{padding:0 8px;gap:6px}
+    .topbar .icon-btn,.top-btn{width:42px;height:42px}
+    .tilebar{left:12px!important;right:12px;top:10px!important;padding:3px;transform:translateY(-6px);justify-content:space-between}
+    .tilebar.on{transform:none}
+    .tilebar .tb-name,.tilebar .tb-sep{display:none}
+    .tilebar #duplicateImage{display:none}
+    .tilebar .span-btn{height:42px;min-width:0;flex:1;padding:0 2px}
+    .tilebar .icon-btn{width:40px;height:42px;flex:0 0 40px}
+    .tilebar .desktop-only{display:grid!important}
+    .toolbar .icon-btn{width:44px;height:44px}
     .top-btn{width:36px;padding:0}
     .top-btn span{display:none}
     .topbar{gap:4px;padding:0 6px}
     .desktop-only{display:none!important}
-    .empty{padding:17px}
+    .empty{padding:20px;top:44%}
     .toolbar{bottom:8px}
   }
   @media(max-width:370px){.top-status{display:none}}
@@ -454,6 +512,8 @@
     .sel-box .h.n,.sel-box .h.s,.sel-box .h.e,.sel-box .h.w{display:none}
     .sel-box .h:before{inset:-12px}
   }
+  .sel-box.tiny .h{display:none}
+  .sel-box.tiny .h.se{display:block;width:16px;height:16px;margin:-8px 0 0 -8px}
   .coarse .sel-box .h{width:22px;height:22px;margin:-11px 0 0 -11px;border-width:2px}
   .coarse .sel-box .h.n,.coarse .sel-box .h.s,.coarse .sel-box .h.e,.coarse .sel-box .h.w{display:none}
   .sel-chip{
@@ -529,7 +589,8 @@
   .span-btn:hover:not(:disabled){background:var(--black);color:var(--white);transform:translateY(-2px);box-shadow:0 2px 0 rgba(10,10,10,.25)}
   .span-btn:disabled{opacity:.25;cursor:not-allowed}
   .span-btn.on{background:var(--red);border-color:var(--red);color:var(--white)}
-  .stepper{display:flex;align-items:stretch}
+  .stepper{display:flex;align-items:stretch;flex:1;min-width:0}
+  .stepper input{min-width:0}
   .stepper button{
     width:32px;flex:0 0 32px;height:36px;border:1px solid var(--black);background:var(--white);cursor:pointer;
     font-size:15px;font-weight:800;line-height:1;display:grid;place-items:center;padding:0;
@@ -540,7 +601,7 @@
   .stepper input{border-left:0;border-right:0;text-align:center}
   .grid-info{
     display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;
-    padding:7px 9px;border:1px solid var(--line);background:var(--soft);
+    padding:6px 0;border:0;border-bottom:1px dotted var(--line);background:none;
     color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
   }
   .grid-info b{color:var(--red);font-variant-numeric:tabular-nums}
@@ -561,7 +622,7 @@
     </button>
 
     <div class="top-status" aria-live="polite">
-      <span id="topCount">0 images</span><i></i><span id="topSize">1920 x 1080</span><i></i><span id="topMode">Grid</span>
+      <span id="topCount">0 images</span><i></i><span id="topSize">1920 × 1080</span><i></i><span id="topMode">Grid</span>
     </div>
 
     <div class="spacer"></div>
@@ -572,14 +633,12 @@
     <button class="icon-btn" id="redoBtn" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled>
       <svg class="ic" viewBox="0 0 24 24"><path d="m15 7 5 5-5 5"/><path d="M19 12h-8a6 6 0 0 0-6 6"/></svg>
     </button>
-    <button class="icon-btn desktop-only" id="openProjectBtn" aria-label="Open project" title="Open project">
-      <svg class="ic" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3z"/><path d="M12 11v6M9 14h6"/></svg>
+    <span class="top-sep desktop-only" aria-hidden="true"></span>
+    <button class="text-btn desktop-only" id="openProjectBtn" title="Open a saved .mosaic project">
+      <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3z"/></svg><span>Open</span>
     </button>
-    <button class="icon-btn desktop-only" id="saveProjectBtn" aria-label="Save project" title="Save editable project">
-      <svg class="ic" viewBox="0 0 24 24"><path d="M5 3h12l3 3v15H4V3z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg>
-    </button>
-    <button class="icon-btn" id="newBtn" aria-label="Reset workspace" title="Reset workspace">
-      <svg class="ic" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 8.5 6"/><path d="M21 3v6h-6"/></svg>
+    <button class="text-btn desktop-only" id="saveProjectBtn" title="Save an editable project file">
+      <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M5 3h12l3 3v15H4V3z"/><path d="M8 3v6h8V3"/></svg><span>Save</span>
     </button>
     <button class="top-btn" id="downloadTop">
       <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
@@ -589,6 +648,7 @@
 
   <div class="layout">
     <aside class="sidebar" id="sidebar">
+      <div class="drawer-head"><span><i class="sq"></i>Controls</span><button class="icon-btn" id="drawerClose" type="button" aria-label="Close controls"><svg class="ic" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></svg></button></div>
       <section class="section open" data-section>
         <button type="button" class="sec-head" aria-expanded="true"><span class="sec-index">01</span><span>Source</span><svg class="ic ic-sm chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
         <div class="sec-body"><div class="sec-inner">
@@ -600,26 +660,42 @@
           <button class="mini-btn" id="sampleBtn" style="width:100%;margin-top:7px" title="Add nine generated sample images">Try with sample images</button>
           <div class="bin" id="bin"></div>
           <div class="bin-meta"><span id="count">0 / 50</span><span id="selectionText">None selected</span></div>
-          <div class="grid-2">
-            <button class="action-btn image-action" id="duplicateImage" title="Duplicate selected" disabled>Duplicate</button>
-            <button class="action-btn" id="shuffleBtn" title="Shuffle image order" disabled>Shuffle</button>
-          </div>
-          <p class="hint">Drop, paste, or add up to 50 images. Drag thumbnails to reorder. Select a tile on the canvas to size, rotate, flip or remove it.</p>
+          <button class="action-btn" id="shuffleBtn" title="Shuffle image order" style="margin-top:10px" disabled>Shuffle order</button>
+          <p class="hint">Drop, paste or add up to 50 images. Drag thumbnails to reorder.</p>
         </div></div>
       </section>
-
+      <section class="section open" data-section id="tileSection">
+        <button type="button" class="sec-head" aria-expanded="true"><span class="sec-index"><i class="sq"></i></span><span>Selected tile</span><svg class="ic ic-sm chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+        <div class="sec-body"><div class="sec-inner">
+          <div class="range-label" style="margin-top:3px"><span>Tile span</span></div>
+          <div class="row span-row">
+            <div class="field"><label for="spanX">Columns</label>
+              <div class="stepper"><button type="button" data-step="x:-1" title="Narrower" disabled>&minus;</button><input type="number" id="spanX" min="1" max="16" value="1" disabled><button type="button" data-step="x:1" title="Wider" disabled>+</button></div></div>
+            <span class="times" aria-hidden="true">×</span>
+            <div class="field"><label for="spanY">Rows</label>
+              <div class="stepper"><button type="button" data-step="y:-1" title="Shorter" disabled>&minus;</button><input type="number" id="spanY" min="1" max="16" value="1" disabled><button type="button" data-step="y:1" title="Taller" disabled>+</button></div></div>
+          </div>
+          <div class="field"><div class="range-label"><span>Image zoom</span><span class="range-val" id="izoomV">100</span></div><div class="range-row"><input type="range" id="izoom" min="100" max="500" step="1" value="100" aria-label="Image zoom" disabled></div></div>
+          <div class="grid-2">
+            <button class="action-btn image-action" id="cropSide" type="button">Crop mode</button>
+            <button class="action-btn image-action" id="resetCrop" type="button">Reset crop</button>
+          </div>
+          <button class="action-btn image-action mobile-only" id="duplicateSide" type="button" style="margin-top:10px">Duplicate tile</button>
+          <p class="hint">Drag a tile to move it. In crop mode, drag to slide the image and scroll or pinch to zoom it (Alt+scroll works any time).</p>
+        </div></div>
+      </section>
       <section class="section open" data-section>
         <button type="button" class="sec-head" aria-expanded="true"><span class="sec-index">02</span><span>Layout</span><svg class="ic ic-sm chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
         <div class="sec-body"><div class="sec-inner">
           <div class="field">
             <label for="preset">Sheet</label>
             <select id="preset">
-              <option value="1920x1080">Landscape 16:9 - 1920 x 1080</option>
-              <option value="1080x1080">Square 1:1 - 1080 x 1080</option>
-              <option value="1080x1350">Portrait 4:5 - 1080 x 1350</option>
-              <option value="1080x1920">Story 9:16 - 1080 x 1920</option>
-              <option value="1200x630">Social link - 1200 x 630</option>
-              <option value="2480x3508">A4 print - 2480 x 3508</option>
+              <option value="1920x1080">Landscape 16:9 - 1920 × 1080</option>
+              <option value="1080x1080">Square 1:1 - 1080 × 1080</option>
+              <option value="1080x1350">Portrait 4:5 - 1080 × 1350</option>
+              <option value="1080x1920">Story 9:16 - 1080 × 1920</option>
+              <option value="1200x630">Social link - 1200 × 630</option>
+              <option value="2480x3508">A4 print - 2480 × 3508</option>
               <option value="screen">Fit workspace</option>
               <option value="custom">Custom</option>
             </select>
@@ -644,15 +720,19 @@
               <button class="span-btn" data-preset="random" title="Random tile sizes">Random</button>
             </div>
           </div>
+        </div></div>
+      </section>
+      <section class="section" data-section>
+        <button type="button" class="sec-head" aria-expanded="false"><span class="sec-index">03</span><span>Spacing &amp; style</span><svg class="ic ic-sm chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+        <div class="sec-body"><div class="sec-inner">
           <div class="field"><div class="range-label"><span>Outer margin</span><span class="range-val" id="padV">16</span></div><div class="range-row"><input type="range" id="pad" min="0" max="160" value="16"></div></div>
           <div class="field"><div class="range-label"><span>Gap</span><span class="range-val" id="gapV">12</span></div><div class="range-row"><input type="range" id="gap" min="0" max="100" value="12"></div></div>
           <div class="field"><div class="range-label"><span>Corner radius</span><span class="range-val" id="radiusV">0</span></div><div class="range-row"><input type="range" id="radius" min="0" max="160" value="0"></div></div>
           <div class="field"><div class="range-label"><span>Border width</span><span class="range-val" id="bwV">0</span></div><div class="range-row"><input type="range" id="bw" min="0" max="40" value="0"></div></div>
         </div></div>
       </section>
-
       <section class="section" data-section>
-        <button type="button" class="sec-head" aria-expanded="false"><span class="sec-index">03</span><span>Canvas</span><svg class="ic ic-sm chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+        <button type="button" class="sec-head" aria-expanded="false"><span class="sec-index">04</span><span>Canvas</span><svg class="ic ic-sm chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
         <div class="sec-body"><div class="sec-inner">
           <div class="row">
             <div class="field"><label for="cw">Width</label><input type="number" id="cw" value="1920" min="16" max="8000"></div>
@@ -665,21 +745,6 @@
           <label class="check-row" for="transparent"><span>Transparent background</span><input type="checkbox" id="transparent"><span class="switch"></span></label>
         </div></div>
       </section>
-
-      <section class="section open" data-section>
-        <button type="button" class="sec-head" aria-expanded="true"><span class="sec-index">04</span><span>Selected tile</span><svg class="ic ic-sm chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
-        <div class="sec-body"><div class="sec-inner">
-          <div class="field">
-            <label>Span <span style="color:var(--black)">columns &times; rows</span></label>
-            <div class="row">
-              <div class="stepper"><button type="button" data-step="x:-1" title="Narrower" disabled>&minus;</button><input type="number" id="spanX" min="1" max="16" value="1" disabled><button type="button" data-step="x:1" title="Wider" disabled>+</button></div>
-              <div class="stepper"><button type="button" data-step="y:-1" title="Shorter" disabled>&minus;</button><input type="number" id="spanY" min="1" max="16" value="1" disabled><button type="button" data-step="y:1" title="Taller" disabled>+</button></div>
-            </div>
-          </div>
-          <p class="hint">Click a tile on the canvas, then drag its handles or use the bar above the sheet - everything else re-flows around it. Drag a tile onto another to swap places. Double-click a tile to feature it.</p>
-        </div></div>
-      </section>
-
       <section class="section" data-section>
         <button type="button" class="sec-head" aria-expanded="false"><span class="sec-index">05</span><span>Image</span><svg class="ic ic-sm chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
         <div class="sec-body"><div class="sec-inner">
@@ -695,7 +760,6 @@
           <button class="mini-btn" id="resetAdjust" style="width:100%;margin-top:12px">Reset image adjustments</button>
         </div></div>
       </section>
-
       <section class="section open" data-section>
         <button type="button" class="sec-head" aria-expanded="true"><span class="sec-index">06</span><span>Output</span><svg class="ic ic-sm chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
         <div class="sec-body"><div class="sec-inner">
@@ -705,18 +769,23 @@
             <div class="field"><label for="exportScale">Scale</label><select id="exportScale"><option value="1">1x</option><option value="2">2x</option><option value="3">3x</option></select></div>
           </div>
           <div class="field" id="qualityField"><div class="range-label"><span>Quality</span><span class="range-val" id="qualityV">92</span></div><div class="range-row"><input type="range" id="quality" min="10" max="100" value="92"></div></div>
-          <div class="grid-2">
-            <button class="action-btn" id="copyBtn">Copy PNG</button>
-            <button class="action-btn" id="downloadBtn">Download</button>
+          <button class="upload-btn export-side" id="downloadBtn" style="margin-top:12px;height:46px">
+            <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>Export
+          </button>
+          <button class="action-btn" id="copyBtn" style="margin-top:7px">Copy PNG to clipboard</button>
+          <p class="hint desktop-only">Shift+Arrows resize · Alt+Arrows reorder · Space+drag pan · R reposition · 0 fit · Ctrl+Z undo · Ctrl+S export</p>
+          <div class="start-over">
+            <span class="so-lbl">Start over</span>
+            <button class="link-btn" id="clearAll" type="button">Clear images</button>
+            <button class="link-btn" id="newBtn" type="button">Reset everything</button>
           </div>
-          <div class="grid-2">
-            <button class="action-btn" id="openProjectSide">Open project</button>
-            <button class="action-btn" id="saveProjectSide">Save project</button>
-          </div>
-          <button class="action-btn danger" id="clearAll" style="margin-top:7px">Clear images</button>
-          <p class="hint">Shortcuts: Shift+Arrows resize tile, Alt+Arrows reorder, Space+drag pan, R reposition, 0 fit view, Ctrl+Z undo, Ctrl+S export.</p>
         </div></div>
       </section>
+      <div class="drawer-foot">
+        <button class="upload-btn" id="downloadDrawer" type="button"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>Export</button>
+        <button class="action-btn" id="openProjectSide" type="button">Open</button>
+        <button class="action-btn" id="saveProjectSide" type="button">Save</button>
+      </div>
     </aside>
 
     <div class="backdrop" id="backdrop"></div>
@@ -734,9 +803,9 @@
           </div>
         </div>
       </div>
-      <div class="empty" id="empty"><span class="mark"></span><strong>Drop / paste / add images</strong><span>Resize any tile on the canvas and the rest re-flows around it. Nothing leaves your browser.</span><button class="mini-btn" id="emptySample">Try with sample images</button></div>
+      <div class="empty" id="empty"><span class="mark"></span><strong id="emptyTitle">Drop, paste or add images</strong><span>Resize any tile and the rest re-flows around it. Nothing leaves your browser.</span><label class="upload-btn empty-add" for="fileInput"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></svg>Add images</label><button class="mini-btn" id="emptySample">Try with sample images</button></div>
       <div class="tilebar" id="tilebar" aria-label="Selected tile">
-        <span class="tb-name"><span>Tile</span><b id="tbIndex">01</b><i></i><b id="tbSpan">1&times;1</b></span>
+        <span class="tb-name" title="Selected tile"><b id="tbIndex">01</b><b id="tbSpan" hidden>1×1</b></span>
         <button class="span-btn" data-span="1x1" title="1 x 1">1&times;1</button>
         <button class="span-btn" data-span="2x1" title="2 x 1">2&times;1</button>
         <button class="span-btn" data-span="1x2" title="1 x 2">1&times;2</button>
@@ -747,6 +816,8 @@
         <button class="icon-btn image-action" id="flipImage" aria-label="Flip horizontally" title="Flip horizontally"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 2v20" stroke-dasharray="2 2"/><path d="M9 6 3 12l6 6V6z"/><path d="m15 6 6 6-6 6V6z"/></svg></button>
         <button class="icon-btn image-action" id="rotateRight" aria-label="Rotate right" title="Rotate right"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M20 7v6h-6"/><path d="M19 12a8 8 0 1 1-2-5"/></svg></button>
         <div class="tb-sep"></div>
+        <button class="icon-btn image-action" id="cropToggle" aria-label="Crop and zoom the image" title="Crop / zoom image (R) - drag to move it, scroll or pinch to zoom"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M6 2v16h16"/><path d="M2 6h16v16"/></svg></button>
+        <button class="icon-btn image-action" id="duplicateImage" aria-label="Duplicate tile" title="Duplicate tile"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M8 8h12v12H8z"/><path d="M4 16V4h12"/></svg></button>
         <button class="icon-btn danger image-action" id="removeSelected" aria-label="Remove tile" title="Remove tile (Delete)"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></svg></button>
       </div>
       <div class="toolbar" aria-label="Canvas view tools">
@@ -785,6 +856,7 @@ if(params.has("still"))document.documentElement.classList.add("still");
 if(params.has("touch"))document.documentElement.classList.add("coarse");
 const ANIM=reduceMotion?0:430;
 const DRAG_ANIM=reduceMotion?0:180;
+const MAX_IMG_ZOOM=5;
 
 let images=[];
 let ghosts=[];
@@ -848,7 +920,7 @@ function writeSettings(data={}){
 function imageState(item){
   return {
     id:item.id,src:item.src,name:item.name||"image",
-    offsetX:item.offsetX||0,offsetY:item.offsetY||0,
+    offsetX:item.offsetX||0,offsetY:item.offsetY||0,zoom:item.zoom||1,preview:item.preview||null,
     rotation:item.rotation||0,flipX:item.flipX||1,
     spanX:clamp(item.spanX||1,1,MAX_SPAN),spanY:clamp(item.spanY||1,1,MAX_SPAN),
     img:item.img
@@ -860,7 +932,7 @@ function snapshot(){
 }
 
 function stateKey(state){
-  return JSON.stringify({settings:state.settings,images:state.images.map(({img,...rest})=>rest),selectedId:state.selectedId});
+  return JSON.stringify({settings:state.settings,images:state.images.map(({img,preview,...rest})=>rest),selectedId:state.selectedId});
 }
 
 let history=[];
@@ -1177,6 +1249,17 @@ function stepAnim(now){
       active=true;
     }
   });
+  if(floatDrag){
+    const f=floatDrag, slot=images.find(entry=>entry.id===f.id);
+    if(slot&&slot.to){
+      const tw=slot.to.w*f.sizeK, th=slot.to.h*f.sizeK;
+      const tx=f.px-f.gx*tw, ty=f.py-f.gy*th;
+      const tau=reduceMotion?1:38;
+      f.rect.x=approach(f.rect.x,tx,dt,tau);f.rect.y=approach(f.rect.y,ty,dt,tau);
+      f.rect.w=approach(f.rect.w,tw,dt,tau*2);f.rect.h=approach(f.rect.h,th,dt,tau*2);
+    }
+    active=true;
+  }
   if(ghosts.length){
     ghosts=ghosts.filter(ghost=>{ghost.a=1-(now-ghost.t0)/300;return ghost.a>0;});
     active=true;
@@ -1222,27 +1305,34 @@ function renderStyle(){
 
 function sourceCrop(item,rect,style,commit){
   const img=item.img;
-  let sx=0,sy=0,sw=img.naturalWidth||img.width,sh=img.naturalHeight||img.height;
+  const naturalW=img.naturalWidth||img.width,naturalH=img.naturalHeight||img.height;
+  let sx=0,sy=0,sw=naturalW,sh=naturalH;
   let dx=rect.x,dy=rect.y,dw=rect.w,dh=rect.h;
-  const imageAspect=sw/sh;
-  const cellAspect=rect.w/rect.h;
+  /* a quarter-turned image fills the cell sideways, so it is cropped to the
+     cell's aspect turned on its side; otherwise it comes out stretched */
+  const swap=Math.abs((item.rotation||0)%180)===90;
+  const imageAspect=naturalW/naturalH;
+  const cellAspect=swap?rect.h/rect.w:rect.w/rect.h;
 
   if(style.cover){
-    const naturalW=sw,naturalH=sh;
-    if(imageAspect>cellAspect){sw=sh*cellAspect;sx=(naturalW-sw)/2;}
-    else{sh=sw/cellAspect;sy=(naturalH-sh)/2;}
-    const centeredX=sx,centeredY=sy;
-    sx=clamp(sx+item.offsetX,0,Math.max(0,naturalW-sw));
-    sy=clamp(sy+item.offsetY,0,Math.max(0,naturalH-sh));
+    let cw0,ch0;
+    if(imageAspect>cellAspect){ch0=naturalH;cw0=ch0*cellAspect;}
+    else{cw0=naturalW;ch0=cw0/cellAspect;}
+    const zoom=clamp(item.zoom||1,1,MAX_IMG_ZOOM);
+    sw=cw0/zoom;sh=ch0/zoom;
+    const centeredX=(naturalW-sw)/2,centeredY=(naturalH-sh)/2;
+    sx=clamp(centeredX+(item.offsetX||0),0,Math.max(0,naturalW-sw));
+    sy=clamp(centeredY+(item.offsetY||0),0,Math.max(0,naturalH-sh));
     if(commit){item.offsetX=sx-centeredX;item.offsetY=sy-centeredY;}
   }else{
-    if(imageAspect>cellAspect){dw=rect.w;dh=dw/imageAspect;dy=rect.y+(rect.h-dh)/2;}
-    else{dh=rect.h;dw=dh*imageAspect;dx=rect.x+(rect.w-dw)/2;}
+    const shownAspect=swap?1/imageAspect:imageAspect;
+    if(shownAspect>rect.w/rect.h){dw=rect.w;dh=dw/shownAspect;dy=rect.y+(rect.h-dh)/2;}
+    else{dh=rect.h;dw=dh*shownAspect;dx=rect.x+(rect.w-dw)/2;}
   }
-  return {sx,sy,sw,sh,dx,dy,dw,dh};
+  return {sx,sy,sw,sh,dx,dy,dw,dh,naturalW,naturalH};
 }
 
-function drawImage(target,item,rect,style,commit){
+function drawImage(target,item,rect,style,commit,fast){
   const crop=sourceCrop(item,rect,style,commit);
   const cx=crop.dx+crop.dw/2;
   const cy=crop.dy+crop.dh/2;
@@ -1253,8 +1343,55 @@ function drawImage(target,item,rect,style,commit){
   const swap=Math.abs((item.rotation||0)%180)===90;
   const dw=swap?crop.dh:crop.dw;
   const dh=swap?crop.dw:crop.dh;
-  target.drawImage(item.img,crop.sx,crop.sy,crop.sw,crop.sh,-dw/2,-dh/2,dw,dh);
+  const source=fast&&item.preview?item.preview:item.img;
+  const k=source===item.img?1:source.width/crop.naturalW;
+  target.drawImage(source,crop.sx*k,crop.sy*k,crop.sw*k,crop.sh*k,-dw/2,-dh/2,dw,dh);
   target.restore();
+}
+
+/* Move an image inside its tile by a screen-space drag, honouring rotation
+   and flip, at exactly the speed of the pointer, and stopping at the edges
+   instead of piling up an invisible overshoot. */
+function screenToImage(item,dx,dy){
+  const a=-(item.rotation||0)*Math.PI/180;
+  return {x:(dx*Math.cos(a)-dy*Math.sin(a))*(item.flipX||1),y:dx*Math.sin(a)+dy*Math.cos(a)};
+}
+function nudgeImage(item,dxScreen,dyScreen){
+  const rect=item.to||item.rect; if(!rect)return;
+  const style=renderStyle();
+  const crop=sourceCrop(item,rect,style,false);
+  const swap=Math.abs((item.rotation||0)%180)===90;
+  const drawnW=(swap?rect.h:rect.w)*view.scale;
+  const perPx=crop.sw/Math.max(1,drawnW);
+  const v=screenToImage(item,dxScreen,dyScreen);
+  item.offsetX=(item.offsetX||0)-v.x*perPx;
+  item.offsetY=(item.offsetY||0)-v.y*perPx;
+  sourceCrop(item,rect,style,true);
+}
+/* Zoom an image inside its tile, keeping the point under the pointer still. */
+function zoomImage(item,factor,clientX,clientY){
+  const rect=item.to||item.rect; if(!rect)return;
+  const style=renderStyle();
+  if(!style.cover){toast("Image zoom works with Fit: Fill frame");return;}
+  const before=sourceCrop(item,rect,style,false);
+  const next=clamp((item.zoom||1)*factor,1,MAX_IMG_ZOOM);
+  if(next===(item.zoom||1))return;
+  item.zoom=next;
+  const after=sourceCrop(item,rect,style,false);
+  if(clientX!=null){
+    const box=wrapper.getBoundingClientRect();
+    const px=(clientX-box.left-view.x)/view.scale-(rect.x+rect.w/2);
+    const py=(clientY-box.top-view.y)/view.scale-(rect.y+rect.h/2);
+    const swap=Math.abs((item.rotation||0)%180)===90;
+    const v=screenToImage(item,px,py);
+    const fx=v.x/(swap?rect.h:rect.w), fy=v.y/(swap?rect.w:rect.h);
+    item.offsetX=(item.offsetX||0)+fx*(before.sw-after.sw);
+    item.offsetY=(item.offsetY||0)+fy*(before.sh-after.sh);
+  }
+  sourceCrop(item,rect,style,true);
+  syncZoomControl();
+  imageDragChanged=true;
+  scheduleRender();
 }
 
 function drawCell(target,item,rect,style,options={}){
@@ -1273,12 +1410,11 @@ function drawCell(target,item,rect,style,options={}){
   target.globalAlpha=alpha;
 
   if(lift>.004){
+    /* a hard offset shadow: on-brand, and far cheaper than a blurred one */
     target.save();
-    target.shadowColor=`rgba(10,10,10,${(.32*lift).toFixed(3)})`;
-    target.shadowBlur=36*lift;
-    target.shadowOffsetY=11*lift;
-    roundedPath(target,x,y,w,h,radius);
-    target.fillStyle=style.background;
+    const off=(options.floating?18:9)*lift/Math.max(.35,view.scale);
+    roundedPath(target,x+off,y+off,w,h,radius);
+    target.fillStyle=`rgba(10,10,10,${((options.floating?.28:.16)*lift).toFixed(3)})`;
     target.fill();
     target.restore();
   }
@@ -1287,7 +1423,7 @@ function drawCell(target,item,rect,style,options={}){
   roundedPath(target,x,y,w,h,radius);
   target.clip();
   target.filter=style.filter;
-  drawImage(target,item,{x,y,w,h},style,options.commit);
+  drawImage(target,item,{x,y,w,h},style,options.commit,options.fast);
   target.filter="none";
   target.restore();
 
@@ -1321,15 +1457,30 @@ function renderScene(target,width,height,forceBackground=null,animated=false){
     const order=images.map((item,index)=>index).sort((a,b)=>stackWeight(a)-stackWeight(b));
     order.forEach(index=>{
       const item=images[index];
+      if(floatDrag&&item.id===floatDrag.id){
+        const r=item.rect;
+        target.save();
+        target.fillStyle="rgba(226,29,47,.07)";target.fillRect(r.x,r.y,r.w,r.h);
+        target.strokeStyle="#e21d2f";target.lineWidth=Math.max(2,2/view.scale);
+        target.setLineDash([10/view.scale,7/view.scale]);
+        target.strokeRect(r.x+target.lineWidth/2,r.y+target.lineWidth/2,r.w-target.lineWidth,r.h-target.lineWidth);
+        target.restore();
+        return;
+      }
       const pop=item.hoverA*.014+item.liftA*.012;
       const appear=reduceMotion?1:easeOutBack(clamp(item.appear==null?1:item.appear,0,1));
       drawCell(target,item,item.rect,style,{
         lift:Math.max(item.hoverA||0,item.liftA||0),
         scale:(1+pop)*(.86+.14*appear),
         alpha:clamp(item.appear==null?1:item.appear*1.4,0,1),
-        commit:item.settled&&!dragTween
+        commit:item.settled&&!dragTween,
+        fast:true
       });
     });
+    if(floatDrag){
+      const item=images.find(entry=>entry.id===floatDrag.id);
+      if(item)drawCell(target,item,floatDrag.rect,style,{lift:1,scale:1.04,fast:true,floating:true});
+    }
     return;
   }
 
@@ -1357,7 +1508,9 @@ function syncStatus(){
   const label=count===1?"1 image":`${count} images`;
   const mode=$("layoutMode").selectedOptions[0]?.textContent||"Mosaic";
   $("topCount").textContent=label;
-  $("topSize").textContent=`${canvas.width} x ${canvas.height}`;
+  $("topSize").textContent=`${canvas.width} × ${canvas.height}`;
+  document.body.classList.toggle("has-images",count>0);
+  ["downloadTop","downloadBtn","downloadDrawer","copyBtn"].forEach(id=>{const b=$(id);if(b)b.disabled=!count;});
   $("topMode").textContent=mode;
   const grid=$("gridInfo");
   const tiles=`${count} tile${count===1?"":"s"}`;
@@ -1388,9 +1541,10 @@ function syncSelection(){
   document.querySelectorAll(".span-btn[data-span],.stepper button").forEach(button=>button.disabled=!item);
   document.querySelectorAll(".span-btn[data-preset]").forEach(button=>button.disabled=!images.length);
   $("spanX").disabled=!item;
+  syncZoomControl();
   $("spanY").disabled=!item;
   $("shuffleBtn").disabled=images.length<2;
-  $("selectionText").textContent=item?`Tile ${indexOfId(item.id)+1} / ${spanLabel(item)}`:"None selected";
+  $("selectionText").textContent=!images.length?"":item?"Selected":"None selected";
   $("spanX").value=item?clamp(item.spanX||1,1,MAX_SPAN):1;
   $("spanY").value=item?clamp(item.spanY||1,1,MAX_SPAN):1;
   document.querySelectorAll(".span-btn[data-span]").forEach(button=>{
@@ -1402,14 +1556,28 @@ function syncSelection(){
 function syncTilebar(item){
   const bar=$("tilebar");
   bar.classList.toggle("on",Boolean(item));
+  document.body.classList.toggle("has-sel",Boolean(item));
   if(!item)return;
+  /* float the bar just above the selected tile (below it if there is no room) */
+  if(item.rect&&wrapper.clientWidth>560){
+    const r=item.rect, top=view.y+r.y*view.scale, bottom=top+r.h*view.scale;
+    const cx=view.x+(r.x+r.w/2)*view.scale, bh=bar.offsetHeight||40, bw=bar.offsetWidth||420;
+    let y=top-bh-12;
+    if(y<10)y=Math.min(bottom+12,wrapper.clientHeight-bh-70);
+    const x=clamp(cx,bw/2+10,wrapper.clientWidth-bw/2-10);
+    bar.style.setProperty("--tb-x",`${x}px`);
+    bar.style.setProperty("--tb-y",`${Math.max(10,y)}px`);
+  }
   $("tbIndex").textContent=String(indexOfId(item.id)+1).padStart(2,"0");
   $("tbSpan").textContent=spanLabel(item).replace(/ /g,"");
 }
 
 function syncOverlay(){
-  const item=selected();
-  syncTilebar(item);
+  const sel=selected();
+  syncTilebar(sel);
+  /* while a tile is being carried, its handles and bar step aside */
+  $("tilebar").classList.toggle("on",Boolean(sel)&&!floatDrag);
+  const item=floatDrag?null:sel;
   if(item&&item.rect){
     const rect=item.rect;
     selBox.classList.add("on");
@@ -1417,6 +1585,7 @@ function syncOverlay(){
     selBox.style.width=`${Math.max(2,rect.w*view.scale)}px`;
     selBox.style.height=`${Math.max(2,rect.h*view.scale)}px`;
     $("selChip").textContent=`${indexOfId(item.id)+1} • ${spanLabel(item)}`;
+    selBox.classList.toggle("tiny",Math.min(rect.w,rect.h)*view.scale<130);
   }else selBox.classList.remove("on");
 
   const hovered=hoverId&&hoverId!==selectedId?images.find(entry=>entry.id===hoverId):null;
@@ -1462,10 +1631,25 @@ function autoColumns(){
   $("colsV").textContent=value;
 }
 
+/* Painting a 6000px photo every frame is what made dragging stutter. The live
+   canvas draws a copy capped at PREVIEW_MAX; export still reads the original. */
+const PREVIEW_MAX=2048;
+function makePreview(img){
+  const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;
+  const k=PREVIEW_MAX/Math.max(w,h);
+  if(!(k<1))return null;
+  const c=document.createElement("canvas");
+  c.width=Math.max(1,Math.round(w*k));c.height=Math.max(1,Math.round(h*k));
+  const g=c.getContext("2d");
+  g.imageSmoothingQuality="high";
+  g.drawImage(img,0,0,c.width,c.height);
+  return c;
+}
+
 function loadImage(src,name="image"){
   return new Promise((resolve,reject)=>{
     const img=new Image();
-    img.onload=()=>resolve({id:uid(),src,name,img,offsetX:0,offsetY:0,rotation:0,flipX:1,spanX:1,spanY:1});
+    img.onload=()=>resolve({id:uid(),src,name,img,preview:makePreview(img),offsetX:0,offsetY:0,zoom:1,rotation:0,flipX:1,spanX:1,spanY:1});
     img.onerror=reject;
     img.src=src;
   });
@@ -1496,7 +1680,7 @@ async function addFiles(fileList){
 
 function addLoaded(loaded){
   images.push(...loaded);
-  selectedId=loaded[loaded.length-1].id;
+  selectedId=null;
   autoColumns();
   renderBin();
   scheduleRender();
@@ -1715,9 +1899,18 @@ function applyTransform(){
 function fitView(){
   const width=canvas.width,height=canvas.height;
   if(!width||!height||!wrapper.clientWidth||!wrapper.clientHeight)return;
-  view.scale=clamp(Math.min(wrapper.clientWidth/width,wrapper.clientHeight/height)*.88,MIN_SCALE,MAX_SCALE);
-  view.x=(wrapper.clientWidth-width*view.scale)/2;
-  view.y=(wrapper.clientHeight-height*view.scale)/2;
+  const phone=wrapper.clientWidth<=560;
+  if(phone){
+    /* phone: use the width, sit the sheet under the tile bar, leave the slack at the bottom */
+    const top=64, foot=76;
+    view.scale=clamp(Math.min((wrapper.clientWidth-24)/width,(wrapper.clientHeight-top-foot)/height),MIN_SCALE,MAX_SCALE);
+    view.x=(wrapper.clientWidth-width*view.scale)/2;
+    view.y=top;
+  }else{
+    view.scale=clamp(Math.min(wrapper.clientWidth/width,wrapper.clientHeight/height)*.88,MIN_SCALE,MAX_SCALE);
+    view.x=(wrapper.clientWidth-width*view.scale)/2;
+    view.y=(wrapper.clientHeight-height*view.scale)/2;
+  }
   applyTransform();
 }
 
@@ -1733,7 +1926,7 @@ function zoomAround(clientX,clientY,nextScale){
 
 function zoomCenter(factor){
   const rect=wrapper.getBoundingClientRect();
-  zoomAround(rect.left+wrapper.clientWidth/2,rect.top+wrapper.clientHeight/2,view.scale*factor);
+  smoothZoom(rect.left+wrapper.clientWidth/2,rect.top+wrapper.clientHeight/2,(zoomAnim?zoomAnim.target:view.scale)*factor);
 }
 
 function canvasPoint(clientX,clientY){
@@ -1742,6 +1935,21 @@ function canvasPoint(clientX,clientY){
     x:(clientX-rect.left-view.x)/view.scale,
     y:(clientY-rect.top-view.y)/view.scale
   };
+}
+
+/* Slot under the pointer, by settled layout. A swap only counts once the
+   pointer is well inside the tile (not on its rim), which stops two tiles of
+   different sizes from trading places back and forth on every pixel. */
+function slotIndexAt(clientX,clientY,skipId,inset=.18){
+  const point=canvasPoint(clientX,clientY);
+  for(let index=images.length-1;index>=0;index--){
+    const item=images[index];
+    const rect=item.to||item.rect;
+    if(!rect||item.id===skipId)continue;
+    const ix=rect.w*inset, iy=rect.h*inset;
+    if(point.x>=rect.x+ix&&point.x<=rect.x+rect.w-ix&&point.y>=rect.y+iy&&point.y<=rect.y+rect.h-iy)return index;
+  }
+  return -1;
 }
 
 function cellIndexAt(clientX,clientY,skipId){
@@ -1763,6 +1971,7 @@ let pinch=null;
 let resizeDrag=null;
 let moveDrag=null;
 let dragId=null;
+let floatDrag=null;           /* the tile being carried: {id,rect,px,py,gx,gy,sizeK} */
 
 function endActiveDrags(){
   if(resizeDrag){
@@ -1778,6 +1987,15 @@ function endActiveDrags(){
   }
   if(moveDrag){
     const moved=moveDrag.moved;
+    if(floatDrag){
+      const item=images.find(entry=>entry.id===floatDrag.id);
+      if(item&&item.to){
+        item.rect={...floatDrag.rect};item.from={...floatDrag.rect};
+        item.t0=performance.now();item.dur=reduceMotion?0:320;item.back=!reduceMotion;
+      }
+      floatDrag=null;
+      requestFrame();
+    }
     moveDrag=null;
     dragId=null;
     dragTween=false;
@@ -1794,7 +2012,10 @@ wrapper.addEventListener("pointerdown",event=>{
 
   if(pointers.size===2){
     const points=[...pointers.values()];
-    pinch={distance:Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y)||1,scale:view.scale};
+    const item=selected();
+    const onImage=repositionMode&&item&&gesture==="image";
+    pinch={distance:Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y)||1,scale:view.scale,
+           item:onImage?item:null,zoom:onImage?(item.zoom||1):1};
     gesture="pinch";panLast=null;imgDrag=null;
     endActiveDrags();
     return;
@@ -1827,12 +2048,14 @@ wrapper.addEventListener("pointerdown",event=>{
     selectImage(item.id,true);
     if(repositionMode){
       gesture="image";
-      imgDrag={item,offsetX:item.offsetX,offsetY:item.offsetY,startX:event.clientX,startY:event.clientY};
+      imgDrag={item,lastX:event.clientX,lastY:event.clientY};
       imageDragChanged=false;
       return;
     }
     gesture="move";
-    moveDrag={id:item.id,startX:event.clientX,startY:event.clientY,moved:false};
+    const p=canvasPoint(event.clientX,event.clientY), r=item.to||item.rect;
+    moveDrag={id:item.id,startX:event.clientX,startY:event.clientY,moved:false,
+              gx:clamp((p.x-r.x)/r.w,0,1),gy:clamp((p.y-r.y)/r.h,0,1),lastSwap:0,lastOver:null};
     return;
   }
 
@@ -1854,7 +2077,11 @@ wrapper.addEventListener("pointermove",event=>{
   if(gesture==="pinch"&&pointers.size>=2){
     const points=[...pointers.values()];
     const distance=Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);
-    zoomAround((points[0].x+points[1].x)/2,(points[0].y+points[1].y)/2,pinch.scale*(distance/pinch.distance));
+    const mx=(points[0].x+points[1].x)/2,my=(points[0].y+points[1].y)/2;
+    if(pinch.item){
+      const want=clamp(pinch.zoom*(distance/pinch.distance),1,MAX_IMG_ZOOM);
+      zoomImage(pinch.item,want/(pinch.item.zoom||1),mx,my);
+    }else zoomAround(mx,my,pinch.scale*(distance/pinch.distance));
     return;
   }
 
@@ -1877,30 +2104,39 @@ wrapper.addEventListener("pointermove",event=>{
 
   if(gesture==="move"&&moveDrag){
     if(!moveDrag.moved&&Math.hypot(event.clientX-moveDrag.startX,event.clientY-moveDrag.startY)<7)return;
+    const p=canvasPoint(event.clientX,event.clientY);
     if(!moveDrag.moved){
       moveDrag.moved=true;
       dragId=moveDrag.id;
       dragTween=true;
       wrapper.classList.add("moving");
-      requestFrame();
+      const item=images.find(entry=>entry.id===moveDrag.id);
+      const r=item.rect||item.to;
+      floatDrag={id:item.id,rect:{...r},px:p.x,py:p.y,gx:moveDrag.gx,gy:moveDrag.gy,sizeK:1};
     }
-    const overIndex=cellIndexAt(event.clientX,event.clientY,moveDrag.id);
-    if(overIndex>-1){
+    floatDrag.px=p.x;floatDrag.py=p.y;
+    requestFrame();
+    const overIndex=slotIndexAt(event.clientX,event.clientY,moveDrag.id);
+    const overId=overIndex>-1?images[overIndex].id:null;
+    const now=performance.now();
+    if(overId&&overId!==moveDrag.lastOver&&now-moveDrag.lastSwap>140){
       const from=indexOfId(moveDrag.id);
       if(from>-1&&from!==overIndex){
         const [moved]=images.splice(from,1);
         images.splice(overIndex,0,moved);
+        moveDrag.lastSwap=now;
         scheduleRender();
       }
     }
+    moveDrag.lastOver=overId;
     return;
   }
 
   if(gesture==="image"&&imgDrag){
-    imgDrag.item.offsetX=imgDrag.offsetX-(event.clientX-imgDrag.startX)/view.scale;
-    imgDrag.item.offsetY=imgDrag.offsetY-(event.clientY-imgDrag.startY)/view.scale;
+    nudgeImage(imgDrag.item,event.clientX-imgDrag.lastX,event.clientY-imgDrag.lastY);
+    imgDrag.lastX=event.clientX;imgDrag.lastY=event.clientY;
     imageDragChanged=true;
-    scheduleRender();
+    requestFrame();
     return;
   }
 
@@ -1928,7 +2164,42 @@ function endPointer(event){
 wrapper.addEventListener("pointerup",endPointer);
 wrapper.addEventListener("pointercancel",endPointer);
 wrapper.addEventListener("pointerleave",()=>{if(!pointers.size&&hoverId){hoverId=null;requestFrame();}});
-wrapper.addEventListener("wheel",event=>{event.preventDefault();zoomAround(event.clientX,event.clientY,view.scale*(1-event.deltaY*.0012));},{passive:false});
+let zoomAnim=null;
+function smoothZoom(clientX,clientY,targetScale){
+  targetScale=clamp(targetScale,MIN_SCALE,MAX_SCALE);
+  if(reduceMotion){zoomAround(clientX,clientY,targetScale);return;}
+  if(zoomAnim){zoomAnim.target=targetScale;zoomAnim.x=clientX;zoomAnim.y=clientY;return;}
+  zoomAnim={target:targetScale,x:clientX,y:clientY,last:performance.now()};
+  const tick=now=>{
+    const z=zoomAnim; if(!z)return;
+    const dt=Math.min(48,now-z.last); z.last=now;
+    const next=approach(view.scale,z.target,dt,55);
+    zoomAround(z.x,z.y,Math.abs(next-z.target)<z.target*.002?z.target:next);
+    if(view.scale!==z.target)requestAnimationFrame(tick);else zoomAnim=null;
+  };
+  requestAnimationFrame(tick);
+}
+wrapper.addEventListener("wheel",event=>{
+  event.preventDefault();
+  let dy=event.deltaY;
+  if(event.deltaMode===1)dy*=16;else if(event.deltaMode===2)dy*=wrapper.clientHeight;
+  dy=clamp(dy,-240,240);
+  const index=cellIndexAt(event.clientX,event.clientY);
+  if(index>-1&&(event.altKey||(repositionMode&&!event.ctrlKey))){
+    const item=images[index];
+    if(selectedId!==item.id)selectImage(item.id,true);
+    zoomImage(item,Math.exp(-dy*.0022),event.clientX,event.clientY);
+    clearTimeout(wrapper._zoomCommit);
+    wrapper._zoomCommit=setTimeout(()=>{if(imageDragChanged){commitHistory(true);imageDragChanged=false;}},350);
+    return;
+  }
+  /* trackpads send small continuous deltas (and pinch arrives as ctrl+wheel):
+     follow them directly; a mouse wheel's big notches get eased */
+  const factor=Math.exp(-dy*(event.ctrlKey?.009:.0016));
+  const base=zoomAnim?zoomAnim.target:view.scale;
+  if(Math.abs(dy)<40||event.ctrlKey){if(zoomAnim)zoomAnim=null;zoomAround(event.clientX,event.clientY,view.scale*factor);}
+  else smoothZoom(event.clientX,event.clientY,base*factor);
+},{passive:false});
 wrapper.addEventListener("dblclick",event=>{
   const index=cellIndexAt(event.clientX,event.clientY);
   if(index<0)return;
@@ -1938,11 +2209,22 @@ wrapper.addEventListener("dblclick",event=>{
   setSpan(item,big?1:2,big?1:2,big?"Reset tile":"Feature tile");
 });
 
+function syncZoomControl(){
+  const item=selected(), z=$("izoom");
+  if(!z)return;
+  z.disabled=!item;
+  const v=Math.round((item?item.zoom||1:1)*100);
+  if(document.activeElement!==z)z.value=v;
+  $("izoomV").textContent=v;
+}
 function setReposition(value){
   repositionMode=value;
   $("repos").classList.toggle("active",value);
+  $("cropToggle").classList.toggle("active",value);
+  $("cropSide").classList.toggle("on",value);
+  $("cropSide").textContent=value?"Done cropping":"Crop mode";
   wrapper.classList.toggle("reposition",value);
-  toast(value?"Reposition mode on - drag inside a tile to pan its image":"Reposition mode off - drag tiles to reorder");
+  toast(value?"Crop mode: drag to slide the image, scroll or pinch to zoom":"Crop mode off: drag tiles to move them");
 }
 
 function createExportCanvas(scale,format){
@@ -2002,7 +2284,7 @@ function projectPayload(){
     version:3,
     savedAt:new Date().toISOString(),
     settings:readSettings(),
-    images:images.map(({id,src,name,offsetX,offsetY,rotation,flipX,spanX,spanY})=>({id,src,name,offsetX,offsetY,rotation,flipX,spanX,spanY}))
+    images:images.map(({id,src,name,offsetX,offsetY,zoom,rotation,flipX,spanX,spanY})=>({id,src,name,offsetX,offsetY,zoom:zoom||1,rotation,flipX,spanX,spanY}))
   };
 }
 
@@ -2021,7 +2303,7 @@ async function openProjectFile(file){
       const item=await loadImage(saved.src,saved.name||"image");
       Object.assign(item,{
         id:saved.id||item.id,
-        offsetX:Number(saved.offsetX)||0,offsetY:Number(saved.offsetY)||0,
+        offsetX:Number(saved.offsetX)||0,offsetY:Number(saved.offsetY)||0,zoom:clamp(Number(saved.zoom)||1,1,MAX_IMG_ZOOM),
         rotation:Number(saved.rotation)||0,flipX:Number(saved.flipX)||1,
         spanX:clamp(Number(saved.spanX)||1,1,MAX_SPAN),spanY:clamp(Number(saved.spanY)||1,1,MAX_SPAN)
       });
@@ -2055,6 +2337,8 @@ document.querySelectorAll(".range-label").forEach(label=>{
   if(range)range.setAttribute("aria-label",label.firstElementChild.textContent);
 });
 $("menuBtn").addEventListener("click",()=>document.body.classList.toggle("nav-open"));
+$("drawerClose").addEventListener("click",()=>document.body.classList.remove("nav-open"));
+$("downloadDrawer").addEventListener("click",download);
 $("backdrop").addEventListener("click",()=>document.body.classList.remove("nav-open"));
 
 $("fileInput").addEventListener("change",event=>{addFiles(event.target.files);event.target.value="";});
@@ -2115,6 +2399,7 @@ $("preset").addEventListener("change",()=>{
 $("rotateLeft").addEventListener("click",()=>modifySelected(item=>item.rotation=(item.rotation-90)%360,"Rotated left"));
 $("rotateRight").addEventListener("click",()=>modifySelected(item=>item.rotation=(item.rotation+90)%360,"Rotated right"));
 $("flipImage").addEventListener("click",()=>modifySelected(item=>item.flipX=(item.flipX||1)*-1,"Image flipped"));
+$("duplicateSide").addEventListener("click",()=>$("duplicateImage").click());
 $("duplicateImage").addEventListener("click",()=>{
   const item=selected();if(!item||images.length>=MAX_IMAGES){if(images.length>=MAX_IMAGES)toast(`Limit is ${MAX_IMAGES} images`);return;}
   const index=indexOfId(item.id);
@@ -2122,6 +2407,14 @@ $("duplicateImage").addEventListener("click",()=>{
   images.splice(index+1,0,copy);selectedId=copy.id;renderBin();scheduleRender();commitHistory(true);toast("Image duplicated");
 });
 $("removeSelected").addEventListener("click",()=>{if(selectedId)removeImage(selectedId);});
+$("cropToggle").addEventListener("click",()=>setReposition(!repositionMode));
+$("cropSide").addEventListener("click",()=>setReposition(!repositionMode));
+$("resetCrop").addEventListener("click",()=>modifySelected(item=>{item.zoom=1;item.offsetX=0;item.offsetY=0;},"Crop reset"));
+$("izoom").addEventListener("input",event=>{
+  const item=selected(); if(!item)return;
+  zoomImage(item,(event.target.value/100)/(item.zoom||1));
+});
+$("izoom").addEventListener("change",()=>{if(imageDragChanged){commitHistory(true);imageDragChanged=false;}});
 $("shuffleBtn").addEventListener("click",()=>{
   for(let i=images.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[images[i],images[j]]=[images[j],images[i]];}
   renderBin();scheduleRender();commitHistory(true);toast("Order shuffled");
@@ -2191,11 +2484,8 @@ window.addEventListener("keydown",event=>{
   }
   if(repositionMode&&item&&["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key)){
     event.preventDefault();
-    const step=event.shiftKey?20:4;
-    if(event.key==="ArrowLeft")item.offsetX-=step;
-    if(event.key==="ArrowRight")item.offsetX+=step;
-    if(event.key==="ArrowUp")item.offsetY-=step;
-    if(event.key==="ArrowDown")item.offsetY+=step;
+    const step=event.shiftKey?24:6;
+    nudgeImage(item,event.key==="ArrowLeft"?step:event.key==="ArrowRight"?-step:0,event.key==="ArrowUp"?step:event.key==="ArrowDown"?-step:0);
     scheduleRender();commitHistory();
   }
 });
@@ -2209,6 +2499,8 @@ window.addEventListener("resize",()=>{
   },120);
 });
 
+/* phones start on a 4:5 portrait sheet: a 16:9 sheet would be a thin strip on a portrait screen */
+if(innerWidth<=560&&!params.has("size")){$("preset").value="1080x1350";$("cw").value="1080";$("ch").value="1350";}
 syncControls();
 renderBin();
 draw();
@@ -2217,6 +2509,7 @@ history=[snapshot()];
 updateHistoryButtons();
 
 $("sampleBtn").addEventListener("click",()=>addSamples(9));
+if(matchMedia("(hover:none)").matches)$("emptyTitle").textContent="Add images to start";
 $("emptySample").addEventListener("click",()=>addSamples(9));
 
 // URL hooks: ?demo=12&preset=hero&select=1&nav=1&still=1 - used for demos and screenshots.
