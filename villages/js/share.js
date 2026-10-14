@@ -37,14 +37,39 @@ export async function decodeSave(code) {
   let save;
   try { save = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new Error('The code is damaged — check it was copied completely.'); }
   if (!save || typeof save.seed !== 'number' || !Array.isArray(save.buildings) || !Array.isArray(save.villagers) || !save.world?.alive) throw new Error('That code doesn\'t hold a village.');
-  return save;
+  return sanitizeSave(save);
+}
+
+// A share code (or a backup) is someone else's text, and the UI builds a lot of
+// its markup by interpolating save fields. Scrub every string and key so none can
+// open a tag or break out of an attribute, and coerce the top-level numbers.
+const num = (v, d, lo = -Infinity, hi = Infinity) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+const scrub = (v, depth = 0) => {
+  if (typeof v === 'string') return v.replace(/[<>"`]/g, '');
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  if (v === null || typeof v !== 'object' || depth > 32) return typeof v === 'boolean' ? v : null;
+  if (Array.isArray(v)) return v.map(x => scrub(x, depth + 1));
+  const o = {};
+  for (const k of Object.keys(v)) { if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue; o[scrub(k)] = scrub(v[k], depth + 1); }
+  return o;
+};
+export function sanitizeSave(save) {
+  if (!save || typeof save !== 'object') return save;
+  const s = scrub(save);
+  s.seed = num(s.seed, 0);
+  s.level = Math.floor(num(s.level, 1, 1, 999));
+  s.xp = num(s.xp, 0, 0);
+  s.time = num(s.time, 0, 0);
+  s.happiness = num(s.happiness, 70, 0, 100);
+  if (s.nextId !== undefined) s.nextId = Math.floor(num(s.nextId, 1, 1));
+  return s;
 }
 
 // a little summary for the confirm step
 export function describeSave(save) {
   const names = save.names || {};
-  return { name: names.meadow || 'Meadowbrook', pop: save.villagers.length, buildings: save.buildings.filter(b => b.type !== 'campfire').length,
-    level: save.level || 1, day: Math.floor((save.time || 0) / 240) + 1, settled: Object.keys(save.unlocked || {}).length };
+  return { name: String(names.meadow || 'Meadowbrook').slice(0, 60), pop: save.villagers.length, buildings: save.buildings.filter(b => b?.type !== 'campfire').length,
+    level: Math.floor(Number(save.level) || 1), day: Math.floor((Number(save.time) || 0) / 240) + 1, settled: Object.keys(save.unlocked || {}).length };
 }
 
 export async function copyText(text) {

@@ -24,6 +24,7 @@ import { Extras } from './extras.js';
 import {TOWER_MODES,towerMode} from './arcane.js';
 import { facingViewer } from './placement.js';
 import { paintRoad, paintCobble } from './roads.js';
+import { sanitizeSave } from './share.js';
 
 const SAVE_KEY = 'isaiart.villages.v1';
 const SET_KEY = 'isaiart.villages.settings';
@@ -62,7 +63,7 @@ class Game {
     const step = async p => { bar.style.width = p + '%'; await tick(); };
     await step(15);
     let save = null;
-    try { save = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch { save = null; }
+    try { save = sanitizeSave(JSON.parse(localStorage.getItem(SAVE_KEY) || 'null')); } catch { save = null; }
     try { this.sim = new Sim(save, { seed: new URLSearchParams(location.search).get('seed') ?? undefined }); } catch (err) { console.warn('Save failed to load, starting fresh', err); this.sim = new Sim(null); }
     await step(40);
     await loadModels();             // the forest and buildings are built from these

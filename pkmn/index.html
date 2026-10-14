@@ -133,6 +133,7 @@ function ri(a,b){return a+Math.floor(rnd()*(b-a+1));}
 function pick(arr){return arr[Math.floor(rnd()*arr.length)];}
 function clamp(v,a,b){return v<a?a:(v>b?b:v);}
 function monName(mon){return mon.nick||DEX[mon.id].n;}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function wpick(list){ // [[item,weight],...]
   let tot=0; for(const e of list)tot+=e[1];
   let r=rnd()*tot; for(const e of list){r-=e[1]; if(r<=0)return e[0];} return list[0][0];
@@ -4181,7 +4182,7 @@ function hpBarHtml(mon,stages,isPly){
   let hp=isPly?`<div style="text-align:right;font-size:10px">${mon.hp} / ${mon.maxhp}</div>`:'';
   let exp='';
   if(isPly){const need=expNext(mon.lvl);exp=`<div class="expout"><div class="expin" style="width:${clamp(mon.exp/need*100,0,100)}%"></div></div>`;}
-  return `<div>${monName(mon)}${mon.shiny?' ✨':''}${st}<span style="float:right">Lv${mon.lvl}</span></div>
+  return `<div>${esc(monName(mon))}${mon.shiny?' ✨':''}${st}<span style="float:right">Lv${mon.lvl}</span></div>
   <div class="hpout"><div class="hpin" style="width:${pct}%;background:${col}"></div></div>${hp}${exp}`;
 }
 function drawBattle(){
@@ -5084,8 +5085,18 @@ async function saveMenu(){
       try{
         const json=decodeURIComponent(escape(atob(v.trim())));
         const d=JSON.parse(json);
-        if(!d.player||!d.party)throw new Error('bad');
-        localStorage.setItem(SAVE_KEY,json);
+        if(!d.player||!Array.isArray(d.party))throw new Error('bad');
+        // sanitize save-derived strings/numbers that end up in the UI
+        d.player.name=String(d.player.name==null?'Skye':d.player.name).slice(0,10)||'Skye';
+        d.player.money=Number(d.player.money)||0;
+        const fixMon=m=>{if(!m||typeof m!=='object')return;
+          if(m.nick!=null)m.nick=String(m.nick).slice(0,10)||undefined;
+          if(m.st!=null&&!STATUS_COLORS[m.st])m.st=null;
+          m.lvl=Number(m.lvl)||1;m.hp=Number(m.hp)||0;m.maxhp=Number(m.maxhp)||1;};
+        d.party.forEach(fixMon);if(Array.isArray(d.box))d.box.forEach(fixMon);
+        if(d.daycare&&Array.isArray(d.daycare.mons))d.daycare.mons.forEach(fixMon);
+        d.playMin=Number(d.playMin)||0;
+        localStorage.setItem(SAVE_KEY,JSON.stringify(d));
         loadGame();
         await warpTo(G.map,G.x,G.y);
         await say("Save code loaded! Welcome back, "+G.player.name+"!");
@@ -5269,7 +5280,7 @@ function trainerCard(){
       '<div style="display:flex;gap:12px;padding:10px 14px">'+
       '<canvas id="tcplayer" width="64" height="64" style="background:#c8e4f0;border:2px solid #30346d;border-radius:6px"></canvas>'+
       '<div style="font-size:12px;line-height:1.8">'+
-      '<div style="font-size:15px;font-weight:900">'+G.player.name+'</div>'+
+      '<div style="font-size:15px;font-weight:900">'+esc(G.player.name)+'</div>'+
       '<div>Money <b>₽'+G.player.money+'</b></div>'+
       '<div>Pokédex <b>'+caught+'</b> caught · <b>'+seen+'</b> seen</div>'+
       '<div>Play time <b>'+Math.floor(G.playMin/60)+'h '+(G.playMin%60)+'m</b></div>'+
@@ -5438,7 +5449,7 @@ function renderMonDetail(div,mon){
       '<span>'+M2.n+'</span><span style="color:'+TYPE_COLORS[M2.t]+'">'+TYPE_NAMES[M2.t]+
       '</span><span style="color:#566c86">'+mv.pp+'/'+M2.pp+'</span></div>';}).join('');
   div.innerHTML=
-    '<div style="font-size:17px">'+monName(mon)+(mon.shiny?' ✨':'')+(mon.nick?' <span style="font-size:11px;color:#566c86">('+d.n+')</span>':'')+'  <span style="font-size:13px">Lv'+mon.lvl+'</span>'+
+    '<div style="font-size:17px">'+esc(monName(mon))+(mon.shiny?' ✨':'')+(mon.nick?' <span style="font-size:11px;color:#566c86">('+d.n+')</span>':'')+'  <span style="font-size:13px">Lv'+mon.lvl+'</span>'+
     (mon.st?' <span class="stag" style="background:'+STATUS_COLORS[mon.st]+'">'+mon.st+'</span>':'')+'</div>'+
     '<div style="display:flex;gap:8px">'+
     '<div id="pcspr" style="flex:0 0 auto;background:#eef3e6;border:2px solid #94b0c2;border-radius:6px;width:66px;height:66px;display:flex;align-items:center;justify-content:center"></div>'+
@@ -5667,9 +5678,9 @@ function creditsRoll(){
     let html='<div style="font-size:20px;color:#ffd76a;font-weight:900">POKéMON CLAUDE</div>'+
       '<div style="font-size:14px;color:#73eff7">HALL OF FAME</div><br>';
     for(const p of G.party){
-      html+='<div>'+monName(p)+(p.shiny?' ✨':'')+'  Lv'+p.lvl+'</div>';
+      html+='<div>'+esc(monName(p))+(p.shiny?' ✨':'')+'  Lv'+p.lvl+'</div>';
     }
-    html+='<br><div>CHAMPION '+G.player.name.toUpperCase()+'</div><br><br>'+
+    html+='<br><div>CHAMPION '+esc(G.player.name.toUpperCase())+'</div><br><br>'+
       '<div style="color:#94b0c2">A fan-made parody adventure<br>150 original Pokémon<br>Made with ❤ (and one very large HTML file)</div>'+
       '<br><div style="color:#ffd76a">THE END</div><br><div style="font-size:10px;color:#566c86">...press A</div>';
     inner.innerHTML=html;
@@ -5839,10 +5850,10 @@ function wikiPageHTML(p,host){
     const bc=badgeCount();
     let news='';
     news+=wCard('<b style="color:#ffd977">CLAUDE REGIONAL LEAGUE — OFFICIAL PORTAL</b><br>'+dstr+' · serving '+(1204+today.getDate()*7)+' trainers online');
-    if(flags().champion)news+=wCard(wH('BREAKING — A NEW CHAMPION CROWNED')+'Challenger <b>'+G.player.name+'</b> of Dewbrook has defeated the Elite Four AND the sitting Champion in a single ascent. League historians are calling it the fastest Right-of-Silence reveal on record.');
+    if(flags().champion)news+=wCard(wH('BREAKING — A NEW CHAMPION CROWNED')+'Challenger <b>'+esc(G.player.name)+'</b> of Dewbrook has defeated the Elite Four AND the sitting Champion in a single ascent. League historians are calling it the fastest Right-of-Silence reveal on record.');
     else news+=wCard(wH('LEAGUE WATCH')+'The Champion’s seat remains protected under the <i>Right of Silence</i>. Four challengers reached Ember’s Furnace this season. None passed.');
     if(flags().umbraDone||flags().hideout)news+=wCard(wH('TEAM UMBRA UPDATE')+(flags().umbraDone?'Authorities confirm the Umbra eclipse-engine has been dismantled. Residents may resume normal moon-viewing.':'Team Umbra activity reported near Shadowvale. Residents are advised to lock their Poké Balls at night.'));
-    news+=wCard(wH('GYM CIRCUIT')+(bc===0?'A new challenger season begins! All eight Gyms are accepting badge matches.':bc<8?'Circuit trackers report a Dewbrook trainer holding <b>'+bc+'</b> badge'+(bc>1?'s':'')+'. Odds boards in the Voltis casino are shifting.':'All eight badges claimed — Victory Road’s gates stand open for <b>'+G.player.name+'</b>.'));
+    news+=wCard(wH('GYM CIRCUIT')+(bc===0?'A new challenger season begins! All eight Gyms are accepting badge matches.':bc<8?'Circuit trackers report a Dewbrook trainer holding <b>'+bc+'</b> badge'+(bc>1?'s':'')+'. Odds boards in the Voltis casino are shifting.':'All eight badges claimed — Victory Road’s gates stand open for <b>'+esc(G.player.name)+'</b>.'));
     news+=wCard(wH('TRENDING SPECIES')+'Searches spiked today for <b>'+DEX[10+(today.getDate()*7)%130].n+'</b> and <b>'+DEX[10+(today.getDate()*13)%130].n+'</b>.');
     news+='<div style="color:#566c86;font-size:12px;text-align:center">claude.net is maintained by the League Records Office · est. 214 AC</div>';
     host.innerHTML=news;
@@ -5891,7 +5902,7 @@ function wikiPageHTML(p,host){
       const d=document.createElement('div');
       d.style.cssText='background:#33272e;border:2px solid #ffd977;border-radius:4px;padding:6px 8px;display:flex;gap:8px';
       d.appendChild(wikiPortrait(playerPal(),undefined,0,2));
-      d.innerHTML+='<div style="flex:1"><b style="color:#ffd977;font-size:16px">CHAMPION '+G.player.name.toUpperCase()+'</b><br>'+
+      d.innerHTML+='<div style="flex:1"><b style="color:#ffd977;font-size:16px">CHAMPION '+esc(G.player.name.toUpperCase())+'</b><br>'+
         '<span style="color:#c0cbdc">Rose from Dewbrook Town to claim the crown, ending the shortest Champion reign in League history — challenger Rex held the seat for less than a day before falling in the very chamber he won. The Hall of Fame archive has been updated.</span></div>';
       wch.appendChild(d);
     }else{
@@ -5919,7 +5930,7 @@ function wikiPageHTML(p,host){
       d.appendChild(wikiMonIcon(L.id,52,!caught));
       d.innerHTML+='<div style="flex:1"><b style="color:#ffd977">'+L.t+'</b> <span style="color:#566c86">#'+L.id+'</span><br>'+
         '<span style="color:#c0cbdc">'+L.txt+'</span>'+
-        (caught?'<br><span style="color:#a7f070">REGISTERED TO '+G.player.name.toUpperCase()+'’S POKÉDEX ✓</span>':'<br><span style="color:#566c86;font-size:12px">[ No verified photograph exists — woodcut reproduction shown ]</span>')+'</div>';
+        (caught?'<br><span style="color:#a7f070">REGISTERED TO '+esc(G.player.name.toUpperCase())+'’S POKÉDEX ✓</span>':'<br><span style="color:#566c86;font-size:12px">[ No verified photograph exists — woodcut reproduction shown ]</span>')+'</div>';
       wlg.appendChild(d);
     });
   }else if(p===4){ // COLOSSEUM
@@ -5928,7 +5939,7 @@ function wikiPageHTML(p,host){
       wCard('<b style="color:#ffd977">THE GAUNTLET</b><br>Five trainers. Five rounds. One run.<br>· Your party is healed <b>between rounds only</b> — no bag items mid-battle beyond normal battle rules.<br>· Forfeit or defeat ends the run on the spot.<br>· Round five belongs to <b>Colosseum King Watt</b>, undefeated house closer.')+
       wCard('<b style="color:#ffd977">PRIZES</b><br>· Flawless 5/5 run: <b>2 RARE CANDIES</b> and your name in the house lights.<br>· House record is tracked on your League file.')+
       wCard('<b style="color:#ffd977">THE CARD</b><br>R1 Gladiator Rome · R2 Ace Vex · R3 Veteran Hale · R4 Tamer Nyra · R5 King Watt<br><span style="color:#566c86;font-size:12px">Opponents scale to the challenger. The crowd scales to the drama.</span>')+
-      wCard('<b style="color:#ffd977">YOUR LEAGUE FILE</b><br>'+(best?'Personal best: <b>'+best+'/5</b>'+(best>=5?' — <span style="color:#a7f070">FLAWLESS ✓ The lights remember you.</span>':''):'No recorded runs. The sand awaits, '+G.player.name+'.'))+
+      wCard('<b style="color:#ffd977">YOUR LEAGUE FILE</b><br>'+(best?'Personal best: <b>'+best+'/5</b>'+(best>=5?' — <span style="color:#a7f070">FLAWLESS ✓ The lights remember you.</span>':''):'No recorded runs. The sand awaits, '+esc(G.player.name)+'.'))+
       '<div style="color:#566c86;font-size:12px;text-align:center">Colosseum floor is genuine Route 3 sand, replaced nightly. Please do not pocket it.</div>';
   }else{ // TRADES
     const t=new Date();

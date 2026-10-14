@@ -8,7 +8,7 @@ import { defOf, lvlOf, DAY } from './sim.js';
 import { heartsOf } from './social.js';
 import { cartCapacity } from './trade.js';
 import { roadCounts, BRIDGE_PLANKS } from './roads.js';
-import { encodeSave, decodeSave, describeSave, copyText, BACKUP_KEY } from './share.js';
+import { encodeSave, decodeSave, describeSave, sanitizeSave, copyText, BACKUP_KEY } from './share.js';
 import { sfx } from './audio.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -183,7 +183,7 @@ function shareHtml(ui) {
     <h3 class="r7h">Load a village</h3>`;
   if (S.confirm) {
     const d = S.confirm.info;
-    h += `<div class="callout">${svg('warn', 22)}<span><b>Load ${esc(d.name)}?</b> Level ${d.level} · day ${d.day} · ${d.pop} villagers · ${d.buildings} buildings · ${d.settled} settlement${d.settled > 1 ? 's' : ''}.<br>This replaces the village you're playing. A backup of it is kept, so you can switch back.</span></div>
+    h += `<div class="callout">${svg('warn', 22)}<span><b>Load ${esc(d.name)}?</b> Level ${esc(d.level)} · day ${esc(d.day)} · ${esc(d.pop)} villagers · ${esc(d.buildings)} buildings · ${esc(d.settled)} settlement${d.settled > 1 ? 's' : ''}.<br>This replaces the village you're playing. A backup of it is kept, so you can switch back.</span></div>
       <div class="r7row"><button class="btn gold" data-act="r7-import-yes">Yes, load it</button><button class="btn ghost" data-act="r7-import-no">Cancel</button></div>`;
   } else {
     h += `<textarea id="r7paste" rows="3" placeholder="Paste a share code (VLG1.…)" aria-label="Paste a share code"></textarea>
@@ -227,7 +227,7 @@ export function r7Click(ui, act, a) {
   if (act === 'r7-import-no') { ui.r7share.confirm = null; return true; }
   if (act === 'r7-import-yes' || act === 'r7-restore') {
     let save;
-    if (act === 'r7-restore') { try { save = JSON.parse(localStorage.getItem(BACKUP_KEY)).save; } catch { return true; } }
+    if (act === 'r7-restore') { try { save = sanitizeSave(JSON.parse(localStorage.getItem(BACKUP_KEY)).save); } catch { return true; } }
     else save = ui.r7share.confirm?.save;
     if (!save) return true;
     try {

@@ -397,8 +397,8 @@ export class UI {
     }
     if (k === '@xp') {
       const need = xpForLevel(s.level), nx = [...Object.entries(BUILDINGS), ...Object.entries(DECOR)].filter(([, d]) => d.lvl === s.level + 1).map(([, d]) => d.name);
-      return `<b class="t">Level ${s.level}</b><p>${Math.floor(s.xp)} / ${need} xp (${Math.floor(s.xp / need * 100)}%). ${need - Math.floor(s.xp)} xp to level ${s.level + 1}.</p>
-        <p>Earn xp by finishing buildings, completing quests and bringing goods home.</p>${nx.length ? `<div class="note good">Level ${s.level + 1} unlocks ${esc(nx.join(', '))}.</div>` : ''}`;
+      return `<b class="t">Level ${esc(s.level)}</b><p>${Math.floor(s.xp)} / ${need} xp (${Math.floor(s.xp / need * 100)}%). ${need - Math.floor(s.xp)} xp to level ${esc(s.level + 1)}.</p>
+        <p>Earn xp by finishing buildings, completing quests and bringing goods home.</p>${nx.length ? `<div class="note good">Level ${esc(s.level + 1)} unlocks ${esc(nx.join(', '))}.</div>` : ''}`;
     }
     if (k === '@stat') return `<b class="t">${esc(el.dataset.t)}</b><p>${esc(el.dataset.b)}</p>`;
     return '';
@@ -1139,7 +1139,7 @@ export class UI {
     if (helps.length) h += `<div class="syn">${svg('fast', 13)}<span>Boosts nearby ${esc([...new Set(helps.map(r => defOf(r.to).name))].join(', '))}</span></div>`;
     if (d.needsWater) h += `<div class="note">Must touch the shore of a lake or river.</div>`;
     if (locked && !d.rare) h += this.gateFor(type) ? `<div class="note bad">${svg('lock', 13)} ${esc(/Library first, to school/.test(this.gateFor(type).why) ? 'Its workers need schooling: build a Library first, where grown-ups study.' : this.gateFor(type).why + '.')}</div>`
-      : `<div class="note bad">${svg('lock', 13)} Unlocks at level ${d.lvl} (you're level ${s.level}).</div>`;
+      : `<div class="note bad">${svg('lock', 13)} Unlocks at level ${d.lvl} (you're level ${esc(s.level)}).</div>`;
     else if (locked) h += `<div class="note">${d.festive ? 'Buy one with festival tokens at the festival shop.' : 'Find one in a gift chest in the woods.'}</div>`;
     else if (!d.rare && !this.sim.canAfford(d.cost)) h += `<div class="note bad">Not enough resources yet.</div>`;
     return h;
@@ -1348,7 +1348,7 @@ export class UI {
       ].map(([ic, l, v]) => `<div class="tile"><div class="top">${svg(ic, 22)}${l}</div><div class="amt">${fmt(v)}</div></div>`).join('')}</div>`;
     } else if (k === 'profile') {
       const need = xpForLevel(s.level);
-      h += `<div class="summary"><span class="chip">${svg('star', 18)}Level ${s.level}</span><span class="chip">${svg('xp', 18)}${Math.floor(s.xp)} / ${need} xp</span></div>
+      h += `<div class="summary"><span class="chip">${svg('star', 18)}Level ${esc(s.level)}</span><span class="chip">${svg('xp', 18)}${Math.floor(s.xp)} / ${need} xp</span></div>
         <div class="prog"><i style="width:${s.xp / need * 100}%;background:linear-gradient(90deg,#9be86d,#4fae32)"></i></div>
         <p class="sub" style="font-size:12.5px;color:var(--ink2)">Earn xp by finishing buildings, completing quests and bringing goods home.</p><h3 style="margin:10px 0 6px">Coming up</h3><div class="grid">`;
       const up = [...Object.entries(BUILDINGS), ...Object.entries(DECOR)].filter(([, d]) => d.lvl > s.level).sort((a, b) => a[1].lvl - b[1].lvl).slice(0, 8);

@@ -9174,7 +9174,7 @@ PM.io = (function () {
     var o;
     try { o = JSON.parse(text); } catch (e) { throw new Error('Not a PhotoMarket project'); }
     if (!o || o.format !== 'photomarket') throw new Error('Not a PhotoMarket project');
-    var doc = S.newDoc(o.width, o.height, { name: o.name, resolution: o.resolution });
+    var doc = S.newDoc(o.width, o.height, { name: o.name, resolution: Number(o.resolution) || 72 });
     doc.fileName = fileName || (o.name + '.pmk');
     doc.guides = o.guides || { h: [], v: [] };
     var jobs = [];
@@ -11992,7 +11992,7 @@ PM.panels = (function () {
         if (L.mask) mem += L.mask.canvas.width * L.mask.canvas.height * 4;
       });
       infoUI.txt.innerHTML =
-        '<b>' + d.width + ' × ' + d.height + '</b> px at ' + d.resolution + ' dpi<br>' +
+        '<b>' + d.width + ' × ' + d.height + '</b> px at ' + (Number(d.resolution) || 72) + ' dpi<br>' +
         S.allLayers().length + ' layers · ' + U.fmtBytes(mem) + ' of pixels' +
         (PM.selection.bounds ? '<br>Selection: ' + PM.selection.bounds.w + ' × ' + PM.selection.bounds.h : '');
     }, force ? 0 : 220);
