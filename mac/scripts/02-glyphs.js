@@ -3,7 +3,7 @@
 
    All UI symbols are drawn inline from this table (24x24 grid, currentColor)
    so nothing is fetched at runtime and every glyph inherits the surrounding
-   text color. App artwork lives in assets/icons as separate SVG files.
+   text color. App artwork lives in assets/icons as locally stored images and SVG files.
    =========================================================================== */
 
 (function (Mac) {
@@ -177,15 +177,23 @@
 
   /* --------------------------------------------------------- app artwork */
 
-  /** App icon <img> pointing at the local icon pack. */
+  // Original published artwork; provenance and image hashes are in assets/icons/sources.json.
+  const OFFICIAL_APP_ICONS = new Set(['apps','activity-monitor','appstore','calculator','calendar','console','contacts','disk-utility','facetime','freeform','mail','maps','messages','migration','music','notes','photos','podcasts','preview','reminders','screenshot','system-info','settings','terminal','textedit','weather','safari','finder','keychain','outlook','trash-full']);
   Mac.appIcon = (icon, cls = 'app-icon') => {
-    let src = `assets/icons/${Mac.esc(icon)}.svg`;
+    const src = `assets/icons/${Mac.esc(icon)}.${OFFICIAL_APP_ICONS.has(icon) ? 'png' : 'svg'}`;
     if (icon === 'calendar') {
       const now = new Date();
       const day = now.toLocaleDateString('en-US', {weekday:'short'});
-      src = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="p" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#eee"/></linearGradient></defs><rect x="3" y="3" width="94" height="94" rx="23" fill="url(#p)" stroke="#000" stroke-opacity=".08"/><text x="50" y="31" text-anchor="middle" font-family="Arial,sans-serif" font-size="19" fill="#e73b35">${day}</text><text x="50" y="80" text-anchor="middle" font-family="Arial,sans-serif" font-size="53" fill="#222">${now.getDate()}</text></svg>`);
+      // Retain Apple's tile underneath live weekday/day text, without changing the source PNG.
+      return `<svg class="${cls}" viewBox="0 0 60 60" aria-hidden="true" focusable="false">
+        <image href="${src}" width="60" height="60"/>
+        <rect x="10" y="6" width="40" height="15" fill="#fff"/>
+        <rect x="7" y="21" width="46" height="31" fill="#fff"/>
+        <text x="30" y="18" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" fill="#ed3039">${day}</text>
+        <text x="30" y="50" text-anchor="middle" font-family="Arial,sans-serif" font-size="36" fill="#181818">${now.getDate()}</text>
+      </svg>`;
     }
-    return `<img class="${cls}" src="${src}" alt="" draggable="false" decoding="async">`;
+    return `<img class="${cls}" src="${src}" alt="" aria-hidden="true" draggable="false" decoding="async">`;
   };
 
   /** Coloured settings squircle wrapping a stroke glyph. */

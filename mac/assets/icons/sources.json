@@ -1,0 +1,372 @@
+{
+  "apps": {
+    "file": "apps.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/105fff5d-8f3f-400d-8f3c-82347d628c8f",
+    "source_label": "the Apps icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "66cc0329efd80865a20346d3d4eae330480190a7f2dfb7f1a935ebcc03ef93d7",
+    "retrieved": "2026-10-14"
+  },
+  "activity-monitor": {
+    "file": "activity-monitor.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/0c968db4-08d5-4434-aa5a-fe01f2a645e9",
+    "source_label": "Activity Monitor icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "665404962f474a211f800610e4fff0adb90db3eab237e9494479dbb784fcfb83",
+    "retrieved": "2026-10-14"
+  },
+  "appstore": {
+    "file": "appstore.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/6753d700-4aed-46d5-ac69-33cc91c67cf7",
+    "source_label": "App Store icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "3f99fe4516605b0091554060bb913dbbf8cfbb7160c64b96d9aba83eef909c26",
+    "retrieved": "2026-10-14"
+  },
+  "calculator": {
+    "file": "calculator.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/28915403-5ec8-49ab-84df-9988987f510b",
+    "source_label": "Calculator icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "1145c006d471995211ee96f00cb8678ba05319a27fbefdfa51a0810dbfbbb93b",
+    "retrieved": "2026-10-14"
+  },
+  "calendar": {
+    "file": "calendar.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/61f56f04-a296-4ef1-af9b-544dc9070f20",
+    "source_label": "Calendar icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "408f508ab533ad2735428330538366b14008c5d425240e1e0aff7e9132ad4674",
+    "retrieved": "2026-10-14"
+  },
+  "console": {
+    "file": "console.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/0fb14d18-6a53-4b97-852e-887fe4803087",
+    "source_label": "Console icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "7cd4da0f50a6d4f6f7b7bf1ee201c47901778b62362f39c45ef1641ceb1eee7e",
+    "retrieved": "2026-10-14"
+  },
+  "contacts": {
+    "file": "contacts.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/fbe5f717-278a-4186-8e12-ad715f174efe",
+    "source_label": "Contacts icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "3f0995464048300ad96f2ede39db9d64030d99c8c2f3db90ed36b27d7ce69bbf",
+    "retrieved": "2026-10-14"
+  },
+  "disk-utility": {
+    "file": "disk-utility.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/686768b7-9c9d-46e0-9815-d22a348bbf81",
+    "source_label": "Disk Utility icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "fbd379031f183b8ca907c8396b5e706d4d766ba00df0028317c81e0bd78da07a",
+    "retrieved": "2026-10-14"
+  },
+  "facetime": {
+    "file": "facetime.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/473db1ca-2f11-484d-bd0e-5bf1924a9a58",
+    "source_label": "FaceTime icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "e3cdd4ebf40edf0845d56ededdb229e45cedf8e743793d1fec08290ba1881e75",
+    "retrieved": "2026-10-14"
+  },
+  "freeform": {
+    "file": "freeform.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/f1a07198-4619-40ca-aebb-1b59b2e1d579",
+    "source_label": "Freeform icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "111d9db6fc740bb3fcf1cd0638e14a4fe278f9611ce82350c8f96671bfd4b8b9",
+    "retrieved": "2026-10-14"
+  },
+  "mail": {
+    "file": "mail.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/aef02471-7730-40d0-9de2-610eeec76e0a",
+    "source_label": "Mail icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "83309235e22f3d3d0998409fb0befd2a1e02773b7d55730d27f24853c617c14d",
+    "retrieved": "2026-10-14"
+  },
+  "maps": {
+    "file": "maps.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/167d12ba-d860-414e-b2b1-e31451187142",
+    "source_label": "Maps icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "dacb55f9a27b2f5a961b5c0bfaa5e2ca3d56c70e98e72d4c15f9bf9b11cb3c20",
+    "retrieved": "2026-10-14"
+  },
+  "messages": {
+    "file": "messages.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/ddacfcc2-dd2b-4ce8-9b92-1a19ecef69d6",
+    "source_label": "Messages icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "2f0b1ca4b404049b3b8d7f5bee659b829ea868b9102a8bfea0ac8b56b76fdb69",
+    "retrieved": "2026-10-14"
+  },
+  "migration": {
+    "file": "migration.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/faa85f9b-aaf1-4d05-adfa-2d89c762a200",
+    "source_label": "Migration Assistant icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "de00625e191427f0d74493b0f52302b3266e369d75147e81b20f81282e8d0786",
+    "retrieved": "2026-10-14"
+  },
+  "music": {
+    "file": "music.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/3bbfd271-8916-47ae-b499-d332d8b54ef0",
+    "source_label": "Music icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "ee21daec3f50b144a2c9aed1259c53ff2ed35d1ffc800835c5ca865e3072faaf",
+    "retrieved": "2026-10-14"
+  },
+  "notes": {
+    "file": "notes.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/6b45fa79-b61c-4b25-84e7-81888ac8d30b",
+    "source_label": "Notes icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "eb225f8f0b077b99a5e2bca7c3371748dc8b9c277d267784374e3a487370524f",
+    "retrieved": "2026-10-14"
+  },
+  "photos": {
+    "file": "photos.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/de025cdd-b4c8-4678-9ae2-5e7b6975ebeb",
+    "source_label": "Photos icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "9c493cef5e57c6c788588a23cd36de6aec9e5ce345850bc61b977a7d6a274591",
+    "retrieved": "2026-10-14"
+  },
+  "podcasts": {
+    "file": "podcasts.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/8154bf86-cf87-4e14-b2ba-dd3b05ac4549",
+    "source_label": "Podcasts icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "c9a76cd18604c943d4acc8e9bffa68a0164d7db26cde3cddac36ac7d0adc056f",
+    "retrieved": "2026-10-14"
+  },
+  "preview": {
+    "file": "preview.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/e2d0fb03-ee64-4f95-87a5-7758308830dc",
+    "source_label": "Preview icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "ec399f62136daa93081572e597ea2cbc2b94bf206f4b62fec597d6c45cb43418",
+    "retrieved": "2026-10-14"
+  },
+  "reminders": {
+    "file": "reminders.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/d878e1bf-5014-477f-8e18-90d69801142d",
+    "source_label": "Reminders icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "5a1693c4fc2caa62ff2a9bd8fa24fa6d0c4b2198025c4a7635af3f4b40c8fb87",
+    "retrieved": "2026-10-14"
+  },
+  "screenshot": {
+    "file": "screenshot.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/d9e51787-3a5d-4b07-a9d1-1f52feb690ed",
+    "source_label": "Screenshot icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "bf5f3d714d87dd9270244b93ca362bdbf3678a3c85c68813eb28eb5387ebfc0e",
+    "retrieved": "2026-10-14"
+  },
+  "system-info": {
+    "file": "system-info.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/ba740e94-c743-4152-829d-0bc5a8e2e6cc",
+    "source_label": "System Information icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "1d421a0451ec3d9c9ea44ae16497cc330d8f5b635daad9f9262cc94f1a9a42b7",
+    "retrieved": "2026-10-14"
+  },
+  "settings": {
+    "file": "settings.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/8c804b5a-515d-4ee0-918a-979ddd3b4151",
+    "source_label": "System Settings icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "9ef361b2c7fd5c069168009da0109769823523df0c3583841ab8abd2d5994ced",
+    "retrieved": "2026-10-14"
+  },
+  "terminal": {
+    "file": "terminal.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/60a325a4-3f45-4e08-b086-21922d8ecabd",
+    "source_label": "Terminal icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "17455c725f1a4b7e7e80ddab239d4c3c3949ab153a776f48eac88d8f3f6a6493",
+    "retrieved": "2026-10-14"
+  },
+  "textedit": {
+    "file": "textedit.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/f202824b-7012-4d7f-abf9-04c8fa4dfce7",
+    "source_label": "TextEdit icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "75ce91c9bc510934c39779b51a5e369311ed22945bfd1a5875bc3d5df1e0ef50",
+    "retrieved": "2026-10-14"
+  },
+  "weather": {
+    "file": "weather.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/d0a2cc26-6593-4f58-a483-a3e47a2821b0",
+    "source_label": "Weather icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "9e5095cb7d908e3f194ab29b7c3e95ffd2727844f24eee3fa088f394c64e92da",
+    "retrieved": "2026-10-14"
+  },
+  "safari": {
+    "file": "safari.png",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/0c8c3263-003c-43fa-a8d5-003a794e1ecb",
+    "source_label": "Safari icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "0e1b5343f28a2ba844a9e07a371daf82f2fba50d075224222ff44a8baefbbb8d",
+    "retrieved": "2026-10-14"
+  },
+  "finder": {
+    "file": "finder.png",
+    "source_page": "https://support.apple.com/guide/macbook-pro/essential-apps-on-your-mac-apd787343df7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/f566d6fb-ee41-4d87-bb70-a9b09183fbd0",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "80fca1500fa956aae33b95271513111d6aef896b30e335ff3a5ccc097301b13c",
+    "retrieved": "2026-10-14"
+  },
+  "keychain": {
+    "file": "keychain.png",
+    "app_name": "Passwords",
+    "source_page": "https://support.apple.com/en-gb/guide/mac-help/mchl110b00b7/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/102844ea-0142-481b-bf6c-2d5ad2aa1fc6",
+    "source_label": "Passwords icon",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "41c0102ace46834cc51013974c10f0981c4e97d033a36057c4ebdaa1bbc0c7f6",
+    "retrieved": "2026-10-14"
+  },
+  "outlook": {
+    "file": "outlook.png",
+    "source_page": "https://apps.apple.com/us/app/microsoft-outlook/id985367838?mt=12&uo=4",
+    "source_asset": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/2b/d3/3d/2bd33da5-96be-fb13-baeb-3e0f12664d0b/Outlook_macOS-0-0-85-220-0-0-0-6-0-2x.png/512x512bb.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "sha256": "03ce3a1db8c3f706f3e0cc7e3957ed1bb567757d76717c7889373cf5d0c72490",
+    "retrieved": "2026-10-14"
+  },
+  "trash-full": {
+    "file": "trash-full.png",
+    "source_page": "https://support.apple.com/en-il/guide/mac-help/-mchlp2919/mac",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/c57ab9e1-8ff0-41c4-bea6-719accc1d6d9",
+    "dimensions": [
+      56,
+      60
+    ],
+    "sha256": "7c1036a08de95ff40d2ada7ad41ee4c13c3501bae9f2c230b68772b15f1816dc",
+    "retrieved": "2026-10-14"
+  }
+}

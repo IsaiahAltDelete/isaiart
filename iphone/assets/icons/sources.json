@@ -1,0 +1,178 @@
+{
+  "appstore": {
+    "file": "appstore.png",
+    "source_page": "https://support.apple.com/guide/iphone/get-apps-iphc90580097/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/3fb4d5ba-9d91-486d-9fce-804339895a81",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "24b9093e94c137027c82682bb18b19cb044396407f100680055ac3d89474fe2f",
+    "retrieved": "2026-10-14"
+  },
+  "settings": {
+    "file": "settings.png",
+    "source_page": "https://support.apple.com/guide/iphone/find-settings-iph079e1fe9d/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/6bf7600d-97cb-4cef-be76-bd595ccc9a62",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "20a8eca1f9b632f3945fe5c01c68580767b39bf590136ab4e201353b45dffabf",
+    "retrieved": "2026-10-14"
+  },
+  "camera": {
+    "file": "camera.png",
+    "source_page": "https://support.apple.com/guide/iphone/camera-basics-iph263472f78/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/a0eeae1e-c828-443f-8992-af1fe6fb4063",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "1c7c99eae9ec146be1cd7fb88825b501085838d2141c2fb7c8acc440d8359eb5",
+    "retrieved": "2026-10-14"
+  },
+  "calculator": {
+    "file": "calculator.png",
+    "source_page": "https://support.apple.com/guide/iphone/get-started-with-calculator-iph6a38eb783/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/7df99345-dc76-4135-9738-de57f2c84d96",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "fe4d86c18dca62eb9797b13df3927f88bc99c3846809e91c873b6386a3e74492",
+    "retrieved": "2026-10-14"
+  },
+  "clock": {
+    "file": "clock.png",
+    "source_page": "https://support.apple.com/guide/iphone/see-the-world-clock-iph1ac0b4af/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/c1bbf98c-5cf8-471e-9f1a-83ac2dcbaa2c",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "2580a1d1ea1fc01eab20b8ce1923ad9ee78c09528e0594eb039b492111175076",
+    "retrieved": "2026-10-14"
+  },
+  "mail": {
+    "file": "mail.png",
+    "source_page": "https://support.apple.com/guide/iphone/check-your-email-iph461684497/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/01212e13-c096-4a75-bf74-2668099ddc51",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "ec9c6ba46d57142433d60b73dcbf01e6620fff79bb375b44d9177ef7575b7f16",
+    "retrieved": "2026-10-14"
+  },
+  "photos": {
+    "file": "photos.png",
+    "source_page": "https://support.apple.com/guide/iphone/view-photos-and-videos-iph3d267610/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/1b78a362-8098-4c94-905c-241b4a4b1bbe",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "99b79edc86073f6c2d53e0e8d2e5130b9fbf26f162118c51b29c700a7cbe833c",
+    "retrieved": "2026-10-14"
+  },
+  "safari": {
+    "file": "safari.png",
+    "source_page": "https://support.apple.com/guide/iphone/get-started-with-safari-iph7384445c6/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/716482f4-7a7e-461a-93ae-c3722d113bb6",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "b9cd60323cb039c2348154ef93ec9bd2bac979d06ef161c8a23f72d0b9adba2e",
+    "retrieved": "2026-10-14"
+  },
+  "tv": {
+    "file": "tv.png",
+    "source_page": "https://support.apple.com/guide/iphone/tv-iphaec9fc22f/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/43867e92-a6e4-478a-90be-d2d91633c278",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "d92695e484c1d064a7a0d005262d422d883347dbe92b8e237b559c7687c681be",
+    "retrieved": "2026-10-14"
+  },
+  "weather": {
+    "file": "weather.png",
+    "source_page": "https://support.apple.com/guide/iphone/check-the-weather-iph1ac0b35f/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/356a8079-f6b0-435c-a81f-4ac867e312aa",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "749a8d51e48dd6bab4fd077e3a5848ed1398b48650b11d0db6762a4ebc715a2c",
+    "retrieved": "2026-10-14"
+  },
+  "messages": {
+    "file": "messages.png",
+    "source_page": "https://support.apple.com/guide/iphone/get-started-with-messages-iph6c75e9c87/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/761465ce-3d7b-4b29-830e-7ce3bb12979e",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "bd282783e2859664e6ed4972ce604a56cebd39c50cf39d838d7e2db4fd2dff46",
+    "retrieved": "2026-10-14"
+  },
+  "phone": {
+    "file": "phone.png",
+    "source_page": "https://support.apple.com/guide/iphone/make-a-call-iph3c993cbc/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/b6e27cb5-ec06-44e8-be98-834fa3e3876b",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "3c29317772cd027de86760195b8bd92a00941e20f5de3aad3e70527cadf1ad68",
+    "retrieved": "2026-10-14"
+  },
+  "music": {
+    "file": "music.png",
+    "source_page": "https://support.apple.com/guide/iphone/get-started-with-music-iph850be8527/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/e6056c0c-59a5-45fc-adf4-c4d31f43cac3",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "9b29dd625c6841ae424e7e3c0d126ee9a0ba0485ddfffa1a9cf5b63b2a3199f0",
+    "retrieved": "2026-10-14"
+  },
+  "notes": {
+    "file": "notes.png",
+    "source_page": "https://support.apple.com/guide/iphone/create-and-format-notes-iph1ac0b3a2/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/f46b5a30-8762-4376-b88c-320eb58f59e8",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "fa45c3027c052137fe55df20527a7f2f8fe3af2c7ae92ae7c6500fc661bbc465",
+    "retrieved": "2026-10-14"
+  },
+  "maps": {
+    "file": "maps.png",
+    "source_page": "https://support.apple.com/guide/iphone/get-started-with-maps-iph6ef6ef377/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/72ae7f70-d2cf-4e32-8cf0-7f77c334e470",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "5389f15ba7e15f853de0a06cb853bfb99cfcaec0a28ea895a2b342959122ab95",
+    "retrieved": "2026-10-14"
+  },
+  "wallet": {
+    "file": "wallet.png",
+    "source_page": "https://support.apple.com/guide/iphone/set-up-cards-and-passes-iph9b7f53382/ios",
+    "source_asset": "https://ipcdn-web.apple.com/assets/v2/web/d66e1ab1-5d55-46f4-a70e-3ea07d52f036",
+    "dimensions": [
+      60,
+      60
+    ],
+    "sha256": "5e7ef794753503a0a31cde8511b36ce77adc3492971092bb0ec5799becdc01d3",
+    "retrieved": "2026-10-14"
+  }
+}

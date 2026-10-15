@@ -525,7 +525,7 @@ let currentApp=null;
 const openApps=new Map();   // id -> {win, def, nav}
 
 function appIconHTML(def,size){
-  return `<div class="appicon" style="background:${def.bg};${size?`width:${size}px;height:${size}px;border-radius:${size*0.23}px;`:''}">${def.glyph||''}</div>`;
+  return `<div class="appicon${size && size<=32?' appicon-inline':''}" style="background:${def.bg};${size?`width:${size}px;height:${size}px;border-radius:${size*0.23}px;`:''}">${def.glyph||''}</div>`;
 }
 function openApp(id, origin){
   const def=Apps[id]; if(!def) return;
@@ -1463,13 +1463,16 @@ function appsListView(){
     const draw=q=>{
       holder.innerHTML='';
       const inst=State.installed.map(id=>({name:Apps[id].name, id,
-        iconHTML:`<div style="width:29px;height:29px;border-radius:7px;background:${Apps[id].bg};display:grid;place-items:center;font-size:11px;overflow:hidden">${Apps[id].tiny||''}</div>`}));
+        iconHTML:appIconHTML(Apps[id],29)}));
       const rows=[...inst.map(a=>({name:a.name, icon:a.iconHTML, go:n=>n.push(thirdPartyAppSettings(a.id))})),
-                  ...builtin.map(a=>({name:a.name, icon:`<div style="width:29px;height:29px;border-radius:7px;background:${a.bg};display:grid;place-items:center;font-size:14px">${a.icon}</div>`, go:a.go}))]
+                  ...builtin.map(a=>{
+                    const def=Object.values(Apps).find(app=>app.name===a.name);
+                    return {name:a.name, icon:def?appIconHTML(def,29):`<div style="width:29px;height:29px;border-radius:7px;background:${a.bg};display:grid;place-items:center;font-size:14px">${a.icon}</div>`, go:a.go};
+                  })]
         .filter(r=>!q||r.name.toLowerCase().includes(q.toLowerCase()))
         .sort((a,b2)=>a.name.localeCompare(b2.name));
       if(!rows.length){ holder.appendChild(h('<div class="empty"><h3>No Apps</h3></div>')); return; }
-      group(holder,{rows:rows.map(r=>({labelHTML:esc(r.name), icon:r.icon, iconBg:'transparent', onClick:()=>r.go(nav)}))});
+      group(holder,{rows:rows.map(r=>({label:r.name, labelHTML:esc(r.name), icon:r.icon, iconBg:'transparent', onClick:()=>r.go(nav)}))});
     };
     b.querySelector('input').oninput=e=>draw(e.target.value);
     draw('');
@@ -6776,107 +6779,15 @@ function addCardSheet(nav){
     }})));
 }
 
-/* =========================================================================
-   HOME SCREEN APP ARTWORK — drawn, not emoji
-   ========================================================================= */
-const ART={
-  /* machined cog: 12 teeth ringed around a hub, like the real Settings tile */
-  settings:{bg:'linear-gradient(165deg,#d8d8de,#8e8e96)',art:(()=>{
-    const teeth=Array.from({length:12},(_,i)=>{
-      const a=i*30*Math.PI/180;
-      const x=32+Math.sin(a)*22.4, y=32-Math.cos(a)*22.4;
-      return `<rect x="${(x-3.5).toFixed(2)}" y="${(y-5.2).toFixed(2)}" width="7" height="10.4" rx="2.2"
-        transform="rotate(${i*30} ${x.toFixed(2)} ${y.toFixed(2)})" fill="#f7f7fa"/>`;
-    }).join('');
-    return `<svg viewBox="0 0 64 64" style="width:84%">
-      <defs><linearGradient id="cog" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#fdfdfe"/><stop offset="1" stop-color="#dcdce2"/></linearGradient></defs>
-      ${teeth}
-      <circle cx="32" cy="32" r="21.5" fill="url(#cog)"/>
-      <circle cx="32" cy="32" r="14.6" fill="#a9a9b2"/>
-      <circle cx="32" cy="32" r="11.4" fill="url(#cog)"/>
-      <circle cx="32" cy="32" r="6.2" fill="#9a9aa3"/>
-      <circle cx="32" cy="32" r="4.4" fill="#ececf1"/></svg>`;
-  })()},
-  camera:{bg:'linear-gradient(180deg,#63636a,#2c2c30)',art:`<svg viewBox="0 0 64 64" style="width:74%">
-    <rect x="6" y="17" width="52" height="34" rx="9" fill="#fff"/>
-    <path d="M23 17l3.4-5.6h11.2L41 17z" fill="#fff"/>
-    <circle cx="32" cy="34" r="11.4" fill="#4a4a50"/><circle cx="32" cy="34" r="8" fill="#1e1e22"/>
-    <circle cx="28.4" cy="30.4" r="2.6" fill="#8b8b95"/><circle cx="49" cy="24" r="2.2" fill="#c8c8d0"/></svg>`},
-  weather:{bg:'linear-gradient(180deg,#3aa0f5,#0a5fd6)',art:`<svg viewBox="0 0 64 64" style="width:80%">
-    <circle cx="24" cy="24" r="9.4" fill="#ffd60a"/>
-    <g stroke="#ffd60a" stroke-width="2.6" stroke-linecap="round">
-      <path d="M24 8.6v3.4M24 36v3.4M8.6 24H12M36 24h3.4M13.4 13.4l2.4 2.4M32.2 32.2l2.4 2.4M34.6 13.4l-2.4 2.4M15.8 32.2l-2.4 2.4"/></g>
-    <path d="M22 50a8.6 8.6 0 01.9-17.1 11.6 11.6 0 0121.6-2.6A8 8 0 0143.4 50z" fill="#fff"/></svg>`},
-  clock:{bg:'#0b0b0d',art:`<svg viewBox="0 0 64 64" style="width:88%">
-    <circle cx="32" cy="32" r="27" fill="#111114" stroke="#fff" stroke-width="2.4"/>
-    ${Array.from({length:12},(_,i)=>{const a=i*Math.PI/6,r1=i%3===0?19:21.5;
-      return `<line x1="${32+Math.sin(a)*r1}" y1="${32-Math.cos(a)*r1}" x2="${32+Math.sin(a)*24}" y2="${32-Math.cos(a)*24}" stroke="#fff" stroke-width="${i%3===0?2:1.2}" opacity="${i%3===0?1:.6}"/>`}).join('')}
-    <line x1="32" y1="32" x2="32" y2="17" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-    <line x1="32" y1="32" x2="43" y2="37" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
-    <line x1="32" y1="32" x2="26" y2="42" stroke="#ff9f0a" stroke-width="1.6" stroke-linecap="round"/>
-    <circle cx="32" cy="32" r="2.2" fill="#ff9f0a"/></svg>`},
-  notes:{bg:'linear-gradient(180deg,#fff3c4,#ffcf3f)',art:`<svg viewBox="0 0 64 64" style="width:100%">
-    <rect x="0" y="0" width="64" height="15" fill="#fdfdf6"/>
-    <rect x="0" y="15" width="64" height="49" fill="#fffdf2"/>
-    <g stroke="#d9c98b" stroke-width="2" stroke-linecap="round">
-      <path d="M11 27h42M11 36h42M11 45h30"/></g>
-    <path d="M0 15h64" stroke="#e7d9a2" stroke-width="1.6"/></svg>`},
-  calculator:{bg:'#1c1c1e',art:`<svg viewBox="0 0 64 64" style="width:100%">
-    <rect x="0" y="0" width="64" height="64" fill="#1c1c1e"/>
-    <rect x="8" y="7" width="48" height="12" rx="3" fill="#2f2f33"/>
-    <g fill="#5a5a60">
-      <rect x="8" y="24" width="10" height="8.4" rx="3"/><rect x="21" y="24" width="10" height="8.4" rx="3"/><rect x="34" y="24" width="10" height="8.4" rx="3"/>
-      <rect x="8" y="36" width="10" height="8.4" rx="3"/><rect x="21" y="36" width="10" height="8.4" rx="3"/><rect x="34" y="36" width="10" height="8.4" rx="3"/>
-      <rect x="8" y="48" width="23" height="8.4" rx="3"/><rect x="34" y="48" width="10" height="8.4" rx="3"/></g>
-    <g fill="#ff9f0a"><rect x="47" y="24" width="9" height="8.4" rx="3"/><rect x="47" y="36" width="9" height="20.4" rx="3"/></g></svg>`},
-  messages:{bg:'linear-gradient(180deg,#6ce67d,#0dbb35)',art:`<svg viewBox="0 0 64 64" style="width:74%">
-    <path d="M32 10c12.7 0 23 7.9 23 17.7S44.7 45.4 32 45.4a27 27 0 01-6.6-.8l-11.2 5.4 3.2-8.9C12.2 38 9 33.2 9 27.7 9 17.9 19.3 10 32 10z" fill="#fff"/></svg>`},
-  maps:{bg:'linear-gradient(180deg,#8fe08f,#3aa86a)',art:`<svg viewBox="0 0 64 64" style="width:100%">
-    <rect width="64" height="64" fill="#dff0dc"/>
-    <path d="M0 40h64" stroke="#a8d8ef" stroke-width="9"/>
-    <path d="M14 0v64M0 22h64" stroke="#fff" stroke-width="6"/>
-    <path d="M40 0l10 64" stroke="#fff" stroke-width="5"/>
-    <path d="M32 20a7 7 0 017 7c0 5.4-7 13-7 13s-7-7.6-7-13a7 7 0 017-7z" fill="#ff3b30"/>
-    <circle cx="32" cy="27" r="2.6" fill="#fff"/></svg>`},
-  tv:{bg:'#0a0a0c',art:`<div style="color:#fff;font-size:26px;font-weight:600;letter-spacing:-1.6px;font-family:var(--sf)">tv</div>`},
-  wallet:{bg:'linear-gradient(180deg,#3a3a3e,#0d0d0f)',art:`<svg viewBox="0 0 64 64" style="width:80%">
-    <rect x="10" y="15" width="44" height="11" rx="3.6" fill="#ff6b5e"/>
-    <rect x="8" y="23" width="48" height="12" rx="4" fill="#ffb340"/>
-    <rect x="6" y="31" width="52" height="13" rx="4.4" fill="#5ac8fa"/>
-    <rect x="5" y="39" width="54" height="13" rx="4.6" fill="#f2f2f7"/></svg>`},
-  phone:{bg:'linear-gradient(180deg,#6ce67d,#12b83a)',art:`<svg viewBox="0 0 64 64" style="width:62%">
-    <path d="M17 8.5l6.8 1.6 3.2 9.4-5.2 3.9a30 30 0 0015.6 15.6l3.9-5.2 9.4 3.2 1.6 6.8a5.2 5.2 0 01-5.5 6.3C28.6 48 15.8 35.2 10.7 14.1A5.2 5.2 0 0117 8.5z" fill="#fff"/></svg>`},
-  music:{bg:'linear-gradient(180deg,#fb5c74,#e0295c)',art:`<svg viewBox="0 0 64 64" style="width:64%">
-    <path d="M24 44V18.6l22-4.4v25.4" fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
-    <ellipse cx="18.4" cy="44.4" rx="6.6" ry="5.6" fill="#fff"/><ellipse cx="40.4" cy="39.6" rx="6.6" ry="5.6" fill="#fff"/></svg>`},
-  mail:{bg:'linear-gradient(180deg,#2ec2ff,#0a63e8)',art:`<svg viewBox="0 0 64 64" style="width:74%">
-    <rect x="5" y="14" width="54" height="36" rx="7" fill="#fff"/>
-    <path d="M8.5 19.5L29.2 36a4.4 4.4 0 005.6 0l20.7-16.5" fill="none" stroke="#2a8fe0" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`},
-  safari:{bg:'linear-gradient(180deg,#f4f7fb,#dbe6f3)',art:`<svg viewBox="0 0 64 64" style="width:96%">
-    <defs><linearGradient id="sfb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2ecbff"/><stop offset="1" stop-color="#0a63e8"/></linearGradient></defs>
-    <circle cx="32" cy="32" r="28" fill="url(#sfb)"/>
-    <circle cx="32" cy="32" r="24.4" fill="none" stroke="#fff" stroke-width="1.6" opacity=".55"/>
-    ${Array.from({length:36},(_,i)=>{const a=i*Math.PI/18;const l=i%3===0?4:2.2;
-      return `<line x1="${32+Math.sin(a)*24.4}" y1="${32-Math.cos(a)*24.4}" x2="${32+Math.sin(a)*(24.4-l)}" y2="${32-Math.cos(a)*(24.4-l)}" stroke="#fff" stroke-width="1.2" opacity=".8"/>`}).join('')}
-    <path d="M45 19L28.6 28.6 19 45l16.4-9.6z" fill="#fff"/>
-    <path d="M45 19L35.4 35.4 28.6 28.6z" fill="#ff3b30"/>
-    <circle cx="32" cy="32" r="1.8" fill="#fff"/></svg>`},
-  /* the "A" built from three crossed strokes, ends overshooting like the real mark */
-  appstore:{bg:'linear-gradient(170deg,#33a9ff,#0a5fd6)',art:`<svg viewBox="0 0 64 64" style="width:72%">
-    <g stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none">
-      <path d="M19.5 45.5L31 25.5"/>
-      <path d="M33 25.5L44.5 45.5"/>
-      <path d="M25 25.5L21.5 19.4"/>
-      <path d="M17.5 37.2h29"/>
-    </g></svg>`},
-  photos:{bg:'linear-gradient(180deg,#fff,#f0f0f4)',art:`<svg viewBox="0 0 64 64" style="width:82%">
-    ${['#f9c22e','#f68b1f','#ee3b3b','#c2379b','#7b3fd4','#2f7ee0','#22b5c8','#4cc35a'].map((c,i)=>
-      `<ellipse cx="32" cy="32" rx="7.4" ry="19" transform="rotate(${i*45} 32 32)" fill="${c}" opacity=".82"/>`).join('')}
-    <circle cx="32" cy="32" r="6.6" fill="#fff" opacity=".92"/></svg>`}
-};
+/* Apple iPhone User Guide artwork, stored locally. See assets/icons/sources.json. */
+const APP_ICON_IDS=['appstore','settings','camera','calculator','clock','mail','photos','safari','tv','weather','messages','phone','music','notes','maps','wallet'];
 function applyAppArt(){
-  Object.entries(ART).forEach(([id,a])=>{ if(Apps[id]){ Apps[id].glyph=a.art; if(a.bg) Apps[id].bg=a.bg; } });
+  APP_ICON_IDS.forEach(id=>{
+    const def=Apps[id]; if(!def)return;
+    def.glyph=`<img class="app-icon-art" src="assets/icons/${id}.png" alt="" aria-hidden="true" draggable="false">`;
+    def.tiny=def.glyph;
+    def.bg='transparent';
+  });
 }
 
 /* =========================================================================

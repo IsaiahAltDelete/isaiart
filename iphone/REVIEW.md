@@ -1,3 +1,5 @@
+> October 14 icon follow-up: current phone identity is `iphone-icons-a`. The 16 built-in icons now use Apple User Guide PNG assets, including Settings > Apps previews. This follow-up has browser and regression verification but has not been independently rescored. The 8.6/10 review below applies to the earlier frozen `suite-review-b3` build.
+
 # Emulator suite — independent critic review
 
 **PASS: 8.1 → 8.6/10.** Reviewed October 13, 2026. Final application identity: **suite-review-b3**.

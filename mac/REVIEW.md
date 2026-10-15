@@ -1,3 +1,5 @@
+> October 14 Mac icon follow-up: current identity is `mac-icons-a`. 31 icons now use locally stored publisher artwork, Calendar retains live date text, and empty Trash has a distinct vector wastebasket. This follow-up is verified with browser and regression checks but has not been independently rescored. The 8.6/10 review below applies to the earlier frozen `suite-review-b3` build.
+
 # Emulator suite — independent critic review
 
 **PASS: 8.1 → 8.6/10.** Reviewed October 13, 2026. Final application identity: **suite-review-b3**.
