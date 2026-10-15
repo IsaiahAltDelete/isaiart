@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en" data-fx="halftone" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ffffff">
+<title>Effects</title>
+<meta name="description" content="Three image effects on one bench: a real halftone screen with CMYK separation, hand-drawn stipple and scribble with SVG export, and the 1980s broadcast VHS look. Runs entirely in the browser.">
+
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<!-- Theme and notes before first paint, so the page never flashes the wrong
+     one. White is this page's default; the choice is its own, not the
+     site-wide one, because the rest of the site is still dark-first. -->
+<script>
+(function () {
+    var r = document.documentElement, t = 'light', n = '0';
+    try { t = localStorage.getItem('isaiart.effects.theme') || 'light'; n = localStorage.getItem('isaiart.effects.notes') || '0'; } catch (e) {}
+    r.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+    if (n === '1') r.classList.add('notes');
+    var m = /^#(halftone|stipple|tape)$/.exec(location.hash);
+    if (m) r.setAttribute('data-fx', m[1]);
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="effects.css?v=7">
+</head>
+<body>
+
+<main class="page">
+
+    <header class="mast">
+        <a class="back" href="https://isaiart.com" aria-label="Back to isaiart.com"><span class="arrow">&larr;</span></a>
+
+        <h1 class="title">
+            <span class="title-main" data-split>Effects</span>
+            <span class="title-slash" aria-hidden="true">/</span>
+            <span class="title-mode" aria-live="polite">
+                <span class="word" data-word="halftone">Halftone</span>
+                <span class="word" data-word="stipple">Stipple</span>
+                <span class="word" data-word="tape">Tape</span>
+            </span>
+        </h1>
+
+        <nav class="modes" role="radiogroup" aria-label="Effect">
+            <label class="mode" title="Screened dots, duotone, CMYK">
+                <input type="radio" name="fxMode" value="halftone" checked>
+                <svg class="glyph g-ht" viewBox="0 0 40 40" aria-hidden="true">
+                        <circle cx="5"  cy="5"  r="4.4" style="--d:0"/><circle cx="15" cy="5"  r="4.4" style="--d:1"/><circle cx="25" cy="5"  r="4.4" style="--d:2"/><circle cx="35" cy="5"  r="4.4" style="--d:3"/>
+                        <circle cx="5"  cy="15" r="4.4" style="--d:1"/><circle cx="15" cy="15" r="4.4" style="--d:2"/><circle cx="25" cy="15" r="4.4" style="--d:3"/><circle cx="35" cy="15" r="4.4" style="--d:4"/>
+                        <circle cx="5"  cy="25" r="4.4" style="--d:2"/><circle cx="15" cy="25" r="4.4" style="--d:3"/><circle cx="25" cy="25" r="4.4" style="--d:4"/><circle cx="35" cy="25" r="4.4" style="--d:5"/>
+                        <circle cx="5"  cy="35" r="4.4" style="--d:3"/><circle cx="15" cy="35" r="4.4" style="--d:4"/><circle cx="25" cy="35" r="4.4" style="--d:5"/><circle cx="35" cy="35" r="4.4" style="--d:6"/>
+                    </svg>
+                <span class="mode-name">Halftone</span>
+            </label>
+            <label class="mode" title="Pen dots, scribble, SVG">
+                <input type="radio" name="fxMode" value="stipple">
+                <svg class="glyph g-sp" viewBox="0 0 40 40" aria-hidden="true">
+                    <circle cx="7" cy="9" r="3.2" style="--d:0"/><circle cx="21" cy="5" r="2.2" style="--d:3"/><circle cx="33" cy="11" r="3.6" style="--d:6"/>
+                    <circle cx="13" cy="20" r="4" style="--d:1"/><circle cx="27" cy="22" r="2.8" style="--d:4"/><circle cx="5" cy="31" r="2.4" style="--d:7"/>
+                    <circle cx="18" cy="34" r="3.4" style="--d:2"/><circle cx="31" cy="33" r="4.2" style="--d:5"/><circle cx="37" cy="23" r="1.8" style="--d:8"/>
+                </svg>
+                <span class="mode-name">Stipple</span>
+            </label>
+            <label class="mode" title="80s broadcast &amp; VHS">
+                <input type="radio" name="fxMode" value="tape">
+                <svg class="glyph g-tp" viewBox="0 0 40 40" aria-hidden="true">
+                    <rect x="0" y="2"  width="40" height="5" style="--d:0"/>
+                    <rect x="0" y="11" width="30" height="5" style="--d:1"/>
+                    <rect class="smear" x="8" y="20" width="32" height="5"/>
+                    <rect x="0" y="29" width="36" height="5" style="--d:3"/>
+                    <rect x="4" y="37" width="22" height="3" style="--d:4"/>
+                </svg>
+                <span class="mode-name">Tape</span>
+            </label>
+            <span class="mode-bar" aria-hidden="true"></span>
+        </nav>
+
+        <span class="spacer"></span>
+
+        <div class="source-line" id="fxSrcLine">
+            <span class="dot" aria-hidden="true"></span>
+            <b id="fxSrc">No image</b>
+        </div>
+        <button class="pill" type="button" id="notesBtn" aria-pressed="false" title="Show the explanation under every control">Notes</button>
+        <button class="theme-btn" type="button" id="themeBtn" aria-label="Switch to dark theme"><i></i></button>
+    </header>
+
+    <!-- ══ 01 HALFTONE ════════════════════════════════════════════════ -->
+    <div class="fx-mode" id="fx-halftone">
+    <div class="work">
+
+        <div class="controls">
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">01</span>Source</h2>
+                <div class="sec-body">
+                    <input type="file" id="ht-file" accept="image/*" class="sr-only">
+                    <button class="btn" type="button" id="ht-pickBtn">Choose an image</button>
+                    <p class="hint keep">Or drop one on the plate, or paste from the clipboard.</p>
+                    <div class="fld">
+                        <span class="label">Screen preset</span>
+                        <div class="presets" id="ht-presets"></div>
+                        <p class="hint">Starting points taken from what the process actually was. Move anything afterwards — a preset is a seed, not a lock.</p>
+                    </div>
+                    <dl class="readout">
+                        <dt>File</dt><dd id="ht-sName">—</dd>
+                        <dt>Size</dt><dd id="ht-sSize">—</dd>
+                    </dl>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">02</span>Screen</h2>
+                <div class="sec-body">
+                    <div class="strip">
+                        <canvas id="ht-strip" height="26" aria-hidden="true"></canvas>
+                        <span class="label">100 · 75 · 50 · 25 · 10%</span>
+                    </div>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Dot pitch</span><span class="val"></span></span>
+                        <input type="range" id="ht-uPitch" min="2" max="48" step="0.5" value="7" data-u data-fmt="px">
+                    </label>
+                    <p class="hint">The distance between dot centres, measured in source pixels. Everything else is a consequence of this: coarser means fewer, larger dots and less of the picture surviving. Newsprint sat around a tenth of the plate width; a comic screen is finer than that; manga tone finer again.</p>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Screen angle</span><span class="val"></span></span>
+                        <input type="range" id="ht-uAngle" min="0" max="90" step="1" value="45" data-u data-fmt="deg">
+                    </label>
+                    <p class="hint">45&deg; is not a style choice. The eye resolves horizontal and vertical structure far better than diagonal, so a lattice turned to 45&deg; disappears into tone while the same lattice at 0&deg; reads as a grid. In four-colour work this becomes the black angle and the other three are placed around it.</p>
+
+                    <div class="fld">
+                        <label class="label" for="ht-uShape">Dot shape</label>
+                        <select class="field" id="ht-uShape" data-u></select>
+                        <p class="hint"><strong>Round</strong> is the default and steps visibly at 50%, where four dots touch at once. <strong>Elliptical</strong> and <strong>Euclidean</strong> both exist to remove that step — Euclidean by inverting into a white dot past the midpoint. <strong>Line</strong> and <strong>Cross-hatch</strong> stop being print and start being drawing.</p>
+                    </div>
+
+                    <div class="fld">
+                        <span class="label" id="ht-ssLbl">Smoothing</span>
+                        <div class="seg" role="radiogroup" aria-labelledby="ht-ssLbl">
+                            <label><input type="radio" name="ss" value="1"><span>Off</span></label>
+                            <label><input type="radio" name="ss" value="2"><span>2&times;</span></label>
+                            <label><input type="radio" name="ss" value="3" checked><span>3&times;</span></label>
+                            <label><input type="radio" name="ss" value="4"><span>4&times;</span></label>
+                        </div>
+                        <p class="hint">A halftone is a one-bit image: every point is ink or paper, nothing between. Off is that image, and it is what you want if the plate is going anywhere near a printer. The others supersample the dot edge so it survives being looked at on a screen at less than 1:1 — at the cost of that many times the render.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">03</span>Tone</h2>
+                <div class="sec-body">
+                    <div class="fld">
+                        <span class="label" id="ht-smLbl">Sampling</span>
+                        <div class="seg" role="radiogroup" aria-labelledby="ht-smLbl">
+                            <label><input type="radio" name="samp" value="area" checked><span>Area</span></label>
+                            <label><input type="radio" name="samp" value="detail"><span>Detail</span></label>
+                        </div>
+                        <p class="hint"><strong>Area</strong> rotates every source pixel into screen space and averages the ones that fall in each cell, so a dot's size is the true mean tone underneath it — what a process camera did. <strong>Detail</strong> compares the screen against the picture where it stands: dots deform around edges and keep far more of the drawing, but tone is only honest where the picture is smooth. Area for photographs and coarse screens, Detail for line art and fine ones.</p>
+                    </div>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Black point</span><span class="val"></span></span>
+                        <input type="range" id="ht-uBlack" min="0" max="60" step="1" value="0" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">White point</span><span class="val"></span></span>
+                        <input type="range" id="ht-uWhite" min="40" max="100" step="1" value="100" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">Where the tone stops being a dot and becomes solid. A black point of 12% means "anything darker than this prints as flat ink" — which is how inked artwork keeps its blacks, and how highlights stay bare paper instead of collecting stray specks.</p>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Midtones</span><span class="val"></span></span>
+                        <input type="range" id="ht-uGamma" min="35" max="250" step="1" value="100" data-u data-fmt="gamma">
+                    </label>
+                    <p class="hint">Coverage is 1&nbsp;&minus;&nbsp;linear&nbsp;luminance by default, which is the physically right answer and darker than most filters give you. This bends it.</p>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Dot gain</span><span class="val"></span></span>
+                        <input type="range" id="ht-uGain" min="-50" max="50" step="1" value="0" data-u data-fmt="signed">
+                    </label>
+                    <p class="hint">Ink spreads where it meets paper, so a 50% dot prints nearer 60% — and only the midtones move. Positive simulates the press; negative is the compensation a prepress operator would have applied.</p>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Tone steps</span><span class="val"></span></span>
+                        <input type="range" id="ht-uSteps" min="0" max="16" step="1" value="0" data-u data-fmt="steps">
+                    </label>
+                    <p class="hint">Screentone came on sheets, and a sheet has exactly one density. Snapping coverage to a ladder of densities turns a photograph into something that could have been cut and laid down by hand.</p>
+
+                    <label class="chk"><input type="checkbox" id="ht-uInvert" data-u><span class="box"></span><span class="label">Invert</span></label>
+                    <p class="hint">Ink the highlights instead — a negative plate, or white line on a dark field.</p>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">04</span>Ink</h2>
+                <div class="sec-body">
+                    <div class="fld">
+                        <span class="label" id="ht-imLbl">Plates</span>
+                        <div class="seg" role="radiogroup" aria-labelledby="ht-imLbl">
+                            <label><input type="radio" name="ink" value="mono" checked><span>Mono</span></label>
+                            <label><input type="radio" name="ink" value="duo"><span>Duotone</span></label>
+                            <label><input type="radio" name="ink" value="cmyk"><span>CMYK</span></label>
+                        </div>
+                    </div>
+
+                    <label class="chk"><input type="checkbox" id="ht-uOver" data-u><span class="box"></span><span class="label">Print over the image</span></label>
+                    <p class="hint">Normally the screen replaces the picture: ink on bare stock. Turn this on and the picture becomes the stock — the same dots laid over the original instead of standing in for it, which is how tone was actually applied to artwork.</p>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Ink strength</span><span class="val"></span></span>
+                        <input type="range" id="ht-uStrength" min="0" max="100" step="1" value="100" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">How opaque the ink is once it lands — not the same as dot size. At 100% the ink is solid; pull it back and the dots read as a screen sitting on top.</p>
+
+                    <div data-when="mono duo" class="fld">
+                        <div class="colour-row">
+                            <span class="label">Ink</span>
+                            <span class="hexo" id="ht-inkHex">#141414</span>
+                            <input type="color" id="ht-uInk" value="#141414" data-u aria-label="Ink colour">
+                        </div>
+                        <div class="swatches" id="ht-inkSw"></div>
+                    </div>
+
+                    <div data-when="duo" class="fld">
+                        <div class="colour-row">
+                            <span class="label">Second ink</span>
+                            <span class="hexo" id="ht-ink2Hex">#0f5fd0</span>
+                            <input type="color" id="ht-uInk2" value="#0f5fd0" data-u aria-label="Second ink colour">
+                        </div>
+                        <label class="sl" data-sl>
+                            <span class="sl-top"><span class="label">Split</span><span class="val"></span></span>
+                            <input type="range" id="ht-uSplit" min="0" max="90" step="1" value="45" data-u data-fmt="pct">
+                        </label>
+                        <p class="hint">One photograph on two plates: the first ink carries the whole range, the second is dropped in below this point to colour the shadows. The two screens sit 30&deg; apart so they interleave instead of beating.</p>
+                    </div>
+
+                    <div data-when="cmyk" class="fld">
+                        <label class="sl" data-sl>
+                            <span class="sl-top"><span class="label">Black generation</span><span class="val"></span></span>
+                            <input type="range" id="ht-uGcr" min="0" max="100" step="1" value="70" data-u data-fmt="pct">
+                        </label>
+                        <p class="hint">Grey component replacement: wherever all three colours are called for at once, that common amount moves to the black plate — less ink, cleaner neutrals. At zero there is no black plate at all.</p>
+                        <span class="label">Separation angles</span>
+                        <div class="angles" id="ht-angleOut"></div>
+                    </div>
+
+                    <div class="rule" aria-hidden="true"></div>
+
+                    <div class="fld">
+                        <div class="colour-row">
+                            <span class="label">Paper</span>
+                            <span class="hexo" id="ht-paperHex">#f4f1e8</span>
+                            <input type="color" id="ht-uPaper" value="#f4f1e8" data-u aria-label="Paper colour">
+                        </div>
+                        <div class="swatches" id="ht-paperSw"></div>
+                    </div>
+                    <label class="chk"><input type="checkbox" id="ht-uAlpha" data-u><span class="box"></span><span class="label">Transparent paper</span></label>
+                    <p class="hint">Export the ink alone, with the paper knocked out to alpha — for laying the screen over something else in an editor.</p>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">05</span>Linework</h2>
+                <div class="sec-body">
+                    <label class="chk"><input type="checkbox" id="ht-uEdge" data-u><span class="box"></span><span class="label">Hold the outlines</span></label>
+                    <p class="hint">Screening destroys thin lines. This finds the edges first and draws them at full resolution over the screen, the way an inker lays line over tone. Off by default — on a photograph it invents outlines that were never drawn.</p>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Line weight</span><span class="val"></span></span>
+                        <input type="range" id="ht-uEdgeAmt" min="0" max="100" step="1" value="80" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Threshold</span><span class="val"></span></span>
+                        <input type="range" id="ht-uEdgeThr" min="2" max="90" step="1" value="30" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">How much local contrast counts as a line. Low picks up texture and noise; high keeps only the drawn edges.</p>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">06</span>Output</h2>
+                <div class="sec-body">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Plate scale</span><span class="val"></span></span>
+                        <input type="range" id="ht-uScale" min="1" max="4" step="1" value="1" data-u data-fmt="mult">
+                    </label>
+                    <p class="hint">1&times; is one output pixel per source pixel. Larger renders the same screen onto a bigger sheet — the only way to get a clean dot edge out of a fine pitch.</p>
+                    <dl class="readout">
+                        <dt>Plate size</dt><dd id="ht-oDim">—</dd>
+                        <dt>Dot pitch</dt><dd id="ht-oPitch">—</dd>
+                        <dt>Cells</dt><dd id="ht-oCells">—</dd>
+                    </dl>
+                </div>
+            </section>
+
+        </div>
+
+        <section class="stage" aria-label="Halftone preview">
+            <div class="stage-bar">
+                <span class="status"><span class="led" id="ht-vLed" aria-hidden="true"></span><span class="label" id="ht-vStat">IDLE</span></span>
+                <span class="spacer"></span>
+                <button class="key" type="button" id="ht-cmpBtn" aria-pressed="false">SHOW SOURCE</button>
+                <button class="key" type="button" id="ht-latBtn" aria-pressed="false">Lattice</button>
+                <button class="key" type="button" id="ht-zoomOut" aria-label="Zoom out">&minus;</button>
+                <span class="zoomval" id="ht-zoomVal">FIT</span>
+                <button class="key" type="button" id="ht-zoomIn" aria-label="Zoom in">+</button>
+                <button class="key" type="button" id="ht-fitBtn">Fit</button>
+                <button class="key" type="button" id="ht-oneBtn">1:1</button>
+            </div>
+            <div class="canvas-wrap" id="ht-wrap">
+                <canvas id="ht-view"></canvas>
+                <span class="prog" aria-hidden="true"><i id="ht-progBar"></i></span>
+                <div class="drop-hint" id="ht-hint">
+                    <svg class="glyph g-ht" viewBox="0 0 40 40" aria-hidden="true">
+                        <circle cx="5"  cy="5"  r="4.4" style="--d:0"/><circle cx="15" cy="5"  r="4.4" style="--d:1"/><circle cx="25" cy="5"  r="4.4" style="--d:2"/><circle cx="35" cy="5"  r="4.4" style="--d:3"/>
+                        <circle cx="5"  cy="15" r="4.4" style="--d:1"/><circle cx="15" cy="15" r="4.4" style="--d:2"/><circle cx="25" cy="15" r="4.4" style="--d:3"/><circle cx="35" cy="15" r="4.4" style="--d:4"/>
+                        <circle cx="5"  cy="25" r="4.4" style="--d:2"/><circle cx="15" cy="25" r="4.4" style="--d:3"/><circle cx="25" cy="25" r="4.4" style="--d:4"/><circle cx="35" cy="25" r="4.4" style="--d:5"/>
+                        <circle cx="5"  cy="35" r="4.4" style="--d:3"/><circle cx="15" cy="35" r="4.4" style="--d:4"/><circle cx="25" cy="35" r="4.4" style="--d:5"/><circle cx="35" cy="35" r="4.4" style="--d:6"/>
+                    </svg>
+                    <span class="drop-title">Drop an image</span>
+                    <span class="drop-sub">PNG, JPG or WebP — or paste from the clipboard</span>
+                </div>
+            </div>
+            <div class="stage-foot">
+                <span class="stat">Source <b id="ht-fSrc">—</b></span>
+                <span class="stat">Screen <b id="ht-fScreen">—</b></span>
+                <span class="stat">Plate <b id="ht-fOut">—</b></span>
+                <span class="stat">Time <b id="ht-fMs">—</b></span>
+                <span class="spacer"></span>
+                <span class="stat stat-help">Drag to pan · scroll to zoom · double-click to fit</span>
+            </div>
+        </section>
+
+    </div>
+
+    <div class="dock">
+        <div class="dock-inner">
+            <button class="btn btn-primary" type="button" id="ht-saveBtn" disabled>Export PNG</button>
+            <button class="btn" type="button" id="ht-quickBtn" title="Export now under a random eight-character name">Quick <span class="key-lbl">export</span></button>
+            <button class="btn" type="button" id="ht-copyBtn">Copy</button>
+            <button class="btn btn-quiet" type="button" id="ht-resetBtn">Clear</button>
+            <span class="spacer"></span>
+            <span class="dock-stat" id="ht-dockStat">NO IMAGE</span>
+        </div>
+    </div>
+    </div>
+
+    <!-- ══ 02 STIPPLE ═════════════════════════════════════════════════ -->
+    <div class="fx-mode" id="fx-stipple" hidden>
+    <div class="work">
+
+        <div class="controls">
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">01</span>Source</h2>
+                <div class="sec-body">
+                    <input type="file" id="sp-file" accept="image/*" class="sr-only">
+                    <button class="btn" type="button" id="sp-pickBtn">Choose an image</button>
+                    <p class="hint keep">Or drop one on the canvas, or paste from the clipboard.</p>
+                    <dl class="readout">
+                        <dt>File</dt><dd id="sp-sName">—</dd>
+                        <dt>Size</dt><dd id="sp-sSize">—</dd>
+                    </dl>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">02</span>Marks<span class="spacer"></span><button class="btn btn-sm" type="button" id="sp-reroll">Re-roll</button></h2>
+                <div class="sec-body">
+                    <div class="fld">
+                        <span class="label" id="sp-styleLbl">Style</span>
+                        <div class="seg" role="radiogroup" aria-labelledby="sp-styleLbl">
+                            <label><input type="radio" name="spStyle" value="stipple" checked><span>Stipple</span></label>
+                            <label><input type="radio" name="spStyle" value="scribble"><span>Scribble</span></label>
+                            <label><input type="radio" name="spStyle" value="grid"><span>Dot grid</span></label>
+                        </div>
+                        <p class="hint"><strong>Stipple</strong> scatters one dot per cell, nudged off the grid so it reads as pen work rather than print. <strong>Scribble</strong> swaps the dot for a short curved stroke at a random angle. <strong>Dot grid</strong> holds the dots on the grid. Re-roll reshuffles the randomness without touching anything else.</p>
+                    </div>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Spacing</span><span class="val"></span></span>
+                        <input type="range" id="sp-uSpacing" min="2" max="40" step="1" value="10" data-u data-fmt="px">
+                    </label>
+                    <p class="hint">One mark per cell this many source pixels across. Each cell is averaged over its whole area, not read at one corner.</p>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label" id="sp-sizeLbl">Mark size</span><span class="val"></span></span>
+                        <input type="range" id="sp-uSize" min="1" max="40" step="0.5" value="10" data-u data-fmt="px">
+                    </label>
+                    <p class="hint">The widest a dot gets, at full tone. Area tracks darkness, so a 50% grey inks half as much as black — not a quarter.</p>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Jitter</span><span class="val"></span></span>
+                        <input type="range" id="sp-uJitter" min="0" max="100" step="1" value="45" data-u data-fmt="pct">
+                    </label>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Tone curve</span><span class="val"></span></span>
+                        <input type="range" id="sp-uGamma" min="20" max="300" step="5" value="100" data-u data-fmt="gamma">
+                    </label>
+                    <p class="hint">Above 1 lets the midtones go bare and keeps only the darks; below 1 fills them in.</p>
+
+                    <label class="chk"><input type="checkbox" id="sp-uInvert" data-u><span class="box"></span><span class="label">Invert</span></label>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">03</span>Ink</h2>
+                <div class="sec-body">
+                    <label class="chk"><input type="checkbox" id="sp-uKeep" data-u><span class="box"></span><span class="label">Keep source colour</span></label>
+                    <p class="hint">Each mark takes the colour of the cell it stands for, instead of one ink.</p>
+                    <div class="colour-row" id="sp-inkRow">
+                        <span class="label">Ink</span>
+                        <span class="hexo" id="sp-inkHex">#141414</span>
+                        <input type="color" id="sp-uInk" value="#141414" data-u aria-label="Ink colour">
+                    </div>
+                    <div class="rule" aria-hidden="true"></div>
+                    <div class="colour-row">
+                        <span class="label">Paper</span>
+                        <span class="hexo" id="sp-paperHex">#f4f1e8</span>
+                        <input type="color" id="sp-uPaper" value="#f4f1e8" data-u aria-label="Paper colour">
+                    </div>
+                    <label class="chk"><input type="checkbox" id="sp-uAlpha" data-u><span class="box"></span><span class="label">Transparent paper</span></label>
+                    <p class="hint">Export the marks alone. JPEG has no transparency, so it always keeps its paper.</p>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">04</span>Output</h2>
+                <div class="sec-body">
+                    <div class="fld">
+                        <span class="label" id="sp-fmtLbl">Format</span>
+                        <div class="seg" role="radiogroup" aria-labelledby="sp-fmtLbl">
+                            <label><input type="radio" name="spFmt" value="png" checked><span>PNG</span></label>
+                            <label><input type="radio" name="spFmt" value="jpeg"><span>JPEG</span></label>
+                            <label><input type="radio" name="spFmt" value="svg"><span>SVG</span></label>
+                        </div>
+                        <p class="hint"><strong>SVG</strong> writes every mark as a vector shape — sharp at any size, and ready for a plotter, cutter or laser.</p>
+                    </div>
+                    <label class="sl" data-sl data-fmt-when="png jpeg">
+                        <span class="sl-top"><span class="label">Scale</span><span class="val"></span></span>
+                        <input type="range" id="sp-uScale" min="1" max="5" step="0.5" value="1" data-u data-fmt="mult">
+                    </label>
+                    <label class="sl" data-sl data-fmt-when="jpeg">
+                        <span class="sl-top"><span class="label">Quality</span><span class="val"></span></span>
+                        <input type="range" id="sp-uQual" min="10" max="100" step="5" value="90" data-u data-fmt="pct">
+                    </label>
+                </div>
+            </section>
+
+        </div>
+
+        <section class="stage" aria-label="Stipple preview">
+            <div class="stage-bar">
+                <span class="status"><span class="led" id="sp-vLed" aria-hidden="true"></span><span class="label" id="sp-vStat">IDLE</span></span>
+                <span class="spacer"></span>
+                <button class="key" type="button" id="sp-cmpBtn">Hold to compare</button>
+            </div>
+            <div class="canvas-wrap" id="sp-wrap">
+                <canvas class="fit" id="sp-view"></canvas>
+                <div class="drop-hint" id="sp-hint">
+                    <svg class="glyph g-sp" viewBox="0 0 40 40" aria-hidden="true">
+                        <circle cx="7" cy="9" r="3.2" style="--d:0"/><circle cx="21" cy="5" r="2.2" style="--d:3"/><circle cx="33" cy="11" r="3.6" style="--d:6"/>
+                        <circle cx="13" cy="20" r="4" style="--d:1"/><circle cx="27" cy="22" r="2.8" style="--d:4"/><circle cx="5" cy="31" r="2.4" style="--d:7"/>
+                        <circle cx="18" cy="34" r="3.4" style="--d:2"/><circle cx="31" cy="33" r="4.2" style="--d:5"/><circle cx="37" cy="23" r="1.8" style="--d:8"/>
+                    </svg>
+                    <span class="drop-title">Drop an image</span>
+                    <span class="drop-sub">PNG, JPG or WebP — or paste from the clipboard</span>
+                </div>
+            </div>
+            <div class="stage-foot">
+                <span class="stat">Size <b id="sp-fSize">—</b></span>
+                <span class="stat">Marks <b id="sp-fMarks">—</b></span>
+                <span class="stat">Render <b id="sp-fMs">—</b></span>
+            </div>
+        </section>
+
+    </div>
+
+    <div class="dock">
+        <div class="dock-inner">
+            <button class="btn btn-primary" type="button" id="sp-saveBtn" disabled>Export</button>
+            <button class="btn" type="button" id="sp-copyBtn">Copy</button>
+            <button class="btn btn-quiet" type="button" id="sp-resetBtn">Clear</button>
+            <span class="spacer"></span>
+            <span class="dock-stat" id="sp-dockStat">NO IMAGE</span>
+        </div>
+    </div>
+    </div>
+
+    <!-- ══ 03 TAPE ════════════════════════════════════════════════════ -->
+    <div class="fx-mode" id="fx-tape" hidden>
+    <div class="work">
+
+        <div class="controls">
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">01</span>Source</h2>
+                <div class="sec-body">
+                    <input type="file" id="tp-file" accept="image/*" class="sr-only">
+                    <button class="btn" type="button" id="tp-pickBtn">Choose an image</button>
+                    <p class="hint keep">Or drop one on the canvas, or paste from the clipboard. Runs on your GPU.</p>
+                    <div class="fld">
+                        <span class="label">Preset</span>
+                        <div class="presets" id="tp-presets"></div>
+                        <p class="hint">Starting points taken from the eras themselves. Move any slider afterwards — the preset is a seed, not a lock.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">02</span>Signal</h2>
+                <div class="sec-body">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Softness</span><span class="val"></span></span>
+                        <input type="range" id="tp-uSoft" min="0" max="100" value="34" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">The vaseline. Luma is resolved far more sharply than colour on tape, so this stays gentle — push chroma bleed for the smeared look instead.</p>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Chroma bleed</span><span class="val"></span></span>
+                        <input type="range" id="tp-uChroma" min="0" max="100" value="62" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">Colour smeared sideways while the outlines stay put — the single control that reads most as "video". VHS carried colour at a fraction of the luminance bandwidth, so reds run into their neighbours.</p>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Chroma lag</span><span class="val"></span></span>
+                        <input type="range" id="tp-uCLag" min="0" max="100" value="30" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">Colour arriving late, so it sits to the right of the object it belongs to.</p>
+
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Edge ringing</span><span class="val"></span></span>
+                        <input type="range" id="tp-uRing" min="0" max="100" value="42" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">The bright lip trailing every dark edge — analogue sharpening overshooting. Small amounts do a lot of the period feel.</p>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">03</span>Levels</h2>
+                <div class="sec-body">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Black lift</span><span class="val"></span></span>
+                        <input type="range" id="tp-uLift" min="0" max="100" value="30" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">The faded part. Tape never reached black, so shadows sit milky and grey — this is what stops a filter looking like a modern photo with grain on it.</p>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Contrast</span><span class="val"></span></span>
+                        <input type="range" id="tp-uContrast" min="-100" max="100" value="-14" data-u data-fmt="signed">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Saturation</span><span class="val"></span></span>
+                        <input type="range" id="tp-uSat" min="-100" max="100" value="18" data-u data-fmt="signed">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Warmth</span><span class="val"></span></span>
+                        <input type="range" id="tp-uWarm" min="-100" max="100" value="22" data-u data-fmt="signed">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Shadow tint</span><span class="val"></span></span>
+                        <input type="range" id="tp-uShadowTint" min="-100" max="100" value="20" data-u data-fmt="signed">
+                    </label>
+                    <p class="hint">Negative cools the shadows blue, positive pushes them magenta — the tell-tale cast of a warm dub.</p>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">04</span>Glow</h2>
+                <div class="sec-body">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Halation</span><span class="val"></span></span>
+                        <input type="range" id="tp-uBloom" min="0" max="100" value="45" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Threshold</span><span class="val"></span></span>
+                        <input type="range" id="tp-uBloomT" min="0" max="100" value="55" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Glow spread</span><span class="val"></span></span>
+                        <input type="range" id="tp-uBloomR" min="0" max="100" value="48" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">Highlights blooming into what surrounds them, warm-tinted the way film and tube phosphor both bloom.</p>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">05</span>Noise<span class="spacer"></span><button class="btn btn-sm" type="button" id="tp-reroll">Re-roll</button></h2>
+                <div class="sec-body">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Luma grain</span><span class="val"></span></span>
+                        <input type="range" id="tp-uGrain" min="0" max="100" value="22" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Chroma noise</span><span class="val"></span></span>
+                        <input type="range" id="tp-uCNoise" min="0" max="100" value="26" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">The coarse blotchy noise that drifts in flat colour — a different animal from film grain, and much more of a giveaway that this is tape.</p>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Tape streaks</span><span class="val"></span></span>
+                        <input type="range" id="tp-uStreak" min="0" max="100" value="14" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">Faint horizontal banding that shifts down the frame. Not scanlines — dropout and tracking, which is the texture these actually have.</p>
+                </div>
+            </section>
+
+            <section class="sec">
+                <h2 class="sec-head"><span class="sec-num">06</span>Frame</h2>
+                <div class="sec-body">
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Vignette</span><span class="val"></span></span>
+                        <input type="range" id="tp-uVig" min="0" max="100" value="24" data-u data-fmt="pct">
+                    </label>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Edge bleed</span><span class="val"></span></span>
+                        <input type="range" id="tp-uEdge" min="0" max="100" value="18" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">The ragged dark border where the picture runs past the tube's usable area.</p>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Scanlines</span><span class="val"></span></span>
+                        <input type="range" id="tp-uScan" min="0" max="100" value="0" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">Left at zero on purpose. Broadcast video on a consumer set had no visible line structure — drawn-on scanlines are what most makes a "VHS filter" look fake.</p>
+                    <label class="sl" data-sl>
+                        <span class="sl-top"><span class="label">Head switch</span><span class="val"></span></span>
+                        <input type="range" id="tp-uHead" min="0" max="100" value="26" data-u data-fmt="pct">
+                    </label>
+                    <p class="hint">The torn, skewed strip at the bottom of the frame where the tape head changes over. Genuinely diagnostic of VHS and almost never faked.</p>
+                </div>
+            </section>
+
+        </div>
+
+        <section class="stage" aria-label="Tape preview">
+            <div class="stage-bar">
+                <span class="status"><span class="led" id="tp-vLed" aria-hidden="true"></span><span class="label" id="tp-vStat">IDLE</span></span>
+                <span class="spacer"></span>
+                <button class="key" type="button" id="tp-cmpBtn">Hold to compare</button>
+                <button class="key" type="button" id="tp-zoomOut" aria-label="Zoom out">&minus;</button>
+                <span class="zoomval" id="tp-zoomVal">FIT</span>
+                <button class="key" type="button" id="tp-zoomIn" aria-label="Zoom in">+</button>
+                <button class="key" type="button" id="tp-fitBtn">Fit</button>
+                <button class="key" type="button" id="tp-oneBtn">1:1</button>
+            </div>
+            <div class="canvas-wrap" id="tp-wrap">
+                <canvas id="tp-view"></canvas>
+                <div class="drop-hint" id="tp-hint">
+                    <svg class="glyph g-tp" viewBox="0 0 40 40" aria-hidden="true">
+                        <rect x="0" y="2"  width="40" height="5" style="--d:0"/>
+                        <rect x="0" y="11" width="30" height="5" style="--d:1"/>
+                        <rect class="smear" x="8" y="20" width="32" height="5"/>
+                        <rect x="0" y="29" width="36" height="5" style="--d:3"/>
+                        <rect x="4" y="37" width="22" height="3" style="--d:4"/>
+                    </svg>
+                    <span class="drop-title">Drop an image</span>
+                    <span class="drop-sub">PNG, JPG or WebP — or paste from the clipboard</span>
+                </div>
+            </div>
+            <div class="stage-foot">
+                <span class="stat">Size <b id="tp-fSize">—</b></span>
+                <span class="stat">Render <b id="tp-fMs">—</b></span>
+                <span class="spacer"></span>
+                <span class="stat stat-help">Drag to pan · scroll to zoom · double-click to fit</span>
+            </div>
+        </section>
+
+    </div>
+
+    <section class="nosupport" id="tp-nogl" hidden>
+        <span class="tag">No GPU.</span>
+        <p>This browser did not give us a WebGL context, so the filter cannot run. It needs hardware acceleration enabled.</p>
+    </section>
+
+    <div class="dock">
+        <div class="dock-inner">
+            <button class="btn btn-primary" type="button" id="tp-saveBtn" disabled>Export PNG</button>
+            <button class="btn" type="button" id="tp-copyBtn">Copy</button>
+            <button class="btn btn-quiet" type="button" id="tp-resetBtn">Reset</button>
+            <span class="spacer"></span>
+            <span class="dock-stat" id="tp-dockStat">NO IMAGE</span>
+        </div>
+    </div>
+    </div>
+
+    <footer class="foot">
+        <a href="https://isaiart.com">isaiart.com</a>
+        <a href="../photomarket/">PhotoMarket</a>
+        <span class="spacer"></span>
+        <span>No backend. Nothing leaves the browser.</span>
+    </footer>
+
+</main>
+
+<script src="fx.js?v=3"></script>
+<script src="screen.js?v=3"></script>
+<script src="plate.js?v=5"></script>
+<script src="stipple.js?v=2"></script>
+<script src="tape.js?v=11"></script>
+</body>
+</html>

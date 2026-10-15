@@ -15,7 +15,12 @@
 
     var L = window.LINEART, ENC = window.PRINTENC, S = window.STUDIO;
     var el = function (id) { return document.getElementById(id); };
-    function radio(name) { var r = document.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : null; }
+    /* This tool shares /kdp with the cover studio: ids that both pages used
+       carry a cb- prefix here, and every non-id query is scoped to the
+       INTERIOR tab so the cover's controls are never picked up. */
+    var root = el('tab-interior');
+    function active() { return document.documentElement.getAttribute('data-kdp-tab') === 'interior'; }
+    function radio(name) { var r = root.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : null; }
 
     /* ── Engine: a worker when there is one, the same code inline when not
           (file:// refuses workers). Same promise API either way. ───────── */
@@ -183,7 +188,7 @@
             q.appendChild(row);
         });
         el('qCount').textContent = String(items.length);
-        el('pdfBtn').disabled = !items.length || exporting;
+        el('cb-pdfBtn').disabled = !items.length || exporting;
         el('zipBtn').disabled = items.length < 2 || exporting;
     }
 
@@ -211,7 +216,7 @@
             it.w = d.canvas.width; it.h = d.canvas.height;
             st.src = d.canvas;
             engine.load(it.key, d.data);
-            el('empty').classList.add('gone');
+            el('cb-empty').classList.add('gone');
             updateGeometry();
             vp.fit(true);
             schedule();
@@ -283,18 +288,18 @@
         el('factorRow').hidden = !none;
         if (!none) S.syncSeg(el('pageOnly')); else S.syncSeg(el('factorRow'));
         if (!cur || !cur.w) {
-            ['oDim', 'oSrc', 'oK', 'oW', 'oH'].forEach(function (id) { el(id).textContent = '—'; });
+            ['oDim', 'oSrc', 'oK', 'cb-oW', 'cb-oH'].forEach(function (id) { el(id).textContent = '—'; });
             return;
         }
         var g = L.geometry(cur.w, cur.h, readOpts());
         el('oK').innerHTML = num(g.k, 2) + '<small>×</small>';
-        el('oW').innerHTML = num(g.inW, 2) + '<small>in</small>';
-        el('oH').innerHTML = num(g.inH, 2) + '<small>in</small>';
+        el('cb-oW').innerHTML = num(g.inW, 2) + '<small>in</small>';
+        el('cb-oH').innerHTML = num(g.inH, 2) + '<small>in</small>';
         el('oDim').textContent = g.pw + ' × ' + g.ph + ' px';
         el('oSrc').textContent = cur.w + ' × ' + cur.h + ' px';
     }
 
-    function setBusy(on) { el('prog').className = 'progress' + (on ? ' on indet' : ''); }
+    function setBusy(on) { el('cb-prog').className = 'progress' + (on ? ' on indet' : ''); }
 
     /* ── View ────────────────────────────────────────────────────────────────
        Art space is the OUTPUT page. The source and the REMOVED map are drawn
@@ -312,7 +317,7 @@
     }
     var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6d5dfc';
 
-    var vp = S.viewport(el('wrap'), el('view'), {
+    var vp = S.viewport(el('cb-wrap'), el('cb-view'), {
         pad: 28,
         maxScale: 24,
         size: function () { var a = art(); return a && st.src ? { w: a.pw, h: a.ph } : null; },
@@ -374,20 +379,20 @@
             set(pt);
             return { move: set, up: function () {} };
         },
-        hover: function () { el('wrap').style.cursor = st.mode === 'split' && st.out ? 'ew-resize' : (st.src ? 'grab' : ''); },
-        change: function (v) { el('zVal').textContent = Math.round(v.s * 100) + '%'; }
+        hover: function () { el('cb-wrap').style.cursor = st.mode === 'split' && st.out ? 'ew-resize' : (st.src ? 'grab' : ''); },
+        change: function (v) { el('cb-zVal').textContent = Math.round(v.s * 100) + '%'; }
     });
 
-    el('zIn').addEventListener('click', function () { vp.zoomBy(1.5); });
-    el('zOut').addEventListener('click', function () { vp.zoomBy(1 / 1.5); });
-    el('zFit').addEventListener('click', function () { vp.fit(); });
+    el('cb-zIn').addEventListener('click', function () { vp.zoomBy(1.5); });
+    el('cb-zOut').addEventListener('click', function () { vp.zoomBy(1 / 1.5); });
+    el('cb-zFit').addEventListener('click', function () { vp.fit(); });
     el('zOne').addEventListener('click', function () { vp.zoomTo(1); });
 
     function resetStage() {
         st.src = st.out = st.diag = st.gray = st.geo = null; st.optsKey = '';
-        el('empty').classList.remove('gone');
+        el('cb-empty').classList.remove('gone');
         ['rInk', 'rGrey', 'rSpeck', 'rBlack', 'fMs', 'fOut'].forEach(function (id) { el(id).textContent = '—'; });
-        el('zVal').textContent = '—';
+        el('cb-zVal').textContent = '—';
         el('saveBtn').disabled = true;
         setBusy(false);
         updateGeometry();
@@ -411,11 +416,11 @@
     el('flatten').addEventListener('change', schedule);
     el('page').addEventListener('change', function () { updateGeometry(); schedule(); });
     ['edges', 'dpi', 'layout', 'factor'].forEach(function (n) {
-        document.querySelectorAll('input[name="' + n + '"]').forEach(function (r) {
+        root.querySelectorAll('input[name="' + n + '"]').forEach(function (r) {
             r.addEventListener('change', function () { updateGeometry(); schedule(); });
         });
     });
-    document.querySelectorAll('input[name="view"]').forEach(function (r) {
+    root.querySelectorAll('input[name="view"]').forEach(function (r) {
         r.addEventListener('change', function () {
             st.mode = this.value;
             el('legend').hidden = st.mode !== 'removed';
@@ -423,11 +428,11 @@
         });
     });
 
-    function pick() { el('file').click(); }
+    function pick() { el('cb-file').click(); }
     el('pickBtn').addEventListener('click', pick);
     el('pickBtn').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
-    el('browseBtn').addEventListener('click', pick);
-    el('file').addEventListener('change', function () {
+    el('cb-browseBtn').addEventListener('click', pick);
+    el('cb-file').addEventListener('change', function () {
         if (this.files && this.files.length) addFiles(this.files);
         this.value = '';
     });
@@ -435,7 +440,11 @@
     dz.addEventListener('dragover', function (e) { if (!dragIt) { e.preventDefault(); dz.classList.add('dragover'); } });
     dz.addEventListener('dragleave', function () { dz.classList.remove('dragover'); });
     dz.addEventListener('drop', function () { dz.classList.remove('dragover'); });
-    S.fileDrop(function (files, e) { if (!e._taken) addFiles(files); }, 'Drop to add pages');
+    /* The window-wide drop and paste are shared with the COVER tab: only
+       the visible tab takes the files, and only its veil shows. */
+    S.fileDrop(function (files, e) { if (active() && !e._taken) addFiles(files); }, 'Drop to add pages');
+    var veils = document.querySelectorAll('.dropveil');
+    veils[veils.length - 1].setAttribute('data-tab', 'interior');
 
     /* ── Export ──────────────────────────────────────────────────────────── */
     function baseName(it) { return (it.name.replace(/\.[^.]+$/, '') || 'page').replace(/[\\/:*?"<>|]+/g, '_'); }
@@ -460,15 +469,15 @@
     var exporting = false;
     function lockExport(on) {
         exporting = on;
-        ['saveBtn', 'pdfBtn', 'zipBtn', 'resetBtn'].forEach(function (id) { el(id).disabled = on; });
+        ['saveBtn', 'cb-pdfBtn', 'zipBtn', 'resetBtn'].forEach(function (id) { el(id).disabled = on; });
         if (!on) { el('saveBtn').disabled = !st.gray; el('vStat').textContent = ''; renderQueue(); }
     }
     function progress(i, n, what) {
-        el('prog').className = 'progress on';
-        el('prog').firstChild.style.width = Math.round(i / n * 100) + '%';
+        el('cb-prog').className = 'progress on';
+        el('cb-prog').firstChild.style.width = Math.round(i / n * 100) + '%';
         el('vStat').textContent = what + ' ' + i + ' / ' + n;
     }
-    function doneProgress() { el('prog').className = 'progress'; el('prog').firstChild.style.width = ''; }
+    function doneProgress() { el('cb-prog').className = 'progress'; el('cb-prog').firstChild.style.width = ''; }
 
     el('saveBtn').addEventListener('click', function () {
         if (!cur || exporting) return;
@@ -497,7 +506,7 @@
             .then(function () { doneProgress(); lockExport(false); });
     }
 
-    el('pdfBtn').addEventListener('click', function () {
+    el('cb-pdfBtn').addEventListener('click', function () {
         var pdf = new ENC.Pdf(), geo = null;
         batch('PDF', function (it, r) { geo = r.geo; return pdf.addPage(r.gray, r.geo); }, function () {
             var name = (items.length === 1 ? baseName(items[0]) : 'coloring-book') + '_' + (geo ? geo.dpi : 300) + 'dpi.pdf';

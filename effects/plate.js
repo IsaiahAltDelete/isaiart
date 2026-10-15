@@ -30,14 +30,17 @@
 
     var ST = window.SCREENTONE;
     var S = window.SRCH;
-    var el = function (id) { return document.getElementById(id); };
+    /* This file shares effects/index.html with stipple.js and tape.js, so every
+       id it owns carries the ht- prefix and every query is scoped to its own
+       panel. el() adds the prefix, so the rest of the file still reads in
+       bare ids. */
+    var MODE = 'halftone', PFX = 'ht-';
+    var root = FX.root(MODE);
+    var el = FX.el(PFX);
     var D2R = Math.PI / 180;
 
-    /* ── Header furniture ────────────────────────────────────────────────────
-       No clock and no trace on this one: the control strip is the readout, and
-       it reports something the page can actually be judged by. */
-    S.themeSwitch(el('themeSw'));
-    if (window.CAS) CAS.pageTransition();
+    /* Header furniture (theme switch, page transition) belongs to fx.js now —
+       there is one header for all three effects. */
 
     /* ── Budgets ─────────────────────────────────────────────────────────────
        Measured on a 2048² source: the proxy accumulation lands at ~60ms and a
@@ -90,7 +93,7 @@
         sel.value = 'round';
     })();
 
-    var sliders = Array.prototype.slice.call(document.querySelectorAll('input[data-u][type="range"]'));
+    var sliders = Array.prototype.slice.call(root.querySelectorAll('input[data-u][type="range"]'));
 
     function num(id) { return parseFloat(el(id).value); }
 
@@ -226,7 +229,7 @@
                 return;
             }
             /* Not an id — then it names a radio group. */
-            var r = document.querySelector('input[name="' + k + '"][value="' + p[k] + '"]');
+            var r = root.querySelector('input[name="' + k + '"][value="' + p[k] + '"]');
             if (r) r.checked = true;
         });
         Array.prototype.forEach.call(el('presets').children, function (b) {
@@ -295,7 +298,7 @@
             var row = s.closest('.sl');
             if (!row) return;
             row.querySelector('.val').textContent = fmt(s);
-            var base = PRESETS[activePreset] && PRESETS[activePreset][s.id];
+            var base = PRESETS[activePreset] && PRESETS[activePreset][s.id.slice(PFX.length)];
             row.classList.toggle('moved', base !== undefined && parseFloat(s.value) !== base);
         });
 
@@ -304,7 +307,7 @@
         el('paperHex').textContent = p.paper.toUpperCase();
 
         /* Panels that only mean something for one plate arrangement. */
-        Array.prototype.forEach.call(document.querySelectorAll('[data-when]'), function (n) {
+        Array.prototype.forEach.call(root.querySelectorAll('[data-when]'), function (n) {
             n.hidden = n.getAttribute('data-when').split(/\s+/).indexOf(p.ink) < 0;
         });
 
@@ -833,6 +836,7 @@
 
             st.name = file.name || 'pasted';
             st.srcCanvas = c;
+            FX.loaded(MODE, file);
             st.full = bundle(cx.getImageData(0, 0, w, h));
             st.proxy = makeProxy(c, w, h);
             st.outCanvas = null; st.outKey = '';
@@ -1073,16 +1077,11 @@
         if (e.dataTransfer && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
     });
 
-    document.addEventListener('paste', function (e) {
-        var items = (e.clipboardData || {}).items || [];
-        for (var i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') === 0) { loadFile(items[i].getAsFile()); break; }
-        }
-    });
+    /* Paste is routed by fx.js to whichever effect is on screen. */
 
     /* One delegated pair, so a control added to the HTML later is live without
        touching this file. Anything the user moves takes them off the preset. */
-    var controls = document.querySelector('.controls');
+    var controls = root.querySelector('.controls');
     controls.addEventListener('input', function (e) {
         if (!e.target.matches('[data-u]')) return;
         syncUI();
@@ -1255,4 +1254,5 @@
     applyPreset(DEFAULT_PRESET);
     syncUI();
     draw();
+    FX.register(MODE, { load: loadFile });
 })();
