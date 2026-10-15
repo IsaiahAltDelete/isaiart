@@ -1,10 +1,11 @@
 {
-  "date": "2026-10-14",
-  "updated": "2026-10-14T07:56:00-04:00",
-  "events": 2,
+  "date": "2026-10-15",
+  "updated": "2026-10-15T07:57:00-04:00",
+  "events": 7,
   "headlines": [
-    "Brewers at Dodgers, NLCS Game 3 (8:00 PM ET, FS1)",
-    "Stars at Avalanche (8:30 PM ET, TNT)"
+    "Brewers at Dodgers, NLCS Game 4 with Milwaukee up 3\u20130 (8:00 PM ET, FS1)",
+    "Seahawks at Broncos, Thursday Night Football (8:15 PM ET, Prime Video)",
+    "Rays at Guardians, ALCS Game 3 (1:00 PM ET, TBS)"
   ],
   "template": "2026-09-29.1"
 }

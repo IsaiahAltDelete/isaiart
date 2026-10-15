@@ -1,0 +1,274 @@
+{
+ "date": "2026-10-15",
+ "updated": "2026-10-15T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Brewers at Dodgers, NLCS Game 4 with Milwaukee up 3\u20130 (8:00 PM ET, FS1)",
+  "Seahawks at Broncos, Thursday Night Football (8:15 PM ET, Prime Video)",
+  "Rays at Guardians, ALCS Game 3 (1:00 PM ET, TBS)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "League Championship Series",
+   "note": "ALCS Game 3 matinee \u2022 NLCS Game 4"
+  },
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 6",
+   "note": "Thursday Night Football"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular season",
+   "note": "ESPN+ national stream"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 7",
+   "note": "Thursday national windows"
+  }
+ ],
+ "events": [
+  {
+   "id": "mlb-tb-cle-g3",
+   "league": "MLB",
+   "label": "MLB \u2022 ALCS",
+   "flags": [
+    "ALCS \u2022 Game 3"
+   ],
+   "competitors": [
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL No. 1 seed \u2022 Jax",
+     "logo": "mlb/tb"
+    },
+    {
+     "name": "Cleveland Guardians",
+     "abbr": "CLE",
+     "detail": "AL No. 2 seed \u2022 Williams",
+     "logo": "mlb/cle"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-15T13:00:00-04:00",
+   "watch": "TBS \u2022 truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast. Spanish on Univision/TUDN.",
+   "venue": "Progressive Field, Cleveland",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Afternoon start with the series tied 1\u20131. Griffin Jax faces Gavin Williams, who threw 5\u2154 one-hit innings with 12 strikeouts in ALDS Game 5.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "ncaaf-ecu-uab",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "East Carolina Pirates",
+     "abbr": "ECU",
+     "detail": "3\u20132"
+    },
+    {
+     "name": "UAB Blazers",
+     "abbr": "UAB",
+     "detail": "3\u20133"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-15T19:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Protective Stadium, Birmingham, Ala.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Thursday night college game on ESPN.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-gaso-odu",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Georgia Southern Eagles",
+     "abbr": "GASO",
+     "detail": "2\u20134"
+    },
+    {
+     "name": "Old Dominion Monarchs",
+     "abbr": "ODU",
+     "detail": "2\u20134"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-15T19:30:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "S.B. Ballard Stadium, Norfolk, Va.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Thursday night college game on ESPN2.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nhl-phi-det",
+   "league": "NHL",
+   "label": "NHL \u2022 Regular season",
+   "flags": [
+    "ESPN+ \u2022 Hulu"
+   ],
+   "competitors": [
+    {
+     "name": "Philadelphia Flyers",
+     "abbr": "PHI",
+     "detail": "",
+     "logo": "nhl/phi"
+    },
+    {
+     "name": "Detroit Red Wings",
+     "abbr": "DET",
+     "detail": "",
+     "logo": "nhl/det"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-15T19:30:00-04:00",
+   "watch": "ESPN+ \u2022 Hulu \u2022 Disney+",
+   "streaming": "ESPN+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National U.S. streaming window; no national TV broadcast is listed.",
+   "venue": "Little Caesars Arena, Detroit",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "The only nationally distributed NHL game of the night.",
+   "blackout": "Streaming subscription required. Local team-network availability varies by market."
+  },
+  {
+   "id": "ncaaf-csu-txst",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 7",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Colorado State Rams",
+     "abbr": "CSU",
+     "detail": "2\u20133"
+    },
+    {
+     "name": "Texas State Bobcats",
+     "abbr": "TXST",
+     "detail": "2\u20133"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-15T20:00:00-04:00",
+   "watch": "CBS Sports Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National CBS Sports Network window.",
+   "venue": "UFCU Stadium, San Marcos, Texas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Thursday night college game on CBS Sports Network.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "mlb-mil-lad-g4",
+   "league": "MLB",
+   "label": "MLB \u2022 NLCS",
+   "flags": [
+    "NLCS \u2022 Game 4"
+   ],
+   "competitors": [
+    {
+     "name": "Milwaukee Brewers",
+     "abbr": "MIL",
+     "detail": "NL No. 1 seed \u2022 leads 3\u20130 \u2022 starter TBD",
+     "logo": "mlb/mil"
+    },
+    {
+     "name": "Los Angeles Dodgers",
+     "abbr": "LAD",
+     "detail": "NL No. 2 seed \u2022 Glasnow",
+     "logo": "mlb/lad"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-15T20:00:00-04:00",
+   "watch": "FS1 \u2022 FOX Deportes",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "Dodger Stadium, Los Angeles",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Milwaukee can clinch the pennant after a 6\u20132 Game 3 win. Tyler Glasnow starts for Los Angeles; Milwaukee's starter is TBD.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "nfl-sea-den",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [
+    "Thursday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Seattle Seahawks",
+     "abbr": "SEA",
+     "detail": "3\u20132",
+     "logo": "nfl/sea"
+    },
+    {
+     "name": "Denver Broncos",
+     "abbr": "DEN",
+     "detail": "3\u20132",
+     "logo": "nfl/den"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-15T20:15:00-04:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "Empower Field at Mile High, Denver",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "Two 3\u20132 teams open Week 6. Kickoff is 6:15 p.m. local.",
+   "blackout": "Prime Video subscription required; local broadcast availability in the team markets may vary. NFL+ restrictions may apply."
+  }
+ ],
+ "footer_note": "Seven qualifying events fall inside Thursday's Eastern calendar day. Regional NHL games, preseason and exhibition games are excluded. The WNBA Finals open Saturday, Oct. 17.",
+ "sources": [
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-15"
+  },
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/6/year/2026/seasontype/2"
+  },
+  {
+   "label": "Thursday Night Football 2026 schedule",
+   "url": "https://fbschedules.com/2026-nfl-thursday-night-football-schedule/"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-10-15"
+  },
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261015"
+  }
+ ]
+}
