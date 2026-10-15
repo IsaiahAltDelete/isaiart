@@ -1,0 +1,619 @@
+/* ============================================================================
+   EFFECTS — neo-Swiss
+   ---------------------------------------------------------------------------
+   Flat, white-first, one typeface. Black and white carry the page; the three
+   primaries are spent only where something is ON — the effect you are in,
+   the control you are holding, the button that fires. Each effect owns one
+   primary (Halftone blue, Stipple red, Tape yellow), so the accent alone
+   tells you where you are.
+
+   This page no longer loads vector.css / console.css. The engines only ever
+   needed two helpers from that system (a radio reader and a toast), and
+   fx.js supplies both.
+
+   Motion is there to explain state changes, never to decorate a still page:
+   the bar slides to the tab you picked, the panel rises in, the empty stage
+   draws the effect you are about to use. All of it stops under
+   prefers-reduced-motion.
+   ========================================================================= */
+
+/* ── 1. Tokens ─────────────────────────────────────────────────────────── */
+
+:root {
+    --bg:        #ffffff;
+    --ink:       #0a0a0a;
+    --ink-2:     #5c5c5c;     /* secondary text, 6.4:1 on white */
+    --ink-3:     #8f8f8f;     /* furniture only, never prose */
+    --line:      #e8e8e8;
+    --line-2:    #d0d0d0;
+    --well:      #f4f4f4;
+    --check:     #ebebeb;
+
+    --red:       #e4002b;
+    --blue:      #0047ff;
+    --yellow:    #ffcc00;
+
+    /* plate.js reads these two for its lattice overlay. */
+    --s1: var(--red);
+    --s6: var(--blue);
+
+    --accent:     var(--blue);
+    --on-accent:  #ffffff;    /* text set on an accent fill */
+
+    --font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+    --gutter: clamp(16px, 3vw, 40px);
+}
+
+:root[data-theme="dark"] {
+    --bg:     #0b0b0b;
+    --ink:    #f4f4f4;
+    --ink-2:  #a3a3a3;
+    --ink-3:  #6b6b6b;
+    --line:   #222222;
+    --line-2: #333333;
+    --well:   #141414;
+    --check:  #1b1b1b;
+    --blue:   #3d72ff;        /* the print blue sinks on black; lift it */
+}
+
+:root[data-fx="halftone"] { --accent: var(--blue);   --on-accent: #ffffff; }
+:root[data-fx="stipple"]  { --accent: var(--red);    --on-accent: #ffffff; }
+:root[data-fx="tape"]     { --accent: var(--yellow); --on-accent: #0a0a0a; }
+
+/* ── 2. Base ───────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 14px/1.55 var(--font);
+    -webkit-font-smoothing: antialiased;
+    transition: background-color .45s var(--ease), color .45s var(--ease);
+}
+button, input, select { font: inherit; color: inherit; }
+a { color: inherit; }
+p { margin: 0; }
+[hidden] { display: none !important; }
+.sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.spacer { flex: 1 1 auto; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+::selection { background: var(--accent); color: var(--on-accent); }
+
+.page {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 var(--gutter) 120px;
+}
+
+/* ── 3. Masthead ───────────────────────────────────────────────────────────
+   One bar. It started as a poster headline over a row of big tab cards; the
+   work is the canvas and the controls, so the header is now just a label,
+   the switch, and the two page toggles — and the stage gets the height. */
+
+.mast {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px 22px;
+    padding: 14px 0 0;
+    border-bottom: 2px solid var(--ink);
+}
+.back {
+    display: inline-grid; place-items: center; width: 30px; height: 30px; margin-left: -6px;
+    font-size: 16px; font-weight: 500; text-decoration: none;
+}
+.back .arrow { display: inline-block; transition: transform .3s var(--ease); }
+.back:hover .arrow { transform: translateX(-3px); }
+
+.title {
+    margin: 0; padding-bottom: 12px;
+    font-size: 22px; line-height: 1.1; font-weight: 700; letter-spacing: -.03em;
+    display: flex; align-items: baseline; column-gap: .3em; white-space: nowrap;
+}
+.title-main { display: inline-flex; overflow: hidden; }
+.title-main .ch {
+    display: inline-block;
+    transform: translateY(110%);
+    animation: rise .7s var(--ease) forwards;
+    animation-delay: calc(var(--i) * 35ms + 60ms);
+}
+.title-slash { color: var(--line-2); font-weight: 400; }
+
+/* The effect name: three words stacked in one slot, only the current one in
+   view. Switching slides the old one up and out and the new one up and in. */
+.title-mode {
+    position: relative; display: inline-grid; overflow: hidden;
+    color: var(--accent); transition: color .45s var(--ease);
+}
+.title-mode .word {
+    grid-area: 1 / 1;
+    transform: translateY(120%); opacity: 0;
+    transition: transform .55s var(--ease), opacity .3s var(--ease);
+}
+.title-mode .word.out { transform: translateY(-120%); opacity: 0; }
+.title-mode .word.on  { transform: translateY(0); opacity: 1; }
+.title-mode .word.ins { transition: none; }
+
+@keyframes rise { to { transform: translateY(0); } }
+
+/* Small round controls at the right of the bar. */
+.pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 30px; padding: 0 12px; margin-bottom: 12px;
+    border: 1px solid var(--line-2); border-radius: 999px;
+    background: transparent; cursor: pointer;
+    font-size: 12px; font-weight: 500;
+    transition: border-color .2s, background-color .2s, color .2s;
+}
+.pill:hover { border-color: var(--ink); }
+.pill[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* Theme switch: a disc that is half black, half white, and turns over. */
+.theme-btn {
+    width: 30px; height: 30px; padding: 0; margin-bottom: 12px; border-radius: 50%;
+    border: 1px solid var(--line-2); background: transparent; cursor: pointer;
+    display: inline-grid; place-items: center;
+    transition: border-color .2s;
+}
+.theme-btn:hover { border-color: var(--ink); }
+.theme-btn i {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: linear-gradient(90deg, var(--ink) 50%, transparent 50%);
+    box-shadow: inset 0 0 0 1.5px var(--ink);
+    transition: transform .6s var(--ease);
+}
+:root[data-theme="dark"] .theme-btn i { transform: rotate(180deg); }
+.back, .source-line { margin-bottom: 12px; }
+
+/* ── 4. Effect tabs ────────────────────────────────────────────────────── */
+
+.modes { position: relative; display: flex; align-self: stretch; }
+.mode {
+    position: relative; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 12px 12px;
+}
+.mode input { position: absolute; opacity: 0; pointer-events: none; }
+.mode-name { font-size: 14px; font-weight: 600; color: var(--ink-2); transition: color .25s; }
+.mode .glyph { width: 18px; height: 18px; color: var(--ink-3); transition: color .3s; }
+.mode:hover .mode-name, .mode input:checked ~ .mode-name { color: var(--ink); }
+.mode input:checked ~ .glyph { color: var(--accent); }
+.mode input:focus-visible ~ .mode-name { outline: 2px solid var(--blue); outline-offset: 3px; }
+
+/* The bar sits on the header's rule and slides to the chosen tab. fx.js
+   writes its position; the transition does the rest. */
+.mode-bar {
+    position: absolute; bottom: -2px; left: 0; height: 4px;
+    width: var(--w, 0);
+    transform: translateX(var(--x, 0));
+    background: var(--accent);
+    transition: transform .5s var(--ease), width .5s var(--ease), background-color .45s var(--ease);
+}
+
+.source-line {
+    display: inline-flex; align-items: center; gap: 8px; min-width: 0;
+    font-size: 12px; color: var(--ink-2);
+}
+.source-line b {
+    font-weight: 500; color: var(--ink-2);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 24ch;
+}
+.source-line.has b { color: var(--ink); }
+.source-line .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-2); transition: background-color .3s; }
+.source-line.has .dot { background: var(--accent); }
+
+/* ── 5. Glyphs — the small motion graphics ─────────────────────────────── */
+
+.glyph * { transform-box: fill-box; transform-origin: center; }
+.glyph circle, .glyph rect { fill: currentColor; }
+.glyph { overflow: visible; }
+
+/* Halftone: a lattice whose dots swell and shrink in a diagonal wave — tone
+   travelling through a screen. */
+.g-ht circle { animation: ht-wave 2.4s var(--ease-in-out) infinite; animation-delay: calc(var(--d) * 120ms); }
+@keyframes ht-wave { 0%, 100% { transform: scale(.35); } 50% { transform: scale(1); } }
+
+/* Stipple: dots that land one after another, like a pen working. */
+.g-sp circle { animation: sp-drop 2.8s var(--ease) infinite; animation-delay: calc(var(--d) * 170ms); opacity: 0; }
+@keyframes sp-drop {
+    0% { opacity: 0; transform: scale(0); }
+    12% { opacity: 1; transform: scale(1.25); }
+    20%, 78% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1); }
+}
+
+/* Tape: scanline bars that lose tracking and slip sideways. */
+.g-tp rect { animation: tp-slip 2.2s steps(1, end) infinite; animation-delay: calc(var(--d) * 90ms); }
+.g-tp rect.smear { animation: tp-smear 2.2s var(--ease-in-out) infinite; }
+@keyframes tp-slip {
+    0%, 62%, 100% { transform: translateX(0); }
+    66% { transform: translateX(6%); }
+    72% { transform: translateX(-4%); }
+    80% { transform: translateX(2%); }
+}
+@keyframes tp-smear { 0%, 100% { transform: translateX(-8%); opacity: .55; } 50% { transform: translateX(10%); opacity: 1; } }
+
+/* Small glyphs move only when they mean something: on the chosen tab, or the
+   one under the pointer. */
+.mode .glyph * { animation-play-state: paused; }
+.mode input:checked ~ .glyph *, .mode:hover .glyph * { animation-play-state: running; }
+.g-sp circle { opacity: 1; }
+.mode .g-sp circle { opacity: .9; }
+
+/* ── 6. Work area ──────────────────────────────────────────────────────── */
+
+.fx-mode { padding-top: 20px; }
+.work {
+    display: grid; grid-template-columns: 1fr; gap: 28px; align-items: start;
+}
+@media (min-width: 980px) {
+    .work { grid-template-columns: minmax(300px, 360px) 1fr; gap: 48px; }
+}
+
+/* Panel entrance: the stage first, then each section in turn. */
+.fx-mode.enter .stage { animation: fade-up .7s var(--ease) both; }
+.fx-mode.enter .sec   { animation: fade-up .6s var(--ease) both; animation-delay: calc(var(--n, 0) * 55ms + 80ms); }
+@keyframes fade-up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+.controls { display: flex; flex-direction: column; min-width: 0; }
+
+.sec { padding: 22px 0 26px; border-top: 1px solid var(--line); }
+.sec:first-child { border-top: 0; padding-top: 0; }
+.sec-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin: 0 0 18px; font-size: 18px; font-weight: 600; letter-spacing: -.01em;
+}
+.sec-num { font-size: 12px; font-weight: 500; color: var(--ink-3); min-width: 20px; }
+.sec-head .spacer { flex: 1; }
+.sec-body { display: flex; flex-direction: column; gap: 16px; }
+
+.label { font-size: 12px; font-weight: 500; color: var(--ink); }
+.fld { display: flex; flex-direction: column; gap: 8px; }
+
+/* Notes: the long explanations under each control. Hidden until asked for,
+   because a column of paragraphs is most of what made the old page busy. */
+.hint { display: none; font-size: 12.5px; line-height: 1.6; color: var(--ink-2); max-width: 60ch; }
+.hint strong { font-weight: 600; color: var(--ink); }
+.hint.keep, :root.notes .hint { display: block; }
+:root.notes .controls .hint { animation: fade-up .45s var(--ease) both; }
+
+.rule { height: 1px; background: var(--line); }
+
+/* Readouts */
+.readout { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; font-size: 13px; }
+.readout dt { color: var(--ink-2); }
+.readout dd { margin: 0; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── 7. Controls ───────────────────────────────────────────────────────── */
+
+/* Buttons. One shape: a flat rectangle. The fill sweeps in from the left on
+   hover, which is the only flourish a button gets. */
+.btn, .key {
+    position: relative; isolation: isolate; overflow: hidden;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 40px; padding: 0 18px;
+    border: 1.5px solid var(--ink); border-radius: 0;
+    background: transparent; color: var(--ink);
+    font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;
+    transition: color .3s var(--ease), border-color .3s;
+}
+.btn::before, .key::before {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background: var(--ink);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform .35s var(--ease);
+}
+.btn:hover:not(:disabled)::before, .key:hover:not(:disabled)::before { transform: scaleX(1); }
+.btn:hover:not(:disabled), .key:hover:not(:disabled) { color: var(--bg); }
+.btn:active:not(:disabled), .key:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled, .key:disabled { opacity: .35; cursor: not-allowed; }
+
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); min-width: 160px; }
+.btn-primary::before { background: var(--ink); }
+.btn-primary:disabled { background: transparent; border-color: var(--line-2); color: var(--ink-3); opacity: 1; }
+.btn-quiet { border-color: transparent; }
+.btn-quiet:hover:not(:disabled) { border-color: var(--ink); }
+.btn-sm, .stage-bar .key, .stage-bar .btn { min-height: 32px; padding: 0 12px; font-size: 12px; }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+/* Presets (built by the engines as .key). */
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+/* The engines write preset names in capitals. Lowercase, then capitalise
+   the first letter — which needs a block box, hence inline-block. */
+.presets .key {
+    display: inline-block; min-height: 30px; line-height: 28px; padding: 0 12px;
+    border-width: 1px; border-color: var(--line-2);
+    font-size: 12px; text-transform: lowercase;
+}
+.presets .key::first-letter { text-transform: uppercase; }
+.presets .key.latched { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.presets .key.latched::before { display: none; }
+
+/* Segmented choice: underlined words, not boxes. The underline grows in. */
+.seg { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.seg label { position: relative; cursor: pointer; }
+.seg input { position: absolute; opacity: 0; width: 0; height: 0; }
+.seg span {
+    display: inline-block; padding: 4px 0 6px;
+    font-size: 13px; font-weight: 500; color: var(--ink-2);
+    transition: color .2s;
+}
+.seg span::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: var(--accent); transform: scaleX(0); transform-origin: left;
+    transition: transform .35s var(--ease);
+}
+.seg label:hover span { color: var(--ink); }
+.seg input:checked + span { color: var(--ink); }
+.seg input:checked + span::after { transform: scaleX(1); }
+.seg input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* Sliders: hairline track, accent fill to the thumb, square thumb that grows
+   while held. fx.js keeps --p (the fill) in step with the value. */
+.sl { display: flex; flex-direction: column; gap: 6px; }
+.sl-top { display: flex; align-items: baseline; gap: 8px; }
+.sl-top .val {
+    margin-left: auto; font-size: 12px; font-weight: 500; color: var(--ink-2);
+    font-variant-numeric: tabular-nums; text-transform: lowercase;
+}
+.sl .label { position: relative; transition: color .2s; }
+/* A slider moved off its preset gets a dot, so you can see what you touched. */
+.sl.moved .label::after {
+    content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 8px; vertical-align: 2px;
+    border-radius: 50%; background: var(--accent);
+    animation: pop .35s var(--ease);
+}
+@keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+
+input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 20px; margin: 0; background: transparent; cursor: pointer;
+    --p: 50%;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent) var(--p), var(--line-2) var(--p));
+}
+input[type="range"]::-moz-range-track { height: 2px; background: var(--line-2); }
+input[type="range"]::-moz-range-progress { height: 2px; background: var(--accent); }
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; margin-top: -6px; border: 0; border-radius: 0;
+    background: var(--ink);
+    transition: transform .2s var(--ease), background-color .2s;
+}
+input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px; border: 0; border-radius: 0; background: var(--ink);
+    transition: transform .2s var(--ease), background-color .2s;
+}
+input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.2); }
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.45); background: var(--accent); }
+input[type="range"]:hover::-moz-range-thumb { transform: scale(1.2); }
+input[type="range"]:active::-moz-range-thumb { transform: scale(1.45); background: var(--accent); }
+input[type="range"]:disabled { opacity: .3; cursor: not-allowed; }
+.sl:has(input:disabled) .label, .sl:has(input:disabled) .val { opacity: .4; }
+
+/* Checkbox: a square that fills with the accent; the tick draws itself. */
+.chk { display: inline-flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
+.chk input { position: absolute; opacity: 0; width: 0; height: 0; }
+.chk .box {
+    position: relative; flex: 0 0 auto; width: 18px; height: 18px;
+    border: 1.5px solid var(--ink); transition: background-color .2s, border-color .2s;
+}
+.chk .box::after {
+    content: ""; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px;
+    border: solid var(--on-accent); border-width: 0 2px 2px 0;
+    transform: rotate(45deg) scale(0); transform-origin: 60% 60%;
+    transition: transform .3s var(--ease);
+}
+.chk input:checked + .box { background: var(--accent); border-color: var(--accent); }
+.chk input:checked + .box::after { transform: rotate(45deg) scale(1); }
+.chk input:focus-visible + .box { outline: 2px solid var(--blue); outline-offset: 2px; }
+.chk:has(input:disabled) { opacity: .4; cursor: not-allowed; }
+
+/* Select */
+.field {
+    width: 100%; height: 40px; padding: 0 36px 0 12px;
+    border: 1.5px solid var(--ink); border-radius: 0; background-color: var(--bg);
+    -webkit-appearance: none; appearance: none; cursor: pointer; font-size: 13px; font-weight: 500;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+    background-size: 5px 5px; background-repeat: no-repeat;
+}
+
+/* Colour */
+.colour-row { display: flex; align-items: center; gap: 12px; transition: opacity .2s; }
+.colour-row .label { flex: 1 1 auto; }
+.colour-row.off { opacity: .35; }
+.hexo { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+input[type="color"] {
+    width: 36px; height: 36px; padding: 0; border: 1.5px solid var(--ink); border-radius: 50%;
+    background: none; cursor: pointer; overflow: hidden;
+    transition: transform .2s var(--ease);
+}
+input[type="color"]:hover { transform: scale(1.08); }
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
+input[type="color"]::-moz-color-swatch { border: 0; border-radius: 50%; }
+input[type="color"]:disabled { cursor: not-allowed; }
+
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.swatches .sw {
+    width: 22px; height: 22px; min-height: 0; padding: 0; border-radius: 50%;
+    border: 1px solid var(--line-2);
+    transition: transform .2s var(--ease);
+}
+.swatches .sw::before { display: none; }
+.swatches .sw:hover { transform: scale(1.18); border-color: var(--ink); }
+
+.angles { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.angles span { display: inline-flex; align-items: center; gap: 6px; }
+.angles i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+/* Halftone's live tint strip */
+.strip { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.strip canvas { display: block; height: 26px; max-width: 100%; }
+.strip .label { color: var(--ink-2); font-weight: 400; }
+
+/* ── 8. Stage ──────────────────────────────────────────────────────────── */
+
+.stage { display: flex; flex-direction: column; min-width: 0; order: -1; }
+@media (min-width: 980px) { .stage { order: 0; position: sticky; top: 16px; } }
+
+.stage-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding-bottom: 12px;
+}
+.stage-bar .key {
+    display: inline-block; line-height: 30px; border-width: 1px; border-color: var(--line-2);
+    text-transform: lowercase;
+}
+.stage-bar .key::first-letter { text-transform: uppercase; }
+.stage-bar .key[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.status { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; }
+.status .label, .zoomval { display: inline-block; text-transform: lowercase; }
+.status .label::first-letter, .zoomval::first-letter { text-transform: uppercase; }
+.zoomval { font-size: 12px; font-weight: 500; min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* The engines set className to 'led', 'led on' (working) or 'led on green'
+   (ready). Working pulses; ready holds still. */
+.led { width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); flex: 0 0 auto; transition: background-color .3s; }
+.led.on { background: var(--accent); animation: pulse 1s var(--ease-in-out) infinite; }
+.led.on.green { animation: none; }
+@keyframes pulse { 50% { transform: scale(.55); opacity: .5; } }
+
+.canvas-wrap {
+    position: relative;
+    /* The window, less the bar above it, the stage's own bar and foot, and
+       the dock. */
+    height: max(380px, calc(100vh - 232px));
+    overflow: hidden; touch-action: none;
+    background-color: var(--well);
+    transition: background-color .45s var(--ease);
+}
+/* Transparency check only once there is something to see through. */
+.canvas-wrap.has-img {
+    background-image: repeating-conic-gradient(var(--check) 0% 25%, transparent 0% 50%);
+    background-size: 18px 18px;
+    cursor: grab;
+}
+.canvas-wrap.panning { cursor: grabbing; }
+.canvas-wrap > canvas:not(.fit) { display: block; position: absolute; inset: 0; }
+.canvas-wrap .fit {
+    position: absolute; inset: 0; margin: auto;
+    max-width: calc(100% - 32px); max-height: calc(100% - 32px);
+}
+#fx-stipple .canvas-wrap.has-img { cursor: default; }
+
+/* Dragging a file over: marching ants in the accent. */
+.canvas-wrap.drag::after {
+    content: ""; position: absolute; inset: 10px; pointer-events: none;
+    background:
+        linear-gradient(90deg, var(--accent) 50%, transparent 0) repeat-x 0 0 / 16px 2px,
+        linear-gradient(90deg, var(--accent) 50%, transparent 0) repeat-x 0 100% / 16px 2px,
+        linear-gradient(0deg, var(--accent) 50%, transparent 0) repeat-y 0 0 / 2px 16px,
+        linear-gradient(0deg, var(--accent) 50%, transparent 0) repeat-y 100% 0 / 2px 16px;
+    animation: ants .6s linear infinite;
+}
+@keyframes ants { to { background-position: 16px 0, -16px 100%, 0 -16px, 100% 16px; } }
+
+.drop-hint {
+    position: absolute; inset: 0; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    text-align: center; padding: 24px;
+}
+.drop-hint .glyph { width: clamp(96px, 14vw, 150px); height: auto; color: var(--accent); margin-bottom: 10px; }
+.drop-title { font-size: clamp(22px, 2.6vw, 32px); font-weight: 600; letter-spacing: -.02em; }
+.drop-sub { font-size: 13px; color: var(--ink-2); }
+
+.prog { position: absolute; left: 0; right: 0; top: 0; height: 3px; z-index: 2; }
+.prog i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 90ms linear; }
+
+.stage-foot {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 24px;
+    padding-top: 12px; font-size: 12px; color: var(--ink-2);
+}
+.stat { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.stat b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.stat-help { display: none; }
+@media (min-width: 760px) { .stat-help { display: inline-flex; } }
+
+.nosupport { padding: 20px; border-left: 4px solid var(--red); background: var(--well); }
+.nosupport .tag { font-weight: 600; margin-right: 8px; }
+
+/* ── 9. Dock ───────────────────────────────────────────────────────────── */
+
+.dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-top: 1px solid var(--line);
+    padding: 12px var(--gutter); padding-bottom: max(12px, env(safe-area-inset-bottom));
+    animation: dock-in .6s var(--ease) both .2s;
+    transition: background-color .45s var(--ease), border-color .45s;
+}
+@keyframes dock-in { from { transform: translateY(100%); } to { transform: none; } }
+.dock-inner { max-width: 1440px; margin: 0 auto; display: flex; align-items: center; gap: 8px; }
+.dock-stat {
+    display: inline-block; font-size: 12px; font-weight: 500; color: var(--ink-2);
+    font-variant-numeric: tabular-nums; text-transform: lowercase;
+}
+.dock-stat::first-letter { text-transform: uppercase; }
+@media (max-width: 560px) {
+    .dock .key-lbl, .dock-stat { display: none; }
+    .btn-primary { min-width: 0; }
+    .dock .btn { padding: 0 12px; }
+}
+
+/* ── 10. Toast ─────────────────────────────────────────────────────────── */
+
+.toast {
+    position: fixed; left: var(--gutter); bottom: 84px; z-index: 60;
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 18px 12px 14px; max-width: calc(100vw - 2 * var(--gutter));
+    background: var(--ink); color: var(--bg);
+    font-size: 12px; font-weight: 500; letter-spacing: .04em;
+    transform: translateY(calc(100% + 100px)); opacity: 0;
+    transition: transform .45s var(--ease), opacity .3s;
+}
+.toast::before { content: ""; width: 4px; align-self: stretch; background: var(--accent); }
+.toast.bad::before { background: var(--red); }
+.toast.up { transform: none; opacity: 1; }
+
+/* ── 11. Footer ────────────────────────────────────────────────────────── */
+
+.foot {
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    margin-top: 56px; padding-top: 20px; border-top: 2px solid var(--ink);
+    font-size: 13px; color: var(--ink-2);
+}
+.foot a { font-weight: 500; color: var(--ink); text-decoration: none; background: linear-gradient(var(--accent), var(--accent)) 0 100% / 0 2px no-repeat; transition: background-size .35s var(--ease); }
+.foot a:hover { background-size: 100% 2px; }
+
+/* ── 12. Small screens ─────────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+    /* The tabs take their own full-width row under the title. */
+    .mast { gap: 8px 10px; }
+    .title { font-size: 18px; }
+    .modes { order: 10; flex: 1 1 100%; justify-content: space-between; }
+    .mode { flex: 1 1 0; justify-content: center; padding: 8px 6px 12px; }
+    .source-line { display: none; }
+    .stat-help { display: none; }
+    .canvas-wrap { height: max(320px, 58vh); }
+}
+
+/* ── 13. Reduced motion ────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 1ms !important; animation-iteration-count: 1 !important;
+        animation-delay: 0ms !important; transition-duration: 1ms !important;
+    }
+    .glyph * { animation: none !important; transform: none !important; opacity: 1 !important; }
+}

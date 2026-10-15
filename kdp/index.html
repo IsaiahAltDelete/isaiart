@@ -3,121 +3,252 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KDP COVER STUDIO</title>
-<meta name="description" content="Build a print-ready KDP paperback cover: front, back, spine, bleed and barcode area, exported as a 300 DPI PDF.">
+<title>KDP Studio</title>
+<meta name="description" content="Print-ready KDP books in one place: turn line art into 300 DPI coloring page interiors, then build the paperback cover wrap with spine, bleed and barcode area, exported as a 300 DPI PDF.">
 <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+
+<!-- Which tab shows, decided before first paint so the other never flashes:
+     #interior or #cover in the URL wins, then the last tab used, then COVER.
+     The coloring-page tool (/coloringbook) redirects here as #interior. -->
+<script>
+(function () {
+    var h = (location.hash || '').slice(1).toLowerCase(), t = null;
+    if (h === 'interior' || h === 'cover') t = h;
+    else { try { t = localStorage.getItem('isa.kdp.tab'); } catch (e) {} }
+    document.documentElement.setAttribute('data-kdp-tab', t === 'interior' ? 'interior' : 'cover');
+    /* White first; studio.js's theme button flips it and remembers. */
+    var th = 'light';
+    try { th = localStorage.getItem('isa.studio.theme') || 'light'; } catch (e) {}
+    document.documentElement.setAttribute('data-theme', th === 'dark' ? 'dark' : 'light');
+})();
+</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <!-- Spine faces -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@800&family=Playfair+Display:wght@800&family=Fredoka:wght@700&family=Bebas+Neue&family=Merriweather:wght@700&family=Caveat+Brush&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/studio.css?v=5">
+<link rel="stylesheet" href="kdp.css?v=3">
 
-<style>
-/* ── Slot cards ───────────────────────────────────────────────────────
-   One per image the cover holds; each is a selector and a drop target.
-   The selected card gets the red ring the metadata page uses on focus,
-   and the canvas rings the same image. */
-/* minmax(0, 1fr) and min-width: 0, so a long filename is truncated by
-   its card instead of widening the card, the grid and the sidebar. */
-.slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.slot {
-    position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0;
-    padding: 8px 8px 10px; border-radius: 12px; text-align: left; cursor: pointer;
-    background: #fff; border: 1px solid var(--g200);
-    transition: border-color .2s ease, box-shadow .2s ease, transform .12s ease, background-color .2s ease;
-}
-.slot:hover { border-color: var(--g300); box-shadow: var(--shadow-subtle); }
-.slot:active { transform: scale(.98); }
-/* Selected card: a slowly moving holographic border. */
-.slot[aria-selected="true"] {
-    border-color: transparent; box-shadow: 0 0 0 3px var(--accent-ring), 0 10px 24px -14px rgba(106, 75, 255, .55);
-    background: linear-gradient(#fff, #fff) padding-box, var(--iri) border-box; background-size: 100% 100%, 300% 100%;
-    animation: iri-border 5s linear infinite;
-}
-.slot.over { border-color: var(--accent); background: var(--accent-50); transform: scale(1.01); }
-.slot .thumb {
-    position: relative; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden;
-    background: var(--g100); border: 2px dashed var(--g300);
-    display: grid; place-items: center; color: var(--g400);
-    transition: border-color .3s ease, color .3s ease, background-color .3s ease;
-}
-.slot:hover .thumb { border-color: #a99cff; color: var(--accent-hover); background: var(--iri-soft); }
-.slot { transition: border-color .2s ease, box-shadow .3s ease, transform .3s var(--spring), background-color .2s ease; }
-.slot:hover { transform: translateY(-2px); }
-.slot .thumb img { transition: opacity .3s ease, transform .6s var(--ease); }
-.slot:hover .thumb img.on { transform: scale(1.05); }
-.slot.filled .thumb { border: 0; }
-.slot .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .3s ease; }
-.slot .thumb img.on { opacity: 1; }
-.slot .thumb .material-symbols-outlined { font-size: 28px; }
-.slot .meta { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 2px; }
-.slot .meta b { font-size: 13px; font-weight: 600; color: var(--g700); white-space: nowrap; }
-.slot .meta .badge { margin-left: auto; height: 20px; font-size: 10.5px; padding: 0 6px; }
-.slot .sub { padding: 0 2px; font-size: 11.5px; color: var(--g500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -6px; }
-
-.selctl { display: flex; flex-direction: column; gap: 14px; padding: 14px; border-radius: 12px; background: var(--g100); border: 1px solid var(--g200); animation: card-in .3s ease both; }
-.selctl .seg:not(.tabs) { background: var(--g200); }
-.selctl-h { display: flex; align-items: center; gap: 2px; }
-.selctl-h #selName { font-size: 14px; font-weight: 600; color: var(--g700); margin-right: auto; }
-
-.num { display: flex; align-items: center; gap: 6px; }
-.num .input { text-align: center; padding: 0 6px; }
-.num .btn { flex: none; }
-
-.warnline { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: #b45309;
-            padding: 8px 12px; border-radius: 8px; background: var(--warn-50); border: 1px solid #fde68a; }
-.warnline .material-symbols-outlined { font-size: 18px; }
-
-.patterns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-.pat {
-    display: flex; flex-direction: column; padding: 0; overflow: hidden; cursor: pointer;
-    background: #fff; border: 1px solid var(--g200); border-radius: 8px;
-    transition: border-color .2s ease, box-shadow .2s ease, transform .15s ease;
-}
-.pat:hover { border-color: var(--g300); transform: translateY(-1px); box-shadow: var(--shadow-subtle); }
-.pat[aria-checked="true"] {
-    border-color: transparent; box-shadow: 0 0 0 3px var(--accent-ring);
-    background: linear-gradient(#fff, #fff) padding-box, var(--iri) border-box; background-size: 100% 100%, 300% 100%;
-    animation: iri-border 5s linear infinite;
-}
-.pat canvas { transition: transform .5s var(--ease); }
-.pat:hover canvas { transform: scale(1.06); }
-.pat:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.pat canvas { display: block; width: 100%; aspect-ratio: 7 / 5; }
-.pat span { padding: 3px 2px 4px; font-size: 10.5px; font-weight: 500; color: var(--g600); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dropper { flex: none; }
-.dropper:hover { color: var(--accent); }
-.canvas-wrap.picking, .canvas-wrap.picking * { cursor: crosshair !important; }
-
-/* The view switch floats in the preview's top-left, matching the zoom pill. */
-.viewseg { background: rgba(255,255,255,.94) !important; box-shadow: var(--shadow-md); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-.viewseg label { min-height: 28px !important; padding: 0 10px !important; font-size: 12.5px !important; }
-.viewseg .material-symbols-outlined { font-size: 17px; }
-@media (max-width: 560px) { .viewseg .material-symbols-outlined { display: none; } }
-/* On a phone the view switch takes the top edge; zoom drops to the bottom corner. */
-@media (max-width: 560px) { .float.tr { top: auto; bottom: 10px; } }
-
-.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
-.legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--g500); }
-.legend i { width: 14px; height: 0; border-top: 2px solid; }
-.legend i.box { height: 10px; border: 0; border-radius: 3px; }
-</style>
 </head>
 <body>
 
 <div class="shell">
 
-    <header class="head">
-        <a class="back" href="https://isaiart.com"><span class="material-symbols-outlined">arrow_back</span>isaiart</a>
-        <h1><span class="material-symbols-outlined">menu_book</span>KDP Cover Studio</h1>
-        <p>Paperback wrap covers with the spine, bleed and barcode area worked out for you.</p>
+    <header class="mast">
+        <a class="back" href="https://isaiart.com" aria-label="Back to isaiart.com"><span class="arrow">&larr;</span></a>
+
+        <h1 class="title">
+            <span class="title-main" data-split>KDP Studio</span>
+            <span class="title-slash" aria-hidden="true">/</span>
+            <span class="title-mode" aria-live="polite">
+                <span class="word" data-word="interior">Interior</span>
+                <span class="word" data-word="cover">Cover</span>
+            </span>
+        </h1>
+
+        <div class="seg tabs" id="studioTabs" role="radiogroup" aria-label="Tool">
+            <label title="Remove grays, sharpen lines and upscale line art to print-ready pages"><input type="radio" name="studioTab" value="interior"><svg class="glyph g-in" viewBox="0 0 40 40" aria-hidden="true"><rect class="sheet" x="7" y="3" width="26" height="34"/><rect class="shade" x="12" y="20" width="16" height="10"/><path class="ln" style="--d:0" d="M12 11h16"/><path class="ln" style="--d:1" d="M12 17c4-3 8 3 16 0"/><path class="ln" style="--d:2" d="M12 25c5 4 11-4 16 0"/></svg>Interior</label>
+            <label title="Paperback wrap covers with the spine, bleed and barcode area worked out for you"><input type="radio" name="studioTab" value="cover" checked><svg class="glyph g-cv" viewBox="0 0 40 40" aria-hidden="true"><rect class="back" x="2" y="8" width="16" height="24"/><rect class="spine" x="18" y="8" width="4" height="24"/><rect class="front" x="22" y="8" width="16" height="24"/></svg>Cover</label>
+        </div>
+
+        <span class="spacer"></span>
+        <button class="theme-btn" type="button" id="themeBtn" aria-label="Switch between light and dark"><i></i></button>
     </header>
 
+    <main class="tools">
 
-    <main class="content">
+    <!-- ══ INTERIOR — line art to coloring pages (coloringbook.js) ═════════
+         Ids shared with the cover tool carry a cb- prefix. -->
+    <div class="tool" id="tab-interior" data-tab="interior">
+
+    <div class="content">
+
+        <aside class="sidebar">
+
+            <details class="panel rise" style="--i:0" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">collections</span>
+                    <h2>Pages</h2>
+                    <span class="badge" id="qCount">0</span>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <input type="file" id="cb-file" accept="image/*" multiple class="sr-only">
+                    <div class="drop" id="pickBtn" role="button" tabindex="0">
+                        <span class="material-symbols-outlined">upload_file</span>
+                        <b>Drop images here</b>
+                        <span class="s">or click to select</span>
+                    </div>
+                    <div class="queue scroll" id="queue" role="list" aria-label="Pages"></div>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:1" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">invert_colors_off</span>
+                    <h2>Grays</h2>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <div class="ctl" data-def="125">
+                        <div class="ctl-top"><label for="cut">Ink cutoff</label><output id="cutVal">125</output></div>
+                        <input class="range" type="range" id="cut" min="40" max="220" step="1" value="125">
+                        <p class="help">Raise if faint lines vanish. Lower if shading survives.</p>
+                    </div>
+                    <div class="ctl" data-def="8">
+                        <div class="ctl-top"><label for="speck">Despeckle</label><output id="speckVal">8 px</output></div>
+                        <input class="range" type="range" id="speck" min="0" max="120" step="1" value="8">
+                    </div>
+                    <label class="switch"><input type="checkbox" id="flatten" checked><span class="track"></span><span>Flatten paper</span></label>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:2" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">gesture</span>
+                    <h2>Lines</h2>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <div class="ctl" data-def="0">
+                        <div class="ctl-top"><label for="weight">Line weight</label><output id="weightVal">0</output></div>
+                        <input class="range" type="range" id="weight" min="-5" max="5" step="0.5" value="0">
+                    </div>
+                    <div class="ctl" data-def="35">
+                        <div class="ctl-top"><label for="smooth">Smoothing</label><output id="smoothVal">35%</output></div>
+                        <input class="range" type="range" id="smooth" min="0" max="100" step="1" value="35">
+                    </div>
+                    <div class="seg" role="radiogroup" aria-label="Edges">
+                        <label><input type="radio" name="edges" value="smooth" checked>Smooth edges</label>
+                        <label><input type="radio" name="edges" value="bw">Pure B&amp;W</label>
+                    </div>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:3" open>
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">print</span>
+                    <h2>Print</h2>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <div class="ctl">
+                        <div class="ctl-top"><label for="page">Page size</label></div>
+                        <select class="select" id="page">
+                            <option value="letter" selected>US Letter · 8.5 × 11 in</option>
+                            <option value="a4">A4 · 210 × 297 mm</option>
+                            <option value="8x10">8 × 10 in</option>
+                            <option value="square">Square · 8.5 × 8.5 in</option>
+                            <option value="6x9">6 × 9 in</option>
+                            <option value="none">No page · upscale only</option>
+                        </select>
+                    </div>
+                    <div class="seg" role="radiogroup" aria-label="Resolution">
+                        <label><input type="radio" name="dpi" value="300" checked>300 DPI</label>
+                        <label><input type="radio" name="dpi" value="600">600 DPI</label>
+                    </div>
+                    <div class="seg" role="radiogroup" aria-label="Layout" id="pageOnly">
+                        <label><input type="radio" name="layout" value="page" checked>Full page</label>
+                        <label><input type="radio" name="layout" value="fit">Art only</label>
+                    </div>
+                    <div class="ctl" data-def="0.25" id="marginRow">
+                        <div class="ctl-top"><label for="margin">Margin</label><output id="marginVal">0.25 in</output></div>
+                        <input class="range" type="range" id="margin" min="0" max="1" step="0.125" value="0.25">
+                    </div>
+                    <div class="seg" role="radiogroup" aria-label="Scale" id="factorRow" hidden>
+                        <label><input type="radio" name="factor" value="2">2×</label>
+                        <label><input type="radio" name="factor" value="3" checked>3×</label>
+                        <label><input type="radio" name="factor" value="4">4×</label>
+                        <label><input type="radio" name="factor" value="6">6×</label>
+                    </div>
+                    <div class="vit">
+                        <div><span class="v num" id="oK">—</span><span class="label">Upscale</span></div>
+                        <div><span class="v num" id="cb-oW">—</span><span class="label">Width</span></div>
+                        <div><span class="v num" id="cb-oH">—</span><span class="label">Height</span></div>
+                    </div>
+                    <div class="stats">
+                        <div class="stat"><span>Output</span><b id="oDim">—</b></div>
+                        <div class="stat"><span>Source</span><b id="oSrc">—</b></div>
+                    </div>
+                    <p class="help">Making a paperback? Build its wrap in the <a href="#cover">Cover</a> tab, at the same trim size and page count.</p>
+                </div></div>
+            </details>
+
+            <details class="panel rise" style="--i:4">
+                <summary class="panel-h">
+                    <span class="material-symbols-outlined">analytics</span>
+                    <h2>Report</h2>
+                    <span class="material-symbols-outlined chev">chevron_right</span>
+                </summary>
+                <div class="panel-body-wrap"><div class="panel-b">
+                    <div class="stats">
+                        <div class="stat"><span>Ink coverage</span><b id="rInk">—</b></div>
+                        <div class="stat"><span>Gray removed</span><b id="rGrey">—</b></div>
+                        <div class="stat"><span>Specks removed</span><b id="rSpeck">—</b></div>
+                        <div class="stat"><span>Black point</span><b id="rBlack">—</b></div>
+                        <div class="stat"><span>Render time</span><b id="fMs">—</b></div>
+                    </div>
+                </div></div>
+            </details>
+
+        </aside>
+
+        <section class="stage">
+            <div class="canvas-wrap" id="cb-wrap">
+                <div class="progress" id="cb-prog"><i></i></div>
+                <canvas id="cb-view"></canvas>
+                <div class="float tl">
+                    <div class="seg viewseg" role="radiogroup" aria-label="View">
+                        <label><input type="radio" name="view" value="result" checked>Result</label>
+                        <label><input type="radio" name="view" value="split">Split</label>
+                        <label><input type="radio" name="view" value="source">Before</label>
+                        <label><input type="radio" name="view" value="removed">Removed</label>
+                    </div>
+                </div>
+                <div class="float tr">
+                    <div class="zoom">
+                        <button class="btn" type="button" id="cb-zOut" aria-label="Zoom out"><span class="material-symbols-outlined">remove</span></button>
+                        <output id="cb-zVal">—</output>
+                        <button class="btn" type="button" id="cb-zIn" aria-label="Zoom in"><span class="material-symbols-outlined">add</span></button>
+                        <button class="btn fitb" type="button" id="zOne">1:1</button>
+                        <button class="btn fitb" type="button" id="cb-zFit">Fit</button>
+                    </div>
+                </div>
+                <div class="float bl" id="legend" hidden>
+                    <div class="legend">
+                        <span><i style="background:#262a2f"></i>Kept</span>
+                        <span><i style="background:#e5484d"></i>Gray removed</span>
+                        <span><i style="background:#ffb000"></i>Speck removed</span>
+                    </div>
+                </div>
+                <div class="empty" id="cb-empty">
+                    <div class="empty-card">
+                        <svg class="glyph g-in" viewBox="0 0 40 40" aria-hidden="true"><rect class="sheet" x="7" y="3" width="26" height="34"/><rect class="shade" x="12" y="20" width="16" height="10"/><path class="ln" style="--d:0" d="M12 11h16"/><path class="ln" style="--d:1" d="M12 17c4-3 8 3 16 0"/><path class="ln" style="--d:2" d="M12 25c5 4 11-4 16 0"/></svg>
+                        <h3>Drop line art</h3>
+                        <p>One page or a whole book — or paste from the clipboard</p>
+                        <button class="btn primary" type="button" id="cb-browseBtn">Choose images</button>
+                    </div>
+                </div>
+            </div>
+            <div class="actions">
+                <div class="stage-foot"><b id="fOut">—</b><span id="vStat"></span></div>
+                <span class="grow"></span>
+                <button class="btn ghost danger" type="button" id="resetBtn"><span class="material-symbols-outlined">delete_sweep</span>Clear</button>
+                <button class="btn dark" type="button" id="zipBtn" disabled><span class="material-symbols-outlined">folder_zip</span>ZIP</button>
+                <button class="btn primary" type="button" id="cb-pdfBtn" disabled><span class="material-symbols-outlined">picture_as_pdf</span>PDF Book</button>
+                <button class="btn go" type="button" id="saveBtn" disabled><span class="material-symbols-outlined">download</span>Save PNG</button>
+            </div>
+        </section>
+
+    </div>
+    </div>
+
+    <!-- ══ COVER — the paperback wrap (kdp.js) ═════════════════════════════ -->
+    <div class="tool" id="tab-cover" data-tab="cover">
+
+    <div class="content">
 
         <aside class="sidebar">
 
@@ -384,10 +515,10 @@
                 </div>
                 <div class="empty" id="empty">
                     <div class="empty-card">
-                        <span class="material-symbols-outlined big">upload_file</span>
-                        <h3>Drop Cover Art Here</h3>
-                        <p>Front first, then back</p>
-                        <button class="btn primary" type="button" id="browseBtn"><span class="material-symbols-outlined">add_photo_alternate</span>Choose Images</button>
+                        <svg class="glyph g-cv" viewBox="0 0 40 40" aria-hidden="true"><rect class="back" x="2" y="8" width="16" height="24"/><rect class="spine" x="18" y="8" width="4" height="24"/><rect class="front" x="22" y="8" width="16" height="24"/></svg>
+                        <h3>Drop cover art</h3>
+                        <p>Front first, then back — or paste from the clipboard</p>
+                        <button class="btn primary" type="button" id="browseBtn">Choose images</button>
                     </div>
                 </div>
             </div>
@@ -399,11 +530,90 @@
             </div>
         </section>
 
+    </div>
+    </div>
+
     </main>
 </div>
 
 <script src="../assets/studio.js?v=3"></script>
 <script src="../assets/print.js?v=1"></script>
-<script src="kdp.js?v=6"></script>
+<script src="lineart.js?v=2"></script>
+<script src="coloringbook.js?v=3"></script>
+<script src="kdp.js?v=7"></script>
+<script>
+/* ── Tab switch ──────────────────────────────────────────────────────────
+   The head stamped data-kdp-tab before paint; this keeps the radios, the
+   URL hash and the remembered tab in step with it. A plain #cover or
+   #interior link anywhere on the page switches too (hashchange). Each tool
+   listens for 'kdp:tab' if it needs to tidy up when it is left. */
+(function () {
+    'use strict';
+    var KEY = 'isa.kdp.tab', html = document.documentElement;
+    var bar = document.getElementById('studioTabs');
+    var radios = bar.querySelectorAll('input[name="studioTab"]');
+
+    /* Title: letters rise in; the tool's name swaps by sliding up. */
+    Array.prototype.forEach.call(document.querySelectorAll('[data-split]'), function (node) {
+        var text = node.textContent;
+        node.setAttribute('aria-label', text);
+        node.textContent = '';
+        text.split('').forEach(function (ch, i) {
+            var c = document.createElement('span');
+            c.className = ch === ' ' ? 'ch sp' : 'ch';
+            c.setAttribute('aria-hidden', 'true');
+            c.style.setProperty('--i', i);
+            c.textContent = ch === ' ' ? ' ' : ch;
+            node.appendChild(c);
+        });
+    });
+    var words = document.querySelectorAll('.title-mode .word');
+    function swapWord(t) {
+        Array.prototype.forEach.call(words, function (w) {
+            if (w.getAttribute('data-word') === t) {
+                w.classList.add('ins'); w.classList.remove('on', 'out');
+                void w.offsetWidth;
+                w.classList.remove('ins'); w.classList.add('on');
+            } else if (w.classList.contains('on')) {
+                w.classList.remove('on'); w.classList.add('out');
+            } else {
+                w.classList.remove('out');
+            }
+        });
+    }
+
+    function setTab(t, fromUser) {
+        t = t === 'interior' ? 'interior' : 'cover';
+        var was = html.getAttribute('data-kdp-tab');
+        html.setAttribute('data-kdp-tab', t);
+        Array.prototype.forEach.call(radios, function (r) { r.checked = r.value === t; });
+        if (window.STUDIO && bar._pill) STUDIO.syncSeg(bar);
+        swapWord(t);
+        /* The arriving tool's sections rise in again. */
+        if (was !== t) {
+            var pane = document.getElementById('tab-' + t);
+            Array.prototype.forEach.call(pane.querySelectorAll('.rise, .stage'), function (n) {
+                n.style.animation = 'none'; void n.offsetWidth; n.style.animation = '';
+            });
+        }
+        if (fromUser) {
+            if (location.hash !== '#' + t) {
+                try { history.replaceState(history.state, '', location.pathname + location.search + '#' + t); } catch (e) {}
+            }
+            try { localStorage.setItem(KEY, t); } catch (e) {}
+        }
+        if (was !== t) document.dispatchEvent(new CustomEvent('kdp:tab', { detail: t }));
+    }
+
+    Array.prototype.forEach.call(radios, function (r) {
+        r.addEventListener('change', function () { if (this.checked) setTab(this.value, true); });
+    });
+    window.addEventListener('hashchange', function () {
+        var h = location.hash.slice(1).toLowerCase();
+        if (h === 'interior' || h === 'cover') setTab(h, true);
+    });
+    setTab(html.getAttribute('data-kdp-tab'), false);
+})();
+</script>
 </body>
 </html>

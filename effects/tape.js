@@ -26,14 +26,13 @@
     'use strict';
 
     var S = window.SRCH;
-    var el = function (id) { return document.getElementById(id); };
-
-    /* ── Header furniture ────────────────────────────────────────────────── */
-    if (window.CAS) CAS.bootOnce(el('headScreen'));
-    S.clock(el('clock'));
-    var trace = S.scope(el('scope'));
-    S.themeSwitch(el('themeSw'), function () { if (trace) trace.repaint(); });
-    if (window.CAS) CAS.pageTransition();
+    /* Shares effects/index.html with plate.js and stipple.js: every id here
+       carries the tp- prefix (el() adds it) and queries stay inside this
+       panel. The header — and with it the theme switch — belongs to fx.js. */
+    var MODE = 'tape', PFX = 'tp-';
+    var root = FX.root(MODE);
+    var el = FX.el(PFX);
+    function key(s) { return s.id.slice(PFX.length); }
 
     /* ── GL boot ─────────────────────────────────────────────────────────── */
 
@@ -265,11 +264,11 @@
     var DEFAULT_PRESET = 'WORKOUT TAPE';
     var activePreset = DEFAULT_PRESET;
 
-    var sliders = Array.prototype.slice.call(document.querySelectorAll('input[data-u]'));
+    var sliders = Array.prototype.slice.call(root.querySelectorAll('input[data-u]'));
 
     function params() {
         var o = {};
-        sliders.forEach(function (s) { o[s.id] = parseFloat(s.value); });
+        sliders.forEach(function (s) { o[key(s)] = parseFloat(s.value); });
         return o;
     }
 
@@ -284,7 +283,7 @@
         sliders.forEach(function (s) {
             var row = s.closest('.sl');
             row.querySelector('.val').textContent = fmt(s);
-            var base = PRESETS[activePreset] && PRESETS[activePreset][s.id];
+            var base = PRESETS[activePreset] && PRESETS[activePreset][key(s)];
             row.classList.toggle('moved', base !== undefined && parseFloat(s.value) !== base);
         });
     }
@@ -294,7 +293,7 @@
         if (!p) return;
         activePreset = name;
         sliders.forEach(function (s) {
-            if (p[s.id] !== undefined) s.value = p[s.id];
+            if (p[key(s)] !== undefined) s.value = p[key(s)];
         });
         Array.prototype.forEach.call(el('presets').children, function (b) {
             b.classList.toggle('latched', b.textContent === name);
@@ -419,6 +418,7 @@
 
             st.name = file.name || 'pasted';
             st.srcCanvas = c;
+            FX.loaded(MODE, file);
             imgW = w; imgH = h;
             glCanvas.width = w; glCanvas.height = h;
 
@@ -550,12 +550,7 @@
     wrap.addEventListener('drop', function (e) {
         if (e.dataTransfer && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
     });
-    document.addEventListener('paste', function (e) {
-        var items = (e.clipboardData || {}).items || [];
-        for (var i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') === 0) { loadFile(items[i].getAsFile()); break; }
-        }
-    });
+    /* Paste is routed by fx.js to whichever effect is on screen. */
 
     /* Hold, not toggle: an A/B you have to keep holding is much easier to judge
        than one you have to remember the state of. */
@@ -645,4 +640,5 @@
     applyPreset(DEFAULT_PRESET);
     syncLabels();
     draw();
+    FX.register(MODE, { load: loadFile });
 })();

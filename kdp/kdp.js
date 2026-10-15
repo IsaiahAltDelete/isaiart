@@ -19,6 +19,10 @@
 
     var S = window.STUDIO, P = window.PRINTENC;
     var el = function (id) { return document.getElementById(id); };
+    /* KDP Studio holds this and the coloring-page tool on one page, so every
+       non-id query is scoped to the COVER tab. */
+    var root = el('tab-cover');
+    function active() { return document.documentElement.getAttribute('data-kdp-tab') !== 'interior'; }
 
     var DPI = 300, BLEED = 0.125, SAFE = 0.125, SPINE_SAFE = 0.0625, SPINE_TEXT_MIN = 80;
 
@@ -896,6 +900,8 @@
         vp.redraw();
     }
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && picking) endPick(); });
+    /* Leaving for the INTERIOR tab drops an unfinished pick. */
+    document.addEventListener('kdp:tab', function (e) { if (e.detail !== 'cover' && picking) endPick(); });
 
     function panelAt(pt) {
         var g = G();
@@ -1021,7 +1027,11 @@
         this.value = '';
     });
     el('browseBtn').addEventListener('click', function () { pick(null); });
-    S.fileDrop(function (files, e) { if (!e._taken) place(files, e); }, 'Drop to add to the cover');
+    /* The window-wide drop and paste are shared with the INTERIOR tab:
+       only the visible tab takes the files, and only its veil shows. */
+    S.fileDrop(function (files, e) { if (active() && !e._taken) place(files, e); }, 'Drop to add to the cover');
+    var veils = document.querySelectorAll('.dropveil');
+    veils[veils.length - 1].setAttribute('data-tab', 'cover');
 
     function slotName(id) { for (var i = 0; i < SLOT_DEFS.length; i++) if (SLOT_DEFS[i].id === id) return SLOT_DEFS[i].name; return id; }
 
@@ -1092,7 +1102,7 @@
         el('fitRow').hidden = el('zoomRow').hidden = el('posRow').hidden = tpl;
         el('opRow').hidden = !tpl;
         el('swapBtn').hidden = !(sel === 'front' || sel === 'back');
-        document.querySelector('input[name="fit"][value="' + (s.fit || 'fill') + '"]').checked = true;
+        root.querySelector('input[name="fit"][value="' + (s.fit || 'fill') + '"]').checked = true;
         S.syncSeg(el('fitRow').querySelector('.seg'));
         var z = Math.round((s.zoom || 1) * 100);
         el('izoom').value = z; el('izoomVal').textContent = z + '%';
@@ -1106,7 +1116,7 @@
         renderCards();
     }
 
-    document.querySelectorAll('input[name="fit"]').forEach(function (r) {
+    root.querySelectorAll('input[name="fit"]').forEach(function (r) {
         r.addEventListener('change', function () {
             var s = slots[sel]; if (!s.img) return;
             s.fit = this.value; s.ox = s.oy = 0;
@@ -1249,7 +1259,7 @@
         var key = [cfg.bgColor, cfg.patColor].join('|');
         if (key === patThumbKey) return;
         patThumbKey = key;
-        document.querySelectorAll('.pat').forEach(function (b) {
+        root.querySelectorAll('.pat').forEach(function (b) {
             var name = b.dataset.pat, c = b.querySelector('canvas'), x = c.getContext('2d');
             var g = { W: c.width, H: c.height };
             x.fillStyle = cfg.bgColor; x.fillRect(0, 0, g.W, g.H);
@@ -1279,7 +1289,7 @@
         el('fSize').textContent = (Math.round(g.Win * 1000) / 1000) + ' × ' + g.Hin + ' in · ' + g.W + ' × ' + g.H + ' px';
 
         [['bgmode', cfg.bgmode], ['spinemode', cfg.spinemode], ['pv', cfg.pv]].forEach(function (p) {
-            var r = document.querySelector('input[name="' + p[0] + '"][value="' + p[1] + '"]');
+            var r = root.querySelector('input[name="' + p[0] + '"][value="' + p[1] + '"]');
             if (r && !r.checked) { r.checked = true; S.syncSeg(r.closest('.seg')); }
         });
         el('colorRow').hidden = false;
@@ -1293,7 +1303,7 @@
         setRange('patScale', cfg.patScale, cfg.patScale + ' in');
         setRange('patAngle', cfg.patAngle, cfg.patAngle + '°');
         el('patScaleLbl').textContent = cfg.pattern === 'sunburst' ? 'Ray width' : 'Scale';
-        document.querySelectorAll('.pat').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.pat === cfg.pattern)); });
+        root.querySelectorAll('.pat').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.pat === cfg.pattern)); });
         renderPatternThumbs();
 
         setRange('blur', cfg.blur, String(cfg.blur));
@@ -1331,7 +1341,7 @@
 
         ['gBleed', 'gSafe', 'gSpine', 'gBarcode'].forEach(function (k) { el(k).checked = cfg[k]; });
 
-        document.querySelectorAll('.swatch').forEach(function (b) {
+        root.querySelectorAll('.swatch').forEach(function (b) {
             var key = SWATCH_KEYS[b.parentNode.id];
             if (!key) return;
             b.setAttribute('aria-pressed', String(cfg[key].toLowerCase() === (b.title || '').toLowerCase()));
@@ -1360,7 +1370,7 @@
         var n = Math.max(24, Math.min(828, parseInt(this.value, 10) || 24));
         this.value = n; setCfg('pages', n);
     });
-    document.querySelectorAll('[data-step]').forEach(function (b) {
+    root.querySelectorAll('[data-step]').forEach(function (b) {
         b.addEventListener('click', function () {
             var n = Math.max(24, Math.min(828, cfg.pages + +b.getAttribute('data-step')));
             el('pages').value = n; setCfg('pages', n);
@@ -1368,7 +1378,7 @@
     });
 
     ['bgmode', 'spinemode', 'pv'].forEach(function (name) {
-        document.querySelectorAll('input[name="' + name + '"]').forEach(function (r) {
+        root.querySelectorAll('input[name="' + name + '"]').forEach(function (r) {
             r.addEventListener('change', function () {
                 if (name === 'bgmode' && this.value === 'image' && !slots.bg.img) {
                     select('bg'); pick('bg');
@@ -1395,7 +1405,7 @@
         sInk:         function (h) { cfg.inkAuto = false; setCfg('ink', h); },
         outlineColor: function (h) { setCfg('outlineColor', h); }
     };
-    document.querySelectorAll('[data-pick]').forEach(function (b) {
+    root.querySelectorAll('[data-pick]').forEach(function (b) {
         b.addEventListener('click', function () { pickColor(PICKERS[b.getAttribute('data-pick')]); });
     });
     ['gBleed', 'gSafe', 'gSpine', 'gBarcode'].forEach(function (k) {
