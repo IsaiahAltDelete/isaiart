@@ -1,0 +1,158 @@
+{
+ "date": "2026-10-16",
+ "updated": "2026-10-16T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Rays at Guardians, ALCS Game 4 with Cleveland up 2\u20131 (8:00 PM ET, TBS)",
+  "Washington at Purdue (8:00 PM ET, FOX)",
+  "Memphis at Tulane (7:30 PM ET, ESPN)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "League Championship Series",
+   "note": "ALCS Game 4 \u2022 Brewers swept the NLCS 4\u20130"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 8",
+   "note": "Friday national windows"
+  }
+ ],
+ "events": [
+  {
+   "id": "ncaaf-mem-tuln",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Memphis Tigers",
+     "abbr": "MEM",
+     "detail": "5\u20131"
+    },
+    {
+     "name": "Tulane Green Wave",
+     "abbr": "TULN",
+     "detail": "2\u20133"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-16T19:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Yulman Stadium, New Orleans",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Friday night college game on ESPN.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-wash-pur",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Washington Huskies",
+     "abbr": "WASH",
+     "detail": "3\u20133"
+    },
+    {
+     "name": "Purdue Boilermakers",
+     "abbr": "PUR",
+     "detail": "3\u20133"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-16T20:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Ross-Ade Stadium, West Lafayette, Ind.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Friday night college game on FOX.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-app-ccu",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "App State Mountaineers",
+     "abbr": "APP",
+     "detail": "3\u20132"
+    },
+    {
+     "name": "Coastal Carolina Chanticleers",
+     "abbr": "CCU",
+     "detail": "2\u20134"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-16T20:00:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Brooks Stadium, Conway, S.C.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Friday night college game on ESPN2.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "mlb-tb-cle-g4",
+   "league": "MLB",
+   "label": "MLB \u2022 ALCS",
+   "flags": [
+    "ALCS \u2022 Game 4"
+   ],
+   "competitors": [
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL No. 1 seed \u2022 Martinez",
+     "logo": "mlb/tb"
+    },
+    {
+     "name": "Cleveland Guardians",
+     "abbr": "CLE",
+     "detail": "AL No. 2 seed \u2022 leads 2\u20131 \u2022 starter TBD",
+     "logo": "mlb/cle"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-16T20:00:00-04:00",
+   "watch": "TBS \u2022 truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast. Spanish on Univision/TUDN.",
+   "venue": "Progressive Field, Cleveland",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Cleveland took Game 3 3\u20132. Nick Martinez starts for Tampa Bay; Cleveland's starter is TBD. The winner faces Milwaukee, which swept the Dodgers, in the World Series starting Thursday, Oct. 22.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  }
+ ],
+ "footer_note": "Four qualifying events fall inside Friday's Eastern calendar day. Regional NHL games, preseason and exhibition games are excluded. The WNBA Finals open Saturday, Oct. 17.",
+ "sources": [
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-16"
+  },
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261016"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-10-16"
+  }
+ ]
+}
