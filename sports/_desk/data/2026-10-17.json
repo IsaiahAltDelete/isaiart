@@ -1,0 +1,566 @@
+{
+ "date": "2026-10-17",
+ "updated": "2026-10-17T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "No. 2 Notre Dame at No. 8 BYU, both unbeaten (7:30 PM ET, ABC)",
+  "Dream at Valkyries, WNBA Finals Game 1 (3:30 PM ET, NBC)",
+  "Rays at Guardians, rain-delayed ALCS Game 4 (8:00 PM ET, TBS)"
+ ],
+ "leagues": [
+  {
+   "key": "WNBA",
+   "name": "WNBA",
+   "subtitle": "Finals",
+   "note": "Best-of-seven Finals open",
+   "color": "#956f82"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 8",
+   "note": "Saturday games with AP Top 25 teams \u2022 ranks from the Oct. 11 AP poll"
+  },
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "League Championship Series",
+   "note": "ALCS Game 4 after Friday's rainout"
+  }
+ ],
+ "events": [
+  {
+   "id": "wnba-atl-gs-g1",
+   "league": "WNBA",
+   "label": "WNBA \u2022 Finals",
+   "flags": [
+    "Finals \u2022 Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "Atlanta Dream",
+     "abbr": "ATL",
+     "detail": "30\u201314",
+     "logo": "wnba/atl"
+    },
+    {
+     "name": "Golden State Valkyries",
+     "abbr": "GSV",
+     "detail": "32\u201312",
+     "logo": "wnba/gs"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T15:30:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Chase Center, San Francisco",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Finals opener. Both teams swept their semifinals 3\u20130: Atlanta over New York, Golden State over Las Vegas.",
+   "blackout": "No territorial blackout is expected. WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "ncaaf-osu-iu",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Ohio State Buckeyes",
+     "abbr": "OSU",
+     "detail": "No. 4 \u2022 5\u20131"
+    },
+    {
+     "name": "Indiana Hoosiers",
+     "abbr": "IU",
+     "detail": "No. 5 \u2022 6\u20130"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T12:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Memorial Stadium, Bloomington, Ind.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Top-five matchup; unbeaten Indiana hosts Ohio State.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-fla-tex",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Florida Gators",
+     "abbr": "FLA",
+     "detail": "4\u20132"
+    },
+    {
+     "name": "Texas Longhorns",
+     "abbr": "TEX",
+     "detail": "No. 7 \u2022 4\u20131"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T12:00:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "DKR-Texas Memorial Stadium, Austin",
+   "venue_tz": "Central Daylight Time",
+   "notes": "No. 7 Texas hosts Florida at noon ET.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-msst-lsu",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Mississippi State Bulldogs",
+     "abbr": "MSST",
+     "detail": "No. 16 \u2022 4\u20131"
+    },
+    {
+     "name": "LSU Tigers",
+     "abbr": "LSU",
+     "detail": "No. 22 \u2022 4\u20132"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T12:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Tiger Stadium, Baton Rouge, La.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Ranked matchup in Death Valley.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-uva-smu",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Virginia Cavaliers",
+     "abbr": "UVA",
+     "detail": "4\u20132"
+    },
+    {
+     "name": "SMU Mustangs",
+     "abbr": "SMU",
+     "detail": "No. 24 \u2022 4\u20131"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T12:00:00-04:00",
+   "watch": "The CW",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National The CW window.",
+   "venue": "Gerald J. Ford Stadium, Dallas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "No. 24 SMU at home.",
+   "blackout": "No territorial blackout is expected. Local The CW carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-nu-msu",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Northwestern Wildcats",
+     "abbr": "NU",
+     "detail": "No. 25 \u2022 4\u20131"
+    },
+    {
+     "name": "Michigan State Spartans",
+     "abbr": "MSU",
+     "detail": "2\u20134"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T12:00:00-04:00",
+   "watch": "Peacock",
+   "streaming": "Peacock",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Peacock streaming window.",
+   "venue": "Spartan Stadium, East Lansing, Mich.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "No. 25 Northwestern on the road.",
+   "blackout": "Peacock subscription required."
+  },
+  {
+   "id": "ncaaf-aub-uga",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Auburn Tigers",
+     "abbr": "AUB",
+     "detail": "3\u20132"
+    },
+    {
+     "name": "Georgia Bulldogs",
+     "abbr": "UGA",
+     "detail": "No. 1 \u2022 6\u20130"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T15:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Sanford Stadium, Athens, Ga.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "No. 1 Georgia hosts Auburn.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-ala-tenn",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Alabama Crimson Tide",
+     "abbr": "ALA",
+     "detail": "No. 6 \u2022 5\u20131"
+    },
+    {
+     "name": "Tennessee Volunteers",
+     "abbr": "TENN",
+     "detail": "No. 14 \u2022 5\u20131"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T15:30:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "Neyland Stadium, Knoxville, Tenn.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Ranked matchup in the Third Saturday in October.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-miz-miss",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Missouri Tigers",
+     "abbr": "MIZ",
+     "detail": "No. 13 \u2022 5\u20131"
+    },
+    {
+     "name": "Ole Miss Rebels",
+     "abbr": "MISS",
+     "detail": "No. 9 \u2022 4\u20131"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T15:30:00-04:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "Vaught-Hemingway Stadium, Oxford, Miss.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Top-15 matchup in Oxford.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-asu-ttu",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arizona State Sun Devils",
+     "abbr": "ASU",
+     "detail": "3\u20132"
+    },
+    {
+     "name": "Texas Tech Red Raiders",
+     "abbr": "TTU",
+     "detail": "No. 10 \u2022 5\u20130"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T15:30:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "Galaxy Stadium, Lubbock, Texas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Unbeaten No. 10 Texas Tech at home.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-fsu-mia",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Florida State Seminoles",
+     "abbr": "FSU",
+     "detail": "3\u20133"
+    },
+    {
+     "name": "Miami Hurricanes",
+     "abbr": "MIA",
+     "detail": "No. 3 \u2022 5\u20130"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T19:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Hard Rock Stadium, Miami Gardens, Fla.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Unbeaten No. 3 Miami hosts rival Florida State.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-nd-byu",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Notre Dame Fighting Irish",
+     "abbr": "ND",
+     "detail": "No. 2 \u2022 6\u20130"
+    },
+    {
+     "name": "BYU Cougars",
+     "abbr": "BYU",
+     "detail": "No. 8 \u2022 5\u20130"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T19:30:00-04:00",
+   "watch": "ABC",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ABC window.",
+   "venue": "LaVell Edwards Stadium, Provo, Utah",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "Top-10 unbeaten matchup in Provo.",
+   "blackout": "No territorial blackout is expected. Local ABC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-wis-ucla",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Wisconsin Badgers",
+     "abbr": "WIS",
+     "detail": "4\u20131"
+    },
+    {
+     "name": "UCLA Bruins",
+     "abbr": "UCLA",
+     "detail": "No. 12 \u2022 5\u20130"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T19:30:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBC window.",
+   "venue": "Rose Bowl, Pasadena, Calif.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Unbeaten No. 12 UCLA at the Rose Bowl.",
+   "blackout": "No territorial blackout is expected. Local NBC carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-uk-ou",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Kentucky Wildcats",
+     "abbr": "UK",
+     "detail": "No. 15 \u2022 5\u20131"
+    },
+    {
+     "name": "Oklahoma Sooners",
+     "abbr": "OU",
+     "detail": "3\u20132"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T19:30:00-04:00",
+   "watch": "SEC Network",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National SEC Network window.",
+   "venue": "Memorial Stadium, Norman, Okla.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "No. 15 Kentucky on the road.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-okst-hou",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Oklahoma State Cowboys",
+     "abbr": "OKST",
+     "detail": "No. 18 \u2022 4\u20131"
+    },
+    {
+     "name": "Houston Cougars",
+     "abbr": "HOU",
+     "detail": "No. 20 \u2022 5\u20131"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T19:30:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National FOX window.",
+   "venue": "TDECU Stadium, Houston",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Ranked matchup in Houston.",
+   "blackout": "No territorial blackout is expected. Local FOX carriage varies by affiliate and provider."
+  },
+  {
+   "id": "ncaaf-utah-colo",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Utah Utes",
+     "abbr": "UTAH",
+     "detail": "No. 11 \u2022 5\u20130"
+    },
+    {
+     "name": "Colorado Buffaloes",
+     "abbr": "COLO",
+     "detail": "2\u20133"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T22:15:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Folsom Field, Boulder, Colo.",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "Unbeaten No. 11 Utah in a late window.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "ncaaf-wake-cal",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 8",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Wake Forest Demon Deacons",
+     "abbr": "WAKE",
+     "detail": "No. 21 \u2022 5\u20131"
+    },
+    {
+     "name": "California Golden Bears",
+     "abbr": "CAL",
+     "detail": "3\u20133"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T22:30:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "California Memorial Stadium, Berkeley, Calif.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "No. 21 Wake Forest closes the night out west.",
+   "blackout": "No territorial blackout is expected. TV-provider or ESPN streaming access is required."
+  },
+  {
+   "id": "mlb-tb-cle-g4",
+   "league": "MLB",
+   "label": "MLB \u2022 ALCS",
+   "flags": [
+    "ALCS \u2022 Game 4",
+    "Rescheduled"
+   ],
+   "competitors": [
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL No. 1 seed \u2022 Martinez",
+     "logo": "mlb/tb"
+    },
+    {
+     "name": "Cleveland Guardians",
+     "abbr": "CLE",
+     "detail": "AL No. 2 seed \u2022 leads 2\u20131 \u2022 Armstrong",
+     "logo": "mlb/cle"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-17T20:00:00-04:00",
+   "watch": "TBS \u2022 truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast. Spanish on Univision/TUDN.",
+   "venue": "Progressive Field, Cleveland",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Moved from Friday after a rainout. Nick Martinez faces Shawn Armstrong. Game 5 follows Sunday at 5:00 PM ET in Cleveland.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  }
+ ],
+ "footer_note": "Eighteen qualifying events fall inside Saturday's Eastern calendar day: WNBA Finals Game 1, ALCS Game 4 and the Saturday games involving AP Top 25 teams. Regional NHL games, preseason and exhibition games are excluded. The World Series opens Friday, Oct. 23, in Milwaukee.",
+ "sources": [
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-17"
+  },
+  {
+   "label": "ESPN WNBA scoreboard",
+   "url": "https://www.espn.com/wnba/scoreboard/_/date/20261017"
+  },
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261017"
+  },
+  {
+   "label": "AP Top 25, Week 7",
+   "url": "https://www.espn.com/college-football/rankings"
+  }
+ ]
+}
