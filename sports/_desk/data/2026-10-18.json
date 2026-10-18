@@ -1,0 +1,483 @@
+{
+ "date": "2026-10-18",
+ "updated": "2026-10-18T07:58:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Rays at Guardians, ALCS Game 5 with the series tied 2\u20132 (5:08 PM ET, TBS)",
+  "Cowboys at Packers, Sunday Night Football (8:20 PM ET, NBC/Peacock)",
+  "Texans vs. Jaguars in London (9:30 AM ET, NFL Network)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 6",
+   "note": "London morning game \u2022 CBS and FOX regional windows \u2022 SNF"
+  },
+  {
+   "key": "NASCAR",
+   "name": "NASCAR",
+   "subtitle": "Cup Series",
+   "note": "The Chase \u2022 Phoenix"
+  },
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "League Championship Series",
+   "note": "ALCS Game 5 \u2022 series tied 2\u20132"
+  }
+ ],
+ "events": [
+  {
+   "id": "nfl-hou-jax",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [
+    "International Series \u2022 London"
+   ],
+   "competitors": [
+    {
+     "name": "Houston Texans",
+     "abbr": "HOU",
+     "detail": "1\u20134",
+     "logo": "nfl/hou"
+    },
+    {
+     "name": "Jacksonville Jaguars",
+     "abbr": "JAX",
+     "detail": "4\u20131",
+     "logo": "nfl/jax"
+    }
+   ],
+   "separator": "vs.",
+   "start": "2026-10-18T09:30:00-04:00",
+   "watch": "NFL Network",
+   "streaming": "NFL+",
+   "coverage_type": "National",
+   "coverage": "National NFL Network window; Jacksonville is the designated home team.",
+   "venue": "Wembley Stadium, London",
+   "venue_tz": "British Summer Time",
+   "notes": "Jacksonville's second straight London game after facing Philadelphia last week. Kickoff is 2:30 p.m. local.",
+   "blackout": "Local over-the-air simulcasts are expected in the Houston and Jacksonville markets. NFL+ restrictions may apply."
+  },
+  {
+   "id": "nfl-chi-atl",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Chicago Bears",
+     "abbr": "CHI",
+     "detail": "3\u20132",
+     "logo": "nfl/chi"
+    },
+    {
+     "name": "Atlanta Falcons",
+     "abbr": "ATL",
+     "detail": "2\u20133",
+     "logo": "nfl/atl"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T13:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Mercedes-Benz Stadium, Atlanta",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 6 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-bal-cle",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Baltimore Ravens",
+     "abbr": "BAL",
+     "detail": "4\u20131",
+     "logo": "nfl/bal"
+    },
+    {
+     "name": "Cleveland Browns",
+     "abbr": "CLE",
+     "detail": "3\u20132",
+     "logo": "nfl/cle"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T13:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Huntington Bank Field, Cleveland",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 6 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-ten-ind",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Tennessee Titans",
+     "abbr": "TEN",
+     "detail": "0\u20135",
+     "logo": "nfl/ten"
+    },
+    {
+     "name": "Indianapolis Colts",
+     "abbr": "IND",
+     "detail": "2\u20133",
+     "logo": "nfl/ind"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T13:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "Lucas Oil Stadium, Indianapolis",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 6 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-nyj-ne",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New York Jets",
+     "abbr": "NYJ",
+     "detail": "2\u20133",
+     "logo": "nfl/nyj"
+    },
+    {
+     "name": "New England Patriots",
+     "abbr": "NE",
+     "detail": "3\u20132",
+     "logo": "nfl/ne"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T13:00:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Gillette Stadium, Foxborough, Mass.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 6 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-no-nyg",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "New Orleans Saints",
+     "abbr": "NO",
+     "detail": "1\u20134",
+     "logo": "nfl/no"
+    },
+    {
+     "name": "New York Giants",
+     "abbr": "NYG",
+     "detail": "3\u20131\u20131",
+     "logo": "nfl/nyg"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T13:00:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "MetLife Stadium, East Rutherford, N.J.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 6 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-car-phi",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Carolina Panthers",
+     "abbr": "CAR",
+     "detail": "2\u20132",
+     "logo": "nfl/car"
+    },
+    {
+     "name": "Philadelphia Eagles",
+     "abbr": "PHI",
+     "detail": "2\u20133",
+     "logo": "nfl/phi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T13:00:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Lincoln Financial Field, Philadelphia",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 6 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-pit-tb",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Pittsburgh Steelers",
+     "abbr": "PIT",
+     "detail": "3\u20132",
+     "logo": "nfl/pit"
+    },
+    {
+     "name": "Tampa Bay Buccaneers",
+     "abbr": "TB",
+     "detail": "1\u20134",
+     "logo": "nfl/tb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T13:00:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Raymond James Stadium, Tampa, Fla.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Week 6 early window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-ari-lar",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Arizona Cardinals",
+     "abbr": "ARI",
+     "detail": "1\u20134",
+     "logo": "nfl/ari"
+    },
+    {
+     "name": "Los Angeles Rams",
+     "abbr": "LAR",
+     "detail": "2\u20133",
+     "logo": "nfl/lar"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T16:05:00-04:00",
+   "watch": "FOX",
+   "streaming": "FOX One",
+   "coverage_type": "Regional",
+   "coverage": "Regional FOX window. Local assignment varies by ZIP code; FOX One follows the local FOX feed.",
+   "rsn": "",
+   "venue": "SoFi Stadium, Inglewood, Calif.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Week 6 late window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-lac-kc",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Los Angeles Chargers",
+     "abbr": "LAC",
+     "detail": "0\u20135",
+     "logo": "nfl/lac"
+    },
+    {
+     "name": "Kansas City Chiefs",
+     "abbr": "KC",
+     "detail": "4\u20130",
+     "logo": "nfl/kc"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T16:25:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Arrowhead Stadium, Kansas City, Mo.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Week 6 late window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nfl-buf-lv",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Buffalo Bills",
+     "abbr": "BUF",
+     "detail": "4\u20131",
+     "logo": "nfl/buf"
+    },
+    {
+     "name": "Las Vegas Raiders",
+     "abbr": "LV",
+     "detail": "3\u20132",
+     "logo": "nfl/lv"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T16:25:00-04:00",
+   "watch": "CBS",
+   "streaming": "Paramount+",
+   "coverage_type": "Regional",
+   "coverage": "Regional CBS window. Local assignment varies by ZIP code; Paramount+ follows the local CBS feed.",
+   "rsn": "",
+   "venue": "Allegiant Stadium, Las Vegas",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Week 6 late window game.",
+   "blackout": "Out-of-market: NFL Sunday Ticket. NFL+ shows local and primetime games on mobile only; restrictions may apply."
+  },
+  {
+   "id": "nascar-phx",
+   "league": "NASCAR",
+   "label": "NASCAR Cup \u2022 The Chase",
+   "flags": [
+    "Chase \u2022 Race 7 of 10"
+   ],
+   "competitors": [
+    {
+     "name": "Freeway Insurance 500",
+     "abbr": "PHX",
+     "detail": ""
+    }
+   ],
+   "separator": "",
+   "start": "2026-10-18T15:00:00-04:00",
+   "watch": "USA Network",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National USA Network window; prerace at 2:30 p.m. ET.",
+   "venue": "Phoenix Raceway, Avondale, Ariz.",
+   "venue_tz": "Mountain Standard Time (Arizona)",
+   "notes": "312 laps on the one-mile oval; seventh race of NASCAR's 10-race Chase.",
+   "blackout": "No territorial blackout is expected. TV-provider access is required."
+  },
+  {
+   "id": "mlb-tb-cle-g5",
+   "league": "MLB",
+   "label": "MLB \u2022 ALCS",
+   "flags": [
+    "ALCS \u2022 Game 5"
+   ],
+   "competitors": [
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL No. 1 seed \u2022 series 2\u20132 \u2022 Rasmussen",
+     "logo": "mlb/tb"
+    },
+    {
+     "name": "Cleveland Guardians",
+     "abbr": "CLE",
+     "detail": "AL No. 2 seed \u2022 series 2\u20132 \u2022 Messick",
+     "logo": "mlb/cle"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T17:08:00-04:00",
+   "watch": "TBS \u2022 truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast. Spanish on Univision/TUDN.",
+   "venue": "Progressive Field, Cleveland",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Tampa Bay evened the series with a 7\u20133 Game 4 win Saturday. Drew Rasmussen faces Parker Messick. The series shifts to Tampa Bay for Game 6 on Monday.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "nfl-dal-gb",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [
+    "Sunday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Dallas Cowboys",
+     "abbr": "DAL",
+     "detail": "2\u20133",
+     "logo": "nfl/dal"
+    },
+    {
+     "name": "Green Bay Packers",
+     "abbr": "GB",
+     "detail": "3\u20132",
+     "logo": "nfl/gb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-18T20:20:00-04:00",
+   "watch": "NBC",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National Sunday Night Football window.",
+   "venue": "Lambeau Field, Green Bay, Wis.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Dallas visits Lambeau in prime time.",
+   "blackout": "No territorial blackout. Local NBC carriage varies by affiliate and provider; NFL+ restrictions may apply."
+  }
+ ],
+ "footer_note": "Fourteen qualifying events fall inside Sunday's Eastern calendar day. Regional NHL games, preseason and exhibition games are excluded. Golden State won WNBA Finals Game 1 68\u201364; Game 2 is Monday. The World Series opens Friday, Oct. 23, in Milwaukee.",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/6/year/2026/seasontype/2"
+  },
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-18"
+  },
+  {
+   "label": "NASCAR Phoenix TV schedule",
+   "url": "https://racingnews.co/2026/10/15/nascar-tv-schedule-phoenix-raceway-october-2026/"
+  },
+  {
+   "label": "ESPN WNBA scoreboard",
+   "url": "https://www.espn.com/wnba/scoreboard/_/date/20261017"
+  }
+ ]
+}
