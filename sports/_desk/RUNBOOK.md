@@ -1,6 +1,6 @@
 # Daily Sports Desk runbook
 
-This is the full procedure for the scheduled Sports Desk runs (8:00, 9:00, 10:00, 11:00 AM Eastern).
+This is the full procedure for the scheduled Sports Desk runs (7:55 AM main run, 9:55 AM retry, Eastern; the older 8:00/11:00 names below map to these).
 Every run follows it top to bottom. The page lives at https://isaiart.com/sports and is served by
 GitHub Pages from the `main` branch of `IsaiahAltDelete/isaiart` (CNAME `isaiart.com`, `.nojekyll` at root).
 
@@ -128,7 +128,7 @@ bordered abbreviation shows instead.
 These are the habits the desk has settled on since late September 2026. Follow them so the page reads the
 same from day to day. Copy the most recent data file of the same weekday as your starting point.
 
-**Schedule.** As of October 19, 2026 the routine runs Thursday through Monday (7:55, 8:55, 9:55, 10:55 AM ET).
+**Schedule.** As of October 19, 2026 the routine runs Thursday through Monday at 7:55 AM ET (main run) and 9:55 AM ET (only retry).
 Tuesday and Wednesday are skipped on purpose; the page keeps showing Monday's desk until Thursday.
 Isaiah may pause the routine entirely; a paused routine means no runs and no pushes.
 
