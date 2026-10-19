@@ -128,8 +128,8 @@ bordered abbreviation shows instead.
 These are the habits the desk has settled on since late September 2026. Follow them so the page reads the
 same from day to day. Copy the most recent data file of the same weekday as your starting point.
 
-**Schedule.** As of October 15, 2026 the routine runs Friday, Saturday, Sunday and Monday only (7:55, 8:55,
-9:55, 10:55 AM ET). Tuesday through Thursday are skipped on purpose; the page keeps showing Monday's desk.
+**Schedule.** As of October 19, 2026 the routine runs Thursday through Monday (7:55, 8:55, 9:55, 10:55 AM ET).
+Tuesday and Wednesday are skipped on purpose; the page keeps showing Monday's desk until Thursday.
 Isaiah may pause the routine entirely; a paused routine means no runs and no pushes.
 
 **Headlines (2 to 3).** Format: `Away at Home, context (H:MM PM ET, Network)`. Examples:
