@@ -1,0 +1,146 @@
+{
+ "date": "2026-10-19",
+ "updated": "2026-10-19T09:30:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "Lighter Monday: three prime-time games, all starting within 15 minutes of each other.",
+ "headlines": [
+  "Guardians at Rays, ALCS Game 6 with Tampa Bay up 3\u20132 (8:08 PM ET, TBS)",
+  "Commanders at 49ers, Monday Night Football (8:15 PM ET, ESPN/ABC)",
+  "Dream at Valkyries, WNBA Finals Game 2 (8:00 PM ET, USA Network)"
+ ],
+ "leagues": [
+  {
+   "key": "WNBA",
+   "name": "WNBA",
+   "subtitle": "Finals",
+   "note": "Golden State leads 1\u20130",
+   "color": "#956f82"
+  },
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "League Championship Series",
+   "note": "ALCS Game 6 \u2022 Rays can clinch"
+  },
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 6",
+   "note": "Monday Night Football"
+  }
+ ],
+ "events": [
+  {
+   "id": "wnba-atl-gs-g2",
+   "league": "WNBA",
+   "label": "WNBA \u2022 Finals",
+   "flags": [
+    "Finals \u2022 Game 2"
+   ],
+   "competitors": [
+    {
+     "name": "Atlanta Dream",
+     "abbr": "ATL",
+     "detail": "30\u201314",
+     "logo": "wnba/atl"
+    },
+    {
+     "name": "Golden State Valkyries",
+     "abbr": "GSV",
+     "detail": "32\u201312 \u2022 leads 1\u20130",
+     "logo": "wnba/gs"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-19T20:00:00-04:00",
+   "watch": "USA Network \u2022 CNBC \u2022 E!",
+   "streaming": "Peacock",
+   "coverage_type": "National",
+   "coverage": "National NBCUniversal cable window.",
+   "venue": "Chase Center, San Francisco",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Golden State won Game 1 68\u201364. Tip is 5:00 p.m. local.",
+   "blackout": "No territorial blackout is expected. WNBA League Pass restrictions may apply to live national playoff games."
+  },
+  {
+   "id": "mlb-cle-tb-g6",
+   "league": "MLB",
+   "label": "MLB \u2022 ALCS",
+   "flags": [
+    "ALCS \u2022 Game 6",
+    "Elimination"
+   ],
+   "competitors": [
+    {
+     "name": "Cleveland Guardians",
+     "abbr": "CLE",
+     "detail": "AL No. 2 seed \u2022 starter TBD",
+     "logo": "mlb/cle"
+    },
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL No. 1 seed \u2022 leads 3\u20132 \u2022 Peralta",
+     "logo": "mlb/tb"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-19T20:08:00-04:00",
+   "watch": "TBS \u2022 truTV",
+   "streaming": "HBO Max",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast. Spanish on Univision/TUDN.",
+   "venue": "Tropicana Field, St. Petersburg, Fla.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Tampa Bay won Game 5 3\u20131 and can clinch the pennant at home. Freddy Peralta starts for the Rays; Cleveland's starter is TBD. A Cleveland win forces Game 7 on Tuesday.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "nfl-wsh-sf",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 6",
+   "flags": [
+    "Monday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "Washington Commanders",
+     "abbr": "WSH",
+     "detail": "1\u20133\u20131",
+     "logo": "nfl/wsh"
+    },
+    {
+     "name": "San Francisco 49ers",
+     "abbr": "SF",
+     "detail": "5\u20130",
+     "logo": "nfl/sf"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-19T20:15:00-04:00",
+   "watch": "ESPN \u2022 ABC",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National Monday Night Football window.",
+   "venue": "Levi's Stadium, Santa Clara, Calif.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Unbeaten San Francisco hosts Washington to close Week 6. Kickoff is 5:15 p.m. local.",
+   "blackout": "No territorial blackout. Local ABC carriage varies by affiliate and provider; NFL+ restrictions may apply."
+  }
+ ],
+ "footer_note": "Three qualifying events fall inside Monday's Eastern calendar day. Regional NHL games, preseason and exhibition games are excluded. The World Series opens Friday, Oct. 23, in Milwaukee.",
+ "sources": [
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-19"
+  },
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/6/year/2026/seasontype/2"
+  },
+  {
+   "label": "ESPN WNBA scoreboard",
+   "url": "https://www.espn.com/wnba/scoreboard/_/date/20261019"
+  }
+ ]
+}
