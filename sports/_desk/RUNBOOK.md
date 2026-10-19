@@ -123,6 +123,66 @@ means the image exists (verified); a 404 means it does not. Add only verified UR
 logo can't be verified (NCAA and soccer IDs are numeric and hard to confirm), leave `logo` out and the
 bordered abbreviation shows instead.
 
+## House style and conventions
+
+These are the habits the desk has settled on since late September 2026. Follow them so the page reads the
+same from day to day. Copy the most recent data file of the same weekday as your starting point.
+
+**Schedule.** As of October 15, 2026 the routine runs Friday, Saturday, Sunday and Monday only (7:55, 8:55,
+9:55, 10:55 AM ET). Tuesday through Thursday are skipped on purpose; the page keeps showing Monday's desk.
+Isaiah may pause the routine entirely; a paused routine means no runs and no pushes.
+
+**Headlines (2 to 3).** Format: `Away at Home, context (H:MM PM ET, Network)`. Examples:
+`Rays at Guardians, ALCS Game 5 with the series tied 2–2 (5:08 PM ET, TBS)`,
+`No. 2 Notre Dame at No. 8 BYU, both unbeaten (7:30 PM ET, ABC)`. Lead with the biggest game of the day
+(elimination or clinch games, top-10 college matchups, prime-time NFL), then the most national windows.
+
+**Notes.** One or two plain factual sentences: series state, last result with score, probable starters,
+local kickoff time for far-off venues. No hype words, no predictions, nothing you could not confirm.
+Bad examples from past runs: guessed RSN names, "every AP Top 25 team in action" when some had byes.
+
+**Competitor `detail`.** Records with en dashes (`4–1`, `3–1–1`). Postseason: seed plus series state plus
+probable starter (`AL No. 2 seed • leads 2–1 • Messick`). College: `No. 7 • 4–1` for ranked teams, record only otherwise.
+
+**Footer.** Pattern: `<Spelled-out count> qualifying events fall inside <Weekday>'s Eastern calendar day.`
+then what is excluded (`Regional NHL games, preseason and exhibition games are excluded.`) then at most one
+look-ahead sentence (next series game, Finals or World Series opener). Make the spelled-out count match the
+real event count; check it after every edit.
+
+**Scope habits.**
+- NFL Sunday: London game (National, NFL Network), every CBS/FOX regional game, SNF. Plus TNF and MNF on their days.
+- MLB postseason: every game; label `MLB • ALDS/NLDS/ALCS/NLCS/World Series`, flags like `ALCS • Game 5`.
+- College football Saturday: every game involving an AP Top 25 team (use the current AP poll; say which
+  week's poll in the league note). Weeknights: national-TV games (ESPN, ESPN2, FOX, CBS Sports Network).
+  Label `NCAAF • Week N`; no conference names unless verified. No logos (numeric ESPN IDs).
+- NHL: include only games with a national U.S. exclusive (ESPN, ABC, TNT/truTV, or an ESPN+/Hulu national
+  stream). NHL Network, Prime Video local, and team-network games are regional and excluded.
+- WNBA: playoff games only once the regular season ends.
+- NASCAR Cup: one card per race, label `NASCAR Cup • The Chase` during the playoffs, venue_tz from the track.
+- Venue timezone for Arizona is `Mountain Standard Time (Arizona)`.
+
+**Flags.** Never repeat the coverage type as a flag (the badge is automatic). A streaming-only game with
+coverage_type `Streaming exclusive` should use a flag like `ESPN+ • Hulu`, not "Streaming exclusive".
+
+**Reliable data sources** (all reachable with curl; prefer these over search snippets):
+- MLB: `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=YYYY-MM-DD&hydrate=broadcasts,probablePitcher,seriesStatus,venue`
+- NHL: `https://api-web.nhle.com/v1/schedule/YYYY-MM-DD` (national U.S. broadcasts have market `N`)
+- ESPN scoreboards: `https://site.api.espn.com/apis/site/v2/sports/<football/nfl|football/college-football|basketball/wnba|racing/...>/scoreboard?dates=YYYYMMDD`
+  (add `&groups=80&limit=200` for all FBS college games; `curatedRank` matches the AP poll)
+- AP poll: `https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings`
+- Logos: `curl -sS -o /dev/null -w '%{http_code}' https://a.espncdn.com/i/teamlogos/<league>/500/<abbr>.png`
+  (200 = exists). WebFetch is often blocked; curl works.
+
+**Rebuilding after a data fix.** `build.py` archives the current `index.html` every time it runs. If you
+must rebuild before committing, first restore the generated files
+(`git checkout -- sports/index.html sports/status.json sports/archive/index.html`) and delete the
+just-created `sports/archive/<yesterday>.html`, then run the build again. Otherwise today's desk gets
+archived as if it were yesterday's.
+
+**Accuracy over completeness.** If a time, network or stream can't be confirmed from a primary source,
+use `TBD` or drop the claim. When a past desk turns out wrong, the archive can't be edited; mention the
+correction in the run report and get it right in the next desk.
+
 ## Step 3: build and validate
 
 ```bash
