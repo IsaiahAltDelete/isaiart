@@ -1,0 +1,306 @@
+{
+ "date": "2026-10-22",
+ "updated": "2026-10-22T08:00:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card.",
+ "light_day_note": "",
+ "headlines": [
+  "Patriots at Bears, Thursday Night Football (8:15 PM ET, Prime Video)",
+  "Nuggets at Thunder, ESPN NBA doubleheader (9:30 PM ET, ESPN)",
+  "Cavaliers at 76ers, ESPN NBA doubleheader (7:00 PM ET, ESPN)"
+ ],
+ "leagues": [
+  {
+   "key": "NFL",
+   "name": "NFL",
+   "subtitle": "Week 7",
+   "note": "Thursday Night Football"
+  },
+  {
+   "key": "NBA",
+   "name": "NBA",
+   "subtitle": "Regular season",
+   "note": "ESPN doubleheader"
+  },
+  {
+   "key": "NHL",
+   "name": "NHL",
+   "subtitle": "Regular season",
+   "note": "ESPN+ national streams"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 9",
+   "note": "Thursday national windows"
+  }
+ ],
+ "events": [
+  {
+   "id": "nba-cle-phi",
+   "league": "NBA",
+   "label": "NBA \u2022 Regular season",
+   "flags": [
+    "ESPN doubleheader"
+   ],
+   "competitors": [
+    {
+     "name": "Cleveland Cavaliers",
+     "abbr": "CLE",
+     "detail": "0\u20130",
+     "logo": "nba/cle"
+    },
+    {
+     "name": "Philadelphia 76ers",
+     "abbr": "PHI",
+     "detail": "1\u20130",
+     "logo": "nba/phi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-22T19:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Xfinity Mobile Arena, Philadelphia",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Cleveland's season opener; Philadelphia won its first game.",
+   "blackout": "Local team-network availability varies by market; NBA League Pass restrictions may apply to national games."
+  },
+  {
+   "id": "ncaaf-jmu-app",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "James Madison Dukes",
+     "abbr": "JMU",
+     "detail": "7\u20130"
+    },
+    {
+     "name": "App State Mountaineers",
+     "abbr": "APP",
+     "detail": "4\u20132"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-22T19:00:00-04:00",
+   "watch": "ESPNU",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPNU window.",
+   "venue": "Kidd Brewer Stadium, Boone, N.C.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Thursday night college game on ESPNU.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-lib-kenn",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Liberty Flames",
+     "abbr": "LIB",
+     "detail": "5\u20131"
+    },
+    {
+     "name": "Kennesaw State Owls",
+     "abbr": "KENN",
+     "detail": "1\u20135"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-22T19:00:00-04:00",
+   "watch": "CBS Sports Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National CBS Sports Network window.",
+   "venue": "Fifth Third Stadium, Kennesaw, Ga.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Thursday night college game on CBS Sports Network.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nhl-la-nyi",
+   "league": "NHL",
+   "label": "NHL \u2022 Regular season",
+   "flags": [
+    "ESPN+ \u2022 Hulu"
+   ],
+   "competitors": [
+    {
+     "name": "Los Angeles Kings",
+     "abbr": "LA",
+     "detail": "",
+     "logo": "nhl/la"
+    },
+    {
+     "name": "New York Islanders",
+     "abbr": "NYI",
+     "detail": "",
+     "logo": "nhl/nyi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-22T19:30:00-04:00",
+   "watch": "ESPN+ \u2022 Hulu \u2022 Disney+",
+   "streaming": "ESPN+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National U.S. streaming window; no national TV broadcast is listed.",
+   "venue": "UBS Arena, Elmont, N.Y.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "First of two ESPN+ national streams tonight.",
+   "blackout": "Streaming subscription required. Local team-network availability varies by market."
+  },
+  {
+   "id": "ncaaf-ecu-mem",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "East Carolina Pirates",
+     "abbr": "ECU",
+     "detail": "3\u20133"
+    },
+    {
+     "name": "Memphis Tigers",
+     "abbr": "MEM",
+     "detail": "5\u20132"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-22T19:30:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "Simmons Bank Liberty Stadium, Memphis, Tenn.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Thursday night college game on ESPN2.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "nfl-ne-chi",
+   "league": "NFL",
+   "label": "NFL \u2022 Week 7",
+   "flags": [
+    "Thursday Night Football"
+   ],
+   "competitors": [
+    {
+     "name": "New England Patriots",
+     "abbr": "NE",
+     "detail": "4\u20132",
+     "logo": "nfl/ne"
+    },
+    {
+     "name": "Chicago Bears",
+     "abbr": "CHI",
+     "detail": "4\u20132",
+     "logo": "nfl/chi"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-22T20:15:00-04:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "Soldier Field, Chicago",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Two 4\u20132 teams open Week 7. Kickoff is 7:15 p.m. local.",
+   "blackout": "Prime Video subscription required; local broadcast availability in the team markets may vary. NFL+ restrictions may apply."
+  },
+  {
+   "id": "nba-den-okc",
+   "league": "NBA",
+   "label": "NBA \u2022 Regular season",
+   "flags": [
+    "ESPN doubleheader"
+   ],
+   "competitors": [
+    {
+     "name": "Denver Nuggets",
+     "abbr": "DEN",
+     "detail": "0\u20130",
+     "logo": "nba/den"
+    },
+    {
+     "name": "Oklahoma City Thunder",
+     "abbr": "OKC",
+     "detail": "1\u20130",
+     "logo": "nba/okc"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-22T21:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN Unlimited",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Paycom Center, Oklahoma City",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Denver's season opener; Oklahoma City won its first game.",
+   "blackout": "Local team-network availability varies by market; NBA League Pass restrictions may apply to national games."
+  },
+  {
+   "id": "nhl-utah-sea",
+   "league": "NHL",
+   "label": "NHL \u2022 Regular season",
+   "flags": [
+    "ESPN+ \u2022 Hulu"
+   ],
+   "competitors": [
+    {
+     "name": "Utah Mammoth",
+     "abbr": "UTAH",
+     "detail": "",
+     "logo": "nhl/utah"
+    },
+    {
+     "name": "Seattle Kraken",
+     "abbr": "SEA",
+     "detail": "",
+     "logo": "nhl/sea"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-22T22:00:00-04:00",
+   "watch": "ESPN+ \u2022 Hulu \u2022 Disney+",
+   "streaming": "ESPN+",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National U.S. streaming window; no national TV broadcast is listed.",
+   "venue": "Climate Pledge Arena, Seattle",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Late West Coast stream. Puck drop is 7:00 p.m. local.",
+   "blackout": "Streaming subscription required. Local team-network availability varies by market."
+  }
+ ],
+ "footer_note": "Eight qualifying events fall inside Thursday's Eastern calendar day. Regional NHL and NBA games, preseason and exhibition games are excluded. Tampa Bay beat Cleveland 7\u20133 in ALCS Game 6 to win the pennant; the World Series opens Friday at 8:00 PM ET in Milwaukee. Atlanta leads the WNBA Finals 2\u20131; Game 4 is Saturday.",
+ "sources": [
+  {
+   "label": "ESPN NFL scoreboard",
+   "url": "https://www.espn.com/nfl/scoreboard/_/week/7/year/2026/seasontype/2"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261022"
+  },
+  {
+   "label": "NHL schedule API",
+   "url": "https://api-web.nhle.com/v1/schedule/2026-10-22"
+  },
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261022"
+  },
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-23"
+  }
+ ]
+}
