@@ -1,0 +1,284 @@
+{
+ "date": "2026-10-23",
+ "updated": "2026-10-23T07:57:00-04:00",
+ "dst_note": "Eastern, Central, Mountain and Pacific are observing daylight time today. Arizona matches Pacific time; Hawaii is six hours behind Eastern. Venue timezones are listed on every card. MLB postseason games are national windows, not RSN telecasts.",
+ "light_day_note": "",
+ "headlines": [
+  "Rays at Brewers, World Series Game 1 (8:00 PM ET, FOX)",
+  "Knicks at Celtics (7:00 PM ET, Prime Video)",
+  "Rockets at Spurs (9:30 PM ET, Prime Video)"
+ ],
+ "leagues": [
+  {
+   "key": "MLB",
+   "name": "MLB",
+   "subtitle": "World Series",
+   "note": "Game 1 in Milwaukee"
+  },
+  {
+   "key": "NBA",
+   "name": "NBA",
+   "subtitle": "Regular season",
+   "note": "Prime Video doubleheader"
+  },
+  {
+   "key": "NCAAF",
+   "name": "College Football",
+   "subtitle": "Week 9",
+   "note": "Friday national windows"
+  }
+ ],
+ "events": [
+  {
+   "id": "nba-ny-bos",
+   "league": "NBA",
+   "label": "NBA \u2022 Regular season",
+   "flags": [
+    "Prime Video doubleheader"
+   ],
+   "competitors": [
+    {
+     "name": "New York Knicks",
+     "abbr": "NY",
+     "detail": "0\u20131",
+     "logo": "nba/ny"
+    },
+    {
+     "name": "Boston Celtics",
+     "abbr": "BOS",
+     "detail": "0\u20131",
+     "logo": "nba/bos"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-23T19:00:00-04:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "TD Garden, Boston",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Atlantic Division rivals, both looking for their first win.",
+   "blackout": "Prime Video subscription required; local team-network availability varies by market. NBA League Pass restrictions may apply."
+  },
+  {
+   "id": "ncaaf-duke-uva",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Duke Blue Devils",
+     "abbr": "DUKE",
+     "detail": "4\u20132"
+    },
+    {
+     "name": "Virginia Cavaliers",
+     "abbr": "UVA",
+     "detail": "4\u20133"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-23T19:00:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Scott Stadium, Charlottesville, Va.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Friday night college game on ESPN.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-mass-conn",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Massachusetts Minutemen",
+     "abbr": "MASS",
+     "detail": "4\u20133"
+    },
+    {
+     "name": "UConn Huskies",
+     "abbr": "CONN",
+     "detail": "3\u20133"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-23T19:00:00-04:00",
+   "watch": "CBS Sports Network",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National CBS Sports Network window.",
+   "venue": "Pratt & Whitney Stadium, East Hartford, Conn.",
+   "venue_tz": "Eastern Daylight Time",
+   "notes": "Friday night college game on CBS Sports Network.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "mlb-tb-mil-ws1",
+   "league": "MLB",
+   "label": "MLB \u2022 World Series",
+   "flags": [
+    "World Series \u2022 Game 1"
+   ],
+   "competitors": [
+    {
+     "name": "Tampa Bay Rays",
+     "abbr": "TB",
+     "detail": "AL champion \u2022 Martinez",
+     "logo": "mlb/tb"
+    },
+    {
+     "name": "Milwaukee Brewers",
+     "abbr": "MIL",
+     "detail": "NL champion \u2022 Misiorowski",
+     "logo": "mlb/mil"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-23T20:00:00-04:00",
+   "watch": "FOX \u2022 FOX Deportes",
+   "streaming": "FOX One",
+   "coverage_type": "National",
+   "coverage": "National postseason window. No RSN telecast.",
+   "venue": "American Family Field, Milwaukee",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Best-of-seven World Series opens in Milwaukee. The Brewers swept the Dodgers in the NLCS; the Rays beat Cleveland in six. Nick Martinez faces Jacob Misiorowski.",
+   "blackout": "U.S. postseason national-rights restrictions apply; MLB.TV does not replace the national live telecast."
+  },
+  {
+   "id": "ncaaf-army-tlsa",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Army Black Knights",
+     "abbr": "ARMY",
+     "detail": "4\u20132"
+    },
+    {
+     "name": "Tulsa Golden Hurricane",
+     "abbr": "TLSA",
+     "detail": "4\u20133"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-23T20:30:00-04:00",
+   "watch": "ESPN2",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN2 window.",
+   "venue": "H.A. Chapman Stadium, Tulsa, Okla.",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Friday night college game on ESPN2.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  },
+  {
+   "id": "ncaaf-afa-wyo",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "Air Force Falcons",
+     "abbr": "AFA",
+     "detail": "5\u20131"
+    },
+    {
+     "name": "Wyoming Cowboys",
+     "abbr": "WYO",
+     "detail": "4\u20133"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-23T21:00:00-04:00",
+   "watch": "The CW",
+   "streaming": "TBD",
+   "coverage_type": "National",
+   "coverage": "National The CW window.",
+   "venue": "War Memorial Stadium, Laramie, Wyo.",
+   "venue_tz": "Mountain Daylight Time",
+   "notes": "Friday night college game on The CW.",
+   "blackout": "No territorial blackout is expected. Local CW carriage varies by affiliate and provider."
+  },
+  {
+   "id": "nba-hou-sa",
+   "league": "NBA",
+   "label": "NBA \u2022 Regular season",
+   "flags": [
+    "Prime Video doubleheader"
+   ],
+   "competitors": [
+    {
+     "name": "Houston Rockets",
+     "abbr": "HOU",
+     "detail": "1\u20130",
+     "logo": "nba/hou"
+    },
+    {
+     "name": "San Antonio Spurs",
+     "abbr": "SA",
+     "detail": "0\u20131",
+     "logo": "nba/sa"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-23T21:30:00-04:00",
+   "watch": "Prime Video",
+   "streaming": "Prime Video",
+   "coverage_type": "Streaming exclusive",
+   "coverage": "National Prime Video window.",
+   "venue": "Moody Center, Austin, Texas",
+   "venue_tz": "Central Daylight Time",
+   "notes": "Spurs home game played in Austin.",
+   "blackout": "Prime Video subscription required; local team-network availability varies by market. NBA League Pass restrictions may apply."
+  },
+  {
+   "id": "ncaaf-ncsu-stan",
+   "league": "NCAAF",
+   "label": "NCAAF \u2022 Week 9",
+   "flags": [],
+   "competitors": [
+    {
+     "name": "NC State Wolfpack",
+     "abbr": "NCSU",
+     "detail": "3\u20133"
+    },
+    {
+     "name": "Stanford Cardinal",
+     "abbr": "STAN",
+     "detail": "3\u20134"
+    }
+   ],
+   "separator": "at",
+   "start": "2026-10-23T22:30:00-04:00",
+   "watch": "ESPN",
+   "streaming": "ESPN app",
+   "coverage_type": "National",
+   "coverage": "National ESPN window.",
+   "venue": "Stanford Stadium, Stanford, Calif.",
+   "venue_tz": "Pacific Daylight Time",
+   "notes": "Friday night college game on ESPN.",
+   "blackout": "No territorial blackout is expected. TV-provider or streaming access is required."
+  }
+ ],
+ "footer_note": "Eight qualifying events fall inside Friday's Eastern calendar day. Regional NHL and NBA games, preseason and exhibition games are excluded. Atlanta leads the WNBA Finals 2\u20131; Game 4 is Saturday at 1:00 PM ET on NBC.",
+ "sources": [
+  {
+   "label": "MLB Stats API schedule",
+   "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-10-23"
+  },
+  {
+   "label": "ESPN NBA scoreboard",
+   "url": "https://www.espn.com/nba/scoreboard/_/date/20261023"
+  },
+  {
+   "label": "ESPN college football scoreboard",
+   "url": "https://www.espn.com/college-football/scoreboard/_/date/20261023"
+  }
+ ]
+}
